@@ -1,4 +1,4 @@
-import { unref, inject, ref, Ref, watch, computed } from "vue";
+import { unref, inject, ref, Ref, watch, computed, ComputedRef } from "vue";
 import { AxiosInstance, AxiosResponse } from "axios";
 import { trace, Span } from "@opentelemetry/api";
 import { RouteLocationRaw } from "vue-router";
@@ -300,7 +300,7 @@ export class APICall<Response> {
   // and it didn't make sense... can revisit later
 }
 
-const ok = (req: AxiosResponse) => {
+export const ok = (req: AxiosResponse) => {
   switch (req.status) {
     case 200:
     case 201:
@@ -310,7 +310,32 @@ const ok = (req: AxiosResponse) => {
   }
 };
 
-export const useApi = (ctx?: Context) => {
+type ApiRequestStatus = {
+  isRequested: boolean;
+  isPending: boolean;
+  isFirstLoad: boolean;
+  isError: boolean;
+  isSuccess: boolean;
+};
+
+export type UseApi = {
+  ok: (req: AxiosResponse) => boolean;
+  endpoint: <Response>(
+    key: routes,
+    args?: Record<string, string>,
+  ) => APICall<Response>;
+  inFlight: Ref<boolean, boolean>;
+  bifrosting: Ref<boolean, boolean>;
+  requestStatuses: ComputedRef<ApiRequestStatus>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setWatchFn: (fn: () => any) => void;
+  navigateToNewChangeSet: (
+    to: RouteLocationRaw,
+    newChangeSetId: string,
+  ) => Promise<void>;
+};
+
+export const useApi = (ctx?: Context): UseApi => {
   if (!ctx) ctx = inject<Context>("CONTEXT");
   assertIsDefined(ctx);
 
@@ -410,14 +435,6 @@ export const useApi = (ctx?: Context) => {
     });
     await router.push(to);
     reset();
-  };
-
-  type ApiRequestStatus = {
-    isRequested: boolean;
-    isPending: boolean;
-    isFirstLoad: boolean;
-    isError: boolean;
-    isSuccess: boolean;
   };
 
   const requestStatuses = computed<ApiRequestStatus>(() => {

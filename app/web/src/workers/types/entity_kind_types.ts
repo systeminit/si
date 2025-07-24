@@ -336,6 +336,7 @@ export interface Prop {
   path: string;
   name: string;
   kind: PropKind;
+  childKind: PropKind;
   widgetKind: PropertyEditorPropWidgetKind;
   docLink?: string;
   documentation?: string;

@@ -135,6 +135,7 @@
             "
             @delete="(path) => emit('delete', path)"
             @remove-subscription="(path) => emit('removeSubscription', path)"
+            @add="(...args) => emit('add', ...args)"
           />
         </ul>
         <div
@@ -189,7 +190,7 @@
               :disabled="addApi.bifrosting.value"
               loadingIcon="loader"
               :tabindex="0"
-              @click="() => add()"
+              @click="add"
               @keydown.tab.stop.prevent="onAddButtonTab"
             >
               + add "{{ displayName }}" item
@@ -228,11 +229,11 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { VButton, IconButton, themeClasses } from "@si/vue-lib/design-system";
-import { useRoute } from "vue-router";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import {
   BifrostComponent,
+  ComponentInList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
@@ -245,11 +246,11 @@ import {
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../logic_composables/attribute_tree";
-import { useApi, routes, componentTypes } from "../api_composables";
+import { useApi, UseApi } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: BifrostComponent | ComponentInList;
   attributeTree: AttrTree;
   forceReadOnly?: boolean;
   parentHasExternalSources?: boolean;
@@ -285,15 +286,15 @@ const parentHasExternalSources = computed(() => {
 
 const addApi = useApi();
 
-const emptyChildValue = () => {
+export type NewChildValue = [] | object | "";
+const emptyChildValue = (): NewChildValue => {
   // Do I send `{}` for array of map/object or "" for array of string?
   // Answer by looking at my prop child
-  const propTree = props.component.schemaVariant.propTree;
-  const childProp =
-    propTree.props[
-      propTree.treeInfo[props.attributeTree.prop?.id ?? ""]?.children[0] ?? ""
-    ];
-  switch (childProp?.kind) {
+
+  // no answer to this question without a prop
+  if (!props.attributeTree.prop) return "";
+
+  switch (props.attributeTree.prop.childKind) {
     case "array":
       return [];
     case "map":
@@ -305,88 +306,15 @@ const emptyChildValue = () => {
   }
 };
 
-const add = async (key?: string) => {
-  if (props.component.toDelete) return;
-
-  if (props.attributeTree.prop?.kind === "map") {
-    if (!key) {
-      saveKeyIfFormValid();
-      return;
-    } else {
-      keyForm.setFieldValue("key", key, {});
-      await saveKey();
-      return;
-    }
-  }
-
-  const call = addApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
-  addApi.setWatchFn(
-    // once the children count updates, we can stop spinning
-    () => props.attributeTree.children.length,
-  );
-
-  // Do I send `{}` for array of map/object or "" for array of string?
-  // Answer by looking at my prop child
-  const appendPath =
-    `${props.attributeTree.attributeValue.path}/-` as AttributePath;
-  const payload = {
-    [appendPath]: emptyChildValue(),
-  };
-  const { req, newChangeSetId } =
-    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
-  if (addApi.ok(req) && newChangeSetId) {
-    addApi.navigateToNewChangeSet(
-      {
-        name: "new-hotness-component",
-        params: {
-          workspacePk: route.params.workspacePk,
-          changeSetId: newChangeSetId,
-          componentId: props.component.id,
-        },
-      },
-      newChangeSetId,
-    );
-  }
-};
-
-const route = useRoute();
 const wForm = useWatchedForm<{ key: string }>(
   `component.av.key.${props.attributeTree.prop?.id}`,
 );
 const keyData = ref({ key: "" });
-const keyApi = useApi();
 const keyForm = wForm.newForm({
   data: keyData,
   onSubmit: async ({ value }) => {
-    const call = keyApi.endpoint<{ success: boolean }>(
-      routes.UpdateComponentAttributes,
-      { id: props.component.id },
-    );
-    const childPath =
-      `${props.attributeTree.attributeValue.path}/${value.key}` as AttributePath;
-    const payload = {
-      [childPath]: emptyChildValue(),
-    };
-    const { req, newChangeSetId } =
-      await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
-    if (newChangeSetId && keyApi.ok(req)) {
-      keyApi.navigateToNewChangeSet(
-        {
-          name: "new-hotness-component",
-          params: {
-            workspacePk: route.params.workspacePk,
-            changeSetId: newChangeSetId,
-            componentId: props.component.id,
-          },
-        },
-        newChangeSetId,
-      );
-    }
+    emit("setKey", props.attributeTree, value.key, emptyChildValue());
   },
-  watchFn: () => props.attributeTree.children.length,
 });
 
 const saveKeyIfFormValid = async () => {
@@ -411,6 +339,15 @@ const saveKey = async () => {
     },
     { once: true },
   );
+};
+
+const add = () => {
+  if (props.attributeTree.prop?.kind === "map") {
+    saveKeyIfFormValid();
+    return;
+  }
+
+  emit("add", addApi, props.attributeTree, emptyChildValue());
 };
 
 // NOTE: we never need to unset this, because this whole node will
@@ -513,6 +450,13 @@ const emit = defineEmits<{
   ): void;
   (e: "delete", path: AttributePath): void;
   (e: "removeSubscription", path: AttributePath): void;
+  (e: "add", api: UseApi, attributeTree: AttrTree, value: NewChildValue): void;
+  (
+    e: "setKey",
+    attributeTree: AttrTree,
+    key: string,
+    value: NewChildValue,
+  ): void;
 }>();
 
 const showingChildren = computed(

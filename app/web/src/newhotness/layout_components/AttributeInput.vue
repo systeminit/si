@@ -657,6 +657,7 @@ import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import {
   AttributeTree,
   BifrostComponent,
+  ComponentInList,
   EntityKind,
   ExternalSource,
   PossibleConnection,
@@ -698,7 +699,7 @@ const props = defineProps<{
   kind?: PropertyEditorPropWidgetKind | string;
   prop?: Prop;
   validation?: ValidationOutput;
-  component: BifrostComponent;
+  component: BifrostComponent | ComponentInList;
   displayName: string;
   canDelete?: boolean;
   disabled?: boolean;

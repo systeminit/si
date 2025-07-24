@@ -320,6 +320,20 @@ const rightClickMenuItems = computed(() => {
     }
   }
 
+  // multiple components, nothing `toDelete`
+  if (components.value.length > 1 && !atLeastOneGhostedComponent.value) {
+    items.push({
+      label: "Bulk",
+      shortcut: "B",
+      icon: "edit" as const,
+      onSelect: (event: MouseEvent) => {
+        emit("bulk");
+        event.stopPropagation();
+        close();
+      },
+    });
+  }
+
   return items;
 });
 
@@ -490,6 +504,7 @@ const emit = defineEmits<{
   (e: "edit"): void;
   (e: "clearSelected"): void;
   (e: "pin", componentId: ComponentId): void;
+  (e: "bulk"): void;
 }>();
 
 defineExpose({
