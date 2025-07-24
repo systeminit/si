@@ -109,6 +109,7 @@ pub async fn execute_management_function(
                 pending.id(),
                 ManagementState::Failure,
                 None,
+                Some("hit max pending duration".to_string()),
             )
             .await?;
             state_ctx.commit().await?;

@@ -2,8 +2,14 @@
   <FuncRunDetailsLayout
     v-if="funcRun?.id"
     :funcRun="funcRun"
-    :status="funcRunStatus(funcRun) || ''"
+    :status="funcRunStatus(funcRun, managementFuncJobState?.state) || ''"
     :logText="logText"
+    :errorHint="
+      successWithFailedOperations
+        ? 'The management function ran successfully, but some component operations failed.'
+        : undefined
+    "
+    :errorMessageRaw="managementFuncJobState?.message"
     :functionCode="functionCode"
     :argsJson="argsJson"
     :resultJson="resultJson"
@@ -61,6 +67,7 @@ import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
 import { assertIsDefined, Context } from "./types";
 import { useApi, routes, funcRunTypes } from "./api_composables";
 import { keyEmitter } from "./logic_composables/emitters";
+import { useManagementFuncJobState } from "./logic_composables/management";
 import { FuncRun, funcRunStatus, FuncRunLog } from "./api_composables/func_run";
 
 const props = defineProps<{
@@ -156,6 +163,16 @@ const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
 });
 
 const funcRun = computed(() => funcRunQuery.value);
+
+const managementFuncJobStateComposable = useManagementFuncJobState(funcRun);
+const managementFuncJobState = computed(
+  () => managementFuncJobStateComposable.value.value,
+);
+const successWithFailedOperations = computed(
+  () =>
+    funcRun.value?.state === "Success" &&
+    managementFuncJobState.value?.state === "failure",
+);
 
 // Check if the component still exists
 const componentId = computed(() => funcRun.value?.componentId);

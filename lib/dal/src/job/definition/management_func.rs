@@ -364,7 +364,8 @@ impl ManagementFuncJob {
         match self.run_inner(ctx, execution_state_id).await {
             Ok(completion_state) => Ok(completion_state),
             Err(err) => {
-                Self::fail_state(ctx, execution_state_id).await?;
+                let failure_message = err.to_string();
+                Self::fail_state(ctx, execution_state_id, failure_message).await?;
 
                 // Signal failure because we never reach a "complete" state.
                 WsEvent::management_operations_failed(ctx, self.request_ulid)
@@ -381,6 +382,7 @@ impl ManagementFuncJob {
         execution_state_id: ManagementFuncJobStateId,
         new_state: si_db::ManagementState,
         func_run_id: Option<FuncRunId>,
+        failure_message: Option<String>,
     ) -> ManagementFuncJobResult<()> {
         let ctx_clone = ctx.clone();
         if new_state == ManagementState::Failure {
@@ -388,8 +390,14 @@ impl ManagementFuncJob {
                 snap.revert().await;
             }
         }
-        ManagementFuncJobState::transition_state(ctx, execution_state_id, new_state, func_run_id)
-            .await?;
+        ManagementFuncJobState::transition_state(
+            ctx,
+            execution_state_id,
+            new_state,
+            func_run_id,
+            failure_message,
+        )
+        .await?;
         ctx_clone.commit_no_rebase().await?;
 
         Ok(())
@@ -405,6 +413,7 @@ impl ManagementFuncJob {
             execution_state_id,
             ManagementState::Executing,
             Some(func_run_id),
+            None,
         )
         .await
     }
@@ -413,21 +422,43 @@ impl ManagementFuncJob {
         ctx: &DalContext,
         execution_state_id: ManagementFuncJobStateId,
     ) -> ManagementFuncJobResult<()> {
-        Self::transition_state(ctx, execution_state_id, ManagementState::Operating, None).await
+        Self::transition_state(
+            ctx,
+            execution_state_id,
+            ManagementState::Operating,
+            None,
+            None,
+        )
+        .await
     }
 
     async fn success_state(
         ctx: &DalContext,
         execution_state_id: ManagementFuncJobStateId,
     ) -> ManagementFuncJobResult<()> {
-        Self::transition_state(ctx, execution_state_id, ManagementState::Success, None).await
+        Self::transition_state(
+            ctx,
+            execution_state_id,
+            ManagementState::Success,
+            None,
+            None,
+        )
+        .await
     }
 
     async fn fail_state(
         ctx: &DalContext,
         execution_state_id: ManagementFuncJobStateId,
+        message: String,
     ) -> ManagementFuncJobResult<()> {
-        Self::transition_state(ctx, execution_state_id, ManagementState::Failure, None).await
+        Self::transition_state(
+            ctx,
+            execution_state_id,
+            ManagementState::Failure,
+            None,
+            Some(message),
+        )
+        .await
     }
 }
 

@@ -6,6 +6,7 @@ import {
 } from "@/api/sdf/dal/action";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { ManagementState } from "./management_func_job_state";
 
 export type FuncRunId = string;
 export type FuncRunLogId = string;
@@ -122,9 +123,17 @@ export interface FuncRunLog {
 
 export function funcRunStatus(
   funcRun?: FuncRun,
+  managementState?: ManagementState,
 ): FuncRunState | "ActionFailure" | undefined | null {
   if (!funcRun) return null;
-  if (!funcRun.state) return null;
+
+  // If the management job is in flight, we are "running".
+  if (
+    managementState === "executing" ||
+    managementState === "operating" ||
+    managementState === "pending"
+  )
+    return "Running";
 
   // If the qualification ran successfully, but it resulted in failure, then the state is a failure state.
   if (
@@ -134,6 +143,22 @@ export function funcRunStatus(
     (funcRun.unprocessedResultValue as any)?.result !== "success"
   ) {
     return "Failure";
+  }
+
+  // Check both the management func and its operations for terminating state.
+  if (
+    funcRun.functionKind === "Management" &&
+    funcRun.state === "Success" &&
+    managementState === "failure"
+  ) {
+    return "Failure";
+  }
+  if (
+    funcRun.functionKind === "Management" &&
+    funcRun.state === "Success" &&
+    managementState === "success"
+  ) {
+    return "Success";
   }
 
   // If actionResultState is Failure, it's an error even though state may be Success
