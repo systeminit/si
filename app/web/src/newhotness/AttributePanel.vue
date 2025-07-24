@@ -124,7 +124,7 @@
       v-if="'children' in filtered.tree && filtered.tree.children.length > 0"
       defaultOpen
     >
-      <template #header> domain </template>
+      <template #header><span class="text-sm">domain</span></template>
       <ComponentAttribute
         v-for="child in filtered.tree.children"
         :key="child.id"
@@ -138,7 +138,7 @@
       />
     </AttributeChildLayout>
     <AttributeChildLayout v-if="secrets && secrets.children.length > 0">
-      <template #header> secrets </template>
+      <template #header><span class="text-sm">secrets</span></template>
       <ComponentSecretAttribute
         v-for="secret in secrets.children"
         :key="secret.id"

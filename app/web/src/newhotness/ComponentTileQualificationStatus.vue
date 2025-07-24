@@ -10,7 +10,7 @@
         size="sm"
         :status="qualificationStatus"
       />
-      <div v-if="!props.hideTitle">Qualifications</div>
+      <div v-if="!props.hideTitle" class="text-sm">Qualifications</div>
     </div>
     <div class="flex flex-row items-center gap-xs">
       <TextPill

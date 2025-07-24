@@ -13,7 +13,7 @@
     @click.stop="selected ? null : emit('toggle')"
   >
     <Icon :name="icon" size="sm" />
-    <div>{{ label }}</div>
+    <div class="text-sm">{{ label }}</div>
   </div>
 </template>
 

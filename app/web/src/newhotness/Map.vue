@@ -1616,10 +1616,10 @@ defineExpose({
     body.dark & {
       fill: white;
     }
-    font-size: 1rem;
+    font-size: 0.75rem;
     &.name {
       font-weight: bold;
-      font-size: 1.2rem;
+      font-size: 0.875rem;
     }
 
     &.greyed-out {

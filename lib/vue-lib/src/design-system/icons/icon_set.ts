@@ -9,7 +9,6 @@ import SlashForward from "~icons/mdi/slash-forward";
 import BookOpen from "~icons/heroicons/book-open-20-solid";
 import Check from "~icons/heroicons/check-20-solid";
 import CheckCircle from "~icons/heroicons/check-circle-20-solid";
-import CheckCircleOutline from "~icons/carbon/checkmark-outline";
 import CheckSquare from "./custom-icons/check-square.svg?raw";
 import CloudUpload from "~icons/mdi/cloud-upload";
 import CloudDownload from "~icons/mdi/cloud-download";
@@ -177,6 +176,10 @@ import Renew from "~icons/carbon/renew";
 import CarbonApps from "~icons/carbon/apps";
 import CarbonFlowConnection from "~icons/carbon/flow-connection";
 import CategoryNew from "~icons/carbon/category-new";
+import CarbonCloseOutline from "~icons/carbon/close-outline";
+import CarbonCheckmarkOutline from "~icons/carbon/checkmark-outline";
+import CarbonChevronDown from "~icons/carbon/chevron-down";
+import CarbonChevronRight from "~icons/carbon/chevron-right";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -255,11 +258,14 @@ export const ICONS = Object.freeze({
   check: Check,
   "check-badge": CheckBadge,
   "check-circle": CheckCircle,
-  "check-circle-outline": CheckCircleOutline,
+  "check-circle-outline": CarbonCheckmarkOutline,
   "check-hex": CheckHex,
   "check-hex-outline": CheckHexOutline,
   "check-square": CheckSquare,
   check2: Check2,
+  "checkmark-outline": CarbonCheckmarkOutline,
+  "chevron-down": CarbonChevronDown,
+  "chevron-right": CarbonChevronRight,
   "circle-empty": MdiCheckboxBlankCircleOutline,
   "circle-full": MdiCheckboxBlankCircle,
   "circle-slash": CircleSlash,
@@ -268,6 +274,7 @@ export const ICONS = Object.freeze({
   click: MdiCursorDefaultClickOutline,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
+  "close-outline": CarbonCloseOutline,
   cloud: Cloud,
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,

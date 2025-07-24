@@ -30,18 +30,22 @@
         )
       "
     >
-      <Icon :name="getAssetIcon(component.schemaCategory)" size="lg" />
+      <Icon
+        :name="getAssetIcon(component.schemaCategory)"
+        size="md"
+        class="place-self-center my-auto mt-1"
+      />
       <h2>
-        <TruncateWithTooltip class="pb-xs">{{
-          component.name
-        }}</TruncateWithTooltip>
+        <TruncateWithTooltip class="pb-xs text-sm">
+          {{ component.name }}
+        </TruncateWithTooltip>
       </h2>
       <h3>
-        <TruncateWithTooltip class="pb-xs">{{
-          component.schemaName
-        }}</TruncateWithTooltip>
+        <TruncateWithTooltip class="pb-xs text-xs">
+          {{ component.schemaName }}
+        </TruncateWithTooltip>
       </h3>
-      <Icon v-if="component.toDelete" name="hourglass" size="md" />
+      <Icon v-if="component.toDelete" name="trash" size="md" />
       <Icon
         v-else-if="canBeUpgraded"
         name="bolt-outline"
@@ -81,11 +85,11 @@
           >
             {{ component.resourceId }}
           </TruncateWithTooltip>
-          <div v-else>Resource</div>
+          <div v-else class="text-sm">Resource</div>
         </template>
         <template v-else-if="rowContent === 'diff'">
           <Icon name="tilde" class="text-warning-500" size="sm" />
-          <div>Diff</div>
+          <div class="text-sm">Diff</div>
         </template>
         <template v-else-if="rowContent === 'pending'">
           <div class="grid grid-cols-5 gap-1 items-center">
@@ -120,7 +124,7 @@
         <hr :class="themeClasses('border-neutral-400', 'border-neutral-600')" />
         <li>
           <Icon name="output-connection" size="sm" />
-          <div>Incoming</div>
+          <div class="text-sm">Incoming</div>
           <PillCounter
             :count="component.inputCount"
             size="sm"
@@ -129,7 +133,7 @@
         </li>
         <li>
           <Icon name="input-connection" size="sm" />
-          <div>Outgoing</div>
+          <div class="text-sm">Outgoing</div>
           <PillCounter :count="outgoing" size="sm" class="ml-auto" />
         </li>
       </template>

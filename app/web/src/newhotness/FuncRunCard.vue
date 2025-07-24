@@ -40,7 +40,19 @@
             "
             :title="funcRun.functionDisplayName || funcRun.functionName"
           >
-            {{ funcRun.functionDisplayName || funcRun.functionName }}
+            <span
+              :class="
+                clsx(
+                  'text-xs',
+                  themeClasses(
+                    'group-hover/funcruncard:text-action-500',
+                    'group-hover/funcruncard:text-action-300',
+                  ),
+                )
+              "
+            >
+              {{ funcRun.functionDisplayName || funcRun.functionName }}
+            </span>
           </div>
           <div class="text-xs text-neutral-500 pl-xs">
             {{ formatTimeAgo(funcRun.createdAt) }}

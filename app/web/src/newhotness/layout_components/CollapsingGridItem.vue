@@ -3,19 +3,20 @@
     <h3
       :class="
         clsx(
-          'group/header flex flex-row items-center h-[28px]',
-          'cursor-pointer text-lg font-bold px-xs flex-none',
+          'group/header flex flex-row items-center h-[40px]',
+          'cursor-pointer text-lg font-bold px-xs py-xs flex-none border',
           themeClasses(
-            'bg-neutral-200 hover:bg-neutral-300',
-            'bg-neutral-900 hover:bg-black',
+            'bg-neutral-300 hover:bg-neutral-400 border-neutral-400',
+            'bg-neutral-800 hover:bg-neutral-700 border-neutral-600',
           ),
         )
       "
       @click="openState.toggle"
     >
       <Icon
-        class="group-hover/header:scale-125"
-        :name="openState.open.value ? 'chevron--down' : 'chevron--right'"
+        class="group-hover/header:scale-125 mr-xs"
+        :name="openState.open.value ? 'chevron-down' : 'chevron-right'"
+        size="md"
       />
       <slot name="header" />
       <div class="ml-auto" />
@@ -24,7 +25,7 @@
     <div
       :class="
         disableScroll
-          ? 'overflow-hidden flex flex-col min-h-[calc(100%-28px)]'
+          ? 'overflow-hidden flex flex-col min-h-[calc(100%-40px)]'
           : 'scrollable flex-1 min-h-0'
       "
     >

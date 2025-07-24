@@ -327,7 +327,7 @@
           :style="collapsingStyles"
         >
           <CollapsingGridItem ref="actionsRef">
-            <template #header>Actions</template>
+            <template #header><span class="text-sm">Actions</span></template>
             <template #headerIconsRight>
               <PillCounter :count="actionViewList.length" class="text-sm" />
             </template>
@@ -337,7 +337,9 @@
             />
           </CollapsingGridItem>
           <CollapsingGridItem ref="historyRef" disableScroll>
-            <template #header>History</template>
+            <template #header
+              ><span class="text-sm">Recent function runs</span></template
+            >
             <FuncRunList :limit="25" />
           </CollapsingGridItem>
         </div>

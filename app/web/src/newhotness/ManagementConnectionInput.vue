@@ -10,7 +10,7 @@
     "
   >
     <div class="flex flex-row items-center gap-sm">
-      <TruncateWithTooltip class="py-sm grow max-w-fit">
+      <TruncateWithTooltip class="py-sm grow max-w-fit text-sm">
         Add a component to be managed by "{{ parentComponentName }}"
       </TruncateWithTooltip>
       <input

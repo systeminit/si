@@ -69,9 +69,9 @@ const CONFIG = {
     Dispatched: { iconName: "loader", tone: "neutral" },
     Running: { iconName: "loader", tone: "action" },
     Postprocessing: { iconName: "loader", tone: "action" },
-    Failure: { iconName: "x-circle", tone: "destructive" },
-    ActionFailure: { iconName: "x-circle", tone: "destructive" },
-    Success: { iconName: "check-circle", tone: "success" },
+    Failure: { iconName: "close-outline", tone: "destructive" },
+    ActionFailure: { iconName: "close-outline", tone: "destructive" },
+    Success: { iconName: "checkmark-outline", tone: "success" },
   },
 };
 

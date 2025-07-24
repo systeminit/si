@@ -16,7 +16,7 @@
       tone="inherit"
       class="flex-none"
     />
-    <div class="font-bold leading-normal">
+    <div class="font-bold leading-normal text-sm">
       {{ actionPrototypeView.displayName || actionPrototypeView.name }}
     </div>
 

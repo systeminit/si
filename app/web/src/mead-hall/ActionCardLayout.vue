@@ -26,6 +26,7 @@
         <span
           :class="
             clsx(
+              'text-xs',
               themeClasses('text-neutral-700', 'text-neutral-200'),
               !noInteraction &&
                 themeClasses(

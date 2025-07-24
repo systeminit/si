@@ -11,7 +11,7 @@
       v-if="edges.length > 0"
       :class="
         clsx(
-          'text-lg font-bold border-b',
+          'text-sm font-bold border-b',
           themeClasses('border-neutral-400', 'border-neutral-600'),
         )
       "
