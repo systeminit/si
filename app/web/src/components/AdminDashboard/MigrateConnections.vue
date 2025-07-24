@@ -16,15 +16,6 @@
 
     <!-- Show migrations -->
     <Stack class="flex flex-col gap-xs p-xs w-full font-bold text-xs">
-      <Stack>
-        <div class="text-lg">
-          {{ migrationRun?.dryRun ? "Migrateable" : "Migrated" }} Connections:
-          {{ migrateable.length }}
-        </div>
-        <pre v-for="migration of migrateable" :key="migration.message">{{
-          migration.message.replaceAll(" | ", "\n")
-        }}</pre>
-      </Stack>
       <Stack v-if="unmigrateableBecause.length > 0">
         <div class="text-lg">
           Unmigrateable Connections:
@@ -34,7 +25,7 @@
               .reduce((a, b) => a + b, 0)
           }}
         </div>
-        <div
+        <pre
           v-for="[because, migrations] in unmigrateableBecause"
           :key="because"
         >
@@ -42,7 +33,16 @@
           <div v-for="migration in migrations" :key="migration.message">
             {{ migration.message.replaceAll(" | ", "\n  ") }}
           </div>
+        </pre>
+      </Stack>
+      <Stack>
+        <div class="text-lg">
+          {{ migrationRun?.dryRun ? "Migrateable" : "Migrated" }} Connections:
+          {{ migrateable.length }}
         </div>
+        <pre v-for="migration of migrateable" :key="migration.message">{{
+          migration.message.replaceAll(" | ", "\n")
+        }}</pre>
       </Stack>
     </Stack>
   </Stack>
