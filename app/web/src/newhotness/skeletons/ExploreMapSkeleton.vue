@@ -23,7 +23,7 @@
                   ),
                 )
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
 
             <div class="relative" style="width: 300px; height: 75px">
@@ -53,7 +53,7 @@
                   ),
                 )
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
           </div>
         </div>
@@ -70,7 +70,7 @@
                   ),
                 )
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
 
             <div class="relative" style="width: 300px; height: 75px">
@@ -118,7 +118,7 @@
                   ),
                 )
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
           </div>
 
@@ -130,7 +130,7 @@
               :class="
                 clsx('rounded', themeClasses('bg-white', 'bg-neutral-950'))
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
             <div style="width: 300px; height: 75px"></div>
             <div
@@ -143,7 +143,7 @@
                   ),
                 )
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
           </div>
         </div>
@@ -160,7 +160,7 @@
                   ),
                 )
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
 
             <div class="relative" style="width: 300px; height: 75px">
@@ -217,7 +217,7 @@
                   ),
                 )
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
           </div>
 
@@ -225,7 +225,7 @@
             class="flex flex-row items-center justify-center"
             style="margin-top: 25px"
           >
-            <div class="transparent" style="width: 250px; height: 75px"></div>
+            <div class="transparent" style="width: 270px; height: 75px"></div>
             <div style="width: 300px; height: 75px"></div>
             <div
               :class="
@@ -237,7 +237,7 @@
                   ),
                 )
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
           </div>
 
@@ -256,7 +256,7 @@
                   ),
                 )
               "
-              style="width: 250px; height: 75px"
+              style="width: 270px; height: 75px"
             ></div>
           </div>
         </div>
