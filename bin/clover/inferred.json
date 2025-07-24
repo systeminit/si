@@ -9129,6 +9129,12 @@
   "The ID of a PackagingGroup.": {
     "enum": null
   },
+  "The ID of a Traffic Mirror filter.": {
+    "enum": null
+  },
+  "The ID of a Traffic Mirror target.": {
+    "enum": null
+  },
   "The ID of a VPC endpoint. Supported for Gateway Load Balancer endpoints only.": {
     "enum": null
   },
@@ -9393,6 +9399,9 @@
   "The ID of the VPN connection.": {
     "enum": null
   },
+  "The ID of the account that owns the Traffic Mirror session.": {
+    "enum": null
+  },
   "The ID of the action.": {
     "enum": null
   },
@@ -9652,6 +9661,9 @@
     "enum": null
   },
   "The ID of the software set to apply.": {
+    "enum": null
+  },
+  "The ID of the source network interface.": {
     "enum": null
   },
   "The ID of the subnet": {
@@ -10195,6 +10207,9 @@
     "enum": null
   },
   "The VPC where you want the private graph endpoint to be created, ie, the graph will be reachable from within the VPC.": {
+    "enum": null
+  },
+  "The VXLAN ID for the Traffic Mirror session.": {
     "enum": null
   },
   "The XML saml provider metadata document that you want to use": {
@@ -11029,6 +11044,9 @@
     "enum": null
   },
   "The description of the Traffic Mirror Filter rule.": {
+    "enum": null
+  },
+  "The description of the Traffic Mirror session.": {
     "enum": null
   },
   "The description of the Traffic Mirror target.": {
@@ -14400,6 +14418,9 @@
   "The number of ``cpu`` units used by the task. If you use the EC2 launch type, this field is optional. Any value can be used. If you use the Fargate launch type, this field is required. You must use one of the following values. The value that you choose determines your range of valid values for the ``memory`` parameter.\n If you're using the EC2 launch type or the external launch type, this field is optional. Supported values are between ``128`` CPU units (``0.125`` vCPUs) and ``196608`` CPU units (``192`` vCPUs). The CPU units cannot be less than 1 vCPU when you use Windows containers on Fargate.\n  +  256 (.25 vCPU) - Available ``memory`` values: 512 (0.5 GB), 1024 (1 GB), 2048 (2 GB)\n  +  512 (.5 vCPU) - Available ``memory`` values: 1024 (1 GB), 2048 (2 GB), 3072 (3 GB), 4096 (4 GB)\n  +  1024 (1 vCPU) - Available ``memory`` values: 2048 (2 GB), 3072 (3 GB), 4096 (4 GB), 5120 (5 GB), 6144 (6 GB), 7168 (7 GB), 8192 (8 GB)\n  +  2048 (2 vCPU) - Available ``memory`` values: 4096 (4 GB) and 16384 (16 GB) in increments of 1024 (1 GB)\n  +  4096 (4 vCPU) - Available ``memory`` values: 8192 (8 GB) and 30720 (30 GB) in increments of 1024 (1 GB)\n  +  8192 (8 vCPU) - Available ``memory`` values: 16 GB and 60 GB in 4 GB increments\n This option requires Linux platform ``1.4.0`` or later.\n  +  16384 (16vCPU) - Available ``memory`` values: 32GB and 120 GB in 8 GB increments\n This option requires Linux platform ``1.4.0`` or later.": {
     "enum": null
   },
+  "The number of bytes in each packet to mirror.": {
+    "enum": null
+  },
   "The number of capacity units that are allocated to this job.": {
     "enum": null
   },
@@ -15415,6 +15436,9 @@
     "enum": null
   },
   "The service which a pricing rule is applied on": {
+    "enum": null
+  },
+  "The session number determines the order in which sessions are evaluated when an interface is used by multiple sessions. The first session with a matching filter is the one that mirrors the packets.": {
     "enum": null
   },
   "The settings for this multiplex program.": {
