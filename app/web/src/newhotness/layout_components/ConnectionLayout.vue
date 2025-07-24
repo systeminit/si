@@ -5,41 +5,181 @@
     <li
       v-for="conn in props.connections"
       :key="`${conn.key}`"
-      class="p-xs border-neutral-600 border"
+      class="py-xs pr-xs border-neutral-600 border"
     >
-      <TruncateWithTooltip
-        :class="
-          clsx(
-            'text-sm cursor-pointer hover:underline',
-            themeClasses(
-              'text-neutral-600 hover:text-action-500',
-              'text-neutral-400 hover:text-action-300',
-            ),
-          )
-        "
-        :lineClamp="2"
-        @click="() => navigate(conn.componentId)"
-      >
-        {{ ctx.componentDetails.value[conn.componentId]?.name }}
-      </TruncateWithTooltip>
-      <!-- negative margin pulls things together -->
-      <p
-        :class="
-          clsx(
-            'text-lg mb-[-6px] mt-[-4px]',
-            themeClasses('text-black', 'text-white'),
-          )
-        "
-      >
-        {{ conn.self }}
-      </p>
-      <p
-        :class="
-          clsx('text-sm', themeClasses('text-neutral-600', 'text-neutral-400'))
-        "
-      >
-        {{ conn.other }}
-      </p>
+      <div class="flex gap-2xs">
+        <div class="flex-none flex items-center justify-center">
+          <Icon name="incoming-connection" size="lg" />
+        </div>
+
+        <div class="flex-1 flex flex-col gap-2xs pl-0">
+          <div
+            :class="
+              clsx(
+                'flex gap-xs text-sm -ml-xs pl-xs',
+                props.label === 'Incoming' &&
+                  ctx.componentDetails.value[conn.componentId]?.name &&
+                  clsx(
+                    'cursor-pointer',
+                    themeClasses(
+                      'hover:bg-neutral-200',
+                      'hover:bg-neutral-700',
+                    ),
+                  ),
+              )
+            "
+            @click="
+              props.label === 'Incoming' &&
+              ctx.componentDetails.value[conn.componentId]?.name
+                ? navigate(conn.componentId)
+                : undefined
+            "
+          >
+            <template v-if="props.label === 'Incoming'">
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    themeClasses(
+                      'bg-neutral-100 border-neutral-300 text-[#207E65]',
+                      'bg-neutral-900 border-neutral-600 text-[#AAFEC7]',
+                    ),
+                  )
+                "
+              >
+                {{
+                  ctx.componentDetails.value[conn.componentId]
+                    ?.schemaVariantName
+                }}
+              </TruncateWithTooltip>
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    themeClasses(
+                      'bg-neutral-100 border-neutral-300 text-[#631AC2]',
+                      'bg-neutral-900 border-neutral-600 text-[#D4B4FE]',
+                    ),
+                  )
+                "
+              >
+                {{ ctx.componentDetails.value[conn.componentId]?.name }}
+              </TruncateWithTooltip>
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    themeClasses(
+                      'bg-neutral-100 border-neutral-300 text-action-700',
+                      'bg-neutral-900 border-neutral-600 text-[#8BCDEE]',
+                    ),
+                  )
+                "
+              >
+                {{ conn.other }}
+              </TruncateWithTooltip>
+            </template>
+            <template v-else-if="props.label === 'Outgoing'">
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'flex-shrink min-w-0 px-2xs py-2xs rounded-[2px] border',
+                    themeClasses(
+                      'bg-neutral-100 border-neutral-300 text-action-700',
+                      'bg-neutral-900 border-neutral-600 text-[#8BCDEE]',
+                    ),
+                  )
+                "
+              >
+                {{ conn.self }}
+              </TruncateWithTooltip>
+            </template>
+          </div>
+
+          <div
+            :class="
+              clsx(
+                'flex gap-xs text-sm -ml-xs pl-xs',
+                props.label === 'Outgoing' &&
+                  ctx.componentDetails.value[conn.componentId]?.name &&
+                  clsx(
+                    'cursor-pointer',
+                    themeClasses(
+                      'hover:bg-neutral-200',
+                      'hover:bg-neutral-700',
+                    ),
+                  ),
+              )
+            "
+            @click="
+              props.label === 'Outgoing' &&
+              ctx.componentDetails.value[conn.componentId]?.name
+                ? navigate(conn.componentId)
+                : undefined
+            "
+          >
+            <template v-if="props.label === 'Incoming'">
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'flex-shrink min-w-0 px-2xs py-2xs rounded-[2px] border',
+                    themeClasses(
+                      'bg-neutral-100 border-neutral-300 text-action-700',
+                      'bg-neutral-900 border-neutral-600 text-[#8BCDEE]',
+                    ),
+                  )
+                "
+              >
+                {{ conn.self }}
+              </TruncateWithTooltip>
+            </template>
+            <template v-else-if="props.label === 'Outgoing'">
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    themeClasses(
+                      'bg-neutral-100 border-neutral-300 text-[#207E65]',
+                      'bg-neutral-900 border-neutral-600 text-[#AAFEC7]',
+                    ),
+                  )
+                "
+              >
+                {{
+                  ctx.componentDetails.value[conn.componentId]
+                    ?.schemaVariantName
+                }}
+              </TruncateWithTooltip>
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    themeClasses(
+                      'bg-neutral-100 border-neutral-300 text-[#631AC2]',
+                      'bg-neutral-900 border-neutral-600 text-[#D4B4FE]',
+                    ),
+                  )
+                "
+              >
+                {{ ctx.componentDetails.value[conn.componentId]?.name }}
+              </TruncateWithTooltip>
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    themeClasses(
+                      'bg-neutral-100 border-neutral-300 text-action-700',
+                      'bg-neutral-900 border-neutral-600 text-[#8BCDEE]',
+                    ),
+                  )
+                "
+              >
+                {{ conn.other }}
+              </TruncateWithTooltip>
+            </template>
+          </div>
+        </div>
+      </div>
     </li>
   </ul>
 </template>
@@ -47,7 +187,11 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import { themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  TruncateWithTooltip,
+  Icon,
+} from "@si/vue-lib/design-system";
 import { inject } from "vue";
 import { assertIsDefined, Context } from "../types";
 
