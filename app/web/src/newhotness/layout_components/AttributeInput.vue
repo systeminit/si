@@ -31,6 +31,16 @@
           />
           <div class="flex flex-row items-center ml-auto gap-2xs">
             <IconButton
+              v-if="isSetByConnection && navigateComponentId"
+              tooltip="Follow connection"
+              tooltipPlacement="top"
+              icon="incoming-connection"
+              iconTone="info"
+              iconIdleTone="shade"
+              size="sm"
+              @click.left="navigateToComponent"
+            />
+            <IconButton
               v-if="canDelete && !component.toDelete"
               tooltip="Delete"
               tooltipPlacement="top"
@@ -646,6 +656,7 @@ import {
 import { Fzf } from "fzf";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
+import { useRoute, useRouter } from "vue-router";
 import {
   PropertyEditorPropWidgetKind,
   PropertyEditorPropWidgetKindComboBox,
@@ -710,6 +721,25 @@ const props = defineProps<{
   disableInputWindow?: boolean;
   forceReadOnly?: boolean;
 }>();
+
+const navigateComponentId = computed(() => {
+  if (!props.externalSources) return false;
+  const s = props.externalSources[0];
+  if (s) return s.componentId;
+  return false;
+});
+const router = useRouter();
+const route = useRoute();
+const navigateToComponent = () => {
+  if (!navigateComponentId.value) return;
+
+  const params = { ...route.params };
+  params.componentId = navigateComponentId.value;
+  router.push({
+    name: "new-hotness-component",
+    params,
+  });
+};
 
 const showAllPossibleConnections = ref(false);
 
@@ -875,7 +905,7 @@ const focus = () => {
 
 const connectingComponentId = ref<string | undefined>();
 const selectedConnectionData = ref<
-  { componentName: string; propPath: string } | undefined
+  { componentName: string; propPath: string; componentId: string } | undefined
 >();
 const queryClient = useQueryClient();
 const makeKey = useMakeKey();
@@ -922,6 +952,7 @@ const createSubscriptionMutation = useMutation({
         if (updatedFound) {
           updatedFound.attributeValue.externalSources = [
             {
+              componentId: selectedConnectionData.value.componentId,
               componentName: selectedConnectionData.value.componentName,
               path: selectedConnectionData.value.propPath,
             },
@@ -960,6 +991,7 @@ const selectConnection = (index: number) => {
   connectingComponentId.value = newConnection.componentId;
   selectedConnectionData.value = {
     componentName: newConnection.componentName,
+    componentId: newConnection.componentId,
     propPath: newConnection.path,
   };
 

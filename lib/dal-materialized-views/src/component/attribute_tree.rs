@@ -127,6 +127,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
                 let source = ExternalSource {
                     path: sub.path.to_string(),
                     component_name: comp_name,
+                    component_id: comp_id,
                 };
                 sources.push(source);
             }

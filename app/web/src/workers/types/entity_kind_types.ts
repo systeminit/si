@@ -374,6 +374,7 @@ export interface AttributeValue {
 export interface ExternalSource {
   path: string;
   componentName: string;
+  componentId: string;
 }
 
 export interface AVTree {
