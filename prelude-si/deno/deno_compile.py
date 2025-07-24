@@ -56,7 +56,7 @@ def parse_unstable_flags(flags: List[str]) -> List[str]:
 
 
 def run_compile(input_path: str, output_path: str, permissions: List[str],
-                flags: List[str]) -> None:
+                flags: List[str], includes: List[str]) -> None:
     """Run deno compile with the specified arguments."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     cmd = ["deno", "compile", "--output", output_path]
@@ -66,6 +66,11 @@ def run_compile(input_path: str, output_path: str, permissions: List[str],
 
     if flags:
         cmd.extend(flags)
+
+    if includes:
+        for include in includes:
+            cmd.append("--include")
+            cmd.append(include)
 
     cmd.append(input_path)
 
@@ -99,8 +104,12 @@ def main() -> int:
         for src in args.extra_srcs:
             shutil.copy2(src, args.input.resolve().parent)
 
+        include_files = [
+            os.path.join(args.input.resolve().parent, os.path.basename(src))
+            for src in args.extra_srcs
+        ]
         run_compile(abs_input_path, abs_output_path, permissions_list,
-                    flags_list)
+                    flags_list, include_files)
 
         os.chmod(
             abs_output_path,
