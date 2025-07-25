@@ -11,17 +11,23 @@
     "
   >
     <header
-      class="flex flex-row items-center px-sm py-xs border-b border-neutral-700"
+      :class="
+        clsx(
+          'flex flex-row items-center px-sm py-xs border-t border-b border-neutral-600',
+          themeClasses('bg-neutral-200', 'bg-neutral-800'),
+        )
+      "
     >
-      <!-- Back button (smaller with no border) -->
-      <button
-        tabindex="-1"
-        class="text-neutral-400 hover:text-white mr-xs flex flex-row items-center justify-center"
-        aria-label="Back to actions list"
+      <IconButton
+        tooltip="Close (Esc)"
+        tooltipPlacement="top"
+        class="border-0 mr-2em"
+        icon="x"
+        size="sm"
+        iconIdleTone="shade"
+        iconTone="shade"
         @click="navigateBack"
-      >
-        <Icon name="arrow--left" size="sm" />
-      </button>
+      />
 
       <!-- Function info -->
       <div class="flex-1 flex flex-row items-center gap-xs">
@@ -36,7 +42,12 @@
         <!-- add a bit more "gap" to the first (dt) element, so the pairs have more space between them -->
         <!-- negative bottom margin to pull it down so all items are visually aligned -->
         <dl
-          class="text-sm text-neutral-400 flex flex-row items-center gap-2xs [&>dt]:ml-2xs mb-[-0.25em]"
+          :class="
+            clsx(
+              'text-sm flex flex-row items-center gap-2xs [&>dt]:ml-2xs mb-[-0.25em]',
+              themeClasses('text-neutral-600', 'text-neutral-400'),
+            )
+          "
         >
           <template v-if="funcRun?.functionKind">
             <dt><Icon name="func" size="xs" /></dt>
@@ -44,7 +55,7 @@
           </template>
 
           <template v-if="funcRun?.componentName">
-            <dt><Icon name="component" size="xs" /></dt>
+            <dt></dt>
             <dd>{{ funcRun.componentName }}</dd>
           </template>
 
@@ -63,10 +74,15 @@
     </header>
 
     <!-- Error banner for hinting -->
-    <ErrorBanner v-if="errorHint" class="mx-xs" :text="errorHint" />
+    <ErrorBanner v-if="errorHint" class="mx-xs mt-sm mb-xs" :text="errorHint" />
 
     <div
-      class="grid grid-cols-[1fr_1fr] grid-rows-[1fr_1fr_1fr] gap-xs p-xs h-full overflow-hidden"
+      :class="
+        clsx(
+          'grid grid-cols-[1fr_1fr] grid-rows-[1fr_1fr_1fr] gap-xs p-xs h-full overflow-hidden',
+          !errorHint && 'pt-xs',
+        )
+      "
     >
       <GridItemWithLiveHeader
         class="row-span-3"
@@ -126,7 +142,7 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import { Icon, themeClasses, IconButton } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import CodeViewer from "@/components/CodeViewer.vue";

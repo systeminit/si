@@ -1,7 +1,12 @@
 <template>
   <div
     v-if="row.type === 'header'"
-    class="flex flex-row items-center bg-neutral-900 px-xs gap-xs"
+    :class="
+      clsx(
+        'flex flex-row items-center gap-xs px-xs',
+        themeClasses('bg-neutral-200', 'bg-neutral-800'),
+      )
+    "
     @click="emit('clickCollapse', row.title, !row.collapsed)"
   >
     <Icon :name="row.collapsed ? 'chevron--right' : 'chevron--down'" />
@@ -75,7 +80,8 @@
     :class="
       clsx(
         'flex flex-row items-start gap-sm',
-        row.insideSection && 'bg-neutral-900 px-xs',
+        row.insideSection && 'px-xs',
+        row.insideSection && themeClasses('bg-neutral-200', 'bg-neutral-800'),
       )
     "
   >
@@ -127,12 +133,27 @@
   </div>
   <div
     v-else-if="row.type === 'emptyRow'"
-    class="flex items-center justify-center bg-neutral-900 pb-xs px-xs"
+    class="flex items-center justify-center pb-xs px-xs"
   >
     <div
-      class="flex flex-col items-center justify-center gap-md bg-neutral-800 border border-neutral-600 grow h-full"
+      :class="
+        clsx(
+          'flex flex-col items-center justify-center gap-md grow h-full',
+          themeClasses(
+            'bg-neutral-100 border border-neutral-400',
+            'bg-neutral-800 border border-neutral-600',
+          ),
+        )
+      "
     >
-      <div class="bg-neutral-700 p-sm rounded-full">
+      <div
+        :class="
+          clsx(
+            'p-sm rounded-full',
+            themeClasses('bg-neutral-300', 'bg-neutral-700'),
+          )
+        "
+      >
         <Icon name="check-circle-outline" />
       </div>
       <span>

@@ -353,7 +353,7 @@
         >
           <TextPill
             v-tooltip="componentCountTooltip"
-            class="flex-none rounded p-xs"
+            class="flex-none rounded p-xs text-sm"
             variant="key2"
           >
             Total: {{ componentList.length }}
@@ -363,7 +363,7 @@
             v-tooltip="resourceCountTooltip"
             :class="
               clsx(
-                'flex-none flex flex-row items-center gap-2xs rounded p-xs',
+                'flex-none flex flex-row items-center gap-2xs rounded p-xs text-sm',
                 themeClasses(
                   'border-success-400 bg-success-100 text-black',
                   'border-success-800 bg-success-900 text-white',
