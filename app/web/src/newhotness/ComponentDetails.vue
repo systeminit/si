@@ -5,7 +5,7 @@
     <div
       v-if="
         showComponentStateBanner ||
-        showErrorBanner ||
+        showStatusBanner ||
         (component && component.toDelete)
       "
       class="banner flex flex-col"
@@ -36,9 +36,17 @@
         </div>
       </template>
 
-      <!-- Error and deletion banners for existing components -->
+      <!-- Status and deletion banners for existing components -->
       <template v-if="component">
-        <ErrorBanner v-if="showErrorBanner" :text="errorBannerText">
+        <StatusBox
+          v-if="showStatusBanner"
+          :kind="
+            specialCaseManagementExecutionStatus === 'Running'
+              ? 'loading'
+              : 'error'
+          "
+          :text="statusBannerText"
+        >
           <template #right>
             <VButton
               v-if="specialCaseManagementFuncRun"
@@ -47,8 +55,8 @@
               @click="navigateToFuncRunDetails(specialCaseManagementFuncRun.id)"
             />
           </template>
-        </ErrorBanner>
-        <div v-if="showErrorBanner && component.toDelete" class="py-xs" />
+        </StatusBox>
+        <div v-if="showStatusBanner && component.toDelete" class="py-xs" />
         <div
           v-if="component.toDelete"
           :class="
@@ -187,7 +195,7 @@
         :class="
           clsx(
             'attrs flex flex-col gap-sm',
-            !showErrorBanner && !component?.toDelete && 'attrs-no-banner',
+            !showStatusBanner && !component?.toDelete && 'attrs-no-banner',
           )
         "
       >
@@ -220,8 +228,13 @@
               >
                 <VButton
                   size="sm"
-                  :label="runTemplateButtonText"
+                  :label="
+                    specialCaseManagementExecutionStatus === 'Failure'
+                      ? 'Re-run template'
+                      : 'Run template'
+                  "
                   :loading="specialCaseManagementExecutionStatus === 'Running'"
+                  loadingText="Running template"
                   :disabled="specialCaseManagementExecutionStatus === 'Running'"
                   loadingIcon="loader"
                   :class="
@@ -289,7 +302,7 @@
         :class="
           clsx(
             'docs flex flex-col',
-            !showErrorBanner && !component?.toDelete && 'docs-no-banner',
+            !showStatusBanner && !component?.toDelete && 'docs-no-banner',
           )
         "
       >
@@ -307,7 +320,7 @@
         :class="
           clsx(
             'right flex flex-col',
-            !showErrorBanner && !component?.toDelete && 'right-no-banner',
+            !showStatusBanner && !component?.toDelete && 'right-no-banner',
           )
         "
       >
@@ -413,7 +426,7 @@ import AttributePanel from "./AttributePanel.vue";
 import ResourceValuesPanel from "./ResourceValuesPanel.vue";
 import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
-import ErrorBanner from "./layout_components/ErrorBanner.vue";
+import StatusBox from "./layout_components/StatusBox.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import { useApi, routes } from "./api_composables";
 import QualificationPanel from "./QualificationPanel.vue";
@@ -692,13 +705,6 @@ const specialCaseManagementExecutionStatus = computed(() => {
     specialCaseManagementFuncJobState.value?.state,
   );
 });
-const runTemplateButtonText = computed(() => {
-  if (specialCaseManagementExecutionStatus.value === "Running")
-    return "Running...";
-  if (specialCaseManagementExecutionStatus.value === "Failure")
-    return "Re-run Template";
-  return "Run Template";
-});
 
 onMounted(() => {
   keyEmitter.on("Escape", () => {
@@ -754,15 +760,23 @@ onBeforeUnmount(() => {
 });
 
 const showComponentStateBanner = computed(() => !component.value);
-const showErrorBanner = computed(
-  () => specialCaseManagementExecutionStatus.value === "Failure",
+const showStatusBanner = computed(
+  () =>
+    specialCaseManagementExecutionStatus.value === "Failure" ||
+    specialCaseManagementExecutionStatus.value === "Running",
 );
 const seeFuncRunLabel = "See Func Run";
-const errorBannerText = computed(() => {
+const statusBannerText = computed(() => {
   if (specialCaseManagementFuncKind.value === "import")
-    return `Error executing Import function. Click "${seeFuncRunLabel}" for more details.`;
+    if (specialCaseManagementExecutionStatus.value === "Running")
+      return "Importing...";
+    else
+      return `Error executing Import function. Click "${seeFuncRunLabel}" for more details.`;
   if (specialCaseManagementFuncKind.value === "runTemplate")
-    return `Error executing Run Template function. Click "${seeFuncRunLabel}" for more details.`;
+    if (specialCaseManagementExecutionStatus.value === "Running")
+      return "Extracting components from the template...";
+    else
+      return `Error executing Run Template function. Click "${seeFuncRunLabel}" for more details.`;
   return "";
 });
 
@@ -772,7 +786,7 @@ const gridStateClass = computed(() => {
     return "no-component";
   }
 
-  const hasBanner = showErrorBanner.value || component.value?.toDelete;
+  const hasBanner = showStatusBanner.value || component.value?.toDelete;
 
   if (docsOpen.value) {
     return hasBanner ? "docs-open-with-banner" : "docs-open-without-banner";
