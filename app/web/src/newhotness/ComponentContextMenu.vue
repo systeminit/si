@@ -159,7 +159,7 @@ const rightClickMenuItems = computed(() => {
   }
 
   const eraseMenuItem = {
-    labelAsTooltip: true,
+    labelAsTooltip: false,
     label: "Erase",
     shortcut: "E",
     icon: "erase" as const,
@@ -171,10 +171,10 @@ const rightClickMenuItems = computed(() => {
   // If everything is ghosted, only add the ability to restore/erase and return.
   if (atLeastOneGhostedComponent.value) {
     items.push({
-      labelAsTooltip: true,
+      labelAsTooltip: false,
       label: "Restore",
       shortcut: "R",
-      icon: "trash-restore",
+      // icon: "trash-restore",
       onSelect: () => componentsRestore(componentIds.value),
     });
     items.push(eraseMenuItem);
@@ -196,7 +196,7 @@ const rightClickMenuItems = computed(() => {
       : `Upgrade (${upgradeableSelectedComponentIds.length}/${components.value.length})`;
 
     items.push({
-      labelAsTooltip: true,
+      labelAsTooltip: false,
       label,
       shortcut: "U",
       icon: "bolt-outline",
@@ -211,9 +211,9 @@ const rightClickMenuItems = computed(() => {
 
   if (singleComponent.value) {
     items.push({
-      labelAsTooltip: true,
+      labelAsTooltip: false,
       label: "Edit",
-      shortcut: "Enter",
+      shortcut: "⏎",
       icon: "edit2",
       onSelect: () => emit("edit"),
     });
@@ -223,7 +223,7 @@ const rightClickMenuItems = computed(() => {
   if (props.onGrid && singleComponent.value) {
     const componentId = singleComponent.value.id;
     items.push({
-      labelAsTooltip: true,
+      labelAsTooltip: false,
       label: "Pin",
       shortcut: "P",
       icon: "pin",
@@ -232,7 +232,7 @@ const rightClickMenuItems = computed(() => {
   }
 
   items.push({
-    labelAsTooltip: true,
+    labelAsTooltip: false,
     label: "Duplicate",
     shortcut: "D",
     icon: "clipboard-copy",
@@ -242,7 +242,7 @@ const rightClickMenuItems = computed(() => {
   // Can't create template with ghosted components
   if (!atLeastOneGhostedComponent.value) {
     items.push({
-      labelAsTooltip: true,
+      labelAsTooltip: false,
       label: "Create Template",
       shortcut: "T",
       icon: "template-new",
@@ -254,7 +254,7 @@ const rightClickMenuItems = computed(() => {
   items.push(eraseMenuItem);
 
   items.push({
-    labelAsTooltip: true,
+    labelAsTooltip: false,
     label: "Delete",
     shortcut: "⌫",
     icon: "trash",
@@ -313,7 +313,7 @@ const rightClickMenuItems = computed(() => {
     if (mgmtFuncsSubmenuItems.length > 0) {
       items.push({
         icon: "func",
-        label: "Mmgt Funcs",
+        label: "Management Funcs",
         submenuItems: mgmtFuncsSubmenuItems,
         submenuVariant: "contextmenu",
       });
