@@ -57,15 +57,6 @@
     </slot>
 
     <div
-      v-show="menuCtx.variant !== 'contextmenu' || !icon"
-      ref="labelRef"
-      class="max-w-full min-w-0 shrink leading-tight"
-    >
-      <TruncateWithTooltip role="menuitem">
-        <slot>{{ label }}</slot>
-      </TruncateWithTooltip>
-    </div>
-    <div
       v-if="shortcut && menuCtx.variant === 'contextmenu'"
       :class="
         clsx(
@@ -77,8 +68,14 @@
     >
       {{ shortcut }}
     </div>
+
+    <div ref="labelRef" class="max-w-full min-w-0 shrink leading-tight">
+      <TruncateWithTooltip role="menuitem">
+        <slot>{{ label }}</slot>
+      </TruncateWithTooltip>
+    </div>
     <div
-      v-else-if="!(centerHeader && header)"
+      v-if="!(centerHeader && header)"
       :class="
         clsx(
           'ml-auto shrink-0',
@@ -123,9 +120,6 @@
         </slot>
       </div>
 
-      <template v-else-if="shortcut">
-        {{ shortcut }}
-      </template>
       <!-- Note(victor) this is rendered transparently when enableSecondaryAction is true,
       so we can get adequate sizes for the items -->
       <div
