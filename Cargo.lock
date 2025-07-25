@@ -2288,6 +2288,7 @@ dependencies = [
  "ringmap",
  "serde",
  "serde-aux",
+ "serde-tuple-vec-map",
  "serde_json",
  "serde_with",
  "shuttle-server",
@@ -8082,6 +8083,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-tuple-vec-map"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a04d0ebe0de77d7d445bb729a895dcb0a288854b267ca85f030ce51cdc578c82"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde-value"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8539,6 +8549,7 @@ name = "si-generate-template"
 version = "0.1.0"
 dependencies = [
  "askama",
+ "pretty_assertions_sorted",
  "serde",
  "serde_json",
  "thiserror 2.0.12",

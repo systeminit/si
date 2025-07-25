@@ -53,6 +53,7 @@ remain = { workspace = true }
 ringmap = { workspace = true }
 serde = { workspace = true }
 serde-aux = { workspace = true }
+serde-tuple-vec-map = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 shuttle-server = { path = "../../lib/shuttle-server" }

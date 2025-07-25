@@ -1469,26 +1469,44 @@ impl Component {
         Ok(input_socket_ids)
     }
 
-    pub async fn subscription_sources(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<HashMap<AttributeValueIdent, Source>> {
-        let mut sources = Self::sources(ctx, component_id).await?;
-        sources.retain(|_, source| matches!(source, Source::Subscription { .. }));
-        Ok(sources)
-    }
-
+    /// Produce sources for every attribute that has them.
+    ///
+    /// - These are returned in the order they were defined / show up in the UI.
+    /// - If an AV is returned, its children will not be.
+    /// - Subscriptions and actual scalar values are returned.
+    ///
     pub async fn sources(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<HashMap<AttributeValueIdent, Source>> {
-        let mut sources = HashMap::new();
-        for (dest_av_id, _) in AttributeValue::tree_for_component(ctx, component_id).await? {
-            if let Some(source) = Self::attr_to_source(ctx, dest_av_id).await? {
-                let (_, dest_path) = AttributeValue::path_from_root(ctx, dest_av_id).await?;
-                sources.insert(dest_path.into(), source);
+    ) -> ComponentResult<Vec<(AttributeValueIdent, Source)>> {
+        let mut sources = vec![];
+        // Get the root attribute value and load it into the work queue.
+        let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
+
+        let mut work_queue = Vec::from([root_attribute_value_id]);
+        while let Some(av_id) = work_queue.pop() {
+            // If this attribute value has a source, don't recurse into it.
+            if let Some(source) = Self::attr_to_source(ctx, av_id).await? {
+                let (_, dest_path) = AttributeValue::path_from_root(ctx, av_id).await?;
+                sources.push((dest_path.into(), source));
+            } else {
+                // Otherwise, push its children so we find their sources as well.
+                let children = AttributeValue::get_child_av_ids_in_order(ctx, av_id).await?;
+
+                // Load the children onto the end of the work queue, in reverse order, so that
+                // they will be processed first with pop().
+                work_queue.extend(children.into_iter().rev());
             }
         }
+        Ok(sources)
+    }
+
+    pub async fn subscription_sources(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<(AttributeValueIdent, Source)>> {
+        let mut sources = Self::sources(ctx, component_id).await?;
+        sources.retain(|(_, source)| matches!(source, Source::Subscription { .. }));
         Ok(sources)
     }
 

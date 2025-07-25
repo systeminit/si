@@ -57,10 +57,7 @@ use crate::{
         },
     },
     attribute::{
-        attributes::{
-            AttributeValueIdent,
-            ValueOrSourceSpec,
-        },
+        attributes::AttributeSources,
         prototype::argument::{
             AttributePrototypeArgument,
             AttributePrototypeArgumentError,
@@ -277,7 +274,7 @@ pub struct ManagementUpdateConnections {
 #[serde(rename_all = "camelCase")]
 pub struct ManagementUpdateOperation {
     properties: Option<serde_json::Value>,
-    attributes: Option<HashMap<AttributeValueIdent, ValueOrSourceSpec>>,
+    attributes: Option<AttributeSources>,
     geometry: Option<HashMap<String, ManagementGeometry>>,
     connect: Option<ManagementUpdateConnections>,
     parent: Option<String>,
@@ -298,7 +295,7 @@ pub struct ManagementCreateOperation {
     kind: Option<String>,
     properties: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    attributes: Option<HashMap<AttributeValueIdent, ValueOrSourceSpec>>,
+    attributes: Option<AttributeSources>,
     geometry: Option<ManagementCreateGeometry>,
     connect: Option<Vec<ManagementConnection>>,
     parent: Option<String>,

@@ -15,12 +15,12 @@ async function main({
         kind: "{{ component.kind }}",
         attributes: {
             "/si/name": namePrefix + "{{ component.name }}",
-            {%- for attr in component.attributes_pruned_and_sorted() %}
+            {%- for attr in component.attributes %}
             {{ attr.dest_path | json }}:
             {%- match attr.value %}
               {%- when AttributeSource::Value with (val) %} {{ val | json(4) | indent(12) }},
               {%- when AttributeSource::Subscription with (sub) %} {
-                "$source": {
+                $source: {
                     component: {% match sub.variable %}
                     {%- when Some with (var_name) -%}
                       template.getComponentName({{ var_name }}),

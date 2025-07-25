@@ -12,6 +12,7 @@ use si_id::{
     ComponentId,
     FuncId,
 };
+extern crate tuple_vec_map;
 
 use super::{
     path::AttributePath,
@@ -187,7 +188,7 @@ pub struct AttributeUpdateCounts {
 pub async fn update_attributes(
     ctx: &DalContext,
     component_id: ComponentId,
-    updates: HashMap<AttributeValueIdent, ValueOrSourceSpec>,
+    updates: AttributeSources,
 ) -> Result<AttributeUpdateCounts> {
     let mut counts = AttributeUpdateCounts {
         set_count: 0,
@@ -322,8 +323,25 @@ async fn parent_prop_is_map_or_array(ctx: &DalContext, av_id: AttributeValueId) 
     Ok(matches!(parent_prop_kind, PropKind::Map | PropKind::Array))
 }
 
+/// A list of <path>: <source> pairs, used in attribute update APIs.
+/// Preserves order as well as duplicate paths (so you can use `-` multiple times).
+#[derive(
+    Serialize,
+    Deserialize,
+    Clone,
+    Debug,
+    Default,
+    derive_more::Deref,
+    derive_more::Into,
+    derive_more::IntoIterator,
+)]
+pub struct AttributeSources(
+    // tuple_vec_map preserves order and allows duplicates
+    #[serde(with = "tuple_vec_map")] pub Vec<(AttributeValueIdent, ValueOrSourceSpec)>,
+);
+
 /// The source for a value
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, derive_more::From)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub enum Source {
     // { value: <value> } - set value (null is a valid value to set it to)
@@ -364,7 +382,7 @@ pub enum ValueOrSourceSpec {
 }
 
 /// { $source: <source> }. Separated from ValueOrSourceSpec so we could use deny_unknown_fields
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, derive_more::From)]
 #[serde(rename = "camelCase", deny_unknown_fields)]
 pub struct SourceSpec {
     #[serde(rename = "$source")]
@@ -373,7 +391,7 @@ pub struct SourceSpec {
 
 /// Source or "unset" ({} or null). Used mainly for JSON deserialization.
 /// Use Into<Option<Source>> to get the real source.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, derive_more::From)]
 #[serde(untagged, rename = "camelCase", deny_unknown_fields)]
 enum MaybeSource {
     Source(Source),
@@ -404,6 +422,46 @@ impl TryFrom<ValueOrSourceSpec> for Option<Source> {
             }
             ValueOrSourceSpec::RawValue(value) => Ok(Some(Source::Value(value))),
         }
+    }
+}
+
+/// Convert from (path, source) to JS-capable AttributeSources
+/// (particularly, this will escape { <attr>: <value> } to { $source: { value: <value> } } if
+/// the value is an object with a $source key).
+impl<I: Into<AttributeValueIdent>, S: Into<ValueOrSourceSpec>> From<Vec<(I, S)>>
+    for AttributeSources
+{
+    fn from(pairs: Vec<(I, S)>) -> Self {
+        AttributeSources(
+            pairs
+                .into_iter()
+                .map(|(path, source)| (path.into(), source.into()))
+                .collect(),
+        )
+    }
+}
+
+impl From<Source> for ValueOrSourceSpec {
+    fn from(source: Source) -> Self {
+        match source {
+            // If it's an object with $source as a key, "escape" it as { $source: <value> }
+            Source::Value(value) => value.into(),
+            Source::Subscription { .. } => ValueOrSourceSpec::SourceSpec(SourceSpec {
+                source: MaybeSource::Source(source),
+            }),
+        }
+    }
+}
+
+impl From<serde_json::Value> for ValueOrSourceSpec {
+    fn from(value: serde_json::Value) -> Self {
+        // If it's an object with $source as a key, "escape" it as { $source: <value> }
+        if value.as_object().is_some_and(|o| o.contains_key("$source")) {
+            return ValueOrSourceSpec::SourceSpec(SourceSpec {
+                source: MaybeSource::Source(value.into()),
+            });
+        }
+        ValueOrSourceSpec::RawValue(value)
     }
 }
 

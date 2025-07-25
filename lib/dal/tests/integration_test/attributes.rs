@@ -1,13 +1,19 @@
 use dal::{
+    Component,
     DalContext,
+    Func,
     action::{
         Action,
         prototype::ActionPrototype,
     },
     attribute::{
-        attributes,
+        attributes::{
+            self,
+            AttributeSources,
+        },
         value::AttributeValueError,
     },
+    func::intrinsics::IntrinsicFunc,
 };
 use dal_test::{
     Result,
@@ -217,6 +223,211 @@ async fn update_attributes_enqueues_update_fn(ctx: &mut DalContext) -> Result<()
     // didn't actually change the value, so there should not be an update function for swifty!
     assert_eq!(0, update_action_count);
 
+    Ok(())
+}
+
+// Test that attribute updates are processed in the order they are specified sets them (and their parents) correctly, but leaves default
+// values and other values alone.
+#[test]
+async fn update_attributes_runs_in_order_and_allows_duplicates(ctx: &mut DalContext) -> Result<()> {
+    variant::create(
+        ctx,
+        "test",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "Arr", kind: "array", entry:
+                            { name: "ArrayItem", kind: "string" },
+                        },
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Subscribe source.Obj -> dest.Obj, source.Arr -> dest.Arr
+    let test = component::create(ctx, "test", "test").await?;
+    attributes::update_attributes(
+        ctx,
+        test,
+        serde_json::from_str(
+            r#"{
+                "/domain/Arr/-": "0",
+                "/domain/Arr/-": "1",
+                "/domain/Arr/2": "oops",
+                "/domain/Arr/3": "3",
+                "/domain/Arr/4": "4",
+                "/domain/Arr/-": "5",
+                "/domain/Arr/-": "6",
+                "/domain/Arr/-": "7",
+                "/domain/Arr/-": "8",
+                "/domain/Arr/-": "9",
+                "/domain/Arr/10": "oops",
+                "/domain/Arr/10": "10",
+                "/domain/Arr/11": "11",
+                "/domain/Arr/2": "2"
+            }"#,
+        )?,
+    )
+    .await?;
+
+    assert_eq!(
+        json!({ "Arr": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"] }),
+        component::domain(ctx, "test").await?,
+    );
+
+    Ok(())
+}
+
+// Test that attribute updates are processed in the order they are specified sets them (and their parents) correctly, but leaves default
+// values and other values alone.
+#[test]
+async fn component_sources_in_order(ctx: &mut DalContext) -> Result<()> {
+    variant::create(
+        ctx,
+        "test",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "Foo", kind: "string" },
+                        { name: "Bar", kind: "string" },
+                        { name: "Arr", kind: "array", entry:
+                            { name: "ArrItem", kind: "string" },
+                        },
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Subscribe source.Obj -> dest.Obj, source.Arr -> dest.Arr
+    let test = component::create(ctx, "test", "test").await?;
+
+    // If none of the values are set, sources should be empty
+    assert_eq!(
+        json!({
+            "/si/name": "test",
+            "/si/type": "component",
+        }),
+        serde_json::to_value(AttributeSources::from(Component::sources(ctx, test).await?))?
+    );
+
+    // If some of the values are set, sources should contain them
+    value::set(ctx, ("test", "/domain/Foo"), "foo").await?;
+    assert_eq!(
+        json!({
+            "/si/name": "test",
+            "/si/type": "component",
+            "/domain/Foo": "foo"
+        }),
+        serde_json::to_value(AttributeSources::from(Component::sources(ctx, test).await?))?
+    );
+
+    // If all of the values are set, sources should contain them
+    value::set(ctx, ("test", "/domain/Bar"), "bar").await?;
+    value::set(ctx, ("test", "/domain/Arr"), ["a", "b"]).await?;
+    assert_eq!(
+        json!({
+            "/si/name": "test",
+            "/si/type": "component",
+            "/domain/Foo": "foo",
+            "/domain/Bar": "bar",
+            "/domain/Arr/0": "a",
+            "/domain/Arr/1": "b",
+        }),
+        serde_json::to_value(AttributeSources::from(Component::sources(ctx, test).await?))?
+    );
+
+    // If some of the array items are subscriptions, sources should show that
+    let subscriber = component::create(ctx, "test", "subscriber").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Foo"),
+        [("test", "/domain/Foo")],
+    )
+    .await?;
+    value::set(ctx, ("subscriber", "/domain/Bar"), "bar2").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Arr/-"),
+        [("test", "/domain/Arr/0")],
+    )
+    .await?;
+    value::set(ctx, ("subscriber", "/domain/Arr/-"), "a2").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Arr/-"),
+        [("test", "/domain/Arr/1")],
+    )
+    .await?;
+    value::set(ctx, ("subscriber", "/domain/Arr/-"), "b2").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!({
+            "Foo": "foo",
+            "Bar": "bar2",
+            "Arr": [
+                "a",
+                "a2",
+                "b",
+                "b2"
+            ]
+        }),
+        component::domain(ctx, "subscriber").await?
+    );
+    assert_eq!(
+        json!({
+            "/si/name": "subscriber",
+            "/si/type": "component",
+            "/domain/Foo": { "$source": { "component": test.to_string(), "path": "/domain/Foo" } },
+            "/domain/Bar": "bar2",
+            "/domain/Arr/0": { "$source": { "component": test.to_string(), "path": "/domain/Arr/0" } },
+            "/domain/Arr/1": "a2",
+            "/domain/Arr/2": { "$source": { "component": test.to_string(), "path": "/domain/Arr/1" } },
+            "/domain/Arr/3": "b2"
+        }),
+        serde_json::to_value(AttributeSources::from(
+            Component::sources(ctx, subscriber).await?
+        ))?
+    );
+
+    // If the entire array is a subscription, child values should not be included even if DVU has run
+    let subscriber2 = component::create(ctx, "test", "subscriber2").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber2", "/domain/Arr"),
+        [("test", "/domain/Arr")],
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!({
+            "Arr": [
+                "a",
+                "b"
+            ]
+        }),
+        component::domain(ctx, "subscriber2").await?
+    );
+    let normalize_to_array = Func::find_intrinsic(ctx, IntrinsicFunc::NormalizeToArray).await?;
+    assert_eq!(
+        json!({
+            "/si/name": "subscriber2",
+            "/si/type": "component",
+            "/domain/Arr": { "$source": {
+                "component": test.to_string(),
+                "path": "/domain/Arr",
+                "func": normalize_to_array.to_string()
+            } },
+        }),
+        serde_json::to_value(AttributeSources::from(
+            Component::sources(ctx, subscriber2).await?
+        ))?
+    );
     Ok(())
 }
 

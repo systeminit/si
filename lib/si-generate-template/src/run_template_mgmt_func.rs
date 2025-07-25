@@ -126,37 +126,6 @@ impl RunTemplateComponent {
             attributes,
         }
     }
-
-    pub fn attributes_pruned_and_sorted(&self) -> Vec<&RunTemplateAttribute> {
-        let mut sorted_attrs: Vec<&RunTemplateAttribute> = self.attributes.iter().collect();
-
-        // First, sort by dest_path
-        sorted_attrs.sort_by(|a, b| a.dest_path.cmp(&b.dest_path));
-
-        // Find subscription paths to use for pruning
-        let mut subscription_paths = Vec::new();
-        for attr in &sorted_attrs {
-            if matches!(attr.value, AttributeSource::Subscription(_)) {
-                subscription_paths.push(&attr.dest_path);
-            }
-        }
-
-        // Prune attributes whose dest_path is a descendant of any subscription path
-        let mut pruned_attrs = Vec::new();
-        for attr in sorted_attrs {
-            let should_prune = subscription_paths.iter().any(|sub_path| {
-                // Check if this attribute's path is a descendant of the subscription path
-                // A path is a descendant if it starts with the subscription path followed by a '/'
-                attr.dest_path != **sub_path && attr.dest_path.starts_with(&format!("{sub_path}/"))
-            });
-
-            if !should_prune {
-                pruned_attrs.push(attr);
-            }
-        }
-
-        pruned_attrs
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -226,6 +195,8 @@ impl RunTemplateAttribute {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions_sorted::assert_eq;
+
     use super::*;
 
     #[test]
@@ -305,7 +276,7 @@ mod tests {
             output.contains(r#""/domain/Foo/0": ["#),
             "should set domain/Foo/0"
         );
-        assert!(output.contains(r#""$source": {"#), "should set a source",);
+        assert!(output.contains(r#"$source: {"#), "should set a source",);
 
         assert!(
             output.contains(r#"template.getComponentName(arbalestComponent)"#),
@@ -993,13 +964,9 @@ mod tests {
     }
 
     #[test]
-    fn test_attributes_pruned_and_sorted() {
+    fn test_attributes_in_input_order() {
         let attributes = vec![
             // Add attributes in unsorted order
-            RunTemplateAttribute::new(
-                "/domain/Tags/0/f/lobster",
-                AttributeSource::value("should_be_pruned"),
-            ),
             RunTemplateAttribute::new("/domain/CidrBlock", AttributeSource::value("10.0.0.0/16")),
             RunTemplateAttribute::new(
                 "/domain/Tags",
@@ -1010,114 +977,29 @@ mod tests {
                     Some("tagComponent".to_string()),
                 ),
             ),
-            RunTemplateAttribute::new("/domain/Tags/0", AttributeSource::value("should_be_pruned")),
             RunTemplateAttribute::new("/domain/Name", AttributeSource::value("test_name")),
             RunTemplateAttribute::new(
                 "/domain/Other/Value",
                 AttributeSource::subscription("comp", "/domain/Other/Value", None, None),
             ),
-            RunTemplateAttribute::new(
-                "/domain/Other/Value/Sub",
-                AttributeSource::value("should_be_pruned_other"),
-            ),
         ];
 
         let component =
             RunTemplateComponent::new("testComponent", "AWS::Test", "test component", attributes);
 
-        let result = component.attributes_pruned_and_sorted();
-
-        // Check that the result is sorted by dest_path
-        let paths: Vec<String> = result.iter().map(|attr| attr.dest_path.clone()).collect();
-        let mut expected_paths = paths.clone();
-        expected_paths.sort();
+        // Should be sorted in the order they were created, and have no children under subscriptions
         assert_eq!(
-            paths, expected_paths,
-            "Attributes should be sorted by dest_path"
-        );
-
-        // Check that descendant paths of subscriptions are pruned
-        let result_paths: Vec<&str> = result.iter().map(|attr| attr.dest_path.as_str()).collect();
-
-        // Should contain these paths
-        assert!(
-            result_paths.contains(&"/domain/CidrBlock"),
-            "Should contain /domain/CidrBlock"
-        );
-        assert!(
-            result_paths.contains(&"/domain/Name"),
-            "Should contain /domain/Name"
-        );
-        assert!(
-            result_paths.contains(&"/domain/Tags"),
-            "Should contain /domain/Tags (subscription)"
-        );
-        assert!(
-            result_paths.contains(&"/domain/Other/Value"),
-            "Should contain /domain/Other/Value (subscription)"
-        );
-
-        // Should NOT contain these paths (they are descendants of subscription paths)
-        assert!(
-            !result_paths.contains(&"/domain/Tags/0"),
-            "Should NOT contain /domain/Tags/0 (descendant of /domain/Tags)"
-        );
-        assert!(
-            !result_paths.contains(&"/domain/Tags/0/f/lobster"),
-            "Should NOT contain /domain/Tags/0/f/lobster (descendant of /domain/Tags)"
-        );
-        assert!(
-            !result_paths.contains(&"/domain/Other/Value/Sub"),
-            "Should NOT contain /domain/Other/Value/Sub (descendant of /domain/Other/Value)"
-        );
-
-        // Verify the exact count
-        assert_eq!(
-            result.len(),
-            4,
-            "Should have exactly 4 attributes after pruning"
-        );
-    }
-
-    #[test]
-    fn test_attributes_pruned_and_sorted_no_subscriptions() {
-        let attributes = vec![
-            // Add attributes with no subscriptions, in unsorted order
-            RunTemplateAttribute::new("/domain/ZZZ", AttributeSource::value("last")),
-            RunTemplateAttribute::new("/domain/AAA", AttributeSource::value("first")),
-            RunTemplateAttribute::new("/domain/MMM", AttributeSource::value("middle")),
-        ];
-
-        let component =
-            RunTemplateComponent::new("testComponent", "AWS::Test", "test component", attributes);
-
-        let result = component.attributes_pruned_and_sorted();
-
-        // Should be sorted and none should be pruned
-        assert_eq!(result.len(), 3, "All attributes should be preserved");
-        assert_eq!(result[0].dest_path, "/domain/AAA");
-        assert_eq!(result[1].dest_path, "/domain/MMM");
-        assert_eq!(result[2].dest_path, "/domain/ZZZ");
-    }
-
-    #[test]
-    fn test_attributes_pruned_and_sorted_subscription_with_no_descendants() {
-        let attributes = vec![
-            RunTemplateAttribute::new(
+            vec![
+                "/domain/CidrBlock",
                 "/domain/Tags",
-                AttributeSource::subscription("comp", "/domain/Tags", None, None),
-            ),
-            RunTemplateAttribute::new("/domain/Other", AttributeSource::value("other_value")),
-        ];
-
-        let component =
-            RunTemplateComponent::new("testComponent", "AWS::Test", "test component", attributes);
-
-        let result = component.attributes_pruned_and_sorted();
-
-        // Both should be preserved since there are no descendants
-        assert_eq!(result.len(), 2, "Both attributes should be preserved");
-        assert_eq!(result[0].dest_path, "/domain/Other");
-        assert_eq!(result[1].dest_path, "/domain/Tags");
+                "/domain/Name",
+                "/domain/Other/Value",
+            ],
+            component
+                .attributes
+                .iter()
+                .map(|a| &a.dest_path)
+                .collect::<Vec<_>>(),
+        );
     }
 }
