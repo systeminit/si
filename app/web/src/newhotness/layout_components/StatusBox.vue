@@ -25,10 +25,25 @@
       <Icon
         v-if="iconName"
         :name="iconName"
-        :class="kind === 'success' && 'text-success-200'"
+        :class="
+          clsx(
+            kind === 'success' &&
+              themeClasses('text-success-500', 'text-success-200'),
+          )
+        "
         size="xs"
       />
-      <span class="text-sm">{{ text }}</span>
+
+      <TruncateWithTooltip class="text-sm">
+        {{ text }}
+      </TruncateWithTooltip>
+
+      <TruncateWithTooltip
+        v-if="description"
+        class="text-sm italic text-neutral-500"
+      >
+        {{ description }}
+      </TruncateWithTooltip>
 
       <!-- Slot for anything, but mainly for button(s) (do things like toggle the subtitle) -->
       <div class="ml-auto">
@@ -52,13 +67,18 @@
 </template>
 
 <script lang="ts" setup>
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  themeClasses,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed } from "vue";
 
 const props = defineProps<{
   kind: "loading" | "error" | "neutral" | "success";
   text: string;
+  description?: string;
   subtitle?: string;
   showSubtitle?: boolean;
 }>();
