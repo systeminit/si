@@ -250,6 +250,20 @@ const rightClickMenuItems = computed(() => {
     });
   }
 
+  // TODO(nick): add the ability to add and remove components from views.
+  // items.push({
+  //   icon: "plus",
+  //   label: "Add to View",
+  //   shortcut: "+",
+  //   onSelect: () => componentsAddToView(componentIds.value),
+  // });
+  // items.push({
+  //   icon: "minus",
+  //   label: "Remove from View",
+  //   shortcut: "-",
+  //   onSelect: () => componentsRemoveFromView(componentIds.value),
+  // });
+
   // can erase so long as you have not selected a view
   items.push(eraseMenuItem);
 
@@ -460,6 +474,14 @@ const componentsDuplicate = async (componentIds: ComponentId[]) => {
   }
 };
 
+// TODO(nick): add the ability to add and remove components from views.
+// const componentsAddToView = async (componentIds: ComponentId[]) => {
+//   close();
+// };
+// const componentsRemoveFromView = async (componentIds: ComponentId[]) => {
+//   close();
+// };
+
 const componentsUpgrade = async (componentIds: ComponentId[]) => {
   await upgradeComponents(componentIds);
 };
@@ -513,6 +535,9 @@ defineExpose({
   isOpen,
   componentsStartErase,
   componentsDuplicate,
+  // TODO(nick): add the ability to add and remove components from views.
+  // componentsAddToView,
+  // componentsRemoveFromView,
   componentsUpgrade,
   contextMenuRef,
   componentsStartDelete,
