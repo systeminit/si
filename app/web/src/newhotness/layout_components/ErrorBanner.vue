@@ -20,7 +20,7 @@
       "
     >
       <Icon name="x-circle" size="xs" />
-      <span>{{ text }}</span>
+      <span class="text-sm">{{ text }}</span>
 
       <!-- Slot for anything, but mainly a button for toggling the subtitle -->
       <div class="ml-auto">

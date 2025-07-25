@@ -1,28 +1,25 @@
 <template>
   <DelayedLoader v-if="componentQuery.isLoading.value" :size="'full'" />
   <section v-else :class="clsx('grid gap-sm h-full p-sm', gridStateClass)">
-    <div v-if="showComponentStateBanner || showErrorBanner" class="banner">
-      <ErrorBanner v-if="showErrorBanner" :text="errorBannerText">
-        <template #right>
-          <VButton
-            v-if="specialCaseManagementFuncRun"
-            :label="seeFuncRunLabel"
-            tone="neutral"
-            @click="navigateToFuncRunDetails(specialCaseManagementFuncRun.id)"
-          />
-        </template>
-      </ErrorBanner>
-      <div v-if="showComponentStateBanner && showErrorBanner" class="py-xs" />
-      <div
-        v-if="showComponentStateBanner"
-        :class="
-          clsx(
-            'flex flex-row items-center gap-xs px-xs',
-            themeClasses('bg-neutral-300', 'bg-neutral-600'),
-          )
-        "
-      >
-        <template v-if="!component">
+    <!-- Single banner area for all banner types -->
+    <div
+      v-if="
+        showComponentStateBanner ||
+        showErrorBanner ||
+        (component && component.toDelete)
+      "
+      class="banner flex flex-col"
+    >
+      <!-- No component banner -->
+      <template v-if="!component">
+        <div
+          :class="
+            clsx(
+              'flex flex-row items-center gap-xs px-sm py-xs',
+              themeClasses('bg-neutral-300', 'bg-neutral-600'),
+            )
+          "
+        >
           <IconButton
             tooltip="Close (Esc)"
             tooltipPlacement="top"
@@ -33,11 +30,34 @@
             iconTone="shade"
             @click="close"
           />
-          <TruncateWithTooltip class="py-xs">
+          <TruncateWithTooltip class="py-xs text-sm">
             No component with id "{{ componentId }}" exists on this change set.
           </TruncateWithTooltip>
-        </template>
-        <template v-else-if="component.toDelete">
+        </div>
+      </template>
+
+      <!-- Error and deletion banners for existing components -->
+      <template v-if="component">
+        <ErrorBanner v-if="showErrorBanner" :text="errorBannerText">
+          <template #right>
+            <VButton
+              v-if="specialCaseManagementFuncRun"
+              :label="seeFuncRunLabel"
+              tone="neutral"
+              @click="navigateToFuncRunDetails(specialCaseManagementFuncRun.id)"
+            />
+          </template>
+        </ErrorBanner>
+        <div v-if="showErrorBanner && component.toDelete" class="py-xs" />
+        <div
+          v-if="component.toDelete"
+          :class="
+            clsx(
+              'flex flex-row items-center gap-xs px-sm py-xs',
+              themeClasses('bg-neutral-300', 'bg-neutral-600'),
+            )
+          "
+        >
           <VButton
             v-tooltip="'Close (Esc)'"
             label="Marked for deletion"
@@ -46,23 +66,20 @@
             class="font-normal !py-0 flex-none"
             @click="close"
           />
-          <TruncateWithTooltip class="py-xs text-sm">
+          <TruncateWithTooltip class="py-2xs text-sm">
             This component will be removed from HEAD once the current change set
             is applied.
           </TruncateWithTooltip>
-        </template>
-      </div>
+        </div>
+      </template>
     </div>
 
     <template v-if="component">
       <div
         :class="
           clsx(
-            'name flex flex-row items-center gap-xs p-xs border',
-            themeClasses(
-              'bg-white border-neutral-300',
-              'bg-neutral-800 border-neutral-600',
-            ),
+            'name flex flex-row items-center gap-xs',
+            themeClasses('bg-white', 'bg-neutral-800'),
           )
         "
       >
@@ -88,7 +105,6 @@
               v-tooltip="'Restore (R)'"
               size="sm"
               :label="restoreLoading ? 'Restoring...' : 'Restore'"
-              :icon="restoreLoading ? 'loader' : 'trash-restore'"
               :loading="restoreLoading"
               :disabled="restoreLoading"
               loadingIcon="loader"
@@ -167,11 +183,18 @@
         </div>
       </div>
 
-      <div class="attrs flex flex-col gap-sm">
+      <div
+        :class="
+          clsx(
+            'attrs flex flex-col gap-sm',
+            !showErrorBanner && !component?.toDelete && 'attrs-no-banner',
+          )
+        "
+      >
         <CollapsingFlexItem ref="attrRef" :expandable="false" open>
           <template #header>
             <div class="flex place-content-between w-full">
-              <span class="text-sm">Attributes</span>
+              <span class="text-sm flex items-center">Attributes</span>
               <template v-if="specialCaseManagementFuncKind === 'import'">
                 <VButton
                   size="xs"
@@ -261,7 +284,15 @@
         </CollapsingFlexItem>
       </div>
 
-      <div v-if="docsOpen" class="docs flex flex-col">
+      <div
+        v-if="docsOpen"
+        :class="
+          clsx(
+            'docs flex flex-col',
+            !showErrorBanner && !component?.toDelete && 'docs-no-banner',
+          )
+        "
+      >
         <DocumentationPanel
           :component="component"
           :docs="docs"
@@ -272,7 +303,14 @@
         />
       </div>
 
-      <div class="right flex flex-col">
+      <div
+        :class="
+          clsx(
+            'right flex flex-col',
+            !showErrorBanner && !component?.toDelete && 'right-no-banner',
+          )
+        "
+      >
         <CollapsingFlexItem>
           <template #header
             ><span class="text-sm">Qualifications</span></template
@@ -715,9 +753,7 @@ onBeforeUnmount(() => {
   realtimeStore.unsubscribe(MGMT_RUN_KEY);
 });
 
-const showComponentStateBanner = computed(
-  () => !component.value || component.value.toDelete,
-);
+const showComponentStateBanner = computed(() => !component.value);
 const showErrorBanner = computed(
   () => specialCaseManagementExecutionStatus.value === "Failure",
 );
@@ -731,21 +767,18 @@ const errorBannerText = computed(() => {
 });
 
 const gridStateClass = computed(() => {
-  let c;
+  // When there's no component, we only show the banner
+  if (showComponentStateBanner.value) {
+    return "no-component";
+  }
+
+  const hasBanner = showErrorBanner.value || component.value?.toDelete;
 
   if (docsOpen.value) {
-    c = "docs-open";
+    return hasBanner ? "docs-open-with-banner" : "docs-open-without-banner";
   } else {
-    c = "docs-closed";
+    return hasBanner ? "docs-closed-with-banner" : "docs-closed-without-banner";
   }
-
-  if (showComponentStateBanner.value || showErrorBanner.value) {
-    c += "-with-banner";
-  } else {
-    c += "-without-banner";
-  }
-
-  return c;
 });
 
 const deleteModalRef = ref<InstanceType<typeof DeleteModal>>();
@@ -841,18 +874,18 @@ const navigateToFuncRunDetails = (funcRunId: string) => {
 <style lang="less" scoped>
 section.grid.docs-open-with-banner {
   grid-template-areas:
-    "banner banner banner"
     "name name name"
+    "banner banner banner"
     "attrs docs right";
-  grid-template-rows: fit-content(5rem) 2.5rem minmax(0, 1fr);
+  grid-template-rows: 2.5rem auto minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
 }
 section.grid.docs-closed-with-banner {
   grid-template-areas:
-    "banner banner"
     "name name"
+    "banner banner"
     "attrs right";
-  grid-template-rows: fit-content(5rem) 2.5rem minmax(0, 1fr);
+  grid-template-rows: 2.5rem auto minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
 }
 section.grid.docs-open-without-banner {
@@ -869,6 +902,11 @@ section.grid.docs-closed-without-banner {
   grid-template-rows: 2.5rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
 }
+section.grid.no-component {
+  grid-template-areas: "banner";
+  grid-template-rows: auto;
+  grid-template-columns: 1fr;
+}
 .docs {
   grid-area: docs;
 }
@@ -877,11 +915,33 @@ section.grid.docs-closed-without-banner {
 }
 .name {
   grid-area: name;
+  margin: -0.75rem -1rem 0 -1rem;
+  margin-top: -1em;
+  padding: 0 0.5rem 0 0.5rem;
+  height: 2.75rem;
+}
+.name {
+  border-top: 1px solid #d4d4d8; /* neutral-300 */
+  border-bottom: 1px solid #d4d4d8; /* neutral-300 */
+}
+:global(.dark) .name {
+  border-top: 1px solid #525252; /* neutral-600 */
+  border-bottom: 1px solid #525252; /* neutral-600 */
 }
 .attrs {
   grid-area: attrs;
 }
+.attrs-no-banner {
+  margin-top: -0.75rem;
+}
+.docs-no-banner {
+  margin-top: -0.75rem;
+}
+.right-no-banner {
+  margin-top: -0.75rem;
+}
 .banner {
   grid-area: banner;
+  margin-top: -0.75rem;
 }
 </style>

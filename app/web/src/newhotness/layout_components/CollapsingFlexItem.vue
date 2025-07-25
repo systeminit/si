@@ -21,7 +21,7 @@
         clsx(
           h3class,
           'group/header',
-          'cursor-pointer text-lg font-bold flex-none h-lg',
+          'cursor-pointer text-lg font-bold flex-none h-lg flex items-center px-xs m-0',
           openState.open.value && 'border-b',
           themeClasses(
             'bg-white border-neutral-300 hover:bg-neutral-100',

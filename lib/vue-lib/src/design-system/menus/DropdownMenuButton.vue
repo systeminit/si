@@ -6,7 +6,9 @@
         'flex flex-row items-center p-2xs mb-[-1px] h-7',
         'font-mono text-[13px] text-left truncate relative',
         !noBorder && 'border',
-        highlightWhenModelValue && modelValueLabel && 'bg-action-900',
+        highlightWhenModelValue &&
+          modelValueLabel &&
+          themeClasses('bg-action-200', 'bg-action-900'),
         variant === 'navbar' && 'flex-1 font-bold min-w-[80px] max-w-fit',
         disabled
           ? [
@@ -54,7 +56,9 @@
           isFocus
             ? themeClasses('text-action-500', 'text-action-300')
             : themeClasses('text-neutral-400', 'text-neutral-600'),
-          highlightWhenModelValue && modelValueLabel && 'text-neutral-200',
+          highlightWhenModelValue &&
+            modelValueLabel &&
+            themeClasses('text-neutral-600', 'text-neutral-200'),
         )
       "
       name="chevron--down"

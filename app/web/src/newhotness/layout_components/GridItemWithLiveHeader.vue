@@ -4,8 +4,8 @@
       clsx(
         'flex flex-col rounded overflow-hidden border',
         themeClasses(
-          'bg-shade-0 border-neutral-300',
-          'bg-neutral-800 border-transparent',
+          'bg-neutral-200 border-neutral-300',
+          'bg-neutral-800 border-neutral-600',
         ),
       )
     "
@@ -21,7 +21,14 @@
         Live
       </div>
     </div>
-    <div class="overflow-auto flex-1 text-sm">
+    <div
+      :class="
+        clsx(
+          'overflow-auto flex-1 text-sm',
+          themeClasses('bg-white', 'bg-[#0d1117]'),
+        )
+      "
+    >
       <slot></slot>
     </div>
   </div>
