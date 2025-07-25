@@ -175,10 +175,9 @@ impl ChangeSetProcessorTask {
             .filter_map(|maybe_elapsed_item| maybe_elapsed_item.ok());
 
         let app = ServiceBuilder::new()
-            .layer(
-                MatchedSubjectLayer::new()
-                    .for_subject(EddaRequestsForSubject::with_prefix(prefix.as_deref())),
-            )
+            .layer(MatchedSubjectLayer::new().for_subject(
+                EddaChangeSetRequestsForSubject::with_prefix(prefix.as_deref()),
+            ))
             .layer(
                 TraceLayer::new()
                     .make_span_with(
@@ -227,11 +226,11 @@ struct QuiescedCaptured {
 }
 
 #[derive(Clone, Debug)]
-struct EddaRequestsForSubject {
+struct EddaChangeSetRequestsForSubject {
     prefix: Option<()>,
 }
 
-impl EddaRequestsForSubject {
+impl EddaChangeSetRequestsForSubject {
     fn with_prefix(prefix: Option<&str>) -> Self {
         Self {
             prefix: prefix.map(|_p| ()),
@@ -239,7 +238,7 @@ impl EddaRequestsForSubject {
     }
 }
 
-impl<R> ForSubject<R> for EddaRequestsForSubject
+impl<R> ForSubject<R> for EddaChangeSetRequestsForSubject
 where
     R: MessageHead,
 {
@@ -252,6 +251,28 @@ where
                     Some(prefix),
                     Some(p1),
                     Some(p2),
+                    Some(p3),
+                    Some(_workspace_id),
+                    Some(_change_set_id),
+                    None,
+                ) = (
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                    parts.next(),
+                ) {
+                    let matched = format!("{prefix}.{p1}.{p2}.{p3}.:workspace_id.:change_set_id");
+                    req.extensions_mut().insert(MatchedSubject::from(matched));
+                };
+            }
+            None => {
+                if let (
+                    Some(p1),
+                    Some(p2),
+                    Some(p3),
                     Some(_workspace_id),
                     Some(_change_set_id),
                     None,
@@ -263,19 +284,7 @@ where
                     parts.next(),
                     parts.next(),
                 ) {
-                    let matched = format!("{prefix}.{p1}.{p2}.:workspace_id.:change_set_id");
-                    req.extensions_mut().insert(MatchedSubject::from(matched));
-                };
-            }
-            None => {
-                if let (Some(p1), Some(p2), Some(_workspace_id), Some(_change_set_id), None) = (
-                    parts.next(),
-                    parts.next(),
-                    parts.next(),
-                    parts.next(),
-                    parts.next(),
-                ) {
-                    let matched = format!("{p1}.{p2}.:workspace_id.:change_set_id");
+                    let matched = format!("{p1}.{p2}.{p3}.:workspace_id.:change_set_id");
                     req.extensions_mut().insert(MatchedSubject::from(matched));
                 };
             }
@@ -314,6 +323,7 @@ mod handlers {
         },
     };
     use ringmap::RingMap;
+    use si_data_nats::Subject;
     use si_events::{
         change_batch::ChangeBatchAddress,
         workspace_snapshot::Change,
@@ -374,6 +384,7 @@ mod handlers {
 
     pub(crate) async fn default(
         State(state): State<AppState>,
+        subject: Subject,
         Json(request): Json<CompressedRequest>,
     ) -> Result<()> {
         let AppState {
@@ -406,11 +417,12 @@ mod handlers {
             return Ok(());
         }
 
-        handle_request(
+        process_request(
             &ctx,
             &frigg,
             &edda_updates,
             parallel_build_limit,
+            subject,
             workspace_id,
             change_set_id,
             request,
@@ -419,25 +431,53 @@ mod handlers {
     }
 
     #[instrument(
-        name = "edda.change_set_processor_task.handle_request"
+        // Will be renamed to: `edda.requests.change_set.:workspace_id.:change_set_id process`
+        name = "edda.change_set_processor_task.process_request",
         level = "info",
         skip_all,
         fields(
+            otel.name = Empty,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
             si.workspace.id = %workspace_id,
             si.change_set.id = %change_set_id,
             si.edda.compressed_request.kind = request.as_ref(),
             si.edda.src_requests.count = request.src_requests_count(),
         )
     )]
-    async fn handle_request(
+    #[allow(clippy::too_many_arguments)]
+    async fn process_request(
         ctx: &DalContext,
         frigg: &FriggStore,
         edda_updates: &EddaUpdates,
         parallel_build_limit: usize,
+        subject: Subject,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         request: CompressedRequest,
     ) -> Result<()> {
+        let span = current_span_for_instrument_at!("info");
+
+        let otel_name = {
+            let mut parts = subject.as_str().split('.');
+            match (
+                parts.next(),
+                parts.next(),
+                parts.next(),
+                parts.next(),
+                parts.next(),
+                parts.next(),
+            ) {
+                (Some(p1), Some(p2), Some(p3), Some(_workspace_id), Some(_change_set_id), None) => {
+                    format!("{p1}.{p2}.{p3}.:workspace_id.:change_set_id process")
+                }
+                _ => format!("{} process", subject.as_str()),
+            }
+        };
+
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", otel_name.as_str());
+
         match request {
             CompressedRequest::NewChangeSet {
                 src_requests_count: _,
@@ -452,7 +492,8 @@ mod handlers {
                     edda_updates,
                     to_snapshot_address,
                 )
-                .await?;
+                .await
+                .map_err(|err| span.record_err(err))?;
 
                 if index_was_copied {
                     process_incremental_updates(
@@ -503,7 +544,8 @@ mod handlers {
                 // Index exists
                 if frigg
                     .get_index(workspace_id, change_set_id)
-                    .await?
+                    .await
+                    .map_err(|err| span.record_err(err))?
                     .is_some()
                 {
                     process_incremental_updates(
@@ -535,6 +577,8 @@ mod handlers {
                 }
             }
         }
+        .inspect(|_| span.record_ok())
+        .map_err(|err| span.record_err(err))
     }
 
     #[allow(clippy::too_many_arguments)]

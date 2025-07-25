@@ -7,6 +7,7 @@ mod change_set_processor_task;
 pub mod compressed_request;
 pub mod compressing_stream;
 mod config;
+mod deployment_processor_task;
 pub mod extract;
 mod handlers;
 mod local_message;
