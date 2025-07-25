@@ -174,7 +174,7 @@ const rightClickMenuItems = computed(() => {
       labelAsTooltip: false,
       label: "Restore",
       shortcut: "R",
-      // icon: "trash-restore",
+      icon: "trash-restore",
       onSelect: () => componentsRestore(componentIds.value),
     });
     items.push(eraseMenuItem);
