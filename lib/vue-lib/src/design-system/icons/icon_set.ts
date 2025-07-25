@@ -120,6 +120,7 @@ import MaterialSymbolsShiftLockOutline from "~icons/material-symbols/shift-lock-
 import MaterialSymbolsAddLink from "~icons/material-symbols/add-link";
 import MaterialSymbolsLink from "~icons/material-symbols/link";
 import Map from "~icons/heroicons/map";
+import MdiTriangle from "~icons/mdi/triangle";
 
 import TdesignLinkUnlink from "~icons/tdesign/link-unlink";
 import PhTestTubeFill from "~icons/ph/test-tube-fill";
@@ -407,6 +408,7 @@ export const ICONS = Object.freeze({
   trash: Trash,
   "trash-restore": TrashRestore,
   "tree-parents": TreeParents,
+  triangle: MdiTriangle,
   unlink: TdesignLinkUnlink,
   "user-circle": UserCircle,
   x: X,
