@@ -13,11 +13,6 @@
     "
     @click="emit('select')"
   >
-    <TextPill mono class="text-purple min-w-0">
-      <TruncateWithTooltip>{{
-        ctx.componentDetails.value[componentId]?.name ?? componentId
-      }}</TruncateWithTooltip>
-    </TextPill>
     <TextPill
       mono
       :class="
@@ -33,6 +28,11 @@
           "unknown"
         }}
       </TruncateWithTooltip>
+    </TextPill>
+    <TextPill mono class="text-purple min-w-0">
+      <TruncateWithTooltip>{{
+        ctx.componentDetails.value[componentId]?.name ?? componentId
+      }}</TruncateWithTooltip>
     </TextPill>
   </li>
 </template>
