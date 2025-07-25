@@ -18,6 +18,7 @@ use dal_test::{
     },
     helpers::{
         ChangeSetTestHelpers,
+        attribute::value,
         create_component_for_schema_variant_on_default_view,
         get_attribute_value_for_component,
         schema::variant,
@@ -260,3 +261,222 @@ pub const GEOMETRY2: RawGeometry = RawGeometry {
     width: Some(222),
     height: Some(2222),
 };
+
+#[derive(Debug, Clone, Copy)]
+pub struct SubscribableTest {
+    pub subscribable_variant_id: SchemaVariantId,
+    pub subscribable_manager_variant_id: SchemaVariantId,
+    pub retrieve_managed_values_id: FuncId,
+}
+
+impl SubscribableTest {
+    pub async fn setup(ctx: &DalContext) -> Result<Self> {
+        let subscribable_variant_id = variant::create(
+            ctx,
+            "subscribable",
+            r#"
+                function main() {
+                    return {
+                        props: [
+                            { name: "Value", kind: "string" },
+                            { name: "One", kind: "string" },
+                            { name: "Many", kind: "array",
+                                entry: { name: "ManyItem", kind: "string" },
+                            },
+                            { name: "Inferred", kind: "string" },
+                            { name: "Missing", kind: "string" },
+                            { name: "Empty", kind: "array",
+                                entry: { name: "EmptyItem", kind: "string" },
+                            },
+                        ],
+                    };
+                }
+            "#,
+        )
+        .await?;
+
+        let subscribable_manager_variant_id = variant::create(
+            ctx,
+            "subscribable manager",
+            r#"
+                function main() {
+                    return {
+                        props: [
+                            { name: "Value", kind: "string" },
+                            { name: "ManagedValues", kind: "array",
+                                entry: { name: "ManagedValuesItem", kind: "string" },
+                            },
+                        ],
+                    };
+                }
+            "#,
+        )
+        .await?;
+        SchemaVariant::get_by_id(ctx, subscribable_manager_variant_id)
+            .await?
+            .set_type(ctx, ComponentType::ConfigurationFrameDown)
+            .await?;
+
+        let retrieve_managed_values_id = variant::create_management_func(
+                ctx,
+                "subscribable manager",
+                "retrieve_managed_values",
+                r#"
+                    function main(input) {
+                        let managed_values = Object.values(input.components).map(c => c.properties.domain.Value).sort();
+                        return {
+                            status: "ok",
+                            ops: {
+                                update: {
+                                    self: {
+                                        properties: {
+                                            domain: {
+                                                ManagedValues: managed_values
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                "#,
+            )
+            .await?;
+
+        Ok(Self {
+            subscribable_variant_id,
+            subscribable_manager_variant_id,
+            retrieve_managed_values_id,
+        })
+    }
+
+    pub async fn create_subscribable(
+        self,
+        ctx: &DalContext,
+        name: &str,
+        subscribe_one: Option<Subscribable>,
+        subscribe_many: impl IntoIterator<Item = Subscribable>,
+    ) -> Result<Subscribable> {
+        let subscribable = {
+            let component = create_component_for_schema_variant_on_default_view(
+                ctx,
+                self.subscribable_variant_id,
+            )
+            .await?;
+            component.set_name(ctx, name).await?;
+            Component::set_type_by_id(ctx, component.id(), ComponentType::ConfigurationFrameDown)
+                .await?;
+            Subscribable::new(self, component.id())
+        };
+
+        subscribable.set_value(ctx, name).await?;
+
+        if let Some(from) = subscribe_one {
+            let from_name = from.name(ctx).await?;
+            value::subscribe(
+                ctx,
+                (name, "/domain/One"),
+                [(from_name.as_str(), "/domain/Value")],
+            )
+            .await?;
+        }
+
+        let many_sources: Vec<_> = subscribe_many.into_iter().collect();
+        if !many_sources.is_empty() {
+            let mut source_names = Vec::new();
+            let mut sources = Vec::new();
+            for from in many_sources {
+                let source_name = from.name(ctx).await?;
+                source_names.push(source_name);
+            }
+            for source_name in &source_names {
+                sources.push((source_name.as_str(), "/domain/Value"));
+            }
+            value::subscribe(ctx, (name, "/domain/Many"), sources).await?;
+        }
+
+        Ok(subscribable)
+    }
+
+    pub async fn create_parent(self, ctx: &DalContext, name: &str) -> Result<Subscribable> {
+        let component = create_component_for_schema_variant_on_default_view(
+            ctx,
+            self.subscribable_manager_variant_id,
+        )
+        .await?;
+        component.set_name(ctx, name).await?;
+        update_attribute_value_for_component(
+            ctx,
+            component.id(),
+            &["root", "domain", "Value"],
+            name.into(),
+        )
+        .await?;
+
+        Ok(Subscribable::new(self, component.id()))
+    }
+
+    pub async fn subscribe_child_to_parent(
+        self,
+        ctx: &DalContext,
+        child_name: &str,
+        parent_name: &str,
+    ) -> Result<()> {
+        value::subscribe(
+            ctx,
+            (child_name, "/domain/Inferred"),
+            [(parent_name, "/domain/Value")],
+        )
+        .await
+    }
+
+    pub async fn create_manager(self, ctx: &DalContext, name: &str) -> Result<Subscribable> {
+        self.create_parent(ctx, name).await
+    }
+}
+
+// Component that uses subscriptions instead of socket connections
+#[derive(Debug, Copy, Clone, derive_more::From, derive_more::Into)]
+pub struct Subscribable {
+    pub test: SubscribableTest,
+    pub id: ComponentId,
+}
+
+impl Subscribable {
+    pub fn new(test: SubscribableTest, id: ComponentId) -> Self {
+        Self { test, id }
+    }
+
+    pub async fn run_management_func(self, ctx: &mut DalContext) -> Result<Value> {
+        ExpectComponent(self.id)
+            .execute_management_func(ctx, ExpectFunc(self.test.retrieve_managed_values_id))
+            .await;
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+        get_attribute_value_for_component(ctx, self.id, &["root", "domain", "ManagedValues"]).await
+    }
+
+    pub async fn set_value(self, ctx: &DalContext, value: &str) -> Result<()> {
+        update_attribute_value_for_component(
+            ctx,
+            self.id,
+            &["root", "domain", "Value"],
+            value.into(),
+        )
+        .await
+    }
+
+    pub async fn name(self, ctx: &DalContext) -> Result<String> {
+        Ok(Component::get_by_id(ctx, self.id).await?.name(ctx).await?)
+    }
+
+    // Get the domain, with the Many prop sorted
+    pub async fn domain(self, ctx: &DalContext) -> Result<Value> {
+        let mut domain =
+            get_attribute_value_for_component(ctx, self.id, &["root", "domain"]).await?;
+        if let Some(many) = domain.get_mut("Many") {
+            let many = many.as_array_mut().expect("Many is an array");
+            many.sort_by_key(|v| v.as_str().expect("Many is an array of strings").to_string());
+        }
+        Ok(domain)
+    }
+}
