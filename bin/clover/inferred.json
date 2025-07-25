@@ -660,6 +660,14 @@
       "default"
     ]
   },
+  "The capacity reservation preference. The following options are available: \n  +  ``capacity-reservations-only`` - Auto Scaling will only launch instances into a Capacity Reservation or Capacity Reservation resource group. If capacity isn't available, instances will fail to launch.\n  +  ``capacity-reservations-first`` - Auto Scaling will try to launch instances into a Capacity Reservation or Capacity Reservation resource group first. If capacity isn't available, instances will run in On-Demand capacity.\n  +  ``none`` - Auto Scaling will not launch instances into a Capacity Reservation. Instances will run in On-Demand capacity. \n  +  ``default`` - Auto Scaling uses the Capacity Reservation preference from your launch template or an open Capacity Reservation.": {
+    "enum": [
+      "capacity-reservations-only",
+      "capacity-reservations-first",
+      "none",
+      "default"
+    ]
+  },
   "The allocation strategy to apply to your Spot Instances when they are launched. Possible instance types are determined by the launch template overrides that you specify.\n The following lists the valid values:\n  + capacity-optimized Requests Spot Instances using pools that are optimally chosen based on the available Spot capacity. This strategy has the lowest risk of interruption. To give certain instance types a higher chance of launching first, use capacity-optimized-prioritized. + capacity-optimized-prioritized You set the order of instance types for the launch template overrides from highest to lowest priority (from first to last in the list). Amazon EC2 Auto Scaling honors the instance type priorities on a best effort basis but optimizes for capacity first. Note that if the On-Demand allocation strategy is set to prioritized, the same priority is applied when fulfilling On-Demand capacity. This is not a valid value for Auto Scaling groups that specify InstanceRequirements. + lowest-price Requests Spot Instances using the lowest priced pools within an Availability Zone, across the number of Spot pools that you specify for the SpotInstancePools property. To ensure that your desired capacity is met, you might receive Spot Instances from several pools. This is the default value, but it might lead to high interruption rates because this strategy only considers instance price and not available capacity. + price-capacity-optimized (recommended) The price and capacity optimized allocation strategy looks at both price and capacity to select the Spot Instance pools that are the least likely to be interrupted and have the lowest possible price.": {
     "enum": [
       "capacity-optimized",
@@ -872,6 +880,13 @@
       "lowest price",
       "capacity optimized",
       "price capacity optimized"
+    ]
+  },
+  "The location for storing automated backups and manual snapshots.\n Valid Values:\n  +  ``local`` (Dedicated Local Zone)\n  +  ``outposts`` (AWS Outposts)\n  +  ``region`` (AWS-Region)\n  \n Default: ``region``\n For more information, see [Working with Amazon RDS on Outposts](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-on-outposts.html) in the *Amazon RDS User Guide*.": {
+    "enum": [
+      "local",
+      "outposts",
+      "region"
     ]
   },
   "The IP address type. Internal load balancers must use ``ipv4``.\n [Application Load Balancers] The possible values are ``ipv4`` (IPv4 addresses), ``dualstack`` (IPv4 and IPv6 addresses), and ``dualstack-without-public-ipv4`` (public IPv6 addresses and private IPv4 and IPv6 addresses).\n Application Load Balancer authentication supports IPv4 addresses only when connecting to an Identity Provider (IdP) or Amazon Cognito endpoint. Without a public IPv4 address the load balancer can't complete the authentication process, resulting in HTTP 500 errors.\n [Network Load Balancers and Gateway Load Balancers] The possible values are ``ipv4`` (IPv4 addresses) and ``dualstack`` (IPv4 and IPv6 addresses).": {
@@ -1543,6 +1558,12 @@
       "standard"
     ]
   },
+  "Specifies the scalability mode of the Aurora DB cluster. When set to ``limitless``, the cluster operates as an Aurora Limitless Database, allowing you to create a DB shard group for horizontal scaling (sharding) capabilities. When set to ``standard`` (the default), the cluster uses normal DB instance creation.\n *Important:* Automated backup retention isn't supported with Aurora Limitless Database clusters. If you set this property to ``limitless``, you cannot set ``DeleteAutomatedBackups`` to ``false``. To create a backup, use manual snapshots instead.": {
+    "enum": [
+      "limitless",
+      "standard"
+    ]
+  },
   "The type of device-based trust provider. Possible values: jamf|crowdstrike": {
     "enum": [
       "jamf",
@@ -1736,6 +1757,12 @@
     ]
   },
   "If launches fail in an Availability Zone, the following strategies are available. The default is ``balanced-best-effort``. \n  +   ``balanced-only`` - If launches fail in an Availability Zone, Auto Scaling will continue to attempt to launch in the unhealthy zone to preserve a balanced distribution.\n  +   ``balanced-best-effort`` - If launches fail in an Availability Zone, Auto Scaling will attempt to launch in another healthy Availability Zone instead.": {
+    "enum": [
+      "balanced-only",
+      "balanced-best-effort"
+    ]
+  },
+  "If launches fail in an Availability Zone, the following strategies are available. The default is ``balanced-best-effort``. \n  +  ``balanced-only`` - If launches fail in an Availability Zone, Auto Scaling will continue to attempt to launch in the unhealthy zone to preserve a balanced distribution.\n  +  ``balanced-best-effort`` - If launches fail in an Availability Zone, Auto Scaling will attempt to launch in another healthy Availability Zone instead.": {
     "enum": [
       "balanced-only",
       "balanced-best-effort"
@@ -5457,6 +5484,12 @@
   "ID of the Anycast static IP list that is associated with the distribution.": {
     "enum": null
   },
+  "ID of the Broker that the configuration should be applied to": {
+    "enum": null
+  },
+  "ID of the Configuration to apply to a Broker": {
+    "enum": null
+  },
   "ID of the CoreNetwork that the attachment will be attached to.": {
     "enum": null
   },
@@ -6763,6 +6796,9 @@
     "enum": null
   },
   "Retention period of successful canary runs represented in number of days": {
+    "enum": null
+  },
+  "Revision of the Configuration to apply to a Broker": {
     "enum": null
   },
   "Risk rating of model.": {
@@ -13839,6 +13875,9 @@
   "The name of the placement group into which to launch your instances. For more information, see [Placement groups](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html) in the *Amazon EC2 User Guide for Linux Instances*.\n  A *cluster* placement group is a logical grouping of instances within a single Availability Zone. You cannot specify multiple Availability Zones and a cluster placement group.": {
     "enum": null
   },
+  "The name of the placement group into which to launch your instances. For more information, see [Placement groups](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html) in the *Amazon EC2 User Guide*.\n  A *cluster* placement group is a logical grouping of instances within a single Availability Zone. You cannot specify multiple Availability Zones and a cluster placement group.": {
+    "enum": null
+  },
   "The name of the policy": {
     "enum": null
   },
@@ -17098,6 +17137,9 @@
     "enum": null
   },
   "When restoring a DB cluster to a point in time, the identifier of the source DB cluster from which to restore.\n Constraints:\n  +  Must match the identifier of an existing DBCluster.\n  \n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
+    "enum": null
+  },
+  "When restoring a DB cluster to a point in time, the identifier of the source DB cluster from which to restore.\n Constraints:\n  +  Must match the identifier of an existing DBCluster.\n  +  Cannot be specified if ``SourceDbClusterResourceId`` is specified. You must specify either ``SourceDBClusterIdentifier`` or ``SourceDbClusterResourceId``, but not both.\n  \n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
     "enum": null
   },
   "When the SLO monitors a specific operation of the dependency, this field specifies the name of that operation in the dependency.": {
