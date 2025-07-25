@@ -46,7 +46,7 @@
             class="font-normal !py-0 flex-none"
             @click="close"
           />
-          <TruncateWithTooltip class="py-xs">
+          <TruncateWithTooltip class="py-xs text-sm">
             This component will be removed from HEAD once the current change set
             is applied.
           </TruncateWithTooltip>
@@ -87,13 +87,20 @@
             <VButton
               v-tooltip="'Restore (R)'"
               size="sm"
-              tone="success"
               :label="restoreLoading ? 'Restoring...' : 'Restore'"
-              variant="ghost"
               :icon="restoreLoading ? 'loader' : 'trash-restore'"
               :loading="restoreLoading"
               :disabled="restoreLoading"
               loadingIcon="loader"
+              :class="
+                clsx(
+                  '!text-sm !border !cursor-pointer !px-xs',
+                  themeClasses(
+                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                  ),
+                )
+              "
               @click="restoreComponent"
             />
           </template>
@@ -101,30 +108,59 @@
             <VButton
               v-tooltip="'Erase (E)'"
               size="sm"
-              tone="destructive"
               label="Erase"
-              variant="ghost"
+              :class="
+                clsx(
+                  '!text-sm !border !cursor-pointer !px-xs',
+                  themeClasses(
+                    '!text-neutral-900 !bg-destructive-100 !border-destructive-100 hover:!bg-white',
+                    '!text-white !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
+                  ),
+                )
+              "
               @click="eraseComponent"
             />
             <VButton
               v-tooltip="'Delete (⌫)'"
               size="sm"
-              tone="destructive"
               label="Delete"
-              class="border border-destructive-500 bg-destructive-500 text-white hover:bg-destructive-600 hover:border-destructive-600"
+              :class="
+                clsx(
+                  '!text-sm !border !cursor-pointer !px-xs',
+                  themeClasses(
+                    '!text-neutral-900 !bg-destructive-100 !border-destructive-100 hover:!bg-white',
+                    '!text-white !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
+                  ),
+                )
+              "
               @click="deleteComponent"
             />
+            <div
+              v-if="
+                isUpgradeable ||
+                (specialCaseManagementFuncKind === 'runTemplate' &&
+                  specialCaseManagementFunc?.id)
+              "
+              class="w-px h-6 bg-neutral-600 self-center"
+            ></div>
             <VButton
               v-if="isUpgradeable"
               v-tooltip="'Upgrade (U)'"
               size="sm"
-              tone="action"
               :label="upgradeLoading ? 'Upgrading...' : 'Upgrade'"
-              variant="ghost"
               :icon="upgradeLoading ? 'loader' : 'bolt-outline'"
               :loading="upgradeLoading"
               :disabled="upgradeLoading"
               loadingIcon="loader"
+              :class="
+                clsx(
+                  '!text-sm !border !cursor-pointer !px-xs',
+                  themeClasses(
+                    '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100',
+                    '!text-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600',
+                  ),
+                )
+              "
               @click="upgradeComponent"
             />
           </template>
@@ -161,12 +197,19 @@
               >
                 <VButton
                   size="sm"
-                  tone="action"
                   :label="runTemplateButtonText"
-                  variant="ghost"
                   :loading="specialCaseManagementExecutionStatus === 'Running'"
                   :disabled="specialCaseManagementExecutionStatus === 'Running'"
                   loadingIcon="loader"
+                  :class="
+                    clsx(
+                      '!text-sm !border !cursor-pointer !px-xs',
+                      themeClasses(
+                        '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                        '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                      ),
+                    )
+                  "
                   @click.stop="runMgmtFunc(specialCaseManagementFunc?.id)"
                 />
               </template>
