@@ -27,17 +27,19 @@ deno_cache(
   srcs = glob(["src/**/*.ts"])
 )
 
-# this builds bundle.ts so it can be used at runtime by function execution
+# this builds bundle.js so it can be used at runtime by function execution
 deno_run(
     name = "build",
     main = "src/build.ts",
-    out = "src/bundle.ts",
+    out = "src/bundle.js",
     srcs = [
         ":cache",
         "//:deno_workspace"
     ] +
     glob([
-        "src/**/*.ts",
+        "src/**/sandbox.ts",
+        "src/**/build.ts",
+        "src/sandbox/*.ts",
     ]),
     permissions = [
         "allow-all",
