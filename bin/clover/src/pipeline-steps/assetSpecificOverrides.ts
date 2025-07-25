@@ -814,7 +814,16 @@ const overrides = new Map<string, OverrideFn>([
       "IpcMode",
       "EphemeralStorage",
     ];
-
+    
+    const containerDefsProp = propForOverride(variant.domain, "ContainerDefinitions");
+    if (containerDefsProp && containerDefsProp.kind === "array") {
+      let itemProp = containerDefsProp.typeProp;
+      itemProp = addPropSuggestSource(itemProp, {
+        schema: "TaskDefinition ContainerDefinitions",
+        prop: "/domain"
+      })
+    }
+    
     const extraProp = propForOverride(variant.domain, "extra");
     if (!extraProp || extraProp.kind !== "object") return;
 
