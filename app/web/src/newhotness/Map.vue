@@ -690,7 +690,7 @@ const onD = (e: KeyDetails["d"]) => {
     const componentIds = Array.from(selectedComponents.value).map(
       (component) => component.id,
     );
-    componentContextMenuRef.value?.componentsDuplicate(componentIds);
+    componentContextMenuRef.value?.duplicateComponentStart(componentIds);
   }
 };
 const onP = (_e: KeyDetails["p"]) => {

@@ -1,5 +1,5 @@
 <template>
-  <Modal ref="modalRef" :title="title" size="lg">
+  <Modal ref="modalRef" :title="title" :size="props.size">
     <div class="max-h-[70vh] overflow-hidden flex flex-col gap-sm">
       <slot />
 
@@ -49,6 +49,12 @@ const props = defineProps({
   confirmLabel: { type: String, default: "Confirm" },
   confirmIcon: { type: String as PropType<IconNames> },
   confirmTone: { type: String as PropType<Tones> },
+  size: {
+    type: String as PropType<
+      "sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "4wxl" | "6xl" | "7xl" | "max"
+    >,
+    default: "lg",
+  },
 });
 
 const irreversibleConfirmed = ref(false);
