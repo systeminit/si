@@ -95,6 +95,35 @@ impl IntoResponse for HandlerError {
 }
 
 pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> Result<()> {
+    let subject_str = subject.as_str();
+
+    match parse_subject(state.nats.metadata().subject_prefix(), subject_str)? {
+        ParsedSubject::Deployment => run_deployment_processor_task(state, subject_str).await,
+        ParsedSubject::Workspace(_parsed_workspace_id) => {
+            unimplemented!("workspace tasks are not currently implemented!")
+        }
+        ParsedSubject::ChangeSet(parsed_workspace_id, parsed_change_set_id) => {
+            run_change_set_processor_task(
+                state,
+                subject_str,
+                parsed_workspace_id,
+                parsed_change_set_id,
+            )
+            .await
+        }
+    }
+}
+
+async fn run_deployment_processor_task(state: AppState, subject_str: &str) -> Result<()> {
+    todo!()
+}
+
+async fn run_change_set_processor_task(
+    state: AppState,
+    subject_str: &str,
+    workspace: ParsedWorkspaceId<'_>,
+    change_set: ParsedChangeSetId<'_>,
+) -> Result<()> {
     let AppState {
         metadata,
         nats,
@@ -108,9 +137,6 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         server_tracker,
     } = state;
     let subject_prefix = nats.metadata().subject_prefix();
-
-    let subject_str = subject.as_str();
-    let (workspace, change_set) = parse_subject(subject_prefix, subject_str)?;
 
     let requests_stream_filter_subject =
         nats::subject::request_for_change_set(subject_prefix, workspace.str, change_set.str);
@@ -245,6 +271,13 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     }
 }
 
+#[remain::sorted]
+enum ParsedSubject<'a> {
+    ChangeSet(ParsedWorkspaceId<'a>, ParsedChangeSetId<'a>),
+    Deployment,
+    Workspace(ParsedWorkspaceId<'a>),
+}
+
 struct ParsedWorkspaceId<'a> {
     id: WorkspacePk,
     str: &'a str,
@@ -259,7 +292,7 @@ struct ParsedChangeSetId<'a> {
 fn parse_subject<'a>(
     subject_prefix: Option<&str>,
     subject_str: &'a str,
-) -> Result<(ParsedWorkspaceId<'a>, ParsedChangeSetId<'a>)> {
+) -> Result<ParsedSubject<'a>> {
     let mut parts = subject_str.split('.');
 
     if let Some(prefix) = subject_prefix {
@@ -314,7 +347,7 @@ fn parse_subject<'a>(
                 )
             })?;
 
-            Ok((
+            Ok(ParsedSubject::ChangeSet(
                 ParsedWorkspaceId {
                     id: workspace_id,
                     str: workspace_id_str,
