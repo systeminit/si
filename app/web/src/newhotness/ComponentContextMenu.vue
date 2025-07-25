@@ -19,6 +19,10 @@
       @delete="(mode) => componentsFinishDelete(mode)"
     />
     <CreateTemplateModal ref="createTemplateModalRef" />
+    <DuplicateComponentsModal
+      ref="duplicateComponentsModalRef"
+      @confirm="duplicateComponentsFinish"
+    />
   </div>
 </template>
 
@@ -45,6 +49,7 @@ import { assertIsDefined, ExploreContext } from "./types";
 import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 import { useComponentActions } from "./logic_composables/component_actions";
+import DuplicateComponentsModal from "./DuplicateComponentsModal.vue";
 
 const props = defineProps<{
   onGrid?: boolean;
@@ -204,7 +209,7 @@ const rightClickMenuItems = computed(() => {
     label: "Duplicate",
     shortcut: "D",
     icon: "clipboard-copy",
-    onSelect: () => componentsDuplicate(componentIds.value),
+    onSelect: () => duplicateComponentStart(componentIds.value),
   });
 
   // Can't create template with ghosted components
@@ -378,15 +383,51 @@ const componentsFinishDelete = async (mode: DeleteMode) => {
   }
 };
 
+const componentsUpgrade = async (componentIds: ComponentId[]) => {
+  await upgradeComponents(componentIds);
+};
+
+const duplicateComponentIds = ref<ComponentId[]>([]);
+const duplicateComponentsModalRef =
+  ref<InstanceType<typeof DuplicateComponentsModal>>();
+const isDuplicating = ref(false);
+
+const duplicateComponentStart = (componentIds: ComponentId[]) => {
+  duplicateComponentIds.value = componentIds;
+  duplicateComponentsModalRef.value?.open(componentIds, explore.viewId.value);
+  close();
+};
+
+const duplicateComponentsFinish = async (name: string) => {
+  if (isDuplicating.value) return;
+  if (!duplicateComponentIds.value || duplicateComponentIds.value.length < 1)
+    return;
+
+  isDuplicating.value = true;
+  try {
+    const result = await duplicateComponents(duplicateComponentIds.value, name);
+    if (result.success) {
+      duplicateComponentsModalRef.value?.close();
+    }
+  } finally {
+    isDuplicating.value = false;
+  }
+};
 const duplicateComponentApi = useApi();
-const componentsDuplicate = async (componentIds: ComponentId[]) => {
+
+const duplicateComponents = async (
+  componentIds: ComponentId[],
+  name: string,
+) => {
   const call = duplicateComponentApi.endpoint(routes.DuplicateComponents, {
     viewId: explore.viewId.value,
   });
   emit("clearSelected");
   const { req, newChangeSetId } = await call.post({
     components: componentIds,
+    name,
   });
+
   if (duplicateComponentApi.ok(req) && newChangeSetId) {
     duplicateComponentApi.navigateToNewChangeSet(
       {
@@ -399,6 +440,7 @@ const componentsDuplicate = async (componentIds: ComponentId[]) => {
       newChangeSetId,
     );
   }
+  return { success: duplicateComponentApi.ok(req), newChangeSetId };
 };
 
 // TODO(nick): add the ability to add and remove components from views.
@@ -408,11 +450,6 @@ const componentsDuplicate = async (componentIds: ComponentId[]) => {
 // const componentsRemoveFromView = async (componentIds: ComponentId[]) => {
 //   close();
 // };
-
-const componentsUpgrade = async (componentIds: ComponentId[]) => {
-  await upgradeComponents(componentIds);
-};
-
 const createTemplateModalRef = ref<InstanceType<typeof CreateTemplateModal>>();
 
 const createTemplateStart = () => {
@@ -461,7 +498,7 @@ defineExpose({
   close,
   isOpen,
   componentsStartErase,
-  componentsDuplicate,
+  duplicateComponentStart,
   // TODO(nick): add the ability to add and remove components from views.
   // componentsAddToView,
   // componentsRemoveFromView,

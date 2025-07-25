@@ -33,7 +33,8 @@ async fn duplicate_component_with_value(ctx: &mut DalContext) -> Result<()> {
     let default_view_id = View::get_id_for_default(ctx).await?;
 
     // Duplicate the pirate component
-    let duplicated_ids = Component::duplicate(ctx, default_view_id, vec![component.id()]).await?;
+    let duplicated_ids =
+        Component::duplicate(ctx, default_view_id, vec![component.id()], "cheeky").await?;
     assert_eq!(duplicated_ids.len(), 1);
 
     let component_copy = ExpectComponent(duplicated_ids[0]);
@@ -78,10 +79,24 @@ async fn duplicate_component_with_dependent_value(ctx: &mut DalContext) -> Resul
     let default_view_id = View::get_id_for_default(ctx).await?;
 
     // Duplicate the downstream component
-    let duplicated_ids = Component::duplicate(ctx, default_view_id, vec![downstream.id()]).await?;
+    let duplicated_ids = Component::duplicate(
+        ctx,
+        default_view_id,
+        vec![downstream.id()],
+        "Cheeky-Monkey-",
+    )
+    .await?;
     assert_eq!(duplicated_ids.len(), 1);
 
     let downstream_copy = ExpectComponent(duplicated_ids[0]);
+    assert!(
+        downstream_copy
+            .component(ctx)
+            .await
+            .name(ctx)
+            .await?
+            .starts_with("Cheeky-Monkey-")
+    );
     let downstream_copy_parrots = downstream_copy.prop(ctx, downstream_parrots).await;
 
     assert_ne!(downstream.id(), downstream_copy.id());
@@ -106,24 +121,26 @@ async fn duplicate_component_with_dependent_value(ctx: &mut DalContext) -> Resul
 
     assert_eq!(
         Some(json!({
-            "domain": {
+
+            "si": {
+                "name": "Cheeky-Monkey-Long John Silver",
+                "type": "component",
+                "color": "#ff00ff",
+
+            },
+             "domain": {
                 // Propagated from /si/name, which means the attribute prototype has been copied
                 // from the copied component (since we manually set all values, which removes the
                 // default attribute prototype for the slot
-                "name": "Long John Silver - Copy",
+                "name": "Cheeky-Monkey-Long John Silver",
 
                 // The connection is not copied (duplicate ignores connections)
                 // "parrot_names": [
                 //     "Captain Flint",
                 // ],
             },
-            "resource_value": {},
             "resource": {},
-            "si": {
-                "color": "#ff00ff",
-                "name": "Long John Silver - Copy",
-                "type": "component",
-            },
+            "resource_value": {},
         })),
         downstream_copy.view(ctx).await,
     );
@@ -191,6 +208,7 @@ async fn duplicate_components_with_subscriptions(ctx: &mut DalContext) -> Result
         ctx,
         View::get_id_for_default(ctx).await?,
         vec![original1.id, original2.id],
+        "cheeky",
     )
     .await?;
     assert_eq!(duplicated_ids.len(), 2);
@@ -267,6 +285,7 @@ async fn duplicate_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
         ctx,
         View::get_id_for_default(ctx).await?,
         vec![manager.id, original.id],
+        "cheeky",
     )
     .await?;
     assert_eq!(duplicated_ids.len(), 2);
@@ -304,8 +323,13 @@ async fn duplicate_manager_only(ctx: &mut DalContext) -> Result<()> {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Duplicate only the manager
-    let duplicated_ids =
-        Component::duplicate(ctx, View::get_id_for_default(ctx).await?, vec![manager.id]).await?;
+    let duplicated_ids = Component::duplicate(
+        ctx,
+        View::get_id_for_default(ctx).await?,
+        vec![manager.id],
+        "cheeky",
+    )
+    .await?;
     assert_eq!(duplicated_ids.len(), 1);
 
     let duplicated_manager = Subscribable::new(test, duplicated_ids[0]);
@@ -340,8 +364,13 @@ async fn duplicate_managed_only(ctx: &mut DalContext) -> Result<()> {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Duplicate only the managed component
-    let duplicated_ids =
-        Component::duplicate(ctx, View::get_id_for_default(ctx).await?, vec![original.id]).await?;
+    let duplicated_ids = Component::duplicate(
+        ctx,
+        View::get_id_for_default(ctx).await?,
+        vec![original.id],
+        "cheeky",
+    )
+    .await?;
     assert_eq!(duplicated_ids.len(), 1);
 
     let duplicated_original = Subscribable::new(test, duplicated_ids[0]);
@@ -413,6 +442,7 @@ async fn duplicate_preserves_external_and_recreates_internal_subscriptions(
         ctx,
         View::get_id_for_default(ctx).await?,
         vec![original_a.id, original_b.id],
+        "cheeky",
     )
     .await?;
     assert_eq!(duplicated_ids.len(), 2);

@@ -28,6 +28,7 @@ use crate::{
 #[serde(rename_all = "camelCase")]
 pub struct PasteComponentsRequest {
     pub components: Vec<ComponentId>,
+    pub name: String,
 }
 
 /// Duplicate a set of [`Component`](Component)s via their componentIds. Creates change-set if on head
@@ -38,8 +39,8 @@ pub async fn duplicate_components(
     Json(request): Json<PasteComponentsRequest>,
 ) -> ViewResult<ForceChangeSetResponse<()>> {
     let force_change_set_id = ChangeSet::force_new(ctx).await?;
-
-    let pasted_component_ids = Component::duplicate(ctx, view_id, request.components).await?;
+    let pasted_component_ids =
+        Component::duplicate(ctx, view_id, request.components, &request.name).await?;
 
     // Emit  posthog events
     for pasted_component_id in pasted_component_ids {
