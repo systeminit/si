@@ -74,7 +74,12 @@
     </header>
 
     <!-- Error banner for hinting -->
-    <ErrorBanner v-if="errorHint" class="mx-xs mt-sm mb-xs" :text="errorHint" />
+    <StatusBox
+      v-if="errorHint"
+      kind="error"
+      class="mx-xs mt-sm mb-xs"
+      :text="errorHint"
+    />
 
     <div
       :class="
@@ -149,7 +154,7 @@ import CodeViewer from "@/components/CodeViewer.vue";
 import { FuncRun } from "../api_composables/func_run";
 import FuncRunStatusBadge from "../FuncRunStatusBadge.vue";
 import GridItemWithLiveHeader from "./GridItemWithLiveHeader.vue";
-import ErrorBanner from "./ErrorBanner.vue";
+import StatusBox from "./StatusBox.vue";
 
 const props = defineProps<{
   funcRun: FuncRun;
