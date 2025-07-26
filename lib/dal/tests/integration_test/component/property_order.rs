@@ -350,6 +350,7 @@ async fn child_property_value_remains_after_update_and_paste(
                 ctx,
                 default_view_id,
                 component.geometry_for_default(ctx).await,
+                None,
             )
             .await
             .expect("unable to paste component")

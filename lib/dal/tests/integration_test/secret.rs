@@ -343,6 +343,7 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
                     width: None,
                     height: None,
                 },
+                None,
             )
             .await
             .expect("paste");
@@ -369,6 +370,7 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
                 width: None,
                 height: None,
             },
+            None,
         )
         .await
         .expect("paste");

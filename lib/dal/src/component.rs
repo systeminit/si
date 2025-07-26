@@ -1326,9 +1326,6 @@ impl Component {
         }
 
         self.clear_resource(ctx).await?;
-        self.set_name(ctx, &Self::generate_copy_name(self.name(ctx).await?))
-            .await?;
-
         Ok(())
     }
 
@@ -3557,16 +3554,17 @@ impl Component {
         ctx: &DalContext,
         view_id: ViewId,
         component_geometry: RawGeometry,
+        name_prefix: Option<&str>,
     ) -> ComponentResult<Self> {
         let schema_variant = self.schema_variant(ctx).await?;
+        let name = if let Some(name_prefix) = name_prefix {
+            format!("{name_prefix}{0}", self.name(ctx).await?)
+        } else {
+            Self::generate_copy_name(self.name(ctx).await?)
+        };
 
-        let mut pasted_comp = Component::new(
-            ctx,
-            Self::generate_copy_name(self.name(ctx).await?),
-            schema_variant.id(),
-            view_id,
-        )
-        .await?;
+        let mut pasted_comp =
+            Component::new(ctx, name.clone(), schema_variant.id(), view_id).await?;
 
         pasted_comp
             .set_geometry(
@@ -3580,6 +3578,8 @@ impl Component {
             .await?;
 
         pasted_comp.clone_attributes_from(ctx, self.id()).await?;
+        // need to update the name AFTER we clone attributes, because the name IS an attribute
+        pasted_comp.set_name(ctx, &name).await?;
         Ok(pasted_comp)
     }
 
@@ -3592,6 +3592,7 @@ impl Component {
         ctx: &mut DalContext,
         to_view_id: ViewId,
         components: Vec<ComponentId>,
+        name_prefix: &str,
     ) -> ComponentResult<Vec<ComponentId>> {
         let mut pasted_component_ids = vec![];
         let mut to_pasted_id = HashMap::new();
@@ -3608,6 +3609,7 @@ impl Component {
                         width: None,
                         height: None,
                     },
+                    Some(name_prefix),
                 )
                 .await?;
             pasted_component_ids.push(pasted_component.id());
@@ -3675,7 +3677,7 @@ impl Component {
         for (component_id, raw_geometry) in components.into_iter() {
             let component = Component::get_by_id(ctx, component_id).await?;
             let pasted_component = component
-                .duplicate_without_connections(ctx, to_view_id, raw_geometry)
+                .duplicate_without_connections(ctx, to_view_id, raw_geometry, None)
                 .await?;
             pasted_component_ids.push(pasted_component.id());
             to_pasted_id.insert(component_id, pasted_component.id());

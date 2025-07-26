@@ -47,6 +47,7 @@ async fn paste_component_with_value(ctx: &mut DalContext) -> Result<()> {
                 ctx,
                 default_view_id,
                 component.geometry_for_default(ctx).await,
+                None,
             )
             .await?
             .id(),
@@ -100,6 +101,7 @@ async fn paste_component_with_dependent_value(ctx: &mut DalContext) -> Result<()
                 ctx,
                 default_view_id,
                 downstream.geometry_for_default(ctx).await,
+                None,
             )
             .await?
             .id(),

@@ -9,7 +9,21 @@
         :status="qualificationStatus ?? 'unknown'"
         class="break-all"
       >
-        <template v-if="qualificationStatus === 'success'"> Passed! </template>
+        <template v-if="qualificationStatus === 'success'">
+          <div class="w-full flex flex-row gap-xs">
+            Passed!
+            <IconButton
+              v-if="qualification.avId"
+              tooltip="Rerun qualification"
+              tooltipPlacement="top"
+              icon="refresh"
+              iconTone="action"
+              size="sm"
+              class="self-center"
+              @click.left="enqueueDVU"
+            />
+          </div>
+        </template>
         <div
           v-else-if="
             qualificationStatus === 'failure' ||
