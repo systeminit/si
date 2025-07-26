@@ -10,7 +10,7 @@
         )
       "
     >
-      <!-- TODO(Wendy) - this list of shortcuts is not complete, finish it up! -->
+      <span class="font-bold underline">General</span>
       <div>
         <div class="keys">
           <div class="key">?</div>
@@ -19,6 +19,26 @@
           Press <TextPill tighter variant="key">?</TextPill> to open this modal.
         </div>
       </div>
+      <div>
+        <div class="keys">
+          <div class="key">M</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">M</TextPill> when on the map
+          view to toggle the mini-map open or closed.
+        </div>
+      </div>
+      <div>
+        <div class="keys">
+          <div class="key">K</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">K</TextPill> to select the
+          search bar.
+        </div>
+      </div>
+
+      <span class="font-bold mt-md underline">Selection</span>
       <div>
         <div class="keys">
           <div class="key">Tab</div>
@@ -31,89 +51,6 @@
             >Tab</TextPill
           >
           to select components on the grid.
-        </div>
-      </div>
-      <div>
-        <div class="keys">
-          <div class="key">C</div>
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">C</TextPill> to create a new
-          change set.
-        </div>
-      </div>
-      <div>
-        <div class="keys">
-          <div class="key">K</div>
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">K</TextPill> to select the
-          search bar.
-        </div>
-      </div>
-      <div>
-        <div class="keys">
-          <div class="key">N</div>
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">N</TextPill> to add a new
-          component.
-        </div>
-      </div>
-      <div>
-        <div class="keys">
-          <div class="key">E</div>
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">E</TextPill> to erase the
-          selected component.
-        </div>
-      </div>
-      <div>
-        <div class="keys">
-          <div class="key">U</div>
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">U</TextPill> to upgrade the
-          selected component (if upgradeable).
-        </div>
-      </div>
-      <div>
-        <div class="keys">
-          <div class="key">P</div>
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">P</TextPill> to pin or unpin the
-          selected component.
-        </div>
-      </div>
-      <div>
-        <div class="keys">
-          <Icon name="backspace" />
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">Backspace</TextPill> or
-          <TextPill tighter variant="key">Delete</TextPill> to delete the
-          selected component.
-        </div>
-      </div>
-      <div>
-        <div class="keys">
-          <div class="key">R</div>
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">R</TextPill> to restore the
-          selected component (if set for deletion).
-        </div>
-      </div>
-      <div>
-        <div class="keys">
-          <Icon name="command" />
-          <div class="key">D</div>
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">D</TextPill>
-          to duplicate the selected component.
         </div>
       </div>
       <div>
@@ -139,13 +76,44 @@
           current selection.
         </div>
       </div>
+
+      <span class="font-bold mt-md underline">Actions</span>
+      <div>
+        <div class="keys">
+          <div class="key">C</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">C</TextPill> to create a new
+          change set.
+        </div>
+      </div>
+      <div>
+        <div class="keys">
+          <div class="key">N</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">N</TextPill> to add a new
+          component.
+        </div>
+      </div>
+
+      <span class="font-bold mt-md underline">Selected Component Actions</span>
+      <div>
+        <div class="keys">
+          <div class="key">D</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">D</TextPill>
+          to duplicate the selected component.
+        </div>
+      </div>
       <div>
         <div class="keys">
           <div class="key">E</div>
         </div>
         <div>
-          Press <TextPill tighter variant="key">E</TextPill>
-          to erase the selected component.
+          Press <TextPill tighter variant="key">E</TextPill> to erase the
+          selected component.
         </div>
       </div>
       <div>
@@ -153,8 +121,64 @@
           <div class="key">P</div>
         </div>
         <div>
-          Press <TextPill tighter variant="key">M</TextPill> when on the map
-          view to toggle the mini-map open or closed.
+          Press <TextPill tighter variant="key">P</TextPill> to pin or unpin the
+          selected component.
+        </div>
+      </div>
+      <div>
+        <div class="keys">
+          <div class="key">R</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">R</TextPill> to restore the
+          selected component (if set for deletion).
+        </div>
+      </div>
+      <div>
+        <div class="keys">
+          <div class="key">T</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">T</TextPill>
+          to create a template from the selected components.
+        </div>
+      </div>
+      <div>
+        <div class="keys">
+          <div class="key">U</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">U</TextPill> to upgrade the
+          selected component (if upgradeable).
+        </div>
+      </div>
+      <!-- TODO(nick): add the ability to add and remove components from views. -->
+      <!-- <div> -->
+      <!-- <div class="keys"> -->
+      <!-- <div class="key">+</div> -->
+      <!-- </div> -->
+      <!-- <div> -->
+      <!-- Press <TextPill tighter variant="key">+</TextPill> -->
+      <!-- to add the selected components to a view. -->
+      <!-- </div> -->
+      <!-- </div> -->
+      <!-- <div> -->
+      <!-- <div class="keys"> -->
+      <!-- <div class="key">-</div> -->
+      <!-- </div> -->
+      <!-- <div> -->
+      <!-- Press <TextPill tighter variant="key">-</TextPill> -->
+      <!-- to remove the selected components from a view. -->
+      <!-- </div> -->
+      <!-- </div> -->
+      <div>
+        <div class="keys">
+          <Icon name="backspace" />
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">Backspace</TextPill> or
+          <TextPill tighter variant="key">Delete</TextPill> to delete the
+          selected component.
         </div>
       </div>
     </div>

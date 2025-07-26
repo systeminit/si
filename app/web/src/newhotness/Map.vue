@@ -696,6 +696,13 @@ const onD = (e: KeyDetails["d"]) => {
 const onP = (_e: KeyDetails["p"]) => {
   // Do nothing! Pinning is unsupported in the map view.
 };
+// TODO(nick): add the ability to add and remove components from views.
+// const onPlus = (_e: KeyDetails["+"]) => {
+//   // Do nothing! Adding a component to a view is unsupported in the map view.
+// };
+// const onMinus = (_e: KeyDetails["-"]) => {
+//   // Do nothing! Removing a component from a view is unsupported in the map view.
+// };
 const onU = (_e: KeyDetails["u"]) => {
   // if (selectedComponent.value && selectedComponent.value.canBeUpgraded) {
   //   componentContextMenuRef.value?.componentUpgrade([
@@ -1554,6 +1561,9 @@ defineExpose({
   onR,
   onM,
   isLoading,
+  // TODO(nick): add the ability to add and remove components from views.
+  // onPlus,
+  // onMinus,
 });
 </script>
 
