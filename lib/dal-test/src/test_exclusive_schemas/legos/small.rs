@@ -840,22 +840,45 @@ pub(crate) async fn migrate_test_exclusive_schema_small_even_lego(
 
     // Build Create Action Func
     let create_action_code = "async function main() {
-                return { payload: { \"poop\": true }, status: \"ok\" };
+                return { payload: { \"poop\": \"created\", \"refresh_count\": 0 }, status: \"ok\" };
             }";
 
     let fn_name = "test:createActionSmallLego";
     let create_action_func = build_action_func(create_action_code, fn_name)?;
 
     // Build Refresh Action Func
-    let refresh_action_code = "async function main(component: Input): Promise<Output> {
-              return { payload: JSON.parse(component.properties.resource?.payload) || { \"poop\": true } , status: \"ok\" };
-            }";
+
+    let refresh_action_code = r#"async function main(component: Input) {
+    const currentCount = typeof component.properties.resource?.payload?.refresh_count === 'number' 
+        ? component.properties.resource.payload.refresh_count 
+        : 0;
+    const newCount = currentCount + 1;
+
+    if (component.properties.resource?.payload?.poop) { 
+        return { 
+            payload: { 
+                "poop": "refreshed again", 
+                "refresh_count": newCount 
+            }, 
+            status: "ok" 
+        };
+    }
+    else {
+        return { 
+            payload: { 
+                "poop": "refreshed", 
+                "refresh_count": newCount 
+            }, 
+            status: "ok" 
+        };
+    }
+}"#;
 
     let fn_name = "test:refreshActionSmallLego";
     let refresh_action_func = build_action_func(refresh_action_code, fn_name)?;
 
     let update_action_code = "async function main(component: Input): Promise<Output> {
-              return { payload: { \"poonami\": true }, status: \"ok\" };
+              return { payload: { \"poop\": updated }, status: \"ok\" };
             }";
     let fn_name = "test:updateActionSmallLego";
     let update_action_func = build_action_func(update_action_code, fn_name)?;
@@ -871,6 +894,37 @@ pub(crate) async fn migrate_test_exclusive_schema_small_even_lego(
     // Create Scaffold Func
     let fn_name = "test:scaffoldSmallLegoAsset";
     let small_lego_authoring_schema_func = build_asset_func(fn_name)?;
+
+    // This import func mimics our Clover funcs in name so we can test logic related to that
+    let import_management_func_code = r#"async function main({ thisComponent }: Input): Promise<Output> {
+        const thisProperties = thisComponent.properties;
+        return {
+            status: 'ok',
+            ops: {
+                update: {
+                    self: {
+                        properties: {
+                            ...thisProperties,
+                            domain: {
+                                ...thisProperties.domain,
+                                one: 'twostep',
+                            },
+                        }
+                    }
+                },
+                actions: {
+                    self: {
+                        remove: ["create"],
+                        add: ["refresh"],
+                    },
+                },
+            },
+            message: 'hello'
+        }
+    }"#;
+    let import_management_func_name = "Import from AWS";
+    let import_management_func =
+        build_management_func(import_management_func_code, import_management_func_name)?;
 
     let bricks = LegoBricks::new_for_even()?;
 
@@ -924,6 +978,12 @@ pub(crate) async fn migrate_test_exclusive_schema_small_even_lego(
                         .func_unique_id(&delete_action_func.unique_id)
                         .build()?,
                 )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Import from AWS")
+                        .func_unique_id(&import_management_func.unique_id)
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -934,6 +994,7 @@ pub(crate) async fn migrate_test_exclusive_schema_small_even_lego(
         .func(create_action_func)
         .func(update_action_func)
         .func(delete_action_func)
+        .func(import_management_func)
         .func(small_lego_authoring_schema_func)
         .schema(small_lego_schema)
         .build()?;

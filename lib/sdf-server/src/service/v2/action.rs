@@ -15,6 +15,7 @@ use axum::{
 };
 use dal::{
     ActionPrototypeId,
+    ChangeSet,
     ChangeSetError,
     ChangeSetId,
     ComponentError,
@@ -37,11 +38,19 @@ use dal::{
     },
     slow_rt::SlowRuntimeError,
 };
-use sdf_core::api_error::ApiError;
+use sdf_core::{
+    api_error::ApiError,
+    force_change_set_response::ForceChangeSetResponse,
+};
+use sdf_extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
+};
 use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::json;
 use si_events::{
     ActionState,
     audit_log::AuditLogKind,
@@ -121,6 +130,10 @@ impl IntoResponse for ActionRequestError {
             {
                 (StatusCode::GONE, err.to_string())
             }
+            ActionRequestError::ActionAlreadyEnqueued(_)
+            | ActionRequestError::Action(dal::action::ActionError::ActionAlreadyEnqueued(_)) => {
+                (StatusCode::CONFLICT, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
@@ -131,6 +144,7 @@ impl IntoResponse for ActionRequestError {
 pub fn v2_routes() -> Router<AppState> {
     Router::new()
         .route("/add", post(add))
+        .route("/refresh/:component_id", put(refresh))
         .route("/:action_id/cancel", put(cancel))
         .route("/:action_id/put_on_hold", put(hold))
         .route("/:action_id/retry", put(retry))
@@ -144,23 +158,20 @@ pub struct AddActionRequest {
 }
 
 pub async fn add(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
-    Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
+    Path((_workspace_pk, _change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Json(AddActionRequest {
         component_id,
         prototype_id,
     }): Json<AddActionRequest>,
-) -> ActionResult<()> {
-    let ctx = builder
-        .build(access_builder.build(change_set_id.into()))
-        .await?;
-    let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
+) -> ActionResult<ForceChangeSetResponse<()>> {
+    let force_change_set_id = ChangeSet::force_new(ctx).await?;
+    let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
     match prototype.kind {
         ActionKind::Create | ActionKind::Destroy | ActionKind::Update | ActionKind::Refresh => {
             let maybe_duplicate_action =
-                Action::find_for_kind_and_component_id(&ctx, component_id, prototype.kind).await?;
+                Action::find_for_kind_and_component_id(ctx, component_id, prototype.kind).await?;
             if !maybe_duplicate_action.is_empty() {
                 return Err(ActionRequestError::ActionAlreadyEnqueued(prototype.id));
             }
@@ -169,9 +180,9 @@ pub async fn add(
         dal::action::prototype::ActionKind::Manual => {}
     }
 
-    let func_id = ActionPrototype::func_id(&ctx, prototype.id).await?;
-    let func = Func::get_by_id(&ctx, func_id).await?;
-    Action::new(&ctx, prototype_id, Some(component_id)).await?;
+    let func_id = ActionPrototype::func_id(ctx, prototype.id).await?;
+    let func = Func::get_by_id(ctx, func_id).await?;
+    Action::new(ctx, prototype_id, Some(component_id)).await?;
     ctx.write_audit_log(
         AuditLogKind::AddAction {
             prototype_id: prototype.id(),
@@ -185,6 +196,33 @@ pub async fn add(
     .await?;
 
     ctx.commit().await?;
+    Ok(ForceChangeSetResponse::new(force_change_set_id, ()))
+}
+
+pub async fn refresh(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(access_builder): AccessBuilder,
+    tracker: PosthogEventTracker,
+    Path((_workspace_pk, change_set_id, component_id)): Path<(
+        WorkspacePk,
+        ChangeSetId,
+        ComponentId,
+    )>,
+) -> ActionResult<()> {
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
+    Action::enqueue_refresh_in_correct_change_set_and_commit(&ctx, component_id).await?;
+
+    tracker.track(
+        &ctx,
+        "refresh_component",
+        json!({
+            "how": "/actions/refresh",
+            "component_id": component_id,
+            "change_set_id": ctx.change_set_id(),
+        }),
+    );
     Ok(())
 }
 

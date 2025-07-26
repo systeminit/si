@@ -279,6 +279,7 @@ fn build_management_func(code: &str, fn_name: &str) -> BuiltinsResult<FuncSpec> 
             FuncSpecData::builder()
                 .name(fn_name)
                 .code_plaintext(code)
+                .display_name(fn_name.to_string())
                 .handler("main")
                 .backend_kind(FuncSpecBackendKind::Management)
                 .response_type(FuncSpecBackendResponseType::Management)

@@ -3,6 +3,7 @@ use std::collections::{
     VecDeque,
 };
 
+use itertools::Itertools;
 use petgraph::prelude::*;
 use postgres_types::{
     FromSql,
@@ -12,8 +13,14 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::ulid::Ulid;
-use si_id::FuncRunId;
+use si_events::{
+    audit_log::AuditLogKind,
+    ulid::Ulid,
+};
+use si_id::{
+    FuncRunId,
+    SchemaVariantId,
+};
 use si_layer_cache::LayerDbError;
 use strum::{
     AsRefStr,
@@ -34,8 +41,11 @@ use crate::{
     DalContext,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
+    Func,
     FuncError,
     HelperError,
+    SchemaVariant,
+    SchemaVariantError,
     TransactionsError,
     WorkspaceSnapshotError,
     WsEvent,
@@ -75,6 +85,8 @@ pub mod prototype;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ActionError {
+    #[error("action already enqueued: {0}")]
+    ActionAlreadyEnqueued(ActionPrototypeId),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
@@ -105,10 +117,16 @@ pub enum ActionError {
     NodeWeight(#[from] Box<NodeWeightError>),
     #[error("prototype not found for action: {0}")]
     PrototypeNotFoundForAction(ActionId),
+    #[error("Schema Variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("Transactions error: {0}")]
     Transactions(#[from] Box<TransactionsError>),
     #[error("Unable to determine kind for action: {0}")]
     UnableToGetKind(ActionId),
+    #[error("unexpected number of action kind {0} for variant {1}")]
+    UnexpectedNumberOfActionKinds(ActionKind, SchemaVariantId),
+    #[error("unexpected number of {0} actions enqueued for component {1}")]
+    UnexpectedNumberOfActionsEnqueuedForComponent(ActionKind, ComponentId),
     #[error("Workspace Snapshot error: {0}")]
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
@@ -758,6 +776,128 @@ impl Action {
             .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, id)
             .await?
             .map(|f| f.id()))
+    }
+
+    /// This function behaves differently if on head vs. in an open change set.
+    /// For a given component, if we're on head already, we'll simply enqueue the refresh action as normal
+    /// If we're not on head, we check to see if the component exists on head
+    /// If it does, we enqueue the refresh function on head (and when it runs, it will be replayed)
+    /// as we do not want a change set to have a more up-to-date perspective than head
+    /// If it does NOT exist on head, we will dispatch the refresh action directly!
+    pub async fn enqueue_refresh_in_correct_change_set_and_commit(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ActionResult<()> {
+        let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+        // if we're already on head, just enqueue it
+        if ctx.change_set_id() == head_change_set_id {
+            Self::enqueue_refresh(ctx, component_id, false).await
+        } else {
+            // Not on head, so build the head dal ctx
+            let head_ctx = ctx.clone_with_head().await?;
+            // if the component exists on head, enqueue the refresh action there
+            if Component::exists_by_id(&head_ctx, component_id).await? {
+                Self::enqueue_refresh(&head_ctx, component_id, false).await
+            }
+            // otherwise, if the component doesn't have a resource, just enqueue it
+            // (this is a backend guard, the button will be hidden from the user)
+            else if Component::resource_by_id(ctx, component_id)
+                .await?
+                .is_none()
+            {
+                Self::enqueue_refresh(ctx, component_id, false).await
+            }
+            // last case, component doesn't exist on head, but has a resource (which can only be true if we ran an import or other mgmt func)
+            // so we can enqueue and dispatch right away
+            else {
+                Self::enqueue_refresh(ctx, component_id, true).await
+            }
+        }
+    }
+
+    async fn enqueue_refresh(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        should_dispatch: bool,
+    ) -> ActionResult<()> {
+        let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+        let refresh_actions = SchemaVariant::find_action_prototypes_by_kind(
+            ctx,
+            schema_variant_id,
+            ActionKind::Refresh,
+        )
+        .await?;
+        if let Ok(&prototype_id) = refresh_actions.iter().exactly_one().map_err(|_| {
+            ActionError::UnexpectedNumberOfActionKinds(ActionKind::Refresh, schema_variant_id)
+        }) {
+            let maybe_duplicate_action =
+                Action::find_for_kind_and_component_id(ctx, component_id, ActionKind::Refresh)
+                    .await?;
+
+            // See if there's an existing Refresh Action (single) for this component
+            if let Some(&action_id) = maybe_duplicate_action.iter().at_most_one().map_err(|_| {
+                ActionError::UnexpectedNumberOfActionsEnqueuedForComponent(
+                    ActionKind::Refresh,
+                    component_id,
+                )
+            })? {
+                if should_dispatch {
+                    // If we're dispatching and there's already an action enqueued, and the originating change set
+                    // is this change set, dispatch it! Otherwise, create a new action and dispatch it.
+                    let action = Action::get_by_id(ctx, action_id).await?;
+                    if action.originating_changeset_id() == ctx.change_set_id() {
+                        Action::dispatch_action(ctx, action_id).await?;
+                    } else {
+                        let new_action_id =
+                            Self::enqueue_new_refresh(ctx, prototype_id, component_id).await?;
+                        Action::dispatch_action(ctx, new_action_id).await?;
+                    }
+                } else {
+                    // Not dispatching - re-enqueue the existing action
+                    let action = Action::get_by_id(ctx, action_id).await?;
+                    match action.state() {
+                        ActionState::Failed | ActionState::OnHold => {
+                            Action::set_state(ctx, action_id, ActionState::Queued).await?;
+                        }
+                        ActionState::Dispatched | ActionState::Queued | ActionState::Running => {
+                            // no op if the action is already queued/dispatched/running
+                            return Ok(());
+                        }
+                    }
+                }
+            } else {
+                // No duplicate actions - create a new one and optionally dispatch
+                let action_id = Self::enqueue_new_refresh(ctx, prototype_id, component_id).await?;
+                if should_dispatch {
+                    Action::dispatch_action(ctx, action_id).await?;
+                }
+            }
+            ctx.commit().await?;
+        };
+
+        Ok(())
+    }
+
+    async fn enqueue_new_refresh(
+        ctx: &DalContext,
+        prototype_id: ActionPrototypeId,
+        component_id: ComponentId,
+    ) -> ActionResult<ActionId> {
+        let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
+        let action = Action::new(ctx, prototype_id, Some(component_id)).await?;
+        ctx.write_audit_log(
+            AuditLogKind::AddAction {
+                prototype_id,
+                action_kind: si_events::ActionKind::Refresh,
+                func_id,
+                func_display_name: func.display_name,
+                func_name: func.name.clone(),
+            },
+            func.name,
+        )
+        .await?;
+        Ok(action.id())
     }
 }
 
