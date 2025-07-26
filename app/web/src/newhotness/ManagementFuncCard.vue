@@ -9,9 +9,7 @@
     <StatusBox
       :kind="statusBoxKind"
       :text="func.name"
-      :subtitle="func.description ?? 'No description provided'"
-      :showSubtitle="showDescription"
-      @click="() => (showDescription = !showDescription)"
+      :description="func.description ?? 'No description provided'"
     >
       <template #right>
         <div class="flex gap-xs">
@@ -117,8 +115,6 @@ const managementExecutionStatus = computed(() => {
   if (dispatchedFunc.value) return "Running";
   return funcRunStatus(props.funcRun, managementFuncJobState.value?.state);
 });
-
-const showDescription = ref<boolean>(false);
 
 const statusBoxKind = computed(() => {
   if (managementExecutionStatus.value === "Running") return "loading";
