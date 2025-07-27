@@ -8931,6 +8931,9 @@
   "The Availability Zone that you want to create the flow in. These options are limited to the Availability Zones within the current AWS.": {
     "enum": null
   },
+  "The Availability Zone.": {
+    "enum": null
+  },
   "The Availability Zone. Follows the format us-east-2a (case-sensitive).": {
     "enum": null
   },
@@ -13534,6 +13537,9 @@
     "enum": null
   },
   "The name of the domain that contains the repository.": {
+    "enum": null
+  },
+  "The name of the domain to manage in Lightsail.": {
     "enum": null
   },
   "The name of the domain unit.": {
