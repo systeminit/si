@@ -10,7 +10,7 @@
     :componentName="action.componentName"
     :componentId="action.componentId"
     :actor="action.actor"
-    @click="handleClick"
+    @click="noInteraction ? undefined : handleClick"
   >
     <template #icons>
       <Icon
@@ -182,6 +182,10 @@ const navigateToComponent = () => {
 
 // Handle click on the card
 const handleClick = () => {
+  if (props.noInteraction) {
+    return;
+  }
+
   emit("click", props.action);
   // Navigate to action details which will show the latest function run
   navigateToActionDetails();
