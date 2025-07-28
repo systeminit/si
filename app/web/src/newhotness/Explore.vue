@@ -1338,7 +1338,7 @@ const onD = (e: KeyDetails["d"]) => {
 
   if (showGrid.value) {
     if (!selectionComponentsForActionIds.value) return;
-    componentContextMenuRef.value?.componentsDuplicate(
+    componentContextMenuRef.value?.duplicateComponentStart(
       selectionComponentsForActionIds.value,
     );
   } else {
