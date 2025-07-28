@@ -30,6 +30,7 @@ class ComponentViewV1(BaseModel):
     """
     ComponentViewV1
     """ # noqa: E501
+    attributes: Dict[str, Any]
     can_be_upgraded: StrictBool = Field(alias="canBeUpgraded")
     connections: List[ConnectionViewV1]
     domain_props: List[ComponentPropViewV1] = Field(alias="domainProps")
@@ -40,10 +41,9 @@ class ComponentViewV1(BaseModel):
     schema_id: StrictStr = Field(alias="schemaId")
     schema_variant_id: StrictStr = Field(alias="schemaVariantId")
     sockets: List[SocketViewV1]
-    sources: List[List[StrictStr]]
     to_delete: StrictBool = Field(alias="toDelete")
     views: List[ViewV1]
-    __properties: ClassVar[List[str]] = ["canBeUpgraded", "connections", "domainProps", "id", "name", "resourceId", "resourceProps", "schemaId", "schemaVariantId", "sockets", "sources", "toDelete", "views"]
+    __properties: ClassVar[List[str]] = ["attributes", "canBeUpgraded", "connections", "domainProps", "id", "name", "resourceId", "resourceProps", "schemaId", "schemaVariantId", "sockets", "toDelete", "views"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -131,6 +131,7 @@ class ComponentViewV1(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "attributes": obj.get("attributes"),
             "canBeUpgraded": obj.get("canBeUpgraded"),
             "connections": [ConnectionViewV1.from_dict(_item) for _item in obj["connections"]] if obj.get("connections") is not None else None,
             "domainProps": [ComponentPropViewV1.from_dict(_item) for _item in obj["domainProps"]] if obj.get("domainProps") is not None else None,
@@ -141,7 +142,6 @@ class ComponentViewV1(BaseModel):
             "schemaId": obj.get("schemaId"),
             "schemaVariantId": obj.get("schemaVariantId"),
             "sockets": [SocketViewV1.from_dict(_item) for _item in obj["sockets"]] if obj.get("sockets") is not None else None,
-            "sources": obj.get("sources"),
             "toDelete": obj.get("toDelete"),
             "views": [ViewV1.from_dict(_item) for _item in obj["views"]] if obj.get("views") is not None else None
         })

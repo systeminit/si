@@ -497,6 +497,15 @@ Components management endpoints
 ```json
 {
   "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
     "canBeUpgraded": true,
     "connections": [
       {
@@ -537,23 +546,6 @@ Components management endpoints
         "name": "string",
         "value": {}
       }
-    ],
-    "sources": [
-      [
-        "/domain/RouteTableId",
-        {
-          "$source": {
-            "component": "demo-component",
-            "path": "/resource_value/RouteTableId"
-          }
-        }
-      ],
-      [
-        "/domain/region",
-        {
-          "value": "us-east-1"
-        }
-      ]
     ],
     "toDelete": true,
     "views": [
@@ -608,6 +600,15 @@ Components management endpoints
     }
   ],
   "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
     "canBeUpgraded": true,
     "connections": [
       {
@@ -648,23 +649,6 @@ Components management endpoints
         "name": "string",
         "value": {}
       }
-    ],
-    "sources": [
-      [
-        "/domain/RouteTableId",
-        {
-          "$source": {
-            "component": "demo-component",
-            "path": "/resource_value/RouteTableId"
-          }
-        }
-      ],
-      [
-        "/domain/region",
-        {
-          "value": "us-east-1"
-        }
-      ]
     ],
     "toDelete": true,
     "views": [
@@ -769,6 +753,15 @@ Components management endpoints
     }
   ],
   "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
     "canBeUpgraded": true,
     "connections": [
       {
@@ -809,23 +802,6 @@ Components management endpoints
         "name": "string",
         "value": {}
       }
-    ],
-    "sources": [
-      [
-        "/domain/RouteTableId",
-        {
-          "$source": {
-            "component": "demo-component",
-            "path": "/resource_value/RouteTableId"
-          }
-        }
-      ],
-      [
-        "/domain/region",
-        {
-          "value": "us-east-1"
-        }
-      ]
     ],
     "toDelete": true,
     "views": [
@@ -912,6 +888,15 @@ Components management endpoints
 ```json
 {
   "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
     "canBeUpgraded": true,
     "connections": [
       {
@@ -952,23 +937,6 @@ Components management endpoints
         "name": "string",
         "value": {}
       }
-    ],
-    "sources": [
-      [
-        "/domain/RouteTableId",
-        {
-          "$source": {
-            "component": "demo-component",
-            "path": "/resource_value/RouteTableId"
-          }
-        }
-      ],
-      [
-        "/domain/region",
-        {
-          "value": "us-east-1"
-        }
-      ]
     ],
     "toDelete": true,
     "views": [
@@ -1161,6 +1129,15 @@ Components management endpoints
 ```json
 {
   "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
     "canBeUpgraded": true,
     "connections": [
       {
@@ -1201,23 +1178,6 @@ Components management endpoints
         "name": "string",
         "value": {}
       }
-    ],
-    "sources": [
-      [
-        "/domain/RouteTableId",
-        {
-          "$source": {
-            "component": "demo-component",
-            "path": "/resource_value/RouteTableId"
-          }
-        }
-      ],
-      [
-        "/domain/region",
-        {
-          "value": "us-east-1"
-        }
-      ]
     ],
     "toDelete": true,
     "views": [
@@ -2474,6 +2434,15 @@ xor
 
 ```json
 {
+  "attributes": {
+    "/domain/region": "us-east-1",
+    "/secrets/credential": {
+      "$source": {
+        "component": "demo-credential",
+        "path": "/secrets/AWS Credential"
+      }
+    }
+  },
   "canBeUpgraded": true,
   "connections": [
     {
@@ -2515,23 +2484,6 @@ xor
       "value": {}
     }
   ],
-  "sources": [
-    [
-      "/domain/RouteTableId",
-      {
-        "$source": {
-          "component": "demo-component",
-          "path": "/resource_value/RouteTableId"
-        }
-      }
-    ],
-    [
-      "/domain/region",
-      {
-        "value": "us-east-1"
-      }
-    ]
-  ],
   "toDelete": true,
   "views": [
     {
@@ -2548,6 +2500,8 @@ xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|attributes|object|true|none|none|
+|» **additionalProperties**|any|false|none|none|
 |canBeUpgraded|boolean|true|none|none|
 |connections|[[ConnectionViewV1](#schemaconnectionviewv1)]|true|none|none|
 |domainProps|[[ComponentPropViewV1](#schemacomponentpropviewv1)]|true|none|none|
@@ -2558,7 +2512,6 @@ xor
 |schemaId|string|true|none|none|
 |schemaVariantId|string|true|none|none|
 |sockets|[[SocketViewV1](#schemasocketviewv1)]|true|none|none|
-|sources|[array]|true|none|none|
 |toDelete|boolean|true|none|none|
 |views|[[ViewV1](#schemaviewv1)]|true|none|none|
 
@@ -2798,7 +2751,7 @@ xor
 |name|string|true|none|none|
 |resourceId|string,null|false|none|none|
 |schemaName|string|true|none|none|
-|secrets|object|true|none|none|
+|secrets|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
 |subscriptions|object|false|none|none|
 |» **additionalProperties**|[Subscription](#schemasubscription)|false|none|none|
@@ -2814,6 +2767,15 @@ xor
 ```json
 {
   "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
     "canBeUpgraded": true,
     "connections": [
       {
@@ -2854,23 +2816,6 @@ xor
         "name": "string",
         "value": {}
       }
-    ],
-    "sources": [
-      [
-        "/domain/RouteTableId",
-        {
-          "$source": {
-            "component": "demo-component",
-            "path": "/resource_value/RouteTableId"
-          }
-        }
-      ],
-      [
-        "/domain/region",
-        {
-          "value": "us-east-1"
-        }
-      ]
     ],
     "toDelete": true,
     "views": [
@@ -3443,6 +3388,15 @@ continued
     }
   ],
   "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
     "canBeUpgraded": true,
     "connections": [
       {
@@ -3483,23 +3437,6 @@ continued
         "name": "string",
         "value": {}
       }
-    ],
-    "sources": [
-      [
-        "/domain/RouteTableId",
-        {
-          "$source": {
-            "component": "demo-component",
-            "path": "/resource_value/RouteTableId"
-          }
-        }
-      ],
-      [
-        "/domain/region",
-        {
-          "value": "us-east-1"
-        }
-      ]
     ],
     "toDelete": true,
     "views": [
@@ -3974,6 +3911,15 @@ continued
 ```json
 {
   "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
     "canBeUpgraded": true,
     "connections": [
       {
@@ -4014,23 +3960,6 @@ continued
         "name": "string",
         "value": {}
       }
-    ],
-    "sources": [
-      [
-        "/domain/RouteTableId",
-        {
-          "$source": {
-            "component": "demo-component",
-            "path": "/resource_value/RouteTableId"
-          }
-        }
-      ],
-      [
-        "/domain/region",
-        {
-          "value": "us-east-1"
-        }
-      ]
     ],
     "toDelete": true,
     "views": [
@@ -4849,7 +4778,7 @@ and
 |» **additionalProperties**|any|false|none|none|
 |name|string,null|false|none|none|
 |resourceId|string,null|false|none|none|
-|secrets|object|true|none|none|
+|secrets|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
 |subscriptions|object|false|none|none|
 |» **additionalProperties**|[Subscription](#schemasubscription)|false|none|none|
@@ -4865,6 +4794,15 @@ and
 ```json
 {
   "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
     "canBeUpgraded": true,
     "connections": [
       {
@@ -4905,23 +4843,6 @@ and
         "name": "string",
         "value": {}
       }
-    ],
-    "sources": [
-      [
-        "/domain/RouteTableId",
-        {
-          "$source": {
-            "component": "demo-component",
-            "path": "/resource_value/RouteTableId"
-          }
-        }
-      ],
-      [
-        "/domain/region",
-        {
-          "value": "us-east-1"
-        }
-      ]
     ],
     "toDelete": true,
     "views": [

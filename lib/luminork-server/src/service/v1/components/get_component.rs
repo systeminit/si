@@ -48,17 +48,15 @@ pub struct GetComponentV1Response {
                 "isDefault": true
             }
         ],
-        "sources": [
-            ["/domain/RouteTableId", {
+        "attributes": {
+            "/domain/region": "us-east-1",
+            "/secrets/credential": {
                 "$source": {
-                    "component": "demo-component",
-                    "path": "/resource_value/RouteTableId"
+                    "component": "demo-credential",
+                    "path": "/secrets/AWS Credential"
                 }
-            }],
-            ["/domain/region", {
-                "value": "us-east-1"
-            }]
-        ]
+            }
+        }
     }))]
     pub component: ComponentViewV1,
     #[schema(example = json!([

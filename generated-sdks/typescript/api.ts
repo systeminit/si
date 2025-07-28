@@ -353,6 +353,12 @@ export interface ComponentV1RequestPath {
 export interface ComponentViewV1 {
     /**
      * 
+     * @type {{ [key: string]: any; }}
+     * @memberof ComponentViewV1
+     */
+    'attributes': { [key: string]: any; };
+    /**
+     * 
      * @type {boolean}
      * @memberof ComponentViewV1
      */
@@ -411,12 +417,6 @@ export interface ComponentViewV1 {
      * @memberof ComponentViewV1
      */
     'sockets': Array<SocketViewV1>;
-    /**
-     * 
-     * @type {Array<Array<string>>}
-     * @memberof ComponentViewV1
-     */
-    'sources': Array<Array<string>>;
     /**
      * 
      * @type {boolean}
@@ -657,7 +657,7 @@ export interface CreateComponentV1Request {
      * @memberof CreateComponentV1Request
      * @deprecated
      */
-    'secrets': { [key: string]: any; };
+    'secrets'?: { [key: string]: any; };
     /**
      * 
      * @type {{ [key: string]: Subscription; }}
@@ -2202,7 +2202,7 @@ export interface UpdateComponentV1Request {
      * @memberof UpdateComponentV1Request
      * @deprecated
      */
-    'secrets': { [key: string]: any; };
+    'secrets'?: { [key: string]: any; };
     /**
      * 
      * @type {{ [key: string]: Subscription; }}
