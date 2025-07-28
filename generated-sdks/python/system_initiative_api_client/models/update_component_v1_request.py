@@ -19,6 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from system_initiative_api_client.models.component_prop_key import ComponentPropKey
 from system_initiative_api_client.models.connection_details import ConnectionDetails
 from system_initiative_api_client.models.subscription import Subscription
 from typing import Optional, Set
@@ -28,14 +29,15 @@ class UpdateComponentV1Request(BaseModel):
     """
     UpdateComponentV1Request
     """ # noqa: E501
+    attributes: Optional[Dict[str, Any]] = None
     connection_changes: Optional[ConnectionDetails] = Field(default=None, alias="connectionChanges")
     domain: Optional[Dict[str, Any]] = None
     name: Optional[StrictStr] = None
     resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
-    secrets: Optional[Dict[str, Any]] = None
+    secrets: Dict[str, Any]
     subscriptions: Optional[Dict[str, Subscription]] = None
-    unset: Optional[List[StrictStr]] = None
-    __properties: ClassVar[List[str]] = ["connectionChanges", "domain", "name", "resourceId", "secrets", "subscriptions", "unset"]
+    unset: Optional[List[ComponentPropKey]] = None
+    __properties: ClassVar[List[str]] = ["attributes", "connectionChanges", "domain", "name", "resourceId", "secrets", "subscriptions", "unset"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -86,6 +88,13 @@ class UpdateComponentV1Request(BaseModel):
                 if self.subscriptions[_key_subscriptions]:
                     _field_dict[_key_subscriptions] = self.subscriptions[_key_subscriptions].to_dict()
             _dict['subscriptions'] = _field_dict
+        # override the default output from pydantic by calling `to_dict()` of each item in unset (list)
+        _items = []
+        if self.unset:
+            for _item_unset in self.unset:
+                if _item_unset:
+                    _items.append(_item_unset.to_dict())
+            _dict['unset'] = _items
         # set to None if name (nullable) is None
         # and model_fields_set contains the field
         if self.name is None and "name" in self.model_fields_set:
@@ -108,6 +117,7 @@ class UpdateComponentV1Request(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "attributes": obj.get("attributes"),
             "connectionChanges": ConnectionDetails.from_dict(obj["connectionChanges"]) if obj.get("connectionChanges") is not None else None,
             "domain": obj.get("domain"),
             "name": obj.get("name"),
@@ -119,7 +129,7 @@ class UpdateComponentV1Request(BaseModel):
             )
             if obj.get("subscriptions") is not None
             else None,
-            "unset": obj.get("unset")
+            "unset": [ComponentPropKey.from_dict(_item) for _item in obj["unset"]] if obj.get("unset") is not None else None
         })
         return _obj
 

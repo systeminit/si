@@ -66,11 +66,7 @@ class TestComponentViewV1(unittest.TestCase):
                         name = '', 
                         value = system_initiative_api_client.models.value.value(), )
                     ],
-                sources = {
-                    'key' : system_initiative_api_client.models.source_view_v1.SourceViewV1(
-                        component = '', 
-                        prop_path = '', )
-                    },
+                sources = [[/domain/RouteTableId, {$source={component=demo-component, path=/resource_value/RouteTableId}}], [/domain/region, {value=us-east-1}]],
                 to_delete = True,
                 views = [
                     system_initiative_api_client.models.view_v1.ViewV1(
@@ -112,11 +108,7 @@ class TestComponentViewV1(unittest.TestCase):
                         name = '', 
                         value = system_initiative_api_client.models.value.value(), )
                     ],
-                sources = {
-                    'key' : system_initiative_api_client.models.source_view_v1.SourceViewV1(
-                        component = '', 
-                        prop_path = '', )
-                    },
+                sources = [[/domain/RouteTableId, {$source={component=demo-component, path=/resource_value/RouteTableId}}], [/domain/region, {value=us-east-1}]],
                 to_delete = True,
                 views = [
                     system_initiative_api_client.models.view_v1.ViewV1(

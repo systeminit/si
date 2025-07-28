@@ -482,18 +482,24 @@ pub struct ComponentViewV1 {
     pub views: Vec<ViewV1>,
 
     #[schema(
-        value_type = std::collections::BTreeMap<String, serde_json::Value>,
-        example = json!({
-            "/domain/VpcId": {
-                "$source": {
-                    "component": "01K0WRC69ZPEMD6SMTKC84FBWC",
-                    "path": "/resource_value/VpcId"
+        value_type = Vec<[String; 2]>,
+        example = json!([
+            [
+                "/domain/RouteTableId",
+                {
+                    "$source": {
+                        "component": "demo-component",
+                        "path": "/resource_value/RouteTableId"
+                    }
                 }
-            },
-            "/domain/Version": {
-                "$source": "1.2.3"
-            }
-        })
+            ],
+            [
+                "/domain/region",
+                {
+                    "value": "us-east-1"
+                }
+            ]
+        ])
     )]
     pub sources: Vec<(AttributeValueIdent, dal::attribute::attributes::Source)>,
 }
