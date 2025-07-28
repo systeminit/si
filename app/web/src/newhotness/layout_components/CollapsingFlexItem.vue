@@ -21,7 +21,7 @@
         clsx(
           h3class,
           'group/header',
-          'cursor-pointer text-lg font-bold flex-none h-lg flex items-center px-xs m-0',
+          'cursor-pointer text-lg flex-none h-lg flex items-center px-xs m-0',
           openState.open.value && 'border-b',
           themeClasses(
             'bg-white border-neutral-300 hover:bg-neutral-100',
@@ -32,8 +32,8 @@
       @click="toggleOpen"
     >
       <Icon
-        class="group-hover/header:scale-125"
-        :name="openState.open.value ? 'chevron--down' : 'chevron--right'"
+        :name="openState.open.value ? 'chevron-down' : 'chevron-right'"
+        size="sm"
       />
       <slot name="header" />
       <div class="ml-auto" />

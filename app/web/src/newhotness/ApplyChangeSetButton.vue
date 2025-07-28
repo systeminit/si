@@ -3,9 +3,16 @@
     <VButton
       ref="applyButtonRef"
       size="sm"
-      tone="action"
       label="Apply Change Set"
-      class="ml-2xs mr-xs"
+      :class="
+        clsx(
+          'ml-2xs mr-xs !text-sm !border !cursor-pointer !px-xs',
+          themeClasses(
+            '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+            '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+          ),
+        )
+      "
       loadingText="Applying Changes"
       :loading="applyChangeSet.loading.value"
       :disabled="disableApplyChangeSet"
@@ -36,7 +43,8 @@
 <script lang="ts" setup>
 import { computed, inject, ref } from "vue";
 import * as _ from "lodash-es";
-import { VButton, PillCounter } from "@si/vue-lib/design-system";
+import { VButton, PillCounter, themeClasses } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import {
   BifrostActionViewList,
