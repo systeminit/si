@@ -399,6 +399,7 @@
       ref="componentContextMenuRef"
       onGrid
       enableKeyboardControls
+      :viewListOptions="viewListOptions"
       @clearSelected="clearSelection"
       @edit="navigateToFocusedComponent"
       @pin="(c) => (pinnedComponentId = c)"
@@ -836,6 +837,9 @@ const placeholderSearchText = computed(
     `Search across ${componentListQuery.data.value?.length ?? 0} Components`,
 );
 const componentList = computed(() => componentListQuery.data.value ?? []);
+
+// ================================================================================================
+// PINNING, RESOURCE COUNT, ETC.
 const pinnedComponent = computed(() =>
   componentList.value.find((c) => c.id === pinnedComponentId.value),
 );
@@ -1242,9 +1246,6 @@ const mountEmitters = () => {
   keyEmitter.on("r", onR);
   keyEmitter.on("p", onP);
   keyEmitter.on("t", onT);
-  // TODO(nick): add the ability to add and remove components from views.
-  // keyEmitter.on("+", onPlus);
-  // keyEmitter.on("-", onMinus);
   keyEmitter.on("ArrowRight", onArrow);
   keyEmitter.on("ArrowLeft", onArrow);
   keyEmitter.on("Enter", onEnter);
@@ -1267,9 +1268,6 @@ const removeEmitters = () => {
   keyEmitter.off("u", onU);
   keyEmitter.off("r", onR);
   keyEmitter.off("p", onP);
-  // TODO(nick): add the ability to add and remove components from views.
-  // keyEmitter.off("+", onPlus);
-  // keyEmitter.off("-", onMinus);
   keyEmitter.off("ArrowRight", onArrow);
   keyEmitter.off("ArrowLeft", onArrow);
   keyEmitter.off("Enter", onEnter);
@@ -1363,31 +1361,6 @@ const onP = (e: KeyDetails["p"]) => {
     mapRef.value?.onP(e);
   }
 };
-// TODO(nick): add the ability to add and remove components from views.
-// const onPlus = (e: KeyDetails["+"]) => {
-//   e.preventDefault();
-//
-//   if (showGrid.value) {
-//     if (!selectionComponentsForActionIds.value) return;
-//     componentContextMenuRef.value?.componentsAddToView(
-//       selectionComponentsForActionIds.value,
-//     );
-//   } else {
-//     mapRef.value?.onPlus(e);
-//   }
-// };
-// const onMinus = (e: KeyDetails["-"]) => {
-//   e.preventDefault();
-//
-//   if (showGrid.value) {
-//     if (!selectionComponentsForActionIds.value) return;
-//     componentContextMenuRef.value?.componentsRemoveFromView(
-//       selectionComponentsForActionIds.value,
-//     );
-//   } else {
-//     mapRef.value?.onMinus(e);
-//   }
-// };
 const onU = (e: KeyDetails["u"]) => {
   e.preventDefault();
 

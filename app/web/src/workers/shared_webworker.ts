@@ -335,6 +335,20 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
+  async getComponentsInViews(workspaceId: string, changeSetId: string) {
+    return await withLeader(
+      async (remote) =>
+        await remote.getComponentsInViews(workspaceId, changeSetId),
+    );
+  },
+
+  async getComponentsInOnlyOneView(workspaceId: string, changeSetId: string) {
+    return await withLeader(
+      async (remote) =>
+        await remote.getComponentsInOnlyOneView(workspaceId, changeSetId),
+    );
+  },
+
   async getSchemaMembers(workspaceId: string, changeSetId: string) {
     return await withLeader(
       async (remote) => await remote.getSchemaMembers(workspaceId, changeSetId),

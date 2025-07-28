@@ -44,6 +44,7 @@ use tokio::task::JoinError;
 
 use crate::app_state::AppState;
 
+mod add_components;
 pub mod convert_to_view;
 pub mod create_component;
 pub mod create_view;
@@ -190,6 +191,10 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/:view_id/erase_components",
             delete(erase_components::erase_components),
+        )
+        .route(
+            "/:view_id/add_components",
+            post(add_components::add_components),
         )
         .route(
             "/:view_id/component/set_geometry",

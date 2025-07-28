@@ -37,6 +37,12 @@
           search bar.
         </div>
       </div>
+      <div>
+        <div class="keys">
+          <Icon name="mouse-right-click-outline" />
+        </div>
+        <div>Right click on a component to take action.</div>
+      </div>
 
       <span class="font-bold mt-md underline">Selection</span>
       <div>
@@ -152,25 +158,6 @@
           selected component (if upgradeable).
         </div>
       </div>
-      <!-- TODO(nick): add the ability to add and remove components from views. -->
-      <!-- <div> -->
-      <!-- <div class="keys"> -->
-      <!-- <div class="key">+</div> -->
-      <!-- </div> -->
-      <!-- <div> -->
-      <!-- Press <TextPill tighter variant="key">+</TextPill> -->
-      <!-- to add the selected components to a view. -->
-      <!-- </div> -->
-      <!-- </div> -->
-      <!-- <div> -->
-      <!-- <div class="keys"> -->
-      <!-- <div class="key">-</div> -->
-      <!-- </div> -->
-      <!-- <div> -->
-      <!-- Press <TextPill tighter variant="key">-</TextPill> -->
-      <!-- to remove the selected components from a view. -->
-      <!-- </div> -->
-      <!-- </div> -->
       <div>
         <div class="keys">
           <Icon name="backspace" />

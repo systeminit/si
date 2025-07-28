@@ -503,6 +503,42 @@ export const getComponentDetails = async (args: {
   else return {};
 };
 
+export const getComponentsInViews = async (args: {
+  workspaceId: WorkspacePk;
+  changeSetId: ChangeSetId;
+}) => {
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
+  const start = performance.now();
+  const componentsInViews = await db.getComponentsInViews(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  const end = performance.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query componentsInViews", end - start, "ms");
+  if (componentsInViews) return reactive(componentsInViews);
+  else return {};
+};
+
+export const getComponentsInOnlyOneView = async (args: {
+  workspaceId: WorkspacePk;
+  changeSetId: ChangeSetId;
+}) => {
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
+  const start = performance.now();
+  const componentsInOnlyOneView = await db.getComponentsInOnlyOneView(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  const end = performance.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query componentsInOnlyOneView", end - start, "ms");
+  if (componentsInOnlyOneView) return reactive(componentsInOnlyOneView);
+  else return {};
+};
+
 export const getSchemaMembers = async (args: {
   workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
