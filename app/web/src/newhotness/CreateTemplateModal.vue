@@ -4,6 +4,7 @@
     title="Create template"
     confirmLabel="Create"
     @confirm="confirm"
+    @keydown.enter="confirm"
   >
     <ErrorMessage v-if="requestError">{{ requestError }}</ErrorMessage>
     <div>
@@ -30,7 +31,6 @@
               ),
             )
           "
-          @keydown.enter="confirm"
         />
         <span class="text-xs text-neutral-400">
           {{ field.hint }}
@@ -82,6 +82,8 @@ const viewIdRef = ref<string | undefined>();
 const componentIdsRef = ref<ComponentId[] | undefined>();
 
 function open(componentIds: ComponentId[], viewId: string) {
+  if (!componentIds.length) return;
+
   componentIdsRef.value = componentIds;
   viewIdRef.value = viewId;
 
