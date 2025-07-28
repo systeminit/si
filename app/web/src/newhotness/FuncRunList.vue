@@ -4,15 +4,7 @@
       v-if="showSubheader"
       :class="clsx('header flex flex-col px-2xs pb-2xs')"
     >
-      <div class="flex flex-row justify-between items-center">
-        <div
-          v-if="isFetching && !isFetchingNextPage"
-          class="text-xs text-neutral-500 flex items-center"
-        >
-          <Icon name="loader" size="xs" class="animate-spin mr-1" />
-          Updating...
-        </div>
-      </div>
+      <div class="flex flex-row justify-between items-center"></div>
       <div
         :class="
           clsx(
@@ -182,40 +174,34 @@ const componentNameFilter = ref<string>("");
 
 const api = useApi();
 
-const {
-  data,
-  fetchNextPage,
-  hasNextPage,
-  isFetchingNextPage,
-  isFetching,
-  isLoading,
-} = useInfiniteQuery({
-  queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
-  queryFn: async ({
-    pageParam = undefined,
-  }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
-    const call = api.endpoint<funcRunTypes.GetFuncRunsPaginatedResponse>(
-      routes.GetFuncRunsPaginated,
-    );
-    const params = new URLSearchParams();
-    params.append("limit", pageSize.value.toString());
-    if (pageParam) {
-      params.append("cursor", pageParam);
-    }
-    const req = await call.get(params);
-    if (api.ok(req)) {
-      return req.data;
-    }
-    return {
-      funcRuns: [],
-      nextCursor: null,
-    };
-  },
-  initialPageParam: undefined,
-  getNextPageParam: (lastPage: funcRunTypes.GetFuncRunsPaginatedResponse) => {
-    return lastPage.nextCursor ?? undefined;
-  },
-});
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  useInfiniteQuery({
+    queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
+    queryFn: async ({
+      pageParam = undefined,
+    }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
+      const call = api.endpoint<funcRunTypes.GetFuncRunsPaginatedResponse>(
+        routes.GetFuncRunsPaginated,
+      );
+      const params = new URLSearchParams();
+      params.append("limit", pageSize.value.toString());
+      if (pageParam) {
+        params.append("cursor", pageParam);
+      }
+      const req = await call.get(params);
+      if (api.ok(req)) {
+        return req.data;
+      }
+      return {
+        funcRuns: [],
+        nextCursor: null,
+      };
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage: funcRunTypes.GetFuncRunsPaginatedResponse) => {
+      return lastPage.nextCursor ?? undefined;
+    },
+  });
 
 // Flatten the pages of function runs for display
 const allFuncRuns = computed<FuncRun[]>(() => {
