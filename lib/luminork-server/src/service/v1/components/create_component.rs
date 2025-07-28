@@ -8,6 +8,7 @@ use dal::{
     Schema,
     SchemaVariant,
     Secret,
+    attribute::attributes::AttributeSources,
     cached_module::CachedModule,
     diagram::view::View,
     prop::PropPath,
@@ -141,6 +142,10 @@ pub async fn create_component(
     )
     .await?;
 
+    if !payload.attributes.is_empty() {
+        dal::update_attributes(ctx, component.id(), payload.attributes.clone()).await?;
+    }
+
     let component_list = Component::list_ids(ctx).await?;
     if let Some(resource_id) = payload.resource_id {
         let resource_prop_path = ["root", "si", "resourceId"];
@@ -158,6 +163,24 @@ pub async fn create_component(
         .await?;
     }
 
+    if !payload.managed_by.is_empty() {
+        let manager_component_id =
+            resolve_component_reference(ctx, &payload.managed_by, &component_list).await?;
+
+        Component::manage_component(ctx, manager_component_id, component.id()).await?;
+    }
+
+    // Ideally a user wouldn't set these as well - it would be pain for them
+    for (key, value) in payload.secrets.clone().into_iter() {
+        let prop_id = key.prop_id(ctx, variant_id).await?;
+
+        let secret_id = resolve_secret_id(ctx, &value).await?;
+
+        let attribute_value_id =
+            Component::attribute_value_for_prop_id(ctx, component.id(), prop_id).await?;
+        Secret::attach_for_attribute_value(ctx, attribute_value_id, Some(secret_id)).await?;
+    }
+
     for (key, value) in payload.domain.clone().into_iter() {
         let prop_id = key.prop_id(ctx, variant_id).await?;
         let attribute_value_id =
@@ -169,40 +192,16 @@ pub async fn create_component(
         handle_subscription(ctx, av_to_set, &sub, component.id(), &component_list).await?;
     }
 
-    for (key, value) in payload.secrets.clone().into_iter() {
-        let prop_id = key.prop_id(ctx, variant_id).await?;
-
-        let secret_id = resolve_secret_id(ctx, &value).await?;
-
-        let attribute_value_id =
-            Component::attribute_value_for_prop_id(ctx, component.id(), prop_id).await?;
-        Secret::attach_for_attribute_value(ctx, attribute_value_id, Some(secret_id)).await?;
-    }
-
-    let av_id = component.domain_prop_attribute_value(ctx).await?;
-    let after_value = AttributeValue::view(ctx, av_id)
-        .await?
-        .unwrap_or(serde_json::Value::Null);
-
-    if !payload.connections.is_empty() {
-        for connection in payload.connections.iter() {
-            handle_connection(
-                ctx,
-                connection,
-                component.id(),
-                variant_id,
-                &component_list,
-                true,
-            )
-            .await?;
-        }
-    }
-
-    if !payload.managed_by.is_empty() {
-        let manager_component_id =
-            resolve_component_reference(ctx, &payload.managed_by, &component_list).await?;
-
-        Component::manage_component(ctx, manager_component_id, component.id()).await?;
+    for connection in payload.connections.iter() {
+        handle_connection(
+            ctx,
+            connection,
+            component.id(),
+            variant_id,
+            &component_list,
+            true,
+        )
+        .await?;
     }
 
     ctx.write_audit_log(
@@ -210,7 +209,7 @@ pub async fn create_component(
             component_id: component.id(),
             component_name: comp_name.clone(),
             before_domain_tree: None,
-            after_domain_tree: Some(after_value),
+            after_domain_tree: None,
             added_connections: None,
             deleted_connections: None,
             added_secrets: payload.secrets.len(),
@@ -242,16 +241,8 @@ pub async fn create_component(
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateComponentV1Request {
-    #[schema(example = json!({"propId1": "value1", "path/to/prop": "value2"}))]
-    #[serde(default)]
-    pub domain: HashMap<ComponentPropKey, serde_json::Value>,
-
     #[schema(example = "i-12345678")]
     pub resource_id: Option<String>,
-
-    #[schema(example = json!({"secretDefinitionName": "secretId", "secretDefinitionName": "secretName"}))]
-    #[serde(default)]
-    pub secrets: HashMap<SecretPropKey, serde_json::Value>,
 
     #[schema(example = "MyComponentName", required = true)]
     pub name: String,
@@ -263,16 +254,58 @@ pub struct CreateComponentV1Request {
     pub view_name: Option<String>,
 
     #[serde(default)]
-    #[deprecated]
-    #[schema(example = json!({}))]
-    pub connections: Vec<Connection>,
-
-    #[serde(default)]
     #[schema(example = json!({"component": "ComponentName"}), required = false)]
     pub managed_by: ComponentReference,
 
     #[serde(default)]
-    #[schema(example = json!({"/prop/path/on/this/component": {"component": "OtherComponentName", "propPath": "/prop/path/on/other/component"}}))]
+    #[schema(
+        value_type = std::collections::BTreeMap<String, serde_json::Value>,
+        example = json!({
+            "/domain/VpcId": {
+                "$source": {
+                    "component": "01K0WRC69ZPEMD6SMTKC84FBWC",
+                    "path": "/resource_value/VpcId"
+                }
+            },
+            "/domain/SubnetId": {
+                "$source": {
+                    "component": "01K0WRC69ZPEMD6SMTKC84FBWD",
+                    "path": "/resource_value/SubnetId"
+                }
+            },
+            "/domain/Version": "1.2.3",
+            "/domain/Version": {
+                "$source": null
+            }
+        })
+    )]
+    pub attributes: AttributeSources,
+
+    #[deprecated(
+        note = "Secrets deprecated in favour of using attributes parameter and will be removed in a future version of the API"
+    )]
+    #[schema(example = json!({}))]
+    pub secrets: HashMap<SecretPropKey, serde_json::Value>,
+
+    #[serde(default)]
+    #[deprecated(
+        note = "Connections deprecated - socket connections no longer supported and will be removed in a future version of the API"
+    )]
+    #[schema(example = json!({}))]
+    pub connections: Vec<Connection>,
+
+    #[deprecated(
+        note = "Domain deprecated in favour of using attributes parameter and will be removed in a future version of the API"
+    )]
+    #[schema(example = json!({}))]
+    #[serde(default)]
+    pub domain: HashMap<ComponentPropKey, serde_json::Value>,
+
+    #[deprecated(
+        note = "Subscriptions deprecated in favour of using attributes parameter and will be removed in a future version of the API"
+    )]
+    #[schema(example = json!({}))]
+    #[serde(default)]
     pub subscriptions: HashMap<AttributeValueIdent, Subscription>,
 }
 
@@ -283,16 +316,32 @@ pub struct CreateComponentV1Response {
         "id": "01H9ZQD35JPMBGHH69BT0Q79AA",
         "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
         "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
-        "sockets": [{"id": "socket1", "name": "input", "direction": "input", "arity": "one", "value": null}],
-        "domainProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YAA", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YBB", "value": "my-value", "path": "domain/path"}],
-        "resourceProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YCC", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YDD", "value": "resource-value", "path": "resource/path"}],
+        "sockets": [],
+        "domainProps": [],
+        "resourceProps": [],
         "name": "My EC2 Instance",
         "resourceId": "i-1234567890abcdef0",
         "toDelete": false,
         "canBeUpgraded": true,
         "connections": [],
-        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}],
-        "sources": {"/domain/RouteTableId": {"component": "demo-component","propPath": "/resource_value/RouteTableId"}}
+        "views": [
+            {
+                "id": "01HAXYZF3GC9CYA6ZVSM3E4YEE",
+                "name": "Default View",
+                "isDefault": true
+            }
+        ],
+        "sources": [
+            ["/domain/RouteTableId", {
+                "$source": {
+                    "component": "demo-component",
+                    "path": "/resource_value/RouteTableId"
+                }
+            }],
+            ["/domain/region", {
+                "value": "us-east-1"
+            }]
+        ]
     }))]
     pub component: ComponentViewV1,
 }

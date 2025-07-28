@@ -1,7 +1,4 @@
-use std::collections::{
-    HashMap,
-    VecDeque,
-};
+use std::collections::VecDeque;
 
 use axum::{
     Router,
@@ -34,6 +31,7 @@ use dal::{
             ActionPrototypeError,
         },
     },
+    attribute::attributes::AttributeValueIdent,
     component::socket::{
         ComponentInputSocket,
         ComponentOutputSocket,
@@ -482,10 +480,22 @@ pub struct ComponentViewV1 {
     pub connections: Vec<ConnectionViewV1>,
     // what views this component is in
     pub views: Vec<ViewV1>,
-    // the list of prop subscriptions to the component
-    //pub subscriptions: HashMap<AttributeValueIdent, Subscription>,
-    // sources mapping
-    pub sources: HashMap<String, SourceViewV1>,
+
+    #[schema(
+        value_type = std::collections::BTreeMap<String, serde_json::Value>,
+        example = json!({
+            "/domain/VpcId": {
+                "$source": {
+                    "component": "01K0WRC69ZPEMD6SMTKC84FBWC",
+                    "path": "/resource_value/VpcId"
+                }
+            },
+            "/domain/Version": {
+                "$source": "1.2.3"
+            }
+        })
+    )]
+    pub sources: Vec<(AttributeValueIdent, dal::attribute::attributes::Source)>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
@@ -740,25 +750,7 @@ impl ComponentViewV1 {
             });
         }
 
-        let component_sources = Component::subscription_sources(ctx, component_id).await?;
-        let mut sources = HashMap::new();
-        for (attr_value_ident, source) in component_sources {
-            if let dal::attribute::attributes::Source::Subscription {
-                component, path, ..
-            } = source
-            {
-                if let Some(source_component_id) = component.resolve(ctx).await? {
-                    let component_name = Component::name_by_id(ctx, source_component_id).await?;
-                    sources.insert(
-                        attr_value_ident.path().to_string(),
-                        SourceViewV1 {
-                            component: component_name,
-                            prop_path: path,
-                        },
-                    );
-                }
-            }
-        }
+        let sources = Component::sources(ctx, component_id).await?;
 
         let result = ComponentViewV1 {
             id: component_id,

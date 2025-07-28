@@ -340,8 +340,14 @@ pub struct AttributeSources(
     #[serde(with = "tuple_vec_map")] pub Vec<(AttributeValueIdent, ValueOrSourceSpec)>,
 );
 
+impl AttributeSources {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 /// The source for a value
-#[derive(Serialize, Deserialize, Clone, Debug, derive_more::From)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, derive_more::From)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub enum Source {
     // { value: <value> } - set value (null is a valid value to set it to)

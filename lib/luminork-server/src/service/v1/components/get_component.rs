@@ -33,16 +33,32 @@ pub struct GetComponentV1Response {
         "id": "01H9ZQD35JPMBGHH69BT0Q79AA",
         "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
         "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
-        "sockets": [{"id": "socket1", "name": "input", "direction": "input", "arity": "one", "value": null}],
-        "domainProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YAA", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YBB", "value": "my-value", "path": "domain/path"}],
-        "resourceProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YCC", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YDD", "value": "resource-value", "path": "resource/path"}],
+        "sockets": [],
+        "domainProps": [],
+        "resourceProps": [],
         "name": "My EC2 Instance",
         "resourceId": "i-1234567890abcdef0",
         "toDelete": false,
         "canBeUpgraded": true,
         "connections": [],
-        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}],
-        "sources": {"/domain/RouteTableId": {"component": "demo-component","propPath": "/resource_value/RouteTableId"}}
+        "views": [
+            {
+                "id": "01HAXYZF3GC9CYA6ZVSM3E4YEE",
+                "name": "Default View",
+                "isDefault": true
+            }
+        ],
+        "sources": [
+            ["/domain/RouteTableId", {
+                "$source": {
+                    "component": "demo-component",
+                    "path": "/resource_value/RouteTableId"
+                }
+            }],
+            ["/domain/region", {
+                "value": "us-east-1"
+            }]
+        ]
     }))]
     pub component: ComponentViewV1,
     #[schema(example = json!([
