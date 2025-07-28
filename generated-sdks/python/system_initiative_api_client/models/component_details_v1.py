@@ -18,19 +18,18 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List, Optional
-from system_initiative_api_client.models.component_details_v1 import ComponentDetailsV1
+from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 
-class ListComponentsV1Response(BaseModel):
+class ComponentDetailsV1(BaseModel):
     """
-    ListComponentsV1Response
+    ComponentDetailsV1
     """ # noqa: E501
-    component_details: List[ComponentDetailsV1] = Field(alias="componentDetails")
-    components: List[List[StrictStr]]
-    next_cursor: Optional[StrictStr] = Field(default=None, alias="nextCursor")
-    __properties: ClassVar[List[str]] = ["componentDetails", "components", "nextCursor"]
+    component_id: StrictStr = Field(alias="componentId")
+    name: StrictStr
+    schema_name: StrictStr = Field(alias="schemaName")
+    __properties: ClassVar[List[str]] = ["componentId", "name", "schemaName"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -50,7 +49,7 @@ class ListComponentsV1Response(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of ListComponentsV1Response from a JSON string"""
+        """Create an instance of ComponentDetailsV1 from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -71,23 +70,11 @@ class ListComponentsV1Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of each item in component_details (list)
-        _items = []
-        if self.component_details:
-            for _item_component_details in self.component_details:
-                if _item_component_details:
-                    _items.append(_item_component_details.to_dict())
-            _dict['componentDetails'] = _items
-        # set to None if next_cursor (nullable) is None
-        # and model_fields_set contains the field
-        if self.next_cursor is None and "next_cursor" in self.model_fields_set:
-            _dict['nextCursor'] = None
-
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of ListComponentsV1Response from a dict"""
+        """Create an instance of ComponentDetailsV1 from a dict"""
         if obj is None:
             return None
 
@@ -95,9 +82,9 @@ class ListComponentsV1Response(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "componentDetails": [ComponentDetailsV1.from_dict(_item) for _item in obj["componentDetails"]] if obj.get("componentDetails") is not None else None,
-            "components": obj.get("components"),
-            "nextCursor": obj.get("nextCursor")
+            "componentId": obj.get("componentId"),
+            "name": obj.get("name"),
+            "schemaName": obj.get("schemaName")
         })
         return _obj
 

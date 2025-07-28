@@ -35,20 +35,22 @@ class TestCreateComponentV1Request(unittest.TestCase):
         model = CreateComponentV1Request()
         if include_optional:
             return CreateComponentV1Request(
+                attributes = {/domain/VpcId={$source={component=01K0WRC69ZPEMD6SMTKC84FBWC, path=/resource_value/VpcId}}, /domain/SubnetId={$source={component=01K0WRC69ZPEMD6SMTKC84FBWD, path=/resource_value/SubnetId}}, /domain/Version={$source=null}},
                 connections = {},
-                domain = {propId1=value1, path/to/prop=value2},
+                domain = {},
                 managed_by = {component=ComponentName},
                 name = 'MyComponentName',
                 resource_id = 'i-12345678',
                 schema_name = 'AWS::EC2::Instance',
-                secrets = {secretDefinitionName=secretName},
-                subscriptions = {/prop/path/on/this/component={component=OtherComponentName, propPath=/prop/path/on/other/component}},
+                secrets = {},
+                subscriptions = {},
                 view_name = 'MyView'
             )
         else:
             return CreateComponentV1Request(
                 name = 'MyComponentName',
                 schema_name = 'AWS::EC2::Instance',
+                secrets = {},
         )
         """
 

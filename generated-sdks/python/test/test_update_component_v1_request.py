@@ -35,18 +35,20 @@ class TestUpdateComponentV1Request(unittest.TestCase):
         model = UpdateComponentV1Request()
         if include_optional:
             return UpdateComponentV1Request(
+                attributes = {/domain/VpcId={$source={component=01K0WRC69ZPEMD6SMTKC84FBWC, path=/resource_value/VpcId}}, /domain/SubnetId={$source={component=01K0WRC69ZPEMD6SMTKC84FBWD, path=/resource_value/SubnetId}}, /domain/Version={$source=null}},
                 connection_changes = system_initiative_api_client.models.connection_details.ConnectionDetails(
                     add = {}, 
                     remove = {}, ),
-                domain = {propId1=value1, path/to/prop=value2},
+                domain = {},
                 name = 'MyUpdatedComponentName',
                 resource_id = 'i-12345678',
-                secrets = {secretDefinitionName=secretName},
-                subscriptions = {/prop/path/on/this/component={component=OtherComponentName, propPath=/prop/path/on/other/component, keepOtherSubscriptions=true}},
-                unset = [propId1, path/to/prop]
+                secrets = {},
+                subscriptions = {},
+                unset = {}
             )
         else:
             return UpdateComponentV1Request(
+                secrets = {},
         )
         """
 

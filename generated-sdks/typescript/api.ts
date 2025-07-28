@@ -239,6 +239,31 @@ export interface ChangeSetViewV1 {
     'status': string;
 }
 /**
+ * 
+ * @export
+ * @interface ComponentDetailsV1
+ */
+export interface ComponentDetailsV1 {
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentDetailsV1
+     */
+    'componentId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentDetailsV1
+     */
+    'name': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentDetailsV1
+     */
+    'schemaName': string;
+}
+/**
  * @type ComponentPropKey
  * @export
  */
@@ -388,10 +413,10 @@ export interface ComponentViewV1 {
     'sockets': Array<SocketViewV1>;
     /**
      * 
-     * @type {{ [key: string]: SourceViewV1; }}
+     * @type {Array<Array<string>>}
      * @memberof ComponentViewV1
      */
-    'sources': { [key: string]: SourceViewV1; };
+    'sources': Array<Array<string>>;
     /**
      * 
      * @type {boolean}
@@ -585,6 +610,12 @@ export interface CreateChangeSetV1Response {
 export interface CreateComponentV1Request {
     /**
      * 
+     * @type {{ [key: string]: any; }}
+     * @memberof CreateComponentV1Request
+     */
+    'attributes'?: { [key: string]: any; };
+    /**
+     * 
      * @type {Array<Connection>}
      * @memberof CreateComponentV1Request
      */
@@ -593,6 +624,7 @@ export interface CreateComponentV1Request {
      * 
      * @type {{ [key: string]: any; }}
      * @memberof CreateComponentV1Request
+     * @deprecated
      */
     'domain'?: { [key: string]: any; };
     /**
@@ -623,12 +655,14 @@ export interface CreateComponentV1Request {
      * 
      * @type {{ [key: string]: any; }}
      * @memberof CreateComponentV1Request
+     * @deprecated
      */
-    'secrets'?: { [key: string]: any; };
+    'secrets': { [key: string]: any; };
     /**
      * 
      * @type {{ [key: string]: Subscription; }}
      * @memberof CreateComponentV1Request
+     * @deprecated
      */
     'subscriptions'?: { [key: string]: Subscription; };
     /**
@@ -1463,6 +1497,12 @@ export interface ListChangeSetV1Response {
 export interface ListComponentsV1Response {
     /**
      * 
+     * @type {Array<ComponentDetailsV1>}
+     * @memberof ListComponentsV1Response
+     */
+    'componentDetails': Array<ComponentDetailsV1>;
+    /**
+     * 
      * @type {Array<Array<string>>}
      * @memberof ListComponentsV1Response
      */
@@ -2127,6 +2167,12 @@ export interface SystemStatusResponse {
 export interface UpdateComponentV1Request {
     /**
      * 
+     * @type {{ [key: string]: any; }}
+     * @memberof UpdateComponentV1Request
+     */
+    'attributes'?: { [key: string]: any; };
+    /**
+     * 
      * @type {ConnectionDetails}
      * @memberof UpdateComponentV1Request
      */
@@ -2135,6 +2181,7 @@ export interface UpdateComponentV1Request {
      * 
      * @type {{ [key: string]: any; }}
      * @memberof UpdateComponentV1Request
+     * @deprecated
      */
     'domain'?: { [key: string]: any; };
     /**
@@ -2153,20 +2200,22 @@ export interface UpdateComponentV1Request {
      * 
      * @type {{ [key: string]: any; }}
      * @memberof UpdateComponentV1Request
+     * @deprecated
      */
-    'secrets'?: { [key: string]: any; };
+    'secrets': { [key: string]: any; };
     /**
      * 
      * @type {{ [key: string]: Subscription; }}
      * @memberof UpdateComponentV1Request
+     * @deprecated
      */
     'subscriptions'?: { [key: string]: Subscription; };
     /**
      * 
-     * @type {Array<string>}
+     * @type {Array<ComponentPropKey>}
      * @memberof UpdateComponentV1Request
      */
-    'unset'?: Array<string>;
+    'unset'?: Array<ComponentPropKey>;
 }
 /**
  * 
@@ -2343,7 +2392,7 @@ export const ActionsApiAxiosParamCreator = function (configuration?: Configurati
             assertParamExists('getActions', 'workspaceId', workspaceId)
             // verify required parameter 'changeSetId' is not null or undefined
             assertParamExists('getActions', 'changeSetId', changeSetId)
-            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/actions/`
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/actions`
                 .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
                 .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.

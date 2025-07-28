@@ -29,16 +29,17 @@ class CreateComponentV1Request(BaseModel):
     """
     CreateComponentV1Request
     """ # noqa: E501
+    attributes: Optional[Dict[str, Any]] = None
     connections: Optional[List[Connection]] = None
     domain: Optional[Dict[str, Any]] = None
     managed_by: Optional[ComponentReference] = Field(default=None, alias="managedBy")
     name: StrictStr
     resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
     schema_name: StrictStr = Field(alias="schemaName")
-    secrets: Optional[Dict[str, Any]] = None
+    secrets: Dict[str, Any]
     subscriptions: Optional[Dict[str, Subscription]] = None
     view_name: Optional[StrictStr] = Field(default=None, alias="viewName")
-    __properties: ClassVar[List[str]] = ["connections", "domain", "managedBy", "name", "resourceId", "schemaName", "secrets", "subscriptions", "viewName"]
+    __properties: ClassVar[List[str]] = ["attributes", "connections", "domain", "managedBy", "name", "resourceId", "schemaName", "secrets", "subscriptions", "viewName"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -118,6 +119,7 @@ class CreateComponentV1Request(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "attributes": obj.get("attributes"),
             "connections": [Connection.from_dict(_item) for _item in obj["connections"]] if obj.get("connections") is not None else None,
             "domain": obj.get("domain"),
             "managedBy": ComponentReference.from_dict(obj["managedBy"]) if obj.get("managedBy") is not None else None,

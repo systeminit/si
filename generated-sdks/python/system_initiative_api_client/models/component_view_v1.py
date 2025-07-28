@@ -22,7 +22,6 @@ from typing import Any, ClassVar, Dict, List
 from system_initiative_api_client.models.component_prop_view_v1 import ComponentPropViewV1
 from system_initiative_api_client.models.connection_view_v1 import ConnectionViewV1
 from system_initiative_api_client.models.socket_view_v1 import SocketViewV1
-from system_initiative_api_client.models.source_view_v1 import SourceViewV1
 from system_initiative_api_client.models.view_v1 import ViewV1
 from typing import Optional, Set
 from typing_extensions import Self
@@ -41,7 +40,7 @@ class ComponentViewV1(BaseModel):
     schema_id: StrictStr = Field(alias="schemaId")
     schema_variant_id: StrictStr = Field(alias="schemaVariantId")
     sockets: List[SocketViewV1]
-    sources: Dict[str, SourceViewV1]
+    sources: List[List[StrictStr]]
     to_delete: StrictBool = Field(alias="toDelete")
     views: List[ViewV1]
     __properties: ClassVar[List[str]] = ["canBeUpgraded", "connections", "domainProps", "id", "name", "resourceId", "resourceProps", "schemaId", "schemaVariantId", "sockets", "sources", "toDelete", "views"]
@@ -113,13 +112,6 @@ class ComponentViewV1(BaseModel):
                 if _item_sockets:
                     _items.append(_item_sockets.to_dict())
             _dict['sockets'] = _items
-        # override the default output from pydantic by calling `to_dict()` of each value in sources (dict)
-        _field_dict = {}
-        if self.sources:
-            for _key_sources in self.sources:
-                if self.sources[_key_sources]:
-                    _field_dict[_key_sources] = self.sources[_key_sources].to_dict()
-            _dict['sources'] = _field_dict
         # override the default output from pydantic by calling `to_dict()` of each item in views (list)
         _items = []
         if self.views:
@@ -149,12 +141,7 @@ class ComponentViewV1(BaseModel):
             "schemaId": obj.get("schemaId"),
             "schemaVariantId": obj.get("schemaVariantId"),
             "sockets": [SocketViewV1.from_dict(_item) for _item in obj["sockets"]] if obj.get("sockets") is not None else None,
-            "sources": dict(
-                (_k, SourceViewV1.from_dict(_v))
-                for _k, _v in obj["sources"].items()
-            )
-            if obj.get("sources") is not None
-            else None,
+            "sources": obj.get("sources"),
             "toDelete": obj.get("toDelete"),
             "views": [ViewV1.from_dict(_item) for _item in obj["views"]] if obj.get("views") is not None else None
         })

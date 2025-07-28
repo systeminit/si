@@ -400,11 +400,25 @@ Components management endpoints
 > 200 Response
 
 ```json
-[
-  "01H9ZQD35JPMBGHH69BT0Q79AA",
-  "01H9ZQD35JPMBGHH69BT0Q79BB",
-  "01H9ZQD35JPMBGHH69BT0Q79CC"
-]
+{
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB"
+  ],
+  "componentDetails": [
+    {
+      "component_id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+      "name": "my-vpc",
+      "schema_name": "AWS::EC2::VPC"
+    },
+    {
+      "component_id": "01H9ZQD35JPMBGHH69BT0Q79BB",
+      "name": "Public 1",
+      "schema_name": "AWS::EC2::Subnet"
+    }
+  ],
+  "nextCursor": null
+}
 ```
 
 > 500 Response
@@ -437,26 +451,33 @@ Components management endpoints
 
 ```json
 {
-  "connections": {},
-  "domain": {
-    "propId1": "value1",
-    "path/to/prop": "value2"
+  "attributes": {
+    "/domain/VpcId": {
+      "$source": {
+        "component": "01K0WRC69ZPEMD6SMTKC84FBWC",
+        "path": "/resource_value/VpcId"
+      }
+    },
+    "/domain/SubnetId": {
+      "$source": {
+        "component": "01K0WRC69ZPEMD6SMTKC84FBWD",
+        "path": "/resource_value/SubnetId"
+      }
+    },
+    "/domain/Version": {
+      "$source": null
+    }
   },
+  "connections": {},
+  "domain": {},
   "managedBy": {
     "component": "ComponentName"
   },
   "name": "MyComponentName",
   "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
-  "secrets": {
-    "secretDefinitionName": "secretName"
-  },
-  "subscriptions": {
-    "/prop/path/on/this/component": {
-      "component": "OtherComponentName",
-      "propPath": "/prop/path/on/other/component"
-    }
-  },
+  "secrets": {},
+  "subscriptions": {},
   "viewName": "MyView"
 }
 ```
@@ -517,16 +538,23 @@ Components management endpoints
         "value": {}
       }
     ],
-    "sources": {
-      "property1": {
-        "component": "string",
-        "propPath": "string"
-      },
-      "property2": {
-        "component": "string",
-        "propPath": "string"
-      }
-    },
+    "sources": [
+      [
+        "/domain/RouteTableId",
+        {
+          "$source": {
+            "component": "demo-component",
+            "path": "/resource_value/RouteTableId"
+          }
+        }
+      ],
+      [
+        "/domain/region",
+        {
+          "value": "us-east-1"
+        }
+      ]
+    ],
     "toDelete": true,
     "views": [
       {
@@ -621,16 +649,23 @@ Components management endpoints
         "value": {}
       }
     ],
-    "sources": {
-      "property1": {
-        "component": "string",
-        "propPath": "string"
-      },
-      "property2": {
-        "component": "string",
-        "propPath": "string"
-      }
-    },
+    "sources": [
+      [
+        "/domain/RouteTableId",
+        {
+          "$source": {
+            "component": "demo-component",
+            "path": "/resource_value/RouteTableId"
+          }
+        }
+      ],
+      [
+        "/domain/region",
+        {
+          "value": "us-east-1"
+        }
+      ]
+    ],
     "toDelete": true,
     "views": [
       {
@@ -775,16 +810,23 @@ Components management endpoints
         "value": {}
       }
     ],
-    "sources": {
-      "property1": {
-        "component": "string",
-        "propPath": "string"
-      },
-      "property2": {
-        "component": "string",
-        "propPath": "string"
-      }
-    },
+    "sources": [
+      [
+        "/domain/RouteTableId",
+        {
+          "$source": {
+            "component": "demo-component",
+            "path": "/resource_value/RouteTableId"
+          }
+        }
+      ],
+      [
+        "/domain/region",
+        {
+          "value": "us-east-1"
+        }
+      ]
+    ],
     "toDelete": true,
     "views": [
       {
@@ -824,30 +866,33 @@ Components management endpoints
 
 ```json
 {
+  "attributes": {
+    "/domain/VpcId": {
+      "$source": {
+        "component": "01K0WRC69ZPEMD6SMTKC84FBWC",
+        "path": "/resource_value/VpcId"
+      }
+    },
+    "/domain/SubnetId": {
+      "$source": {
+        "component": "01K0WRC69ZPEMD6SMTKC84FBWD",
+        "path": "/resource_value/SubnetId"
+      }
+    },
+    "/domain/Version": {
+      "$source": null
+    }
+  },
   "connectionChanges": {
     "add": {},
     "remove": {}
   },
-  "domain": {
-    "propId1": "value1",
-    "path/to/prop": "value2"
-  },
+  "domain": {},
   "name": "MyUpdatedComponentName",
   "resourceId": "i-12345678",
-  "secrets": {
-    "secretDefinitionName": "secretName"
-  },
-  "subscriptions": {
-    "/prop/path/on/this/component": {
-      "component": "OtherComponentName",
-      "propPath": "/prop/path/on/other/component",
-      "keepOtherSubscriptions": true
-    }
-  },
-  "unset": [
-    "propId1",
-    "path/to/prop"
-  ]
+  "secrets": {},
+  "subscriptions": {},
+  "unset": {}
 }
 ```
 
@@ -908,16 +953,23 @@ Components management endpoints
         "value": {}
       }
     ],
-    "sources": {
-      "property1": {
-        "component": "string",
-        "propPath": "string"
-      },
-      "property2": {
-        "component": "string",
-        "propPath": "string"
-      }
-    },
+    "sources": [
+      [
+        "/domain/RouteTableId",
+        {
+          "$source": {
+            "component": "demo-component",
+            "path": "/resource_value/RouteTableId"
+          }
+        }
+      ],
+      [
+        "/domain/region",
+        {
+          "value": "us-east-1"
+        }
+      ]
+    ],
     "toDelete": true,
     "views": [
       {
@@ -1150,16 +1202,23 @@ Components management endpoints
         "value": {}
       }
     ],
-    "sources": {
-      "property1": {
-        "component": "string",
-        "propPath": "string"
-      },
-      "property2": {
-        "component": "string",
-        "propPath": "string"
-      }
-    },
+    "sources": [
+      [
+        "/domain/RouteTableId",
+        {
+          "$source": {
+            "component": "demo-component",
+            "path": "/resource_value/RouteTableId"
+          }
+        }
+      ],
+      [
+        "/domain/region",
+        {
+          "value": "us-east-1"
+        }
+      ]
+    ],
     "toDelete": true,
     "views": [
       {
@@ -1431,7 +1490,7 @@ Actions management endpoints
 
 > Request format
 
-`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/`
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/actions`
 
 <h3 id="list-queued-actions-parameters">Parameters</h3>
 
@@ -2280,6 +2339,30 @@ Standard success response format for v1 API
 |name|string|true|none|none|
 |status|string|true|none|none|
 
+## [ComponentDetailsV1](#tocS_ComponentDetailsV1)
+
+<a id="schemacomponentdetailsv1"></a>
+<a id="schema_ComponentDetailsV1"></a>
+<a id="tocScomponentdetailsv1"></a>
+<a id="tocscomponentdetailsv1"></a>
+
+```json
+{
+  "componentId": "string",
+  "name": "string",
+  "schemaName": "string"
+}
+
+```
+
+### [Properties](#componentdetailsv1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|componentId|string|true|none|none|
+|name|string|true|none|none|
+|schemaName|string|true|none|none|
+
 ## [ComponentPropKey](#tocS_ComponentPropKey)
 
 <a id="schemacomponentpropkey"></a>
@@ -2432,16 +2515,23 @@ xor
       "value": {}
     }
   ],
-  "sources": {
-    "property1": {
-      "component": "string",
-      "propPath": "string"
-    },
-    "property2": {
-      "component": "string",
-      "propPath": "string"
-    }
-  },
+  "sources": [
+    [
+      "/domain/RouteTableId",
+      {
+        "$source": {
+          "component": "demo-component",
+          "path": "/resource_value/RouteTableId"
+        }
+      }
+    ],
+    [
+      "/domain/region",
+      {
+        "value": "us-east-1"
+      }
+    ]
+  ],
   "toDelete": true,
   "views": [
     {
@@ -2468,8 +2558,7 @@ xor
 |schemaId|string|true|none|none|
 |schemaVariantId|string|true|none|none|
 |sockets|[[SocketViewV1](#schemasocketviewv1)]|true|none|none|
-|sources|object|true|none|none|
-|» **additionalProperties**|[SourceViewV1](#schemasourceviewv1)|false|none|none|
+|sources|[array]|true|none|none|
 |toDelete|boolean|true|none|none|
 |views|[[ViewV1](#schemaviewv1)]|true|none|none|
 
@@ -2664,26 +2753,33 @@ xor
 
 ```json
 {
-  "connections": {},
-  "domain": {
-    "propId1": "value1",
-    "path/to/prop": "value2"
+  "attributes": {
+    "/domain/VpcId": {
+      "$source": {
+        "component": "01K0WRC69ZPEMD6SMTKC84FBWC",
+        "path": "/resource_value/VpcId"
+      }
+    },
+    "/domain/SubnetId": {
+      "$source": {
+        "component": "01K0WRC69ZPEMD6SMTKC84FBWD",
+        "path": "/resource_value/SubnetId"
+      }
+    },
+    "/domain/Version": {
+      "$source": null
+    }
   },
+  "connections": {},
+  "domain": {},
   "managedBy": {
     "component": "ComponentName"
   },
   "name": "MyComponentName",
   "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
-  "secrets": {
-    "secretDefinitionName": "secretName"
-  },
-  "subscriptions": {
-    "/prop/path/on/this/component": {
-      "component": "OtherComponentName",
-      "propPath": "/prop/path/on/other/component"
-    }
-  },
+  "secrets": {},
+  "subscriptions": {},
   "viewName": "MyView"
 }
 
@@ -2693,6 +2789,8 @@ xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|attributes|object|false|none|none|
+|» **additionalProperties**|any|false|none|none|
 |connections|[[Connection](#schemaconnection)]|false|none|none|
 |domain|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
@@ -2700,7 +2798,7 @@ xor
 |name|string|true|none|none|
 |resourceId|string,null|false|none|none|
 |schemaName|string|true|none|none|
-|secrets|object|false|none|none|
+|secrets|object|true|none|none|
 |» **additionalProperties**|any|false|none|none|
 |subscriptions|object|false|none|none|
 |» **additionalProperties**|[Subscription](#schemasubscription)|false|none|none|
@@ -2757,16 +2855,23 @@ xor
         "value": {}
       }
     ],
-    "sources": {
-      "property1": {
-        "component": "string",
-        "propPath": "string"
-      },
-      "property2": {
-        "component": "string",
-        "propPath": "string"
-      }
-    },
+    "sources": [
+      [
+        "/domain/RouteTableId",
+        {
+          "$source": {
+            "component": "demo-component",
+            "path": "/resource_value/RouteTableId"
+          }
+        }
+      ],
+      [
+        "/domain/region",
+        {
+          "value": "us-east-1"
+        }
+      ]
+    ],
     "toDelete": true,
     "views": [
       {
@@ -3379,16 +3484,23 @@ continued
         "value": {}
       }
     ],
-    "sources": {
-      "property1": {
-        "component": "string",
-        "propPath": "string"
-      },
-      "property2": {
-        "component": "string",
-        "propPath": "string"
-      }
-    },
+    "sources": [
+      [
+        "/domain/RouteTableId",
+        {
+          "$source": {
+            "component": "demo-component",
+            "path": "/resource_value/RouteTableId"
+          }
+        }
+      ],
+      [
+        "/domain/region",
+        {
+          "value": "us-east-1"
+        }
+      ]
+    ],
     "toDelete": true,
     "views": [
       {
@@ -3773,6 +3885,18 @@ continued
 
 ```json
 {
+  "componentDetails": [
+    {
+      "component_id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+      "name": "my-vpc",
+      "schema_name": "AWS::EC2::VPC"
+    },
+    {
+      "component_id": "01H9ZQD35JPMBGHH69BT0Q79BB",
+      "name": "Public 1",
+      "schema_name": "AWS::EC2::Subnet"
+    }
+  ],
   "components": [
     "01H9ZQD35JPMBGHH69BT0Q79AA",
     "01H9ZQD35JPMBGHH69BT0Q79BB",
@@ -3787,6 +3911,7 @@ continued
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|componentDetails|[[ComponentDetailsV1](#schemacomponentdetailsv1)]|true|none|none|
 |components|[array]|true|none|none|
 |nextCursor|string,null|false|none|none|
 
@@ -3890,16 +4015,23 @@ continued
         "value": {}
       }
     ],
-    "sources": {
-      "property1": {
-        "component": "string",
-        "propPath": "string"
-      },
-      "property2": {
-        "component": "string",
-        "propPath": "string"
-      }
-    },
+    "sources": [
+      [
+        "/domain/RouteTableId",
+        {
+          "$source": {
+            "component": "demo-component",
+            "path": "/resource_value/RouteTableId"
+          }
+        }
+      ],
+      [
+        "/domain/region",
+        {
+          "value": "us-east-1"
+        }
+      ]
+    ],
     "toDelete": true,
     "views": [
       {
@@ -4675,30 +4807,33 @@ and
 
 ```json
 {
+  "attributes": {
+    "/domain/VpcId": {
+      "$source": {
+        "component": "01K0WRC69ZPEMD6SMTKC84FBWC",
+        "path": "/resource_value/VpcId"
+      }
+    },
+    "/domain/SubnetId": {
+      "$source": {
+        "component": "01K0WRC69ZPEMD6SMTKC84FBWD",
+        "path": "/resource_value/SubnetId"
+      }
+    },
+    "/domain/Version": {
+      "$source": null
+    }
+  },
   "connectionChanges": {
     "add": {},
     "remove": {}
   },
-  "domain": {
-    "propId1": "value1",
-    "path/to/prop": "value2"
-  },
+  "domain": {},
   "name": "MyUpdatedComponentName",
   "resourceId": "i-12345678",
-  "secrets": {
-    "secretDefinitionName": "secretName"
-  },
-  "subscriptions": {
-    "/prop/path/on/this/component": {
-      "component": "OtherComponentName",
-      "propPath": "/prop/path/on/other/component",
-      "keepOtherSubscriptions": true
-    }
-  },
-  "unset": [
-    "propId1",
-    "path/to/prop"
-  ]
+  "secrets": {},
+  "subscriptions": {},
+  "unset": {}
 }
 
 ```
@@ -4707,16 +4842,18 @@ and
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|attributes|object|false|none|none|
+|» **additionalProperties**|any|false|none|none|
 |connectionChanges|[ConnectionDetails](#schemaconnectiondetails)|false|none|none|
 |domain|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
 |name|string,null|false|none|none|
 |resourceId|string,null|false|none|none|
-|secrets|object|false|none|none|
+|secrets|object|true|none|none|
 |» **additionalProperties**|any|false|none|none|
 |subscriptions|object|false|none|none|
 |» **additionalProperties**|[Subscription](#schemasubscription)|false|none|none|
-|unset|[string]|false|none|none|
+|unset|[[ComponentPropKey](#schemacomponentpropkey)]|false|none|none|
 
 ## [UpdateComponentV1Response](#tocS_UpdateComponentV1Response)
 
@@ -4769,16 +4906,23 @@ and
         "value": {}
       }
     ],
-    "sources": {
-      "property1": {
-        "component": "string",
-        "propPath": "string"
-      },
-      "property2": {
-        "component": "string",
-        "propPath": "string"
-      }
-    },
+    "sources": [
+      [
+        "/domain/RouteTableId",
+        {
+          "$source": {
+            "component": "demo-component",
+            "path": "/resource_value/RouteTableId"
+          }
+        }
+      ],
+      [
+        "/domain/region",
+        {
+          "value": "us-east-1"
+        }
+      ]
+    ],
     "toDelete": true,
     "views": [
       {
