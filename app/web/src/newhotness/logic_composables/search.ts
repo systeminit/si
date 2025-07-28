@@ -170,17 +170,20 @@ export function useQueryAttributes() {
   // Use tanstack `useQuery` so we can bust the cache of QueryAttributes whenever an
   // AttributeTree is updated. We don't actuall;y do the query in here though, we just return
   // a function that *can* do the query!
-  const attributeTreesUpdatedQuery = useQuery({
+  const attributeTreesUpdatedAt = useQuery({
     queryKey: key(EntityKind.QueryAttributes),
-    queryFn: () => (terms: QueryAttributesTerm[]) =>
-      bifrostQueryAttributes(
-        ctx.workspacePk.value,
-        ctx.changeSetId.value,
-        terms,
-      ),
+    queryFn: () => new Date(),
   });
-  return (terms: MaybeRefOrGetter<QueryAttributesTerm[]>) =>
-    attributeTreesUpdatedQuery.data?.value?.(toValue(terms));
+  return (terms: MaybeRefOrGetter<QueryAttributesTerm[]>) => {
+    // Just mentioning this will cause us to recompute when any attribute trees update.
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    attributeTreesUpdatedAt.data.value;
+    return bifrostQueryAttributes(
+      ctx.workspacePk.value,
+      ctx.changeSetId.value,
+      toValue(terms),
+    );
+  };
 }
 
 /**
