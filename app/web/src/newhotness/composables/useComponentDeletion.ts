@@ -12,6 +12,7 @@ export function useComponentDeletion(viewId?: string, skipNavigation = false) {
   const deleteApi = useApi();
   const eraseApi = useApi();
   const deleteEraseFromViewApi = useApi();
+  const restoreApi = useApi();
 
   const convertBifrostToComponentInList = (
     component: BifrostComponent,
@@ -112,7 +113,6 @@ export function useComponentDeletion(viewId?: string, skipNavigation = false) {
   };
 
   const restoreComponents = async (componentIds: ComponentId[]) => {
-    const restoreApi = useApi();
     const call = restoreApi.endpoint(routes.RestoreComponents);
     const { req, newChangeSetId } = await call.put({
       componentIds,
