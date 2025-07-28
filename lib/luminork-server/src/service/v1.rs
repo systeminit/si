@@ -73,7 +73,10 @@ pub use components::{
         GetComponentV1Response,
         GetComponentV1ResponseManagementFunction,
     },
-    list_components::ListComponentsV1Response,
+    list_components::{
+        ComponentDetailsV1,
+        ListComponentsV1Response,
+    },
     manage_component::{
         ManageComponentV1Request,
         ManageComponentV1Response,
@@ -212,6 +215,7 @@ pub use crate::api_types::func_run::v1::{
             ComponentPropViewV1,
             ConnectionViewV1,
             SourceViewV1,
+            ComponentDetailsV1,
             ListComponentsV1Response,
             FindComponentV1Params,
             FuncRunV1RequestPath,

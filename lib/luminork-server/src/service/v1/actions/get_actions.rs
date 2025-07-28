@@ -21,7 +21,7 @@ use crate::{
 
 #[utoipa::path(
     get,
-    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/actions/",
+    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/actions",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
         ("change_set_id" = String, Path, description = "Change Set identifier"),
