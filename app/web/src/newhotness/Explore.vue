@@ -1406,7 +1406,7 @@ const onU = (e: KeyDetails["u"]) => {
 const onT = (e: KeyDetails["t"]) => {
   e.preventDefault();
 
-  if (showGrid.value) {
+  if (showGrid.value && selectedComponents.value.length > 0) {
     componentContextMenuRef.value?.createTemplateStart();
   }
 };
