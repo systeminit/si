@@ -34,7 +34,7 @@ class UpdateComponentV1Request(BaseModel):
     domain: Optional[Dict[str, Any]] = None
     name: Optional[StrictStr] = None
     resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
-    secrets: Dict[str, Any]
+    secrets: Optional[Dict[str, Any]] = None
     subscriptions: Optional[Dict[str, Subscription]] = None
     unset: Optional[List[ComponentPropKey]] = None
     __properties: ClassVar[List[str]] = ["attributes", "connectionChanges", "domain", "name", "resourceId", "secrets", "subscriptions", "unset"]

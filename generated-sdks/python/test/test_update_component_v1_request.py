@@ -48,7 +48,6 @@ class TestUpdateComponentV1Request(unittest.TestCase):
             )
         else:
             return UpdateComponentV1Request(
-                secrets = {},
         )
         """
 

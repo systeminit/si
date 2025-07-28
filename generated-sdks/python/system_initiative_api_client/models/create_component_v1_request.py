@@ -36,7 +36,7 @@ class CreateComponentV1Request(BaseModel):
     name: StrictStr
     resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
     schema_name: StrictStr = Field(alias="schemaName")
-    secrets: Dict[str, Any]
+    secrets: Optional[Dict[str, Any]] = None
     subscriptions: Optional[Dict[str, Subscription]] = None
     view_name: Optional[StrictStr] = Field(default=None, alias="viewName")
     __properties: ClassVar[List[str]] = ["attributes", "connections", "domain", "managedBy", "name", "resourceId", "schemaName", "secrets", "subscriptions", "viewName"]

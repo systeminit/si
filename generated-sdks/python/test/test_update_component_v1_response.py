@@ -36,6 +36,7 @@ class TestUpdateComponentV1Response(unittest.TestCase):
         if include_optional:
             return UpdateComponentV1Response(
                 component = system_initiative_api_client.models.component_view_v1.ComponentViewV1(
+                    attributes = {/domain/region=us-east-1, /secrets/credential={$source={component=demo-credential, path=/secrets/AWS Credential}}}, 
                     can_be_upgraded = True, 
                     connections = [
                         null
@@ -67,7 +68,6 @@ class TestUpdateComponentV1Response(unittest.TestCase):
                             name = '', 
                             value = system_initiative_api_client.models.value.value(), )
                         ], 
-                    sources = [[/domain/RouteTableId, {$source={component=demo-component, path=/resource_value/RouteTableId}}], [/domain/region, {value=us-east-1}]], 
                     to_delete = True, 
                     views = [
                         system_initiative_api_client.models.view_v1.ViewV1(
@@ -79,6 +79,7 @@ class TestUpdateComponentV1Response(unittest.TestCase):
         else:
             return UpdateComponentV1Response(
                 component = system_initiative_api_client.models.component_view_v1.ComponentViewV1(
+                    attributes = {/domain/region=us-east-1, /secrets/credential={$source={component=demo-credential, path=/secrets/AWS Credential}}}, 
                     can_be_upgraded = True, 
                     connections = [
                         null
@@ -110,7 +111,6 @@ class TestUpdateComponentV1Response(unittest.TestCase):
                             name = '', 
                             value = system_initiative_api_client.models.value.value(), )
                         ], 
-                    sources = [[/domain/RouteTableId, {$source={component=demo-component, path=/resource_value/RouteTableId}}], [/domain/region, {value=us-east-1}]], 
                     to_delete = True, 
                     views = [
                         system_initiative_api_client.models.view_v1.ViewV1(

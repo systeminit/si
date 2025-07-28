@@ -31,7 +31,7 @@ use dal::{
             ActionPrototypeError,
         },
     },
-    attribute::attributes::AttributeValueIdent,
+    attribute::attributes::AttributeSources,
     component::socket::{
         ComponentInputSocket,
         ComponentOutputSocket,
@@ -456,7 +456,7 @@ async fn find_component_id_by_name(
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentViewV1 {
     #[schema(value_type = String)]
@@ -482,26 +482,18 @@ pub struct ComponentViewV1 {
     pub views: Vec<ViewV1>,
 
     #[schema(
-        value_type = Vec<[String; 2]>,
-        example = json!([
-            [
-                "/domain/RouteTableId",
-                {
-                    "$source": {
-                        "component": "demo-component",
-                        "path": "/resource_value/RouteTableId"
-                    }
+        value_type = std::collections::BTreeMap<String, serde_json::Value>,
+        example = json!({
+            "/domain/region": "us-east-1",
+            "/secrets/credential": {
+                "$source": {
+                    "component": "demo-credential",
+                    "path": "/secrets/AWS Credential"
                 }
-            ],
-            [
-                "/domain/region",
-                {
-                    "value": "us-east-1"
-                }
-            ]
-        ])
+            }
+        })
     )]
-    pub sources: Vec<(AttributeValueIdent, dal::attribute::attributes::Source)>,
+    pub attributes: AttributeSources,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
@@ -756,7 +748,7 @@ impl ComponentViewV1 {
             });
         }
 
-        let sources = Component::sources(ctx, component_id).await?;
+        let attributes: AttributeSources = Component::sources(ctx, component_id).await?.into();
 
         let result = ComponentViewV1 {
             id: component_id,
@@ -771,7 +763,7 @@ impl ComponentViewV1 {
             can_be_upgraded: component.can_be_upgraded(ctx).await?,
             connections,
             views,
-            sources,
+            attributes,
         };
         Ok(result)
     }

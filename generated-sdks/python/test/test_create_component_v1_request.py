@@ -50,7 +50,6 @@ class TestCreateComponentV1Request(unittest.TestCase):
             return CreateComponentV1Request(
                 name = 'MyComponentName',
                 schema_name = 'AWS::EC2::Instance',
-                secrets = {},
         )
         """
 
