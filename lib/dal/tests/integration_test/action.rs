@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use dal::{
     AttributeValue,
     Component,
@@ -658,6 +660,115 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
 }
 
 #[test]
+async fn refresh_actions_run_where_they_should(ctx: &mut DalContext) -> Result<()> {
+    // small even schema can be used to test this!
+    // First, we'll create a new component and apply (and wait for the create action to run)
+    let small_even_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small even lego",
+        "small even lego",
+    )
+    .await?;
+    let no_payload_yet = value::has_value(ctx, ("small even lego", "/resource")).await?;
+    assert!(!no_payload_yet);
+    let av_id = Component::attribute_value_for_prop(
+        ctx,
+        small_even_lego.id(),
+        &["root", "si", "resourceId"],
+    )
+    .await?;
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("import id"))).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    // should be only 1 action enqueued, the create action
+    let actions = Action::list_topologically(ctx).await?;
+    assert!(actions.len() == 1);
+
+    // Apply change set to head
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+
+    let actions = Action::list_topologically(ctx).await?;
+
+    assert!(actions.is_empty());
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Refresh func has run once
+    let payload = value::get(ctx, ("small even lego", "/resource/payload")).await?;
+    let refresh_count = payload
+        .get("refresh_count")
+        .and_then(|v| v.as_u64())
+        .expect("has a refresh_count");
+    assert_eq!(serde_json::json!(1), refresh_count);
+
+    // then we'll explicity run refresh, and see that it runs on head as expected
+    Action::enqueue_refresh_in_correct_change_set_and_commit(ctx, small_even_lego.id()).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let actions = Action::list_topologically(ctx).await?;
+    assert!(actions.len() == 1);
+    let solo_action = actions.first().expect("confirmed we have 1");
+    let action = Action::get_by_id(ctx, *solo_action).await?;
+    // the action that was enqueued, was enqueued on head, which is our current change set
+    assert_eq!(action.originating_changeset_id(), ctx.change_set_id());
+    assert_eq!(
+        ctx.change_set_id(),
+        ctx.get_workspace_default_change_set_id().await?
+    );
+
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+    // check that refresh ran again
+    let payload = value::get(ctx, ("small even lego", "/resource/payload")).await?;
+    let refresh_count = payload
+        .get("refresh_count")
+        .and_then(|v| v.as_u64())
+        .expect("has a refresh_count");
+    assert_eq!(serde_json::json!(2), refresh_count);
+
+    // now let's fork head, and run refresh again, and see that it's enqueued on head
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+    Action::enqueue_refresh_in_correct_change_set_and_commit(ctx, small_even_lego.id()).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    let seconds = 10;
+    let mut did_pass = false;
+    for _ in 0..(seconds * 10) {
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let actions = Action::list_topologically(ctx).await?;
+
+        if actions.len() == 1 {
+            let solo_action = actions.first().expect("confirmed we have 1");
+            let action = Action::get_by_id(ctx, *solo_action).await?;
+            // action originated on head, which is not our current change set
+            assert!(
+                action.originating_changeset_id()
+                    == ctx.get_workspace_default_change_set_id().await?
+            );
+            assert_ne!(
+                ctx.get_workspace_default_change_set_id().await?,
+                ctx.change_set_id()
+            );
+            did_pass = true;
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    if !did_pass {
+        panic!("Should have seen an action enqueued on head, but did not. Must investigate!");
+    }
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+    let payload = value::get(ctx, ("small even lego", "/resource/payload")).await?;
+    let refresh_count = payload
+        .get("refresh_count")
+        .and_then(|v| v.as_u64())
+        .expect("has a refresh_count");
+    assert_eq!(serde_json::json!(3), refresh_count);
+    Ok(())
+}
+
+#[test]
 async fn resource_value_propagation_subscriptions_works(ctx: &mut DalContext) -> Result<()> {
     // create 2 variants A & B where A has a resource_value prop that B is subscribed to
     let component_a_code_definition = r#"
@@ -1000,6 +1111,130 @@ async fn next_actions(ctx: &mut DalContext) -> Result<Vec<String>> {
     }
     result.sort();
     Ok(result)
+}
+
+#[test]
+async fn refresh_action_doesnt_dispatch_without_resource_in_change_set(
+    ctx: &mut DalContext,
+) -> Result<()> {
+    // Create a component without setting up a resource
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small even lego",
+        "component without resource",
+    )
+    .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Create action should be enqueued
+    let action_ids = Action::find_for_component_id(ctx, component.id()).await?;
+    let action_id = action_ids.first().expect("has an action");
+    let action = Action::get_by_id(ctx, *action_id).await?;
+    assert_eq!(action.state(), ActionState::Queued);
+
+    // Try and run refresh in this change set
+    Action::enqueue_refresh_in_correct_change_set_and_commit(ctx, component.id()).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // now there's also a refresh action enqueued, NOT DISPATCHED!
+    let action_ids =
+        Action::find_for_kind_and_component_id(ctx, component.id(), ActionKind::Refresh).await?;
+    let action_id = action_ids.first().expect("has one");
+    let action = Action::get_by_id(ctx, *action_id).await?;
+    assert_eq!(action.state(), ActionState::Queued);
+
+    // now try again and this should no-op
+    let result =
+        Action::enqueue_refresh_in_correct_change_set_and_commit(ctx, component.id()).await;
+    assert!(result.is_ok());
+
+    Ok(())
+}
+
+#[test]
+async fn refresh_action_failed_requeue_on_head(ctx: &mut DalContext) -> Result<()> {
+    // Create a component with refresh functionality (using small even lego)
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small even lego",
+        "test component",
+    )
+    .await?;
+
+    // Set up the component with a resource ID so it can have a refresh action
+    let av_id =
+        Component::attribute_value_for_prop(ctx, component.id(), &["root", "si", "resourceId"])
+            .await?;
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("test-resource-id"))).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Apply change set to head and wait for create action to run
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+
+    // Verify we're on head
+    assert_eq!(
+        ctx.change_set_id(),
+        ctx.get_workspace_default_change_set_id().await?
+    );
+
+    // Enqueue a refresh action on head
+    // create a new refresh action manually and set it to failed to simulate a failed action
+    let refresh_action =
+        ActionPrototype::for_variant(ctx, component.schema_variant(ctx).await?.id()).await?;
+    for action_proto in refresh_action {
+        if action_proto.kind == ActionKind::Refresh {
+            let refresh = Action::new(ctx, action_proto.id(), Some(component.id())).await?;
+            Action::set_state(ctx, refresh.id(), ActionState::Failed).await?;
+        }
+    }
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    // Find the refresh action and set it to Failed state
+    let refresh_actions = Action::find_for_component_id(ctx, component.id()).await?;
+    let mut refresh_action_id = None;
+    for action_id in refresh_actions {
+        let prototype = Action::prototype(ctx, action_id).await?;
+        if prototype.kind == ActionKind::Refresh {
+            refresh_action_id = Some(action_id);
+            break;
+        }
+    }
+    let refresh_action_id = refresh_action_id.expect("Should have a refresh action");
+
+    // Verify the action is now in Failed state
+    let failed_action = Action::get_by_id(ctx, refresh_action_id).await?;
+    assert_eq!(failed_action.state(), ActionState::Failed);
+
+    // Now call enqueue_refresh_in_correct_change_set_and_commit again
+    // This should requeue the failed action back to Queued state since we're on head
+    Action::enqueue_refresh_in_correct_change_set_and_commit(ctx, component.id()).await?;
+
+    // Verify that there's now a refresh action in Queued state
+    let actions_after_requeue = Action::find_for_component_id(ctx, component.id()).await?;
+    let mut queued_refresh_action = None;
+    for action_id in actions_after_requeue {
+        let action = Action::get_by_id(ctx, action_id).await?;
+        let prototype = Action::prototype(ctx, action_id).await?;
+        if prototype.kind == ActionKind::Refresh && action.state() == ActionState::Queued {
+            queued_refresh_action = Some(action_id);
+            break;
+        }
+    }
+    let queued_refresh_action =
+        queued_refresh_action.expect("Should have a queued refresh action after requeue");
+
+    // Verify the action is in Queued state
+    let requeued_action = Action::get_by_id(ctx, queued_refresh_action).await?;
+    assert_eq!(requeued_action.state(), ActionState::Queued);
+
+    // Verify we're still on head
+    assert_eq!(
+        ctx.change_set_id(),
+        ctx.get_workspace_default_change_set_id().await?
+    );
+
+    Ok(())
 }
 
 async fn enqueue_delete_action(

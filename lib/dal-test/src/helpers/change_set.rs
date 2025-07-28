@@ -8,19 +8,27 @@ use color_eyre::{
 };
 use dal::{
     ChangeSet,
+    ComponentId,
     DalContext,
     Func,
     Schema,
     SchemaVariant,
+    Ulid,
     action::{
         Action,
         ActionState,
         dependency_graph::ActionDependencyGraph,
     },
+    diagram::view::View,
     workspace_snapshot::{
         DependentValueRoot,
         selector::WorkspaceSnapshotSelectorDiscriminants,
     },
+};
+use si_db::ManagementFuncJobState;
+use si_id::{
+    ManagementPrototypeId,
+    ViewId,
 };
 
 use crate::helpers::generate_fake_name;
@@ -108,6 +116,25 @@ impl ChangeSetTestHelpers {
     pub async fn apply_change_set_to_base_approvals(ctx: &mut DalContext) -> Result<()> {
         ChangeSet::prepare_for_apply(ctx).await?;
         Self::apply_change_set_to_base_approvals_without_prepare_step(ctx).await?;
+        Ok(())
+    }
+
+    /// Enqueues the management func for a pinga job where it both executes and runs the operator
+    pub async fn enqueue_management_func_job(
+        ctx: &mut DalContext,
+        prototype_id: ManagementPrototypeId,
+        component_id: ComponentId,
+        view_id: Option<ViewId>,
+    ) -> Result<()> {
+        let view_id = match view_id {
+            Some(id) => id,
+            None => View::get_id_for_default(ctx).await?,
+        };
+
+        let _result = ManagementFuncJobState::new_pending(ctx, component_id, prototype_id).await?;
+        let request_ulid = Ulid::new();
+        ctx.enqueue_management_func(prototype_id, component_id, view_id, request_ulid.into())
+            .await?;
         Ok(())
     }
 

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use itertools::Itertools;
 use pinga_core::api_types::job_execution_request::JobArgsVCurrent;
 use si_db::{
     ManagementFuncExecutionError,
@@ -24,6 +25,8 @@ use tokio::{
 use veritech_client::ManagementFuncStatus;
 
 use crate::{
+    Component,
+    ComponentError,
     DalContext,
     Func,
     FuncError,
@@ -31,6 +34,10 @@ use crate::{
     WorkspaceSnapshotError,
     WsEvent,
     WsEventError,
+    action::{
+        Action,
+        ActionError,
+    },
     job::consumer::{
         DalJob,
         JobCompletionState,
@@ -42,6 +49,7 @@ use crate::{
         ManagementFuncReturn,
         ManagementOperator,
         prototype::{
+            ManagementFuncKind,
             ManagementPrototype,
             ManagementPrototypeError,
             ManagementPrototypeExecution,
@@ -56,6 +64,10 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ManagementFuncJobError {
+    #[error("action error: {0}")]
+    Action(#[from] ActionError),
+    #[error("component error: {0}")]
+    Component(#[from] Box<ComponentError>),
     #[error("dependent value root error: {0}")]
     DependentValueRoot(#[from] Box<DependentValueRootError>),
     #[error("func error: {0}")]
@@ -88,6 +100,12 @@ pub enum ManagementFuncJobError {
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
     WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<ComponentError> for ManagementFuncJobError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 impl From<DependentValueRootError> for ManagementFuncJobError {
@@ -263,7 +281,30 @@ impl ManagementFuncJob {
             .await?;
 
         Self::success_state(ctx, execution_state_id).await?;
-
+        // if the management prototype is for a Import func and we're not on head, let's dispatch it!
+        let kind = ManagementPrototype::kind_by_id(ctx, self.prototype_id).await?;
+        if kind == ManagementFuncKind::Import
+            && ctx.get_workspace_default_change_set_id().await? != ctx.change_set_id()
+            && Component::exists_on_head_by_ids(ctx, &[self.component_id])
+                .await?
+                .is_empty()
+        {
+            let actions = Action::find_for_kind_and_component_id(
+                ctx,
+                self.component_id,
+                crate::action::prototype::ActionKind::Refresh,
+            )
+            .await?;
+            if let Ok(action_id) = actions.iter().exactly_one() {
+                // Note: this is intentionally not waiting for DVU
+                // or worrying about the state of other actions and
+                // whether this action is dependent on something else
+                // we don't care, because the user just ran import,
+                // and post-import, the component already has everything it
+                // needs to successfully run the refresh function
+                Action::dispatch_action(ctx, *action_id).await?;
+            }
+        }
         ctx.commit().await?;
 
         Ok(JobCompletionState::Done)
