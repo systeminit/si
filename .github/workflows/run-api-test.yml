@@ -162,11 +162,33 @@ jobs:
       - name: Run the deno exec with retry
         run: |
           cd bin/si-luminork-api-tests
-          ./scripts/run-tests.sh
+          ./scripts/run-tests.sh || exit_code=$?
+          
+          # Check the exit code
+          if [ -z "$exit_code" ]; then
+            echo "Deno task succeeded [ or the orchestration failed for a totally non-valid reason ]!"
+            exit 0
+          else 
+            echo "Luminork API tests failed"
+            cd ../..
+            mkdir -p artifacts/luminork_tests
+            echo "failure-marker" > artifacts/luminork_tests/failure-marker
+            exit "$exit_code"
+          fi
+
+
+      - name: Upload artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luminork_tests
+          path: artifacts/luminork_tests
 
   on-failure:
     runs-on: ubuntu-latest
-    needs: api-test
+    needs: 
+      - api-test
+      - luminork-api-test
     environment: ${{ inputs.environment }}
     if: failure()
     steps:
