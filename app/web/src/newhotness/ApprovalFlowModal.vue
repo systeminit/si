@@ -59,9 +59,16 @@
           ```
           -->
           <VButton
-            tone="action"
             label="Apply Change Set"
-            class="grow"
+            :class="
+              clsx(
+                'grow !text-sm !border !cursor-pointer !px-xs',
+                themeClasses(
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                ),
+              )
+            "
             loadingText="Applying Changes"
             :loading="applyChangeSet.loading.value"
             :disabled="disableApplyChangeSet"
@@ -76,7 +83,14 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { PillCounter, Icon, VButton, Modal } from "@si/vue-lib/design-system";
+import {
+  PillCounter,
+  Icon,
+  VButton,
+  Modal,
+  themeClasses,
+} from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { useRouter, useRoute } from "vue-router";
 import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
 import { debounce } from "lodash-es";

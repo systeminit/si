@@ -51,12 +51,12 @@
             :name="
               headerHasContent
                 ? isOpen
-                  ? 'chevron--down'
-                  : 'chevron--right'
+                  ? 'chevron-down'
+                  : 'chevron-right'
                 : 'none'
             "
-            class="opacity-80 hover:opacity-100 hover:scale-110"
-            size="inherit"
+            class="opacity-80"
+            size="sm"
           />
         </div>
 

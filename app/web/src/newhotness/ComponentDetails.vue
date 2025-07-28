@@ -206,13 +206,20 @@
               <template v-if="specialCaseManagementFuncKind === 'import'">
                 <VButton
                   size="xs"
-                  tone="neutral"
                   :label="
                     showResourceInput
                       ? 'Set attributes manually'
                       : 'Import a Resource'
                   "
-                  class="font-normal p-0 h-md mt-[1px] [&>div]:top-[-2px]"
+                  :class="
+                    clsx(
+                      '!text-sm !border !cursor-pointer !px-xs',
+                      themeClasses(
+                        '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
+                        '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
+                      ),
+                    )
+                  "
                   @click.stop="
                     () => {
                       showResourceInput = !showResourceInput;
@@ -341,9 +348,17 @@
           <template #headerIcons>
             <div class="ml-auto my-sm">
               <VButton
-                tone="neutral"
                 label="Visualize Connections"
                 size="xs"
+                :class="
+                  clsx(
+                    '!text-sm !border !cursor-pointer !px-xs',
+                    themeClasses(
+                      '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
+                      '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
+                    ),
+                  )
+                "
                 @click="navigateToMap"
               />
             </div>
@@ -372,9 +387,16 @@
             <VButton
               v-if="refreshEnabled"
               size="xs"
-              class="font-normal p-0 h-md mt-[1px] [&>div]:top-[-2px]"
-              tone="neutral"
               label="Refresh"
+              :class="
+                clsx(
+                  'font-normal p-0 h-md mt-[1px] [&>div]:top-[-2px] !text-sm !border !cursor-pointer !px-xs',
+                  themeClasses(
+                    '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
+                    '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
+                  ),
+                )
+              "
               :loading="refreshActionRunning"
               loadingIcon="loader"
               loadingText="Refreshing..."
