@@ -24,7 +24,7 @@ on:
           - ec2-node
 
 concurrency:
-  group: validate-main
+  group: john-test-concurrency
   cancel-in-progress: false
 
 jobs:
