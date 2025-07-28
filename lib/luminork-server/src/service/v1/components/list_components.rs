@@ -22,13 +22,39 @@ use crate::{
     service::v1::common::PaginationParams,
 };
 
-// For runtime
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ListComponentsV1Response {
+    #[deprecated(note = "component ids deprecated in favor of component details")]
     #[schema(value_type = Vec<Vec<String>>, example = json!(["01H9ZQD35JPMBGHH69BT0Q79AA", "01H9ZQD35JPMBGHH69BT0Q79BB", "01H9ZQD35JPMBGHH69BT0Q79CC"]))]
     pub components: Vec<ComponentId>,
+
+    #[schema(
+        value_type = Vec<ComponentDetailsV1>,
+        example = json!([
+            {
+                "component_id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+                "name": "my-vpc",
+                "schema_name": "AWS::EC2::VPC"
+            },
+            {
+                "component_id": "01H9ZQD35JPMBGHH69BT0Q79BB",
+                "name": "Public 1",
+                "schema_name": "AWS::EC2::Subnet"
+            }
+        ])
+    )]
+    pub component_details: Vec<ComponentDetailsV1>,
     pub next_cursor: Option<String>,
+}
+
+#[derive(Serialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentDetailsV1 {
+    #[schema(value_type = String)]
+    pub component_id: ComponentId,
+    pub name: String,
+    pub schema_name: String,
 }
 
 #[utoipa::path(
@@ -43,11 +69,30 @@ pub struct ListComponentsV1Response {
     summary = "List all components",
     tag = "components",
     responses(
-        (status = 200, description = "Components retrieved successfully", body = ListComponentsV1Response, example = json!(["01H9ZQD35JPMBGHH69BT0Q79AA", "01H9ZQD35JPMBGHH69BT0Q79BB", "01H9ZQD35JPMBGHH69BT0Q79CC"])),
+        (status = 200, description = "Components retrieved successfully", body = ListComponentsV1Response, example = json!({
+                    "components": [
+                        "01H9ZQD35JPMBGHH69BT0Q79AA",
+                        "01H9ZQD35JPMBGHH69BT0Q79BB"
+                    ],
+                    "componentDetails": [
+                        {
+                            "component_id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+                            "name": "my-vpc",
+                            "schema_name": "AWS::EC2::VPC"
+                        },
+                        {
+                            "component_id": "01H9ZQD35JPMBGHH69BT0Q79BB",
+                            "name": "Public 1",
+                            "schema_name": "AWS::EC2::Subnet"
+                        }
+                    ],
+                    "nextCursor": null
+                })),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
+#[allow(deprecated)]
 pub async fn list_components(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     Query(params): Query<PaginationParams>,
@@ -57,18 +102,20 @@ pub async fn list_components(
     let limit = params.limit.unwrap_or(50).min(300) as usize;
     let cursor = params.cursor;
 
-    // Get all component IDs
-    let mut all_component_ids = Component::list_ids(ctx).await?;
+    let mut component_ids = Vec::with_capacity(limit);
+    let mut comp_details = Vec::with_capacity(limit);
 
-    // Sort component IDs for consistent pagination
-    all_component_ids.sort();
+    // Get all component
+    let mut all_components = Component::list(ctx).await?;
 
-    // Apply cursor-based pagination with proper type handling
+    // Sort components  for consistent pagination
+    all_components.sort_by_key(|c| c.id());
+
+    // Find the start index by matching the stringified ComponentId
     let start_index = if let Some(ref cursor_str) = cursor {
-        // Find the index of the cursor component - need to match on string representation
-        match all_component_ids
+        match all_components
             .iter()
-            .position(|id| id.to_string() == *cursor_str)
+            .position(|component| component.id().to_string() == *cursor_str)
         {
             Some(index) => index + 1, // Start after the cursor
             None => 0,
@@ -77,23 +124,36 @@ pub async fn list_components(
         0 // Start from the beginning
     };
 
-    // Get paginated component IDs
-    let end_index = (start_index + limit).min(all_component_ids.len());
-    let paginated_component_ids: Vec<ComponentId> =
-        all_component_ids[start_index..end_index].to_vec();
+    // Compute the end index and extract the paginated slice
+    let end_index = (start_index + limit).min(all_components.len());
+    let paginated_components: Vec<Component> = all_components[start_index..end_index].to_vec();
 
-    // For the next cursor, return as a string
-    let next_cursor = if end_index < all_component_ids.len() && !paginated_component_ids.is_empty()
-    {
-        paginated_component_ids.last().map(|id| id.to_string())
+    // Generate the next cursor from the last item's ID
+    let next_cursor = if end_index < all_components.len() && !paginated_components.is_empty() {
+        paginated_components
+            .last()
+            .map(|component| component.id().to_string())
     } else {
         None
     };
 
+    for component in &paginated_components {
+        let name = component.name(ctx).await?;
+        let schema_name = component.schema(ctx).await?.name;
+        comp_details.push(ComponentDetailsV1 {
+            component_id: component.id(),
+            name,
+            schema_name,
+        });
+
+        component_ids.push(component.id());
+    }
+
     tracker.track(ctx, "api_list_components", json!({}));
 
     Ok(Json(ListComponentsV1Response {
-        components: paginated_component_ids,
+        components: component_ids,
+        component_details: comp_details,
         next_cursor,
     }))
 }
