@@ -1,5 +1,13 @@
-import { useQuery } from "@tanstack/vue-query";
-import { MaybeRefOrGetter, Ref, toValue } from "vue";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
+import {
+  computed,
+  MaybeRefOrGetter,
+  reactive,
+  Ref,
+  toRaw,
+  toValue,
+  unref,
+} from "vue";
 import { Fzf } from "fzf";
 import { bifrostQueryAttributes, useMakeKey } from "@/store/realtime/heimdall";
 import { ComponentInList, EntityKind } from "@/workers/types/entity_kind_types";
@@ -33,8 +41,36 @@ export function useComponentSearch(
   searchString: MaybeRefOrGetter<string | undefined>,
   componentsRef: MaybeRefOrGetter<ComponentInList[] | undefined>,
 ): Ref<ComponentInList[] | undefined> {
-  // This listens for changes to attributes so the search will be re-run if they change.
-  const queryAttributes = useQueryAttributes();
+  const queryClient = useQueryClient();
+
+  const startTerms = reactive<QueryAttributesTerm[]>([]);
+  const exactTerms = reactive<QueryAttributesTerm[]>([]);
+  const terms = computed(() => [
+    ...startTerms.map((t) => toRaw(t)),
+    ...exactTerms.map((t) => toRaw(t)),
+  ]);
+  const termsAsId = computed(() => terms.value.join("/"));
+
+  const ctx = useContext();
+  const makeKey = useMakeKey();
+  const queryKey = makeKey(EntityKind.QueryAttributes, termsAsId);
+  // Use tanstack `useQuery` so we can bust the cache of QueryAttributes whenever an
+  // AttributeTree is updated. We don't actuall;y do the query in here though, we just return
+  // a function that *can* do the query!
+  const attrQuery = useQuery({
+    queryKey,
+    staleTime: 0,
+    queryFn: async () =>
+      await bifrostQueryAttributes(
+        ctx.workspacePk.value,
+        ctx.changeSetId.value,
+        terms.value,
+      ),
+  });
+
+  const componentIds = computed<Set<string>>(() => {
+    return new Set(attrQuery.data.value ?? []);
+  });
 
   // This throttles: If the search string or components change are made while a query is
   // running, computedAsync will wait until the current query is finished before re-running.
@@ -48,6 +84,7 @@ export function useComponentSearch(
     if (!searchTerms) return components;
 
     // Return search results!
+    queryClient.invalidateQueries({ queryKey: queryKey.value });
     return await search(components, searchTerms);
   });
 
@@ -118,69 +155,41 @@ export function useComponentSearch(
       }
       case "attr": {
         // Query to find the component IDs matching this attr, then use that to narrow the components
-        const startTerms = term.startsWith.map((value) => ({
-          key: term.key,
-          value,
-          op: "startsWith" as const,
-        }));
-        const exactTerms = term.exact.map((value) => ({
-          key: term.key,
-          value,
-          op: "exact" as const,
-        }));
+        startTerms.splice(
+          0,
+          Infinity,
+          ...term.startsWith.map((value) => ({
+            key: unref(term.key),
+            value,
+            op: "startsWith" as const,
+          })),
+        );
+        exactTerms.splice(
+          0,
+          Infinity,
+          ...term.exact.map((value) => ({
+            key: unref(term.key),
+            value,
+            op: "exact" as const,
+          })),
+        );
 
         // If we get a key with no value (key:), we push in a single empty string, which will match
         // all components with that key set to anything
         if (exactTerms.length === 0 && startTerms.length === 0) {
           startTerms.push({
-            key: term.key,
+            key: unref(term.key),
             value: "",
             op: "startsWith" as const,
           });
         }
 
-        const componentIds = new Set(
-          await queryAttributes([...startTerms, ...exactTerms]),
-        );
-        return components.filter((c) => componentIds.has(c.id));
+        return components.filter((c) => componentIds.value.has(c.id));
       }
       default:
         return assertUnreachable(term);
     }
   }
-}
-
-/**
- * Function that can be used to reactively query attributes of all components.
- *
- * This function will be re-run whenever the workspace/changeset changes, or when any
- * AttributeTree MV is updated, which will cause your computed value or watch to re-run.
- *
- *     const queryAttributes = useQueryAttributes();
- *     const componentIds = computed(() => queryAttributes({
- *       op: "startsWith",
- *       key: "InstanceType",
- *       value: "m8g.large"
- *     }));
- *
- */
-export function useQueryAttributes() {
-  const ctx = useContext();
-  const key = useMakeKey();
-  // Use tanstack `useQuery` so we can bust the cache of QueryAttributes whenever an
-  // AttributeTree is updated. We don't actuall;y do the query in here though, we just return
-  // a function that *can* do the query!
-  const attributeTreesUpdatedQuery = useQuery({
-    queryKey: key(EntityKind.QueryAttributes),
-    queryFn: () => (terms: QueryAttributesTerm[]) =>
-      bifrostQueryAttributes(
-        ctx.workspacePk.value,
-        ctx.changeSetId.value,
-        terms,
-      ),
-  });
-  return (terms: MaybeRefOrGetter<QueryAttributesTerm[]>) =>
-    attributeTreesUpdatedQuery.data?.value?.(toValue(terms));
 }
 
 /**
