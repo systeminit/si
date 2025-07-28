@@ -281,6 +281,7 @@ pub struct UpdateComponentV1Request {
         note = "Secrets deprecated in favour of using attributes parameter and will be removed in a future version of the API"
     )]
     #[schema(example = json!({}))]
+    #[serde(default)]
     pub secrets: HashMap<SecretPropKey, serde_json::Value>,
 
     #[deprecated(
