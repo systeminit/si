@@ -1,0 +1,51 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "alias",
+    "docker_image",
+    "export_file",
+)
+load(
+    "@prelude-si//:deno.bzl",
+    "deno_compile",
+    "deno_format",
+    "deno_test",
+)
+
+export_file(
+    name = "deno.json",
+)
+
+deno_compile(
+    name = "build",
+    main = "main.ts",
+    out = "si-mcp-server",
+    srcs = glob([
+        "src/**/*.ts",
+        "main.ts",
+    ]),
+    permissions = [
+        "allow-all",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+deno_format(
+    name = "fix-format",
+    srcs = glob(["**/*.ts"]),
+    ignore = ["node_modules"],
+)
+
+deno_format(
+    name = "check-format",
+    srcs = glob(["**/*.ts"]),
+    check = True,
+)
+
+deno_test(
+    name = "test-unit",
+    srcs = glob(["src/**/*_test.ts"]),
+    ignore = ["node_modules"],
+    permissions = [
+        "allow-all",
+    ],
+)
