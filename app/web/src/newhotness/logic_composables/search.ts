@@ -7,6 +7,7 @@ import { QueryAttributesTerm } from "@/workers/types/dbinterface";
 import { assertUnreachable } from "@/utils/assertunreachable";
 import { useContext } from "./context";
 import { computedAsyncDebounce } from "./async";
+import { Context } from "../types";
 
 /**
  * A reactive component search.
@@ -34,11 +35,22 @@ export function useComponentSearch(
   componentsRef: MaybeRefOrGetter<ComponentInList[] | undefined>,
 ): Ref<ComponentInList[] | undefined> {
   // This listens for changes to attributes so the search will be re-run if they change.
-  const queryAttributes = useQueryAttributes();
+  const ctx = useContext();
+  const key = useMakeKey();
+  // Use tanstack `useQuery` so we can bust the cache of QueryAttributes whenever an
+  // AttributeTree is updated. We don't actuall;y do the query in here though, we just return
+  // a function that *can* do the query!
+  const attributeTreesUpdatedAt = useQuery({
+    queryKey: key(EntityKind.QueryAttributes),
+    queryFn: () => new Date(),
+  });
 
   // This throttles: If the search string or components change are made while a query is
   // running, computedAsync will wait until the current query is finished before re-running.
   return computedAsyncDebounce(async () => {
+    // Just mentioning this will cause us to recompute when any attribute trees update.
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    attributeTreesUpdatedAt.data.value;
     // If components is undefined, return undefined (means there's nothing to search yet).
     const components = toValue(componentsRef);
     if (!components) return undefined;
@@ -48,7 +60,8 @@ export function useComponentSearch(
     if (!searchTerms) return components;
 
     // Return search results!
-    return await search(components, searchTerms);
+    const comps = await search(components, searchTerms);
+    return comps;
   });
 
   async function search(
@@ -140,7 +153,7 @@ export function useComponentSearch(
         }
 
         const componentIds = new Set(
-          await queryAttributes([...startTerms, ...exactTerms]),
+          await queryAttributes(ctx, [...startTerms, ...exactTerms]),
         );
         return components.filter((c) => componentIds.has(c.id));
       }
@@ -152,38 +165,16 @@ export function useComponentSearch(
 
 /**
  * Function that can be used to reactively query attributes of all components.
- *
- * This function will be re-run whenever the workspace/changeset changes, or when any
- * AttributeTree MV is updated, which will cause your computed value or watch to re-run.
- *
- *     const queryAttributes = useQueryAttributes();
- *     const componentIds = computed(() => queryAttributes({
- *       op: "startsWith",
- *       key: "InstanceType",
- *       value: "m8g.large"
- *     }));
- *
  */
-export function useQueryAttributes() {
-  const ctx = useContext();
-  const key = useMakeKey();
-  // Use tanstack `useQuery` so we can bust the cache of QueryAttributes whenever an
-  // AttributeTree is updated. We don't actuall;y do the query in here though, we just return
-  // a function that *can* do the query!
-  const attributeTreesUpdatedAt = useQuery({
-    queryKey: key(EntityKind.QueryAttributes),
-    queryFn: () => new Date(),
-  });
-  return (terms: MaybeRefOrGetter<QueryAttributesTerm[]>) => {
-    // Just mentioning this will cause us to recompute when any attribute trees update.
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    attributeTreesUpdatedAt.data.value;
-    return bifrostQueryAttributes(
-      ctx.workspacePk.value,
-      ctx.changeSetId.value,
-      toValue(terms),
-    );
-  };
+export async function queryAttributes(
+  ctx: Context,
+  terms: MaybeRefOrGetter<QueryAttributesTerm[]>,
+) {
+  return await bifrostQueryAttributes(
+    ctx.workspacePk.value,
+    ctx.changeSetId.value,
+    toValue(terms),
+  );
 }
 
 /**
