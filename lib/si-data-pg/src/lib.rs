@@ -8,12 +8,14 @@
 #![allow(clippy::missing_errors_doc)]
 
 use std::{
+    cell::RefCell,
     cmp,
     fmt::{
         self,
         Debug,
     },
     net::ToSocketAddrs,
+    rc::Rc,
     sync::Arc,
     time::Duration,
 };
@@ -174,6 +176,10 @@ pub struct PgPoolConfig {
     pub pool_timeout_wait_secs: Option<u64>,
     pub pool_timeout_create_secs: Option<u64>,
     pub pool_timeout_recycle_secs: Option<u64>,
+    pub pool_total_connection_lifetime_secs: u64,
+    pub pool_idle_connection_lifetime_secs: u64,
+    /// If set to `None`, the eviction task won't be started
+    pub pool_lifetime_check_interval_secs: Option<u64>,
     pub recycling_method: Option<RecyclingMethodConfig>,
 }
 
@@ -193,6 +199,9 @@ impl Default for PgPoolConfig {
             pool_timeout_wait_secs: None,
             pool_timeout_create_secs: None,
             pool_timeout_recycle_secs: None,
+            pool_total_connection_lifetime_secs: 20 * 3600, // 20 hours (RDS Proxy has a 24-hour max)
+            pool_idle_connection_lifetime_secs: 6 * 3600,   // 6 hours
+            pool_lifetime_check_interval_secs: None,
             recycling_method: None,
         }
     }
@@ -337,6 +346,24 @@ impl PgPool {
         span.record("net.peer.ip", metadata.net_peer_ip.as_str());
         span.record("net.peer.port", metadata.net_peer_port);
         span.record("net.transport", metadata.net_transport);
+
+        // If we get a lifetime check interval config, set a loop to evict old connections.
+        // We need this to get rid of connections that may have been dropped by other systems,
+        // such as RDS proxy. Initially we didn't have a limit on the total lifetime of connections,
+        // but this causes some bugs since AWS very much does.
+        if let Some(check_interval_seconds) = settings.pool_lifetime_check_interval_secs {
+            let check_interval = Duration::from_secs(check_interval_seconds);
+
+            let max_age = Duration::from_secs(settings.pool_total_connection_lifetime_secs);
+            let max_idle_time = Duration::from_secs(settings.pool_idle_connection_lifetime_secs);
+
+            tokio::spawn(evict_old_and_idle_pgpool_connections(
+                pool.clone(),
+                check_interval,
+                max_age,
+                max_idle_time,
+            ));
+        }
 
         let pg_pool = Self {
             pool,
@@ -2887,4 +2914,50 @@ impl PgOwnedTransaction {
 
 async fn test_connection_infallible_and_warm_up_pool_task(check_pool: PgPool) {
     let _result = check_pool.test_connection().await;
+}
+
+async fn evict_old_and_idle_pgpool_connections(
+    pg_pool: Pool,
+    check_interval: Duration,
+    max_age: Duration,
+    max_idle_time: Duration,
+) {
+    // Since the pool.retain we use in the loop below blocks the pool, we set a minimum
+    // interval to avoid it from completely breaking db connections
+    let min_check_interval = Duration::from_secs(30);
+
+    let check_interval = if check_interval < min_check_interval {
+        warn!(
+            "pgpool configured with a too small eviction checking interval, setting it to min value ({} seconds)",
+            min_check_interval.as_secs()
+        );
+        min_check_interval
+    } else {
+        check_interval
+    };
+
+    loop {
+        tokio::time::sleep(check_interval).await;
+        let connection_count = Rc::new(RefCell::new(0));
+        let evicted_connections = Rc::new(RefCell::new(0));
+        pg_pool.retain(|_, metrics| {
+            *connection_count.borrow_mut() += 1;
+            if metrics.last_used() > max_idle_time {
+                debug!("Evicting connection due to idle time");
+                *evicted_connections.borrow_mut() += 1;
+                false
+            } else if metrics.age() > max_age {
+                debug!("Evicting connection due to total age");
+                *evicted_connections.borrow_mut() += 1;
+                false
+            } else {
+                true
+            }
+        });
+        info!(
+            "Checked {} connection(s), evicted {}",
+            connection_count.borrow(),
+            evicted_connections.borrow()
+        );
+    }
 }
