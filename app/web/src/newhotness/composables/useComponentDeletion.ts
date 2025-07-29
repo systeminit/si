@@ -62,10 +62,9 @@ export function useComponentDeletion(viewId?: string, skipNavigation = false) {
       return { success: deleteApi.ok(req), newChangeSetId };
     } else if (mode === DeleteMode.Remove && viewId) {
       // Remove from view mode
-      const call = deleteEraseFromViewApi.endpoint(
-        routes.EraseComponentsFromView,
-        { viewId },
-      );
+      const call = deleteEraseFromViewApi.endpoint(routes.ViewEraseComponents, {
+        viewId,
+      });
       const { req, newChangeSetId } = await call.delete({
         componentIds,
       });

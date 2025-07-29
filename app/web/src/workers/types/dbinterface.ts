@@ -13,6 +13,7 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
+import { ViewId } from "@/api/sdf/dal/views";
 import {
   Connection,
   EntityKind,
@@ -162,6 +163,14 @@ export interface SharedDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Promise<Record<ComponentId, ComponentInfo>>;
+  getComponentsInViews(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Promise<Record<ViewId, Set<ComponentId>>>;
+  getComponentsInOnlyOneView(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Promise<Record<ComponentId, ViewId>>;
   getSchemaMembers(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -260,6 +269,14 @@ export interface TabDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Record<ComponentId, ComponentInfo>;
+  getComponentsInViews(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Record<ViewId, Set<ComponentId>>;
+  getComponentsInOnlyOneView(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Record<ComponentId, ViewId>;
   getSchemaMembers(workspaceId: string, changeSetId: ChangeSetId): string;
   get(
     workspaceId: string,

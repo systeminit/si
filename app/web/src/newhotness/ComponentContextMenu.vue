@@ -42,6 +42,7 @@ import {
   SchemaVariant,
 } from "@/workers/types/entity_kind_types";
 import CreateTemplateModal from "@/newhotness/CreateTemplateModal.vue";
+import { ViewId } from "@/api/sdf/dal/views";
 import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import { useApi, routes } from "./api_composables";
@@ -50,10 +51,12 @@ import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 import { useComponentActions } from "./logic_composables/component_actions";
 import DuplicateComponentsModal from "./DuplicateComponentsModal.vue";
+import { useComponentsAndViews } from "./logic_composables/view";
 
 const props = defineProps<{
   onGrid?: boolean;
   enableKeyboardControls?: boolean;
+  viewListOptions?: { label: string; value: string }[];
 }>();
 
 const route = useRoute();
@@ -79,6 +82,9 @@ const { deleteComponents, eraseComponents, restoreComponents } =
 // Use shared upgrade composable
 const { upgradeComponents } = useComponentUpgrade();
 
+// Use shared composable for components and views
+const componentsAndViews = useComponentsAndViews();
+
 const atLeastOneGhostedComponent = computed(() =>
   components.value.some((c) => c.toDelete),
 );
@@ -87,7 +93,7 @@ const atLeastOneNormalComponent = computed(() =>
 );
 
 // ================================================================================================
-// These values are for "single component" functionality.
+// HANDLE SINGLE COMPONENT MENU OPTIONS
 const singleComponent = computed(() =>
   components.value.length === 1 ? components.value[0] : undefined,
 );
@@ -111,8 +117,92 @@ const schemaVariantQuery = useQuery<SchemaVariant | null>({
 const managementFunctions = computed(
   () => schemaVariantQuery.data.value?.mgmtFunctions ?? [],
 );
-// ================================================================================================
 
+// ================================================================================================
+// HANDLE VIEW MENU OPTIONS
+interface AvailableViewListOptions {
+  addToView: { label: string; value: string }[];
+  removeFromView: { label: string; value: string }[];
+}
+
+const availableViewListOptions = computed(() => {
+  const unprocessedOptions = props.viewListOptions ?? [];
+  unprocessedOptions.sort((a, b) =>
+    a.label.toLowerCase().localeCompare(b.label.toLowerCase()),
+  );
+  const options: AvailableViewListOptions = {
+    addToView: [],
+    removeFromView: [],
+  };
+  for (const unprocessedOption of unprocessedOptions) {
+    const viewId = unprocessedOption.value;
+    const componentsInView =
+      componentsAndViews.componentsInViews.value[viewId] ?? new Set();
+    if (showViewInAddToViewMenuOptions(componentsInView))
+      options.addToView.push(unprocessedOption);
+    if (showViewInRemoveFromViewMenuOptions(componentsInView, viewId))
+      options.removeFromView.push(unprocessedOption);
+  }
+  return options;
+});
+
+const showViewInAddToViewMenuOptions = (
+  componentIdsInView: Set<ComponentId>,
+) => {
+  // If there's nothing in the view, you always add to it.
+  if (componentIdsInView.size < 1) return true;
+
+  // For the selected components, if at least one of them is not in the view, we can add to it.
+  for (const componentId of componentIds.value) {
+    if (!componentIdsInView.has(componentId)) {
+      return true;
+    }
+  }
+
+  // If all of the components are in the view, we cannot add any of them to it.
+  return false;
+};
+const showViewInRemoveFromViewMenuOptions = (
+  componentIdsInView: Set<ComponentId>,
+  viewId: ViewId,
+) => {
+  // If there's nothing in the view, there's nothing to remove from it.
+  if (componentIdsInView.size < 1) return false;
+
+  // For the selected components, only show the option if all of them are in the view and that view
+  // isn't the final view for any of the components.
+  for (const componentId of componentIds.value) {
+    const soleViewIdForCurrentComponent =
+      componentsAndViews.componentsInOnlyOneView.value[componentId];
+    if (
+      !componentIdsInView.has(componentId) ||
+      soleViewIdForCurrentComponent === viewId
+    )
+      return false;
+  }
+
+  // If we don't hit the exit clause, then we are good to include this option.
+  return true;
+};
+
+const removeFromViewTooltip = computed(() => {
+  if (availableViewListOptions.value.removeFromView.length > 0)
+    return undefined;
+  const unprocessedOptions = props.viewListOptions ?? [];
+  for (const unprocessedOption of unprocessedOptions) {
+    const viewId = unprocessedOption.value;
+    for (const componentId of componentIds.value) {
+      const soleViewIdForCurrentComponent =
+        componentsAndViews.componentsInOnlyOneView.value[componentId];
+      if (soleViewIdForCurrentComponent === viewId)
+        return "Cannot remove components from their final view. A given component must exist in at least one view.";
+    }
+  }
+  return undefined;
+});
+
+// ================================================================================================
+// BEGIN CREATING THE MENU OPTIONS
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
 
@@ -223,20 +313,6 @@ const rightClickMenuItems = computed(() => {
     });
   }
 
-  // TODO(nick): add the ability to add and remove components from views.
-  // items.push({
-  //   icon: "plus",
-  //   label: "Add to View",
-  //   shortcut: "+",
-  //   onSelect: () => componentsAddToView(componentIds.value),
-  // });
-  // items.push({
-  //   icon: "minus",
-  //   label: "Remove from View",
-  //   shortcut: "-",
-  //   onSelect: () => componentsRemoveFromView(componentIds.value),
-  // });
-
   // can erase so long as you have not selected a view
   items.push(eraseMenuItem);
 
@@ -249,6 +325,47 @@ const rightClickMenuItems = computed(() => {
     shortcutClass: "border-destructive-200 text-destructive-300",
     onSelect: () => componentsStartDelete(components.value),
   });
+
+  if (availableViewListOptions.value.addToView.length > 0) {
+    const submenuItems: DropdownMenuItemObjectDef[] = [];
+    for (const option of availableViewListOptions.value.addToView) {
+      submenuItems.push({
+        label: option.label,
+        onSelect: () => componentsAddToView(option.value, componentIds.value),
+      });
+    }
+    items.push({
+      icon: "plus",
+      label: "Add to View",
+      submenuItems,
+      submenuVariant: "contextmenu",
+    });
+  }
+
+  if (removeFromViewTooltip.value) {
+    items.push({
+      icon: "minus",
+      label: "Remove from View",
+      disabled: true,
+      showTooltipOnHover: true,
+      tooltip: removeFromViewTooltip.value,
+    });
+  } else if (availableViewListOptions.value.removeFromView.length > 0) {
+    const submenuItems: DropdownMenuItemObjectDef[] = [];
+    for (const option of availableViewListOptions.value.removeFromView) {
+      submenuItems.push({
+        label: option.label,
+        onSelect: () =>
+          componentsRemoveFromView(option.value, componentIds.value),
+      });
+    }
+    items.push({
+      icon: "minus",
+      label: "Remove from View",
+      submenuItems,
+      submenuVariant: "contextmenu",
+    });
+  }
 
   // Only enable actions if we are working with a single component.
   if (singleComponent.value && singleComponent.value.schemaVariantId) {
@@ -383,10 +500,6 @@ const componentsFinishDelete = async (mode: DeleteMode) => {
   }
 };
 
-const componentsUpgrade = async (componentIds: ComponentId[]) => {
-  await upgradeComponents(componentIds);
-};
-
 const duplicateComponentIds = ref<ComponentId[]>([]);
 const duplicateComponentsModalRef =
   ref<InstanceType<typeof DuplicateComponentsModal>>();
@@ -443,13 +556,37 @@ const duplicateComponents = async (
   return { success: duplicateComponentApi.ok(req), newChangeSetId };
 };
 
-// TODO(nick): add the ability to add and remove components from views.
-// const componentsAddToView = async (componentIds: ComponentId[]) => {
-//   close();
-// };
-// const componentsRemoveFromView = async (componentIds: ComponentId[]) => {
-//   close();
-// };
+const addToViewApi = useApi();
+const removeFromViewApi = useApi();
+const componentsAddToView = async (
+  viewId: string,
+  componentIds: ComponentId[],
+) => {
+  const call = addToViewApi.endpoint(routes.ViewAddComponents, {
+    viewId,
+  });
+  close();
+  call.post({
+    componentIds,
+  });
+};
+const componentsRemoveFromView = async (
+  viewId: string,
+  componentIds: ComponentId[],
+) => {
+  const call = removeFromViewApi.endpoint(routes.ViewEraseComponents, {
+    viewId,
+  });
+  close();
+  await call.delete({
+    componentIds,
+  });
+};
+
+const componentsUpgrade = async (componentIds: ComponentId[]) => {
+  await upgradeComponents(componentIds);
+};
+
 const createTemplateModalRef = ref<InstanceType<typeof CreateTemplateModal>>();
 
 const createTemplateStart = () => {
@@ -499,9 +636,8 @@ defineExpose({
   isOpen,
   componentsStartErase,
   duplicateComponentStart,
-  // TODO(nick): add the ability to add and remove components from views.
-  // componentsAddToView,
-  // componentsRemoveFromView,
+  componentsAddToView,
+  componentsRemoveFromView,
   componentsUpgrade,
   contextMenuRef,
   componentsStartDelete,

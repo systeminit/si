@@ -95,7 +95,6 @@ import CircleStack from "~icons/heroicons-solid/circle-stack";
 import BulletListIndented from "~icons/fluent/text-bullet-list-tree-16-regular";
 import BulletList from "~icons/material-symbols/list";
 import UserCircle from "~icons/heroicons/user-circle-solid";
-import Plug from "~icons/ph/plugs-fill";
 import Boxes from "~icons/bi/boxes";
 import TreeParents from "~icons/fluent-mdl2/breadcrumb";
 import Docs from "~icons/fluent/book-question-mark-20-filled";
@@ -110,7 +109,6 @@ import MaterialSymbolsLightTouchpadMouseRounded from "~icons/material-symbols-li
 import IcBaselinePlusMinusAlt from "~icons/ic/baseline-plus-minus-alt";
 import MaterialSymbolsKeyboardCommandKey from "~icons/material-symbols/keyboard-command-key";
 import MaterialSymbolsKeyboardOptionKey from "~icons/material-symbols/keyboard-option-key";
-import PhArrowsOutCardinal from "~icons/ph/arrows-out-cardinal";
 import MaterialSymbolsSpaceBarRounded from "~icons/material-symbols/space-bar-rounded";
 import MdiKeyboardEsc from "~icons/mdi/keyboard-esc";
 import MaterialSymbolsBackspaceOutline from "~icons/material-symbols/backspace-outline";
@@ -123,11 +121,7 @@ import Map from "~icons/heroicons/map";
 import MdiTriangle from "~icons/mdi/triangle";
 
 import TdesignLinkUnlink from "~icons/tdesign/link-unlink";
-import PhTestTubeFill from "~icons/ph/test-tube-fill";
 
-import BracketsCurly from "~icons/ph/brackets-curly";
-import BracketsSquare from "~icons/ph/brackets-square";
-import BracketsAngle from "~icons/ph/brackets-angle";
 import NestedArrowRight from "~icons/material-symbols/subdirectory-arrow-right";
 
 import CollapseAll from "~icons/material-symbols/collapse-all";
@@ -186,12 +180,19 @@ import CarbonChevronRight from "~icons/carbon/chevron-right";
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
 
 // Phosphor
+import BracketsAngle from "~icons/ph/brackets-angle";
+import BracketsCurly from "~icons/ph/brackets-curly";
+import BracketsSquare from "~icons/ph/brackets-square";
+import PhArrowsOutCardinal from "~icons/ph/arrows-out-cardinal";
 import PhCursorTextBold from "~icons/ph/cursor-text-bold";
+import PhTestTubeFill from "~icons/ph/test-tube-fill";
+import Plug from "~icons/ph/plugs-fill";
 
 // MDI
 import MdiCheckboxBlankCircle from "~icons/mdi/checkbox-blank-circle";
 import MdiCheckboxBlankCircleOutline from "~icons/mdi/checkbox-blank-circle-outline";
 import MdiInformationVariantCircleOutline from "~icons/mdi/information-variant-circle-outline";
+import MdiMouseRightClickOutline from "~icons/mdi/mouse-right-click-outline";
 
 // attribute widget types
 import InputTypeString from "~icons/carbon/string-text";
@@ -353,6 +354,7 @@ export const ICONS = Object.freeze({
   mjolnir: Mjolnir,
   moon: Moon,
   "mouse-and-touchpad": MaterialSymbolsLightTouchpadMouseRounded,
+  "mouse-right-click-outline": MdiMouseRightClickOutline,
   "mouse-scroll": IconoirMouseScrollWheel,
   multiselect: Boxes,
   "nested-arrow-right": NestedArrowRight,

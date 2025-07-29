@@ -37,6 +37,7 @@ import { nonNullable } from "@/utils/typescriptLinter";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
+import { ViewId } from "@/api/sdf/dal/views";
 import {
   Atom,
   AtomDocument,
@@ -543,7 +544,14 @@ const bustCacheAndReferences = (
 ) => {
   // don't bust lists in the whole, we're using atomUpdatedFn to update the contents of lists
   // unless its a hammer b/c i am missing a list
-  if (LISTABLE.includes(kind) && !force) return;
+  // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
+  // from a view without it.
+  if (
+    kind !== EntityKind.ViewComponentList &&
+    LISTABLE.includes(kind) &&
+    !force
+  )
+    return;
 
   // bust me
   bustOrQueue(workspaceId, changeSetId, kind, id, skipQueue);
@@ -552,6 +560,25 @@ const bustCacheAndReferences = (
   // but we're using a QueryKey of "all the schema members", under the workspaceId
   if (kind === EntityKind.SchemaMembers) {
     bustOrQueue(workspaceId, changeSetId, kind, workspaceId, skipQueue);
+  }
+
+  // FIXME(nick): do not bust lists and find a way to support add/remove component(s) from a view
+  // without it.
+  if (kind === EntityKind.ViewComponentList) {
+    bustOrQueue(
+      workspaceId,
+      changeSetId,
+      EntityKind.ComponentsInViews,
+      workspaceId,
+      skipQueue,
+    );
+    bustOrQueue(
+      workspaceId,
+      changeSetId,
+      EntityKind.ComponentsInOnlyOneView,
+      workspaceId,
+      skipQueue,
+    );
   }
 
   // if we know it doesnt have references, dont even run the sql
@@ -1036,12 +1063,20 @@ const handlePatchMessage = async (db: Database, data: PatchBatch) => {
         listAtomsDesc,
       });
       debug("📦 Processing list atoms:", listAtoms.length, listAtomsDesc);
-      // not busting these
-      await Promise.all(
+
+      // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
+      // from a view without it.
+      const listAtomsToBust = await Promise.all(
         listAtoms.map(async (atom) => {
           return applyPatch(db, atom, indexChecksum);
         }),
       );
+      // not busting these
+      // await Promise.all(
+      //   listAtoms.map(async (atom) => {
+      //     return applyPatch(db, atom, indexChecksum);
+      //   }),
+      // );
 
       // non-list atoms
       // non-connections (e.g. components need to go before connections)
@@ -1110,6 +1145,20 @@ const handlePatchMessage = async (db: Database, data: PatchBatch) => {
       atomsToBust.forEach((atom) => {
         if (atom) {
           debug("🧹 Busting cache for atom:", atom.kind, atom.id);
+          bustCacheAndReferences(
+            db,
+            atom.workspaceId,
+            atom.changeSetId,
+            atom.kind,
+            atom.id,
+          );
+        }
+      });
+      // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
+      // from a view without it.
+      listAtomsToBust.forEach((atom) => {
+        if (atom && atom.kind === EntityKind.ViewComponentList) {
+          debug("🧹 Busting cache for listable atom:", atom.kind, atom.id);
           bustCacheAndReferences(
             db,
             atom.workspaceId,
@@ -2484,6 +2533,98 @@ const getComponentDetails = (
   return details;
 };
 
+const getComponentsInViews = (
+  db: Database,
+  _workspaceId: string,
+  changeSetId: string,
+  indexChecksum?: string,
+) => {
+  const sql = `
+    SELECT DISTINCT
+      atoms.args AS viewId,
+      components.value ->> '$.id' AS componentId
+    FROM ${
+      indexChecksum
+        ? "indexes"
+        : "changesets JOIN indexes on indexes.checksum = changesets.index_checksum"
+    }
+      JOIN index_mtm_atoms ON indexes.checksum = index_mtm_atoms.index_checksum
+      JOIN atoms ON atoms.kind = index_mtm_atoms.kind AND atoms.args = index_mtm_atoms.args AND atoms.checksum = index_mtm_atoms.checksum
+      JOIN json_each(jsonb_extract(CAST(atoms.data as text), '$.components')) AS components
+    WHERE ${
+      indexChecksum
+        ? "indexes.index_checksum = ?"
+        : "changesets.change_set_id = ?"
+    }
+      AND atoms.kind = 'ViewComponentList'
+  `;
+
+  const bind = [indexChecksum ?? changeSetId];
+  const data = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  }) as [ViewId, ComponentId][];
+
+  const result: Record<ViewId, Set<ComponentId>> = {};
+  for (const [viewId, componentId] of data) {
+    result[viewId] ??= new Set();
+    result[viewId]?.add(componentId);
+  }
+  return result;
+};
+
+const getComponentsInOnlyOneView = (
+  db: Database,
+  _workspaceId: string,
+  changeSetId: string,
+  indexChecksum?: string,
+) => {
+  const sql = `
+    WITH views_and_components AS (
+      SELECT
+        atoms.args AS viewId,
+        components.value ->> '$.id' AS componentId,
+        ${
+          indexChecksum ? "indexes.index_checksum" : "changesets.change_set_id"
+        } AS filter_value
+      FROM ${
+        indexChecksum
+          ? "indexes"
+          : "changesets JOIN indexes ON indexes.checksum = changesets.index_checksum"
+      }
+        JOIN index_mtm_atoms ON indexes.checksum = index_mtm_atoms.index_checksum
+        JOIN atoms ON atoms.kind = index_mtm_atoms.kind AND atoms.args = index_mtm_atoms.args AND atoms.checksum = index_mtm_atoms.checksum
+        JOIN json_each(jsonb_extract(CAST(atoms.data AS text), '$.components')) AS components
+      WHERE atoms.kind = 'ViewComponentList'
+    )
+    SELECT DISTINCT
+      viewId,
+      componentId
+    FROM views_and_components
+    WHERE filter_value = ?
+      AND componentId IN (
+        SELECT componentId
+        FROM views_and_components
+        GROUP BY componentId
+        HAVING COUNT(*) = 1
+      );
+  `;
+
+  const bind = [indexChecksum ?? changeSetId];
+  const data = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  }) as [ViewId, ComponentId][];
+
+  const result: Record<ComponentId, ViewId> = {};
+  for (const [viewId, componentId] of data) {
+    result[componentId] = viewId;
+  }
+  return result;
+};
+
 const flip = (i: Connection): Connection => {
   const o: Connection = {
     ...i,
@@ -3459,6 +3600,22 @@ const dbInterface: TabDBInterface = {
     }
     return sqlite.transaction((db) =>
       getComponentDetails(db, workspaceId, changeSetId),
+    );
+  },
+  getComponentsInViews(workspaceId, changeSetId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) =>
+      getComponentsInViews(db, workspaceId, changeSetId),
+    );
+  },
+  getComponentsInOnlyOneView(workspaceId, changeSetId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) =>
+      getComponentsInOnlyOneView(db, workspaceId, changeSetId),
     );
   },
   getSchemaMembers(workspaceId, changeSetId) {
