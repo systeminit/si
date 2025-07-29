@@ -20,11 +20,16 @@ const tracer = trace.getTracer("si-vue");
 export enum routes {
   ActionAdd = "ActionAdd",
   ActionCancel = "ActionCancel",
+  ActionFuncRunId = "ActionFuncRunId",
   ActionHold = "ActionHold",
   ActionRetry = "ActionRetry",
-  ActionFuncRunId = "ActionFuncRunId",
   ApplyChangeSet = "ApplyChangeSet",
+  ChangeSetApprovalStatus = "ChangeSetApprovalStatus",
+  ChangeSetApprove = "ChangeSetApprove",
+  ChangeSetCancelApprovalRequest = "ChangeSetCancelApprovalRequest",
+  ChangeSetReopen = "ChangeSetReopen",
   ChangeSetRename = "ChangeSetRename",
+  ChangeSetRequestApproval = "ChangeSetRequestApproval",
   CreateComponent = "CreateComponent",
   CreateSecret = "CreateSecret",
   CreateTemplate = "CreateTemplate",
@@ -38,11 +43,11 @@ export enum routes {
   FuncRunLogs = "FuncRunLogs",
   GetFuncRunsPaginated = "GetFuncRunsPaginated",
   GetPublicKey = "GetPublicKey",
-  RefreshAction = "RefreshAction",
-  RestoreComponents = "RestoreComponents",
-  MgmtFuncRun = "MgmtFuncRun",
   MgmtFuncGetJobState = "MgmtFuncGetJobState",
   MgmtFuncGetLatest = "MgmtFuncGetLatest",
+  MgmtFuncRun = "MgmtFuncRun",
+  RefreshAction = "RefreshAction",
+  RestoreComponents = "RestoreComponents",
   UpdateComponentAttributes = "UpdateComponentAttributes",
   UpdateComponentManage = "UpdateComponentManage",
   UpdateComponentName = "UpdateComponentName",
@@ -50,10 +55,12 @@ export enum routes {
   UpgradeComponents = "UpgradeComponents",
   ViewAddComponents = "ViewAddComponents",
   ViewEraseComponents = "ViewEraseComponents",
+  // THESE ARE SPECIAL CASED
   CreateChangeSet = "CreateChangeSet",
   AbandonChangeSet = "AbandonChangeSet",
   Workspaces = "Workspaces",
   ChangeSets = "ChangeSets",
+  WorkspaceUsers = "WorkspaceUsers",
 }
 
 /**
@@ -75,14 +82,23 @@ const COMPRESSED_ROUTES: readonly routes[] = [
   routes.UpdateComponentAttributes,
 ] as const;
 
+const WORKSPACES_V2_ROUTES: readonly routes[] = [
+  routes.WorkspaceUsers,
+] as const;
+
 const _routes: Record<routes, string> = {
   ActionAdd: "/action/add",
   ActionCancel: "/action/<id>/cancel",
+  ActionFuncRunId: "/action/<id>/func_run_id",
   ActionHold: "/action/<id>/put_on_hold",
   ActionRetry: "/action/<id>/retry",
-  ActionFuncRunId: "/action/<id>/func_run_id",
   ApplyChangeSet: "/apply",
+  ChangeSetApprovalStatus: "/approval_status",
+  ChangeSetApprove: "/approve",
+  ChangeSetCancelApprovalRequest: "/cancel_approval_request",
+  ChangeSetReopen: "/reopen",
   ChangeSetRename: "/rename",
+  ChangeSetRequestApproval: "/request_approval",
   CreateComponent: "/views/<viewId>/component",
   CreateSecret: "/components/<id>/secret",
   CreateTemplate: "/management/generate_template/<viewId>",
@@ -96,11 +112,11 @@ const _routes: Record<routes, string> = {
   FuncRunLogs: "/funcs/runs/<id>/logs",
   GetFuncRunsPaginated: "/funcs/runs/paginated",
   GetPublicKey: "/components/<id>/secret/public_key",
-  RefreshAction: "/action/refresh/<componentId>",
-  RestoreComponents: "/components/restore",
-  MgmtFuncRun: "/management/prototype/<prototypeId>/<componentId>/<viewId>",
   MgmtFuncGetJobState: "/management/state/<funcRunId>",
   MgmtFuncGetLatest: "/management/component/<componentId>/latest",
+  MgmtFuncRun: "/management/prototype/<prototypeId>/<componentId>/<viewId>",
+  RefreshAction: "/action/refresh/<componentId>",
+  RestoreComponents: "/components/restore",
   UpdateComponentAttributes: "/components/<id>/attributes",
   UpdateComponentManage: "/components/<id>/manage",
   UpdateComponentName: "/components/<id>/name",
@@ -108,11 +124,12 @@ const _routes: Record<routes, string> = {
   UpgradeComponents: "/components/upgrade",
   ViewAddComponents: "/views/<viewId>/add_components",
   ViewEraseComponents: "/views/<viewId>/erase_components",
-  // THESE ARE SPECIAL CASED & NOT V2
-  CreateChangeSet: "/change_set/create_change_set",
-  AbandonChangeSet: "/change_set/abandon_change_set",
+  // THESE ARE SPECIAL CASED
+  CreateChangeSet: "/change_set/create_change_set", // not a v2 url
+  AbandonChangeSet: "/change_set/abandon_change_set", // not a v2 url
   Workspaces: "/workspaces", // not a v2 url
   ChangeSets: "CHANGESETS", // a short v2 url
+  WorkspaceUsers: "WORKSPACEUSERS", // a short v2 short
 } as const;
 
 // the mechanics
@@ -141,6 +158,7 @@ export class APICall<Response> {
   changeSetId: string;
   path: string;
   ctx: Context;
+  workspacesV2: boolean;
   canMutateHead: boolean;
   mustCompress: boolean;
   description: string;
@@ -150,18 +168,19 @@ export class APICall<Response> {
   constructor(
     ctx: Context,
     path: string,
+    workspacesV2: boolean,
     canMutateHead: boolean,
     mustCompress: boolean,
     description: string,
     obs: LabeledObs,
-    changesetId?: string,
   ) {
     this.ctx = ctx;
     const workspaceId = unref(ctx.workspacePk);
-    const changeSetId = changesetId ?? unref(ctx.changeSetId);
+    const changeSetId = unref(ctx.changeSetId);
     this.workspaceId = workspaceId;
     this.changeSetId = changeSetId;
     this.path = path;
+    this.workspacesV2 = workspacesV2;
     this.canMutateHead = canMutateHead;
     this.mustCompress = mustCompress;
     this.description = description;
@@ -178,6 +197,9 @@ export class APICall<Response> {
       ].includes(this.path)
     ) {
       return this.path;
+    }
+    if ([_routes.WorkspaceUsers].includes(this.path)) {
+      return `v2/workspaces/${this.workspaceId}/users`;
     }
     if ([_routes.ChangeSets].includes(this.path)) {
       return `v2/workspaces/${this.workspaceId}/change-sets`;
@@ -365,16 +387,11 @@ export const useApi = (ctx?: Context): UseApi => {
       throw new Error(`Endpoint ${key}, ${path} requires arguments`);
     assertIsDefined(ctx);
 
-    // There are some endpoints that can operate on a changeset even if a user is not using it.
-    // Sending changesetId as an arg will override the changesetId for this request.
-    let changesetId;
     if (args)
       Object.entries(args).forEach(([k, v]) => {
-        if (k === "changesetId") {
-          changesetId = v;
-        }
         path = path.replace(`<${k}>`, v);
       });
+    const workspacesV2 = WORKSPACES_V2_ROUTES.includes(key);
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
     const mustCompress = COMPRESSED_ROUTES.includes(key);
     const argList = args ? Object.entries(args).flatMap((m) => m) : [];
@@ -385,11 +402,11 @@ export const useApi = (ctx?: Context): UseApi => {
     const call = new APICall<Response>(
       ctx,
       path,
+      workspacesV2,
       canMutateHead,
       mustCompress,
       desc,
       labeledObs,
-      changesetId,
     );
     apiCall = call;
     return call;

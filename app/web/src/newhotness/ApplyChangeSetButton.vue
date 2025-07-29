@@ -14,8 +14,8 @@
         )
       "
       loadingText="Applying Changes"
-      :loading="applyChangeSet.loading.value"
-      :disabled="disableApplyChangeSet"
+      :loading="loading"
+      :disabled="disableButtonToOpenModal"
       @click="openApprovalFlowModal"
     >
       <template #iconRight>
@@ -41,7 +41,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, ref } from "vue";
+import { computed, ref } from "vue";
 import * as _ from "lodash-es";
 import { VButton, PillCounter, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
@@ -52,11 +52,12 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
-import { assertIsDefined, Context } from "./types";
+import { useContext } from "./logic_composables/context";
 import { useApplyChangeSet } from "./logic_composables/change_set";
+import { useStatus } from "./logic_composables/status";
+import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
+const ctx = useContext();
 
 const approvalFlowModalRef = ref<InstanceType<typeof ApprovalFlowModal>>();
 
@@ -64,7 +65,16 @@ const openApprovalFlowModal = () => {
   approvalFlowModalRef.value?.open();
 };
 
-const { applyChangeSet, disableApplyChangeSet } = useApplyChangeSet();
+const { loading, performApply: _performApply } = useApplyChangeSet(ctx);
+
+const status = useStatus();
+const disableButtonToOpenModal = computed(
+  () =>
+    (ctx.changeSet.value?.status !== ChangeSetStatus.Open &&
+      ctx.changeSet.value?.status !== ChangeSetStatus.NeedsApproval) ||
+    ctx.onHead.value ||
+    status.value === "syncing",
+);
 
 const key = useMakeKey();
 const args = useMakeArgs();

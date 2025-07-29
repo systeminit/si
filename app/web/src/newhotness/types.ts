@@ -7,6 +7,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
+import { WorkspaceUser } from "@/store/auth.store";
 
 export interface Context {
   workspacePk: ComputedRef<string>;
@@ -20,6 +21,9 @@ export interface Context {
   componentDetails: ComputedRef<ComponentDetails>;
   schemaMembers: ComputedRef<Record<SchemaId, SchemaMembers>>;
   queriesEnabled: Ref<boolean>;
+  approvalsEnabled: ComputedRef<boolean>;
+  workspaceHasOneUser: ComputedRef<boolean>;
+  workspaceUsers: ComputedRef<Record<string, WorkspaceUser>>;
 }
 
 export function assertIsDefined<T>(value: T | undefined): asserts value is T {

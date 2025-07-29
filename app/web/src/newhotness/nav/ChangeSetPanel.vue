@@ -121,7 +121,7 @@
       ref="abandonModalRef"
       :changeSet="changeSet"
     />
-    <ChangesetRenameModal ref="renameModalRef" />
+    <ChangeSetRenameModal ref="renameModalRef" />
   </div>
 </template>
 
@@ -144,7 +144,7 @@ import clsx from "clsx";
 import { tw } from "@si/vue-lib";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
-import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
+import ChangeSetRenameModal from "@/newhotness/ChangeSetRenameModal.vue";
 import AbandonChangeSetModal from "./AbandonChangeSetModal.vue";
 import * as heimdall from "../../store/realtime/heimdall";
 import { routes, useApi } from "../api_composables";
@@ -207,7 +207,7 @@ const openAbandonConfirmationModal = () => {
   abandonModalRef.value?.open();
 };
 
-const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(
+const renameModalRef = ref<InstanceType<typeof ChangeSetRenameModal> | null>(
   null,
 );
 function openRenameModal(option: { value: string; label: string }) {

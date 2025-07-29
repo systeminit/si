@@ -55,7 +55,11 @@
       </div>
 
       <!-- Right -->
-      <NavbarPanelRight :changeSetId="changeSetId" :workspaceId="workspacePk" />
+      <NavbarPanelRight
+        :changeSetId="changeSetId"
+        :workspaceId="workspacePk"
+        :changeSetsNeedingApproval="changeSetsNeedingApproval"
+      />
     </nav>
 
     <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
@@ -134,6 +138,7 @@ import { tokensByWorkspacePk } from "./logic_composables/tokens";
 import ComponentPage from "./ComponentDetails.vue";
 import NavbarPanelLeft from "./nav/NavbarPanelLeft.vue";
 import { useChangeSets } from "./logic_composables/change_set";
+import { useWorkspace } from "./logic_composables/workspace";
 
 const tracer = trace.getTracer("si-vue");
 const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
@@ -237,10 +242,13 @@ const schemaQuery = useQuery<Record<SchemaId, SchemaMembers>>({
   enabled: queriesEnabled,
   queryFn: async () => {
     const data = await heimdall.getSchemaMembers(args.value);
-    return data.reduce((obj, s) => {
-      obj[s.id] = s;
-      return obj;
-    }, {} as Record<SchemaId, SchemaMembers>);
+    return data.reduce(
+      (obj, s) => {
+        obj[s.id] = s;
+        return obj;
+      },
+      {} as Record<SchemaId, SchemaMembers>,
+    );
   },
 });
 
@@ -259,6 +267,9 @@ const schemaMembers = computed(() => {
 const changeSet = ref<ChangeSet | undefined>();
 const _headChangeSetId = ref<string>("");
 const approvers = ref<string[]>([]);
+
+const workspace = useWorkspace();
+
 const ctx = computed<Context>(() => {
   return {
     workspacePk,
@@ -272,14 +283,33 @@ const ctx = computed<Context>(() => {
     componentDetails,
     schemaMembers,
     queriesEnabled,
+    approvalsEnabled: workspace.approvalsEnabled,
+    workspaceHasOneUser: workspace.hasOneUser,
+    workspaceUsers: workspace.workspaceUsers,
   };
 });
+
+// NOTE(nick): to @stack72 and myself... we need to get the users. They have don't have to be on
+// the context, but anything dealing with approvals will need them.
+//      async LIST_WORKSPACE_USERS(workspaceId: string) {
+//        return new ApiRequest<{ users: WorkspaceUser[] }>({
+//          method: "get",
+//          url: WORKSPACE_API_PREFIX.concat([workspaceId, "users"]),
+//          onSuccess: (response) => {
+//            this.workspaceUsers = {};
+//            response.users.forEach((u) => {
+//              this.workspaceUsers[u.id] = u;
+//            });
+//          },
+//        });
+//      },
 
 const {
   openChangeSets,
   changeSet: activeChangeSet,
   headChangeSetId,
   defaultApprovers,
+  changeSetsNeedingApproval,
 } = useChangeSets(ctx, queriesEnabled);
 watch(defaultApprovers, () => {
   approvers.value = defaultApprovers.value;
@@ -344,8 +374,8 @@ const compositionLink = computed(() => {
   const name = props.componentId
     ? "new-hotness-component"
     : props.viewId
-    ? "new-hotness-view"
-    : "new-hotness";
+      ? "new-hotness-view"
+      : "new-hotness";
   return {
     name,
     params: props,
@@ -470,8 +500,11 @@ realtimeStore.subscribe(
     },
     {
       eventType: "ChangeSetStatusChanged",
-      callback: async (_data) => {
+      callback: async (data) => {
         queryClient.invalidateQueries({ queryKey: ["changesets"] });
+        queryClient.invalidateQueries({
+          queryKey: ["approvalstatus", data.changeSet.id],
+        });
         /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
         if (
           [
@@ -623,6 +656,14 @@ realtimeStore.subscribe(
           }
         }
         */
+      },
+    },
+    {
+      eventType: "ChangeSetApprovalStatusChanged",
+      callback: (changeSetId) => {
+        queryClient.invalidateQueries({
+          queryKey: ["approvalstatus", changeSetId],
+        });
       },
     },
     {

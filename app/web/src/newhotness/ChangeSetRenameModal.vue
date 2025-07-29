@@ -42,7 +42,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nextTick, ref } from "vue";
+import { nextTick, ref, computed } from "vue";
 import {
   ErrorMessage,
   Modal,
@@ -50,29 +50,32 @@ import {
   VButton,
   VormInput,
 } from "@si/vue-lib/design-system";
-import { routes, useApi } from "@/newhotness/api_composables";
+import { routes, useApi } from "./api_composables";
+import { useContext } from "./logic_composables/context";
 
 const modal = ref<InstanceType<typeof Modal>>();
 const inputRef = ref<InstanceType<typeof VormInput>>();
+
+const ctx = useContext();
 
 const loading = ref(false);
 const changesetName = ref("");
 const changesetIdRef = ref<string | undefined>();
 const apiErrorMessage = ref<string | undefined>();
 
-const renameChangesetApi = useApi();
-
 const submit = async () => {
+  const changeSetId = changesetIdRef.value;
   if (
     inputRef.value?.validationState.isError ||
     !changesetName.value ||
-    !changesetIdRef.value
+    !changeSetId
   )
     return;
 
-  const call = renameChangesetApi.endpoint(routes.ChangeSetRename, {
-    changesetId: changesetIdRef.value,
-  });
+  const newCtx = { ...ctx };
+  newCtx.changeSetId = computed(() => changeSetId);
+  const renameChangesetApi = useApi(newCtx);
+  const call = renameChangesetApi.endpoint(routes.ChangeSetRename);
 
   loading.value = true;
   apiErrorMessage.value = undefined;
