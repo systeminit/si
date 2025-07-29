@@ -1,6 +1,6 @@
 <template>
   <ActionCardLayout
-    :noInteraction="noInteraction"
+    :noInteraction="noInteraction || !shouldAllowClick"
     :selected="selected"
     :actionFailed="actionFailed"
     :highlightedFailed="failed"
@@ -10,7 +10,7 @@
     :componentName="action.componentName"
     :componentId="action.componentId"
     :actor="action.actor"
-    @click="noInteraction ? undefined : handleClick"
+    @click="handleClick"
   >
     <template #icons>
       <Icon
@@ -74,6 +74,7 @@
         <DropdownMenuItem
           icon="eye"
           label="View details"
+          :disabled="!shouldAllowClick"
           @select="navigateToActionDetails"
         />
 
@@ -182,7 +183,7 @@ const navigateToComponent = () => {
 
 // Handle click on the card
 const handleClick = () => {
-  if (props.noInteraction) {
+  if (props.noInteraction || !shouldAllowClick.value) {
     return;
   }
 
@@ -204,6 +205,20 @@ const actionFailed = computed(() => {
 
 const actionRunning = computed(() => {
   return props.action.state === ActionState.Running;
+});
+
+const shouldAllowClick = computed(() => {
+  // Allow clicking on failed or running actions
+  if (actionFailed.value || actionRunning.value) {
+    return true;
+  }
+
+  // Allow clicking on on-hold actions that have a funcRunId (indicating previous execution)
+  if (actionOnHold.value && props.action.funcRunId) {
+    return true;
+  }
+
+  return false;
 });
 
 // Action handling methods
