@@ -34,12 +34,14 @@
 
 <script setup lang="ts">
 import { DropdownMenuItem } from "@si/vue-lib/design-system";
-import { inject } from "vue";
+import { computed, inject } from "vue";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import { assertIsDefined, Context } from "../types";
-import { tokensByWorkspacePk } from "../logic_composables/tokens";
 
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
+
+const workspacesStore = useWorkspacesStore();
 
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
@@ -64,8 +66,11 @@ const openManageWorkspacesHandler = () => {
   window.open(`${AUTH_PORTAL_URL}/workspaces/`, "_blank");
 };
 
+const workspaceToken = computed(() => workspacesStore.getWorkspaceToken);
+
 const copyWorkspaceToken = () => {
-  const token = tokensByWorkspacePk[ctx.workspacePk.value];
+  const token = workspaceToken.value;
+
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   navigator.clipboard.writeText(token || "");
 };
