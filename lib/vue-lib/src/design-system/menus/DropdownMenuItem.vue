@@ -210,6 +210,7 @@ export interface DropdownMenuItemProps {
   // Not compatible with a menu item that has submenuItems
   tooltip?: string;
   labelAsTooltip?: boolean;
+  showTooltipOnHover?: boolean;
 }
 
 const props = defineProps<DropdownMenuItemProps>();
@@ -418,7 +419,7 @@ defineExpose({
 
 const tooltip = computed(() => {
   const tooltipTemplate = {
-    shown: isFocused.value,
+    shown: isFocused.value || (props.showTooltipOnHover && itemIsHovered.value),
     triggers: [],
     placement: "right",
   };

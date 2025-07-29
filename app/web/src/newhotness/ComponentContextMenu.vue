@@ -169,22 +169,37 @@ const showViewInRemoveFromViewMenuOptions = (
   // If there's nothing in the view, there's nothing to remove from it.
   if (componentIdsInView.size < 1) return false;
 
-  // For the selected components, if any of them are in the view, we can remove from it... provided
-  // that the view isn't the only one that the component exists in.
+  // For the selected components, only show the option if all of them are in the view and that view
+  // isn't the final view for any of the components.
   for (const componentId of componentIds.value) {
     const soleViewIdForCurrentComponent =
       componentsAndViews.componentsInOnlyOneView.value[componentId];
     if (
-      componentIdsInView.has(componentId) &&
-      soleViewIdForCurrentComponent !== viewId
-    ) {
-      return true;
-    }
+      !componentIdsInView.has(componentId) ||
+      soleViewIdForCurrentComponent === viewId
+    )
+      return false;
   }
 
-  // If none of the selected components are in the view, we cannot remove any of them from it.
-  return false;
+  // If we don't hit the exit clause, then we are good to include this option.
+  return true;
 };
+
+const removeFromViewTooltip = computed(() => {
+  if (availableViewListOptions.value.removeFromView.length > 0)
+    return undefined;
+  const unprocessedOptions = props.viewListOptions ?? [];
+  for (const unprocessedOption of unprocessedOptions) {
+    const viewId = unprocessedOption.value;
+    for (const componentId of componentIds.value) {
+      const soleViewIdForCurrentComponent =
+        componentsAndViews.componentsInOnlyOneView.value[componentId];
+      if (soleViewIdForCurrentComponent === viewId)
+        return "Cannot remove components from their final view. A given component must exist in at least one view.";
+    }
+  }
+  return undefined;
+});
 
 // ================================================================================================
 // BEGIN CREATING THE MENU OPTIONS
@@ -326,7 +341,16 @@ const rightClickMenuItems = computed(() => {
       submenuVariant: "contextmenu",
     });
   }
-  if (availableViewListOptions.value.removeFromView.length > 0) {
+
+  if (removeFromViewTooltip.value) {
+    items.push({
+      icon: "minus",
+      label: "Remove from View",
+      disabled: true,
+      showTooltipOnHover: true,
+      tooltip: removeFromViewTooltip.value,
+    });
+  } else if (availableViewListOptions.value.removeFromView.length > 0) {
     const submenuItems: DropdownMenuItemObjectDef[] = [];
     for (const option of availableViewListOptions.value.removeFromView) {
       submenuItems.push({

@@ -562,6 +562,25 @@ const bustCacheAndReferences = (
     bustOrQueue(workspaceId, changeSetId, kind, workspaceId, skipQueue);
   }
 
+  // FIXME(nick): do not bust lists and find a way to support add/remove component(s) from a view
+  // without it.
+  if (kind === EntityKind.ViewComponentList) {
+    bustOrQueue(
+      workspaceId,
+      changeSetId,
+      EntityKind.ComponentsInViews,
+      workspaceId,
+      skipQueue,
+    );
+    bustOrQueue(
+      workspaceId,
+      changeSetId,
+      EntityKind.ComponentsInOnlyOneView,
+      workspaceId,
+      skipQueue,
+    );
+  }
+
   // if we know it doesnt have references, dont even run the sql
   if (!HAVE_REFERENCES.includes(kind)) return;
 
@@ -1318,10 +1337,7 @@ const applyPatch = async (
 
     if (
       COMPUTED_KINDS.includes(atom.kind) ||
-      LISTABLE_ITEMS.includes(atom.kind) ||
-      // FIXME(nick): do not bust lists and find a way to support add/remove component(s) from a view
-      // without it.
-      atom.kind === EntityKind.ViewComponentList
+      LISTABLE_ITEMS.includes(atom.kind)
     ) {
       debug("🔧 Updating computed for:", atom.kind, atom.id);
       postProcess(
@@ -2277,23 +2293,6 @@ const postProcess = (
     }
 
     atomUpdatedFn(workspaceId, changeSetId, kind, id, doc, listIds, removed);
-  }
-
-  // FIXME(nick): do not bust lists and find a way to support add/remove component(s) from a view
-  // without it.
-  if (kind === EntityKind.ViewComponentList && bust) {
-    bustCacheFn(
-      workspaceId,
-      changeSetId,
-      EntityKind.ComponentsInViews,
-      workspaceId,
-    );
-    bustCacheFn(
-      workspaceId,
-      changeSetId,
-      EntityKind.ComponentsInOnlyOneView,
-      workspaceId,
-    );
   }
 
   if (!COMPUTED_KINDS.includes(kind)) return;
