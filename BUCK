@@ -130,6 +130,7 @@ deno_workspace(
         "//lib/jsr-systeminit/cf-db:deno.json",
         "//lib/jsr-systeminit/ai-agent:deno.json",
         "//bin/si-luminork-api-tests:deno.json",
+        "//bin/si-mcp-server:deno.json",
     ],
     visibility = ["PUBLIC"],
 )
