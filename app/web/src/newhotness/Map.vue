@@ -205,6 +205,7 @@
     <ComponentContextMenu
       ref="componentContextMenuRef"
       onGrid
+      hidePin
       @edit="navigateToSelectedComponent"
     />
   </section>

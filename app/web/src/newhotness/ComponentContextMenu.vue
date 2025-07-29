@@ -57,6 +57,7 @@ const props = defineProps<{
   onGrid?: boolean;
   enableKeyboardControls?: boolean;
   viewListOptions?: { label: string; value: string }[];
+  hidePin?: boolean;
 }>();
 
 const route = useRoute();
@@ -282,8 +283,8 @@ const rightClickMenuItems = computed(() => {
     });
   }
 
-  // Only enable pinning if we are working with a single component on the grid.
-  if (props.onGrid && singleComponent.value) {
+  // Only enable pinning if we are working with a single component on the grid and pin is not hidden.
+  if (props.onGrid && singleComponent.value && !props.hidePin) {
     const componentId = singleComponent.value.id;
     items.push({
       labelAsTooltip: false,
