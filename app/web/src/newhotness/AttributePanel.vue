@@ -538,7 +538,7 @@ watch(
       saveResourceId();
     },
     500,
-    { leading: true },
+    { trailing: true },
   ),
 );
 
@@ -601,7 +601,6 @@ const importing = computed(
 );
 
 onMounted(() => {
-  resettingResourceId.value = true;
   resourceIdFormValue.value = resourceIdValue.value ?? undefined;
   keyEmitter.on("Tab", (e) => {
     e.preventDefault();
