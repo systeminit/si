@@ -99,6 +99,11 @@ export const useWorkspacesStore = () => {
         getIntegrations(): WorkspaceIntegration | null {
           return this.integrations || null;
         },
+        getWorkspaceToken(): string {
+          const thisWorkspace = this.selectedWorkspace || null;
+          if (!thisWorkspace) return "";
+          return thisWorkspace.token;
+        },
       },
 
       actions: {
