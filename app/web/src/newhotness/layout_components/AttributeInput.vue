@@ -88,10 +88,10 @@
                 : [!readOnly && themeClasses('text-shade-100', 'text-shade-0')],
             )
           "
-          tabindex="0"
-          @focus="openInput"
+          :tabindex="readOnly ? -1 : 0"
+          @focus="(e) => !readOnly && openInput()"
           @keydown.tab="(e) => (readOnly ? onTab(e) : null)"
-          @click.left="openInput"
+          @click.left="(e) => !readOnly && openInput()"
         >
           <TruncateWithTooltip>
             <template v-if="(isArray || isMap) && !isSetByConnection">
@@ -1069,8 +1069,12 @@ const labelRect = ref<undefined | DOMRect>(undefined);
 const inputTouched = ref(false);
 
 const resetEverything = () => {
+  // Don't reset form state for readonly fields
+  // as this can trigger a value form update
+  if (readOnly.value) return;
+
   resetFilteredOptions();
-  valueForm.reset();
+  if (!valueForm.state.canSubmit) valueForm.reset();
   mapKey.value = "";
   mapKeyError.value = false;
   selectedIndex.value = defaultSelectedIndex();
