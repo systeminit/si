@@ -401,7 +401,7 @@
       @clearSelected="clearSelection"
       @edit="navigateToFocusedComponent"
       @pin="(c) => (pinnedComponentId = c)"
-      @bulk="() => (bulkEditing = true)"
+      @bulk="startBulkEdit"
     />
   </section>
 </template>
@@ -432,6 +432,7 @@ import {
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { tw } from "@si/vue-lib";
+import { useToast } from "vue-toastification";
 import {
   bifrost,
   bifrostList,
@@ -452,6 +453,7 @@ import { ActionState } from "@/api/sdf/dal/action";
 import ExploreSearchBarSkeleton from "@/newhotness/skeletons/ExploreSearchBarSkeleton.vue";
 import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue";
 import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
+import { ChangeSet } from "@/api/sdf/dal/change_set";
 import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
@@ -480,6 +482,7 @@ import { useConnections } from "./logic_composables/connections";
 import ExploreModeTile from "./ExploreModeTile.vue";
 import ActionQueueList from "./ActionQueueList.vue";
 import { useComponentSearch } from "./logic_composables/search";
+import { routes, useApi } from "./api_composables";
 
 const router = useRouter();
 const route = useRoute();
@@ -556,6 +559,40 @@ const gridMapSwitcherValue = computed(
 );
 // TODO — if youre on HEAD and you start bulk editing, create a change set right away
 const bulkEditing = ref(false);
+
+const toast = useToast();
+const bulkChangeSet = useApi();
+const startBulkEdit = async () => {
+  if (ctx.onHead.value) {
+    const call = bulkChangeSet.endpoint<{ changeSet: ChangeSet }>(
+      routes.CreateChangeSet,
+    );
+    const { req } = await call.post({
+      changeSetName: `Bulk Edit by ${ctx.user?.name}`,
+    });
+    if (!bulkChangeSet.ok(req)) {
+      toast("Creating change set failed");
+      return;
+    }
+    const query: SelectionsInQueryString = {
+      ...router.currentRoute.value?.query,
+    };
+    query.b = "1";
+    bulkChangeSet.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: ctx.workspacePk.value,
+          changeSetId: req.data.changeSet.id,
+        },
+        query,
+      },
+      req.data.changeSet.id,
+    );
+    return;
+  }
+  bulkEditing.value = true;
+};
 
 watch(bulkEditing, () => {
   const query: SelectionsInQueryString = {
