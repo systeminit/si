@@ -447,6 +447,13 @@ lazy_static! {
         // AWS::IAM::UserPolicy
         "awsIamUserPolicySetUserNameFromInput",
         "awsIamIdentityPolicyArnFromInputSocket",
+
+        // ECS Load Balancer Configuration
+        "containerNameToLBConfigContainerName",
+        "containerPortToLBConfigContainerPort",
+
+        // ECS Container Definition Port Mapping
+        "containerPortToOutputSocket",
     ]
     .into_iter()
     .collect();
