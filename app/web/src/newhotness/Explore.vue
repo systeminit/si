@@ -118,9 +118,7 @@
               alwaysShowPlaceholder
               highlightWhenModelValue
               :disabled="pinnedComponentId !== undefined"
-              @update:modelValue="
-                (val) => (groupBySelection = groupByFromString(val))
-              "
+              @update:modelValue="updateGroupBy"
             >
               <template #beforeOptions>
                 <DropdownMenuItem
@@ -128,7 +126,7 @@
                   value="''"
                   checkable
                   :checked="groupBySelection === ''"
-                  @select="() => (groupBySelection = GroupByCriteria.None)"
+                  @select="clearGroupBy"
                 />
               </template>
             </DropdownMenuButton>
@@ -559,10 +557,19 @@ const gridMapSwitcherValue = computed(
 // TODO — if youre on HEAD and you start bulk editing, create a change set right away
 const bulkEditing = ref(false);
 
+watch(bulkEditing, () => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  if (bulkEditing.value) query.b = "1";
+  else delete query.b;
+  storeFilterAndGroup(query);
+  router.push({ query });
+});
+
 watch(gridMapSwitcherValue, (newShowGrid) => {
   // If this is nil, groupRef is unmounted, and we don't care about the change.
   if (_.isNil(newShowGrid)) return;
-  clearSelection();
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
@@ -1041,7 +1048,8 @@ watch(filteredComponents, () => {
   if (mapRef.value && typeof mapRef.value.deselect === "function") {
     mapRef.value.deselect();
   }
-  clearSelection();
+  // TODO: when the underlying componentList changes, the indexes will change
+  // which means the selected indexes could have moved in either direction
 });
 
 watch(searchString, (newValue, oldValue) => {
@@ -1062,6 +1070,24 @@ const selectedComponentIndexes = reactive<Set<number>>(new Set());
 const selectedComponents = computed(
   () => exploreGridRef.value?.selectedComponents ?? [],
 );
+
+watch(selectedComponentIndexes, () => {
+  const ids = [...selectedComponentIndexes];
+  const selectedURI = ids.join("|");
+
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+
+  if (selectedURI) query.s = selectedURI;
+  else delete query.s;
+
+  storeFilterAndGroup(query);
+  router.push({
+    query,
+  });
+});
+
 const focusedComponent = computed(() => exploreGridRef.value?.focusedComponent);
 const focusedComponentIsPinned = computed(() => {
   if (!focusedComponent.value) return false;
@@ -1597,6 +1623,18 @@ const setSelectionsFromQuery = () => {
   if (query.viewId !== undefined) {
     selectedViewId.value = query.viewId;
   }
+
+  if (query.s) {
+    const indexes = new Set(query.s.split("|").map((idx) => parseInt(idx)));
+    selectedComponentIndexes.clear();
+    indexes.forEach((idx) => {
+      selectedComponentIndexes.add(idx);
+    });
+  } else delete query.s;
+
+  if (query.b && query.b === "1") {
+    bulkEditing.value = true;
+  }
 };
 
 onMounted(() => {
@@ -1608,6 +1646,9 @@ onBeforeUnmount(() => {
   removeEmitters();
   mouseEmitter.off("click", onClick);
 });
+
+// without this watch the `retainSessionState` functionality doesn't fire
+// perhaps that can live in `beforeEnter` for the route?
 watch([router.currentRoute], setSelectionsFromQuery);
 
 // ================================================================================================
@@ -1686,6 +1727,15 @@ const groupByFromString = (s: string): GroupByCriteria => {
   else return GroupByCriteria[key];
 };
 
+const updateGroupBy = (val: string) => {
+  clearSelection();
+  groupBySelection.value = groupByFromString(val);
+};
+const clearGroupBy = () => {
+  clearSelection();
+  groupBySelection.value = GroupByCriteria.None;
+};
+
 const groupBySelection = ref<GroupByCriteria>(GroupByCriteria.None);
 const groupByDropDownOptions = [
   { value: GroupByCriteria.Diff, label: "Diff Status" },
@@ -1696,9 +1746,6 @@ const groupByDropDownOptions = [
 ];
 
 watch([groupBySelection], () => {
-  // First, make sure we clear all selections.
-  clearSelection();
-
   // Update the query of the route (allowing for URL links) when the group by selection change.
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
