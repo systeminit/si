@@ -1004,7 +1004,7 @@ const sortedAndGroupedComponents = computed(() => {
       "No Diffs": [],
     };
     for (const component of components) {
-      const title = component.hasDiff ? "No Diffs" : "With Diffs";
+      const title = component.hasDiff ? "With Diffs" : "No Diffs";
       groups[title]?.push(component);
     }
   } else if (groupBySelection.value === "Qualification Status") {
