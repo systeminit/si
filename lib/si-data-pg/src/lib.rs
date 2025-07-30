@@ -2940,6 +2940,8 @@ async fn evict_old_and_idle_pgpool_connections(
         tokio::time::sleep(check_interval).await;
         let connection_count = Rc::new(RefCell::new(0));
         let evicted_connections = Rc::new(RefCell::new(0));
+
+        info!("Locking pool for eviction loop");
         pg_pool.retain(|_, metrics| {
             *connection_count.borrow_mut() += 1;
             if metrics.last_used() > max_idle_time {
