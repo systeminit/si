@@ -6,8 +6,6 @@ rather than explaining why things work the way they do.
 
 - [Getting Started](./getting-started.md) - learn the basics of building
   infrastructure and applications with System Initiative.
-- [Working with Components](./working-with-components.md) - how to work more
-  deeply with Components in System Initiative.
 - [Actions and Resources](./actions-and-resources.md) - how to use actions and
   manage your resources.
 - [Creating Components](./creating-components.md) - how to extend System
