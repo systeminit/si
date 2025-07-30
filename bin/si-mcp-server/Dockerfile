@@ -6,7 +6,7 @@ WORKDIR /app
 # Copy source files
 COPY . .
 
-RUN ls *
+WORKDIR /app/bin/si-mcp-server
 
 # Compile the application
 RUN deno compile --allow-env --allow-net --output=si-mcp-server main.ts
@@ -15,7 +15,7 @@ RUN deno compile --allow-env --allow-net --output=si-mcp-server main.ts
 FROM denoland/deno:alpine
 
 # Copy the compiled binary from builder stage
-COPY --from=builder /app/si-mcp-server /si-mcp-server
+COPY --from=builder /app/bin/si-mcp-server/si-mcp-server /si-mcp-server
 
 # Set the entrypoint to run the binary with stdio argument
 ENTRYPOINT ["/si-mcp-server", "stdio"]

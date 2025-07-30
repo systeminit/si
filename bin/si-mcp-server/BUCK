@@ -49,3 +49,12 @@ deno_test(
         "allow-all",
     ],
 )
+
+docker_image(
+    name = "image",
+    image_name = "si-mcp-server",
+    flake_lock = "//:flake.lock",
+    build_deps = [
+        "//bin/si-mcp-server:build",
+    ],
+)
