@@ -47,6 +47,7 @@
         @childUnhover="(componentId) => $emit('childUnhover', componentId)"
         @clickCollapse="clickCollapse"
         @unpin="(componentId) => $emit('unpin', componentId)"
+        @resetFilter="$emit('resetFilter')"
       />
     </div>
   </div>
@@ -76,6 +77,9 @@ const props = defineProps<{
     ComponentId,
     Record<string, { count: number; hasFailed: boolean }>
   >;
+  showFilteredCounter?: boolean;
+  filteredCount?: number;
+  totalCount?: number;
 }>();
 
 const MIN_GRID_TILE_WIDTH = 250;
@@ -268,6 +272,21 @@ const gridRows = computed(() => {
   // Remove the last footer when dealing with "group by" functionality.
   if (hasMultipleSections.value) rows.pop();
 
+  // Add filtered counter row if needed
+  if (
+    props.showFilteredCounter &&
+    props.filteredCount !== undefined &&
+    props.totalCount !== undefined
+  ) {
+    const hiddenCount = props.totalCount - props.filteredCount;
+    if (hiddenCount > 0) {
+      rows.push({
+        type: "filteredCounterRow",
+        hiddenCount,
+      });
+    }
+  }
+
   return rows;
 });
 
@@ -294,6 +313,8 @@ const getItemKey = (rowIndex: number) => {
       else return `contentRow-${rowIndex}`;
     case "emptyRow":
       return `emptyContentRow-${rowIndex}`;
+    case "filteredCounterRow":
+      return `filteredCounterRow-${rowIndex}`;
     case "footer":
     default:
       return `footer-${rowIndex}`;
@@ -302,6 +323,7 @@ const getItemKey = (rowIndex: number) => {
 
 const GROUP_HEADER_HEIGHT = 50;
 const GROUP_FOOTER_HEIGHT = 10;
+const GROUP_FILTERED_ROW_HEIGHT = 40;
 
 const rowHeights = computed(() => {
   return gridRows.value.map((row, index) => {
@@ -318,6 +340,8 @@ const rowHeights = computed(() => {
         return GROUP_HEADER_HEIGHT;
       case "emptyRow":
         return GRID_TILE_HEIGHT + GRID_TILE_GAP;
+      case "filteredCounterRow":
+        return GROUP_FILTERED_ROW_HEIGHT;
       default:
         return GROUP_FOOTER_HEIGHT;
     }
@@ -393,6 +417,7 @@ defineEmits<{
   (e: "childDeselect", componentIdx: number): void;
   (e: "childHover", componentId: ComponentId): void;
   (e: "childUnhover", componentId: ComponentId): void;
+  (e: "resetFilter"): void;
   (
     e: "childClicked",
     event: MouseEvent,
