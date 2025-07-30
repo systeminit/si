@@ -55,7 +55,15 @@ impl TryFrom<MvIndex> for FrontendObject {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct IndexPointerValue {
+pub struct DeploymentIndexPointerValue {
+    pub index_object_key: String,
+    pub definition_checksum: Checksum,
+    pub index_checksum: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetIndexPointerValue {
     pub index_object_key: String,
     pub snapshot_address: String,
     pub definition_checksum: Checksum,

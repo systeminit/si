@@ -35,7 +35,10 @@ pub async fn get_change_set_index(
     let _ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
-    let index = match frigg.get_index(workspace_pk, change_set_id).await? {
+    let index = match frigg
+        .get_change_set_index(workspace_pk, change_set_id)
+        .await?
+    {
         Some((index, _kv_revision)) => index,
         None => {
             info!(
@@ -49,7 +52,7 @@ pub async fn get_change_set_index(
                 return Ok((StatusCode::ACCEPTED, Json(None)));
             }
             frigg
-                .get_index(workspace_pk, change_set_id)
+                .get_change_set_index(workspace_pk, change_set_id)
                 .await?
                 .map(|i| i.0)
                 .ok_or(IndexError::IndexNotFoundAfterFreshBuild(

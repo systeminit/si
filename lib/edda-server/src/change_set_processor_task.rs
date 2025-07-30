@@ -543,7 +543,7 @@ mod handlers {
             } => {
                 // Index exists
                 if frigg
-                    .get_index(workspace_id, change_set_id)
+                    .get_change_set_index(workspace_id, change_set_id)
                     .await
                     .map_err(|err| span.record_err(err))?
                     .is_some()
