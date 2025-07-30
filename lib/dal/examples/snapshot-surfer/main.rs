@@ -51,6 +51,7 @@ async fn main() -> Result<()> {
     // so we needed to remove it
     // let node_id = "01JTXGMYKFFPY7H2ZNV7SKFQ9X";
     // remove_node_by_id(&mut graph, node_id)?;
+    println!("root id: {}", graph.get_node_weight(graph.root())?.id());
     for arg in args {
         let node_id = Ulid::from_string(&arg)?;
         let node_idx = graph.get_node_index_by_id(node_id)?;
@@ -111,6 +112,7 @@ fn node_ident(graph: &WorkspaceSnapshotGraph, index: NodeIndex) -> Result<String
         None => NodeWeightDiscriminants::from(node).to_string(),
     };
     let extra = match node {
+        NodeWeight::Category(category) => Some(format!(" ({})", category.kind())),
         NodeWeight::AttributeValue(_) => match graph.target_opt(index, EdgeWeightKind::Prop)? {
             Some(prop_index) => {
                 let prop = graph.get_node_weight(prop_index)?.as_prop_node_weight()?;
