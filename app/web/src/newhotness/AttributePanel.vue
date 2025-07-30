@@ -126,10 +126,12 @@
     >
       <template #header><span class="text-sm">domain</span></template>
       <ComponentAttribute
-        v-for="child in filtered.tree.children"
+        v-for="(child, index) in filtered.tree.children"
         :key="child.id"
         :component="component"
         :attributeTree="child"
+        :stickyDepth="0"
+        :isFirstChild="index === 0"
         @save="save"
         @delete="remove"
         @remove-subscription="removeSubscription"
