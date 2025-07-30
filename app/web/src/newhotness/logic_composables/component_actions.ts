@@ -154,7 +154,7 @@ export const useComponentActions = (
   );
 
   const runRefreshHandler = () => {
-    const directRefreshApi = useApi();
+    const directRefreshApi = useApi(ctx);
 
     const executeRefresh = async () => {
       if (!component.value?.id || refreshActionRunning.value) return;
@@ -177,9 +177,9 @@ export const useComponentActions = (
     actionPrototypeView: ActionPrototypeView,
     actionId?: MaybeRefOrGetter<ActionId | undefined>,
   ) => {
-    const removeApi = useApi();
-    const addApi = useApi();
-    const refreshApi = useApi();
+    const removeApi = useApi(ctx);
+    const addApi = useApi(ctx);
+    const refreshApi = useApi(ctx);
     // Track which API is currently active as we could call 3 different APIs and need to propagate
     // the bifrosting status reactively for the correct one
     const activeApi = ref(addApi);
