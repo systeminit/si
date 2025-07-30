@@ -61,8 +61,8 @@ export const useChangeSets = (
 };
 
 // other components use the Context that is populated with the above data
-const useApplyChangeSetInner = () => {
-  const api = useApi();
+const useApplyChangeSetInner = (ctx: Context) => {
+  const api = useApi(ctx);
 
   const loading = computed(() => api.inFlight.value);
 
@@ -90,7 +90,9 @@ const useDisableApplyChangeSetInner = () => {
 };
 
 export const useApplyChangeSet = () => {
-  const applyChangeSet = useApplyChangeSetInner();
+  const ctx = inject<Context>("CONTEXT");
+  assertIsDefined(ctx);
+  const applyChangeSet = useApplyChangeSetInner(ctx);
   const disableApplyChangeSet = useDisableApplyChangeSetInner();
   return { applyChangeSet, disableApplyChangeSet };
 };
