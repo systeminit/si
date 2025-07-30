@@ -159,6 +159,39 @@
       </span>
     </div>
   </div>
+  <div
+    v-else-if="row.type === 'filteredCounterRow'"
+    class="flex items-center justify-center gap-1"
+  >
+    <span
+      :class="
+        clsx('text-xs', themeClasses('text-neutral-600', 'text-neutral-300'))
+      "
+    >
+      {{ row.hiddenCount }} components hidden
+    </span>
+    <span
+      :class="
+        clsx('text-xs', themeClasses('text-neutral-600', 'text-neutral-300'))
+      "
+    >
+      |
+    </span>
+    <button
+      :class="
+        clsx(
+          'text-xs underline cursor-pointer hover:no-underline',
+          themeClasses(
+            'text-neutral-600 hover:text-black',
+            'text-neutral-300 hover:text-white',
+          ),
+        )
+      "
+      @click="emit('resetFilter')"
+    >
+      Reset Filter
+    </button>
+  </div>
   <!-- This is subtle, but important. We need a div here, even if empty. -->
   <div v-else>
     <!-- footer area -->
@@ -344,6 +377,7 @@ const emit = defineEmits<{
   (e: "clickCollapse", title: string, collapsed: boolean): void;
   (e: "childSelect", componentIdx: number): void;
   (e: "childDeselect", componentIdx: number): void;
+  (e: "resetFilter"): void;
 }>();
 
 defineExpose({ exploreGridComponentRefs });
@@ -374,6 +408,10 @@ export type ExploreGridRowData =
   | {
       type: "emptyRow";
       groupName: string;
+    }
+  | {
+      type: "filteredCounterRow";
+      hiddenCount: number;
     };
 </script>
 

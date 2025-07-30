@@ -246,6 +246,10 @@
             "
             :componentsPendingActionNames="componentsPendingActionNames"
             :bulkEditing="bulkEditing"
+            :showFilteredCounter="shouldShowFilteredCounter"
+            :filteredCount="filteredComponents?.length ?? 0"
+            :totalCount="componentList.length"
+            @resetFilter="resetFilter"
             @bulkDone="() => (bulkEditing = false)"
             @childClicked="componentClicked"
             @childSelect="selectComponent"
@@ -262,6 +266,7 @@
             @scrollend="fixContextMenuAfterScroll"
             @scroll="onScroll"
           />
+
           <footer
             id="footer"
             :class="
@@ -1061,6 +1066,27 @@ const sortedAndGroupedComponents = computed(() => {
 const searchString = ref("");
 const filteredComponents = useComponentSearch(searchString, componentList);
 
+// Filtered components counter state
+const isScrolledToBottom = ref(false);
+const shouldShowFilteredCounter = computed(() => {
+  const hasFilteredComponents =
+    filteredComponents.value &&
+    componentList.value.length > filteredComponents.value.length;
+  return (
+    hasFilteredComponents &&
+    (isScrolledToBottom.value || searchString.value.trim() !== "")
+  );
+});
+
+const resetFilter = () => {
+  searchString.value = "";
+  searchRef.value?.focus();
+};
+
+// Scroll detection variables
+let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+let lastScrollTime = 0;
+
 // Update the query of the route (allowing for URL links) when the group by selection change.
 watch(searchString, () => {
   const query: SelectionsInQueryString = {
@@ -1549,8 +1575,35 @@ const onArrow = () => {
 
 // ================================================================================================
 // SCROLLING AND CLICKING
-const onScroll = () => {
+const onScroll = (event: Event) => {
   componentContextMenuRef.value?.close();
+
+  const target = event.target as HTMLElement;
+  if (!target) return;
+
+  const { scrollTop, scrollHeight, clientHeight } = target;
+  const now = Date.now();
+  lastScrollTime = now;
+
+  if (scrollTimeout) {
+    clearTimeout(scrollTimeout);
+  }
+
+  scrollTimeout = setTimeout(() => {
+    if (now !== lastScrollTime) return;
+
+    const currentlyAtBottom = isScrolledToBottom.value;
+    const nearBottom = scrollTop + clientHeight >= scrollHeight - 200;
+
+    let shouldShow = nearBottom;
+    if (currentlyAtBottom && !nearBottom) {
+      shouldShow = scrollTop + clientHeight >= scrollHeight - 300;
+    }
+
+    if (isScrolledToBottom.value !== shouldShow) {
+      isScrolledToBottom.value = shouldShow;
+    }
+  }, 250);
 };
 
 const fixContextMenuAfterScroll = () => {
@@ -1682,6 +1735,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   removeEmitters();
   mouseEmitter.off("click", onClick);
+  if (scrollTimeout) {
+    clearTimeout(scrollTimeout);
+  }
 });
 
 // without this watch the `retainSessionState` functionality doesn't fire
