@@ -3,7 +3,8 @@
   <dl
     :class="
       clsx(
-        'border my-2xs',
+        'border',
+        sticky ? 'my-0' : 'my-2xs',
         themeClasses('border-neutral-300', 'border-neutral-600'),
       )
     "
@@ -14,12 +15,16 @@
         clsx(
           'group/header',
           'px-2xs py-xs flex flex-row items-center gap-2xs cursor-pointer h-lg',
+          sticky && 'sticky',
           open && 'border-b',
           themeClasses(
             'bg-white border-neutral-300 hover:bg-neutral-100',
             'bg-neutral-800 border-neutral-600 hover:bg-neutral-700',
           ),
         )
+      "
+      :style="
+        sticky ? { top: `${stickyTopOffset}px`, zIndex: stickyZIndex } : {}
       "
       @click="() => (open = !open)"
     >
@@ -44,9 +49,15 @@ import { ref } from "vue";
 const props = withDefaults(
   defineProps<{
     defaultOpen?: boolean;
+    sticky?: boolean;
+    stickyTopOffset?: number;
+    stickyZIndex?: number;
   }>(),
   {
     defaultOpen: true,
+    sticky: false,
+    stickyTopOffset: 0,
+    stickyZIndex: 10,
   },
 );
 

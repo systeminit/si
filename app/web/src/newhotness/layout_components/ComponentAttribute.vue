@@ -23,7 +23,15 @@
     :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')"
   >
     <template v-if="showingChildren">
-      <AttributeChildLayout>
+      <AttributeChildLayout
+        :sticky="
+          attributeTree.prop?.kind === 'array' ||
+          attributeTree.prop?.kind === 'map' ||
+          (attributeTree.prop?.kind === 'object' && isFirstChild)
+        "
+        :stickyTopOffset="(stickyDepth || 0) * 36"
+        :stickyZIndex="10 - (stickyDepth || 0)"
+      >
         <template #header>
           <div
             ref="headerRef"
@@ -38,7 +46,17 @@
             @keydown.enter.stop.prevent="remove"
             @keydown.delete.stop.prevent="remove"
           >
-            <div>{{ displayName }}</div>
+            <div
+              :class="
+                attributeTree.prop?.kind === 'array' ||
+                attributeTree.prop?.kind === 'map' ||
+                (stickyDepth && stickyDepth > 0)
+                  ? 'text-sm'
+                  : ''
+              "
+            >
+              {{ displayName }}
+            </div>
             <div class="flex-1" />
             <div
               v-if="attributeTree.attributeValue.externalSources?.length"
@@ -116,9 +134,9 @@
             />
           </div>
         </template>
-        <ul v-if="!bifrostingTrash">
+        <ul v-if="!bifrostingTrash" class="list-none">
           <ComponentAttribute
-            v-for="child in attributeTree.children"
+            v-for="(child, index) in attributeTree.children"
             :key="child.id"
             :component="component"
             :attributeTree="child"
@@ -129,6 +147,8 @@
               props.forceReadOnly ||
               !!attributeTree.attributeValue.externalSources?.length
             "
+            :stickyDepth="(stickyDepth || 0) + 1"
+            :isFirstChild="index === 0"
             @save="
               (path, value, propKind, connectingComponentId) =>
                 emit('save', path, value, propKind, connectingComponentId)
@@ -254,6 +274,8 @@ const props = defineProps<{
   attributeTree: AttrTree;
   forceReadOnly?: boolean;
   parentHasExternalSources?: boolean;
+  stickyDepth?: number;
+  isFirstChild?: boolean;
 }>();
 
 const hasChildren = computed(() => {
