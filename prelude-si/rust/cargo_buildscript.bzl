@@ -185,12 +185,6 @@ def buildscript_run(name,
             for path in glob(["{}/**".format(local_manifest_dir)])
         }
 
-    runner_name = name + "-runner"
-    mise_buildscript_runner(
-        name=runner_name,
-        visibility=["PUBLIC"],
-    )
-
     _si_cargo_buildscript_rule(
         name=name,
         buildscript=buildscript_rule,
@@ -200,6 +194,6 @@ def buildscript_run(name,
         env=env,
         filegroup_for_manifest_dir=filegroup_for_manifest_dir,
         manifest_dir=manifest_dir,
-        runner=":" + runner_name,
+        runner="prelude//rust/tools:buildscript_run",
         _rust_toolchain="toolchains//:rust",
         **kwargs)

@@ -9,9 +9,11 @@ load(
     "@prelude//toolchains:remote_test_execution.bzl",
     "remote_test_execution_toolchain",
 )
+load(":clang_distribution.bzl", "download_clang_distribution", "hermetic_clang_toolchain")
+load(":deno_distribution.bzl", "download_deno_distribution", "hermetic_deno_toolchain")
+load(":rust_distribution.bzl", "download_rust_distribution", "hermetic_rust_toolchain")
 load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
-load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
@@ -22,16 +24,7 @@ load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
 load("@prelude-si//rootfs:toolchain.bzl", "rootfs_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
-load("@prelude-si//:macros.bzl", "mise_install")
 load(":toolchain.bzl", "toolchain_alias")
-load(":rust.bzl", "mise_rust_toolchain")
-load(":cxx.bzl", "mise_cxx_toolchain")
-
-sh_binary(
-    name = "mise_wrapper",
-    main = "mise_wrapper.sh",
-    visibility = ["PUBLIC"],
-)
 
 remote_test_execution_toolchain(
     name = "remote_test_execution",
@@ -43,17 +36,16 @@ noop_test_toolchain(
     visibility = ["PUBLIC"],
 )
 
-mise_install(
-    name = "cxx_compiler",
-    packages = [
-        "vfox:https://github.com/systeminit/vfox-clang@20.1.7",
-    ],
+download_clang_distribution(
+    name = "clang",
+    version = "20.1.0",
+    # target defaults to host platform (auto-detected)
     visibility = ["PUBLIC"],
 )
 
-mise_cxx_toolchain(
+hermetic_clang_toolchain(
     name = "cxx",
-    mise_install = ":cxx_compiler",
+    distribution = ":clang",
     visibility = ["PUBLIC"],
 )
 
@@ -72,21 +64,19 @@ system_python_bootstrap_toolchain(
     visibility = ["PUBLIC"],
 )
 
-mise_install(
-    name = "rust_compiler",
-    packages = [
-        "vfox:https://github.com/systeminit/vfox-clang@20.1.7",
-        "rust@1.86.0",
-    ],
-    visibility = ["PUBLIC"],
+download_rust_distribution(
+    name = "rust_dist",
+    version = "1.86.0",
+    # target defaults to host platform (auto-detected)
 )
 
-mise_rust_toolchain(
+hermetic_rust_toolchain(
     name = "rust_release",
-    mise_install = ":rust_compiler",
+    distribution = ":rust_dist",
     default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
     visibility = ["PUBLIC"],
+    # rustc_target_triple auto-detected from distribution target
     rustc_flags = [
         "-Copt-level=3",
         # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
@@ -97,23 +87,22 @@ mise_rust_toolchain(
         "-Coverflow-checks=false",
         "-Clto=false",
         "-Ccodegen-units=16",
-        "-Clink-arg=-fuse-ld=",
     ],
 )
 
-mise_rust_toolchain(
+hermetic_rust_toolchain(
     name = "rust_debug",
-    mise_install = ":rust_compiler",
+    distribution = ":rust_dist",
     default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
     visibility = ["PUBLIC"],
+    # rustc_target_triple auto-detected from distribution target
     rustc_flags = [
         "-Copt-level=0",
         "-Cdebuginfo=full",
         "-Ccodegen-units=256",
         "-Cdebug-assertions=true",
         "-Coverflow-checks=true",
-        "-Clink-arg=-fuse-ld=",
     ],
 )
 
@@ -131,17 +120,16 @@ build_context_toolchain(
     visibility = ["PUBLIC"],
 )
 
-mise_install(
-    name = "deno_compiler",
-    packages = [
-        "deno@2.2.12",
-    ],
-    visibility = ["PUBLIC"],
+# Hermetic Deno toolchain
+download_deno_distribution(
+    name = "deno_dist",
+    version = "2.2.12",
+    # target defaults to host platform (auto-detected)
 )
 
-deno_toolchain(
+hermetic_deno_toolchain(
     name = "deno",
-    mise_install = ":deno_compiler",
+    distribution = ":deno_dist",
     visibility = ["PUBLIC"],
 )
 
