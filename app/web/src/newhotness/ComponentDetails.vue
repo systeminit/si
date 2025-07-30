@@ -599,6 +599,10 @@ const navigateToMap = () => {
   query.map = "1";
   if (component.value?.id) {
     query.c = component.value.id;
+    // Add flag to hide unconnected components
+    // This is a specific path through to the Map to show only the items
+    // that would effectively show in a pin
+    query.hideUnconnected = "1";
   }
 
   router.push({
