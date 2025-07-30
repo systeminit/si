@@ -168,7 +168,12 @@ const treesPending = computed(() =>
 );
 
 // now turn them all into the AttrTree type, starting at domain
-const trees = computed(() => {
+type Trees = Array<{
+  root: AttrTree | undefined;
+  domain: AttrTree | undefined;
+  secrets: AttrTree | undefined;
+}>;
+const trees = computed<Trees>(() => {
   return avTrees.value
     .map((t) => t.data)
     .filter(nonNullable)
@@ -183,7 +188,8 @@ const trees = computed(() => {
 
       const tree = makeAvTree(t, rootId, false);
       const domain = tree.children.find((c) => c.prop?.name === "domain");
-      return domain;
+      const secrets = tree.children.find((c) => c.prop?.name === "secrets");
+      return { domain, secrets, root: tree };
     })
     .filter(nonNullable);
 });
@@ -197,7 +203,7 @@ const commonTree = computed(() => {
   if (!first) return null;
   const firstPaths = new Set<string>();
   const paths = new Set<string>();
-  const firstsChildren = [first];
+  const firstsChildren = [first.domain, first.secrets];
 
   // get all the paths from the first component
   while (firstsChildren.length > 0) {
@@ -210,7 +216,7 @@ const commonTree = computed(() => {
 
   // find paths in the subsequent components that match the first
   trees.value.slice(1).forEach((componentAttrs) => {
-    const walking = [componentAttrs];
+    const walking = [componentAttrs.domain, componentAttrs.secrets];
     while (walking.length > 0) {
       const attr = walking.shift();
       if (!attr) continue;
@@ -246,15 +252,21 @@ const commonTree = computed(() => {
 
   const matchesAsTree = arrayAttrTreeIntoTree(matches, map);
 
-  // and now get me the root domain
   const domain = Object.values(matchesAsTree).find(
     (t) => t.prop?.name === "domain",
   );
-  if (domain) {
-    const d = matchesAsTree[domain.id];
-    if (d) return d;
-  }
-  return null;
+  const secrets = Object.values(matchesAsTree).find(
+    (t) => t.prop?.name === "secrets",
+  );
+  if (!first.root) return null;
+  const root = {
+    ...first.root,
+    children: [
+      matchesAsTree[domain?.id || ""],
+      matchesAsTree[secrets?.id || ""],
+    ].filter(nonNullable),
+  };
+  return root;
 });
 
 const displayName = computed(() => {
