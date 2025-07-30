@@ -85,7 +85,8 @@ impl EntityKind {
             | EntityKindEvents::DeprecatedAction
             | EntityKindEvents::DeprecatedActionRunner
             | EntityKindEvents::DeprecatedActionBatch
-            | EntityKindEvents::ValidationPrototype => None,
+            | EntityKindEvents::ValidationPrototype
+            | EntityKindEvents::CategoryDefaultSubscriptionSources => None,
             EntityKindEvents::SchemaVariant => {
                 let variant_name = SchemaVariant::get_by_id(ctx, id.into_inner().into())
                     .await?

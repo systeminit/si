@@ -535,7 +535,7 @@ mod test {
             .cleanup_and_merkle_tree_hash()
             .expect("cleanup and merkle");
         let pre_update_root_node_merkle_tree_hash: MerkleTreeHash =
-            MerkleTreeHash::from_str("389d15c7a2f5db02d32232ab8304bfe7")
+            MerkleTreeHash::from_str("a6ef705fec010be4fdc89ab97b5bc543")
                 .expect("able to create hash from hex string");
         assert_eq!(
             pre_update_root_node_merkle_tree_hash, // expected
@@ -554,7 +554,7 @@ mod test {
             .expect("cleanup and merkle");
 
         let post_update_root_node_merkle_tree_hash: MerkleTreeHash =
-            MerkleTreeHash::from_str("2525d60d0669121d11240f6aef299eb6")
+            MerkleTreeHash::from_str("f0241305edc32ef70dfc608fe7d5c319")
                 .expect("able to create hash from hex string");
         assert_eq!(
             post_update_root_node_merkle_tree_hash, // expected
@@ -581,7 +581,7 @@ mod test {
 
         // Ensure that there are not more nodes than the ones that should be in use, and the
         // initial ones (categories and default views)
-        assert_eq!(15, graph.node_count());
+        assert_eq!(16, graph.node_count());
 
         // The hashes must not change upon cleanup.
         assert_eq!(

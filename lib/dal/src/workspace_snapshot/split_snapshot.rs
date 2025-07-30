@@ -297,10 +297,12 @@ impl SplitSnapshot {
     fn add_category_nodes(graph: &mut SplitSnapshotGraphVCurrent) -> WorkspaceSnapshotResult<Ulid> {
         let mut view_category_id = Ulid::new();
 
-        // Implementation of add_category_nodes
         for category_node_kind in CategoryNodeKind::iter() {
-            let id = Ulid::new();
-            let lineage_id = Ulid::new();
+            let (id, lineage_id) = if let Some(default_id) = category_node_kind.static_id() {
+                (default_id, default_id)
+            } else {
+                (Ulid::new(), Ulid::new())
+            };
 
             if category_node_kind == CategoryNodeKind::View {
                 view_category_id = id;
@@ -989,21 +991,19 @@ impl SplitSnapshot {
 
     pub async fn get_category_node_or_err(
         &self,
-        source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotResult<Ulid> {
-        self.get_category_node(source, kind)
+        self.get_category_node(kind)
             .await?
             .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind))
     }
 
     pub async fn get_category_node(
         &self,
-        source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotResult<Option<Ulid>> {
         let working_copy = self.working_copy().await;
-        let source_id = source.unwrap_or(working_copy.root_id()?);
+        let source_id = working_copy.root_id()?;
         Ok(working_copy
             .edges_directed(source_id, Outgoing)?
             .find(

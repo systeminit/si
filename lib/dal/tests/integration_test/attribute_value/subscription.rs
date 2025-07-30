@@ -20,6 +20,8 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
+pub mod default_subscriptions;
+
 // AV subscribes to name AV on same component
 #[test]
 async fn subscribe_to_name_on_same_component(ctx: &mut DalContext) -> Result<()> {

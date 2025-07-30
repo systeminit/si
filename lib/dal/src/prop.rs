@@ -17,7 +17,10 @@ use si_events::{
     ContentHash,
     Timestamp,
 };
-use si_id::ulid::Ulid;
+use si_id::{
+    SchemaId,
+    ulid::Ulid,
+};
 use si_pkg::PropSpecKind;
 use strum::{
     AsRefStr,
@@ -38,6 +41,8 @@ use crate::{
     FuncId,
     HelperError,
     InputSocketId,
+    Schema,
+    SchemaError,
     SchemaVariant,
     SchemaVariantError,
     SchemaVariantId,
@@ -128,6 +133,8 @@ pub enum PropError {
     PropIsOrphan(PropId),
     #[error("prop {0} has a non prop or schema variant parent")]
     PropParentInvalid(PropId),
+    #[error("schema error: {0}")]
+    Schema(#[from] Box<SchemaError>),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("serde error: {0}")]
@@ -171,6 +178,15 @@ impl WidgetOption {
     }
 }
 pub type WidgetOptions = Vec<WidgetOption>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolvedPropSuggestion {
+    pub source_schema_id: SchemaId,
+    pub dest_schema_id: SchemaId,
+    pub source_prop_id: PropId,
+    pub dest_prop_id: PropId,
+}
 
 /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -1243,6 +1259,136 @@ impl Prop {
 
     async fn fmt_title_fallible(ctx: &DalContext, prop_id: PropId) -> PropResult<String> {
         Ok(Self::get_by_id(ctx, prop_id).await?.name)
+    }
+
+    pub async fn suggested_sources_for(
+        &self,
+        ctx: &DalContext,
+    ) -> PropResult<Vec<ResolvedPropSuggestion>> {
+        let mut result = vec![];
+
+        #[derive(Clone, Debug, Deserialize)]
+        struct PropSuggestion {
+            schema: String,
+            prop: String,
+        }
+
+        let Some(my_schema_variant_id) = Prop::schema_variant_id(ctx, self.id()).await? else {
+            return Ok(result);
+        };
+        let my_schema_id = SchemaVariant::schema_id(ctx, my_schema_variant_id)
+            .await
+            .map_err(Box::new)?;
+
+        if let Some(suggest_as_source_for) = self.ui_optionals.get("suggestSources").cloned() {
+            let suggestion_serde: serde_json::Value = suggest_as_source_for.into();
+            let suggestions: Option<Vec<PropSuggestion>> =
+                serde_json::from_value(suggestion_serde).ok();
+            let Some(suggestions) = suggestions else {
+                return Ok(result);
+            };
+
+            for suggestion in suggestions {
+                let Some(schema) = Schema::get_by_name_opt(ctx, &suggestion.schema)
+                    .await
+                    .map_err(Box::new)?
+                else {
+                    continue;
+                };
+
+                let mut parts: Vec<&str> = suggestion.prop.split("/").collect();
+                parts[0] = "root";
+
+                for variant_id in Schema::list_schema_variant_ids(ctx, schema.id())
+                    .await
+                    .map_err(Box::new)?
+                {
+                    let Some(prop_id) = Prop::find_prop_id_by_path_opt(
+                        ctx,
+                        variant_id,
+                        &PropPath::new(parts.as_slice()),
+                    )
+                    .await?
+                    else {
+                        continue;
+                    };
+
+                    result.push(ResolvedPropSuggestion {
+                        source_schema_id: schema.id(),
+                        source_prop_id: prop_id,
+                        dest_schema_id: my_schema_id,
+                        dest_prop_id: self.id(),
+                    });
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
+    pub async fn suggested_as_source_for(
+        &self,
+        ctx: &DalContext,
+    ) -> PropResult<Vec<ResolvedPropSuggestion>> {
+        let mut result = vec![];
+
+        #[derive(Clone, Debug, Deserialize)]
+        struct PropSuggestion {
+            schema: String,
+            prop: String,
+        }
+
+        let Some(my_schema_variant_id) = Prop::schema_variant_id(ctx, self.id()).await? else {
+            return Ok(result);
+        };
+        let my_schema_id = SchemaVariant::schema_id(ctx, my_schema_variant_id)
+            .await
+            .map_err(Box::new)?;
+
+        if let Some(suggest_as_source_for) = self.ui_optionals.get("suggestAsSourceFor").cloned() {
+            let suggestion_serde: serde_json::Value = suggest_as_source_for.into();
+            let suggestions: Option<Vec<PropSuggestion>> =
+                serde_json::from_value(suggestion_serde).ok();
+            let Some(suggestions) = suggestions else {
+                return Ok(result);
+            };
+
+            for suggestion in suggestions {
+                let Some(schema) = Schema::get_by_name_opt(ctx, &suggestion.schema)
+                    .await
+                    .map_err(Box::new)?
+                else {
+                    continue;
+                };
+
+                let mut parts: Vec<&str> = suggestion.prop.split("/").collect();
+                parts[0] = "root";
+
+                for variant_id in Schema::list_schema_variant_ids(ctx, schema.id())
+                    .await
+                    .map_err(Box::new)?
+                {
+                    let Some(prop_id) = Prop::find_prop_id_by_path_opt(
+                        ctx,
+                        variant_id,
+                        &PropPath::new(parts.as_slice()),
+                    )
+                    .await?
+                    else {
+                        continue;
+                    };
+
+                    result.push(ResolvedPropSuggestion {
+                        source_schema_id: my_schema_id,
+                        source_prop_id: self.id(),
+                        dest_schema_id: schema.id(),
+                        dest_prop_id: prop_id,
+                    });
+                }
+            }
+        }
+
+        Ok(result)
     }
 }
 

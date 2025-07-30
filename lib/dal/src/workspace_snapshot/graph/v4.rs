@@ -108,11 +108,9 @@ impl WorkspaceSnapshotGraphV4 {
     pub async fn new(ctx: &DalContext) -> WorkspaceSnapshotGraphResult<Self> {
         let mut result = Self::new_with_categories_only()?;
 
-        let (_, view_category_idx) = result
-            .get_category_node(None, CategoryNodeKind::View)?
-            .ok_or(WorkspaceSnapshotGraphError::CategoryNodeNotFound(
-                CategoryNodeKind::View,
-            ))?;
+        let (_, view_category_idx) = result.get_category_node(CategoryNodeKind::View)?.ok_or(
+            WorkspaceSnapshotGraphError::CategoryNodeNotFound(CategoryNodeKind::View),
+        )?;
 
         // Create default view
         {
@@ -152,11 +150,9 @@ impl WorkspaceSnapshotGraphV4 {
     pub(crate) fn new_for_unit_tests() -> WorkspaceSnapshotGraphResult<Self> {
         let mut result = Self::new_with_categories_only()?;
 
-        let (_, view_category_idx) = result
-            .get_category_node(None, CategoryNodeKind::View)?
-            .ok_or(WorkspaceSnapshotGraphError::CategoryNodeNotFound(
-                CategoryNodeKind::View,
-            ))?;
+        let (_, view_category_idx) = result.get_category_node(CategoryNodeKind::View)?.ok_or(
+            WorkspaceSnapshotGraphError::CategoryNodeNotFound(CategoryNodeKind::View),
+        )?;
 
         // Create default view
         {
@@ -206,8 +202,12 @@ impl WorkspaceSnapshotGraphV4 {
 
         // Create the category nodes under root.
         for category_node_kind in CategoryNodeKind::iter() {
-            let id = result.generate_ulid()?;
-            let lineage_id = result.generate_ulid()?;
+            let (id, lineage_id) = if let Some(default_id) = category_node_kind.static_id() {
+                (default_id, default_id)
+            } else {
+                (result.generate_ulid()?, result.generate_ulid()?)
+            };
+
             let category_node_index =
                 result.add_category_node(id, lineage_id, category_node_kind)?;
             result.add_edge(
@@ -484,13 +484,9 @@ impl WorkspaceSnapshotGraphV4 {
 
     pub fn get_category_node(
         &self,
-        source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<Option<(Ulid, NodeIndex)>> {
-        let source_index = match source {
-            Some(provided_source) => self.get_node_index_by_id(provided_source)?,
-            None => self.root_index,
-        };
+        let source_index = self.root_index;
 
         // TODO(nick): ensure that two target category nodes of the same kind don't exist for the
         // same source node.
@@ -1080,6 +1076,7 @@ impl WorkspaceSnapshotGraphV4 {
                     EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
                     EdgeWeightKindDiscriminants::ValueSubscription => "green",
+                    EdgeWeightKindDiscriminants::DefaultSubscriptionSource => "green",
                 };
 
                 match edgeref.weight().kind() {
@@ -1163,6 +1160,9 @@ impl WorkspaceSnapshotGraphV4 {
                         CategoryNodeKind::View => ("Views (Category)".into(), "black"),
                         CategoryNodeKind::DiagramObject => {
                             ("Diagram Objects (Category)".into(), "black")
+                        }
+                        CategoryNodeKind::DefaultSubscriptionSources => {
+                            ("Default Subscription Sources (Category)".into(), "black")
                         }
                     },
                     NodeWeight::Component(component) => (
@@ -1428,7 +1428,7 @@ impl WorkspaceSnapshotGraphV4 {
                     if let Some(category_node_kind) = category_kind {
                         let self_node_index = self.get_node_index_by_id(other_node_weight.id())?;
                         let (_, category_node_idx) = self
-                            .get_category_node(None, category_node_kind)?
+                            .get_category_node(category_node_kind)?
                             .ok_or(WorkspaceSnapshotGraphError::CategoryNodeNotFound(
                                 CategoryNodeKind::Func,
                             ))?;
@@ -1773,6 +1773,7 @@ impl WorkspaceSnapshotGraphV4 {
                     | EdgeWeightKind::ManagementPrototype
                     | EdgeWeightKind::Manages
                     | EdgeWeightKind::DiagramObject
+                    | EdgeWeightKind::DefaultSubscriptionSource
                     | EdgeWeightKind::ApprovalRequirementDefinition => {}
                 }
             }

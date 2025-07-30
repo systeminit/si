@@ -121,6 +121,7 @@ use crate::{
 };
 
 pub mod debug;
+pub mod default_subscription;
 pub mod dependent_value_graph;
 pub mod is_for;
 pub mod subscription;
@@ -467,6 +468,13 @@ impl AttributeValue {
         destination_id: InputSocketId,
         add_fn: add_edge_to_input_socket,
         discriminant: EdgeWeightKindDiscriminants::Socket,
+        result: AttributeValueResult,
+    );
+    implement_add_edge_to!(
+        source_id: AttributeValueId,
+        destination_id: Ulid,
+        add_fn: add_default_subscription_source_edge,
+        discriminant: EdgeWeightKindDiscriminants::DefaultSubscriptionSource,
         result: AttributeValueResult,
     );
 

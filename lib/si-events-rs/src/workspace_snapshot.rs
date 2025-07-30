@@ -30,6 +30,7 @@ pub enum EntityKind {
     AttributeValue,
     CategoryAction,
     CategoryComponent,
+    CategoryDefaultSubscriptionSources,
     CategoryDependentValueRoots,
     CategoryDeprecatedActionBatch,
     CategoryDiagramObject,

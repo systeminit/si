@@ -131,7 +131,7 @@ impl View {
 
         // Root --> View Category --> View (this)
         let view_category_id = snap
-            .get_category_node_or_err(None, CategoryNodeKind::View)
+            .get_category_node_or_err(CategoryNodeKind::View)
             .await?;
         Self::add_category_edge(ctx, view_category_id, id.into(), EdgeWeightKind::new_use())
             .await?;
@@ -187,7 +187,7 @@ impl View {
         let snap = ctx.workspace_snapshot()?;
 
         let category_node = snap
-            .get_category_node(None, CategoryNodeKind::View)
+            .get_category_node(CategoryNodeKind::View)
             .await?
             .ok_or(DiagramError::ViewCategoryNotFound)?;
 
@@ -226,7 +226,7 @@ impl View {
         let snap = ctx.workspace_snapshot()?;
 
         let view_category_id = snap
-            .get_category_node(None, CategoryNodeKind::View)
+            .get_category_node(CategoryNodeKind::View)
             .await?
             .ok_or(DiagramError::ViewCategoryNotFound)?;
 
@@ -342,7 +342,7 @@ impl View {
         let snap = ctx.workspace_snapshot()?;
 
         let view_category_id = snap
-            .get_category_node(None, CategoryNodeKind::View)
+            .get_category_node(CategoryNodeKind::View)
             .await?
             .ok_or(DiagramError::ViewCategoryNotFound)?;
 

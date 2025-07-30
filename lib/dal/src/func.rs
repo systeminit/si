@@ -324,7 +324,7 @@ impl Func {
             .await?;
 
         let func_category_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Func)
+            .get_category_node_or_err(CategoryNodeKind::Func)
             .await?;
         Self::add_category_edge(ctx, func_category_id, id, EdgeWeightKind::new_use()).await?;
 
@@ -447,7 +447,7 @@ impl Func {
     ) -> FuncResult<Option<FuncId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let func_category_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Func)
+            .get_category_node_or_err(CategoryNodeKind::Func)
             .await?;
         let func_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
@@ -477,7 +477,7 @@ impl Func {
     ) -> FuncResult<Option<FuncId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let func_category_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Func)
+            .get_category_node_or_err(CategoryNodeKind::Func)
             .await?;
         let func_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
@@ -635,7 +635,7 @@ impl Func {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let func_category_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Func)
+            .get_category_node_or_err(CategoryNodeKind::Func)
             .await?;
 
         let func_node_indexes = workspace_snapshot

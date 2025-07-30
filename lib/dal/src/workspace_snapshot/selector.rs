@@ -338,23 +338,21 @@ impl WorkspaceSnapshotSelector {
 
     pub async fn get_category_node_or_err(
         &self,
-        source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotResult<Ulid> {
         match self {
-            Self::LegacySnapshot(snapshot) => snapshot.get_category_node_or_err(source, kind).await,
-            Self::SplitSnapshot(snapshot) => snapshot.get_category_node_or_err(source, kind).await,
+            Self::LegacySnapshot(snapshot) => snapshot.get_category_node_or_err(kind).await,
+            Self::SplitSnapshot(snapshot) => snapshot.get_category_node_or_err(kind).await,
         }
     }
 
     pub async fn get_category_node(
         &self,
-        source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotResult<Option<Ulid>> {
         match self {
-            Self::LegacySnapshot(snapshot) => snapshot.get_category_node(source, kind).await,
-            Self::SplitSnapshot(snapshot) => snapshot.get_category_node(source, kind).await,
+            Self::LegacySnapshot(snapshot) => snapshot.get_category_node(kind).await,
+            Self::SplitSnapshot(snapshot) => snapshot.get_category_node(kind).await,
         }
     }
 
