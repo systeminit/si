@@ -1,22 +1,5 @@
 <template>
   <div>
-    <Teleport to="#footer">
-      <VButton
-        label="Cancel"
-        tone="neutral"
-        size="sm"
-        @click="() => emit('close')"
-      />
-      <VButton
-        label="Save Bulk Edit"
-        tone="action"
-        size="sm"
-        :disabled="Object.values(valsToSave).length === 0"
-        :loading="saving > 0"
-        :loadingText="`Saving ${saving} Components`"
-        @click="save"
-      />
-    </Teleport>
     <div
       :class="
         clsx(
@@ -104,7 +87,7 @@
           :key="child.id"
           :component="componentMap[child.componentId]!"
           :attributeTree="child"
-          @save="storeForSave"
+          @save="save"
           @add="add"
           @set-key="setKey"
           @remove-subscription="removeSubscription"
@@ -121,8 +104,8 @@
 <script lang="ts" setup>
 import clsx from "clsx";
 import { useQueries } from "@tanstack/vue-query";
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import { themeClasses, IconButton, VButton } from "@si/vue-lib/design-system";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { themeClasses, IconButton } from "@si/vue-lib/design-system";
 import { useToast } from "vue-toastification";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
@@ -148,7 +131,6 @@ import {
 } from "../logic_composables/attribute_tree";
 import { componentTypes, ok, routes, UseApi, useApi } from "../api_composables";
 import { useContext } from "../logic_composables/context";
-import { objectKeys } from "../util";
 
 const ctx = useContext();
 
@@ -286,16 +268,7 @@ type ApiVal = {
   propKind: PropKind;
   connectingComponentId?: ComponentId;
 };
-type ApiVals = Record<AttributePath, ApiVal>;
-const valsToSave = reactive<ApiVals>({} as ApiVals);
-const storeForSave = (
-  path: AttributePath,
-  value: string,
-  propKind: PropKind,
-  connectingComponentId?: ComponentId,
-) => {
-  valsToSave[path] = { value, propKind, connectingComponentId };
-};
+
 const saving = ref(0);
 
 const createCalls = () =>
@@ -308,22 +281,8 @@ const createCalls = () =>
     return call;
   });
 
-const createPayload = () => {
-  // smash all the paths together into one payload
-  const payload: componentTypes.UpdateComponentAttributesArgs = {};
-  objectKeys(valsToSave).forEach((path) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const vals = valsToSave[path]!;
-    const _payload = makeSavePayload(
-      path,
-      vals.value,
-      vals.propKind,
-      vals.connectingComponentId,
-    );
-    Object.assign(payload, _payload);
-  });
-  return payload;
-};
+const createPayload = (path: AttributePath, vals: ApiVal) =>
+  makeSavePayload(path, vals.value, vals.propKind, vals.connectingComponentId);
 
 const add = async (
   _: UseApi,
@@ -381,7 +340,12 @@ const setKey = async (
 
 const toast = useToast();
 
-const save = async () => {
+const save = async (
+  path: AttributePath,
+  value: string,
+  propKind: PropKind,
+  connectingComponentId?: ComponentId,
+) => {
   // TODO force change set if on HEAD when starting
   if (ctx.onHead.value) throw new Error("Must be on a change set");
 
@@ -389,7 +353,11 @@ const save = async () => {
   const apis = createCalls();
 
   const calls = apis.map(async (call) => {
-    const payload = createPayload();
+    const payload = createPayload(path, {
+      value,
+      propKind,
+      connectingComponentId,
+    });
 
     return await call.put<componentTypes.UpdateComponentAttributesArgs>(
       payload,
@@ -398,9 +366,7 @@ const save = async () => {
   saving.value = calls.length;
   const resps = await Promise.all(calls);
   saving.value = 0;
-  if (resps.every((r) => ok(r.req))) {
-    emit("close");
-  } else {
+  if (!resps.every((r) => ok(r.req))) {
     const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
     toast(`API Error: ${errs}`);
   }

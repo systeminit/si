@@ -328,6 +328,8 @@ export type SelectionsInQueryString = Partial<{
   map: string;
   grid: string;
   c: string;
+  s: string; // represents the selected component indexes
+  b: string; // 0 or 1, represents "in bulk editing" for ^ selected
   groupBy: GroupByUrlQuery;
   sortBy: SortByUrlQuery;
   pinned: string;

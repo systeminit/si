@@ -93,9 +93,7 @@
       :component="component"
       class="flex-1"
       showSelectionCheckbox
-      :selected="
-        selectedComponentIndexes.has(dataIndexForTileInRow(row, columnIndex))
-      "
+      :selected="isSelected(row, columnIndex)"
       :focused="focusedComponentId === component.id"
       :hovered="hoveredId === component.id"
       :hasFailedActions="componentsWithFailedActions.has(component.id)"
@@ -201,6 +199,9 @@ interface TitleIcon {
   iconName: IconNames;
   iconTone: Tones;
 }
+
+const isSelected = (row: ExploreGridRowData, columnIndex: number) =>
+  props.selectedComponentIndexes.has(dataIndexForTileInRow(row, columnIndex));
 
 const titleIcon = computed((): TitleIcon | null => {
   if (props.row.type !== "header") return null;
