@@ -112,7 +112,10 @@ import {
 } from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
-import { BifrostComponent } from "@/workers/types/entity_kind_types";
+import {
+  BifrostComponent,
+  ComponentInList,
+} from "@/workers/types/entity_kind_types";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
@@ -124,7 +127,7 @@ import SecretInput from "./SecretInput.vue";
 import { MouseDetails, mouseEmitter } from "../logic_composables/emitters";
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: BifrostComponent | ComponentInList;
   attributeTree: AttrTree;
 }>();
 

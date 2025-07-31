@@ -27,9 +27,7 @@
     </ul>
     <DelayedLoader v-if="treesPending" :size="'full'" />
     <div
-      v-else-if="
-        commonTree && 'children' in commonTree && commonTree.children.length > 0
-      "
+      v-else-if="commonTree.domain || commonTree.secrets"
       :class="
         clsx(
           'mt-sm p-xs',
@@ -43,47 +41,10 @@
       "
       class=""
     >
-      <AttributeChildLayout>
-        <template #header>
-          <div
-            ref="headerRef"
-            :class="clsx('flex flex-row items-center gap-2xs w-full')"
-          >
-            <div>{{ displayName }}</div>
-            <div class="flex-1" />
-            <div
-              v-if="commonTree.attributeValue.externalSources?.length"
-              class="flex items-center gap-xs text-xs flex-shrink-0"
-            >
-              <span
-                :class="themeClasses('text-neutral-500', 'text-neutral-400')"
-              >
-                Set via subscription to
-              </span>
-              <span class="text-purple">
-                {{
-                  commonTree.attributeValue.externalSources[0]?.componentName
-                }}
-              </span>
-              <span
-                :class="themeClasses('text-neutral-600', 'text-neutral-400')"
-              >
-                {{ commonTree.attributeValue.externalSources[0]?.path }}</span
-              >
-
-              <IconButton
-                v-tooltip="'Remove subscription'"
-                icon="x"
-                size="sm"
-                iconTone="destructive"
-                iconIdleTone="shade"
-                @click="removeSubscription"
-              />
-            </div>
-          </div>
-        </template>
+      <AttributeChildLayout v-if="commonTree.domain">
+        <template #header><span class="text-sm">domain</span></template>
         <ComponentAttribute
-          v-for="child in commonTree.children"
+          v-for="child in commonTree.domain.children"
           :key="child.id"
           :component="componentMap[child.componentId]!"
           :attributeTree="child"
@@ -92,6 +53,17 @@
           @set-key="setKey"
           @remove-subscription="removeSubscription"
           @delete="remove"
+        />
+      </AttributeChildLayout>
+      <AttributeChildLayout
+        v-if="commonTree.secrets && commonTree.secrets.children.length > 0"
+      >
+        <template #header><span class="text-sm">secrets</span></template>
+        <ComponentSecretAttribute
+          v-for="secret in commonTree.secrets.children"
+          :key="secret.id"
+          :component="componentMap[secret.componentId]!"
+          :attributeTree="secret"
         />
       </AttributeChildLayout>
     </div>
@@ -119,6 +91,7 @@ import { nonNullable } from "@/utils/typescriptLinter";
 import ComponentAttribute, {
   NewChildValue,
 } from "@/newhotness/layout_components/ComponentAttribute.vue";
+import ComponentSecretAttribute from "@/newhotness/layout_components/ComponentSecretAttribute.vue";
 import AttributeChildLayout from "@/newhotness/layout_components/AttributeChildLayout.vue";
 import DelayedLoader from "@/newhotness/layout_components/DelayedLoader.vue";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
@@ -197,10 +170,13 @@ const trees = computed<Trees>(() => {
 // now filter them to the common AV paths present in all trees
 // the *actual* AVs will be from the very last component that has them
 // because of how we are using `pathMap`
-const commonTree = computed(() => {
+const commonTree = computed<{
+  domain: AttrTree | undefined;
+  secrets: AttrTree | undefined;
+}>(() => {
   const pathMap: Record<string, AttrTree> = {};
   const first = trees.value[0];
-  if (!first) return null;
+  if (!first) return { domain: undefined, secrets: undefined };
   const firstPaths = new Set<string>();
   const paths = new Set<string>();
   const firstsChildren = [first.domain, first.secrets];
@@ -258,21 +234,10 @@ const commonTree = computed(() => {
   const secrets = Object.values(matchesAsTree).find(
     (t) => t.prop?.name === "secrets",
   );
-  if (!first.root) return null;
-  const root = {
-    ...first.root,
-    children: [
-      matchesAsTree[domain?.id || ""],
-      matchesAsTree[secrets?.id || ""],
-    ].filter(nonNullable),
+  return {
+    domain: matchesAsTree[domain?.id || ""],
+    secrets: matchesAsTree[secrets?.id || ""],
   };
-  return root;
-});
-
-const displayName = computed(() => {
-  if (commonTree.value?.attributeValue.key)
-    return commonTree.value.attributeValue.key;
-  else return commonTree.value?.prop?.name || "XXX";
 });
 
 type ApiVal = {
