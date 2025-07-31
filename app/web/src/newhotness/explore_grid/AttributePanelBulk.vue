@@ -3,8 +3,9 @@
     <div
       :class="
         clsx(
-          'flex flex-row items-center gap-xs px-xs mb-xs',
-          themeClasses('bg-neutral-300', 'bg-neutral-600'),
+          'bulk-header flex flex-row items-center gap-xs',
+          'mx-[-12px]', // pull this banner beyond the margins of its container's style [&>div]:mx-[12px]
+          themeClasses('bg-white', 'bg-neutral-800'),
         )
       "
     >
@@ -18,58 +19,96 @@
         iconTone="shade"
         @click="() => emit('close')"
       />
-      <h1 class="text-md font-bold my-xs">Bulk Editing</h1>
+      <div class="flex-none text-sm">Edit selected components</div>
     </div>
-    <ul class="flex flex-row gap-xs">
-      <li v-for="component in selectedComponents" :key="component.id">
-        <ComponentCard :component="component" />
-      </li>
-    </ul>
-    <DelayedLoader v-if="treesPending" :size="'full'" />
-    <div
-      v-else-if="commonTree.domain || commonTree.secrets"
-      :class="
-        clsx(
-          'mt-sm p-xs',
-          // these styles are from CollapsingFlexItem
-          'border overflow-hidden',
-          themeClasses(
-            'border-neutral-300 bg-white',
-            'border-neutral-600 bg-neutral-800',
-          ),
-        )
-      "
-      class=""
-    >
-      <AttributeChildLayout v-if="commonTree.domain">
-        <template #header><span class="text-sm">domain</span></template>
-        <ComponentAttribute
-          v-for="child in commonTree.domain.children"
-          :key="child.id"
-          :component="componentMap[child.componentId]!"
-          :attributeTree="child"
-          @save="save"
-          @add="add"
-          @set-key="setKey"
-          @remove-subscription="removeSubscription"
-          @delete="remove"
-        />
-      </AttributeChildLayout>
-      <AttributeChildLayout
-        v-if="commonTree.secrets && commonTree.secrets.children.length > 0"
+    <div class="flex flex-row gap-xs mt-xs">
+      <ul
+        :class="
+          clsx(
+            'my-2xs', // matching <AttributeChildLayout>
+            'w-1/3 flex-none flex flex-col gap-xs scrollable border p-sm',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
       >
-        <template #header><span class="text-sm">secrets</span></template>
-        <ComponentSecretAttribute
-          v-for="secret in commonTree.secrets.children"
-          :key="secret.id"
-          :component="componentMap[secret.componentId]!"
-          :attributeTree="secret"
-        />
-      </AttributeChildLayout>
+        <li class="text-sm mb-2xs text-neutral-400">
+          Components selected for editing
+        </li>
+        <!-- i took these styles and html nesting from connection panel, we should create a component that does this -->
+        <li
+          v-for="component in selectedComponents"
+          :key="component.id"
+          :class="
+            clsx(
+              'ml-xs',
+              'flex flex-row items-center gap-xs [&>*]:text-sm [&>*]:font-bold',
+              themeClasses(
+                '[&>*]:border-neutral-400',
+                '[&>*]:border-neutral-600',
+              ),
+            )
+          "
+        >
+          <input type="checkbox" checked />
+          <MinimizedComponentQualificationStatus
+            :component="component"
+            noText
+          />
+          <TextPill
+            mono
+            :class="
+              clsx(
+                'min-w-0',
+                themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+              )
+            "
+          >
+            <TruncateWithTooltip>
+              {{ component.schemaVariantName }}
+            </TruncateWithTooltip>
+          </TextPill>
+          <TextPill mono class="text-purple min-w-0">
+            <TruncateWithTooltip>
+              {{ component.name }}
+            </TruncateWithTooltip>
+          </TextPill>
+        </li>
+      </ul>
+      <DelayedLoader v-if="treesPending" :size="'full'" />
+      <div
+        v-else-if="commonTree.domain || commonTree.secrets"
+        class="grow scrollable"
+      >
+        <AttributeChildLayout v-if="commonTree.domain">
+          <template #header><span class="text-sm">domain</span></template>
+          <ComponentAttribute
+            v-for="child in commonTree.domain.children"
+            :key="child.id"
+            :component="componentMap[child.componentId]!"
+            :attributeTree="child"
+            @save="save"
+            @add="add"
+            @set-key="setKey"
+            @remove-subscription="removeSubscription"
+            @delete="remove"
+          />
+        </AttributeChildLayout>
+        <AttributeChildLayout
+          v-if="commonTree.secrets && commonTree.secrets.children.length > 0"
+        >
+          <template #header><span class="text-sm">secrets</span></template>
+          <ComponentSecretAttribute
+            v-for="secret in commonTree.secrets.children"
+            :key="secret.id"
+            :component="componentMap[secret.componentId]!"
+            :attributeTree="secret"
+          />
+        </AttributeChildLayout>
+      </div>
+      <p v-else class="italic text-center mt-md">
+        The selected components do not share any common attributes.
+      </p>
     </div>
-    <p v-else class="italic text-center mt-md">
-      The selected components do not share any common attributes.
-    </p>
   </div>
 </template>
 
@@ -77,7 +116,12 @@
 import clsx from "clsx";
 import { useQueries } from "@tanstack/vue-query";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { themeClasses, IconButton } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  IconButton,
+  TruncateWithTooltip,
+  TextPill,
+} from "@si/vue-lib/design-system";
 import { useToast } from "vue-toastification";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
@@ -86,7 +130,6 @@ import {
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import { keyEmitter } from "@/newhotness/logic_composables/emitters";
-import ComponentCard from "@/newhotness/ComponentCard.vue";
 import { nonNullable } from "@/utils/typescriptLinter";
 import ComponentAttribute, {
   NewChildValue,
@@ -104,6 +147,7 @@ import {
 } from "../logic_composables/attribute_tree";
 import { componentTypes, ok, routes, UseApi, useApi } from "../api_composables";
 import { useContext } from "../logic_composables/context";
+import MinimizedComponentQualificationStatus from "../MinimizedComponentQualificationStatus.vue";
 
 const ctx = useContext();
 
@@ -403,3 +447,13 @@ const emit = defineEmits<{
   (e: "close"): void;
 }>();
 </script>
+
+<style lang="less" scoped>
+// mostly copied from `ExploreGrid`, we should extract these into common, non-scoped, styles if we're going to continue down this path
+.bulk-header {
+  padding: 0 0.5rem 0 0.5rem;
+  height: 2.75rem;
+  border-top: 1px solid #d4d4d8; /* neutral-300 */
+  border-bottom: 1px solid #d4d4d8; /* neutral-300 */
+}
+</style>
