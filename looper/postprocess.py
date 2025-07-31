@@ -57,7 +57,7 @@ def category_of(row):
 
     if row['Error'] == 'Multiple connections to the same prop':
         # NOTE we should look at each of these!
-        return f"ENG-3151: remove connections with graph errors"
+        return f"FIXED-ENG-3151: remove connections with graph errors"
 
     # ENG-3146: unmarked si:identity functions
     if dest_is(row, [
@@ -73,7 +73,7 @@ def category_of(row):
             ],
             dest_func=['containerNameToLBConfigContainerName', 'containerPortToLBConfigContainerPort', 'containerPortToOutputSocket']
         )
-        return f"ENG-3146: unmarked si:identity functions"
+        return f"FIXED-ENG-3146: unmarked si:identity functions"
 
     if source_is(row, (['AMI', 'AWS::EC2::AMI'], 'Image ID')):
         assert_error(row, 'Source socket prototype has multiple arguments')
@@ -82,6 +82,19 @@ def category_of(row):
     if dest_is(row, ('Target Group', 'Instance ID')):
         assert_error(row, 'Destination prop Targets passes multiple args to function si:awsTargetGroupNormalizeTargets')
         return f"NEW: Target Group/Instance ID (ELBv2) takes in data from source component *and* destination component"
+
+    # ENG-3147: reaching into payload/code/resource_value
+    if source_is(row, [
+                        ('Subnet', 'Subnet ID'),
+                    ]) and row.get('DestFunction') == 'si:normalizeToArray':
+        assert_error(row,
+            [
+                None,
+                'Source and destination sockets both have non-identity functions',
+            ],
+            source_func=['si:awsSubnetIdFromResource']
+        )
+        return f"FIXED-ENG-3147: Subnet ID"
 
     # ENG-3147: reaching into payload/code/resource_value
     if source_is(row, [
@@ -97,6 +110,35 @@ def category_of(row):
         )
         return f"ENG-3147: reaching into payload/code/resource_value"
     
+    # ENG-3148: IAM Principal connections
+    if source_is(row, (
+        [
+            'AWS::IAM::AccountPrincipal',
+            'AWS IAM Account Principal',
+            'AWS::IAM::OIDCSessionPrincipal',
+            'AWS IAM OIDC Session Principal',
+            'AWS::IAM::ServicePrincipal',
+            'AWS IAM AWS Service Principal',
+        ],
+        'Principal'
+    )) and dest_is(row, (
+        [
+            'AWS::IAM::PolicyStatement',
+            'AWS IAM Policy Statement'
+        ],
+        'Principal'
+    )):
+        assert_error(row,
+            [
+                None,
+                'Source and destination sockets both have non-identity functions',
+                'Multiple connections to the same prop'
+            ],
+            source_func='awsIamAwsServciePrincipalSetPrincipalOutput',
+            dest_func='setPrincipalFromPrincipalSocket'
+        )
+        return f"ENG-3148: IAM Principal connections with simple subscriptions"
+
     # ENG-3148: IAM Principal connections
     if source_is(row, (
         [
@@ -134,27 +176,14 @@ def category_of(row):
             source_func='awsIamAwsServciePrincipalSetPrincipalOutput',
             dest_func='setPrincipalFromPrincipalSocket'
         )
-        return f"ENG-3148: IAM Principal connections"
+        return f"ENG-3148: IAM Principal connections with custom functions"
 
     # ENG-3158: IAM Condition connections
     if source_is(row, ('AWS::IAM::ConditionOperator', 'Condition')) and dest_is(row, ('AWS::IAM::PolicyStatement', 'Condition')):
         assert_error(row,
             [
                 'Source socket prototype has multiple arguments'
-            ],
-            source_func='awsIamAwsServciePrincipalSetPrincipalOutput',
-            dest_func='setPrincipalFromPrincipalSocket'
-        )
-        return f"ENG-3158: IAM Condition connections"
-
-    # ENG-31: IAM Condition connections
-    if source_is(row, ('AWS::IAM::ConditionOperator', 'Condition')) and dest_is(row, ('AWS::IAM::PolicyStatement', 'Condition')):
-        assert_error(row,
-            [
-                'Source socket prototype has multiple arguments'
-            ],
-            source_func='awsIamAwsServciePrincipalSetPrincipalOutput',
-            dest_func='setPrincipalFromPrincipalSocket'
+            ]
         )
         return f"ENG-3158: IAM Condition connections"
 
@@ -181,7 +210,7 @@ def category_of(row):
         ('ECS Container Definition Port Mapping', 'Port Mapping')
     ]):
         assert_error(row, 'Source socket prototype has multiple arguments')
-        return f"ENG-3148: multi-argument /domain functions"
+        return f"ENG-3149: multi-argument /domain functions"
 
     return None
 

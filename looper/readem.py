@@ -61,7 +61,7 @@ for file in os.listdir('.'):
                     'migrated': 0,
                     'errors': 0,
                 }
-            if row['Error']:
+            if row['Error'] and not row.get('ErrorCategory', '').startswith('FIXED-'):
                 by_category[category]['errors'] += 1
                 if row['ErrorCategory'] and (row['ErrorCategory'].startswith('ENG-') or row['ErrorCategory'].startswith('NEW:')):
                     totals['fixed_errors'] += 1
@@ -88,8 +88,6 @@ for workspace_id, summary in workspace_summaries.items():
 
 for schema, summary in schema_summaries.items():
     print(f"schema: {summary['unfixed_errors']} unfixed errors, {summary['fixed_errors']} fixed errors, {summary['migrated']} migrated: {schema}")
-for schema, summary in schema_summaries.items():
-    print(f"schema2: {schema}: {summary['unfixed_errors']} unfixed errors, {summary['fixed_errors']} fixed errors, {summary['migrated']} migrated")
 
 workspace_counts = {
     'unfixed_errors': len([ws for ws in workspace_summaries.values() if ws['unfixed_errors'] > 0]),
