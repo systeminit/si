@@ -3,6 +3,7 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import {
   ComponentInList,
   BifrostComponent,
+  ComponentDiffStatus,
 } from "@/workers/types/entity_kind_types";
 import { useApi, routes } from "../api_composables";
 import { DeleteMode } from "../DeleteModal.vue";
@@ -17,6 +18,19 @@ export function useComponentDeletion(viewId?: string, skipNavigation = false) {
   const convertBifrostToComponentInList = (
     component: BifrostComponent,
   ): ComponentInList => {
+    // Convert resourceDiff to diffStatus
+    let diffStatus: ComponentDiffStatus;
+    if (component.resourceDiff?.diff) {
+      diffStatus = ComponentDiffStatus.Modified;
+    } else if (
+      component.resourceDiff?.current &&
+      !component.resourceDiff?.diff
+    ) {
+      diffStatus = ComponentDiffStatus.Added;
+    } else {
+      diffStatus = ComponentDiffStatus.None;
+    }
+
     return {
       id: component.id,
       name: component.name,
@@ -29,7 +43,7 @@ export function useComponentDeletion(viewId?: string, skipNavigation = false) {
       hasResource: component.hasResource,
       qualificationTotals: component.qualificationTotals,
       inputCount: component.inputCount,
-      hasDiff: !!component.resourceDiff?.diff,
+      diffStatus,
       toDelete: component.toDelete,
       resourceId: null,
     };

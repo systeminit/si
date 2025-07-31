@@ -10,6 +10,11 @@ use si_events::{
     workspace_snapshot::EntityKind,
 };
 use si_id::WorkspacePk;
+use strum::{
+    AsRefStr,
+    Display,
+    EnumString,
+};
 
 use crate::reference::{
     ReferenceKind,
@@ -88,6 +93,26 @@ pub struct Component {
     pub to_delete: bool,
 }
 
+#[remain::sorted]
+#[derive(
+    AsRefStr,
+    Deserialize,
+    Serialize,
+    Debug,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    si_frontend_mv_types_macros::FrontendChecksum,
+)]
+pub enum ComponentDiffStatus {
+    Added,
+    Modified,
+    None,
+}
+
 #[derive(
     Debug,
     Serialize,
@@ -118,7 +143,7 @@ pub struct ComponentInList {
     pub resource_id: Option<Value>,
     pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
-    pub has_diff: bool,
+    pub diff_status: ComponentDiffStatus,
     pub to_delete: bool,
 }
 

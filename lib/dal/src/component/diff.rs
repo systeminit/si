@@ -32,6 +32,13 @@ pub struct ComponentDiff {
     pub diff: Option<CodeView>,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+pub enum DiffStatus {
+    Added,
+    Modified,
+    None,
+}
+
 impl Component {
     /// Generates a [`ComponentDiff`] for a given [`ComponentId`](crate::Component).
     pub async fn get_diff(
@@ -134,15 +141,15 @@ impl Component {
     pub async fn has_diff_from_head(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<bool> {
+    ) -> ComponentResult<DiffStatus> {
         // By definition there aren't changes between head and head
         if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
-            return Ok(false);
+            return Ok(DiffStatus::None);
         }
 
         // If component doesn't exist on head, then it is new and there is no diff
         if !Self::exists_on_head_by_id(ctx, component_id).await? {
-            return Ok(false);
+            return Ok(DiffStatus::Added);
         }
 
         // Now we need serialized, textual versions of the component on this change set and on head
@@ -181,6 +188,10 @@ impl Component {
         };
 
         // If the serialized strings differ, then there would be a diff
-        Ok(this_component_json_str != head_component_json_str)
+        if this_component_json_str != head_component_json_str {
+            return Ok(DiffStatus::Modified);
+        }
+
+        Ok(DiffStatus::None)
     }
 }

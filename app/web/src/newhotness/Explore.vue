@@ -448,6 +448,7 @@ import {
 import {
   BifrostActionViewList,
   ComponentInList,
+  ComponentDiffStatus,
   EntityKind,
   View,
 } from "@/workers/types/entity_kind_types";
@@ -1010,7 +1011,11 @@ const sortedAndGroupedComponents = computed(() => {
       "No Diffs": [],
     };
     for (const component of components) {
-      const title = component.hasDiff ? "With Diffs" : "No Diffs";
+      const title =
+        component.diffStatus &&
+        component.diffStatus !== ComponentDiffStatus.None
+          ? "With Diffs"
+          : "No Diffs";
       groups[title]?.push(component);
     }
   } else if (groupBySelection.value === "Qualification Status") {

@@ -285,6 +285,12 @@ export interface BifrostComponent {
   toDelete: boolean;
 }
 
+export enum ComponentDiffStatus {
+  Added = "Added",
+  None = "None",
+  Modified = "Modified",
+}
+
 // NOTE: when using `getMany` you don't end up with a BifrostComponent (b/c it doesnt have SchemaVariant)
 // You end up with a BifrostComponentInList
 export interface ComponentInList {
@@ -300,7 +306,7 @@ export interface ComponentInList {
   hasResource: boolean;
   qualificationTotals: ComponentQualificationTotals;
   inputCount: number;
-  hasDiff: boolean;
+  diffStatus: ComponentDiffStatus;
   toDelete: boolean;
   resourceId: string | null;
 }
