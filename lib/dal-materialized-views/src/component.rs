@@ -6,6 +6,7 @@ use dal::{
     Schema,
     SchemaId,
     SchemaVariant,
+    component::diff::DiffStatus,
     prop::PropPath,
     qualification::QualificationSummary,
     workspace_snapshot::traits::component::ComponentExt,
@@ -13,6 +14,7 @@ use dal::{
 use si_frontend_mv_types::component::{
     Component as ComponentMv,
     ComponentDiff,
+    ComponentDiffStatus,
     ComponentInList as ComponentInListMv,
     SchemaMembers,
 };
@@ -48,7 +50,7 @@ pub async fn assemble_in_list(
         .workspace_snapshot()?
         .external_source_count(component_id)
         .await?;
-    let has_diff = Component::has_diff_from_head(ctx, component_id).await?;
+    let diff_status = map_diff_status(Component::has_diff_from_head(ctx, component_id).await?);
     let to_delete = Component::is_set_to_delete(ctx, component_id)
         .await?
         .unwrap_or(false);
@@ -80,10 +82,18 @@ pub async fn assemble_in_list(
         has_resource,
         qualification_totals,
         input_count,
-        has_diff,
+        diff_status,
         to_delete,
         resource_id,
     })
+}
+
+pub fn map_diff_status(status: dal::component::diff::DiffStatus) -> ComponentDiffStatus {
+    match status {
+        DiffStatus::Added => ComponentDiffStatus::Added,
+        DiffStatus::None => ComponentDiffStatus::None,
+        DiffStatus::Modified => ComponentDiffStatus::Modified,
+    }
 }
 
 #[instrument(

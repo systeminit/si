@@ -90,6 +90,36 @@
         <template v-else-if="rowContent === 'diff'">
           <Icon name="tilde" class="text-warning-500" size="sm" />
           <div class="text-sm">Diff</div>
+          <TextPill
+            v-if="component.diffStatus === ComponentDiffStatus.Added"
+            tighter
+            :class="
+              clsx(
+                'text-xs ml-auto',
+                themeClasses(
+                  'border-success-500 bg-neutral-100 text-black',
+                  'border-success-600 bg-neutral-900 text-white',
+                ),
+              )
+            "
+          >
+            Added
+          </TextPill>
+          <TextPill
+            v-else-if="component.diffStatus === ComponentDiffStatus.Modified"
+            tighter
+            :class="
+              clsx(
+                'text-xs ml-auto',
+                themeClasses(
+                  'border-warning-500 bg-warning-100 text-black',
+                  'border-warning-600 bg-warning-900 text-white',
+                ),
+              )
+            "
+          >
+            Modified
+          </TextPill>
         </template>
         <template v-else-if="rowContent === 'pending'">
           <div class="grid grid-cols-5 gap-1 items-center">
@@ -180,7 +210,10 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, inject } from "vue";
-import { ComponentInList } from "@/workers/types/entity_kind_types";
+import {
+  ComponentInList,
+  ComponentDiffStatus,
+} from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
@@ -217,29 +250,34 @@ const dynamicRows = computed(() => {
   const hasPendingActions =
     props.pendingActionCounts &&
     Object.keys(props.pendingActionCounts).length > 0;
+  const hasDiff =
+    props.component.diffStatus &&
+    props.component.diffStatus !== ComponentDiffStatus.None;
 
-  // Row 2: Resource if exists
+  // Row 2: Resource if exists, otherwise diff if exists, otherwise empty
   if (props.component.hasResource) {
     rows.push("resource");
-  } else {
-    rows.push(null);
-  }
-
-  // Row 3: Diff if exists
-  if (props.component.hasDiff) {
+  } else if (hasDiff) {
     rows.push("diff");
   } else {
     rows.push(null);
   }
 
-  // Row 4: Pending actions if they exist
+  // Row 3: Diff if exists AND resource exists, otherwise empty
+  if (props.component.hasResource && hasDiff) {
+    rows.push("diff");
+  } else {
+    rows.push(null);
+  }
+
+  // Row 4: Pending actions if they exist, otherwise empty
   if (hasPendingActions) {
     rows.push("pending");
   } else {
     rows.push(null);
   }
 
-  return rows.slice(0, 3);
+  return rows;
 });
 const toggleSelection = () => {
   if (props.selected) {
