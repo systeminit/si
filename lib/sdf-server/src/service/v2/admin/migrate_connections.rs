@@ -132,23 +132,21 @@ async fn migrate_connections_async_fallible(
     // Migrate.
     let mut migrations = Vec::with_capacity(connections.len());
     for mut connection in connections {
-        // Don't migrate if there's an issue.
-        if connection.issue.is_some() {
-            summary.unmigrateable += 1;
-        } else {
-            match migrate_connection(ctx, &connection).await {
-                Ok(true) => summary.migrated += 1,
-                // Don't include noop migrations (already-migrated) in the report
-                Ok(false) => continue,
-                // Mark it as unmigrateable if there was an error
-                Err(err) => {
+        match migrate_connection(ctx, &connection).await {
+            // Don't include noop migrations (already-migrated) in the report
+            Ok(Some(false)) => continue,
+            Ok(Some(true)) => summary.migrated += 1,
+            Ok(None) => summary.unmigrateable += 1,
+            // Mark it as unmigrateable if there was an error
+            Err(err) => {
+                if connection.issue.is_none() {
                     connection.issue = Some(ConnectionUnmigrateableBecause::InvalidGraph {
                         error: err.to_string(),
                     });
-                    summary.unmigrateable += 1;
                 }
-            };
-        }
+                summary.unmigrateable += 1;
+            }
+        };
 
         // Report that it was migrated.
         let message = connection.fmt_title(ctx).await;
@@ -221,12 +219,28 @@ async fn get_connection_migrations(ctx: &DalContext) -> AdminAPIResult<Vec<Conne
 
 /// Migrate a single connection.
 ///
-/// Returns true if any migration work was done, false if it was a noop.
+/// Returns true if any migration work was done, false if it was a noop, and None if the connection
+/// is entirely unmigrateable.
+///
 /// Check `issue` to see if there was an issue (e.g. partial migration).
 async fn migrate_connection(
     ctx: &DalContext,
     migration: &ConnectionMigration,
-) -> AdminAPIResult<bool> {
+) -> AdminAPIResult<Option<bool>> {
+    match &migration.issue {
+        // If there's no issue, we can migrate.
+        None => {}
+        // We can migrate schema mismatches by removing the socket connection.
+        // (We check migration.prop_connections to make sure we won't accidentally create a new
+        // connection.)
+        Some(
+            ConnectionUnmigrateableBecause::DestinationSocketSchemaMismatch
+            | ConnectionUnmigrateableBecause::SourceSocketSchemaMismatch,
+        ) if migration.prop_connections.is_empty() => {}
+        // If there's an issue, we can't migrate it.
+        Some(_) => return Ok(None),
+    }
+
     let mut did_something = false;
     for prop_connection in &migration.prop_connections {
         if add_prop_connection(ctx, prop_connection).await? {
@@ -244,7 +258,7 @@ async fn migrate_connection(
         did_something = true;
     }
 
-    Ok(did_something)
+    Ok(Some(did_something))
 }
 
 /// Add the given prop connections
@@ -316,5 +330,6 @@ async fn remove_socket_connection(
         .publish_on_commit(ctx)
         .await?;
     }
+
     Ok(true)
 }
