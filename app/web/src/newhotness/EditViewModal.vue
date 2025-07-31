@@ -1,55 +1,137 @@
 <template>
   <!-- NOTE: the Modal CSS for height in "max" doesn't work as we might expect -->
-  <Modal
-    ref="modalRef"
-    size="lg"
-    title="Edit View"
-    type="save"
-    saveLabel="Done"
-    @save="() => nameForm.handleSubmit()"
-  >
-    <label class="flex flex-row items-center relative">
-      <span>View Name</span>
+  <Modal ref="modalRef" size="lg" title="Edit View">
+    <div class="flex flex-col">
       <nameForm.Field name="name">
         <template #default="{ field }">
-          <input
+          <div
+            v-if="field.state.meta.errors.length > 0"
             :class="
               clsx(
-                'block w-72 ml-auto border',
-                themeClasses(
-                  'text-black bg-white border-neutral-600 disabled:bg-neutral-100',
-                  'text-white bg-black border-neutral-400 disabled:bg-neutral-900',
-                ),
+                'text-sm mb-xs',
+                themeClasses('text-destructive-600', 'text-destructive-200'),
               )
             "
-            :value="field.state.value"
-            type="text"
-            :disabled="wForm.bifrosting.value"
-            @input="
-              (e) => field.handleChange((e.target as HTMLInputElement).value)
-            "
-          />
+          >
+            {{ field.state.meta.errors[0] }}
+          </div>
         </template>
       </nameForm.Field>
-      <Icon
-        v-if="wForm.bifrosting.value"
-        class="absolute right-2xs"
-        name="loader"
-        size="sm"
-        tone="action"
-      />
-    </label>
-    <template #leftButton>
+
+      <label class="flex flex-row items-center relative">
+        <span>View Name*</span>
+        <nameForm.Field
+          name="name"
+          :validators="{
+            onChange: ({ value }) =>
+              value.trim().length === 0 ? 'View name is required' : undefined,
+            onBlur: ({ value }) =>
+              value.trim().length === 0 ? 'View name is required' : undefined,
+          }"
+        >
+          <template #default="{ field }">
+            <input
+              :class="
+                clsx(
+                  'block w-72 ml-auto border',
+                  field.state.meta.errors.length > 0
+                    ? themeClasses(
+                        'text-black bg-white border-destructive-600 disabled:bg-neutral-100',
+                        'text-white bg-black border-destructive-400 disabled:bg-neutral-900',
+                      )
+                    : themeClasses(
+                        'text-black bg-white border-neutral-600 disabled:bg-neutral-100',
+                        'text-white bg-black border-neutral-400 disabled:bg-neutral-900',
+                      ),
+                )
+              "
+              :value="field.state.value"
+              type="text"
+              :disabled="wForm.bifrosting.value"
+              @input="
+                (e) => field.handleChange((e.target as HTMLInputElement).value)
+              "
+            />
+          </template>
+        </nameForm.Field>
+        <Icon
+          v-if="wForm.bifrosting.value"
+          class="absolute right-2xs"
+          name="loader"
+          size="sm"
+          tone="action"
+        />
+      </label>
+    </div>
+
+    <div class="flex gap-sm mt-sm">
       <div v-tooltip="tooltipText">
         <VButton
           label="Delete View"
+          :class="
+            clsx(
+              '!text-sm !border !px-xs !font-normal',
+              canDeleteView === 'yes'
+                ? '!cursor-pointer'
+                : '!cursor-not-allowed',
+              canDeleteView === 'yes'
+                ? themeClasses(
+                    '!text-neutral-900 !bg-destructive-100 !border-destructive-100 hover:!bg-white',
+                    '!text-[#F5CECE] !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
+                  )
+                : themeClasses(
+                    '!text-neutral-500 !bg-neutral-200 !border-neutral-300',
+                    '!text-neutral-500 !bg-neutral-700 !border-neutral-600',
+                  ),
+            )
+          "
           :disabled="canDeleteView !== 'yes'"
           :loading="canDeleteView === 'loading'"
-          :tone="canDeleteView === 'yes' ? 'destructive' : 'neutral'"
           @click="deleteView"
         />
       </div>
-    </template>
+      <div class="flex gap-sm ml-auto">
+        <VButton
+          size="xs"
+          :class="
+            clsx(
+              '!text-sm !border !cursor-pointer !px-xs !font-normal flex items-center gap-sm',
+              themeClasses(
+                '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
+                '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
+              ),
+            )
+          "
+          @click="() => modalRef?.close()"
+        >
+          <span>Cancel </span>
+          <span
+            :class="
+              clsx(
+                'text-xs px-2xs py-3xs border rounded font-mono',
+                themeClasses('border-neutral-500', 'border-neutral-500'),
+              )
+            "
+            >ESC</span
+          >
+        </VButton>
+        <VButton
+          :class="
+            clsx(
+              '!text-sm !border !cursor-pointer !px-xs !font-normal',
+              themeClasses(
+                '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+              ),
+            )
+          "
+          label="Done"
+          :loading="wForm.bifrosting.value"
+          :disabled="wForm.bifrosting.value"
+          @click="() => nameForm.handleSubmit()"
+        />
+      </div>
+    </div>
   </Modal>
 </template>
 
@@ -170,7 +252,7 @@ const nameForm = wForm.newForm({
   },
   validators: {
     onSubmit: ({ value }) =>
-      value.name.length === 0 ? "Name is required" : undefined,
+      value.name.length === 0 ? "View name is required" : undefined,
   },
 });
 
