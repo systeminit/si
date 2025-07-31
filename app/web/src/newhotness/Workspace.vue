@@ -336,7 +336,7 @@ export type SelectionsInQueryString = Partial<{
   viewId: string;
   searchQuery: string;
   retainSessionState: string; // If set, the component should load up with the last state it had on this tab. Used by Explore.vue
-  hideUnconnected: string; // Flag to hide unconnected components when navigating to map
+  hideSubscriptions: string; // Flag to hide unconnected components when navigating to map
 }>;
 
 const compositionLink = computed(() => {

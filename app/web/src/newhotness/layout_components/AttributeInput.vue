@@ -492,7 +492,7 @@
                 )
               "
             >
-              Or connect to an existing prop
+              Or subscribe to an existing prop
             </div>
             <!--
               Attach the virtualizer to this element. It will use the width and height of
@@ -575,7 +575,7 @@
                         Showing one suggested connection
                       </template>
                       <template v-else>
-                        No suggested connections available
+                        No suggested subscriptions available
                       </template>
                     </TruncateWithTooltip>
                     <TruncateWithTooltip
@@ -593,7 +593,7 @@
                         )
                       "
                     >
-                      Show All Possible Connections
+                      Show All Possible Subscriptions
                     </TruncateWithTooltip>
                   </div>
                 </template>

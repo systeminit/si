@@ -972,9 +972,9 @@ const sortedAndGroupedComponents = computed(() => {
   if (pinnedComponent.value) {
     groups = {
       Pinned: [pinnedComponent.value],
-      "Incoming connections": [],
-      "Outgoing connections": [],
-      Unconnected: [],
+      "Incoming subscriptions": [],
+      "Outgoing subscriptions": [],
+      "No subscriptions": [],
     };
     for (const component of components) {
       // Skip the pinned component itself - it's already in the "Pinned" group
@@ -987,20 +987,20 @@ const sortedAndGroupedComponents = computed(() => {
       // This is subtle, but we do not use "else-if". This should have no opinion on whether or not
       // something can be both an input or an output.
       if (pinnedComponentConnectionSets.value.incoming.has(component.id)) {
-        groups["Incoming connections"] ??= [];
-        groups["Incoming connections"].push(component);
+        groups["Incoming subscriptions"] ??= [];
+        groups["Incoming subscriptions"].push(component);
         hasConnection = true;
       }
       if (pinnedComponentConnectionSets.value.outgoing.has(component.id)) {
-        groups["Outgoing connections"] ??= [];
-        groups["Outgoing connections"].push(component);
+        groups["Outgoing subscriptions"] ??= [];
+        groups["Outgoing subscriptions"].push(component);
         hasConnection = true;
       }
 
-      // Component is neither incoming nor outgoing, so it's unconnected
+      // Component is neither incoming nor outgoing, so it's not subscribed
       if (!hasConnection) {
-        groups.Unconnected ??= [];
-        groups.Unconnected.push(component);
+        groups["No subscriptions"] ??= [];
+        groups["No subscriptions"].push(component);
       }
     }
   } else if (groupBySelection.value === "Diff Status") {
