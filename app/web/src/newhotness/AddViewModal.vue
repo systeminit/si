@@ -1,13 +1,6 @@
 <template>
   <!-- NOTE: the Modal CSS for height in "max" doesn't work as we might expect -->
-  <Modal
-    ref="modalRef"
-    size="lg"
-    title="Create View"
-    type="save"
-    saveLabel="Create"
-    @save="() => nameForm.handleSubmit()"
-  >
+  <Modal ref="modalRef" size="lg" title="Create View">
     <form @submit.prevent="nameForm.handleSubmit()">
       <label class="flex flex-row items-center relative">
         <span>View Name</span>
@@ -28,7 +21,7 @@
               :disabled="wForm.bifrosting.value"
               @input="
                 (e) => field.handleChange((e.target as HTMLInputElement).value)
-                "
+              "
             />
           </template>
         </nameForm.Field>
@@ -41,11 +34,35 @@
         />
       </label>
     </form>
+
+    <div class="flex gap-sm mt-sm">
+      <VButton
+        label="Cancel"
+        tone="shade"
+        variant="ghost"
+        @click="() => modalRef?.close()"
+      />
+      <VButton
+        :class="
+          clsx(
+            'flex-grow !text-sm !border !cursor-pointer !px-xs',
+            themeClasses(
+              '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+              '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+            ),
+          )
+        "
+        label="Create"
+        :loading="wForm.bifrosting.value"
+        :disabled="wForm.bifrosting.value"
+        @click="() => nameForm.handleSubmit()"
+      />
+    </div>
   </Modal>
 </template>
 
 <script setup lang="ts">
-import { Modal, Icon, themeClasses } from "@si/vue-lib/design-system";
+import { Modal, Icon, VButton, themeClasses } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
