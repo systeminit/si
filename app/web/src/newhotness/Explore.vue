@@ -416,6 +416,7 @@ import * as _ from "lodash-es";
 import {
   computed,
   inject,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   provide,
@@ -1237,7 +1238,10 @@ const allSelectedComponentsAreRestorable = computed(() => {
   return notRestorable === undefined;
 });
 
-const fixContextMenu = () => {
+const fixContextMenu = async () => {
+  // we potentially select a component on mount, so if the ref isn't here, nextTick it will be
+  if (!focusedGridComponentRef.value) await nextTick();
+
   // If we focus on the pinned component, do not bring up the context menu.
   if (
     focusedGridComponentRef.value &&
@@ -1655,7 +1659,7 @@ const onClick = (e: MouseDetails["click"]) => {
 
 // ================================================================================================
 // MOUNTING AND URL QUERY HANDLING
-const setSelectionsFromQuery = () => {
+const setSelectionsFromQuery = async () => {
   const query: SelectionsInQueryString = router.currentRoute.value?.query;
 
   // if we get retainSessionState, get query back from the session storage
@@ -1720,6 +1724,14 @@ const setSelectionsFromQuery = () => {
     indexes.forEach((idx) => {
       selectedComponentIndexes.add(idx);
     });
+    const idx = [...indexes].pop();
+    // NOTE: `focusedComponentIdx.value === undefined` is only possible when loading from URL
+    if (idx !== undefined && focusedComponentIdx.value === undefined) {
+      // when we're on mount, we need to wait until the next tick for the ref
+      // yes, there are 2 on purpose
+      await nextTick();
+      selectComponent(idx);
+    }
   } else delete query.s;
 
   if (query.b && query.b === "1") {
