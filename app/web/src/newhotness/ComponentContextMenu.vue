@@ -567,9 +567,22 @@ const componentsAddToView = async (
     viewId,
   });
   close();
-  call.post({
+  const { req, newChangeSetId } = await call.post({
     componentIds,
   });
+
+  if (addToViewApi.ok(req) && newChangeSetId) {
+    addToViewApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 const componentsRemoveFromView = async (
   viewId: string,
@@ -579,9 +592,22 @@ const componentsRemoveFromView = async (
     viewId,
   });
   close();
-  await call.delete({
+  const { req, newChangeSetId } = await call.delete({
     componentIds,
   });
+
+  if (removeFromViewApi.ok(req) && newChangeSetId) {
+    removeFromViewApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
 const componentsUpgrade = async (componentIds: ComponentId[]) => {

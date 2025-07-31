@@ -101,7 +101,7 @@
             <template #b="{ selected, toggle }">
               <ExploreModeTile
                 icon="map"
-                label="Map (Model)"
+                label="Map"
                 :selected="selected"
                 @toggle="toggle"
               />
