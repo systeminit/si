@@ -126,7 +126,7 @@ pub fn connection_migrations(
         }
     }
 
-    // If we have multiple connections to the same destination socket, we can't migrate any of them
+    // If we have multiple connections to the same destination prop, we can't migrate any of them
     for migration in &mut migrations {
         if migration.prop_connections.iter().any(|prop_connection| {
             // If the path is an "append" path, we want to make sure we're not conflicting
@@ -139,7 +139,7 @@ pub fn connection_migrations(
             dup_destination_props.contains(&(component_id, base_path))
         }) {
             // We dedup whether or not socket connections are migrateable; if there are 10
-            // un-migrateable connections to the same socket, and one migrateable one, we
+            // un-migrateable connections to the same prop, and one migrateable one, we
             // still can't migrate any of them because it would still be inaccurate!
             migration.issue = Some(ConnectionUnmigrateableBecause::MultipleConnectionsToSameProp);
         }
@@ -401,6 +401,33 @@ impl PropConnection {
             to: (destination_component_id, destination_socket_id),
         }: &SocketConnection,
     ) -> Result<Vec<Self>, ConnectionUnmigrateableBecause> {
+        // Make sure the sockets have the same schema as their component (multiplayer issue)
+        //
+        //     Socket <-|Socket|-- SchemaVariant
+        //     Component --|Use|-> SchemaVariant
+        {
+            let component = graph.get_node_index_by_id(source_component_id)?;
+            let schema_variant = graph.target(component, EdgeWeightKindDiscriminants::Use)?;
+            let socket = graph.get_node_index_by_id(source_socket_id)?;
+            if !graph
+                .sources(socket, EdgeWeightKind::Socket)
+                .any(|source| source == schema_variant)
+            {
+                return Err(ConnectionUnmigrateableBecause::SourceSocketSchemaMismatch);
+            }
+        }
+        {
+            let component = graph.get_node_index_by_id(destination_component_id)?;
+            let socket = graph.get_node_index_by_id(destination_socket_id)?;
+            let schema_variant = graph.target(component, EdgeWeightKindDiscriminants::Use)?;
+            if !graph
+                .sources(socket, EdgeWeightKind::Socket)
+                .any(|source| source == schema_variant)
+            {
+                return Err(ConnectionUnmigrateableBecause::DestinationSocketSchemaMismatch);
+            }
+        }
+
         // Get the source AV path and function for the source component+socket
         let (source_prop_id, source_func_id) = Self::source_prop(graph, source_socket_id)?;
         let (_, source_path) = prop_path_from_root(graph, source_prop_id)?;
@@ -636,6 +663,8 @@ pub enum ConnectionUnmigrateableBecause {
     DestinationSocketArgumentNotBoundToProp,
     /// The destination socket is bound to a prop, but we can't find the AV for it
     DestinationSocketBoundToPropWithNoValue { destination_prop_id: PropId },
+    /// The destination socket comes from the wrong schema
+    DestinationSocketSchemaMismatch,
     /// The connection exists, but the graph is invalid in some unexpected way that would
     /// break its ability to be used (e.g. component_id points to missing component node)
     InvalidGraph { error: String },
@@ -655,6 +684,8 @@ pub enum ConnectionUnmigrateableBecause {
     SourceSocketPrototypeHasMultipleArguments,
     /// There are no arguments on the source socket, so we can't pick a single one to migrate to
     SourceSocketPrototypeHasNoArguments,
+    /// The source socket comes from the wrong schema
+    SourceSocketSchemaMismatch,
 }
 
 impl ConnectionUnmigrateableBecause {
@@ -680,6 +711,12 @@ impl ConnectionUnmigrateableBecause {
                     f,
                     "Destination socket is bound to a prop with no value: {}",
                     Prop::fmt_title(ctx, destination_prop_id).await
+                )
+            }
+            ConnectionUnmigrateableBecause::DestinationSocketSchemaMismatch => {
+                write!(
+                    f,
+                    "Destination socket comes from a different schema than the destination component (multiplayer issue)"
                 )
             }
             ConnectionUnmigrateableBecause::DestinationPrototypeHasMultipleArgs {
@@ -724,6 +761,12 @@ impl ConnectionUnmigrateableBecause {
             }
             ConnectionUnmigrateableBecause::SourceSocketPrototypeHasNoArguments => {
                 write!(f, "Source socket prototype has no arguments")
+            }
+            ConnectionUnmigrateableBecause::SourceSocketSchemaMismatch => {
+                write!(
+                    f,
+                    "Source socket comes from a different schema than the source component (multiplayer issue)"
+                )
             }
         }
     }
@@ -837,6 +880,12 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionUnmigrateableBecause> {
                     WithGraph(graph, destination_func_id)
                 )
             }
+            ConnectionUnmigrateableBecause::DestinationSocketSchemaMismatch => {
+                write!(
+                    f,
+                    "Destination socket comes from a different schema than the destination component (multiplayer issue)"
+                )
+            }
             ConnectionUnmigrateableBecause::InvalidGraph { ref error } => {
                 write!(f, "Invalid graph: {error}")
             }
@@ -868,6 +917,12 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionUnmigrateableBecause> {
             }
             ConnectionUnmigrateableBecause::SourceSocketPrototypeHasNoArguments => {
                 write!(f, "Source socket prototype has no arguments")
+            }
+            ConnectionUnmigrateableBecause::SourceSocketSchemaMismatch => {
+                write!(
+                    f,
+                    "Source socket comes from a different schema than the source component (multiplayer issue)"
+                )
             }
         }
     }
