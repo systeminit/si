@@ -89,10 +89,6 @@ export default defineConfig({
             text: "Creating Components",
             link: "/tutorials/creating-components",
           },
-          {
-            text: "Editing and Contributing Components",
-            link: "/tutorials/editing-components-and-contributing",
-          },
         ],
       },
       {
