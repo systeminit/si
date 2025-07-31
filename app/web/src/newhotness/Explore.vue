@@ -1288,6 +1288,7 @@ const allSelectedComponentsAreRestorable = computed(() => {
 
 const fixContextMenu = async () => {
   // we potentially select a component on mount, so if the ref isn't here, nextTick it will be
+  if (bulkEditing.value) return;
   if (!focusedGridComponentRef.value) await nextTick();
 
   // If we focus on the pinned component, do not bring up the context menu.
@@ -1308,6 +1309,7 @@ const unfocus = () => {
 };
 const clearSelection = () => {
   selectedComponentIndexes.clear();
+  bulkEditing.value = false;
   unfocus();
 };
 
@@ -1316,7 +1318,9 @@ const selectComponent = (componentIdx: number) => {
   focusedComponentIdx.value = componentIdx;
   fixContextMenu();
 };
-const deselectComponent = (componentIdx: number) => {
+const deselectComponent = (componentIdx: number | string) => {
+  // PSA: componentIdx coming through emits is typed as number, but at execution is a string
+  if (typeof componentIdx === "string") componentIdx = parseInt(componentIdx);
   selectedComponentIndexes.delete(componentIdx);
   if (componentIdx === focusedComponentIdx.value) {
     if (selectedComponentIndexes.size === 0) {
@@ -1580,6 +1584,7 @@ const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
   if (isThereAModalOpen.value) return; // no tab behavior when a modal is open
 
   selectedComponentIndexes.clear();
+  bulkEditing.value = false;
   const pageFunc = e.shiftKey ? previousComponent : nextComponent;
   if (!searchRef.value) return;
   else if (blurSearch) {
@@ -1782,8 +1787,11 @@ const setSelectionsFromQuery = async () => {
     }
   } else delete query.s;
 
-  if (query.b && query.b === "1") {
+  if (query.b && query.b === "1" && selectedComponentIndexes.size > 0)
     bulkEditing.value = true;
+  else {
+    bulkEditing.value = false;
+    delete query.b;
   }
 };
 
@@ -2004,7 +2012,7 @@ const emit = defineEmits<{
 
 <style lang="css" scoped>
 section.grid.explore {
-  grid-template-columns: minmax(0, 70%) minmax(0, 30%);
+  grid-template-columns: minmax(0, 75%) minmax(0, 25%);
   grid-template-rows: 100%;
   grid-template-areas: "main right";
 }

@@ -143,6 +143,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
                 let source = ExternalSource {
                     path: sub.path.to_string(),
                     component_name: comp_name,
+                    is_secret: sub.path.to_string().starts_with("/secrets/"),
                 };
                 sources.push(source);
             }

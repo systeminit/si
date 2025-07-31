@@ -54,6 +54,7 @@ pub struct ValidationOutput {
 pub struct ExternalSource {
     pub component_name: String,
     pub path: String,
+    pub is_secret: bool,
 }
 
 #[derive(

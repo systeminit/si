@@ -1,4 +1,12 @@
 <template>
+  <!-- without ref=scrollRef (which i dont need here) the component breaks -->
+  <div v-if="bulkEditing" ref="scrollRef" class="grow min-h-0">
+    <AttributePanelBulk
+      :selectedComponents="selectedComponentsMap"
+      @close="() => $emit('bulkDone')"
+      @deselect="(idx) => $emit('childDeselect', idx)"
+    />
+  </div>
   <!--
     NOTE(nick,victor,wendy): we need both divs here for the virtualizer. The first div is the
     scrolling area itself (it will be whatever height fills the spot in the overall UI, which,
@@ -7,14 +15,13 @@
     area will not change. If you mess with this, it will break in ways YOU MAY OR MAY NOT NOTICE.
     BUYER BEWARE.
   -->
-  <div ref="scrollRef" class="scrollable grow" style="overflow-anchor: none">
-    <AttributePanelBulk
-      v-if="bulkEditing"
-      :selectedComponents="selectedComponents"
-      @close="() => $emit('bulkDone')"
-    />
+  <div
+    v-else
+    ref="scrollRef"
+    class="scrollable grow"
+    style="overflow-anchor: none"
+  >
     <div
-      v-else
       data-testid="tile-container"
       class="w-full relative flex flex-col"
       :style="{
@@ -118,17 +125,21 @@ const allVisibleComponents = computed(() => {
 const focusedComponent = computed(
   () => allVisibleComponents.value[props.focusedComponentIdx ?? -1],
 );
-const selectedComponents = computed(() => {
-  const selected: ComponentInList[] = [];
+
+const selectedComponentsMap = computed(() => {
+  const selected: Record<number, ComponentInList> = {};
 
   props.selectedComponentIndexes.forEach((index) => {
     const component = allVisibleComponents.value[index];
     if (component) {
-      selected.push(component);
+      selected[index] = component;
     }
   });
 
   return selected;
+});
+const selectedComponents = computed(() => {
+  return Object.values(selectedComponentsMap.value);
 });
 
 function getScrollbarWidth(): number {

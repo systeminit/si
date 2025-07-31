@@ -44,7 +44,7 @@ export const startKeyEmitter = (document: Document) => {
 };
 
 type AttributeDetails = {
-  selectedPath: string;
+  selectedPath: { path: string; name: string };
   selectedDocs: { docs: string; link: string } | null;
 };
 
