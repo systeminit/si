@@ -288,10 +288,10 @@ watch(
   () => props.components?.length ?? 0,
   (newLength, oldLength) => {
     const isHideUnconnected =
-      router.currentRoute.value.query.hideUnconnected === "1";
+      router.currentRoute.value.query.hideSubscriptions === "1";
 
     if (oldLength === 0 && newLength > 0) {
-      // Only show minimap if not in hideUnconnected mode
+      // Only show minimap if not in hideSubscriptions mode
       showMinimap.value = !isHideUnconnected;
     } else if (oldLength > 0 && newLength === 0) {
       showMinimap.value = false;
@@ -299,11 +299,11 @@ watch(
   },
 );
 
-// Hide minimap when in hideUnconnected mode
+// Hide minimap when in hideSubscriptions mode
 watch(
-  () => router.currentRoute.value.query.hideUnconnected,
-  (hideUnconnected) => {
-    if (hideUnconnected === "1") {
+  () => router.currentRoute.value.query.hideSubscriptions,
+  (hideSubscriptions) => {
+    if (hideSubscriptions === "1") {
       showMinimap.value = false;
     } else {
       // Restore minimap if we have components
@@ -705,7 +705,7 @@ const onEscape = () => {
     const query = { ...router.currentRoute.value?.query };
     delete query.map;
     delete query.c;
-    delete query.hideUnconnected; // Also clear hideUnconnected when closing map
+    delete query.hideSubscriptions; // Also clear hideSubscriptions when closing map
     query.grid = "1";
     router.push({ query });
   }
@@ -828,9 +828,9 @@ const connections = useQuery<IncomingConnections[]>({
               pendingPanComponent.value = selectedComps[0].id;
             }
 
-            // Force filtering to run after component selection when hideUnconnected is active
+            // Force filtering to run after component selection when hideSubscriptions is active
             const shouldHideUnconnected =
-              router.currentRoute.value.query.hideUnconnected === "1";
+              router.currentRoute.value.query.hideSubscriptions === "1";
             if (shouldHideUnconnected) {
               setTimeout(() => {
                 applyConnectionFiltering();
@@ -1025,10 +1025,10 @@ const deselect = () => {
   selectedComponents.value = new Set();
   componentContextMenuRef.value?.close();
 
-  // Clear hideUnconnected parameter when deselecting all components
+  // Clear hideSubscriptions parameter when deselecting all components
   // BUT NOT when we're still loading from URL
   const currentQuery = router.currentRoute.value.query;
-  if (currentQuery.hideUnconnected === "1" && !isLoadingFromURL.value) {
+  if (currentQuery.hideSubscriptions === "1" && !isLoadingFromURL.value) {
     // Restore all hidden elements before clearing the parameter
     document
       .querySelectorAll("#map > svg rect.node[style*='display: none']")
@@ -1049,9 +1049,9 @@ const deselect = () => {
       });
 
     const newQuery = { ...currentQuery };
-    delete newQuery.hideUnconnected;
+    delete newQuery.hideSubscriptions;
 
-    // Restore minimap when exiting hideUnconnected mode
+    // Restore minimap when exiting hideSubscriptions mode
     showMinimap.value = (props.components?.length ?? 0) > 0;
 
     router.push({ query: newQuery });
@@ -1061,10 +1061,10 @@ const deselect = () => {
 watch(
   selectedComponents,
   () => {
-    // Only restore hidden elements when hideUnconnected should be cleared due to manual component selection
+    // Only restore hidden elements when hideSubscriptions should be cleared due to manual component selection
     // Don't restore during URL loading process
     const currentQuery = router.currentRoute.value.query;
-    if (currentQuery.hideUnconnected === "1" && !isLoadingFromURL.value) {
+    if (currentQuery.hideSubscriptions === "1" && !isLoadingFromURL.value) {
       // Restore all hidden elements
       document
         .querySelectorAll("#map > svg rect.node[style*='display: none']")
@@ -1119,9 +1119,9 @@ watch(
     const routeQuery = router.currentRoute.value?.query || {};
     const query: SelectionsInQueryString = { ...routeQuery };
 
-    // Explicitly remove hideUnconnected if it should be cleared due to manual component selection
-    if (routeQuery.hideUnconnected === "1" && !isLoadingFromURL.value) {
-      delete query.hideUnconnected;
+    // Explicitly remove hideSubscriptions if it should be cleared due to manual component selection
+    if (routeQuery.hideSubscriptions === "1" && !isLoadingFromURL.value) {
+      delete query.hideSubscriptions;
     }
 
     delete query.c;
@@ -1144,9 +1144,9 @@ watch(
     });
 
     if (selectedComponents.value.size > 0) {
-      // Only apply special connection filtering (hiding) when hideUnconnected=1
+      // Only apply special connection filtering (hiding) when hideSubscriptions=1
       const shouldHideUnconnected =
-        router.currentRoute.value.query.hideUnconnected === "1";
+        router.currentRoute.value.query.hideSubscriptions === "1";
       if (shouldHideUnconnected) {
         // Apply connection filtering (hide unconnected components)
         applyConnectionFiltering();
@@ -1300,9 +1300,9 @@ const connectedComponentIds = computed(() => {
     connectedIds.add(component.id);
   });
 
-  // When hideUnconnected=1, also include any component from URL parameter
+  // When hideSubscriptions=1, also include any component from URL parameter
   const shouldHideUnconnected =
-    router.currentRoute.value.query.hideUnconnected === "1";
+    router.currentRoute.value.query.hideSubscriptions === "1";
   if (shouldHideUnconnected && router.currentRoute.value.query.c) {
     const urlComponentIds = router.currentRoute.value.query.c
       .toString()
@@ -1341,7 +1341,7 @@ watch(
     if (
       newComponents &&
       newComponents.length > 0 &&
-      router.currentRoute.value.query.hideUnconnected === "1"
+      router.currentRoute.value.query.hideSubscriptions === "1"
     ) {
       // Small delay to ensure DOM is updated
       setTimeout(() => {
@@ -1355,7 +1355,7 @@ watch(
 // Function to apply connection filtering (hide vs grey out)
 const applyConnectionFiltering = () => {
   const shouldHideUnconnected =
-    router.currentRoute.value.query.hideUnconnected === "1";
+    router.currentRoute.value.query.hideSubscriptions === "1";
 
   if (selectedComponents.value.size === 0) return;
 
@@ -1545,19 +1545,19 @@ onMounted(() => {
     // Parse comma-separated component IDs
     fillDefault.value = query.c.split(",").filter((id) => id.trim());
 
-    // Set flag if we're loading with hideUnconnected parameter
-    if (query.hideUnconnected === "1") {
+    // Set flag if we're loading with hideSubscriptions parameter
+    if (query.hideSubscriptions === "1") {
       isLoadingFromURL.value = true;
     }
   }
 });
 
-// Clean up hideUnconnected parameter when leaving the map
+// Clean up hideSubscriptions parameter when leaving the map
 onUnmounted(() => {
   const currentQuery = router.currentRoute.value.query;
-  if (currentQuery.hideUnconnected === "1") {
+  if (currentQuery.hideSubscriptions === "1") {
     const newQuery = { ...currentQuery };
-    delete newQuery.hideUnconnected;
+    delete newQuery.hideSubscriptions;
     router.replace({ query: newQuery });
   }
 });
@@ -1588,9 +1588,9 @@ watch(
           }
           fillDefault.value = undefined;
 
-          // Force filtering to run after component selection when hideUnconnected is active
+          // Force filtering to run after component selection when hideSubscriptions is active
           const shouldHideUnconnected =
-            router.currentRoute.value.query.hideUnconnected === "1";
+            router.currentRoute.value.query.hideSubscriptions === "1";
           if (shouldHideUnconnected) {
             setTimeout(() => {
               applyConnectionFiltering();

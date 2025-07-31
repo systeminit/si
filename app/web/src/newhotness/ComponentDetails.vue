@@ -344,11 +344,13 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem expandable>
-          <template #header><span class="text-sm">Connections</span></template>
+          <template #header
+            ><span class="text-sm">Subscriptions</span></template
+          >
           <template #headerIcons>
             <div class="ml-auto my-sm">
               <VButton
-                label="Visualize Connections"
+                label="Visualize Subscriptions"
                 size="xs"
                 :class="
                   clsx(
@@ -602,7 +604,7 @@ const navigateToMap = () => {
     // Add flag to hide unconnected components
     // This is a specific path through to the Map to show only the items
     // that would effectively show in a pin
-    query.hideUnconnected = "1";
+    query.hideSubscriptions = "1";
   }
 
   router.push({
