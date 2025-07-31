@@ -561,6 +561,9 @@ lazy_static! {
 
         // AWS::IAM::UserPrincipal
         "awsIamUserPrincipalSetPrincipalOutput",
+
+        // Subnet
+        "si:awsSubnetIdFromResource",
     ]
     .into_iter()
     .collect();
