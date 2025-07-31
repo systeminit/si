@@ -34,6 +34,10 @@ Running the template with the same Name Prefix more than once is an error, as it
                 .build(),
             )
             .setValidationFormat(Joi.string().required())
+            .suggestSource({
+                schema: "Region",
+                prop: "/domain/region"
+            })
             .build(),
         )
         .build();
