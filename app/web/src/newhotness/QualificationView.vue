@@ -1,7 +1,24 @@
 <template>
   <li class="rounded border border-neutral-600 [&>div]:p-xs">
-    <div class="border-b border-neutral-600 text-sm">
-      {{ qualification.name }}
+    <div
+      class="border-b border-neutral-600 text-sm flex flex-row items-center justify-between"
+    >
+      <span>{{ qualification.name }}</span>
+      <VButton
+        v-if="qualification.avId"
+        label="Rerun qualification"
+        size="xs"
+        :class="
+          clsx(
+            '!text-sm !border !cursor-pointer !px-xs',
+            themeClasses(
+              '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
+              '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
+            ),
+          )
+        "
+        @click="enqueueDVU"
+      />
     </div>
 
     <div class="flex flex-col gap-xs text-sm">
@@ -9,21 +26,7 @@
         :status="qualificationStatus ?? 'unknown'"
         class="break-all"
       >
-        <template v-if="qualificationStatus === 'success'">
-          <div class="w-full flex flex-row gap-xs">
-            Passed!
-            <IconButton
-              v-if="qualification.avId"
-              tooltip="Rerun qualification"
-              tooltipPlacement="top"
-              icon="refresh"
-              iconTone="action"
-              size="sm"
-              class="self-center"
-              @click.left="enqueueDVU"
-            />
-          </div>
-        </template>
+        <template v-if="qualificationStatus === 'success'"> Passed! </template>
         <div
           v-else-if="
             qualificationStatus === 'failure' ||
@@ -45,16 +48,6 @@
           >
             {{ showDetails ? "Hide" : "View" }} Details
           </button>
-          <IconButton
-            v-if="qualification.avId"
-            tooltip="Rerun qualification"
-            tooltipPlacement="top"
-            icon="refresh"
-            iconTone="action"
-            size="sm"
-            class="self-center"
-            @click.left="enqueueDVU"
-          />
         </div>
         <template v-else>
           The qualification has not yet ran or is actively running.
@@ -84,7 +77,12 @@
 <script lang="ts" setup>
 import { computed, ref, toRef } from "vue";
 import * as _ from "lodash-es";
-import { IconButton, LoadingMessage } from "@si/vue-lib/design-system";
+import {
+  LoadingMessage,
+  themeClasses,
+  VButton,
+} from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import StatusMessageBox from "@/components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { Qualification } from "@/newhotness/QualificationPanel.vue";

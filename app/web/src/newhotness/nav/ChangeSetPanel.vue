@@ -98,12 +98,19 @@
             <VButton
               :disabled="validationState.isError"
               :requestStatus="createApi.requestStatuses.value"
-              class="flex-grow"
+              :class="
+                clsx(
+                  'flex-grow !text-sm !border !cursor-pointer !px-xs',
+                  themeClasses(
+                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                  ),
+                )
+              "
               icon="plus-circle"
               label="Create change set"
               loadingText="Creating Change Set"
               submit
-              tone="success"
             />
           </div>
         </Stack>
@@ -131,7 +138,9 @@ import {
   DropdownMenuButton,
   DropdownMenuItem,
   DEFAULT_DROPDOWN_SEARCH_THRESHOLD,
+  themeClasses,
 } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { tw } from "@si/vue-lib";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
