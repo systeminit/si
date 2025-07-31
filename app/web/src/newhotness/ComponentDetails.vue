@@ -138,7 +138,7 @@
                   '!text-sm !border !cursor-pointer !px-xs',
                   themeClasses(
                     '!text-neutral-900 !bg-destructive-100 !border-destructive-100 hover:!bg-white',
-                    '!text-white !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
+                    '!text-[#F5CECE] !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
                   ),
                 )
               "
@@ -153,7 +153,7 @@
                   '!text-sm !border !cursor-pointer !px-xs',
                   themeClasses(
                     '!text-neutral-900 !bg-destructive-100 !border-destructive-100 hover:!bg-white',
-                    '!text-white !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
+                    '!text-[#F5CECE] !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
                   ),
                 )
               "
