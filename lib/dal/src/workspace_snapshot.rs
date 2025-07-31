@@ -1064,23 +1064,21 @@ impl WorkspaceSnapshot {
 
     pub async fn get_category_node_or_err(
         &self,
-        source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotResult<Ulid> {
-        self.get_category_node(source, kind)
+        self.get_category_node(kind)
             .await?
             .ok_or(WorkspaceSnapshotError::CategoryNodeNotFound(kind))
     }
 
     pub async fn get_category_node(
         &self,
-        source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotResult<Option<Ulid>> {
         Ok(self
             .working_copy()
             .await
-            .get_category_node(source, kind)?
+            .get_category_node(kind)?
             .map(|(category_node_id, _)| category_node_id))
     }
 

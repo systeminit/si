@@ -38,6 +38,33 @@ pub enum CategoryNodeKind {
     DependentValueRoots,
     View,
     DiagramObject,
+    DefaultSubscriptionSources,
+}
+
+const DEFAULT_SUBSCRIPTION_SOURCE_CATEGORY_ID_STR: &str = "0000DNP8N22X0A8S4CV2APWX3A";
+
+impl CategoryNodeKind {
+    /// Adding a new category node to an existing workspacewithout migrating a
+    /// workspace and all its change set requires that the category node have a
+    /// static id, so that the rebaser will treat all versions of it in every
+    /// change set as the same node.
+    pub fn static_id(&self) -> Option<Ulid> {
+        match self {
+            CategoryNodeKind::Action
+            | CategoryNodeKind::Component
+            | CategoryNodeKind::DeprecatedActionBatch
+            | CategoryNodeKind::Func
+            | CategoryNodeKind::Module
+            | CategoryNodeKind::Schema
+            | CategoryNodeKind::Secret
+            | CategoryNodeKind::DependentValueRoots
+            | CategoryNodeKind::View
+            | CategoryNodeKind::DiagramObject => None,
+            CategoryNodeKind::DefaultSubscriptionSources => {
+                Ulid::from_string(DEFAULT_SUBSCRIPTION_SOURCE_CATEGORY_ID_STR).ok()
+            }
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

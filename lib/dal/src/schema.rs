@@ -216,7 +216,7 @@ impl Schema {
         workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         let schema_category_index_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Schema)
+            .get_category_node_or_err(CategoryNodeKind::Schema)
             .await?;
         workspace_snapshot
             .add_edge(
@@ -435,7 +435,7 @@ impl Schema {
 
         let mut schemas = vec![];
         let schema_category_index_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Schema)
+            .get_category_node_or_err(CategoryNodeKind::Schema)
             .await?;
 
         let schema_node_indices = workspace_snapshot
@@ -484,7 +484,7 @@ impl Schema {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let schema_category_index_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Schema)
+            .get_category_node_or_err(CategoryNodeKind::Schema)
             .await?;
         let schema_node_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
@@ -510,7 +510,7 @@ impl Schema {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let schema_node_indices = {
             let schema_category_index_id = workspace_snapshot
-                .get_category_node_or_err(None, CategoryNodeKind::Schema)
+                .get_category_node_or_err(CategoryNodeKind::Schema)
                 .await?;
             workspace_snapshot
                 .outgoing_targets_for_edge_weight_kind(

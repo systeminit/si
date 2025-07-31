@@ -326,7 +326,7 @@ impl Secret {
 
         // Root --> Secret Category --> Secret (this)
         let secret_category_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Secret)
+            .get_category_node_or_err(CategoryNodeKind::Secret)
             .await?;
         Self::add_category_edge(
             ctx,
@@ -567,7 +567,7 @@ impl Secret {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let secret_category_node_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Secret)
+            .get_category_node_or_err(CategoryNodeKind::Secret)
             .await?;
 
         let indices = workspace_snapshot
@@ -601,7 +601,7 @@ impl Secret {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let secret_category_node_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Secret)
+            .get_category_node_or_err(CategoryNodeKind::Secret)
             .await?;
 
         let indices = workspace_snapshot
@@ -631,7 +631,7 @@ impl Secret {
 
         let mut secrets = vec![];
         let secret_category_node_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Secret)
+            .get_category_node_or_err(CategoryNodeKind::Secret)
             .await?;
 
         let secret_node_ids = workspace_snapshot

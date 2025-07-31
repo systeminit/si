@@ -730,7 +730,7 @@ impl Component {
 
         // Root --> Component Category --> Component (this)
         let component_category_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Component)
+            .get_category_node_or_err(CategoryNodeKind::Component)
             .await?;
         Self::add_category_edge(
             ctx,
@@ -1725,7 +1725,7 @@ impl Component {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let component_category_node_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Component)
+            .get_category_node_or_err(CategoryNodeKind::Component)
             .await?;
 
         let component_node_indices = workspace_snapshot
@@ -1753,7 +1753,7 @@ impl Component {
 
         let mut components = vec![];
         let component_category_node_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Component)
+            .get_category_node_or_err(CategoryNodeKind::Component)
             .await?;
 
         let component_node_indices = workspace_snapshot

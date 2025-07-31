@@ -216,7 +216,7 @@ impl Module {
         workspace_snapshot.add_or_replace_node(node_weight).await?;
 
         let schema_module_index_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Module)
+            .get_category_node_or_err(CategoryNodeKind::Module)
             .await?;
         workspace_snapshot
             .add_edge(
@@ -259,7 +259,7 @@ impl Module {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let module_node_indices = {
             let module_category_index_id = workspace_snapshot
-                .get_category_node_or_err(None, CategoryNodeKind::Module)
+                .get_category_node_or_err(CategoryNodeKind::Module)
                 .await?;
             workspace_snapshot
                 .outgoing_targets_for_edge_weight_kind(
@@ -418,7 +418,7 @@ impl Module {
 
         let mut modules = vec![];
         let module_category_index_id = workspace_snapshot
-            .get_category_node_or_err(None, CategoryNodeKind::Module)
+            .get_category_node_or_err(CategoryNodeKind::Module)
             .await?;
 
         let module_node_indices = workspace_snapshot

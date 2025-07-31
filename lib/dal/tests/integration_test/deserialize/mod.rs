@@ -282,6 +282,9 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::ValueSubscription => {
                 EdgeWeightKind::ValueSubscription(AttributePath::from_json_pointer("/json_pointer"))
             }
+            EdgeWeightKindDiscriminants::DefaultSubscriptionSource => {
+                EdgeWeightKind::DefaultSubscriptionSource
+            }
         };
 
         if last_node + 1 == node_indexes.len() {

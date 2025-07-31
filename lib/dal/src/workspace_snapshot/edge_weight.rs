@@ -81,6 +81,10 @@ pub enum EdgeWeightKind {
     /// [`AttributePath`] is a path to a nested child AV (e.g.
     /// `/domain/PolicyDocument/Statements/0/Operation`).
     ValueSubscription(AttributePath),
+    /// An edge from an attribute value to the default subscription source
+    /// category node, indicating that this value should be used as a default
+    /// subscription source if it matches a prop suggestion on a component.
+    DefaultSubscriptionSource,
 }
 
 impl EdgeWeightKind {
@@ -151,6 +155,7 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::Represents
             | EdgeWeightKind::Manages
             | EdgeWeightKind::DiagramObject
+            | EdgeWeightKind::DefaultSubscriptionSource
             | EdgeWeightKind::ApprovalRequirementDefinition => None,
         }
     }
@@ -179,7 +184,8 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::Manages
             | EdgeWeightKind::DiagramObject
             | EdgeWeightKind::ApprovalRequirementDefinition
-            | EdgeWeightKind::ValueSubscription(_) => false,
+            | EdgeWeightKind::DefaultSubscriptionSource => false,
+            EdgeWeightKind::ValueSubscription(_) => false,
         }
     }
 
@@ -207,6 +213,7 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::Manages
             | EdgeWeightKind::DiagramObject
             | EdgeWeightKind::ApprovalRequirementDefinition
+            | EdgeWeightKind::DefaultSubscriptionSource
             | EdgeWeightKind::ValueSubscription(_) => self.clone(),
         }
     }

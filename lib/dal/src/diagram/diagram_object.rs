@@ -73,7 +73,7 @@ impl DiagramObject {
         Self::add_view_edge(ctx, view_id, id, EdgeWeightKind::DiagramObject).await?;
 
         let diagram_object_category_id = snap
-            .get_category_node_or_err(None, CategoryNodeKind::DiagramObject)
+            .get_category_node_or_err(CategoryNodeKind::DiagramObject)
             .await?;
         Self::add_category_edge(
             ctx,

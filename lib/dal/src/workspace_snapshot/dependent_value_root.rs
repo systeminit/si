@@ -58,7 +58,7 @@ impl DependentValueRoot {
         }
 
         if let Some(dv_category_id) = snap
-            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
+            .get_category_node(CategoryNodeKind::DependentValueRoots)
             .await
             .map_err(Box::new)?
         {
@@ -95,7 +95,7 @@ impl DependentValueRoot {
 
         Ok(
             match snap
-                .get_category_node(None, CategoryNodeKind::DependentValueRoots)
+                .get_category_node(CategoryNodeKind::DependentValueRoots)
                 .await
                 .map_err(Box::new)?
             {
@@ -117,7 +117,7 @@ impl DependentValueRoot {
         let snap = ctx.workspace_snapshot().map_err(Box::new)?;
 
         let dv_category_id = match snap
-            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
+            .get_category_node(CategoryNodeKind::DependentValueRoots)
             .await
             .map_err(Box::new)?
         {
@@ -169,7 +169,7 @@ impl DependentValueRoot {
         let snap = ctx.workspace_snapshot().map_err(Box::new)?;
 
         let dv_category_id = match snap
-            .get_category_node(None, CategoryNodeKind::DependentValueRoots)
+            .get_category_node(CategoryNodeKind::DependentValueRoots)
             .await
             .map_err(Box::new)?
         {

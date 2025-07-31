@@ -728,7 +728,7 @@ impl Diagram {
         let base_change_set_ctx = &base_change_set_ctx;
 
         if let Some(components_cat_id) = base_snapshot
-            .get_category_node(None, CategoryNodeKind::Component)
+            .get_category_node(CategoryNodeKind::Component)
             .await?
         {
             for component_id in base_snapshot

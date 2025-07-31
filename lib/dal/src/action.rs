@@ -330,7 +330,7 @@ impl Action {
         let mut actions = vec![];
         let snap = ctx.workspace_snapshot()?;
         let action_category_id = snap
-            .get_category_node_or_err(None, CategoryNodeKind::Action)
+            .get_category_node_or_err(CategoryNodeKind::Action)
             .await?;
 
         for action_idx in snap
@@ -406,7 +406,7 @@ impl Action {
     ) -> ActionResult<Option<ActionId>> {
         let snap = ctx.workspace_snapshot()?;
         let action_category_id = snap
-            .get_category_node_or_err(None, CategoryNodeKind::Action)
+            .get_category_node_or_err(CategoryNodeKind::Action)
             .await?;
 
         for action_idx in snap
@@ -486,7 +486,7 @@ impl Action {
 
         let action_category_id = ctx
             .workspace_snapshot()?
-            .get_category_node_or_err(None, CategoryNodeKind::Action)
+            .get_category_node_or_err(CategoryNodeKind::Action)
             .await?;
         Self::add_incoming_category_edge(
             ctx,
@@ -643,7 +643,7 @@ impl Action {
     pub async fn all_ids(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
         let action_category_node_index = ctx
             .workspace_snapshot()?
-            .get_category_node_or_err(None, CategoryNodeKind::Action)
+            .get_category_node_or_err(CategoryNodeKind::Action)
             .await?;
         let action_edges = ctx
             .workspace_snapshot()?

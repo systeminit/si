@@ -168,7 +168,7 @@ impl CorrectTransforms for SecretNodeWeight {
         }
 
         let dvu_cat_node_id: Option<NodeId> = graph
-            .get_category_node(None, CategoryNodeKind::DependentValueRoots)?
+            .get_category_node(CategoryNodeKind::DependentValueRoots)?
             .map(|(id, _)| id.into());
 
         let mut should_add = false;

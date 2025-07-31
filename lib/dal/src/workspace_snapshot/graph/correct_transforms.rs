@@ -89,7 +89,7 @@ pub fn add_dependent_value_root_updates(
     let mut updates = vec![];
 
     if let Some((category_node_id, category_node_idx)) =
-        graph.get_category_node(None, CategoryNodeKind::DependentValueRoots)?
+        graph.get_category_node(CategoryNodeKind::DependentValueRoots)?
     {
         let existing_dvu_nodes: Vec<_> = graph
             .edges_directed(category_node_idx, Outgoing)

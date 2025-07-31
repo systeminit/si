@@ -783,6 +783,7 @@ impl WorkspaceSnapshotGraphV3 {
                     EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
                     EdgeWeightKindDiscriminants::ValueSubscription => "green",
+                    EdgeWeightKindDiscriminants::DefaultSubscriptionSource => "green",
                 };
 
                 match edgeref.weight().kind() {
@@ -866,6 +867,9 @@ impl WorkspaceSnapshotGraphV3 {
                         CategoryNodeKind::View => ("Views (Category)".into(), "black"),
                         CategoryNodeKind::DiagramObject => {
                             ("Diagram Objects (Category)".into(), "black")
+                        }
+                        CategoryNodeKind::DefaultSubscriptionSources => {
+                            ("Default Subscription Sources (Category)".into(), "black")
                         }
                     },
                     NodeWeight::Component(component) => (
@@ -1454,7 +1458,8 @@ impl WorkspaceSnapshotGraphV3 {
                     | EdgeWeightKind::ManagementPrototype
                     | EdgeWeightKind::Manages
                     | EdgeWeightKind::DiagramObject
-                    | EdgeWeightKind::ApprovalRequirementDefinition => {}
+                    | EdgeWeightKind::ApprovalRequirementDefinition
+                    | EdgeWeightKind::DefaultSubscriptionSource => {}
                 }
             }
         }

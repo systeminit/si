@@ -119,6 +119,7 @@ use crate::{
     prop::{
         PropError,
         PropPath,
+        ResolvedPropSuggestion,
     },
     schema::variant::{
         leaves::{
@@ -2410,7 +2411,8 @@ impl SchemaVariant {
                 | EdgeWeightKindDiscriminants::Manages
                 | EdgeWeightKindDiscriminants::DiagramObject
                 | EdgeWeightKindDiscriminants::ApprovalRequirementDefinition
-                | EdgeWeightKindDiscriminants::ValueSubscription => {}
+                | EdgeWeightKindDiscriminants::ValueSubscription
+                | EdgeWeightKindDiscriminants::DefaultSubscriptionSource => {}
             }
         }
 
@@ -2529,6 +2531,38 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<String> {
         let variant = Self::get_by_id(ctx, id).await?;
         Ok(variant.display_name.to_string())
+    }
+
+    pub async fn props_suggested_as_sources(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<ResolvedPropSuggestion>> {
+        let mut result = vec![];
+
+        let props = Self::all_props(ctx, id).await?;
+
+        for prop in props {
+            let suggested_as_sources_for = prop.suggested_as_source_for(ctx).await?;
+            result.extend(suggested_as_sources_for);
+        }
+
+        Ok(result)
+    }
+
+    pub async fn props_suggested_as_destinations(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<ResolvedPropSuggestion>> {
+        let mut result = vec![];
+
+        let props = Self::all_props(ctx, id).await?;
+
+        for prop in props {
+            let suggested_sources_for = prop.suggested_sources_for(ctx).await?;
+            result.extend(suggested_sources_for);
+        }
+
+        Ok(result)
     }
 }
 
