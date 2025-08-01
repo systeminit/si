@@ -2,6 +2,10 @@
 
 This is a reference to all of the vocabulary used in System Initiative.
 
+## Actions
+
+Actions are specific operations that are queued up to change your infrastructure, such as creating, refreshing, updating or deleting a real-world resource.
+
 ## Asset
 
 Anything that can be used on the canvas.
