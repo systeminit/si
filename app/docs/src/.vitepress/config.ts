@@ -104,42 +104,42 @@ export default defineConfig({
             text: "Use the Public API",
             link: "/how-tos/use-public-api",
           },
-          {
-            text: "AWS IAM Policy",
-            link: "/how-tos/aws-iam",
-          },
+          // {
+          //   text: "AWS IAM Policy",
+          //   link: "/how-tos/aws-iam",
+          // },
           {
             text: "AWS VPC",
             link: "/how-tos/aws-vpc",
           },
-          {
-            text: "AWS HA EC2",
-            link: "/how-tos/aws-ha-ec2",
-          },
-          {
-            text: "AWS ECS",
-            link: "/how-tos/aws-ecs",
-          },
-          {
-            text: "AWS ECR ECS",
-            link: "/how-tos/aws-ecr-ecs",
-          },
-          {
-            text: "AWS Static Cloudfront Website",
-            link: "/how-tos/aws-static-cloudfront",
-          },
-          {
-            text: "AWS macOS Instances",
-            link: "/how-tos/aws-macos",
-          },
-          {
-            text: "AWS EKS",
-            link: "/how-tos/aws-eks",
-          },
-          {
-            text: "AWS Lambda",
-            link: "/how-tos/aws-lambda",
-          },
+          // {
+          //   text: "AWS HA EC2",
+          //   link: "/how-tos/aws-ha-ec2",
+          // },
+          // {
+          //   text: "AWS ECS",
+          //   link: "/how-tos/aws-ecs",
+          // },
+          // {
+          //   text: "AWS ECR ECS",
+          //   link: "/how-tos/aws-ecr-ecs",
+          // },
+          // {
+          //   text: "AWS Static Cloudfront Website",
+          //   link: "/how-tos/aws-static-cloudfront",
+          // },
+          // {
+          //   text: "AWS macOS Instances",
+          //   link: "/how-tos/aws-macos",
+          // },
+          // {
+          //   text: "AWS EKS",
+          //   link: "/how-tos/aws-eks",
+          // },
+          // {
+          //   text: "AWS Lambda",
+          //   link: "/how-tos/aws-lambda",
+          // },
         ],
       },
       {
