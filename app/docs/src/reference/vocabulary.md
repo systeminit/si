@@ -2,6 +2,10 @@
 
 This is a reference to all of the vocabulary used in System Initiative.
 
+## Actions
+
+Actions are specific operations that are queued up to change your infrastructure, such as creating, refreshing, updating or deleting a real-world resource.
+
 ## Asset
 
 Anything that can be used on the canvas.
@@ -29,6 +33,10 @@ change set as an automatically rebasing branch.
 When a change set is merged to head, any other open change sets in the workspace
 are automatically _rebased_ against HEAD - meaning the data within them will be
 updated to reflect the proposed changes to the model on HEAD.
+
+## Context Menu
+
+The Context Menu contains all available Actions to a Component at that time, both in the Grid and Map view. The Context Menu enables a user to edit, pin, duplicate, erase, delete, create templates, add to/remove from view and run actions on Components.
 
 ### Creating a Change Set
 
@@ -66,16 +74,6 @@ A credential is a type of component that stores secret data and has
 authentication functions attached to it. They are used to provide access to
 cloud providers, etc.
 
-## Configuration Frame (down)
-
-A "down" frame is one where the Output Sockets of the frame will automatically
-connect to any components placed within the frame.
-
-## Configuration Frame (up)
-
-An "up" frame is one where the Output Sockets of the components within the frame
-will connect to the input sockets of the frame.
-
 ## Edge
 
 A representation of a relationship between one component's Output Socket and
@@ -110,15 +108,13 @@ We know it's not an actual
 [hypergraph](https://en.wikipedia.org/wiki/Hypergraph). It's just less of a
 mouthful than 'multi-dimensional graph'.
 
-## Input Socket
+## Grid
 
-A socket that feeds data into a component. Appears on the left side of
-components.
+The Grid is a a tile like visualization of your created Components. On the Grid page you can also see pending Actions and your Function run history.
 
-## Living Architecture Diagram
+## Map
 
-The diagram you use to specify what components you need and what their
-relationships are.
+The Map is a visual representation of your created Components and their relationships via prop to prop Subscriptions. You can also create, edit, delete etc. from the Map.
 
 ## Model
 
@@ -130,11 +126,6 @@ When we refer to "a model", we mean a single Component/Resource pair.
 
 When we refer to "the model", we're talking about all of the assets, functions,
 components, resources, etc. that make up your hypergraph.
-
-## Output Socket
-
-A socket that feeds data out of a component. Appears on the right side of
-components.
 
 ## Qualification
 
@@ -156,6 +147,10 @@ is referred to as a Schema Variant.
 
 Secrets are encrypted data stored for a given type of credential. They are
 defined by a credential component.
+
+## Subscription
+
+Subscriptions create a connection between properties of different components, allowing them to share and synchronize data. For example, if one component has an ImageId property and another has an Image property, you can subscribe the Image property to the ImageId. This ensures that the Image property stays up to date whenever the ImageId changes.
 
 ## View
 
