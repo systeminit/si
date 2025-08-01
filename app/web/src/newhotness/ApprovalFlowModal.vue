@@ -39,6 +39,17 @@
             />
           </ul>
         </div>
+        <ApprovalStatusBox
+          v-if="changeSet && approvalStatus && mode && user"
+          :approvalData="approvalStatus"
+          :changeSet="changeSet"
+          :mode="mode"
+          :user="user"
+          :workspaceUsers="workspaceUsers"
+          @approve="performApproveOrReject('Approved')"
+          @reject="performApproveOrReject('Rejected')"
+          @withdraw="performWithdraw"
+        />
         <div
           class="flex flex-row w-full items-center justify-center gap-sm mt-xs"
         >
@@ -48,18 +59,8 @@
             pill="Esc"
             @click="closeModalHandler"
           />
-          <!--
-          TODO(nick): restore the dynamic label when approvals are re-introduced.
-          ```
-          :label="
-            workspaceHasOneUser || !workspacesStore.workspaceApprovalsEnabled
-            ? 'Apply Change Set'
-            : 'Request Approval'
-          "
-          ```
-          -->
           <VButton
-            label="Apply Change Set"
+            :label="buttonLabel"
             :class="
               clsx(
                 'grow !text-sm !border !cursor-pointer !px-xs',
@@ -70,8 +71,8 @@
               )
             "
             loadingText="Applying Changes"
-            :loading="applyChangeSet.loading.value"
-            :disabled="disableApplyChangeSet"
+            :loading="loading"
+            :disabled="disableApply"
             pill="Cmd + Enter"
             @click="debouncedApply"
           />
@@ -92,17 +93,26 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRouter, useRoute } from "vue-router";
-import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { debounce } from "lodash-es";
+import { useStatus } from "./logic_composables/status";
+import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useToast, POSITION } from "vue-toastification";
+import { useQuery } from "@tanstack/vue-query";
 import { ActionProposedView } from "@/store/actions.store";
 import { ActionKind } from "@/api/sdf/dal/action";
 import { keyEmitter } from "./logic_composables/emitters";
 import ActionCard from "./ActionCard.vue";
-import { assertIsDefined, Context } from "./types";
 import { reset } from "./logic_composables/navigation_stack";
-import { useApplyChangeSet } from "./logic_composables/change_set";
 import ToastApplyingChanges from "./nav/ToastApplyingChanges.vue";
+import ApprovalStatusBox from "./ApprovalStatusBox.vue";
+import { useContext } from "./logic_composables/context";
+import {
+  useApplyChangeSet,
+  useApprovalStatus,
+  useApproveOrReject,
+} from "./logic_composables/change_set";
+import { routes, useApi } from "./api_composables";
 
 const props = defineProps<{
   actions: ActionProposedView[];
@@ -110,8 +120,21 @@ const props = defineProps<{
 
 const modalRef = ref<InstanceType<typeof Modal> | null>(null);
 
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
+const ctx = useContext();
+const approvalsEnabled = computed(
+  () => ctx.approvalsEnabled.value && !ctx.workspaceHasOneUser.value,
+);
+const changeSet = computed(() => ctx.changeSet.value);
+const user = computed(() => ctx.user);
+const workspaceUsers = computed(() => {
+  console.log(
+    "NICK WORKSPACE USERS",
+    JSON.stringify(ctx.workspaceUsers.value, null, 2),
+  );
+  return {};
+});
+
+const approvalStatus = useApprovalStatus(computed(() => ctx));
 
 const router = useRouter();
 const route = useRoute();
@@ -173,7 +196,19 @@ function closeModalHandler() {
   modalRef.value?.close();
 }
 
-const { applyChangeSet, disableApplyChangeSet } = useApplyChangeSet();
+const { loading, performApply } = useApplyChangeSet(ctx);
+
+const status = useStatus();
+const disableApply = computed(
+  () =>
+    (approvalsEnabled.value &&
+      ctx.changeSet.value?.status === ChangeSetStatus.NeedsApproval &&
+      mode.value !== "requested") ||
+    (ctx.changeSet.value?.status !== ChangeSetStatus.Open &&
+      ctx.changeSet.value?.status !== ChangeSetStatus.NeedsApproval) ||
+    ctx.onHead.value ||
+    status.value === "syncing",
+);
 
 const debouncedApply = debounce(apply, 500);
 onBeforeUnmount(() => {
@@ -182,75 +217,90 @@ onBeforeUnmount(() => {
 
 const toast = useToast();
 
-async function apply() {
-  // TODO(nick): restore approvals in the new UI.
-  // if (!workspacesStore.workspaceApprovalsEnabled && authStore.user) {
-  //   changeSetsStore.APPLY_CHANGE_SET_NEW_HOTNESS(authStore.user.name);
-  // } else {
-  //   if (workspaceHasOneUser.value && authStore.user) {
-  //     changeSetsStore.APPLY_CHANGE_SET_NEW_HOTNESS(authStore.user.name);
-  //   } else {
-  //     changeSetsStore.REQUEST_CHANGE_SET_APPROVAL();
-  //
-  //     // TODO(nick): we should remove this in favor of only the WsEvent fetching. It appears that
-  //     // requesting the approval itself is insufficient for getting the latest approval status at
-  //     // the time of writing and the reason appears to be that the change set is "open" by the
-  //     // time the inset modal opens. Fortunately, this will work since we are the requester.
-  //     if (changeSet.value) {
-  //       changeSetsStore.FETCH_APPROVAL_STATUS(changeSet.value.id);
-  //     }
-  //
-  //     presenceStore.leftDrawerOpen = false; // close the left draw for the InsetModal
-  //   }
-  // }
-  if (!ctx) return;
+const changeSetStatus = computed(() => ctx.changeSet.value?.status);
+const mode = computed(() => {
+  if (!approvalStatus.value || !changeSetStatus.value) return undefined;
 
-  const result = await applyChangeSet.performApply();
-  if (result.success) {
-    closeModalHandler();
-    toast(
-      {
-        component: ToastApplyingChanges,
-      },
-      {
-        position: POSITION.BOTTOM_CENTER,
-        timeout: 5000,
-      },
-    );
-    const name = route.name;
-    router.push({
-      name,
-      params: {
-        ...route.params,
-        changeSetId: ctx.headChangeSetId.value,
-      },
-      query: route.query,
-    });
-    reset();
+  const satisfied = !approvalStatus.value.requirements.some(
+    (r) => r.isSatisfied === false,
+  );
+
+  if (satisfied) return "approved";
+  switch (changeSetStatus.value) {
+    case ChangeSetStatus.NeedsApproval:
+      return "requested";
+    case ChangeSetStatus.Approved:
+      return "approved";
+    case ChangeSetStatus.Rejected:
+      return "rejected";
+    default:
+      return "error";
+  }
+});
+
+const buttonLabel = computed(() => {
+  if (!approvalsEnabled.value || mode.value === "approved")
+    return "Apply Change Set";
+  return "Request Approval";
+});
+
+async function apply() {
+  if (approvalsEnabled.value && mode.value !== "approved") {
+    const success = await requestApproval();
+    if (success) closeModalHandler();
+  } else {
+    const result = await performApply();
+    if (result.success) {
+      closeModalHandler();
+      toast(
+        {
+          component: ToastApplyingChanges,
+        },
+        {
+          position: POSITION.BOTTOM_CENTER,
+          timeout: 5000,
+        },
+      );
+      const name = route.name;
+      router.push({
+        name,
+        params: {
+          ...route.params,
+          changeSetId: ctx.headChangeSetId.value,
+        },
+        query: route.query,
+      });
+      reset();
+    }
   }
 }
 
-// NOTE(nick): this should only be relevant when approval requirements come back.
-// watch(
-//   () => changeSetsStore.selectedChangeSet?.status,
-//   (newVal, oldVal) => {
-//     if (
-//       newVal === ChangeSetStatus.Open &&
-//       (oldVal === ChangeSetStatus.NeedsApproval ||
-//         oldVal === ChangeSetStatus.Approved ||
-//         oldVal === ChangeSetStatus.Rejected)
-//     ) {
-//       if (!changeSetsStore.headSelected) {
-//         toast({
-//           component: ApprovalFlowCancelled,
-//           props: {
-//             action: "applying",
-//           },
-//         });
-//       }
-//     }
-//   },
-// );
+const requestApprovalApi = useApi();
+const requestApproval = async () => {
+  const requestApprovalCall = requestApprovalApi.endpoint(
+    routes.ChangeSetRequestApproval,
+  );
+  const response = await requestApprovalCall.post({});
+  return requestApprovalApi.ok(response.req);
+};
+
+const rejected = computed(() => mode.value === "rejected");
+const performApproveOrReject = useApproveOrReject(ctx);
+
+const reopenApi = useApi(ctx);
+const cancelApi = useApi(ctx);
+
+const performWithdraw = async () => {
+  if (rejected.value) {
+    const reopenCall = reopenApi.endpoint(routes.ChangeSetReopen);
+    reopenCall.post({});
+  } else {
+    const cancelCall = cancelApi.endpoint(
+      routes.ChangeSetCancelApprovalRequest,
+    );
+    cancelCall.post({});
+  }
+};
 
 defineExpose({ open: openModalHandler });
 </script>

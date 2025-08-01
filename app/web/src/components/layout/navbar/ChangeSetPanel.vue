@@ -111,7 +111,7 @@
       </form>
     </Modal>
     <AbandonChangeSetModal ref="abandonModalRef" />
-    <ChangesetRenameModal v-if="enableChangesetRename" ref="renameModalRef" />
+    <ChangeSetRenameModal v-if="enableChangesetRename" ref="renameModalRef" />
   </div>
 </template>
 
@@ -134,7 +134,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import AbandonChangeSetModal from "@/components/AbandonChangeSetModal.vue";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
-import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
+import ChangeSetRenameModal from "@/newhotness/ChangeSetRenameModal.vue";
 import * as heimdall from "../../../store/realtime/heimdall";
 
 const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
@@ -190,7 +190,7 @@ const openAbandonConfirmationModal = () => {
   abandonModalRef.value?.open();
 };
 
-const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(
+const renameModalRef = ref<InstanceType<typeof ChangeSetRenameModal> | null>(
   null,
 );
 function openRenameModal(option: { value: string; label: string }) {
