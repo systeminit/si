@@ -78,17 +78,7 @@ export function useFeatureFlagsStore() {
           // You can override feature flags while working on a feature by setting them to true/false here
           // for example:
           // this.FEATURE_FLAG_NAME ??= false;
-
-          // turning this on for local development
-          if (import.meta.env.VITE_SI_ENV === "local")
-            this.ENABLE_NEW_EXPERIENCE = true;
-
-          // After processing override flags, set dependent flags.
-          if (this.ENABLE_NEW_EXPERIENCE) {
-            this.FLOATING_CONNECTION_MENU = true;
-            this.SIMPLE_SOCKET_UI = true;
-            this.PROPS_TO_PROPS_CONNECTIONS = true;
-          }
+          // }
         },
         /**
          * Fetches workspace-specific feature flags
