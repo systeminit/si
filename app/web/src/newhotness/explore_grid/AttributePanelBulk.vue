@@ -38,7 +38,7 @@
         </li>
         <!-- i took these styles and html nesting from connection panel, we should create a component that does this -->
         <li
-          v-for="component in selectedComponents"
+          v-for="[idx, component] in Object.entries(selectedComponents)"
           :key="component.id"
           :class="
             clsx(
@@ -51,7 +51,7 @@
             )
           "
         >
-          <input type="checkbox" checked />
+          <input type="checkbox" checked @click="() => deselect(idx)" />
           <MinimizedComponentQualificationStatus
             :component="component"
             noText
@@ -190,11 +190,16 @@ import MinimizedComponentQualificationStatus from "../MinimizedComponentQualific
 const ctx = useContext();
 
 const props = defineProps<{
-  selectedComponents: ComponentInList[];
+  selectedComponents: Record<number, ComponentInList>;
 }>();
 
+const deselect = (index: number) => {
+  console.log("BULK DESELECT", index);
+  emit("deselect", index);
+}
+
 const componentMap = computed(() =>
-  props.selectedComponents.reduce((obj, component) => {
+  Object.values(props.selectedComponents).reduce((obj, component) => {
     obj[component.id] = component;
     return obj;
   }, {} as Record<string, ComponentInList>),
@@ -483,6 +488,7 @@ onBeforeUnmount(() => {
 
 const emit = defineEmits<{
   (e: "close"): void;
+  (e: "deselect", index: number): void;
 }>();
 </script>
 

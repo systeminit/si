@@ -1245,6 +1245,7 @@ const allSelectedComponentsAreRestorable = computed(() => {
 
 const fixContextMenu = async () => {
   // we potentially select a component on mount, so if the ref isn't here, nextTick it will be
+  if (bulkEditing.value) return;
   if (!focusedGridComponentRef.value) await nextTick();
 
   // If we focus on the pinned component, do not bring up the context menu.

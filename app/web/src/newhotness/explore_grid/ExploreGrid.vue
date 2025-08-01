@@ -2,8 +2,9 @@
   <!-- without ref=scrollRef (which i dont need here) the component breaks -->
   <div v-if="bulkEditing" ref="scrollRef" class="grow min-h-0">
     <AttributePanelBulk
-      :selectedComponents="selectedComponents"
+      :selectedComponents="selectedComponentsMap"
       @close="() => $emit('bulkDone')"
+      @deselect="(idx) => $emit('childDeselect', idx)"
     />
   </div>
   <!--
@@ -124,17 +125,21 @@ const allVisibleComponents = computed(() => {
 const focusedComponent = computed(
   () => allVisibleComponents.value[props.focusedComponentIdx ?? -1],
 );
-const selectedComponents = computed(() => {
-  const selected: ComponentInList[] = [];
+
+const selectedComponentsMap = computed(() => {
+  const selected: Record<number, ComponentInList> = {};
 
   props.selectedComponentIndexes.forEach((index) => {
     const component = allVisibleComponents.value[index];
     if (component) {
-      selected.push(component);
+      selected[index] = component;
     }
   });
 
   return selected;
+});
+const selectedComponents = computed(() => {
+  return Object.values(selectedComponentsMap);
 });
 
 function getScrollbarWidth(): number {
