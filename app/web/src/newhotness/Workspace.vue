@@ -280,7 +280,7 @@ const {
   changeSet: activeChangeSet,
   headChangeSetId,
   defaultApprovers,
-} = useChangeSets(ctx);
+} = useChangeSets(ctx, queriesEnabled);
 watch(defaultApprovers, () => {
   approvers.value = defaultApprovers.value;
 });
