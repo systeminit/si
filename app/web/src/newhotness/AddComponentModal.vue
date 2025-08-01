@@ -571,6 +571,24 @@ const buildKey = (sv: CategoryVariant) => {
   return key;
 };
 
+// Memoized fuzzy search instance to avoid recreating on every search
+// Recreating the search instance on each debounced request was expensive
+const fzfInstance = computed(() => {
+  const filteredResults: UICategory[] = [];
+
+  // Get the same filtering logic for consistency
+  if (selectedFilter.value) {
+    filteredResults.push(
+      ...getCategoriesAndCountForFilterString(selectedFilter.value).categories,
+    );
+  } else {
+    filteredResults.push(...categories.value);
+  }
+
+  const assets = filteredResults.flatMap((c) => c.assets);
+  return useFzf(assets, (a: UIAsset) => `${a.name} ${a.uiCategory.name}`);
+});
+
 const filteredCategories = computed(() => {
   const filteredResults: UICategory[] = [];
 
@@ -583,16 +601,9 @@ const filteredCategories = computed(() => {
     filteredResults.push(...categories.value);
   }
 
-  // i need the list of assets, not categories, to feed into the fuzzy search
-  const assets = filteredResults.flatMap((c) => c.assets);
-
   if (debouncedSearchString.value !== "") {
-    const fzf = useFzf(
-      assets,
-      (a: UIAsset) => `${a.name} ${a.uiCategory.name}`,
-    );
-
-    const results = fzf.find(
+    // Use the memoized fzf instance
+    const results = fzfInstance.value.find(
       debouncedSearchString.value,
     ) as FzfResultItem<UIAsset>[];
     const items: UIAsset[] = results.map((fz) => fz.item);
@@ -649,15 +660,12 @@ const updateDebouncedSearch = debounce(
   { trailing: true, leading: false },
 );
 
-// Watch for changes to fuzzySearchString and update the debounced version
+// Watch for changes to fuzzySearchString and selectedFilter
 const justCleared = ref(false);
 
 watch([fuzzySearchString, selectedFilter], ([newFuzzySearchString]) => {
   updateDebouncedSearch(newFuzzySearchString);
-
-  nextTick(() => {
-    fixCollapse();
-  });
+  fixCollapse();
 });
 
 watch(selectedAsset, (newSelectedAsset) => {
