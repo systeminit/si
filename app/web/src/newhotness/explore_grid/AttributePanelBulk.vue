@@ -97,7 +97,7 @@
             :class="
               clsx(
                 'group/header',
-                'text-sm flex-none h-lg px-xs m-0',
+                'text-sm flex-none h-lg flex items-center px-xs m-0',
                 'border-b',
                 themeClasses('border-neutral-300', 'border-neutral-600'),
               )
@@ -149,13 +149,15 @@
           :class="
             clsx(
               'group/header',
-              'text-sm flex-none h-lg px-xs m-0',
+              'text-sm flex-none flex items-center h-lg px-xs m-0',
               'border-b',
               themeClasses('border-neutral-300', 'border-neutral-600'),
             )
           "
         >
+          <template v-if="selectedPathName">
           {{ selectedPathName }} values
+          </template>
         </h3>
         <div class="m-sm">
           {{ pathValueData }}
