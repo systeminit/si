@@ -32,9 +32,10 @@ export function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   // inject auth token from the store as a custom header
   const authStore = useAuthStore();
   config.headers = config.headers || {};
+  // it was set manually
+  if (config.headers.authorization) return config;
 
-  // not logged in means zero tokens
-  if (!authStore.userIsLoggedIn) authStore.initTokens();
+  authStore.initTokens();
   const token = authStore.selectedOrDefaultAuthToken;
   if (token) {
     config.headers.authorization = `Bearer ${token}`;
