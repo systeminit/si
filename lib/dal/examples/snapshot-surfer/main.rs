@@ -113,6 +113,7 @@ fn node_ident(graph: &WorkspaceSnapshotGraph, index: NodeIndex) -> Result<String
     };
     let extra = match node {
         NodeWeight::Category(category) => Some(format!(" ({})", category.kind())),
+        NodeWeight::Func(func) => Some(format!(" ({})", func.name())),
         NodeWeight::AttributeValue(_) => match graph.target_opt(index, EdgeWeightKind::Prop)? {
             Some(prop_index) => {
                 let prop = graph.get_node_weight(prop_index)?.as_prop_node_weight()?;

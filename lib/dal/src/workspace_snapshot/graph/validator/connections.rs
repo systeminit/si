@@ -52,6 +52,7 @@ use crate::{
             ArgumentTargets,
             NodeWeight,
             NodeWeightError,
+            category_node_weight::CategoryNodeKind,
             traits::SiNodeWeight as _,
         },
     },
@@ -439,9 +440,71 @@ impl PropConnection {
         {
             let (_, mut destination_path) = prop_path_from_root(graph, destination_prop_id)?;
 
+            // Pick the function to use for the connection, and maybe transform the paths if we're
+            // doing things like uplifting normalizeToArray or artisinally migrating a specific
+            // connection type.
+
+            // First, look for specific socket connections with artisinal migrations
+            // Neither the schema nor the socket name is available in the graph, so we use the function and
+            // prop path to determine if we're looking at what we think we're looking at.
+            let source_func_node = graph
+                .get_node_weight_by_id(source_func_id)?
+                .get_func_node_weight()?;
+            let destination_func_node = graph
+                .get_node_weight_by_id(destination_func_id)?
+                .get_func_node_weight()?;
+            let custom_func_id = match (destination_func_node.name(), destination_path.as_str()) {
+                // IAM Principal Connections (-> AWS::IAM::PolicyStatement/Principal)
+                ("setPrincipalFromPrincipalSocket", "/domain/Principal") => {
+                    // These three Principal connections take the principal directly from a source
+                    // value and add it to the proper array on the PolicyStatement, e.g. for ServicePrincipal:
+                    //
+                    //     {
+                    //       "Principal": {
+                    //          "Service": [ </domain/Service> ],
+                    //       }
+                    //     }
+                    //
+                    // If there are multiple Principal connections, they are merged a la normalizeToArray.
+                    //
+                    // So we set the destination path to /domain/Principal/[AWS|Service|Federated]/-
+                    // and subscribe directly to the principal value.
+                    let principal_kind = match (source_func_node.name(), source_path.as_str()) {
+                        // AWS::IAM::AccountPrincipal/Principal -> AWS::IAM::PolicyStatement/Principal
+                        ("awsAccountPrincipalAccountOutputSocket", "/domain/AccountId") => {
+                            Some("AWS")
+                        }
+                        // AWS::IAM::OIDCSessionPrincipal/Principal -> AWS::IAM::PolicyStatement/Principal
+                        (
+                            "awsIamOidcSessionPrincipalSetPrincipalOutputSocket",
+                            "/domain/OIDC Provider Domain",
+                        ) => Some("Federated"),
+                        // AWS::IAM::ServicePrincipal/Principal -> AWS::IAM::PolicyStatement/Principal
+                        ("awsIamAwsServciePrincipalSetPrincipalOutput", "/domain/Service") => {
+                            Some("Service")
+                        }
+                        _ => None,
+                    };
+                    match principal_kind {
+                        // /domain/Principal/[AWS|Federated|Service]/- = si:identity(<source path>)
+                        Some(principal_kind) => {
+                            destination_path.push_back(principal_kind);
+                            destination_path.push_back("-");
+                            Some(identity_func_id(graph)?)
+                        }
+                        None => None,
+                    }
+                }
+                _ => None,
+            };
+
             // Pick the function to use for the connection (since there are two functions involved,
             // we hope one of them is identity or normalizeToArray so we can pick the other!)
-            let func_id = if is_identity_func(graph, destination_func_id)? {
+            let func_id = if let Some(custom_func_id) = custom_func_id {
+                custom_func_id
+
+                // If the destination function is identity, we can use the source function as is
+            } else if is_identity_func(graph, destination_func_id)? {
                 source_func_id
 
             // Figure out whether the source will produce an array or not based on the input
@@ -1002,4 +1065,23 @@ impl WsEvent {
     ) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::ConnectionMigrated(migration)).await
     }
+}
+
+// Get the ID of the identity function
+pub fn identity_func_id(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+) -> Result<FuncId, ConnectionUnmigrateableBecause> {
+    // The si:identity function is the only one that is always an identity function
+    let (_, func_category) = graph.get_category_node(CategoryNodeKind::Func)?.ok_or(
+        WorkspaceSnapshotGraphError::CategoryNodeNotFound(CategoryNodeKind::Func),
+    )?;
+    for func in graph.targets(func_category, EdgeWeightKindDiscriminants::Use) {
+        let func_node = graph.get_node_weight(func)?.get_func_node_weight()?;
+        if func_node.name() == "si:identity" {
+            return Ok(func_node.id().into());
+        }
+    }
+    return Err(ConnectionUnmigrateableBecause::InvalidGraph {
+        error: "si:identity function not found".to_string(),
+    });
 }
