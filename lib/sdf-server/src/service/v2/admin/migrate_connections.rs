@@ -132,11 +132,11 @@ async fn migrate_connections_async_fallible(
     // Migrate.
     let mut migrations = Vec::with_capacity(connections.len());
     for mut connection in connections {
-        match migrate_connection(ctx, &connection).await {
+        let migrated = match migrate_connection(ctx, &connection).await {
             // Don't include noop migrations (already-migrated) in the report
             Ok(Some(false)) => continue,
-            Ok(Some(true)) => summary.migrated += 1,
-            Ok(None) => summary.unmigrateable += 1,
+            Ok(Some(true)) => true,
+            Ok(None) => false,
             // Mark it as unmigrateable if there was an error
             Err(err) => {
                 if connection.issue.is_none() {
@@ -144,12 +144,18 @@ async fn migrate_connections_async_fallible(
                         error: err.to_string(),
                     });
                 }
-                summary.unmigrateable += 1;
+                false
             }
         };
+        if migrated {
+            summary.migrated += 1;
+        } else {
+            summary.unmigrateable += 1;
+        }
 
         // Report that it was migrated.
         let message = connection.fmt_title(ctx).await;
+        info!(message, migrated, "migrated socket connection");
         let migration = ConnectionMigrationWithMessage {
             connection,
             message,
