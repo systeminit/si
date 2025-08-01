@@ -1,8 +1,9 @@
 <template>
-  <div>
+  <div class="h-full flex flex-col">
     <div
       :class="
         clsx(
+          'flex-none',
           'bulk-header flex flex-row items-center gap-xs',
           'mx-[-12px]', // pull this banner beyond the margins of its container's style [&>div]:mx-[12px]
           themeClasses('bg-white', 'bg-neutral-800'),
@@ -21,12 +22,13 @@
       />
       <div class="flex-none text-sm">Edit selected components</div>
     </div>
-    <div class="flex flex-row gap-xs mt-xs">
+    <div class="grow min-h-0 flex flex-row gap-xs mt-xs items-stretch">
       <ul
         :class="
           clsx(
             'my-2xs', // matching <AttributeChildLayout>
-            'w-1/3 flex-none flex flex-col gap-xs scrollable border p-sm',
+            'scrollable min-h-0',
+            'w-1/4 flex-none flex flex-col gap-xs border p-sm',
             themeClasses('border-neutral-300', 'border-neutral-600'),
           )
         "
@@ -77,37 +79,73 @@
       <DelayedLoader v-if="treesPending" :size="'full'" />
       <div
         v-else-if="commonTree.domain || commonTree.secrets"
-        class="grow scrollable"
+        class="grow min-h-0 my-2xs"
       >
-        <AttributeChildLayout v-if="commonTree.domain">
-          <template #header><span class="text-sm">domain</span></template>
-          <ComponentAttribute
-            v-for="child in commonTree.domain.children"
-            :key="child.id"
-            :component="componentMap[child.componentId]!"
-            :attributeTree="child"
-            @save="save"
-            @add="add"
-            @set-key="setKey"
-            @remove-subscription="removeSubscription"
-            @delete="remove"
-          />
-        </AttributeChildLayout>
-        <AttributeChildLayout
-          v-if="commonTree.secrets && commonTree.secrets.children.length > 0"
+        <!-- styles taken from CollapsingFlexItem -->
+        <div
+          :class="
+            clsx(
+              'h-full scrollable',
+              'flex flex-col items-stretch',
+              'border overflow-hidden mb-[-1px]', // basis-0 makes items take equal size when multiple are open
+              '[&>dl]:m-xs', // pad the child attributes
+              themeClasses('border-neutral-300', 'border-neutral-600'),
+            )
+          "
         >
-          <template #header><span class="text-sm">secrets</span></template>
-          <ComponentSecretAttribute
-            v-for="secret in commonTree.secrets.children"
-            :key="secret.id"
-            :component="componentMap[secret.componentId]!"
-            :attributeTree="secret"
-          />
-        </AttributeChildLayout>
+          <h3
+            ref="headerRef"
+            :class="
+              clsx(
+                'group/header',
+                'cursor-pointer text-lg flex-none h-lg flex items-center px-xs m-0',
+                'border-b',
+                themeClasses('border-neutral-300', 'border-neutral-600'),
+              )
+            "
+          >
+            <span class="text-sm">Shared attributes</span>
+          </h3>
+          <AttributeChildLayout v-if="commonTree.domain">
+            <template #header><span class="text-sm">domain</span></template>
+            <ComponentAttribute
+              v-for="child in commonTree.domain.children"
+              :key="child.id"
+              :component="componentMap[child.componentId]!"
+              :attributeTree="child"
+              @save="save"
+              @add="add"
+              @set-key="setKey"
+              @remove-subscription="removeSubscription"
+              @delete="remove"
+            />
+          </AttributeChildLayout>
+          <AttributeChildLayout
+            v-if="commonTree.secrets && commonTree.secrets.children.length > 0"
+          >
+            <template #header><span class="text-sm">secrets</span></template>
+            <ComponentSecretAttribute
+              v-for="secret in commonTree.secrets.children"
+              :key="secret.id"
+              :component="componentMap[secret.componentId]!"
+              :attributeTree="secret"
+            />
+          </AttributeChildLayout>
+          <p v-else class="italic text-center mt-md">
+            The selected components do not share any common attributes.
+          </p>
+        </div>
       </div>
-      <p v-else class="italic text-center mt-md">
-        The selected components do not share any common attributes.
-      </p>
+      <div
+        :class="
+          clsx(
+            'my-2xs', // matching <AttributeChildLayout>
+            'scrollable min-h-0',
+            'w-1/5 flex-none flex flex-col gap-xs scrollable border p-sm',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
+      ></div>
     </div>
   </div>
 </template>

@@ -1265,6 +1265,7 @@ const unfocus = () => {
 };
 const clearSelection = () => {
   selectedComponentIndexes.clear();
+  bulkEditing.value = false;
   unfocus();
 };
 
@@ -1537,6 +1538,7 @@ const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
   if (isThereAModalOpen.value) return; // no tab behavior when a modal is open
 
   selectedComponentIndexes.clear();
+  bulkEditing.value = false;
   const pageFunc = e.shiftKey ? previousComponent : nextComponent;
   if (!searchRef.value) return;
   else if (blurSearch) {
@@ -1739,9 +1741,9 @@ const setSelectionsFromQuery = async () => {
     }
   } else delete query.s;
 
-  if (query.b && query.b === "1") {
+  if (query.b && query.b === "1" && selectedComponentIndexes.size > 0)
     bulkEditing.value = true;
-  }
+  else delete query.b;
 };
 
 onMounted(() => {
@@ -1961,7 +1963,7 @@ const emit = defineEmits<{
 
 <style lang="css" scoped>
 section.grid.explore {
-  grid-template-columns: minmax(0, 70%) minmax(0, 30%);
+  grid-template-columns: minmax(0, 75%) minmax(0, 25%);
   grid-template-rows: 100%;
   grid-template-areas: "main right";
 }

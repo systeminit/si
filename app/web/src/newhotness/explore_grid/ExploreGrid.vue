@@ -1,6 +1,6 @@
 <template>
   <!-- without ref=scrollRef (which i dont need here) the component breaks -->
-  <div v-if="bulkEditing" ref="scrollRef" class="grow">
+  <div v-if="bulkEditing" ref="scrollRef" class="grow min-h-0">
     <AttributePanelBulk
       :selectedComponents="selectedComponents"
       @close="() => $emit('bulkDone')"
