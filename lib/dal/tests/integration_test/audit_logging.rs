@@ -151,6 +151,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
             prop_id: prop.id,
             prop_name: prop.name.to_owned(),
             attribute_value_id,
+            attribute_path: format!("/domain/{}", prop.name), // Test fallback path
             before_value,
             after_value,
         },

@@ -151,6 +151,7 @@ pub async fn update_property_editor_value(
                     prop_id: prop.id,
                     prop_name: prop.name.to_owned(),
                     attribute_value_id: request.attribute_value_id,
+                    attribute_path: format!("/domain/{}", prop.name), // Fallback path for v1 route
                     before_value,
                     after_value: request.value,
                 },

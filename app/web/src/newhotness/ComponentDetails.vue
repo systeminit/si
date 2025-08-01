@@ -271,6 +271,7 @@
                 ? specialCaseManagementFuncRun
                 : undefined
             "
+            @attribute-saved="onAttributeSaved"
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem
@@ -417,6 +418,30 @@
             :attributeTree="attributeTree ?? undefined"
           />
         </CollapsingFlexItem>
+        <CollapsingFlexItem ref="historyCollapsingRef" expandable @toggle="() => clearAllHighlights()">
+          <template #header><span class="text-sm">History</span></template>
+          <template #headerIcons>
+            <VButton
+              size="xs"
+              label="Refresh"
+              :class="
+                clsx(
+                  'font-normal p-0 h-md mt-[1px] [&>div]:top-[-2px] !text-sm !border !cursor-pointer !px-xs',
+                  themeClasses(
+                    '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
+                    '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
+                  ),
+                )
+              "
+              :loading="historyRefreshLoading"
+              loadingIcon="loader"
+              loadingText="Refreshing..."
+              :disabled="historyRefreshLoading"
+              @click.stop="refreshHistory"
+            />
+          </template>
+          <HistoryPanel ref="historyPanelRef" :component="component" />
+        </CollapsingFlexItem>
         <DocumentationPanel
           v-if="!docsOpen"
           :component="component"
@@ -444,7 +469,7 @@ import {
   IconButton,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
-import { computed, ref, onMounted, onBeforeUnmount, inject, watch } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount, onUnmounted, inject, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
@@ -461,6 +486,7 @@ import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import AttributePanel from "./AttributePanel.vue";
 import ResourceValuesPanel from "./ResourceValuesPanel.vue";
 import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
+import { useAttributeHighlight } from "./logic_composables/attribute_highlight";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import StatusBox from "./layout_components/StatusBox.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
@@ -473,6 +499,7 @@ import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import DocumentationPanel from "./DocumentationPanel.vue";
 import ManagementPanel from "./ManagementPanel.vue";
+import HistoryPanel from "./HistoryPanel.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import EraseModal from "./EraseModal.vue";
 import MinimizedComponentQualificationStatus from "./MinimizedComponentQualificationStatus.vue";
@@ -578,6 +605,8 @@ const attrRef = ref<typeof CollapsingFlexItem>();
 const resourceRef = ref<typeof CollapsingFlexItem>();
 const actionRef = ref<typeof CollapsingFlexItem>();
 const mgmtRef = ref<typeof CollapsingFlexItem>();
+const historyPanelRef = ref<InstanceType<typeof HistoryPanel>>();
+const historyCollapsingRef = ref<InstanceType<typeof CollapsingFlexItem>>();
 
 const router = useRouter();
 
@@ -644,6 +673,10 @@ const dispatchedSpecialCaseManagementFunc = ref(false);
 // API to run special case management funcs
 const mgmtRunApi = useApi();
 const route = useRoute();
+
+// Attribute highlighting
+const { clearAllHighlights, getCurrentExpandedLogKey } = useAttributeHighlight();
+const currentExpandedLogKey = getCurrentExpandedLogKey();
 const runMgmtFunc = async (funcId: string) => {
   const call = mgmtRunApi.endpoint<{ success: boolean }>(routes.MgmtFuncRun, {
     prototypeId: funcId,
@@ -880,6 +913,7 @@ const eraseComponent = () => {
 
 const upgradeLoading = ref(false);
 const restoreLoading = ref(false);
+const historyRefreshLoading = ref(false);
 
 const upgradeComponent = async () => {
   if (!component.value || upgradeLoading.value) return;
@@ -928,6 +962,64 @@ const navigateToFuncRunDetails = (funcRunId: string) => {
     },
   });
 };
+
+const refreshHistory = async () => {
+  if (historyRefreshLoading.value) return;
+  
+  historyRefreshLoading.value = true;
+  try {
+    historyPanelRef.value?.refresh();
+  } finally {
+    // Add a small delay to show the loading state
+    setTimeout(() => {
+      historyRefreshLoading.value = false;
+    }, 500);
+  }
+};
+
+// Auto-refresh history when attributes are saved (if panel is open)
+const onAttributeSaved = () => {
+  // Check if the History panel is open
+  if (historyCollapsingRef.value?.openState?.open?.value) {
+    // Refresh the history panel without loading state for seamless updates
+    historyPanelRef.value?.refresh();
+  }
+};
+
+// Handle clicks outside of highlighted attributes to collapse audit log entries
+const handleClickOutside = (event: MouseEvent) => {
+  if (!currentExpandedLogKey.value) return;
+  
+  const target = event.target as HTMLElement;
+  
+  // Check if the click is on a highlighted attribute or its children
+  const highlightedElement = target.closest('[data-attribute-path]');
+  const isHighlightedAttribute = highlightedElement?.classList.contains('border-l-action-500');
+  
+  // Check if the click is in the History panel (to prevent collapsing when interacting with history)
+  const isInHistoryPanel = target.closest('.history-panel');
+  
+  // If click is outside highlighted attributes and not in history panel, clear highlighting
+  if (!isHighlightedAttribute && !isInHistoryPanel) {
+    // Find the expanded log in the history panel and collapse it
+    const historyPanel = historyPanelRef.value;
+    if (historyPanel && typeof historyPanel.collapseExpandedLog === 'function') {
+      historyPanel.collapseExpandedLog();
+    }
+    clearAllHighlights();
+  }
+};
+
+// Add global click listener when component mounts
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+// Remove global click listener when component unmounts
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
+
 </script>
 
 <style lang="less" scoped>

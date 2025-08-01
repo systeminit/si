@@ -313,6 +313,46 @@ pub async fn list(
     .await?)
 }
 
+#[instrument(name = "audit_logging.list_for_component", level = "debug", skip_all, fields(size, component_id))]
+pub async fn list_for_component(
+    ctx: &DalContext,
+    audit_database_context: &AuditDatabaseContext,
+    component_id: crate::ComponentId,
+    size: usize,
+    sort_ascending: bool,
+) -> Result<(Vec<AuditLogRow>, bool)> {
+    let workspace_id = ctx.workspace_pk().map_err(Box::new)?;
+    let change_set_id = ctx.change_set_id();
+
+    let change_set_ids = {
+        let mut change_set_ids = vec![change_set_id];
+        if ctx
+            .get_workspace_default_change_set_id()
+            .await
+            .map_err(Box::new)?
+            == change_set_id
+        {
+            for applied_change_set in ChangeSet::list_all_applied(ctx, workspace_id)
+                .await
+                .map_err(Box::new)?
+            {
+                change_set_ids.push(applied_change_set.id);
+            }
+        }
+        change_set_ids
+    };
+
+    Ok(AuditLogRow::list_for_component(
+        audit_database_context,
+        workspace_id,
+        change_set_ids,
+        component_id,
+        size,
+        sort_ascending,
+    )
+    .await?)
+}
+
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AuditLogsPublishedPayload {

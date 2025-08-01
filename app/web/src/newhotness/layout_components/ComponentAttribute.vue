@@ -20,7 +20,12 @@
   />
   <li
     v-else-if="showingChildren || !attributeTree.prop?.hidden"
-    :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')"
+    :data-attribute-path="attributeTree.attributeValue.path"
+    :class="clsx(
+      'flex flex-col',
+      !showingChildren && 'mb-[-1px]',
+      isHighlighted && 'border-l-4 border-l-action-500 pl-xs bg-action-100/20 dark:bg-action-900/20'
+    )"
   >
     <template v-if="showingChildren">
       <AttributeChildLayout
@@ -218,6 +223,7 @@
           </div>
         </div>
       </AttributeChildLayout>
+      
     </template>
     <template v-else-if="!attributeTree.prop?.hidden">
       <AttributeInput
@@ -237,6 +243,7 @@
         :isArray="attributeTree.prop?.kind === 'array'"
         :isMap="attributeTree.prop?.kind === 'map'"
         :forceReadOnly="props.forceReadOnly || parentHasExternalSources"
+        :highlightClass="isHighlighted ? 'border-l-4 border-l-action-500 pl-xs bg-action-100/20 dark:bg-action-900/20' : ''"
         @save="(...args) => emit('save', ...args)"
         @delete="(...args) => emit('delete', ...args)"
         @remove-subscription="(...args) => emit('removeSubscription', ...args)"
@@ -268,6 +275,7 @@ import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../logic_composables/attribute_tree";
 import { useApi, UseApi } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
+import { useAttributeHighlight } from "../logic_composables/attribute_highlight";
 
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;
@@ -489,6 +497,46 @@ const headerRef = ref<HTMLDivElement>();
 const addButtonRef = ref<InstanceType<typeof VButton>>();
 const connectButtonRef = ref<InstanceType<typeof VButton>>();
 const deleteButtonRef = ref<InstanceType<typeof IconButton>>();
+
+// Attribute highlighting system
+const { isAttributeHighlighted, getAttributeChangeData } = useAttributeHighlight();
+const isHighlighted = isAttributeHighlighted(props.attributeTree.attributeValue.path);
+const changeData = getAttributeChangeData(props.attributeTree.attributeValue.path);
+
+// Helper function to format values for display
+const formatValueForDisplay = (value: unknown): string => {
+  if (value === null) return '(empty)';
+  if (value === undefined) return '(empty)';
+  if (typeof value === 'string') {
+    if (value === '') return '(empty)';
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  
+  // For arrays, check if empty
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '(empty array)';
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+  
+  // For objects, check if empty
+  if (typeof value === 'object' && value !== null) {
+    if (Object.keys(value).length === 0) return '(empty object)';
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+  
+  // Fallback
+  return String(value);
+};
+
 
 const handleTab = (e: KeyboardEvent, currentFocus?: HTMLElement) => {
   const focusable = Array.from(

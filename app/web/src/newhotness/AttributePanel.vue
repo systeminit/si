@@ -211,6 +211,10 @@ const props = defineProps<{
   importFuncRun?: FuncRun;
 }>();
 
+const emit = defineEmits<{
+  (e: "attribute-saved", path: AttributePath, value: string): void;
+}>();
+
 const root = computed<AttrTree>(() => {
   const empty = {
     componentId: "",
@@ -321,6 +325,11 @@ const save = async (
       },
       newChangeSetId,
     );
+  }
+  
+  // Emit event when attribute is successfully saved
+  if (saveApi.ok(req)) {
+    emit("attribute-saved", path, value);
   }
 };
 

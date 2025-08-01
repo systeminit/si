@@ -37,6 +37,7 @@ use crate::{
 pub struct ListAuditLogsRequest {
     size: Option<usize>,
     sort_ascending: Option<bool>,
+    component_id: Option<dal::ComponentId>,
 }
 
 #[derive(Debug, Serialize)]
@@ -57,13 +58,27 @@ pub async fn list_audit_logs(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let (database_logs, can_load_more) = audit_logging::list(
-        &ctx,
-        state.audit_database_context(),
-        request.size.unwrap_or(0),
-        request.sort_ascending.unwrap_or(false),
-    )
-    .await?;
+    let (database_logs, can_load_more) = match request.component_id {
+        Some(component_id) => {
+            audit_logging::list_for_component(
+                &ctx,
+                state.audit_database_context(),
+                component_id,
+                request.size.unwrap_or(0),
+                request.sort_ascending.unwrap_or(false),
+            )
+            .await?
+        }
+        None => {
+            audit_logging::list(
+                &ctx,
+                state.audit_database_context(),
+                request.size.unwrap_or(0),
+                request.sort_ascending.unwrap_or(false),
+            )
+            .await?
+        }
+    };
 
     let mut assembler = Assembler::new();
     let mut logs = Vec::with_capacity(database_logs.len());

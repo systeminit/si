@@ -4,6 +4,7 @@
       <!-- eslint-disable vue/no-multiple-template-root -->
       <label
         ref="anchorRef"
+        :data-attribute-path="path"
         :class="
           clsx(
             'grid grid-cols-2 items-center gap-2xs relative text-sm font-normal',
@@ -13,8 +14,11 @@
               'pr-xs',
               themeClasses('bg-destructive-200', 'bg-newhotness-destructive'),
             ],
+            props.highlightClass,
+            isHighlighted && 'cursor-pointer'
           )
         "
+        @click="isHighlighted ? handleHighlightClick() : undefined"
       >
         <!-- Attribute name -->
         <div
@@ -630,6 +634,32 @@
       />
     </template>
   </valueForm.Field>
+  
+  <!-- Before/After Change Display -->
+  <div v-if="isHighlighted && changeData && (changeData.beforeValue !== undefined || changeData.afterValue !== undefined)" class="mt-xs px-s pb-xs">
+    <div class="text-xs space-y-xs">
+      <!-- Before value -->
+      <div v-if="changeData.beforeValue !== undefined" class="bg-shade-0 dark:bg-neutral-800 border border-neutral-600 dark:border-neutral-600 rounded p-xs">
+        <div class="flex items-center justify-between mb-1">
+          <div class="font-medium text-neutral-700 dark:text-neutral-300">Previous Value:</div>
+          <button
+            @click.stop="restorePreviousValue"
+            class="text-xs px-xs py-2xs bg-action-600 hover:bg-action-700 text-white rounded transition-colors ml-xs"
+            title="Restore this value"
+          >
+            Restore Value
+          </button>
+        </div>
+        <pre class="text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap text-xs">{{ formatValueForDisplay(changeData.beforeValue) }}</pre>
+      </div>
+      
+      <!-- After value -->
+      <div v-if="changeData.afterValue !== undefined" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-xs mb-xs">
+        <div class="font-medium text-green-700 dark:text-green-300 mb-1">New Value:</div>
+        <pre class="text-green-600 dark:text-green-400 whitespace-pre-wrap text-xs">{{ formatValueForDisplay(changeData.afterValue) }}</pre>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -678,6 +708,7 @@ import {
   mouseEmitter,
 } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
+import { useAttributeHighlight } from "../logic_composables/attribute_highlight";
 import AttributeValueBox from "../AttributeValueBox.vue";
 import CodeEditorModal from "../CodeEditorModal.vue";
 import { findAttributeValueInTree } from "../util";
@@ -709,7 +740,71 @@ const props = defineProps<{
   isSecret?: boolean;
   disableInputWindow?: boolean;
   forceReadOnly?: boolean;
+  highlightClass?: string;
 }>();
+
+// Highlighting system for change data display
+const { isAttributeHighlighted, getAttributeChangeData, clearHighlight } = useAttributeHighlight();
+const isHighlighted = isAttributeHighlighted(props.path);
+const changeData = getAttributeChangeData(props.path);
+
+// Handler to close highlighting when clicking on the highlighted border
+const handleHighlightClick = () => {
+  if (isHighlighted.value) {
+    clearHighlight(props.path);
+  }
+};
+
+// Handler to restore previous value
+const restorePreviousValue = () => {
+  if (changeData.value?.beforeValue !== undefined) {
+    // Use the existing form submission logic to set the value
+    const previousValue = typeof changeData.value.beforeValue === 'string' 
+      ? changeData.value.beforeValue 
+      : JSON.stringify(changeData.value.beforeValue);
+    
+    // Update the form data and submit
+    valueForm.setFieldValue('value', previousValue);
+    valueForm.handleSubmit();
+    
+    // Clear the highlighting after restore
+    clearHighlight(props.path);
+  }
+};
+
+// Helper function to format values for display
+const formatValueForDisplay = (value: unknown): string => {
+  if (value === null) return '(empty)';
+  if (value === undefined) return '(empty)';
+  if (typeof value === 'string') {
+    if (value === '') return '(empty)';
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  
+  // For arrays, check if empty
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '(empty array)';
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+  
+  // For objects, check if empty
+  if (typeof value === 'object' && value !== null) {
+    if (Object.keys(value).length === 0) return '(empty object)';
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+  
+  // Fallback
+  return String(value);
+};
 
 const showAllPossibleConnections = ref(false);
 

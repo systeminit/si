@@ -240,6 +240,57 @@ impl AuditLogRow {
 
         Ok((result, can_load_more))
     }
+
+    /// Lists rows of the audit logs table filtered by component ID in the audit database.
+    #[instrument(
+        name = "audit_log.database.list_for_component",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.component.id = %component_id
+        ),
+    )]
+    pub async fn list_for_component(
+        context: &AuditDatabaseContext,
+        workspace_id: WorkspacePk,
+        change_set_ids: Vec<ChangeSetId>,
+        component_id: si_events::ComponentId,
+        size: usize,
+        sort_ascending: bool,
+    ) -> Result<(Vec<Self>, bool)> {
+        let size = size as i64;
+        let change_set_ids: Vec<String> = change_set_ids.iter().map(|id| id.to_string()).collect();
+        let component_id_str = component_id.to_string();
+
+        let client = context.pg_pool().get().await?;
+        
+        // Count total matching records
+        let row = client
+            .query_one(
+                "SELECT COUNT(*) from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) AND (metadata::text LIKE $3 OR entity_name = $4)",
+                &[&workspace_id, &change_set_ids, &format!("%\"componentId\":\"{}\"%", component_id_str), &component_id_str],
+            )
+            .await?;
+        let count: i64 = row.try_get("count")?;
+        let can_load_more = count > size;
+
+        let query = if sort_ascending {
+            "SELECT * from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) AND (metadata::text LIKE $3 OR entity_name = $4) ORDER BY timestamp ASC LIMIT $5"
+        } else {
+            "SELECT * from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) AND (metadata::text LIKE $3 OR entity_name = $4) ORDER BY timestamp DESC LIMIT $5"
+        };
+
+        let mut result = Vec::new();
+        let rows = client
+            .query(query, &[&workspace_id, &change_set_ids, &format!("%\"componentId\":\"{}\"%", component_id_str), &component_id_str, &size])
+            .await?;
+        for row in rows {
+            result.push(Self::try_from(row)?);
+        }
+
+        Ok((result, can_load_more))
+    }
 }
 
 impl TryFrom<PgRow> for AuditLogRow {

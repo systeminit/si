@@ -23,11 +23,13 @@ use crate::{
     Component,
     DalContext,
     Func,
+    Prop,
     PropKind,
     WsEvent,
     func::intrinsics::IntrinsicFunc,
     workspace_snapshot::node_weight::NodeWeight,
 };
+use si_events::audit_log::AuditLogKind;
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -201,6 +203,8 @@ pub async fn update_attributes(
                 counts.set_count += 1;
 
                 // Create the attribute at the given path if it does not exist
+                // Clone av_to_set before vivify() since vivify() takes ownership
+                let av_path = av_to_set.path().to_owned();
                 let target_av_id = av_to_set.vivify(ctx, component_id).await?;
 
                 match value {
@@ -210,11 +214,38 @@ pub async fn update_attributes(
                             .value(ctx)
                             .await?;
                         AttributeValue::update(ctx, target_av_id, value.to_owned().into()).await?;
-                        if before_value != value.into() {
+                        
+                        let after_value: Option<serde_json::Value> = value.into();
+                        if before_value != after_value {
                             // If the values have changed then we should enqueue an update action
                             // if the values haven't changed then we can skip this update action as it is usually a no-op
                             Component::enqueue_update_action_if_applicable(ctx, target_av_id)
                                 .await?;
+
+                            // Emit audit log for property value changes
+                            if let Ok(prop_id) = AttributeValue::prop_id(ctx, target_av_id).await {
+                                if let Ok(prop) = Prop::get_by_id(ctx, prop_id).await {
+                                    if let Ok(component) = Component::get_by_id(ctx, component_id).await {
+                                        if let Ok(schema_variant) = component.schema_variant(ctx).await {
+                                            let _ = ctx.write_audit_log(
+                                                AuditLogKind::UpdatePropertyEditorValue {
+                                                    component_id,
+                                                    component_name: component.name(ctx).await.unwrap_or_default(),
+                                                    schema_variant_id: schema_variant.id(),
+                                                    schema_variant_display_name: schema_variant.display_name().to_string(),
+                                                    prop_id,
+                                                    prop_name: prop.name.to_owned(),
+                                                    attribute_value_id: target_av_id,
+                                                    attribute_path: av_path.clone(),
+                                                    before_value,
+                                                    after_value,
+                                                },
+                                                av_path,
+                                            ).await;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     Source::Subscription {

@@ -136,6 +136,7 @@ async fn update_component_properties(
                 prop_id,
                 prop_name: prop.name.clone(),
                 attribute_value_id,
+                attribute_path: format!("/domain/{}", prop.name), // Fallback path for legacy route
                 before_value,
                 after_value: Some(value),
             },
