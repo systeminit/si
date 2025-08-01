@@ -41,11 +41,7 @@
             icon="trash"
             label="Ragnarok"
             @click="
-              () =>
-                heimdall.ragnarok(
-                  props.workspaceId!,
-                  props.changeSetId!,
-                )
+              () => heimdall.ragnarok(props.workspaceId!, props.changeSetId!)
             "
           />
         </template>
@@ -53,12 +49,6 @@
     </template>
 
     <template v-if="!collapse">
-      <NavbarButton
-        icon="grid"
-        :tooltipText="useNewUI ? 'Use Old UI' : 'Use New UI'"
-        @click="toggleExperience"
-      />
-
       <NavbarButton
         tooltipText="Documentation"
         icon="question-circle"
@@ -95,7 +85,6 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useRouter, useRoute } from "vue-router";
 import {
   DropdownMenuItem,
   VormInput,
@@ -122,66 +111,12 @@ const props = defineProps<{
 }>();
 
 const featureFlagsStore = useFeatureFlagsStore();
-const router = useRouter();
-const route = useRoute();
 const modalRef = ref();
 const entityId = ref("");
 const entityKind = ref("");
 
 const windowWidth = ref(window.innerWidth);
 const collapse = computed(() => windowWidth.value < 1200);
-
-// Determine if we're in the new experience
-const useNewUI = computed(() => {
-  return route.name?.toString().startsWith("new-hotness");
-});
-
-// Simple toggle function that switches UI experience
-const toggleExperience = () => {
-  // Get current route information
-  const workspacePk = route.params.workspacePk || props.workspaceId;
-  const changeSetId = route.params.changeSetId || props.changeSetId || "auto";
-  const componentId = route.params.componentId;
-  const funcRunId = route.params.funcRunId;
-
-  if (!useNewUI.value) {
-    // Currently in old UI, switch to new UI
-    if (componentId) {
-      // If we have a component ID, navigate to component detail view in new UI
-      router.push({
-        path: `/n/${workspacePk}/${changeSetId}/${componentId}/c`,
-      });
-    } else if (funcRunId) {
-      // If we have a func run ID, navigate to func run detail view in new UI
-      router.push({
-        path: `/n/${workspacePk}/${changeSetId}/${funcRunId}/r`,
-      });
-    } else {
-      // Otherwise navigate to the new UI dashboard
-      router.push({
-        path: `/n/${workspacePk}/${changeSetId}/h`,
-      });
-    }
-  } else {
-    // Currently in new UI, switch to old UI
-    if (componentId) {
-      // If we have a component ID, navigate to component view in old UI
-      router.push({
-        name: "workspace-compose",
-        params: {
-          workspacePk,
-          changeSetId,
-          componentId,
-        },
-      });
-    } else {
-      // Otherwise navigate to the old UI dashboard
-      router.push({
-        path: `/w/${workspacePk}/${changeSetId}/c`,
-      });
-    }
-  }
-};
 
 const windowResizeHandler = () => {
   windowWidth.value = window.innerWidth;
