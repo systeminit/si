@@ -858,14 +858,14 @@ watch(
   { immediate: true },
 );
 
-attributeEmitter.on("selectedPath", (selectedPath) => {
-  if (selectedPath !== props.path) {
+attributeEmitter.on("selectedPath", ({ path }) => {
+  if (path !== props.path) {
     closeInput();
   }
 });
 
 const focus = () => {
-  attributeEmitter.emit("selectedPath", props.path);
+  attributeEmitter.emit("selectedPath", { path: props.path, name: props.displayName });
   attributeEmitter.emit("selectedDocs", {
     link: props.prop?.docLink ?? "",
     docs: props.prop?.documentation ?? "",

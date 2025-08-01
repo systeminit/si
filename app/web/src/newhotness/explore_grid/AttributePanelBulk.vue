@@ -94,17 +94,16 @@
           "
         >
           <h3
-            ref="headerRef"
             :class="
               clsx(
                 'group/header',
-                'cursor-pointer text-lg flex-none h-lg flex items-center px-xs m-0',
+                'text-sm flex-none h-lg px-xs m-0',
                 'border-b',
                 themeClasses('border-neutral-300', 'border-neutral-600'),
               )
             "
           >
-            <span class="text-sm">Shared attributes</span>
+            Shared attributes
           </h3>
           <AttributeChildLayout v-if="commonTree.domain">
             <template #header><span class="text-sm">domain</span></template>
@@ -141,11 +140,27 @@
           clsx(
             'my-2xs', // matching <AttributeChildLayout>
             'scrollable min-h-0',
-            'w-1/5 flex-none flex flex-col gap-xs scrollable border p-sm',
+            'w-1/5 flex-none flex flex-col gap-xs scrollable border',
             themeClasses('border-neutral-300', 'border-neutral-600'),
           )
         "
-      ></div>
+      >
+        <h3
+          :class="
+            clsx(
+              'group/header',
+              'text-sm flex-none h-lg px-xs m-0',
+              'border-b',
+              themeClasses('border-neutral-300', 'border-neutral-600'),
+            )
+          "
+        >
+          {{ selectedPathName }} values
+        </h3>
+        <div class="m-sm">
+          {{ pathValueData }}
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -167,7 +182,7 @@ import {
   ComponentInList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
-import { keyEmitter } from "@/newhotness/logic_composables/emitters";
+import { attributeEmitter, keyEmitter } from "@/newhotness/logic_composables/emitters";
 import { nonNullable } from "@/utils/typescriptLinter";
 import ComponentAttribute, {
   NewChildValue,
@@ -194,7 +209,6 @@ const props = defineProps<{
 }>();
 
 const deselect = (index: number) => {
-  console.log("BULK DESELECT", index);
   emit("deselect", index);
 }
 
@@ -484,6 +498,47 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   keyEmitter.on("Escape", onEscape);
+});
+
+type ValueKey = string;  // can be `split("|") for the source and value
+type ComponentsWithValue = Array<{ schemaName: string, componentName: string}>;
+const valuesByAvPath = computed(() => {
+  const groupedVals = {} as Record<AttributePath, Record<ValueKey, ComponentsWithValue>>;
+  avTrees.value
+    .map((t) => t.data)
+    .filter(nonNullable)
+    .forEach((d) => {
+      Object.values(d.attributeValues).forEach(av => {
+        let values = groupedVals[av.path];
+        if (!values) {
+          values = {};
+          groupedVals[av.path] = values;
+        }
+
+        const source = av.externalSources?.pop();
+        const v = typeof av.value === "object" ? JSON.stringify(av.value) : av.value;
+        const valKey: ValueKey = `${source?.componentName}|${source?.path}|${v}`;
+        let components = values[valKey];
+        if (!components) {
+          components = [] as ComponentsWithValue;
+          values[valKey] = components
+        }
+        components.push({
+          schemaName: d.schemaName, componentName: d.componentName
+        })
+
+      })
+    })
+
+  return groupedVals;
+})
+
+const selectedPathName = ref<string>("")
+const pathValueData = ref()
+attributeEmitter.on("selectedPath", ({ path, name }) => {
+  selectedPathName.value = name;
+  const vals = valuesByAvPath.value[path as AttributePath]
+  pathValueData.value = vals;
 });
 
 const emit = defineEmits<{
