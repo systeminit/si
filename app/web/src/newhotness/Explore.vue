@@ -292,8 +292,16 @@
               <VButton
                 label="Add a component"
                 pill="N"
-                tone="action"
                 size="sm"
+                :class="
+                  clsx(
+                    '!text-sm !border !cursor-pointer !px-xs',
+                    themeClasses(
+                      '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                      '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                    ),
+                  )
+                "
                 @click="openAddComponentModal"
               />
             </template>
