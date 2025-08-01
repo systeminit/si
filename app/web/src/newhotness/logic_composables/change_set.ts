@@ -22,7 +22,7 @@ export const useChangeSets = (
   if (!enabled) enabled = ref(true);
   const changeSetApi = useApi(ctx.value);
   const changeSetQuery = useQuery<Record<string, ChangeSet>>({
-    enabled: enabled.value,
+    enabled,
     queryKey: ["changesets"],
     staleTime: 5000,
     queryFn: async () => {
