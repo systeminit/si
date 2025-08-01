@@ -33,6 +33,7 @@ use crate::{
     OutputSocket,
     Prop,
     PropKind,
+    SchemaVariant,
     WsEvent,
     WsEventResult,
     WsPayload,
@@ -339,13 +340,22 @@ impl SocketConnection {
         ctx: &DalContext,
         f: &mut impl std::fmt::Write,
     ) -> std::fmt::Result {
+        let from_variant = match Component::schema_variant_id(ctx, self.from.0).await {
+            Ok(variant_id) => SchemaVariant::fmt_title(ctx, variant_id).await,
+            Err(err) => err.to_string(),
+        };
+        let to_variant = match Component::schema_variant_id(ctx, self.to.0).await {
+            Ok(variant_id) => SchemaVariant::fmt_title(ctx, variant_id).await,
+            Err(err) => err.to_string(),
+        };
+
         write!(
             f,
             "socket connection {} on {} --> {} on {}",
             OutputSocket::fmt_title(ctx, self.from.1).await,
-            Component::fmt_title(ctx, self.from.0).await,
+            from_variant,
             InputSocket::fmt_title(ctx, self.to.1).await,
-            Component::fmt_title(ctx, self.to.0).await,
+            to_variant,
         )
     }
 }
@@ -635,12 +645,13 @@ impl PropConnection {
     ) -> std::fmt::Result {
         match Func::intrinsic_kind(ctx, self.func_id).await {
             // Don't print si:identity, that's standard
-            Ok(Some(IntrinsicFunc::Identity)) => write!(f, "{} --> {}", &self.from.1, &self.to.1),
+            Ok(Some(IntrinsicFunc::Identity)) => write!(f, "{}", &self.from.1)?,
             _ => {
                 let func = Func::fmt_title(ctx, self.func_id).await;
-                write!(f, "{}({} --> {})", func, &self.from.1, &self.to.1)
+                write!(f, "{}({})", func, &self.from.1)?
             }
         }
+        write!(f, " --> {}", &self.to.1)
     }
 }
 
