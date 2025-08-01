@@ -66,6 +66,16 @@ onMounted(async () => {
   if (connectReq.result.success) {
     const workspacePk = connectReq.result.data.workspace.pk;
 
+    const flagsLoaded = new Promise((resolve) => {
+      const id = setInterval(() => {
+        if (featureFlagStore.ENABLE_NEW_EXPERIENCE !== undefined) {
+          clearInterval(id);
+          resolve(null);
+        }
+      }, 50);
+    });
+
+    await flagsLoaded;
     let routeName = "workspace-single";
     if (featureFlagStore.ENABLE_NEW_EXPERIENCE) {
       routeName = "new-hotness-workspace";
