@@ -45,7 +45,8 @@ pub async fn migrate_connections(
     ctx.update_tenancy(Tenancy::new(workspace_id));
     ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
         .await?;
-    slow_rt::spawn(async move { migrate_connections_async(&ctx, tracker, false).await })?;
+    let span = Span::current();
+    slow_rt::spawn(async move { migrate_connections_async(&ctx, tracker, span, false).await })?;
     Ok(())
 }
 pub async fn migrate_connections_dry_run(
@@ -56,18 +57,25 @@ pub async fn migrate_connections_dry_run(
     ctx.update_tenancy(Tenancy::new(workspace_id));
     ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
         .await?;
-    slow_rt::spawn(async move { migrate_connections_async(&ctx, tracker, true).await })?;
+    let span = Span::current();
+    slow_rt::spawn(async move { migrate_connections_async(&ctx, tracker, span, true).await })?;
     Ok(())
 }
 
 /// Internal: migrates and reports any errors wherever they need to be.
-#[instrument(level = "info", skip(ctx, tracker))]
+#[instrument(level = "info", parent = &parent_span, skip(ctx, tracker))]
 pub async fn migrate_connections_async(
     ctx: &DalContext,
     tracker: PosthogEventTracker,
+    parent_span: Span,
     dry_run: bool,
 ) -> () {
     let span = Span::current();
+    span.record("si.change_set.id", ctx.change_set_id().to_string());
+    span.record(
+        "si.workspace.id",
+        ctx.workspace_pk().unwrap_or_default().to_string(),
+    );
 
     // Capture a summary even if we fail, so we can report what we *did* do.
     let mut summary = ConnectionMigrationSummary {
