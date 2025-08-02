@@ -54,21 +54,16 @@ class SIAdminReporter:
         """List all workspaces for SI."""
         print(f"📋 Fetching all workspaces{f' matching {query}' if query else ''}...")
         
-        try:
-            workspaces_url = f"{self.sdf_api_url}/v2/admin/workspaces"
-            workspaces_url += f"?query={quote(query)}" if query else ""
+        workspaces_url = f"{self.sdf_api_url}/v2/admin/workspaces"
+        workspaces_url += f"?query={quote(query)}" if query else ""
+        
+        async with self.session.get(workspaces_url) as response:
+            response.raise_for_status()
+            data = await response.json()
+            workspaces = data.get('workspaces', [])
             
-            async with self.session.get(workspaces_url) as response:
-                response.raise_for_status()
-                data = await response.json()
-                workspaces = data.get('workspaces', [])
-                
-                print(f"✅ Found {len(workspaces)} workspaces")
-                return workspaces
-                
-        except Exception as e:
-            print(f"❌ Failed to list workspaces: {e}")
-            return []
+            print(f"✅ Found {len(workspaces)} workspaces")
+            return workspaces
     
     async def list_change_sets_for_workspace(self, workspace_id: str) -> List[Dict[str, Any]]:
         """List all change sets for a given workspace."""
@@ -217,7 +212,15 @@ class SIAdminReporter:
             print("🔌 WebSocket connection closed")
         except Exception as e:
             print(f"❌ WebSocket listener error: {e}")
-    
+
+    async def trigger_migration(self, workspace_id: str, changeset_id: str) -> bool:
+        """Trigger a dry run migration for a specific changeset."""
+        migration_url = f"{self.sdf_api_url}/v2/admin/workspaces/{workspace_id}/change_sets/{changeset_id}/migrate_connections"
+
+        async with self.session.post(migration_url) as response:
+            print(response, await response.text())
+            response.raise_for_status()
+
     async def trigger_dry_run_migration(self, workspace_id: str, changeset_id: str) -> bool:
         """Trigger a dry run migration for a specific changeset."""
         try:
@@ -502,7 +505,32 @@ class SIAdminReporter:
         print(f"Open change sets to migrate: {open_changesets}")
         print(f"CSV file: {csv_file}")
         print("=" * 60)
-    
+
+    async def run_migrations(self, workspaces_file: Optional[str] = None) -> None:
+        if not workspaces_file:
+            raise ValueError("Must specify --workspaces-file")
+
+        results_dir = pathlib.Path("results")
+        results_dir.mkdir(exist_ok=True)
+
+        workspace_ids = open(workspaces_file).read().splitlines()
+        for workspace_id in workspace_ids:
+            workspace = (await self.list_all_workspaces(workspace_id))[0]
+            workspace_name = workspace['name']
+            change_set_id = workspace['defaultChangeSetId']
+
+            # Save the current snapshot
+            snapshot = await self.download_snapshot(workspace_id, change_set_id)
+            snapshot_filename = f"{results_dir}/{workspace_id}.{change_set_id}.snapshot"
+            with open(snapshot_filename, 'xb') as f:
+                f.write(snapshot)
+
+            # Trigger the migration
+            await self.trigger_migration(workspace_id, change_set_id)
+            print(f"🎯 Triggered run migration for changeset {change_set_id} in workspace {workspace_id} ...")
+
+            await asyncio.sleep(30)
+
     async def run_migration_dry_runs(self, csv_file: str, *, workspaces_file: Optional[str] = None, batch_size: int = 1, in_changeset: Optional[tuple[str, str]] = None) -> None:
         """Run dry run migrations for users in batches, testing only HEAD changesets."""
         print("🎯 Running Migration Dry Runs (User-based batches)")
@@ -991,29 +1019,15 @@ Examples:
     print(f"  - SDF API URL: {sdf_api_url}")
     print(f"  - Bearer Token: {'*' * len(bearer_token[:-4]) + bearer_token[-4:] if len(bearer_token) > 4 else '****'}")
     
-    if args.csv_mode:
-        print(f"  - Mode: CSV Migration Tracking")
-        print(f"  - Users file: {args.users_file}")
-        print(f"  - CSV file: {args.csv_file}")
-    elif args.migrate:
-        print(f"  - Mode: Dry Run Migration")
-        print(f"  - CSV file: {args.csv_file}")
-        print(f"  - Batch size: {args.batch_size}")
-    else:
-        print(f"  - Mode: Workspace Report")
-        if args.output:
-            print(f"  - Output file: {args.output}")
-            print(f"  - Output format: {'JSON' if args.json else 'Text'}")
-    print()
-    
     async with SIAdminReporter(bearer_token, sdf_api_url) as reporter:
         if args.csv_mode:
             # Generate CSV for migration tracking
             await reporter.generate_migration_csv(args.users_file, args.csv_file)
         elif args.migrate:
             # Run dry run migrations
-            in_changeset = (args.in_workspace_id, args.in_changeset_id) if args.in_workspace_id and args.in_changeset_id else None
-            await reporter.run_migration_dry_runs(args.csv_file, workspaces_file=args.workspaces_file, batch_size=args.batch_size, in_changeset=in_changeset)
+            await reporter.run_migrations(workspaces_file=args.workspaces_file)
+            # in_changeset = (args.in_workspace_id, args.in_changeset_id) if args.in_workspace_id and args.in_changeset_id else None
+            # await reporter.run_migration_dry_runs(args.csv_file, workspaces_file=args.workspaces_file, batch_size=args.batch_size, in_changeset=in_changeset)
         else:
             # Generate the workspace report
             await reporter.generate_workspace_report(
