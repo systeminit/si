@@ -203,7 +203,6 @@
         </marker>
       </defs>
       <g :transform="`matrix(${transformMatrix})`"></g>
-      <circle :cx="origCenter" :cy="origCenter" r="5" fill="yellow" />
     </svg>
 
     <ComponentContextMenu
