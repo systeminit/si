@@ -1,11 +1,13 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import * as _ from "lodash-es";
 import { nextTick } from "vue";
+import { AxiosRequestConfig } from "axios";
 import { posthog } from "@/utils/posthog";
 import {
   push as pushBreadcrumb,
   query,
 } from "@/newhotness/logic_composables/navigation_stack";
+import { tokensByWorkspacePk } from "@/newhotness/logic_composables/tokens";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
 import { isDevMode } from "./utils/debug";
@@ -14,6 +16,29 @@ import { WorkspaceMetadata } from "./api/sdf/dal/workspace";
 
 // Cannot use inside the template directly.
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
+
+const findChangeSetId = async (workspacePk: string | undefined) => {
+  /**
+   * PSA: this may throw a 401 if the tokens aren't yet stored from a new
+   * successful login. The 401 is nothing to be alarmed about, it doesn't stop
+   * the app from continuing to work, because we're not throwing an exception below
+   * with the `validateStatus`
+   */
+  const token = tokensByWorkspacePk[(workspacePk as string) || ""];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const params: AxiosRequestConfig<any> = {
+    method: "GET",
+    url: `v2/workspaces/${workspacePk}/change-sets`,
+    validateStatus: (_status) => true, // don't throw exception on 4/5xxx
+  };
+  if (token) {
+    params.headers = {
+      Authorization: `Bearer ${token}`,
+    };
+  }
+  const resp = await sdf<WorkspaceMetadata>(params);
+  return resp.data.defaultChangeSetId;
+};
 
 const routes: RouteRecordRaw[] = [
   {
@@ -36,11 +61,9 @@ const routes: RouteRecordRaw[] = [
     name: "new-hotness-workspace",
     path: "/n/:workspacePk",
     beforeEnter: async (loc) => {
-      const resp = await sdf<WorkspaceMetadata>({
-        method: "GET",
-        url: `v2/workspaces/${loc.params.workspacePk}/change-sets`,
-      });
-      const changeSetId = resp.data.defaultChangeSetId;
+      const changeSetId = await findChangeSetId(
+        loc.params.workspacePk as string | undefined,
+      );
       const newloc = `/n/${loc.params.workspacePk}/${changeSetId}/h`;
       return newloc;
     },
@@ -50,11 +73,9 @@ const routes: RouteRecordRaw[] = [
     name: "new-hotness-workspace-auto",
     path: "/n/:workspacePk/auto",
     beforeEnter: async (loc) => {
-      const resp = await sdf<WorkspaceMetadata>({
-        method: "GET",
-        url: `v2/workspaces/${loc.params.workspacePk}/change-sets`,
-      });
-      const changeSetId = resp.data.defaultChangeSetId;
+      const changeSetId = await findChangeSetId(
+        loc.params.workspacePk as string | undefined,
+      );
       const newloc = `/n/${loc.params.workspacePk}/${changeSetId}/h`;
       return newloc;
     },
@@ -64,11 +85,9 @@ const routes: RouteRecordRaw[] = [
     name: "new-hotness-head",
     path: "/n/:workspacePk/head/h",
     beforeEnter: async (loc) => {
-      const resp = await sdf<WorkspaceMetadata>({
-        method: "GET",
-        url: `v2/workspaces/${loc.params.workspacePk}/change-sets`,
-      });
-      const changeSetId = resp.data.defaultChangeSetId;
+      const changeSetId = await findChangeSetId(
+        loc.params.workspacePk as string | undefined,
+      );
       const newloc = `/n/${loc.params.workspacePk}/${changeSetId}/h`;
       return newloc;
     },

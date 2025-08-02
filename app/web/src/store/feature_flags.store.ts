@@ -1,8 +1,9 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks } from "@si/vue-lib/pinia";
+import { useRoute } from "vue-router";
 import { posthog } from "@/utils/posthog";
-import { useWorkspacesStore } from "./workspaces.store";
+import { WorkspacePk } from "@/api/sdf/dal/workspace";
 
 type FeatureFlag = UserFlag | WorkspaceFlag;
 type UserFlag = keyof typeof USER_FLAG_MAPPING;
@@ -37,8 +38,8 @@ const FEATURE_FLAGS = Object.keys({
 }) as FeatureFlag[];
 
 export function useFeatureFlagsStore() {
-  const workspacesStore = useWorkspacesStore();
-  const workspacePk = workspacesStore.urlSelectedWorkspaceId;
+  const route = useRoute();
+  const workspacePk = route?.params?.workspacePk as WorkspacePk | undefined;
 
   return addStoreHooks(
     undefined,
@@ -87,6 +88,7 @@ export function useFeatureFlagsStore() {
          * @returns
          */
         async fetchWorkspaceFlags(): Promise<string[]> {
+          if (!workspacePk) return [];
           const resp = await fetch(
             `${import.meta.env.VITE_POSTHOG_API_HOST}/decide/?v=3`,
             {
