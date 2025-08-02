@@ -15,6 +15,7 @@
     :isArray="false"
     :isMap="false"
     :forceReadOnly="false"
+    :hasSocketConnection="hasSocketConnections"
     @close="closeSubscriptionInput"
     @save="(...args) => emit('save', ...args)"
   />
@@ -237,6 +238,7 @@
         :isArray="attributeTree.prop?.kind === 'array'"
         :isMap="attributeTree.prop?.kind === 'map'"
         :forceReadOnly="props.forceReadOnly || parentHasExternalSources"
+        :hasSocketConnection="hasSocketConnections"
         @save="(...args) => emit('save', ...args)"
         @delete="(...args) => emit('delete', ...args)"
         @remove-subscription="(...args) => emit('removeSubscription', ...args)"
@@ -295,6 +297,11 @@ const isBuildable = computed(
     ["array", "map"].includes(props.attributeTree.prop?.kind ?? "") &&
     !props.component.toDelete,
 );
+
+const hasSocketConnections = computed(() => {
+  if (!props.attributeTree || !props.attributeTree.attributeValue) return false;
+  return props.attributeTree.attributeValue.hasSocketConnection;
+});
 
 const displayName = computed(() => {
   if (props.attributeTree.attributeValue.key)

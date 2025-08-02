@@ -5,6 +5,30 @@
     <div
       class="main pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]"
     >
+      <!-- Socket connections banner -->
+      <div
+        v-if="hasSocketConnections && !showSkeleton"
+        :class="
+          clsx(
+            'flex flex-row items-center gap-xs px-sm py-xs border my-sm',
+            themeClasses(
+              'bg-neutral-200 border-neutral-400 text-neutral-900',
+              'bg-neutral-700 border-neutral-600 text-neutral-100',
+            ),
+          )
+        "
+      >
+        <TruncateWithTooltip class="py-2xs text-sm flex-1">
+          A faster, smarter experience is here. Some component settings may be
+          incompatible.
+        </TruncateWithTooltip>
+        <VButton
+          size="sm"
+          label="Learn more"
+          @click="openWorkspaceMigrationDocumentation"
+        />
+      </div>
+
       <!-- Search and filters -->
       <ExploreSearchBarSkeleton v-if="showSkeleton" />
       <template v-else>
@@ -440,6 +464,7 @@ import {
   PillCounter,
   TextPill,
   themeClasses,
+  TruncateWithTooltip,
   VButton,
   VormInput,
 } from "@si/vue-lib/design-system";
@@ -470,7 +495,10 @@ import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue"
 import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import Map from "./Map.vue";
-import { collapsingGridStyles } from "./util";
+import {
+  collapsingGridStyles,
+  openWorkspaceMigrationDocumentation,
+} from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import { getQualificationStatus } from "./ComponentTileQualificationStatus.vue";
@@ -895,7 +923,14 @@ const placeholderSearchText = computed(
   () =>
     `Search across ${componentListQuery.data.value?.length ?? 0} Components`,
 );
-const componentList = computed(() => componentListQuery.data.value ?? []);
+const componentList = computed(() => {
+  return componentListQuery.data.value ?? [];
+});
+
+const hasSocketConnections = computed(() => {
+  if (!componentList.value) return false;
+  return componentList.value.some((c) => c.hasSocketConnections);
+});
 
 // ================================================================================================
 // PINNING, RESOURCE COUNT, ETC.

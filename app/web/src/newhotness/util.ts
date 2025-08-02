@@ -111,3 +111,7 @@ export const findAttributeValueInTree = (
 export function objectKeys<T extends object>(obj: T): Array<keyof T> {
   return Object.keys(obj) as Array<keyof T>;
 }
+
+export const openWorkspaceMigrationDocumentation = () => {
+  globalThis.window?.open("https://docs.systeminit.com", "_blank");
+};

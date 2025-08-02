@@ -46,6 +46,7 @@ export function useComponentDeletion(viewId?: string, skipNavigation = false) {
       diffStatus,
       toDelete: component.toDelete,
       resourceId: null,
+      hasSocketConnections: false,
     };
   };
 
