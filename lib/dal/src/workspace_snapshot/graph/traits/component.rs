@@ -9,4 +9,6 @@ pub trait ComponentExt {
     fn root_attribute_value(&self, component_id: ComponentId) -> ComponentResult<AttributeValueId>;
 
     fn external_source_count(&self, component_id: ComponentId) -> ComponentResult<usize>;
+
+    fn has_socket_connections(&self, component_id: ComponentId) -> ComponentResult<bool>;
 }
