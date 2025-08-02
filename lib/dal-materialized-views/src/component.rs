@@ -50,6 +50,11 @@ pub async fn assemble_in_list(
         .workspace_snapshot()?
         .external_source_count(component_id)
         .await?;
+    let has_socket_connections = ctx
+        .workspace_snapshot()?
+        .has_socket_connections(component_id)
+        .await?;
+
     let diff_status = map_diff_status(Component::has_diff_from_head(ctx, component_id).await?);
     let to_delete = Component::is_set_to_delete(ctx, component_id)
         .await?
@@ -85,6 +90,7 @@ pub async fn assemble_in_list(
         diff_status,
         to_delete,
         resource_id,
+        has_socket_connections,
     })
 }
 

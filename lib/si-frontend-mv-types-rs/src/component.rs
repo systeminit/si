@@ -145,6 +145,7 @@ pub struct ComponentInList {
     pub input_count: usize,
     pub diff_status: ComponentDiffStatus,
     pub to_delete: bool,
+    pub has_socket_connections: bool,
 }
 
 #[derive(

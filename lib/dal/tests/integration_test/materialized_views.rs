@@ -11,13 +11,21 @@ use dal::{
         Action,
         prototype::ActionPrototype,
     },
+    attribute::{
+        path::AttributePath,
+        prototype::argument::AttributePrototypeArgument,
+        value::subscription::ValueSubscription,
+    },
     prop::PropPath,
     qualification::QualificationSummary,
+    workspace_snapshot::graph::validator::connections::PropConnection,
 };
+use dal_materialized_views::component::map_diff_status;
 use dal_test::{
     Result,
     helpers::{
         attribute::value,
+        connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
     },
     prelude::{
@@ -26,6 +34,7 @@ use dal_test::{
     },
     test,
 };
+use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
 use si_events::{
     ActionKind,
@@ -36,11 +45,13 @@ use si_frontend_mv_types::{
     component::{
         Component as ComponentMv,
         ComponentDiff,
+        ComponentInList as ComponentInListMv,
         ComponentList,
     },
     incoming_connections::Connection,
     reference::ReferenceKind,
 };
+use si_id::AttributePrototypeArgumentId;
 
 #[test]
 async fn actions(ctx: &DalContext) -> Result<()> {
@@ -149,7 +160,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
     assert_eq!(
         ComponentList {
             id: ctx.workspace_pk()?,
-            components: Vec::new()
+            components: Vec::new(),
         }, // expected
         components // actual
     );
@@ -174,6 +185,9 @@ async fn component(ctx: &DalContext) -> Result<()> {
         reference.id.0          // actual
     );
 
+    let component_in_list =
+        dal_materialized_views::component::assemble_in_list(ctx.clone(), created_component.id())
+            .await?;
     let component =
         dal_materialized_views::component::assemble(ctx.clone(), created_component.id()).await?;
     let schema = created_component.schema(ctx).await?;
@@ -194,6 +208,32 @@ async fn component(ctx: &DalContext) -> Result<()> {
     let sv_id = created_component.schema_variant(ctx).await?.id();
 
     let is_secret_defining = SchemaVariant::is_secret_defining(ctx, sv_id).await?;
+
+    let diff_status =
+        map_diff_status(Component::has_diff_from_head(ctx, created_component.id()).await?);
+
+    let has_resource = Component::resource_by_id(ctx, created_component.id())
+        .await?
+        .is_some();
+
+    let prop_path_raw = ["root", "si", "resourceId"];
+    let mut resource_id = None;
+    if has_resource {
+        resource_id = if let Some(prop_id) =
+            Prop::find_prop_id_by_path_opt(ctx, schema_variant.id(), &PropPath::new(prop_path_raw))
+                .await?
+        {
+            let av_id_for_prop_id =
+                Component::attribute_value_for_prop_id(ctx, created_component.id(), prop_id)
+                    .await?;
+            dal::AttributeValue::view(ctx, av_id_for_prop_id).await?
+        } else {
+            None
+        };
+    }
+    let qualification_totals = QualificationSummary::individual_stats(ctx, created_component.id())
+        .await?
+        .into();
 
     assert_eq!(
         ComponentMv {
@@ -218,6 +258,27 @@ async fn component(ctx: &DalContext) -> Result<()> {
         component // actual
     );
 
+    assert_eq!(
+        ComponentInListMv {
+            id: created_component.id(),
+            name: component_name.to_owned(),
+            color: created_component.color(ctx).await?.to_owned(),
+            schema_name: schema_name.to_owned(),
+            schema_id: schema.id(),
+            schema_variant_id: sv_id,
+            schema_variant_name: schema_variant.display_name().to_owned(),
+            schema_category: schema_variant.category().to_owned(),
+            has_resource: false,
+            qualification_totals,
+            input_count: 0,
+            to_delete: false,
+            resource_id,
+            diff_status,
+            has_socket_connections: false,
+        },
+        component_in_list
+    );
+
     Ok(())
 }
 
@@ -236,6 +297,9 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
             .await?;
     let charlie =
         create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "charlie")
+            .await?;
+    let echo =
+        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "echo")
             .await?;
 
     // Cache everything with need for making subscriptions (as well as for assertions later).
@@ -301,8 +365,202 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
             charlie_domain_name_attribute_value_path.as_str()  // actual
         );
     }
+    // First let's connect these using socket connections - simple case
+    {
+        connect_components_with_socket_names(ctx, alpha.id(), "two", beta.id(), "two").await?;
+        connect_components_with_socket_names(ctx, alpha.id(), "two", echo.id(), "two").await?;
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    }
 
-    // Perform all connections and commit. This is the core of the test!
+    // check alpha mv
+    {
+        let alpha_av_tree_mv =
+            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), alpha.id())
+                .await?;
+
+        let alpha_avs_with_sockets = alpha_av_tree_mv
+            .attribute_values
+            .values()
+            .filter(|av| av.has_socket_connection)
+            .collect_vec();
+        assert!(alpha_avs_with_sockets.is_empty());
+    }
+
+    // check beta mv
+    {
+        let beta_av_tree_mv =
+            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), beta.id())
+                .await?;
+
+        let beta_avs_with_sockets = beta_av_tree_mv
+            .attribute_values
+            .values()
+            .filter(|av| av.has_socket_connection)
+            .collect_vec();
+        // beta has exactly one av with a socket connection
+        assert!(beta_avs_with_sockets.iter().exactly_one().is_ok());
+
+        let beta_component_in_list =
+            dal_materialized_views::component::assemble_in_list(ctx.clone(), beta.id()).await?;
+
+        assert!(beta_component_in_list.has_socket_connections);
+    }
+
+    // check echo mv
+    {
+        let echo_av_tree_mv =
+            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), echo.id())
+                .await?;
+        // mostly concerned with the values for the "two" paths
+        let echo_avs_with_sockets = echo_av_tree_mv
+            .attribute_values
+            .values()
+            .filter(|av| av.has_socket_connection)
+            .collect_vec();
+        // echo has one socket connection too
+        assert!(echo_avs_with_sockets.iter().exactly_one().is_ok());
+        let echo_component_in_list =
+            dal_materialized_views::component::assemble_in_list(ctx.clone(), echo.id()).await?;
+        assert!(echo_component_in_list.has_socket_connections);
+    }
+
+    // Then let's migrate:
+    {
+        let snapshot = ctx.workspace_snapshot()?.as_legacy_snapshot()?;
+
+        let inferred_connections = snapshot
+            .inferred_connection_graph(ctx)
+            .await?
+            .inferred_connections_for_all_components(ctx)
+            .await?
+            .into_iter()
+            .map(|connection| {
+                dal::workspace_snapshot::graph::validator::connections::SocketConnection {
+                    from: (connection.source_component_id, connection.output_socket_id),
+                    to: (
+                        connection.destination_component_id,
+                        connection.input_socket_id,
+                    ),
+                }
+            });
+
+        let connection_migrations = snapshot.connection_migrations(inferred_connections).await?;
+        for migration in connection_migrations {
+            match &migration.issue {
+                // If there's no issue, we can migrate.
+                None => {}
+                // If there's an issue, we can't migrate it.
+                Some(_) => panic!("These should migrate cleanly"),
+            }
+
+            let mut did_something = false;
+            for prop_connection in &migration.prop_connections {
+                if add_prop_connection(ctx, prop_connection).await? {
+                    did_something = true;
+                }
+            }
+
+            if remove_socket_connection(ctx, migration.explicit_connection_id).await? {
+                did_something = true;
+            }
+            assert!(did_something);
+        }
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    }
+    // Post migration, prop subscriptions should have replaced socket connections and the MVs update accordingly
+
+    // Check the alpha MV.
+    {
+        let alpha_mv =
+            dal_materialized_views::incoming_connections::assemble(ctx.clone(), alpha.id()).await?;
+        assert_eq!(
+            alpha.id(),  // expected
+            alpha_mv.id  // actual
+        );
+        assert!(alpha_mv.connections.is_empty());
+        let alpha_av_tree_mv =
+            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), alpha.id())
+                .await?;
+        // mostly concerned with the values for the "two" paths
+        let alpha_avs_with_sockets = alpha_av_tree_mv
+            .attribute_values
+            .values()
+            .filter(|av| av.has_socket_connection)
+            .collect_vec();
+        assert!(alpha_avs_with_sockets.is_empty());
+    }
+
+    // Check the beta MV.
+    {
+        let beta_mv =
+            dal_materialized_views::incoming_connections::assemble(ctx.clone(), beta.id()).await?;
+        assert_eq!(
+            beta.id(),  // expected
+            beta_mv.id  // actual
+        );
+        assert!(beta_mv.connections.iter().exactly_one().is_ok());
+
+        let beta_av_tree_mv =
+            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), beta.id())
+                .await?;
+        let beta_avs_with_sockets = beta_av_tree_mv
+            .attribute_values
+            .values()
+            .filter(|av| av.has_socket_connection)
+            .collect_vec();
+        assert!(beta_avs_with_sockets.is_empty());
+
+        let beta_avs_with_subs = beta_av_tree_mv
+            .attribute_values
+            .values()
+            .filter(
+                |av: &&si_frontend_mv_types::component::attribute_tree::AttributeValue| {
+                    av.external_sources.is_some()
+                },
+            )
+            .collect_vec();
+        assert!(beta_avs_with_subs.iter().exactly_one().is_ok());
+
+        let beta_component_in_list =
+            dal_materialized_views::component::assemble_in_list(ctx.clone(), beta.id()).await?;
+        assert!(!beta_component_in_list.has_socket_connections);
+    }
+    // Check the echo MV.
+    {
+        let echo_mv =
+            dal_materialized_views::incoming_connections::assemble(ctx.clone(), echo.id()).await?;
+        assert_eq!(
+            echo.id(),  // expected
+            echo_mv.id  // actual
+        );
+        assert!(echo_mv.connections.iter().exactly_one().is_ok());
+
+        let echo_av_tree_mv =
+            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), echo.id())
+                .await?;
+        let echo_avs_with_sockets = echo_av_tree_mv
+            .attribute_values
+            .values()
+            .filter(|av| av.has_socket_connection)
+            .collect_vec();
+        assert!(echo_avs_with_sockets.is_empty());
+        let echo_avs_with_subs = echo_av_tree_mv
+            .attribute_values
+            .values()
+            .filter(
+                |av: &&si_frontend_mv_types::component::attribute_tree::AttributeValue| {
+                    av.external_sources.is_some()
+                },
+            )
+            .collect_vec();
+
+        assert!(echo_avs_with_subs.iter().exactly_one().is_ok());
+        let echo_component_in_list =
+            dal_materialized_views::component::assemble_in_list(ctx.clone(), echo.id()).await?;
+        assert!(!echo_component_in_list.has_socket_connections);
+    }
+
+    // but also add some manual prop connections for fun
     {
         value::subscribe(
             ctx,
@@ -317,28 +575,6 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
         )
         .await?;
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    }
-
-    // Check the alpha MV.
-    {
-        let alpha_mv =
-            dal_materialized_views::incoming_connections::assemble(ctx.clone(), alpha.id()).await?;
-        assert_eq!(
-            alpha.id(),  // expected
-            alpha_mv.id  // actual
-        );
-        assert!(alpha_mv.connections.is_empty());
-    }
-
-    // Check the beta MV.
-    {
-        let beta_mv =
-            dal_materialized_views::incoming_connections::assemble(ctx.clone(), beta.id()).await?;
-        assert_eq!(
-            beta.id(),  // expected
-            beta_mv.id  // actual
-        );
-        assert!(beta_mv.connections.is_empty());
     }
 
     // Check the charlie MV.
@@ -382,4 +618,55 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
     }
 
     Ok(())
+}
+async fn add_prop_connection(
+    ctx: &DalContext,
+    &PropConnection {
+        from: (from_component_id, ref from_path),
+        to: (to_component_id, ref to_path),
+        func_id,
+    }: &PropConnection,
+) -> Result<bool> {
+    // If the destination already has an explicit value, we keep it instead of replacing it!
+    let to_root_av_id = Component::root_attribute_value_id(ctx, to_component_id).await?;
+    let to_path = AttributePath::from_json_pointer(to_path.to_string());
+    let to_av_id = to_path.vivify(ctx, to_root_av_id).await?;
+    if AttributeValue::component_prototype_id(ctx, to_av_id)
+        .await?
+        .is_some()
+    {
+        return Ok(false);
+    }
+
+    // Create the subscription
+    let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
+    let from_path = AttributePath::from_json_pointer(from_path.to_string());
+    AttributeValue::set_to_subscriptions(
+        ctx,
+        to_av_id,
+        vec![ValueSubscription {
+            attribute_value_id: from_root_av_id,
+            path: from_path,
+        }],
+        Some(func_id),
+    )
+    .await?;
+
+    Ok(true)
+}
+
+/// Remove the existing socket connection (unless it was inferred, in which case there isn't one)
+async fn remove_socket_connection(
+    ctx: &DalContext,
+    explicit_connection_id: Option<AttributePrototypeArgumentId>,
+) -> Result<bool> {
+    // We don't remove inferred connections
+    let Some(explicit_connection_id) = explicit_connection_id else {
+        return Ok(false);
+    };
+
+    // Remove the connection
+    AttributePrototypeArgument::remove(ctx, explicit_connection_id).await?;
+
+    Ok(true)
 }
