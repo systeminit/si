@@ -24,6 +24,29 @@ const ListComponentsInputSchemaRaw = {
   changeSetId: z.string().optional().describe(
     "The change set to look up components in; if not provided, HEAD will be used",
   ),
+  filters: z.object({
+    logic: z.enum(["AND", "OR"]).optional().describe(
+      "Logic operator between filter groups (default: AND)",
+    ),
+    filterGroups: z.array(
+      z.object({
+        responseField: z.enum(["componentName", "componentId", "schemaName"])
+          .describe("the response field to filter on"),
+        logic: z.enum(["AND", "OR"]).optional().describe(
+          "Logic operator between regular expressions within this filter group (default: OR)",
+        ),
+        regularExpressions: z.array(
+          z.string().describe("a javascript regular expression string"),
+        ).describe(
+          "an array of javascript compatible regular expression strings",
+        ),
+      }).describe(
+        "a filter group, consisting of a responseField to filter and an array of regularExpressions",
+      ),
+    ).describe("an array of filter groups"),
+  }).optional().describe(
+    "filtering configuration with configurable AND/OR logic both between filter groups and within each group's regular expressions",
+  ),
 };
 
 const ListComponentsOutputSchemaRaw = {
@@ -61,7 +84,7 @@ export function componentListTool(server: McpServer) {
       inputSchema: ListComponentsInputSchemaRaw,
       outputSchema: ListComponentsOutputSchemaRaw,
     },
-    async ({ changeSetId }): Promise<CallToolResult> => {
+    async ({ changeSetId, filters }): Promise<CallToolResult> => {
       if (!changeSetId) {
         const changeSetsApi = new ChangeSetsApi(apiConfig);
         try {
@@ -87,14 +110,65 @@ export function componentListTool(server: McpServer) {
       }
       try {
         const response = await listAllComponents(apiConfig, changeSetId);
+        const filteredResponse = applyFilters(response, filters);
         return successResponse(
-          response,
+          filteredResponse,
         );
       } catch (error) {
         return errorResponse(error);
       }
     },
   );
+}
+
+export function applyFilters(
+  components: Array<ListComponents["data"][number]>,
+  filters?: {
+    logic?: "AND" | "OR";
+    filterGroups: Array<{
+      responseField: "componentName" | "componentId" | "schemaName";
+      logic?: "AND" | "OR";
+      regularExpressions: string[];
+    }>;
+  },
+): Array<ListComponents["data"][number]> {
+  if (!filters || !filters.filterGroups || filters.filterGroups.length === 0) {
+    return components;
+  }
+
+  const betweenGroupsLogic = filters.logic || "AND";
+
+  return components.filter((component) => {
+    const groupResults = filters.filterGroups.map((filterGroup) => {
+      const fieldValue = component[filterGroup.responseField];
+      const withinGroupLogic = filterGroup.logic || "OR";
+
+      const regexResults = filterGroup.regularExpressions.map((regexStr) => {
+        try {
+          const regex = new RegExp(regexStr);
+          return regex.test(fieldValue);
+        } catch (error) {
+          // If regex is invalid, skip this regex
+          console.warn(`Invalid regex pattern: ${regexStr}`, error);
+          return false;
+        }
+      });
+
+      // Apply logic within the filter group
+      if (withinGroupLogic === "AND") {
+        return regexResults.every((result) => result);
+      } else {
+        return regexResults.some((result) => result);
+      }
+    });
+
+    // Apply logic between filter groups
+    if (betweenGroupsLogic === "AND") {
+      return groupResults.every((result) => result);
+    } else {
+      return groupResults.some((result) => result);
+    }
+  });
 }
 
 async function listAllComponents(

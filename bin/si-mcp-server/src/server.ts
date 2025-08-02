@@ -14,6 +14,10 @@ import { componentGetTool } from "./tools/componentGet.ts";
 import { componentCreateTool } from "./tools/componentCreate.ts";
 import { componentUpdateTool } from "./tools/componentUpdate.ts";
 import { componentEnqueueActionTool } from "./tools/componentEnqueueAction.ts";
+import { componentImportTool } from "./tools/componentImport.ts";
+import { importPrompt } from "./prompts/import.ts";
+import { componentDiscoverTool } from "./tools/componentDiscover.ts";
+import { discoverPrompt } from "./prompts/discover.ts";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -35,6 +39,10 @@ export function createServer(): McpServer {
   componentCreateTool(server);
   componentUpdateTool(server);
   componentEnqueueActionTool(server);
+  componentImportTool(server);
+  componentDiscoverTool(server);
+  importPrompt(server);
+  discoverPrompt(server);
 
   return server;
 }

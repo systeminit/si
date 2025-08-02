@@ -140,7 +140,7 @@ export function componentGetTool(server: McpServer) {
             response.data.component.attributes,
             (_value: unknown, key: string) => key.startsWith("/code"),
           );
-          const code: NonNullable<GetComponentResult['code']> = {};
+          const code: NonNullable<GetComponentResult["code"]> = {};
           for (const [path, codeValue] of Object.entries(codeAttributes)) {
             const match = path.match(/^\/code\/([^\/]+)\/([^\/]+)/);
             if (match) {
@@ -148,7 +148,8 @@ export function componentGetTool(server: McpServer) {
                 code[match[1]] = { code: "", format: "" };
               }
               if (match[2] === "code" || match[2] === "format") {
-                code[match[1]][match[2] as "code" | "format"] = codeValue as string;
+                code[match[1]][match[2] as "code" | "format"] =
+                  codeValue as string;
               }
             }
           }
@@ -159,7 +160,9 @@ export function componentGetTool(server: McpServer) {
             response.data.component.attributes,
             (_value: unknown, key: string) => key.startsWith("/qualification"),
           );
-          const qualifications: NonNullable<GetComponentResult['qualifications']> = {};
+          const qualifications: NonNullable<
+            GetComponentResult["qualifications"]
+          > = {};
           for (const [path, qualValue] of Object.entries(qualAttributes)) {
             const match = path.match(/^\/qualification\/([^\/]+)\/([^\/]+)/);
             if (match) {
@@ -167,7 +170,11 @@ export function componentGetTool(server: McpServer) {
                 qualifications[match[1]] = { result: "unknown", message: "" };
               }
               if (match[2] === "result") {
-                qualifications[match[1]]["result"] = qualValue as "failure" | "success" | "unknown" | "warning";
+                qualifications[match[1]]["result"] = qualValue as
+                  | "failure"
+                  | "success"
+                  | "unknown"
+                  | "warning";
               } else if (match[2] === "message") {
                 qualifications[match[1]]["message"] = qualValue as string;
               }

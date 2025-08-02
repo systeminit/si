@@ -26,6 +26,12 @@ const GetFuncRunInputSchemaRaw = {
   code: z.boolean().optional().describe(
     "the function body; this can be very long, and you should only request it if you need it for analysis.",
   ),
+  args: z.boolean().optional().describe(
+    "the arguments to the function; these can be very long, and you should only request them if you need them for deep analysis.",
+  ),
+  result: z.boolean().optional().describe(
+    "the results of the function; this can be very long, and you should only request it if you need it for analysis.",
+  ),
 };
 
 const GetFuncRunOutputSchemaRaw = {
@@ -69,10 +75,10 @@ const GetFuncRunOutputSchemaRaw = {
     ]).describe(
       "'Action' means an action function on a component; 'Attribute' means an attribute function on a components attribute; 'CodeGeneration' means a code generation function on a component; 'Intrinsic' means it is not a javascript function, but instead implemented directly by SI; 'Qualification' means a qualification that a component is valid; 'SchemaVariantDefinition' means the typescript that defines the schema for a component; 'Unknown' means a function type that is not yet known to the system; 'Management' means a management function on a component (like import or discover.)",
     ),
-    args: z.string().describe(
+    args: z.string().optional().describe(
       "A JSON string representing the arguments passed as input to this function",
     ),
-    resultValue: z.string().describe(
+    resultValue: z.string().optional().describe(
       "A JSON string representing the return value of the function",
     ),
     logs: z.string().optional().describe(
@@ -105,7 +111,16 @@ export function funcRunGetTool(server: McpServer) {
       inputSchema: GetFuncRunInputSchemaRaw,
       outputSchema: GetFuncRunOutputSchemaRaw,
     },
-    async ({ changeSetId, funcRunId, logs, code }): Promise<CallToolResult> => {
+    async (
+      {
+        changeSetId,
+        funcRunId,
+        logs,
+        code,
+        args: showArguments,
+        result: showResult,
+      },
+    ): Promise<CallToolResult> => {
       const siApi = new FuncsApi(apiConfig);
       try {
         const response = await siApi.getFuncRun({
@@ -124,9 +139,16 @@ export function funcRunGetTool(server: McpServer) {
             response.data.funcRun.functionName,
           functionKind: response.data.funcRun
             .functionKind as FuncRunResult["functionKind"],
-          args: JSON.stringify(response.data.funcRun.functionArgs),
-          resultValue: JSON.stringify(response.data.funcRun.resultValue || {}),
         };
+        if (showArguments && response.data.funcRun.functionArgs) {
+          result.args = JSON.stringify(response.data.funcRun.functionArgs);
+        }
+        if (showResult && response.data.funcRun.resultValue) {
+          result.resultValue = JSON.stringify(
+            response.data.funcRun.resultValue,
+          );
+        }
+
         if (logs && response.data.funcRun.logs?.logs) {
           let logOutput = "";
           for (const logLine of response.data.funcRun.logs.logs) {
