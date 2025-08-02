@@ -166,6 +166,7 @@ import CarbonMaximize from "~icons/carbon/maximize";
 import CarbonTransformCode from "~icons/carbon/code"; // using this one as a placeholder for now
 import SettingsEdit from "~icons/carbon/settings-edit";
 import CarbonWarningAlt from "~icons/carbon/warning-alt";
+import CarbonWarningAltFilled from "~icons/carbon/warning-alt-filled";
 import Pin from "~icons/carbon/pin-filled";
 import Renew from "~icons/carbon/renew";
 import CarbonApps from "~icons/carbon/apps";
@@ -242,6 +243,7 @@ export const ICONS = Object.freeze({
   "alert-circle": AlertCircle,
   "alert-square": AlertSquare,
   "alert-triangle": AlertTriangle,
+  "alert-triangle-filled": CarbonWarningAltFilled,
   "alert-triangle-outline": CarbonWarningAlt,
   "arrows-out": PhArrowsOutCardinal,
   backspace: MaterialSymbolsBackspaceOutline,

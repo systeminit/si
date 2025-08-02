@@ -797,8 +797,9 @@ const icons = reactive<IconNames[]>([
   "check-hex-outline",
   "check-hex",
   "x-hex-outline",
+  "alert-triangle-filled",
 ]);
-const tones = reactive<Tones[]>(["success", "destructive"]);
+const tones = reactive<Tones[]>(["success", "destructive", "warning"]);
 
 const connections = useQuery<IncomingConnections[]>({
   queryKey,
@@ -1792,6 +1793,22 @@ watch(
               return icon ? `url(#${icon})` : "none";
             });
         });
+
+        // Socket connections alert icon
+        if (d.component.hasSocketConnections) {
+          d3.select(this)
+            .append("path")
+            .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
+            .attr("transform", () => {
+              // Position to the right of existing icons
+              const iconOffset = d.icons.length * 23;
+              return `translate(${WIDTH - 13 - iconOffset - 23}, ${
+                HEIGHT - 9
+              })`;
+            })
+            .attr("pointer-events", "none")
+            .style("fill", "url(#alert-triangle-filled-warning)");
+        }
       });
 
       svg

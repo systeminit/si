@@ -13,7 +13,13 @@
               'pr-xs',
               themeClasses('bg-destructive-200', 'bg-newhotness-destructive'),
             ],
+            props.hasSocketConnection && 'pr-xs',
           )
+        "
+        :style="
+          props.hasSocketConnection
+            ? { backgroundColor: 'rgba(125, 74, 23, 0.25)' }
+            : {}
         "
       >
         <!-- Attribute name -->
@@ -67,6 +73,11 @@
                       'border-destructive-600',
                       'border-destructive-400',
                     ),
+                  ]
+                : props.hasSocketConnection
+                ? [
+                    'mt-xs',
+                    themeClasses('border-neutral-400', 'border-neutral-600'),
                   ]
                 : themeClasses('border-neutral-400', 'border-neutral-600'),
 
@@ -208,6 +219,17 @@
       >
         <span>
           {{ props.validation.message }}
+        </span>
+      </div>
+
+      <!-- socket connections incompatibility message -->
+      <div
+        v-if="!inputOpen && props.hasSocketConnection"
+        :class="clsx('flex flex-row p-xs text-xs')"
+        :style="{ backgroundColor: 'rgba(125, 74, 23, 0.25)' }"
+      >
+        <span>
+          This attribute setting is incompatible with the new experience
         </span>
       </div>
 
@@ -709,6 +731,7 @@ const props = defineProps<{
   isSecret?: boolean;
   disableInputWindow?: boolean;
   forceReadOnly?: boolean;
+  hasSocketConnection?: boolean;
 }>();
 
 const showAllPossibleConnections = ref(false);

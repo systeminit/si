@@ -47,6 +47,19 @@
       </h3>
       <Icon v-if="component.toDelete" name="trash" size="md" />
       <Icon
+        v-else-if="component.hasSocketConnections"
+        v-tooltip="'Incompatibility found'"
+        name="alert-triangle-filled"
+        size="lg"
+        :class="
+          clsx(
+            themeClasses('text-warning-600', 'text-warning-400'),
+            'absolute top-[8px] right-[24px] rounded p-xs hover:cursor-pointer',
+            themeClasses('hover:bg-neutral-300', 'hover:bg-neutral-600'),
+          )
+        "
+      />
+      <Icon
         v-else-if="canBeUpgraded"
         name="bolt-outline"
         size="md"

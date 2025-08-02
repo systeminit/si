@@ -6,7 +6,8 @@
       v-if="
         showComponentStateBanner ||
         showStatusBanner ||
-        (component && component.toDelete)
+        (component && component.toDelete) ||
+        (component && hasSocketConnection)
       "
       class="banner flex flex-col"
     >
@@ -38,6 +39,7 @@
 
       <!-- Status and deletion banners for existing components -->
       <template v-if="component">
+        <!-- Status banner (template functions) -->
         <StatusBox
           v-if="showStatusBanner"
           :kind="
@@ -56,9 +58,10 @@
             />
           </template>
         </StatusBox>
-        <div v-if="showStatusBanner && component.toDelete" class="py-xs" />
+
+        <!-- Deletion banner (highest priority) -->
         <div
-          v-if="component.toDelete"
+          v-else-if="component.toDelete"
           :class="
             clsx(
               'flex flex-row items-center gap-xs px-sm py-xs',
@@ -78,6 +81,47 @@
             This component will be removed from HEAD once the current change set
             is applied.
           </TruncateWithTooltip>
+        </div>
+
+        <!-- Socket connections banner (lowest priority) -->
+        <!-- TODO: Paul to get the light mode bg color -->
+        <div
+          v-else-if="hasSocketConnection"
+          :class="
+            clsx(
+              'flex flex-row items-center gap-xs px-sm py-xs border',
+              themeClasses(
+                'bg-warning-50 border-warning-400 text-neutral-900',
+                'border-warning-400 text-neutral-100',
+              ),
+            )
+          "
+          :style="{ backgroundColor: 'rgba(125, 74, 23, 0.25)' }"
+        >
+          <Icon
+            name="alert-triangle-filled"
+            size="sm"
+            :class="themeClasses('text-warning-600', 'text-warning-300')"
+          />
+          <TruncateWithTooltip class="py-2xs text-sm flex-1">
+            Some settings in this component are incompatible with the new
+            experience. To learn how to update them, check out our
+            documentation.
+          </TruncateWithTooltip>
+          <VButton
+            size="sm"
+            label="Learn more"
+            :class="
+              clsx(
+                '!text-sm !border !cursor-pointer !px-xs',
+                themeClasses(
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                ),
+              )
+            "
+            @click="openWorkspaceMigrationDocumentation"
+          />
         </div>
       </template>
     </div>
@@ -480,6 +524,7 @@ import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 import { useManagementFuncJobState } from "./logic_composables/management";
 import { useComponentActions } from "./logic_composables/component_actions";
+import { openWorkspaceMigrationDocumentation } from "./util";
 
 const props = defineProps<{
   componentId: string;
@@ -538,6 +583,13 @@ const hasResourceValueProps = computed(() => {
   const subtreeChildCount = resourceValueSubtree?.children?.length;
   if (!subtreeChildCount) return false;
   return subtreeChildCount > 0;
+});
+
+const hasSocketConnection = computed(() => {
+  if (!attributeTree.value) return false;
+  return Object.values(attributeTree.value.attributeValues).some(
+    (av) => av.hasSocketConnection,
+  );
 });
 
 const component = computed(() => componentQuery.data.value);
@@ -831,7 +883,10 @@ const gridStateClass = computed(() => {
     return "no-component";
   }
 
-  const hasBanner = showStatusBanner.value || component.value?.toDelete;
+  const hasBanner =
+    showStatusBanner.value ||
+    component.value?.toDelete ||
+    hasSocketConnection.value;
 
   if (docsOpen.value) {
     return hasBanner ? "docs-open-with-banner" : "docs-open-without-banner";

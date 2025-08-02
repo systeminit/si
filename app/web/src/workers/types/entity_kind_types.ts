@@ -309,6 +309,7 @@ export interface ComponentInList {
   diffStatus: ComponentDiffStatus;
   toDelete: boolean;
   resourceId: string | null;
+  hasSocketConnections: boolean;
 }
 
 export interface BifrostComponentList {
@@ -377,6 +378,7 @@ export interface AttributeValue {
   overriden: boolean;
   validation?: ValidationOutput;
   secret: Secret | null;
+  hasSocketConnection: boolean;
 }
 
 export interface ExternalSource {
