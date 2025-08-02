@@ -4,6 +4,7 @@ use dal::{
     DedicatedExecutor,
     DedicatedExecutorError,
 };
+use edda_core::nats;
 use miniz_oxide::deflate;
 use nats_std::header;
 use serde::Serialize;
@@ -79,7 +80,7 @@ impl EddaUpdates {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
         self.serialize_compress_publish(
-            subject::update_for(
+            nats::subject::workspace_update_for(
                 self.subject_prefix.as_deref(),
                 patch_batch.meta.workspace_id.array_to_str(&mut id_buf),
                 patch_batch.kind(),
@@ -107,7 +108,7 @@ impl EddaUpdates {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
         self.serialize_compress_publish(
-            subject::update_for(
+            nats::subject::workspace_update_for(
                 self.subject_prefix.as_deref(),
                 streaming_patch.workspace_id.array_to_str(&mut id_buf),
                 streaming_patch.message_kind(),
@@ -128,7 +129,7 @@ impl EddaUpdates {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
         self.serialize_compress_publish(
-            subject::update_for(
+            nats::subject::workspace_update_for(
                 self.subject_prefix.as_deref(),
                 index_update.meta.workspace_id.array_to_str(&mut id_buf),
                 index_update.kind(),
@@ -202,19 +203,5 @@ impl EddaUpdates {
             .publish_with_headers(subject, headers, payload.into())
             .await
             .map_err(Into::into)
-    }
-}
-
-mod subject {
-    use si_data_nats::Subject;
-
-    const UPDATES_SUBJECT_PREFIX: &str = "edda.updates";
-
-    #[inline]
-    pub fn update_for(prefix: Option<&str>, workspace_id: &str, kind: &str) -> Subject {
-        nats_std::subject::prefixed(
-            prefix,
-            format!("{UPDATES_SUBJECT_PREFIX}.{workspace_id}.{kind}"),
-        )
     }
 }
