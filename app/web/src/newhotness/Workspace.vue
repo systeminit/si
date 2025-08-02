@@ -30,7 +30,7 @@
       >
         <NavbarButton
           tooltipText="Compose"
-          icon="diagram"
+          icon="grid"
           :selected="route.name?.toString().startsWith('new-hotness')"
           :linkTo="compositionLink"
         />
