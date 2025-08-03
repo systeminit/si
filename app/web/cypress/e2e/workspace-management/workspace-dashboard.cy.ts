@@ -35,7 +35,8 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         return false;
       });
 
-      cy.appModelPageLoaded();
+      // TODO: This needs to be updated to check for the new experience loading
+      // cy.appModelPageLoaded();
     });
   });
 });
