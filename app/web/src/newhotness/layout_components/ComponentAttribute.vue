@@ -157,6 +157,7 @@
             @delete="(path) => emit('delete', path)"
             @remove-subscription="(path) => emit('removeSubscription', path)"
             @add="(...args) => emit('add', ...args)"
+            @set-key="(...args) => emit('setKey', ...args)"
           />
         </ul>
         <div
@@ -207,8 +208,8 @@
               tone="shade"
               variant="ghost"
               size="sm"
-              :loading="addApi.bifrosting.value"
-              :disabled="addApi.bifrosting.value"
+              :loading="addButtonBifrosting"
+              :disabled="addButtonBifrosting"
               loadingIcon="loader"
               :tabindex="0"
               @click="add"
@@ -249,7 +250,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { VButton, IconButton, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
@@ -313,7 +314,11 @@ const parentHasExternalSources = computed(() => {
   return props.parentHasExternalSources || false;
 });
 
-const addApi = useApi();
+const addButtonBifrosting = computed(() => {
+  return props.attributeTree.prop?.kind === "map"
+    ? wForm.bifrosting.value
+    : false;
+});
 
 export type NewChildValue = [] | object | "";
 const emptyChildValue = (): NewChildValue => {
@@ -344,6 +349,7 @@ const keyForm = wForm.newForm({
   onSubmit: async ({ value }) => {
     emit("setKey", props.attributeTree, value.key, emptyChildValue());
   },
+  watchFn: () => props.attributeTree.children.length,
 });
 
 const saveKeyIfFormValid = async () => {
@@ -356,20 +362,11 @@ const saveKeyIfFormValid = async () => {
 
 const saveKey = async () => {
   await keyForm.handleSubmit();
-
-  // this gets us the bifrosting spinner
-  watch(
-    () => props.attributeTree.children.length,
-    () => {
-      // we need nextTick here because otherwise the reset doesn't work
-      // not 100% sure why, but probably has something to do with the Vue template
-      // rerendering between the if/else main sections - only one has the form displaying!
-      nextTick(() => keyForm.reset(keyData.value));
-    },
-    { once: true },
-  );
+  // The keyForm has a watchFn that automatically handles bifrosting reset
+  // when props.attributeTree.children.length changes
 };
 
+const addApi = useApi();
 const add = () => {
   if (props.attributeTree.prop?.kind === "map") {
     saveKeyIfFormValid();

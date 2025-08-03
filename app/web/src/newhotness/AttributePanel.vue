@@ -334,6 +334,14 @@ const setKey = async (
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
+
+  // Track the current children count before making the API call
+  const initialChildrenCount = attributeTree.children.length;
+  keyApi.setWatchFn(
+    // Watch for the children count to actually increase
+    () => attributeTree.children.length > initialChildrenCount,
+  );
+
   const childPath =
     `${attributeTree.attributeValue.path}/${key}` as AttributePath;
   const payload = {
@@ -368,9 +376,12 @@ const add = async (
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
+
+  // Track the current children count before making the API call
+  const initialChildrenCount = attributeTree.children.length;
   addApi.setWatchFn(
-    // once the children count updates, we can stop spinning
-    () => attributeTree.children.length,
+    // Watch for the children count to actually increase
+    () => attributeTree.children.length > initialChildrenCount,
   );
 
   // Do I send `{}` for array of map/object or "" for array of string?
@@ -518,9 +529,17 @@ const resourceIdFormValue = ref<string | undefined>();
 const importInputRef = ref<HTMLInputElement>();
 
 const bifrostingResourceId = ref(false);
-const resettingResourceId = ref(false);
 const saveResourceId = async () => {
   if (!resourceIdFormValue.value) {
+    return;
+  }
+
+  // Normalize values for comparison (handle null, undefined, empty string)
+  const formValue = resourceIdFormValue.value || null;
+  const currentValue = resourceIdValue.value || null;
+
+  // Only save if the value has actually changed
+  if (formValue === currentValue) {
     return;
   }
 
@@ -533,10 +552,6 @@ watch(
   resourceIdFormValue,
   _.debounce(
     () => {
-      if (resettingResourceId.value) {
-        resettingResourceId.value = false;
-        return;
-      }
       saveResourceId();
     },
     500,
@@ -602,8 +617,23 @@ const importing = computed(
     ),
 );
 
+// Initialize form value when component mounts or data changes
+// This ensures the form always reflects the current server value initially
+watch(
+  () => resourceIdValue.value,
+  (newValue) => {
+    // Only update form if user isn't currently editing (no focus) or if it's the initial load
+    if (
+      !resourceIdFormValue.value ||
+      resourceIdFormValue.value === (resourceIdValue.value ?? undefined)
+    ) {
+      resourceIdFormValue.value = newValue ?? undefined;
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
-  resourceIdFormValue.value = resourceIdValue.value ?? undefined;
   keyEmitter.on("Tab", (e) => {
     e.preventDefault();
     focusNameInput();
