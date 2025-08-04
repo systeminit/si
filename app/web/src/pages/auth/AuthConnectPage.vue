@@ -36,6 +36,7 @@ import AppLayout from "@/components/layout/AppLayout.vue";
 
 import { useAuthStore } from "@/store/auth.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { readTokens } from "@/newhotness/logic_composables/tokens";
 
 import AuthPageHeader from "./AuthPageHeader.vue";
 
@@ -62,6 +63,8 @@ onMounted(async () => {
     code: connectCode,
     onDemandAssets,
   });
+
+  readTokens();
 
   if (connectReq.result.success) {
     const workspacePk = connectReq.result.data.workspace.pk;

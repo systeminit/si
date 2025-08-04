@@ -83,6 +83,10 @@
     >
       <Lobby v-if="!tokenFail && lobby" />
     </Transition>
+
+    <main v-if="lobby && tokenFail" class="grow min-h-0">
+      <div>Bad Token</div>
+    </main>
   </div>
 </template>
 
