@@ -1,11 +1,17 @@
 import * as _ from "lodash-es";
 import { computed, ComputedRef, inject, Ref, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
-import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import { RouteLocationNormalizedLoadedGeneric, Router } from "vue-router";
+import {
+  ChangeSet,
+  ChangeSetId,
+  ChangeSetStatus,
+} from "@/api/sdf/dal/change_set";
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
 import { assertIsDefined, Context } from "../types";
 import { routes, useApi } from "../api_composables";
 import { useStatus } from "./status";
+import { reset } from "./navigation_stack";
 
 /**
  * USED in Workspace.vue
@@ -83,7 +89,8 @@ const useDisableApplyChangeSetInner = () => {
 
   return computed(
     () =>
-      ctx.changeSet.value?.status !== ChangeSetStatus.Open ||
+      (ctx.changeSet.value?.status !== ChangeSetStatus.Open &&
+        ctx.changeSet.value?.status !== ChangeSetStatus.NeedsApproval) ||
       ctx.onHead.value ||
       status.value === "syncing",
   );
@@ -95,4 +102,21 @@ export const useApplyChangeSet = () => {
   const applyChangeSet = useApplyChangeSetInner(ctx);
   const disableApplyChangeSet = useDisableApplyChangeSetInner();
   return { applyChangeSet, disableApplyChangeSet };
+};
+
+export const navigateToExistingChangeSet = async (
+  changeSetId: ChangeSetId,
+  route: RouteLocationNormalizedLoadedGeneric,
+  router: Router,
+) => {
+  const name = route.name;
+  await router.push({
+    name,
+    params: {
+      ...route.params,
+      changeSetId,
+    },
+    query: route.query,
+  });
+  reset();
 };

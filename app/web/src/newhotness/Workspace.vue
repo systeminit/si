@@ -55,7 +55,11 @@
       </div>
 
       <!-- Right -->
-      <NavbarPanelRight :changeSetId="changeSetId" :workspaceId="workspacePk" />
+      <NavbarPanelRight
+        :changeSetId="changeSetId"
+        :workspaceId="workspacePk"
+        :changeSetsNeedingApproval="changeSetsNeedingApproval"
+      />
     </nav>
 
     <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
@@ -121,13 +125,13 @@ import {
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
-import { ChangeSet } from "@/api/sdf/dal/change_set";
+import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
-import { Context, FunctionKind } from "./types";
+import { Context, FunctionKind, AuthApiWorkspace } from "./types";
 import {
   startMouseEmitters,
   startKeyEmitter,
@@ -138,6 +142,7 @@ import { tokensByWorkspacePk } from "./logic_composables/tokens";
 import ComponentPage from "./ComponentDetails.vue";
 import NavbarPanelLeft from "./nav/NavbarPanelLeft.vue";
 import { useChangeSets } from "./logic_composables/change_set";
+import { routes, useApi } from "./api_composables";
 
 const tracer = trace.getTracer("si-vue");
 const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
@@ -279,23 +284,54 @@ const ctx = computed<Context>(() => {
   };
 });
 
+const workspaceApi = useApi(ctx.value);
+const workspaceQuery = useQuery<Record<string, AuthApiWorkspace>>({
+  queryKey: ["workspaces"],
+  staleTime: 5000,
+  queryFn: async () => {
+    const call = workspaceApi.endpoint<AuthApiWorkspace[]>(routes.Workspaces);
+    const response = await call.get();
+    if (workspaceApi.ok(response)) {
+      const renameIdList = _.map(response.data, (w) => ({
+        ...w,
+        pk: w.id,
+      }));
+      const workspacesByPk = _.keyBy(renameIdList, "pk");
+      return workspacesByPk;
+    }
+    return {} as Record<string, AuthApiWorkspace>;
+  },
+});
+
+const workspaces = computed(() => {
+  return {
+    workspaces: computed(() => workspaceQuery.data.value),
+  };
+});
+provide("WORKSPACES", workspaces.value);
+
 const {
   openChangeSets,
   changeSet: activeChangeSet,
   headChangeSetId,
   defaultApprovers,
 } = useChangeSets(ctx, queriesEnabled);
+
+const changeSetsNeedingApproval = computed(() =>
+  openChangeSets.value.filter(
+    (cs) => cs.status === ChangeSetStatus.NeedsApproval,
+  ),
+);
+
 watch(defaultApprovers, () => {
   approvers.value = defaultApprovers.value;
 });
 watch(activeChangeSet, () => {
   changeSet.value = activeChangeSet.value;
 });
-
 watch(headChangeSetId, () => {
   _headChangeSetId.value = headChangeSetId.value;
 });
-
 watch(
   () => openChangeSets,
   () => {
@@ -474,8 +510,14 @@ realtimeStore.subscribe(
     },
     {
       eventType: "ChangeSetStatusChanged",
-      callback: async (_data) => {
+      callback: async (data) => {
         queryClient.invalidateQueries({ queryKey: ["changesets"] });
+        queryClient.invalidateQueries({
+          queryKey: ["approvalstatus", data.changeSet.id],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["approvalstatusbychangesetid", data.changeSet.id],
+        });
         /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
         if (
           [
@@ -633,6 +675,17 @@ realtimeStore.subscribe(
       eventType: "ChangeSetRename",
       callback: () => {
         queryClient.invalidateQueries({ queryKey: ["changesets"] });
+      },
+    },
+    {
+      eventType: "ChangeSetApprovalStatusChanged",
+      callback: (changeSetId) => {
+        queryClient.invalidateQueries({
+          queryKey: ["approvalstatus", changeSetId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["approvalstatusbychangesetid", changeSetId],
+        });
       },
     },
   ],

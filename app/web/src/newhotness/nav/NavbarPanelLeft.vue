@@ -52,27 +52,12 @@ import {
   DropdownMenuItem,
   Icon,
 } from "@si/vue-lib/design-system";
-import { computed, ref, watch } from "vue";
-import { useQuery } from "@tanstack/vue-query";
+import { computed, inject, ref, watch } from "vue";
 import StatusPanel from "@/newhotness/StatusPanel.vue";
-import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
-import { routes, useApi } from "../api_composables";
+import { Workspaces } from "../types";
 
-type InstanceEnvType = "LOCAL" | "PRIVATE" | "SI";
-
-type AuthApiWorkspace = {
-  creatorUserId: string;
-  displayName: string;
-  id: WorkspacePk;
-  pk: WorkspacePk; // not actually in the response, but we backfill
-  instanceEnvType: InstanceEnvType;
-  instanceUrl: string;
-  role: "OWNER" | "EDITOR";
-  token: string;
-  isHidden: boolean;
-  approvalsEnabled: boolean;
-};
+const workspaces = inject<Workspaces>("WORKSPACES");
 
 const props = defineProps<{
   workspaceId: string;
@@ -98,34 +83,18 @@ const updateRoute = (newWorkspacePk: string) => {
   }/workspaces/${newWorkspacePk}/go`;
 };
 
-const workspaceApi = useApi();
-const workspaceQuery = useQuery<Record<string, AuthApiWorkspace>>({
-  queryKey: ["workspaces"],
-  staleTime: 5000,
-  queryFn: async () => {
-    const call = workspaceApi.endpoint<AuthApiWorkspace[]>(routes.Workspaces);
-    const response = await call.get();
-    if (workspaceApi.ok(response)) {
-      const renameIdList = _.map(response.data, (w) => ({
-        ...w,
-        pk: w.id,
-      }));
-      const workspacesByPk = _.keyBy(renameIdList, "pk");
-      return workspacesByPk;
-    }
-    return {} as Record<string, AuthApiWorkspace>;
-  },
-});
-
-const workspaceDropdownOptions = computed(() =>
-  _.map(
-    _.filter(workspaceQuery.data.value, (w) => !w.isHidden),
+const workspaceDropdownOptions = computed<
+  Array<{ value: string; label: string }>
+>(() => {
+  if (!workspaces?.workspaces?.value) return [];
+  return _.map(
+    _.filter(workspaces.workspaces.value, (w) => !w.isHidden),
     (w) => ({
       value: w.pk,
       label: w.displayName,
     }),
-  ),
-);
+  );
+});
 
 const searchFilteredWorkspaceDropdownOptions = computed(() => {
   const searchString = dropdownMenuRef.value?.searchString;

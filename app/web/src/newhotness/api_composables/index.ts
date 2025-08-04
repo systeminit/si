@@ -24,7 +24,12 @@ export enum routes {
   ActionRetry = "ActionRetry",
   ActionFuncRunId = "ActionFuncRunId",
   ApplyChangeSet = "ApplyChangeSet",
+  ChangeSetApprovalStatus = "ChangeSetApprovalStatus",
+  ChangeSetApprove = "ChangeSetApprove",
+  ChangeSetCancelApprovalRequest = "ChangeSetCancelApprovalRequest",
   ChangeSetRename = "ChangeSetRename",
+  ChangeSetReopen = "ChangeSetReopen",
+  ChangeSetRequestApproval = "ChangeSetRequestApproval",
   CreateComponent = "CreateComponent",
   CreateSecret = "CreateSecret",
   CreateTemplate = "CreateTemplate",
@@ -54,6 +59,7 @@ export enum routes {
   AbandonChangeSet = "AbandonChangeSet",
   Workspaces = "Workspaces",
   ChangeSets = "ChangeSets",
+  WorkspaceListUsers = "WorkspaceListUsers",
 }
 
 /**
@@ -82,7 +88,12 @@ const _routes: Record<routes, string> = {
   ActionRetry: "/action/<id>/retry",
   ActionFuncRunId: "/action/<id>/func_run_id",
   ApplyChangeSet: "/apply",
+  ChangeSetApprove: "/approve",
+  ChangeSetApprovalStatus: "/approval_status",
+  ChangeSetCancelApprovalRequest: "/cancel_approval_request",
   ChangeSetRename: "/rename",
+  ChangeSetReopen: "/reopen",
+  ChangeSetRequestApproval: "/request_approval",
   CreateComponent: "/views/<viewId>/component",
   CreateSecret: "/components/<id>/secret",
   CreateTemplate: "/management/generate_template/<viewId>",
@@ -113,6 +124,7 @@ const _routes: Record<routes, string> = {
   AbandonChangeSet: "/change_set/abandon_change_set",
   Workspaces: "/workspaces", // not a v2 url
   ChangeSets: "CHANGESETS", // a short v2 url
+  WorkspaceListUsers: "WORKSPACELISTUSERS", // a short v2 url
 } as const;
 
 // the mechanics
@@ -181,6 +193,9 @@ export class APICall<Response> {
     }
     if ([_routes.ChangeSets].includes(this.path)) {
       return `v2/workspaces/${this.workspaceId}/change-sets`;
+    }
+    if ([_routes.WorkspaceListUsers].includes(this.path)) {
+      return `v2/workspaces/${this.workspaceId}/users`;
     }
     const API_PREFIX = `v2/workspaces/${this.workspaceId}/change-sets/${this.changeSetId}`;
     return `${API_PREFIX}${this.path}`;

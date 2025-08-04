@@ -7,6 +7,26 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
+import { WorkspacePk } from "./api_composables/si_id";
+
+type InstanceEnvType = "LOCAL" | "PRIVATE" | "SI";
+
+export type AuthApiWorkspace = {
+  creatorUserId: string;
+  displayName: string;
+  id: WorkspacePk;
+  pk: WorkspacePk; // not actually in the response, but we backfill
+  instanceEnvType: InstanceEnvType;
+  instanceUrl: string;
+  role: "OWNER" | "EDITOR";
+  token: string;
+  isHidden: boolean;
+  approvalsEnabled: boolean;
+};
+
+export interface Workspaces {
+  workspaces: ComputedRef<Record<WorkspacePk, AuthApiWorkspace> | undefined>;
+}
 
 export interface Context {
   workspacePk: ComputedRef<string>;
