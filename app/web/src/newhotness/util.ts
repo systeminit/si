@@ -113,5 +113,8 @@ export function objectKeys<T extends object>(obj: T): Array<keyof T> {
 }
 
 export const openWorkspaceMigrationDocumentation = () => {
-  globalThis.window?.open("https://docs.systeminit.com", "_blank");
+  globalThis.window?.open(
+    "https://docs.systeminit.com/explanation/workspace-migration",
+    "_blank",
+  );
 };
