@@ -253,7 +253,7 @@
                   :href="`https://auth.systeminit.com/workspace/${ctx?.workspacePk.value}`"
                   target="_blank"
                 >
-                  Invite a team mate
+                  Invite a teammate
                 </a>
               </div>
             </div>
