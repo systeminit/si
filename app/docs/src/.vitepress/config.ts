@@ -140,22 +140,6 @@ export default defineConfig({
         collapsed: false,
         items: [
           {
-            text: "Asset Schema",
-            link: "/reference/asset/schema",
-          },
-          {
-            text: "Asset Functions",
-            link: "/reference/asset/function",
-          },
-          {
-            text: "Authorization Roles",
-            link: "/reference/authorization-roles",
-          },
-          {
-            text: "GitHub Action",
-            link: "/reference/github-action",
-          },
-          {
             text: "Public API",
             link: "/reference/public-api",
           },

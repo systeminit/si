@@ -15,11 +15,11 @@ focus is on introducing you to the user interface and various high level
 concepts. For deeper details on writing specific function types,
 [see the reference guides](../reference/index.md).
 
-:::tip
-While creating Components and writing functions does require you to write
+:::tip While creating Components and writing functions does require you to write
 TypeScript, don't worry if you aren't familiar with the language. System
-Initiative functions tend to be quite short and easy to reason with. You'll
-pick it up.
+Initiative functions tend to be quite short and easy to reason with. You'll pick
+it up.
+
 :::
 
 ## Create a Change Set
@@ -36,8 +36,6 @@ Click the `Beaker` icon to switch to the Customize screen.
 
 ## Create a new Hello World Component
 
-![Create a new Hello World Component](./creating-components/create-a-new-hello-world-component.png)
-
 Click the `New Asset` button (represented by a `+` icon) in the Assets pallete
 in the left side panel.
 
@@ -48,9 +46,9 @@ Click `Create Asset`.
 Make sure the `Hello World` is selected in the Assets sub-panel of the left side
 of the screen.
 
-:::tip
-Assets are anything you might need to use in System Initiative - today, they are
-synonymous with Components.
+:::tip Assets are anything you might need to use in System Initiative - today,
+they are synonymous with Components.
+
 :::
 
 ## Set the Hello World meta-data
@@ -114,10 +112,10 @@ You define your Components schema by writing a TypeScript function named
 `main()`. The function begins by creating a new `AssetBuilder()`, stored in a
 variable named `asset`.
 
-:::tip
-This `builder` pattern is a recurring one in Schema definition. You will create
-new `Builder` objects, then call functions to configure them, and finally call
-`.build()` to output the final definition.
+:::tip This `builder` pattern is a recurring one in Schema definition. You will
+create new `Builder` objects, then call functions to configure them, and finally
+call `.build()` to output the final definition.
+
 :::
 
 ### 2. The Hello property
@@ -139,9 +137,9 @@ call functions on to configure your property.
 - `setValidationFormat` adds a validation that ensures the value of Hello is
   `world`.
 
-:::tip
-Hovering over a function will show you its definition. This can be very helpful
-for reminding yourself of the available options!
+:::tip Hovering over a function will show you its definition. This can be very
+helpful for reminding yourself of the available options!
+
 :::
 
 Finish your property definition by calling `.build()`.
@@ -164,9 +162,9 @@ PropBuilder.
 
 Finish your property definition by calling `.build()`.
 
-:::tip
-There is a `format` button in the top right of the editor! Use it to
+:::tip There is a `format` button in the top right of the editor! Use it to
 auto-format your function as you go.
+
 :::
 
 ### 4. Return the compiled Asset
@@ -191,7 +189,8 @@ with the new Schema.
 
 Click the `Grid` icon to switch to the Grid.
 
-Press `N` or click `Add a component` to bring up the Component search, type `Hello World`, select and `Enter` to add your new Component.
+Press `N` or click `Add a component` to bring up the Component search, type
+`Hello World`, select and `Enter` to add your new Component.
 
 Name your `Hello World` Component `First Component`.
 
@@ -219,7 +218,8 @@ Name your Qualification `helloWorldTags` and click `+ Attach new function`.
 
 ## Set the Qualifications meta-data
 
-In the Asset Functions panel on the bottom left, click `Qualifications`, this is where your Qualification functions can be selected for editing.
+In the Asset Functions panel on the bottom left, click `Qualifications`, this is
+where your Qualification functions can be selected for editing.
 
 ![Qualification Metadata](./creating-components/qualification-metadata.png)
 
@@ -277,44 +277,54 @@ Here is what the function should look like once written:
 
 Click the `Grid` icon to switch to the Grid.
 
-You can see your `Hello World` Component on the Grid, and it has 1 Failed Qualification.
+You can see your `Hello World` Component on the Grid, and it has 1 Failed
+Qualification.
 
 ![Check Qualification](./creating-components/check-qualification.png)
 
-To view the result, you can click the failed `Qualification` in the Recent function runs panel, or click into the Component, then click Qualifications on the right-side panel.
+To view the result, you can click the failed `Qualification` in the Recent
+function runs panel, or click into the Component, then click Qualifications on
+the right-side panel.
 
 ![View Failed Qualification in Component](./creating-components/view-failed-qualification-in-component.png)
 
-This tells you that the Qualification failed because no tag has a key named `Super` and a value of `Duper`. So in the Tags property field, click `+ Add "Tags" item`, then enter value for `Key` `Super` and `Value` `Duper`. Your Qualification function has now automatically re-run and passed!
+This tells you that the Qualification failed because no tag has a key named
+`Super` and a value of `Duper`. So in the Tags property field, click
+`+ Add "Tags" item`, then enter value for `Key` `Super` and `Value` `Duper`.
+Your Qualification function has now automatically re-run and passed!
 
 ![Passing Qualification](./creating-components/passing-qualification.png)
 
-Now click the `Apply Change Set` button in the header, and then `Apply Change Set`. Your Component is now ready to be used from HEAD.
+Now click the `Apply Change Set` button in the header, and then
+`Apply Change Set`. Your Component is now ready to be used from HEAD.
 
 ## Create a new Change Set
 
-Create a new Change set by clicking the Create Change Set button, and call it `Editing Components`.
+Create a new Change set by clicking the Create Change Set button, and call it
+`Editing Components`.
 
 ## Edit your Hello World Component
 
 Switch to the `Customize` screen by clicking the Beaker icon in the header.
 
-In the Asset panel on the left, click your Hello World Asset, then on the top right, click `Edit`. This unlocks and creates an editable version of your Asset.
+In the Asset panel on the left, click your Hello World Asset, then on the top
+right, click `Edit`. This unlocks and creates an editable version of your Asset.
 
 ![Editable Asset](./creating-components/editable-asset.png)
 
 ## Add a new property to Hello World
 
-Add a new `Awesome` boolean property to the `Hello World` schema below the `tagsProp`.
+Add a new `Awesome` boolean property to the `Hello World` schema below the
+`tagsProp`.
 
 The code looks like this:
 
 ```typescript
-    const awesomeProp = new PropBuilder()
-        .setName("Awesome")
-        .setKind("boolean")
-        .build();
-    asset.addProp(awesomeProp);
+const awesomeProp = new PropBuilder()
+  .setName("Awesome")
+  .setKind("boolean")
+  .build();
+asset.addProp(awesomeProp);
 ```
 
 Click `Regenerate Asset` when you are done.
@@ -323,11 +333,16 @@ Click `Regenerate Asset` when you are done.
 
 ## Upgrade to your new Hello World Component
 
-Click the Grid icon to view your Hello World Component. You can see it now has a lightning bolt icon in the top right corner, this means that the Component is `Upgradeable`. Right click the Component, and select Upgrade (or press `U`), to upgrade to the new 'version'.
+Click the Grid icon to view your Hello World Component. You can see it now has a
+lightning bolt icon in the top right corner, this means that the Component is
+`Upgradeable`. Right click the Component, and select Upgrade (or press `U`), to
+upgrade to the new 'version'.
 
 ![Upgrade Hello World](./creating-components/upgrade-hello-world.png)
 
-Now click the Hello World Component. You can see the new `Awesome` property in the Attributes panel, and if you click into it, you have an option to select `true` or `false`.
+Now click the Hello World Component. You can see the new `Awesome` property in
+the Attributes panel, and if you click into it, you have an option to select
+`true` or `false`.
 
 ![New Property Awesome](./creating-components/new-property-awesome.png)
 
@@ -335,24 +350,31 @@ Now click the Hello World Component. You can see the new `Awesome` property in t
 
 Click the `Beaker` icon to switch to the Customize screen.
 
-In the `Asset Functions` panel, click the `Hello World Tags` Qualification function. You can see this that is not currently editable, so click the `Edit` button in the top right in line with the Function name.
+In the `Asset Functions` panel, click the `Hello World Tags` Qualification
+function. You can see this that is not currently editable, so click the `Edit`
+button in the top right in line with the Function name.
 
 ![Click Edit Function](./creating-components/click-edit-function.png)
 
-Now you have an editing version of the function, lets add a `console.log("Hello there!)` to the function on line 2. To ensure that this change to your function remains, you would need to Apply the Change set.
+Now you have an editing version of the function, lets add a
+`console.log("Hello there!)` to the function on line 2. To ensure that this
+change to your function remains, you would need to Apply the Change set.
 
 ## Updating Assets from System Initiative
 
 You can update assets as new versions are published from System Initiative from
-the customize screen. You can click the `Check for Asset Updtes` button (two arrows), then if an Asset can be updated, you will see an `Update All` button above the Asset list, and specific assets will have the same icon next to their entry in the list, and next to their title in the right side panel, if
-they have an update available.
+the customize screen. You can click the `Check for Asset Updtes` button (two
+arrows), then if an Asset can be updated, you will see an `Update All` button
+above the Asset list, and specific assets will have the same icon next to their
+entry in the list, and next to their title in the right side panel, if they have
+an update available.
 
 ![Updating Assets from System Initiative](./creating-components/updating-assets-from-system-initiative.png)
 
 ## Contributing Assets to System Initiative
 
-If you have created or edited an Asset that you want to contribute to the community,
-you can do so once you've applied it to your workspace.
+If you have created or edited an Asset that you want to contribute to the
+community, you can do so once you've applied it to your workspace.
 
 The Asset will appear with a `Contribute` button (a cloud with an up arrow).
 Select the Asset from the list, and click the icon next to the assets name in
@@ -360,14 +382,15 @@ the right side panel.
 
 ![Contribute Assets](./creating-components/contribute-assets.png)
 
-You'll be notified that the code will be reviewed, and agree that by clicking the
-contribute button the code will be contributed under the Apache License.
+You'll be notified that the code will be reviewed, and agree that by clicking
+the contribute button the code will be contributed under the Apache License.
 
 If you do, we'll be in touch with some awesome swag for you. :)
 
 ## Clean Up
 
-To clean up your workspace, right click the `Hello World` Component, delete, and then Apply the Change set.
+To clean up your workspace, right click the `Hello World` Component, delete, and
+then Apply the Change set.
 
 ## Congratulations
 

@@ -4,21 +4,9 @@ This is a reference to all of the vocabulary used in System Initiative.
 
 ## Actions
 
-Actions are specific operations that are queued up to change your infrastructure, such as creating, refreshing, updating or deleting a real-world resource.
-
-## Asset
-
-Anything that can be used on the canvas.
-
-## Attribute Panel
-
-The panel on the right side of the composition screen, which shows the
-attributes of the currently selected item.
-
-## Arity
-
-The number of arguments taken by a function. Most frequently used to specify how
-many edges can connect to a socket (either "one" or "many".)
+Actions are specific operations that are queued up to change your
+infrastructure, such as creating, refreshing, updating or deleting a real-world
+resource.
 
 ## Change Set
 
@@ -36,7 +24,10 @@ updated to reflect the proposed changes to the model on HEAD.
 
 ## Context Menu
 
-The Context Menu contains all available Actions to a Component at that time, both in the Grid and Map view. The Context Menu enables a user to edit, pin, duplicate, erase, delete, create templates, add to/remove from view and run actions on Components.
+The Context Menu contains all available Actions to a Component at that time,
+both in the Grid and Map view. The Context Menu enables a user to edit, pin,
+duplicate, erase, delete, create templates, add to/remove from view and run
+actions on Components.
 
 ### Creating a Change Set
 
@@ -74,23 +65,21 @@ A credential is a type of component that stores secret data and has
 authentication functions attached to it. They are used to provide access to
 cloud providers, etc.
 
-## Edge
-
-A representation of a relationship between one component's Output Socket and
-another component's input socket.
-
 ## Entity
 
-This word encapsulates relevant objects that can be mutated, used, or are actors in System Initiative.
-The Audit Trail dashboard makes use of this term to standardize all relevant objects seen in Audit Logs.
+This word encapsulates relevant objects that can be mutated, used, or are actors
+in System Initiative. The Audit Trail dashboard makes use of this term to
+standardize all relevant objects seen in Audit Logs.
 
 ### Entity Type
 
-This is the type of an entity. A "Component" and a "Func" are entity types in System Initiative.
+This is the type of an entity. A "Component" and a "Func" are entity types in
+System Initiative.
 
 ### Entity name
 
-This is the name of an entity. A "Component" could have the name "Server" and a Func could have the name "Validate Container Image".
+This is the name of an entity. A "Component" could have the name "Server" and a
+Func could have the name "Validate Container Image".
 
 ## HEAD
 
@@ -110,11 +99,14 @@ mouthful than 'multi-dimensional graph'.
 
 ## Grid
 
-The Grid is a a tile like visualization of your created Components. On the Grid page you can also see pending Actions and your Function run history.
+The Grid is a a tile like visualization of your created Components. On the Grid
+page you can also see pending Actions and your Function run history.
 
 ## Map
 
-The Map is a visual representation of your created Components and their relationships via prop to prop Subscriptions. You can also create, edit, delete etc. from the Map.
+The Map is a visual representation of your created Components and their
+relationships via prop to prop Subscriptions. You can also create, edit, delete
+etc. from the Map.
 
 ## Model
 
@@ -150,13 +142,17 @@ defined by a credential component.
 
 ## Subscription
 
-Subscriptions create a connection between properties of different components, allowing them to share and synchronize data. For example, if one component has an ImageId property and another has an Image property, you can subscribe the Image property to the ImageId. This ensures that the Image property stays up to date whenever the ImageId changes.
+Subscriptions create a connection between properties of different components,
+allowing them to share and synchronize data. For example, if one component has
+an ImageId property and another has an Image property, you can subscribe the
+Image property to the ImageId. This ensures that the Image property stays up to
+date whenever the ImageId changes.
 
 ## View
 
-Views are a uniquely named and organized collection of components built to create
-representations of infrastructure configurations that are semantically relevant
-to a given workflow or user.
+Views are a uniquely named and organized collection of components built to
+create representations of infrastructure configurations that are semantically
+relevant to a given workflow or user.
 
 ## Workspace
 
