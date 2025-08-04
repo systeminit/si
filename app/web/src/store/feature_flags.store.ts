@@ -1,9 +1,7 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks } from "@si/vue-lib/pinia";
-import { useRoute } from "vue-router";
 import { posthog } from "@/utils/posthog";
-import { WorkspacePk } from "@/api/sdf/dal/workspace";
 
 type FeatureFlag = UserFlag | WorkspaceFlag;
 type UserFlag = keyof typeof USER_FLAG_MAPPING;
@@ -38,8 +36,10 @@ const FEATURE_FLAGS = Object.keys({
 }) as FeatureFlag[];
 
 export function useFeatureFlagsStore() {
-  const route = useRoute();
-  const workspacePk = route?.params?.workspacePk as WorkspacePk | undefined;
+  // const route = useRoute();
+  // const workspacePk = route?.params?.workspacePk as WorkspacePk | undefined;
+  // once the old UI is deleted, replace this with the commented out code above
+  const workspacePk = window.location.pathname.split("/")[2];
 
   return addStoreHooks(
     undefined,
