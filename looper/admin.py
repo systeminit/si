@@ -67,22 +67,17 @@ class SIAdminReporter:
     
     async def list_change_sets_for_workspace(self, workspace_id: str) -> List[Dict[str, Any]]:
         """List all change sets for a given workspace."""
-        try:
-            change_sets_url = f"{self.sdf_api_url}/v2/admin/workspaces/{workspace_id}/change_sets"
+        change_sets_url = f"{self.sdf_api_url}/v2/admin/workspaces/{workspace_id}/change_sets"
+        
+        async with self.session.get(change_sets_url) as response:
+            response.raise_for_status()
+            data = await response.json()
             
-            async with self.session.get(change_sets_url) as response:
-                response.raise_for_status()
-                data = await response.json()
-                
-                # The API returns changeSets as an object with IDs as keys
-                change_sets_dict = data.get('changeSets', {})
-                change_sets = list(change_sets_dict.values())
-                
-                return change_sets
-                
-        except Exception as e:
-            print(f"❌ Failed to list change sets for workspace {workspace_id}: {e}")
-            return []
+            # The API returns changeSets as an object with IDs as keys
+            change_sets_dict = data.get('changeSets', {})
+            change_sets = list(change_sets_dict.values())
+            
+            return change_sets
 
     async def download_snapshot(self, workspace_id: str, changeset_id: str):
         """Download the snapshot for a specific change set."""
@@ -90,6 +85,8 @@ class SIAdminReporter:
         try:
             # The response is application/octet-stream
             async with self.session.get(snapshot_url) as response:
+                if response.status == 500:
+                    print(f"❌ ERROR downloading snapshot for workspace {workspace_id}, change set {changeset_id}: {await response.text()}")
                 response.raise_for_status()
                 # Read the response as bytes that can be uploaded later
                 snapshot = base64.b64decode(await response.read())
@@ -218,7 +215,6 @@ class SIAdminReporter:
         migration_url = f"{self.sdf_api_url}/v2/admin/workspaces/{workspace_id}/change_sets/{changeset_id}/migrate_connections"
 
         async with self.session.post(migration_url) as response:
-            print(response, await response.text())
             response.raise_for_status()
 
     async def trigger_dry_run_migration(self, workspace_id: str, changeset_id: str) -> bool:
@@ -514,22 +510,48 @@ class SIAdminReporter:
         results_dir.mkdir(exist_ok=True)
 
         workspace_ids = open(workspaces_file).read().splitlines()
+        workspace_num = 0
+        batch_count = 0
         for workspace_id in workspace_ids:
-            workspace = (await self.list_all_workspaces(workspace_id))[0]
+            workspace_num += 1
+            workspaces = await self.list_all_workspaces(workspace_id)
+            if len(workspaces) == 0:
+                print(f"❌ {workspace_id} does not exist")
+                continue
+            workspace = workspaces[0]
             workspace_name = workspace['name']
-            change_set_id = workspace['defaultChangeSetId']
+            change_set_num = 0
+            change_sets = [change_set for change_set in await self.list_change_sets_for_workspace(workspace_id) if not (change_set['status'] == 'Abandoned' or change_set['status'] == 'Applied')]
+            for change_set in change_sets:
+                change_set_num += 1
+                change_set_id = change_set['id']
+                change_set_name = change_set['name']
+                if change_set['status'] == 'Abandoned' or change_set['status'] == 'Applied':
+                    print(f"❌ Skipping {change_set['status']} changeset {change_set_name} ({change_set_id}) in workspace {workspace_id} ...")
+                    continue
 
-            # Save the current snapshot
-            snapshot = await self.download_snapshot(workspace_id, change_set_id)
-            snapshot_filename = f"{results_dir}/{workspace_id}.{change_set_id}.snapshot"
-            with open(snapshot_filename, 'xb') as f:
-                f.write(snapshot)
+                if change_set_id == "01JMJ0RZBPMDEGXWBZREFM68VX" or change_set_id == "01JPX0MFJ67VBC1GEV713CXD68":
+                    print(f"❌ Skipping known bad {workspace_name} ({workspace_id}) changeset {change_set_name} ({change_set_id}) ...")
+                    continue
 
-            # Trigger the migration
-            await self.trigger_migration(workspace_id, change_set_id)
-            print(f"🎯 Triggered run migration for changeset {change_set_id} in workspace {workspace_id} ...")
+                # Save the current snapshot
+                snapshot_filename = f"{results_dir}/{workspace_id}.{change_set_id}.snapshot"
+                if pathlib.Path(snapshot_filename).exists():
+                    print(f"⚠️ Snapshot file {snapshot_filename} already exists, skipping upload")
+                    continue
+                snapshot = await self.download_snapshot(workspace_id, change_set_id)
+                with open(snapshot_filename, 'xb') as f:
+                    f.write(snapshot)
 
-            await asyncio.sleep(30)
+                # Trigger the migration
+                await self.trigger_migration(workspace_id, change_set_id)
+                print(f"🎯 {workspace_num}/{len(workspace_ids)} Triggered migration for workspace {workspace_name} ({workspace_id}), {change_set['status']} changeset {change_set_num}/{len(change_sets)} {change_set_name} ({change_set_id}) ...")
+
+                # Give the system 10 seconds to settle after every 5 migrations
+                batch_count += 1
+                if batch_count >= 5:
+                    await asyncio.sleep(10)
+                    batch_count = 0
 
     async def run_migration_dry_runs(self, csv_file: str, *, workspaces_file: Optional[str] = None, batch_size: int = 1, in_changeset: Optional[tuple[str, str]] = None) -> None:
         """Run dry run migrations for users in batches, testing only HEAD changesets."""
