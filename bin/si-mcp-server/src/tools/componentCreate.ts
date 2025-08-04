@@ -39,7 +39,9 @@ const CreateComponentOutputSchema = z.object(
   CreateComponentOutputSchemaRaw,
 );
 
-type CreateComponentResult = z.infer<typeof CreateComponentOutputSchema>["data"];
+type CreateComponentResult = z.infer<
+  typeof CreateComponentOutputSchema
+>["data"];
 
 export function componentCreateTool(server: McpServer) {
   server.registerTool(
@@ -54,7 +56,9 @@ export function componentCreateTool(server: McpServer) {
       inputSchema: CreateComponentInputSchemaRaw,
       outputSchema: CreateComponentOutputSchemaRaw,
     },
-    async ({ changeSetId, componentName, schemaName, attributes }): Promise<CallToolResult> => {
+    async (
+      { changeSetId, componentName, schemaName, attributes },
+    ): Promise<CallToolResult> => {
       const siApi = new ComponentsApi(apiConfig);
       try {
         const response = await siApi.createComponent({
@@ -64,7 +68,7 @@ export function componentCreateTool(server: McpServer) {
             name: componentName,
             schemaName,
             attributes,
-          }
+          },
         });
         const result: CreateComponentResult = {
           componentId: response.data.component.id,

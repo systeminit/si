@@ -1,5 +1,6 @@
 import { ConsoleStream, Level, Logger, LogRecord } from "@onjara/optic";
 import { TokenReplacer } from "@onjara/optic/formatters";
+import _ from "lodash";
 
 class StderrStream extends ConsoleStream {
   override log(msg: string): void {
@@ -31,3 +32,11 @@ export const logger = new Logger()
     new TokenReplacer(),
   ))
   .withMinLogLevel(Level.Debug);
+
+export function debugLogFile(data: unknown) {
+  Deno.writeTextFileSync(
+    "/tmp/mcp-debug.txt",
+    `${JSON.stringify(data, null, 2)}\n`,
+    { append: true },
+  );
+}

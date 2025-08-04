@@ -36,7 +36,9 @@ const UpdateComponentOutputSchema = z.object(
   UpdateComponentOutputSchemaRaw,
 );
 
-type UpdateComponentResult = z.infer<typeof UpdateComponentOutputSchema>["data"];
+type UpdateComponentResult = z.infer<
+  typeof UpdateComponentOutputSchema
+>["data"];
 
 export function componentUpdateTool(server: McpServer) {
   server.registerTool(
@@ -51,7 +53,9 @@ export function componentUpdateTool(server: McpServer) {
       inputSchema: UpdateComponentInputSchemaRaw,
       outputSchema: UpdateComponentOutputSchemaRaw,
     },
-    async ({ changeSetId, attributes, componentId }): Promise<CallToolResult> => {
+    async (
+      { changeSetId, attributes, componentId },
+    ): Promise<CallToolResult> => {
       const siApi = new ComponentsApi(apiConfig);
       try {
         await siApi.updateComponent({
@@ -60,7 +64,7 @@ export function componentUpdateTool(server: McpServer) {
           componentId,
           updateComponentV1Request: {
             attributes,
-          }
+          },
         });
         const result: UpdateComponentResult = {
           success: true,
@@ -75,4 +79,3 @@ export function componentUpdateTool(server: McpServer) {
     },
   );
 }
-

@@ -20,7 +20,9 @@ const EnqueueActionComponentInputSchemaRaw = {
     "The change set to enqueue the action in",
   ),
   componentId: z.string().describe("the compoonent to enqueue the action for"),
-  actionName: z.string().describe("the name of the action to enqueue; can be listed with the component-get tool"),
+  actionName: z.string().describe(
+    "the name of the action to enqueue; can be listed with the component-get tool",
+  ),
 };
 
 const EnqueueActionComponentOutputSchemaRaw = {
@@ -29,7 +31,9 @@ const EnqueueActionComponentOutputSchemaRaw = {
     "If the status is failure, the error message will contain information about what went wrong",
   ),
   data: z.object({
-    success: z.boolean().describe("true if the action is successfully enqueued"),
+    success: z.boolean().describe(
+      "true if the action is successfully enqueued",
+    ),
   }).describe("the component data"),
 };
 const EnqueueActionComponentOutputSchema = z.object(
@@ -61,8 +65,8 @@ export function componentEnqueueActionTool(server: McpServer) {
           addActionV1Request: {
             action: {
               function: actionName,
-            }
-          }
+            },
+          },
         });
         return successResponse(
           response.data,
@@ -73,4 +77,3 @@ export function componentEnqueueActionTool(server: McpServer) {
     },
   );
 }
-
