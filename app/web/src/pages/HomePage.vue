@@ -24,29 +24,55 @@
 
 <script setup lang="ts">
 import { watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { ErrorMessage, Icon } from "@si/vue-lib/design-system";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AppLayout from "@/components/layout/AppLayout.vue";
 
+const featureFlagStore = useFeatureFlagsStore();
+
 const router = useRouter();
+const route = useRoute();
 
 const workspacesStore = useWorkspacesStore();
+const redirectPath = route.query.redirect as string;
 
 const workspacesReqStatus = workspacesStore.getRequestStatus(
   "FETCH_USER_WORKSPACES",
 );
 
-function autoSelectWorkspace() {
+async function autoSelectWorkspace() {
   if (workspacesStore.selectedWorkspace) return;
 
   const workspacePk = workspacesStore.getAutoSelectedWorkspacePk();
   if (!workspacePk) return;
 
   router.push({
-    name: "workspace-single",
+    name: "new-hotness-workspace",
     params: { workspacePk },
   });
+
+  const flagsLoaded = new Promise((resolve) => {
+    const id = setInterval(() => {
+      if (featureFlagStore.ENABLE_NEW_EXPERIENCE !== undefined) {
+        clearInterval(id);
+        resolve(null);
+      }
+    }, 50);
+  });
+
+  await flagsLoaded;
+  let routeName = "workspace-single";
+  if (featureFlagStore.ENABLE_NEW_EXPERIENCE) {
+    routeName = "new-hotness-workspace";
+  }
+
+  const redirectObject = redirectPath
+    ? { path: redirectPath }
+    : { name: routeName, params: { workspacePk } };
+
+  await router.replace(redirectObject);
 }
 
 watch(
