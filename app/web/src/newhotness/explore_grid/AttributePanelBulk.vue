@@ -1,10 +1,12 @@
 <template>
-  <div>
+  <div class="h-full flex flex-col">
     <div
       :class="
         clsx(
-          'flex flex-row items-center gap-xs px-xs mb-xs',
-          themeClasses('bg-neutral-300', 'bg-neutral-600'),
+          'flex-none',
+          'bulk-header flex flex-row items-center gap-xs',
+          'mx-[-12px]', // pull this banner beyond the margins of its container's style [&>div]:mx-[12px]
+          themeClasses('bg-white', 'bg-neutral-800'),
         )
       "
     >
@@ -18,58 +20,229 @@
         iconTone="shade"
         @click="() => emit('close')"
       />
-      <h1 class="text-md font-bold my-xs">Bulk Editing</h1>
+      <div class="flex-none text-sm">Edit selected components</div>
     </div>
-    <ul class="flex flex-row gap-xs">
-      <li v-for="component in selectedComponents" :key="component.id">
-        <ComponentCard :component="component" />
-      </li>
-    </ul>
-    <DelayedLoader v-if="treesPending" :size="'full'" />
-    <div
-      v-else-if="commonTree.domain || commonTree.secrets"
-      :class="
-        clsx(
-          'mt-sm p-xs',
-          // these styles are from CollapsingFlexItem
-          'border overflow-hidden',
-          themeClasses(
-            'border-neutral-300 bg-white',
-            'border-neutral-600 bg-neutral-800',
-          ),
-        )
-      "
-      class=""
-    >
-      <AttributeChildLayout v-if="commonTree.domain">
-        <template #header><span class="text-sm">domain</span></template>
-        <ComponentAttribute
-          v-for="child in commonTree.domain.children"
-          :key="child.id"
-          :component="componentMap[child.componentId]!"
-          :attributeTree="child"
-          @save="save"
-          @add="add"
-          @set-key="setKey"
-          @remove-subscription="removeSubscription"
-          @delete="remove"
-        />
-      </AttributeChildLayout>
-      <AttributeChildLayout
-        v-if="commonTree.secrets && commonTree.secrets.children.length > 0"
+    <div class="grow min-h-0 flex flex-row gap-xs mt-xs items-stretch">
+      <ul
+        :class="
+          clsx(
+            'my-2xs', // matching <AttributeChildLayout>
+            'scrollable min-h-0',
+            'w-1/4 flex-none flex flex-col gap-xs border p-sm',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
       >
-        <template #header><span class="text-sm">secrets</span></template>
-        <ComponentSecretAttribute
-          v-for="secret in commonTree.secrets.children"
-          :key="secret.id"
-          :component="componentMap[secret.componentId]!"
-          :attributeTree="secret"
-        />
-      </AttributeChildLayout>
+        <li class="text-sm mb-2xs text-neutral-400">
+          Components selected for editing
+        </li>
+        <!-- i took these styles and html nesting from connection panel, we should create a component that does this -->
+        <li
+          v-for="[idx, component] in Object.entries(selectedComponents)"
+          :key="component.id"
+          :class="
+            clsx(
+              'ml-xs',
+              'flex flex-row items-center gap-xs [&>*]:text-sm [&>*]:font-bold',
+              themeClasses(
+                '[&>*]:border-neutral-400',
+                '[&>*]:border-neutral-600',
+              ),
+            )
+          "
+        >
+          <input type="checkbox" checked @click="() => deselect(idx)" />
+          <MinimizedComponentQualificationStatus
+            :component="component"
+            noText
+          />
+          <TextPill
+            mono
+            :class="
+              clsx(
+                'min-w-0',
+                themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+              )
+            "
+          >
+            <TruncateWithTooltip>
+              {{ component.schemaVariantName }}
+            </TruncateWithTooltip>
+          </TextPill>
+          <TextPill mono class="text-purple min-w-0">
+            <TruncateWithTooltip>
+              {{ component.name }}
+            </TruncateWithTooltip>
+          </TextPill>
+        </li>
+      </ul>
+      <DelayedLoader v-if="treesPending" :size="'full'" />
+      <div
+        v-else-if="commonTree.domain || commonTree.secrets"
+        class="grow min-h-0 my-2xs"
+      >
+        <!-- styles taken from CollapsingFlexItem -->
+        <div
+          :class="
+            clsx(
+              'h-full scrollable',
+              'flex flex-col items-stretch',
+              'border overflow-hidden mb-[-1px]', // basis-0 makes items take equal size when multiple are open
+              '[&>dl]:m-xs', // pad the child attributes
+              themeClasses('border-neutral-300', 'border-neutral-600'),
+            )
+          "
+        >
+          <h3
+            :class="
+              clsx(
+                'group/header',
+                'text-sm flex-none h-lg flex items-center px-xs m-0',
+                'border-b',
+                themeClasses('border-neutral-300', 'border-neutral-600'),
+              )
+            "
+          >
+            Shared attributes
+          </h3>
+          <AttributeChildLayout v-if="commonTree.domain">
+            <template #header><span class="text-sm">domain</span></template>
+            <ComponentAttribute
+              v-for="child in commonTree.domain.children"
+              :key="child.id"
+              :component="componentMap[child.componentId]!"
+              :attributeTree="child"
+              @save="save"
+              @add="add"
+              @set-key="setKey"
+              @remove-subscription="removeSubscription"
+              @delete="remove"
+            />
+          </AttributeChildLayout>
+          <AttributeChildLayout
+            v-if="commonTree.secrets && commonTree.secrets.children.length > 0"
+          >
+            <template #header><span class="text-sm">secrets</span></template>
+            <ComponentSecretAttribute
+              v-for="secret in commonTree.secrets.children"
+              :key="secret.id"
+              :component="componentMap[secret.componentId]!"
+              :attributeTree="secret"
+            />
+          </AttributeChildLayout>
+          <p v-else class="italic text-center mt-md">
+            The selected components do not share any common attributes.
+          </p>
+        </div>
+      </div>
+      <div
+        :class="
+          clsx(
+            'my-2xs', // matching <AttributeChildLayout>
+            'scrollable min-h-0',
+            'w-1/5 flex-none flex flex-col gap-xs scrollable border',
+            themeClasses('border-neutral-300', 'border-neutral-600'),
+          )
+        "
+      >
+        <h3
+          :class="
+            clsx(
+              'group/header',
+              'text-sm flex-none flex items-center h-lg px-xs m-0',
+              'border-b',
+              themeClasses('border-neutral-300', 'border-neutral-600'),
+            )
+          "
+        >
+          <template v-if="selectedPathName">
+            {{ selectedPathName }} values
+          </template>
+        </h3>
+        <div
+          v-if="pathValueData"
+          class="m-sm flex flex-row items-center gap-xs"
+        >
+          <template
+            v-for="[valueKey, desc] in Object.entries(pathValueData)"
+            :key="valueKey"
+          >
+            <AttributeValueBox>
+              <template #components>
+                <ul>
+                  <li
+                    v-for="component in desc.components"
+                    :key="component.componentName"
+                    :class="
+                      clsx(
+                        'ml-xs',
+                        'flex flex-row items-center gap-xs [&>*]:text-sm [&>*]:font-bold',
+                        themeClasses(
+                          '[&>*]:border-neutral-400',
+                          '[&>*]:border-neutral-600',
+                        ),
+                      )
+                    "
+                  >
+                    <TextPill
+                      mono
+                      :class="
+                        clsx(
+                          'min-w-0',
+                          themeClasses(
+                            'text-green-light-mode',
+                            'text-green-dark-mode',
+                          ),
+                        )
+                      "
+                    >
+                      <TruncateWithTooltip>
+                        {{ component.schemaName }}
+                      </TruncateWithTooltip>
+                    </TextPill>
+                    <TextPill mono class="text-purple min-w-0">
+                      <TruncateWithTooltip>
+                        {{ component.componentName }}
+                      </TruncateWithTooltip>
+                    </TextPill>
+                  </li>
+                </ul>
+              </template>
+              <div
+                :class="
+                  clsx(
+                    'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
+                    'p-2xs text-sm font-bold',
+                    desc.isSecret &&
+                      themeClasses(
+                        'text-green-light-mode',
+                        'text-green-dark-mode',
+                      ),
+                  )
+                "
+              >
+                <TruncateWithTooltip class="text-purple">{{
+                  valueKey.split("|")[0]
+                }}</TruncateWithTooltip>
+                <div class="flex-none">/</div>
+                <TruncateWithTooltip
+                  :class="themeClasses('text-neutral-600', 'text-neutral-400')"
+                >
+                  <template
+                    v-if="!desc.isSecret && valueKey.split('|')[2] !== 'null'"
+                  >
+                    {{ valueKey.split("|")[2] }}
+                  </template>
+                  <template v-else>
+                    &lt; {{ valueKey.split("|")[1]?.replace(/^\//, "") }} &gt;
+                  </template>
+                </TruncateWithTooltip>
+              </div>
+            </AttributeValueBox>
+          </template>
+        </div>
+      </div>
     </div>
-    <p v-else class="italic text-center mt-md">
-      The selected components do not share any common attributes.
-    </p>
   </div>
 </template>
 
@@ -77,7 +250,12 @@
 import clsx from "clsx";
 import { useQueries } from "@tanstack/vue-query";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { themeClasses, IconButton } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  IconButton,
+  TruncateWithTooltip,
+  TextPill,
+} from "@si/vue-lib/design-system";
 import { useToast } from "vue-toastification";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
@@ -85,13 +263,16 @@ import {
   ComponentInList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
-import { keyEmitter } from "@/newhotness/logic_composables/emitters";
-import ComponentCard from "@/newhotness/ComponentCard.vue";
+import {
+  attributeEmitter,
+  keyEmitter,
+} from "@/newhotness/logic_composables/emitters";
 import { nonNullable } from "@/utils/typescriptLinter";
 import ComponentAttribute, {
   NewChildValue,
 } from "@/newhotness/layout_components/ComponentAttribute.vue";
 import ComponentSecretAttribute from "@/newhotness/layout_components/ComponentSecretAttribute.vue";
+import AttributeValueBox from "@/newhotness/AttributeValueBox.vue";
 import AttributeChildLayout from "@/newhotness/layout_components/AttributeChildLayout.vue";
 import DelayedLoader from "@/newhotness/layout_components/DelayedLoader.vue";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
@@ -99,20 +280,26 @@ import { PropKind } from "@/api/sdf/dal/prop";
 import {
   arrayAttrTreeIntoTree,
   AttrTree,
+  cleanForBulk,
   makeAvTree,
   makeSavePayload,
 } from "../logic_composables/attribute_tree";
 import { componentTypes, ok, routes, UseApi, useApi } from "../api_composables";
 import { useContext } from "../logic_composables/context";
+import MinimizedComponentQualificationStatus from "../MinimizedComponentQualificationStatus.vue";
 
 const ctx = useContext();
 
 const props = defineProps<{
-  selectedComponents: ComponentInList[];
+  selectedComponents: Record<number, ComponentInList>;
 }>();
 
+const deselect = (index: number) => {
+  emit("deselect", index);
+};
+
 const componentMap = computed(() =>
-  props.selectedComponents.reduce((obj, component) => {
+  Object.values(props.selectedComponents).reduce((obj, component) => {
     obj[component.id] = component;
     return obj;
   }, {} as Record<string, ComponentInList>),
@@ -209,17 +396,7 @@ const commonTree = computed<{
     .map((path) => pathMap[path])
     .filter(nonNullable)
     .map((t) => {
-      // clear out the AVs and externalSources
-      // because we don't want them showing up in the form
-      const m = {
-        ...t,
-        attributeValue: {
-          ...t.attributeValue,
-          value: null,
-          externalSources: undefined,
-        },
-      };
-      return m;
+      return cleanForBulk(t);
     });
   const map = matches.reduce((obj, attr) => {
     obj[attr.id] = attr;
@@ -399,7 +576,68 @@ onBeforeUnmount(() => {
   keyEmitter.on("Escape", onEscape);
 });
 
+type ValueKey = string; // can be `split("|") for the source and value
+type PathValueData = Record<ValueKey, ComponentsWithValue>;
+type ComponentsDesc = Array<{ schemaName: string; componentName: string }>;
+type ComponentsWithValue = {
+  isSecret: boolean;
+  components: ComponentsDesc;
+};
+const valuesByAvPath = computed(() => {
+  const groupedVals = {} as Record<AttributePath, PathValueData>;
+  avTrees.value
+    .map((t) => t.data)
+    .filter(nonNullable)
+    .forEach((d) => {
+      Object.values(d.attributeValues).forEach((av) => {
+        let values = groupedVals[av.path];
+        if (!values) {
+          values = {};
+          groupedVals[av.path] = values;
+        }
+
+        const source = (av.externalSources || [])[0];
+        const v =
+          typeof av.value === "object" ? JSON.stringify(av.value) : av.value;
+        const valKey: ValueKey = `${source?.componentName}|${source?.path}|${v}`;
+        let components = values[valKey];
+        if (!components) {
+          components = {
+            isSecret: source?.isSecret || false,
+            components: [] as ComponentsDesc,
+          } as ComponentsWithValue;
+          values[valKey] = components;
+        }
+        components.components.push({
+          schemaName: d.schemaName,
+          componentName: d.componentName,
+        });
+      });
+    });
+
+  return groupedVals;
+});
+
+const selectedPathName = ref<string>("");
+const pathValueData = ref<PathValueData | undefined>();
+attributeEmitter.on("selectedPath", ({ path, name }) => {
+  selectedPathName.value = name;
+  const vals = valuesByAvPath.value[path as AttributePath];
+  pathValueData.value = vals;
+});
+
 const emit = defineEmits<{
   (e: "close"): void;
+  (e: "deselect", index: number): void;
 }>();
 </script>
+
+<style lang="less" scoped>
+// mostly copied from `ExploreGrid`, we should extract these into common, non-scoped, styles if we're going to continue down this path
+.bulk-header {
+  padding: 0 0.5rem 0 0.5rem;
+  height: 2.75rem;
+  border-top: 1px solid #d4d4d8; /* neutral-300 */
+  border-bottom: 1px solid #d4d4d8; /* neutral-300 */
+}
+</style>

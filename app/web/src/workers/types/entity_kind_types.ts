@@ -384,6 +384,7 @@ export interface AttributeValue {
 export interface ExternalSource {
   path: string;
   componentName: string;
+  isSecret: boolean;
 }
 
 export interface AVTree {
