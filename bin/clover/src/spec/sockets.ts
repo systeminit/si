@@ -7,7 +7,7 @@ import { SocketSpecKind } from "../bindings/SocketSpecKind.ts";
 import { ExpandedPropSpec } from "./props.ts";
 import { getSiFuncId } from "./siFuncs.ts";
 import _ from "npm:lodash";
-import { ExpandedSchemaVariantSpec } from "./pkgs.ts";
+import { ExpandedSchemaVariantSpecWithSockets } from "./pkgs.ts";
 import { Extend } from "../extend.ts";
 
 export const SI_SEPARATOR = "\u{b}";
@@ -117,7 +117,7 @@ export function socketNameFromProp(prop: ExpandedPropSpec) {
 }
 
 export function getSocketOnVariant(
-  variant: ExpandedSchemaVariantSpec,
+  variant: ExpandedSchemaVariantSpecWithSockets,
   name: string,
   kind: SocketSpecKind,
 ) {
@@ -125,7 +125,7 @@ export function getSocketOnVariant(
 }
 
 export function getOrCreateInputSocketFromProp(
-  schemaVariant: ExpandedSchemaVariantSpec,
+  schemaVariant: ExpandedSchemaVariantSpecWithSockets,
   prop: ExpandedPropSpec,
 ) {
   const socketName = socketNameFromProp(prop);
@@ -139,7 +139,7 @@ export function getOrCreateInputSocketFromProp(
 }
 
 export function getOrCreateOutputSocketFromProp(
-  schemaVariant: ExpandedSchemaVariantSpec,
+  schemaVariant: ExpandedSchemaVariantSpecWithSockets,
   prop: ExpandedPropSpec,
 ) {
   const socketName = socketNameFromProp(prop);
@@ -289,7 +289,7 @@ export function propHasSocket(prop: ExpandedPropSpec): boolean {
 }
 
 export function removeInputSockets(
-  variant: ExpandedSchemaVariantSpec,
+  variant: ExpandedSchemaVariantSpecWithSockets,
   socketNamesToRemove: string[],
 ): number {
   if (!variant.sockets || !socketNamesToRemove.length) return 0;

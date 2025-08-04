@@ -6,12 +6,12 @@ import {
   OnlyProperties,
 } from "./spec/props.ts";
 import {
-  ExpandedPkgSpec,
-  ExpandedSchemaSpec,
-  ExpandedSchemaVariantSpec,
+  ExpandedPkgSpecWithSockets,
+  ExpandedSchemaSpecWithSockets,
+  ExpandedSchemaVariantSpecWithSockets,
 } from "./spec/pkgs.ts";
 
-export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
+export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpecWithSockets {
   const [metaCategory, category, name] = cfSchema.typeName.split("::");
 
   if (!["AWS", "Alexa"].includes(metaCategory) || !category || !name) {
@@ -46,7 +46,7 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
     onlyProperties,
   );
 
-  const variant: ExpandedSchemaVariantSpec = {
+  const variant: ExpandedSchemaVariantSpecWithSockets = {
     version,
     data: {
       version,
@@ -74,7 +74,7 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
     cfSchema,
   };
 
-  const schema: ExpandedSchemaSpec = {
+  const schema: ExpandedSchemaSpecWithSockets = {
     name: cfSchema.typeName,
     data: {
       name: cfSchema.typeName,

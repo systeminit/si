@@ -4,9 +4,9 @@ import { bfsPropTree } from "../spec/props.ts";
 import { Inferred } from "../spec/inferred.ts";
 
 export function addInferredEnums(
-  specs: ExpandedPkgSpec[],
+  specs: readonly ExpandedPkgSpec[],
   inferred: Record<string, Inferred>,
-): ExpandedPkgSpec[] {
+) {
   for (const { schemas: [{ variants: [variant] }] } of specs) {
     bfsPropTree([variant.domain, variant.resourceValue], (prop) => {
       if (!prop.data.documentation) return;
@@ -32,5 +32,4 @@ export function addInferredEnums(
       }
     });
   }
-  return specs;
 }

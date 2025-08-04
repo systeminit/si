@@ -6,10 +6,8 @@ import {
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
 export function generateDefaultQualificationFuncs(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
-
+  specs: readonly ExpandedPkgSpec[],
+) {
   for (const spec of specs) {
     const [schema] = spec.schemas;
     const [schemaVariant] = schema.variants;
@@ -18,10 +16,9 @@ export function generateDefaultQualificationFuncs(
     const domain_id = schemaVariant.domain.uniqueId;
 
     if (!domain_id) {
-      console.log(
+      throw new Error(
         `Could not generate qualification funcs for ${spec.name}: missing domain id!`,
       );
-      continue;
     }
 
     const defaultQualificationFuncs = createDefaultQualificationFuncs(
@@ -39,9 +36,5 @@ export function generateDefaultQualificationFuncs(
         ]),
       );
     }
-
-    newSpecs.push(spec);
   }
-
-  return newSpecs;
 }

@@ -15,7 +15,15 @@ export type ExpandedSchemaSpec = Extend<SchemaSpec, {
   variants: [ExpandedSchemaVariantSpec]; // Exactly one schema variant
 }>;
 
-export type ExpandedSchemaVariantSpec = Extend<SchemaVariantSpec, {
+export type ExpandedPkgSpecWithSockets = Extend<ExpandedPkgSpec, {
+  schemas: [ExpandedSchemaSpecWithSockets]; // Array of exactly one schema
+}>;
+
+export type ExpandedSchemaSpecWithSockets = Extend<ExpandedSchemaSpec, {
+  variants: [ExpandedSchemaVariantSpecWithSockets]; // Exactly one schema variant
+}>;
+
+export type ExpandedSchemaVariantSpecWithSockets = Extend<SchemaVariantSpec, {
   data: NonNullable<SchemaVariantSpecData>;
   sockets: ExpandedSocketSpec[];
   domain: ExpandedPropSpecFor["object"];
@@ -24,3 +32,5 @@ export type ExpandedSchemaVariantSpec = Extend<SchemaVariantSpec, {
   resourceValue: ExpandedPropSpecFor["object"];
   cfSchema: CfSchema;
 }>;
+
+export type ExpandedSchemaVariantSpec = Omit<ExpandedSchemaVariantSpecWithSockets, "sockets">;

@@ -10,7 +10,7 @@ const SAVE_INTERVAL = 5;
 // This is a failsafe that checks if we've generated any bad links to AWS docs for props. If we
 // have, it removes them from the generated specs so we don't link off to the aether.
 export async function removeBadDocLinks(
-  specs: ExpandedPkgSpec[],
+  specs: readonly ExpandedPkgSpec[],
   docLinkCache: string,
 ) {
   // Gather the unique doc links
@@ -59,8 +59,6 @@ export async function removeBadDocLinks(
       }
     });
   }
-
-  return specs;
 }
 
 type LinkCache = Record<string, number>;

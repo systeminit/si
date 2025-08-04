@@ -12,17 +12,17 @@ import {
 } from "../spec/sockets.ts";
 import { attrFuncInputSpecFromProp } from "../spec/sockets.ts";
 import _logger from "../logger.ts";
-import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets, ExpandedSchemaVariantSpecWithSockets } from "../spec/pkgs.ts";
 
 const logger = _logger.ns("subAssets").seal();
 
 export function generateSubAssets(
-  incomingSpecs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
-  const outgoingSpecs = [] as ExpandedPkgSpec[];
+  incomingSpecs: ExpandedPkgSpecWithSockets[],
+): ExpandedPkgSpecWithSockets[] {
+  const outgoingSpecs = [] as ExpandedPkgSpecWithSockets[];
   const newSpecsByHash = {} as Record<
     string,
-    { spec: ExpandedPkgSpec; names: string[] }
+    { spec: ExpandedPkgSpecWithSockets; names: string[] }
   >;
 
   for (const spec of incomingSpecs) {
@@ -70,7 +70,7 @@ export function generateSubAssets(
         newSpecOutputSocket.inputs = [attrFuncInputSpecFromProp(newDomain)];
 
         const variantData = _.cloneDeep(schemaVariant.data);
-        const variant: ExpandedSchemaVariantSpec = {
+        const variant: ExpandedSchemaVariantSpecWithSockets = {
           ...schemaVariant,
           data: {
             ...variantData,
@@ -91,7 +91,7 @@ export function generateSubAssets(
 
         const schemaData = _.cloneDeep(schema.data);
 
-        const newSpec: ExpandedPkgSpec = {
+        const newSpec: ExpandedPkgSpecWithSockets = {
           ...spec,
           name,
           description: prop.typeProp.data?.documentation ?? "",
@@ -122,12 +122,7 @@ export function generateSubAssets(
   }
 
   // Select best name and category for each subAsset
-  for (
-    const { spec, names } of _.values(newSpecsByHash) as {
-      spec: ExpandedPkgSpec;
-      names: string[];
-    }[]
-  ) {
+  for (const { spec, names } of _.values(newSpecsByHash)) {
     let finalObjName: string | null | undefined = undefined;
     let finalAwsCategory: string | null | undefined = undefined;
     let finalParent: string | null | undefined = undefined;

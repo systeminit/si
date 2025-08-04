@@ -7,8 +7,8 @@ import { addPropSuggestSource, ExpandedPropSpecFor, findPropByName } from "../sp
 // This ensures that we can keep things easy to compose using the new
 // suggestions format
 export function createAwsRegionSpecificSuggestion(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
+  specs: readonly ExpandedPkgSpec[],
+) {
   const newSpecs = [] as ExpandedPkgSpec[];
   for (const spec of specs) {
     const [schema] = spec.schemas;
