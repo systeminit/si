@@ -1,7 +1,7 @@
 # Actions and Resources
 
 This tutorial will teach you how to use [actions](/reference/vocabulary#actions)
-and manage your [resources](/reference/vocabulary#resources) in System
+and manage your [resources](/reference/vocabulary#resource) in System
 Initiative.
 
 To follow along, you should:
@@ -26,143 +26,131 @@ button.
 
 ## Add an AWS Credential Component and set its properties
 
-![Add an AWS Credential Component and set its properties](./actions-and-resources/add-an-aws-credential-and-set-its-properties.png)
+![Add an AWS Credential Component and set its properties](./actions-and-resources/add-an-aws-credential.png)
 
-Click `AWS Credential` from the AWS category of the asset pallete, and drop it
-on the Diagram canvas.
+If you have completed the Getting Started tutorial, you may have an AWS Credential
+already present that you can use. If so, move on to the next section.
 
-`Resize` the Component until it fills most of the visible canvas by dragging the
-lower right corner of the frame.
+Press `N` or Click the `Add a component` button, then in the search bar type `AWS Credential`, select the Component and press `Enter`.
 
-Name your AWS Credential Component `Actions`.
-
-Click the `Select/add secret` button of the `AWS Credential` property.
-
-If you have completed the Getting Started tutorial, you may have a Credential
-already present you can use. If so, select it, and move on to the next section.
-
-If not, click the `Add Secret` button.
+Name your Component `Actions`, then Name your Secret something relevant, for example the AWS Account name `apps-dev`.
 
 Fill in your AWS accounts `Access Key Id` and `Secret Access Key`.
 [Refer to the AWS documentation if you do not know what they are](https://aws.amazon.com/blogs/security/how-to-find-update-access-keys-password-mfa-aws-management-console/).
 
-Click `Store Secret` to securely encrypt and save your Secret.
+![Add AWS Credential Properties](./actions-and-resources/add-aws-credential-properties.png)
+
+Click `Add Secret` to securely encrypt and save your Credentials. Press `Esc` to return to the Grid.
 
 ## Add an AWS Region Component and set its properties
 
 ![Add an AWS Region Component and set its properties](./actions-and-resources/add-an-aws-region-component-and-set-its-properties.png)
 
-Click `Region` from the AWS category of the Asset pallete, and drop it on the
-Diagram canvas.
+Click `Add a component` (or press `N`), then search for `Region` in the `AWS` category, select this and then press `Enter`.
 
-`Resize` the Component until it fills the Credential frame.
-
-Name your AWS Region Component `Northern Virginia`.
+Name your region `AWS North Virginia`.
 
 Set the `region` property to `us-east-1`.
+
+Click the `credential` property field and select `AWS Credential apps-dev`. Press `Esc` to return to the Grid.
 
 ## Add a VPC Component and set its properties
 
 ![Add a VPC Component and set its properties](./actions-and-resources/add-a-vpc-component-and-set-its-properties.png)
 
-Click `VPC` from the AWS EC2 category of the Asset pallete, and drop it on the
-Diagram canvas.
+Click `Add a component` (or press `N`), then search for `AWS::EC2::VPC` in the `AWS` category, select this and then press `Enter`.
 
 Name your VPC `Tutorial Network`.
+
+Set your created `region` and `AWS Credential` properties.
 
 ## Investigate the Actions tab for the VPC
 
 ![Investigate the Actions tab for the VPC](./actions-and-resources/investigate-the-actions-tab-for-the-vpc.png)
 
-Click the `Actions` tab in the right side panel. You will see a list of all the
-available [actions](/reference/vocabulary#actions) for the VPC.
+Click the `Actions` tab on the left hand side underneath the Attributes panel. You will see a list of all the available [Actions](/reference/vocabulary#actions) for the VPC.
 
 The `Tutorial Network` Component was created in this Change Set - so System
 Initiative has automatically enqueued the `Create VPC` action for you.
 
 ## Apply the Change Set
 
-![Apply the Change Set](./actions-and-resources/apply-the-change-set.png)
+Press the `Esc` key or click on `Close` in the top left of the Component.
 
-::: tip
+![Pending VPC Create Action](./actions-and-resources/vpc-create-action-pending.png)
 
-Your `Tutorial Network` VPC will be failing its qualifications at this point.
-This is okay - this tutorial will show you what happens when actions _fail_
-before it shows you how they succeed.
-
-:::
-
-Press the `Escape` key or click on an empty area of the canvas to select the
-workspace itself.
-
-Notice that there is a create action for the `VPC Tutorial Network`. All the
-actions enqueued for a Change Set will be shown here.
+Notice on the right side in the Actions panel that there is a create action for the `Tutorial Network` VPC. All of the Actions enqueued for a Change Set will be shown here.
 
 Click `Apply Change Set`.
 
-A modal will appear confirming you want to take these actions. Click the
+A modal will appear confirming you want to take these Actions. Click the
 `Apply Changes` button to proceed.
+
+![Apply the Change Set](./actions-and-resources/apply-the-change-set.png)
 
 ## Observe the failed creation of the VPC
 
 ![Observe the failed creation of the VPC](./actions-and-resources/observe-the-failed-creation-of-the-vpc.png)
 
-The `Changes` panel will show that there is 1 Action,
-`CRT: VPC Tutorial Network` currently waiting to run.
+The AWS::EC2::VPC Component on the grid will be outlined in red to depict the failure of the Create Action. The `Actions` panel will show that there is 1 Action, `CRT: AWS::EC2::VPC Tutorial Network` currently waiting to run, the red hexagon shows you that it has failed. There is also an entry in `Recent Function Runs` that shows you that the Create function failed to run.
 
-The red hexagon shows you that it has failed. `Click on the failed action` to
-view the logs from the action.
+In the Actions panel, `Click on the failed action` to view the logs.
 
-The logs show that the action has failed to run:
+The logs show:
+
+![Failed VPC Creation Output](./actions-and-resources/failed-vpc-creation-output.png)
+
+The information we need specifically here is:
 
 ```json
-Running CLI command: "aws 'ec2' 'create-vpc' '--region' 'us-east-1' '--cli-input-json' '{
- "TagSpecifications": [
-  {
-   "ResourceType": "vpc",
-   "Tags": [
-    {
-     "Key": "Name",
-     "Value": "Tutorial Network"
+Running CLI command: "aws 'cloudcontrol' 'get-resource-request-status' '--region' 'us-east-1' '--request-token' '6db08def-a467-4dd4-8eaf-cc36f7072fef'"
+Current Progress {
+    ProgressEvent: {
+        TypeName: "AWS::EC2::VPC",
+        RequestToken: "6db08def-a467-4dd4-8eaf-cc36f7072fef",
+        Operation: "CREATE",
+        OperationStatus: "FAILED",
+        EventTime: "2025-07-30T21:35:10.714000+00:00",
+        StatusMessage: "Either CIDR Block or IPv4 IPAM Pool and IPv4 Netmask Length must be provided",
+        ErrorCode: "InvalidRequest"
     }
-   ]
-  }
- ]
-}'"
-
-An error occurred (MissingParameter) when calling the CreateVpc operation: Either 'cidrBlock' or 'ipv4IpamPoolId' should be provided.
+}
+Output: {
+  "protocol": "result",
+  "status": "success",
+  "executionId": "01K1EM5CNHQG6H2Y8FM3DR2GKK",
+  "health": "error",
+  "message": "Either CIDR Block or IPv4 IPAM Pool and IPv4 Netmask Length must be provided"
+}
 ```
 
-The cause is that AWS has rejected your request to create the VPC, due to
-missing a `cidrBlock` or `ipv4IpamPoolId`.
+We can see that the cause of the failure is that AWS has rejected your request to create the VPC, due to missing a `cidrBlock` or `ipv4IpamPoolId`.
 
 ## Check the arguments
 
 ![Check the arguments](./actions-and-resources/check-the-arguments.png)
 
-You can check the arguments sent to the action by clicking the `Arguments` tab
-of the action details panel. This will show you the exact data sent to the
-underlying action function.
+You can check the arguments sent to the Action in the `Arguments` section
+of the Function output screen. This will show you the exact data sent to the
+underlying action function. In this example you can see that no values were sent in the Create Action.
 
 ## Check the executed code
 
 ![Check the executed code](./actions-and-resources/check-the-executed-code.png)
 
-Clicking the `Code Executed` tab of the action details panel shows you the
+View the `Code` section of the Function output screen. This shows you the
 precise code that was executed when this action was run.
 
 ## Check the result
 
 ![Check the result](./actions-and-resources/check-the-result.png)
 
-Clicking the `Result` tab of the action details panel shows you the return
+View the `Result` section of the Function output screen. This shows you the returned
 result of the function.
 
-Close the panel by clicking the `X`.
+Close the panel by clicking the `X` or by pressing the `Esc` key.
 
 ## Create another Change Set
-
-![Create another Change Set](./actions-and-resources/create-another-change-set.png)
 
 To finish creating your VPC, you need to add a valid `CidrBlock`. To do that,
 you need to create a new Change Set.
@@ -177,7 +165,7 @@ Click `Create Change Set`.
 
 ![Add the CidrBlock property to your VPC](./actions-and-resources/add-the-cidrblock-property-to-your-vpc.png)
 
-Select the `Tutorial Network` VPC Component.
+On the Gird, click into the `Tutorial Network` VPC Component.
 
 Set the `CidrBlock` property to `10.0.0.0/24`.
 
@@ -185,15 +173,12 @@ Set the `CidrBlock` property to `10.0.0.0/24`.
 
 ![Apply the Change Set](./actions-and-resources/apply-the-change-set-again.png)
 
-Hit `Escape` or click on the diagram background to select the workspace.
+From the Component details screen, click `Apply Change Set`.
 
 Your create action is still enqueued, so this Change Set shows no proposed
-actions.
+Actions.
 
 Click `Apply Change Set`.
-
-Confirm that you want to apply this Change Set by clicking `Apply Changes` in
-the modal.
 
 ## Try to create the VPC again
 
@@ -215,81 +200,76 @@ removed from the list.
 
 ![Checking the successful create action result](./actions-and-resources/checking-the-successful-create-action-result.png)
 
-Click the `History` tab in the right hand panel.
+In the lower right hand panel named `Recent Function runs` Filter by Kind `Action` and view the initial failed Create Action, the successful Create Action and the following successful Refresh Action.
 
-You'll see your failed create actions, and the final success, indicated by a
-green filled-in hexagon next to the action.
 `Click your successful create action` to view the action details.
 
-Click the `Result` tab.
+View the `Result` section.
 
 You will see output similar to this:
 
 ```json
 {
   "error": null,
-  "executionId": "01J5XBTT8ZF6QX3B2SDKC4HXGY",
+  "executionId": "01K1ETG6QME7YBWH8A0XQZVX6G",
   "message": null,
-  "payload": {
-    "CidrBlock": "10.0.0.0/24",
-    "CidrBlockAssociationSet": [
-      {
-        "AssociationId": "vpc-cidr-assoc-059d9d6854371c4ad",
-        "CidrBlock": "10.0.0.0/24",
-        "CidrBlockState": {
-          "State": "associated"
-        }
-      }
-    ],
-    "DhcpOptionsId": "dopt-b05847cb",
-    "InstanceTenancy": "default",
-    "Ipv6CidrBlockAssociationSet": [],
-    "IsDefault": false,
-    "OwnerId": "835304779882",
-    "State": "pending",
-    "Tags": [
-      {
-        "Key": "Name",
-        "Value": "Tutorial Network"
-      }
-    ],
-    "VpcId": "vpc-041a1f62d65eaac18"
-  },
+  "payload": null,
+  "resourceId": "vpc-02b44399adcf739bc",
   "status": "ok"
 }
 ```
 
-The `payload` field of your action result contains the information System
-Initiative will use to populate the [resource](/reference/vocabulary#resource)
-for your [model](/reference/vocabulary#model).
+Your Action result contains the information System
+Initiative will then use to populate the [resource](/reference/vocabulary#resource) via a Refresh Action, using for example the `resourceId` which runs automatically after a successful Create.
 
-Note that the `payload/State` field is set to `pending`. The AWS API for VPC
-creation is asynchronous - AWS is informing us that it will create our VPC, but
-has not done so yet.
+Note that the `payload/State` field is currently set to `null`.
 
-## Refreshing the Tutorial Network Resource
+## A Refreshed Tutorial Network VPC Resource
 
-![Refreshing the Tutorial Network Resource](./actions-and-resources/refreshing-the-tutorial-network-resource.png)
+Return to the Grid, and filter your `Recent function runs` by `Action`, then click the successul `Refresh` Action.
 
-Click the `Tutorial Network` VPC Component on the diagram.
+In the Result section you will see something like the following:
 
-Click the `Resource` tab in the right side panel.
+```json
+{
+  "error": null,
+  "executionId": "01K1ETGTYHAEXRJY7XMXHKDT4R",
+  "message": null,
+  "payload": {
+    "CidrBlock": "10.0.0.0/24",
+    "CidrBlockAssociations": [
+      "vpc-cidr-assoc-0538bd0a59c91179c"
+    ],
+    "DefaultNetworkAcl": "acl-07d867dd4a7900e1b",
+    "DefaultSecurityGroup": "sg-094ab226efdf848b5",
+    "EnableDnsHostnames": false,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Ipv6CidrBlocks": [],
+    "Tags": [],
+    "VpcId": "vpc-02b44399adcf739bc"
+  },
+  "resourceId": null,
+  "status": "ok"
+}
+```
 
-You will likely see that the state of your resource has already been updated
-from when it was created - the `State` will have transitioned to `available`.
+You can see the details of your resource in the payload above. These properties are also available to view in the VPC Component too:
 
-Click the `Refresh Resource` button, above the `Resource` tab, to ensure you
+![View Resource and Refresh Button](./actions-and-resources/view-resource-and-refresh-button.png)
+
+You can click the `Refresh Resource` button, on the `Resource` section, to ensure you
 have the most up to date resource data.
 
-::: tip You can also refresh the resource data from the `Diagram Outline` in the
-left panel. Hover over the Components entry, and click the small `Refresh` icon.
+::: tip
+You can also refresh the resource data from the `Grid`. Right click the Component, hover over Actions and then click `Refresh Asset`.
 :::
+
+![Refresh Resource via Grid](./actions-and-resources/refresh-resource-via-grid.png)
 
 ## Create a new Change Set
 
-![Create a new Change Set](./actions-and-resources/create-a-new-change-set-part-3.png)
-
-Now we will update some properties of our VPC, and add
+Now we will update some properties of our VPC.
 
 Click the `Create Change Set` button.
 
@@ -301,111 +281,93 @@ Click `Create Change Set`.
 
 ![Update the properties of the Tutorial Network VPC](./actions-and-resources/update-the-properties-of-the-tutorial-network-vpc.png)
 
-Select the `Tutorial Network` VPC.
-
-Click the `Component` tab.
-
-Set the Component type to `Configuration Frame (Down)`.
-
-`Resize` the frame large enough to hold a new Component.
+Select the `Tutorial Network` AWS::EC2::VPC on the Grid.
 
 Set the `EnableDnsHostnames` property to true.
 
-Set the `EnableDnsResolution` property to true.
+Set the `EnableDnsSupport` property to true.
 
-## Enqueue the Update VPC Attributes action
+Editing a property on a Component with an existing Resource will automatically enqueue an `Update Action`, you can view this from within the Component via the `Actions` panel, or on the `Grid` via `Actions`. On the below screenshot, you can also see a `~Diff` icon on the VPC Component.
 
-![Enqueue the Update VPC Attributes action](./actions-and-resources/enqueue-the-update-vpc-attributes-action.png)
-
-Click the `Actions` tab in the right side panel.
-
-Toggle the `Update VPC Attributes` action to `on`.
-
-This will update the `Tutorial Network` VPC resource to reflect your changed
-Component properties when the Change Set is applied.
+![Updated Properties enqueue an Update Action](./actions-and-resources/updated-properties-enqueue-an-update.png)
 
 ## Add a Subnet and set its properties
 
-![Add a Subnet and set its properties](./actions-and-resources/add-a-subnet-and-set-its-properties.png)
-
-Click `Subnet` from the AWS EC2 category of the asset pallete, and drop it
-within the `Tutorial Network` VPC frame.
+Click `Add a component` or press `N` and search for `Subnet`, select `AWS::EC2::Subnet` and hit `Enter`.
 
 Name your Subnet `Tutorial Network Subnet`.
+
+In `VpcId`, subscribe to the `VpcId` property of the `Tutorial Network` Component.
+
+![Subscribe Subnet to VPC ID](./actions-and-resources/subscribe-subnet-to-vpc-id.png)
 
 Set the `AvailabilityZone` property to `us-east-1a`.
 
 Set the `CidrBlock` property to `10.0.0.0/26`.
 
-## Observe the enqueued actions
+Set your `region` and `aws credential` properties.
+
+Click the `X` or press `Esc` to return to the Grid.
+
+## Observe the enqueued Actions
 
 ![Observe the enqueued actions](./actions-and-resources/observe-the-enqueued-actions.png)
 
-Press the `Escape` key or click on the diagram canvas background to select the
-workspace.
+You will have 2 Actions enqueued for this Change Set - one to update the attributes of the VPC, and a create action for your new Subnet.
 
-You will have 2 actions enqueued for this Change Set - one that is the manual
-action to update the attributes of the VPC, and a create action for your new
-Subnet.
+You can also see the two pending Update and Create Actions on the VPC and Subnet Component tiles.
 
-Click the `...` button next to the `Subnet Create` action. You will see that it
-is `Waiting On` the manual action to update the VPC.
-
-When you apply the Change Set, the action to update the attributes will run
-first. If it succeeds, then the action to create your Subnet will run.
+When you apply the Change Set, the action to update the attributes will run first. If it succeeds, then the action to create your Subnet will run.
 
 ## Apply the Change Set
 
 ![Apply the Change Set](./actions-and-resources/apply-the-change-set-the-end.png)
 
-Click `Apply Change Set`.
+Click the `Apply Change Set` button in the Header.
 
-Confirm that you want to apply this Change Set by clicking `Apply Changes` in
+Confirm that you want to apply this Change Set by clicking `Apply Change Set` (or `Cmd/Ctrl + Enter`) in
 the modal.
 
 ## Observe the action order
 
 ![Observe the action order](./actions-and-resources/observe-the-action-order-final.png)
 
-You will see the action to update the `Tutorial Network` VPC finish, followed by
-the create action of your `Tutorial VPC Subnet`.
+You will see the Action to update the `Tutorial Network` VPC finish, followed by
+the Create Action of your `Tutorial VPC Subnet`, then finally the Refresh Action. You can now view the Subnets ResourceID and verification of its creation on the Component tile.
 
 :::tip
-
-The order of actions is automatically determined based on their configuration
+The order of Actions is automatically determined based on their configuration
 relationships.
-
 :::
 
 ## Clean Up
 
 ![Clean Up](./actions-and-resources/clean-up.png)
 
-Select the `Actions` AWS Credential frame.
-
-Press the `Delete` key.
+Press `Cmd/Ctrl + A` to Select all Components on the Grid, then the `Delete` key via your keyboard or click the option in the Context Menu.
 
 Click to `Confirm` that you want to delete the resources you created.
 
-Click the `Apply Change Set` button.
+Click the `Apply Change Set` button in the Header.
 
-Click the `Apply Changes` button in the modal to confirm.
+Click the `Apply Change Set` button in the modal to confirm the Action.
 
 ## Congratulations
 
 In this tutorial you learned:
 
-- How to use the Actions tab to enable/disable an action in a Change Set
-- Enqueued actions can be seen in the changes tab
-- Enqueued actions are persisent across change-sets until they succeed
+- How to use the Actions panel in a Component to enable/disable an action in a Change Set
+- Enqueued Actions can be seen in the Actions panel
+- Enqueued Actions are persisent across change-sets until they succeed
+- Grid Components display pending actions
 - Actions are executed in order according to their configuration relationships
-- Failed actions can be debugged by looking at their arguments, function code,
+- Failed Actions can be debugged by looking at their arguments, function code,
   results, and logs
-- Past action executions can be viewed from the history panel
-- Updating resources requires changing both properties and enqueing an action
-- Actions set a models resource value through their return value
+- Past action executions can be viewed from the Recent function runs panel
+- Resource updates are enqueued automatically when making changes to existing resources
+- Actions set a Components resource value through their return value
 - Resources can be refreshed as needed, to ensure an accurate view of the system
 
 ## Vocabulary
-In this tutorial bits of System Initiative Vocabulary will be shown with a capital letter. 
-All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 
+In this tutorial bits of System Initiative Vocabulary will be shown with a capital letter.
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)
