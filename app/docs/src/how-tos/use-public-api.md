@@ -288,20 +288,15 @@ include connections data:
 ```python
         print('5. Creating Region')
         region_options = {
-            "domain": {
-                "region": "us-east-1"
-                # This sets the value of region to be `us-east-1`
-            },
-            "connections": [
-                {
-                    "from": {
-                        "component": "demo-credential", # This is the name of the component in System Initiative
-                        "socketName": "AWS Credential" # This is the name of the socket to connect from
-                    },
-                    "to": "AWS Credential"
-                    # This is the name of the socket to connect to
+            "attributes": {
+                "/domain/region": "us-east-1",
+                "/secrets/credential": {
+                    "$source": {
+                        "component": "demo-credential",
+                        "path": "/secrets/AWS Credential"
+                    }
                 }
-            ]
+            }
         }
         region_component_data = create_component(change_set_id,
             "Region",     # SchemaName
@@ -319,34 +314,27 @@ make the connection to the region and the credential and set the correct
 properties required to expand the component parts of the template.
 
 ```python
-        print('6. Creating AWS Standard VPC Template')
+        print('6. Creating AWS VPC Template')
         template_options = {
-            "domain": {
-                "Template/Default/Values/Name": "demo-from-api"
-                ## This sets the root name for all of the components
-            },
-            "connections": [
-                {
-                    "from": {
+            "attributes": {
+                "/domain/VPC Name": "demo-from-api",
+                "/secrets/AWS Credential": {
+                    "$source": {
                         "component": "demo-credential",
-                        "socketName": "AWS Credential"
-                    },
-                    "to": "AWS Credential"
-                    ## Connects the AWS Credential component to the template
+                        "path": "/secrets/AWS Credential"
+                    }
                 },
-                {
-                    "from": {
+                "/domain/extra/Region": {
+                    "$source": {
                         "component": "us-east-1",
-                        "socketName": "Region"
-                    },
-                    "to": "Region"
-                    ## Connects the Region component to the template
+                        "path": "/domain/region"
+                    }
                 }
-            ]
+            }
         }
         template_component_data = create_component(change_set_id,
-            "AWS Standard VPC Template",  # SchemaName
-            "demo-template",              # ComponentName
+            "AWS VPC Template",    # SchemaName
+            "demo-template",       # ComponentName
             template_options)
         template_component_id = template_component_data["component"]["id"]
         print(f'Template Component created with ID: {template_component_id}')
@@ -384,7 +372,7 @@ We can use this function as follows:
         print('7. Expanding Template')
         expansion_options = {
             "managementFunction": {
-                "function": "Component Sync"
+                "function": "Run Template"
                 ## This is the name of the management function attached to the template
             }
         }
@@ -540,53 +528,46 @@ def main():
 
         print('5. Creating Region')
         region_options = {
-            "domain": {
-                "region": "us-east-1"
-            },
-            "connections": [
-                {
-                    "from": {
+            "attributes": {
+                "/domain/region": "us-east-1",
+                "/secrets/credential": {
+                    "$source": {
                         "component": "demo-credential",
-                        "socketName": "AWS Credential"
-                    },
-                    "to": "AWS Credential"
+                        "path": "/secrets/AWS Credential"
+                    }
                 }
-            ]
+            }
         }
         region_component_data = create_component(change_set_id, "Region", "us-east-1", region_options)
         region_component_id = region_component_data["component"]["id"]
         print(f'Region created with ID: {region_component_id}')
 
-        print('6. Creating AWS Standard VPC Template')
+        print('6. Creating AWS VPC Template')
         template_options = {
-            "domain": {
-                "Template/Default/Values/Name": "paul-demo-from-api"
-            },
-            "connections": [
-                {
-                    "from": {
+            "attributes": {
+                "/domain/VPC Name": "paul-demo-from-api",
+                "/secrets/AWS Credential": {
+                    "$source": {
                         "component": "demo-credential",
-                        "socketName": "AWS Credential"
-                    },
-                    "to": "AWS Credential"
+                        "path": "/secrets/AWS Credential"
+                    }
                 },
-                {
-                    "from": {
+                "/domain/extra/Region": {
+                    "$source": {
                         "component": "us-east-1",
-                        "socketName": "Region"
-                    },
-                    "to": "Region"
+                        "path": "/domain/region"
+                    }
                 }
-            ]
+            }
         }
-        template_component_data = create_component(change_set_id, "AWS Standard VPC Template", "demo-template", template_options)
+        template_component_data = create_component(change_set_id, "AWS  VPC Template", "demo-template", template_options)
         template_component_id = template_component_data["component"]["id"]
         print(f'Template Component created with ID: {template_component_id}')
 
         print('7. Expanding Template')
         expansion_options = {
             "managementFunction": {
-                "function": "Component Sync"
+                "function": "Run Template"
             }
         }
         func_run_data = execute_management_function(change_set_id, template_component_id, expansion_options)
@@ -810,18 +791,15 @@ async function main(): Promise<void> {
 
     console.log("5. Creating Region");
     const regionOptions: ComponentOptions = {
-      domain: {
-        region: "us-east-1",
-      },
-      connections: [
-        {
-          from: {
+      attributes: {
+        "/domain/region": "us-east-1",
+        "/secrets/credential": {
+          $source: {
             component: "demo-credential",
-            socketName: "AWS Credential",
+            path: "/secrets/AWS Credential",
           },
-          to: "AWS Credential",
         },
-      ],
+      },
     };
     const regionComponentData = await createComponent(
       changeSetId,
@@ -834,29 +812,25 @@ async function main(): Promise<void> {
 
     console.log("6. Creating AWS Standard VPC Template");
     const templateOptions: ComponentOptions = {
-      domain: {
-        "Template/Default/Values/Name": "paul-demo-from-api",
-      },
-      connections: [
-        {
-          from: {
+      attributes: {
+        "/domain/VPC Name": "paul-demo-from-api",
+        "/secrets/AWS Credential": {
+          $source: {
             component: "demo-credential",
-            socketName: "AWS Credential",
+            path: "/secrets/AWS Credential",
           },
-          to: "AWS Credential",
         },
-        {
-          from: {
+        "/domain/extra/Region": {
+          $source: {
             component: "us-east-1",
-            socketName: "Region",
+            path: "/domain/region",
           },
-          to: "Region",
         },
-      ],
+      },
     };
     const templateComponentData = await createComponent(
       changeSetId,
-      "AWS Standard VPC Template",
+      "AWS VPC Template",
       "demo-template",
       templateOptions,
     );
@@ -866,7 +840,7 @@ async function main(): Promise<void> {
     console.log("7. Expanding Template");
     const expansionOptions: ManagementFunctionOptions = {
       managementFunction: {
-        function: "Component Sync",
+        function: "Run Template",
       },
     };
     const funcRunData = await executeManagementFunction(
@@ -875,7 +849,9 @@ async function main(): Promise<void> {
       expansionOptions,
     );
     const managementFuncJobStateId = funcRunData.managementFuncJobStateId;
-    console.log(`Template Func running with management func job state ID: ${managementFuncJobStateId}`);
+    console.log(
+      `Template Func running with management func job state ID: ${managementFuncJobStateId}`,
+    );
   } catch (error: any) {
     if (error.message.includes("HTTP Error")) {
       console.log(`HTTP Error: ${error.message}`);
