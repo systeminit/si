@@ -26,7 +26,6 @@ A-web:
 A-auth:
   - changed-files:
     - any-glob-to-any-file:
-      - app/docs/**/*
       - bin/auth-api/**/*
 
 #
