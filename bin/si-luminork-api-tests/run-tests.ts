@@ -2,7 +2,7 @@
 
 /**
  * Command-line script to run tests with parameters
- * 
+ *
  * Usage:
  *   deno run -A run-tests.ts --help
  *   deno run -A run-tests.ts --api-url=http://localhost:5380 --auth-token=YOUR_TOKEN --workspace-id=YOUR_WORKSPACE_ID
@@ -15,7 +15,7 @@ function printUsage() {
   console.log(`
 Luminork API Test Runner
 
-Usage: 
+Usage:
   deno run -A run-tests.ts [options]
 
 Options:
@@ -85,10 +85,10 @@ console.log(`Running test files matching: ${testFiles}`);
 // Run the tests
 const testProcess = Deno.run({
   cmd: [
-    "deno", 
-    "test", 
-    "--allow-env", 
-    "--allow-net", 
+    "deno",
+    "test",
+    "--allow-env",
+    "--allow-net",
     "--allow-read",
     testFiles
   ],
@@ -99,5 +99,6 @@ const testProcess = Deno.run({
 // Wait for the tests to complete
 const status = await testProcess.status();
 
-// Exit with the same status as the test process
-Deno.exit(status.code);
+// Use exit code "53" for test failures
+const exitCode = status.success ? 0 : 53;
+Deno.exit(exitCode);
