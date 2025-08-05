@@ -425,7 +425,12 @@ impl ManagementFuncJob {
         func_run_id: Option<FuncRunId>,
         failure_message: Option<String>,
     ) -> ManagementFuncJobResult<()> {
-        let ctx_clone = ctx.clone();
+        let mut ctx_clone = ctx.clone();
+        // Restart connections to ensure we don't flush jobs, and because we
+        // want to commit the changes to the database independently of any other
+        // queries made in the "parent" contexts.
+        ctx_clone.restart_connections().await?;
+
         if new_state == ManagementState::Failure {
             if let Ok(snap) = ctx.workspace_snapshot() {
                 snap.revert().await;
@@ -439,6 +444,7 @@ impl ManagementFuncJob {
             failure_message,
         )
         .await?;
+
         ctx_clone.commit_no_rebase().await?;
 
         Ok(())

@@ -13,6 +13,7 @@ use dal::{
 use si_pkg::{
     AttrFuncInputSpec,
     AttrFuncInputSpecKind,
+    ManagementFuncSpec,
     PkgSpec,
     PropSpec,
     SchemaSpec,
@@ -27,6 +28,7 @@ use si_pkg::{
 
 use crate::test_exclusive_schemas::{
     build_asset_func,
+    build_management_func,
     create_identity_func,
 };
 
@@ -135,6 +137,60 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_output(
     let fn_name = format!("test:scaffold{schema_name}Asset");
     let authoring_schema_func = build_asset_func(fn_name.as_str())?;
 
+    let bad_import_management_func_code =
+        "async function main({ thisComponent }: Input): Promise<Output> {
+        const thisProperties = thisComponent.properties;
+        return {
+            status: 'ok',
+            ops: {
+                update: {
+                    self: {
+                        properties: {
+                            ...thisProperties,
+                            domain: {
+                                ...thisProperties.domain,
+                                a_number: 4,
+                            },
+                        }
+                    }
+                }
+            },
+            message: 'hello'
+        }
+    }";
+    let bad_import_management_func_name = "test:badImportManagementValidatedOutput";
+    let bad_import_management_func = build_management_func(
+        bad_import_management_func_code,
+        bad_import_management_func_name,
+    )?;
+
+    let good_import_management_func_code =
+        "async function main({ thisComponent }: Input): Promise<Output> {
+        const thisProperties = thisComponent.properties;
+        return {
+            status: 'ok',
+            ops: {
+                update: {
+                    self: {
+                        properties: {
+                            ...thisProperties,
+                            domain: {
+                                ...thisProperties.domain,
+                                a_number: 1,
+                            },
+                        }
+                    }
+                }
+            },
+            message: 'hello'
+        }
+    }";
+    let good_import_management_func_name = "test:goodImportManagementValidatedOutput";
+    let good_import_management_func = build_management_func(
+        good_import_management_func_code,
+        good_import_management_func_name,
+    )?;
+
     let schema = SchemaSpec::builder()
         .name(schema_name)
         .data(
@@ -159,6 +215,18 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_output(
                         .name("a_number")
                         .kind(PropKind::Integer)
                         .validation_format(r#"{"type":"number","flags":{"presence":"required"},"rules":[{"name":"integer"},{"name":"min","args":{"limit":0}},{"name":"max","args":{"limit":2}}]}"#)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Bad import validated output")
+                        .func_unique_id(&bad_import_management_func.unique_id)
+                        .build()?,
+                )
+                .management_func(
+                    ManagementFuncSpec::builder()
+                        .name("Good import validated output")
+                        .func_unique_id(&good_import_management_func.unique_id)
                         .build()?,
                 )
                 .socket(
@@ -189,6 +257,8 @@ pub(crate) async fn migrate_test_exclusive_schema_validated_output(
 
     let spec = builder
         .func(identity_func_spec)
+        .func(bad_import_management_func)
+        .func(good_import_management_func)
         .func(authoring_schema_func)
         .schema(schema)
         .build()?;

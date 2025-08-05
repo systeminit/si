@@ -55,6 +55,23 @@ pub async fn create(
     )
 }
 
+/// Find a management prototype by the prototype name (NOT THE FUNC NAME)
+pub async fn find_management_prototype(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    prototype_name: &str,
+) -> Result<ManagementPrototype> {
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+
+    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
+        .await?
+        .into_iter()
+        .find(|proto| proto.name() == prototype_name)
+        .expect("could not find prototype");
+
+    Ok(management_prototype)
+}
+
 /// Execute a the management function and apply the result to the component
 pub async fn execute_management_func(
     ctx: &DalContext,
