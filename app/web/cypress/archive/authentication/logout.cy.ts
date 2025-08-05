@@ -23,7 +23,6 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         return false;
       });
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
-      cy.wait(3000);
       cy.appModelPageLoaded();
 
       // create a change set
