@@ -85,23 +85,15 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { debounce } from "lodash-es";
-import {
-  computed,
-  inject,
-  nextTick,
-  PropType,
-  reactive,
-  ref,
-  watch,
-} from "vue";
+import { computed, nextTick, PropType, reactive, ref, watch } from "vue";
 import { Fzf } from "fzf";
 import { MouseDetails, mouseEmitter } from "./logic_composables/emitters";
 import EmptyState from "./EmptyState.vue";
-import { assertIsDefined, Context } from "./types";
 import ManagementConnectionCard from "./ManagementConnectionCard.vue";
 import { SimpleConnection } from "./layout_components/ConnectionLayout.vue";
 import { routes, useApi } from "./api_composables";
 import { UpdateComponentManageArgs } from "./api_composables/component";
+import { useContext } from "./logic_composables/context";
 
 export type PossibleConnectionComponent = {
   id: string;
@@ -109,8 +101,7 @@ export type PossibleConnectionComponent = {
   schemaVariantName?: string;
 };
 
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined<Context>(ctx);
+const ctx = useContext();
 
 const props = defineProps({
   existingEdges: {

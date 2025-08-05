@@ -14,14 +14,13 @@
 
 <script setup lang="ts">
 import { Modal, VormInput } from "@si/vue-lib/design-system";
-import { ref, computed, inject } from "vue";
+import { ref, computed } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { assertIsDefined, Context } from "../types";
+import { useContext } from "../logic_composables/context";
 
 const workspacesStore = useWorkspacesStore();
 
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
+const ctx = useContext();
 
 const currentUserIsDefaultApprover = computed(() =>
   ctx.approvers.value.includes(ctx.user?.pk ?? ""),

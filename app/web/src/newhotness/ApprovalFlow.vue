@@ -1,7 +1,6 @@
 <template>
-  <!-- 'xl:max-w-[50vw] xl:min-w-[680px] max-h-full', -->
   <div
-    v-if="mode !== 'error'"
+    v-if="status !== 'unexpected'"
     :class="
       clsx(
         'flex flex-col gap-sm p-sm',
@@ -17,33 +16,31 @@
           {{ changeSetName }}
         </TruncateWithTooltip>
         <TruncateWithTooltip class="font-bold pb-2xs">{{
-          modalData.title
+          metadata.title
         }}</TruncateWithTooltip>
-        <div v-if="modalData.date" class="text-sm italic">
-          <Timestamp :date="modalData.date" showTimeIfToday size="extended" />
+        <div v-if="metadata.date" class="text-sm italic">
+          <Timestamp :date="metadata.date" showTimeIfToday size="extended" />
         </div>
       </div>
 
       <ErrorMessage
-        :tone="modalData.messageTone"
-        :icon="modalData.messageIcon"
+        v-if="status === 'requested' || status === 'approved'"
+        :tone="metadata.messageTone"
+        :icon="metadata.messageIcon"
         variant="block"
         class="rounded grow"
       >
-        <template v-if="mode === 'requested'">
+        <template v-if="status === 'requested'">
           There are approvals that must be met before the change set can be
           applied.
         </template>
-        <template v-else-if="mode === 'approved'">
+        <template v-else>
           <p>
             {{ requesterIsYou ? "Your" : "The" }} request to
             <span class="font-bold">Apply</span> change set
             <span class="font-bold">{{ changeSetName }}</span> has been
             approved.
           </p>
-        </template>
-        <template v-else>
-          ERROR - this message should not ever show. Something has gone wrong!
         </template>
       </ErrorMessage>
     </div>
@@ -167,7 +164,7 @@
           label="Reject Request"
           tone="destructive"
           icon="thumbs-down"
-          @click="rejectHandler"
+          @click="reject"
         />
         <VButton
           :disabled="iApproved"
@@ -178,9 +175,9 @@
         />
       </template>
       <VButton
-        :disabled="mode !== 'approved'"
+        :disabled="status !== 'approved'"
         tone="success"
-        :loading="mode === 'approved' ? applyingChangeSet : false"
+        :loading="status === 'approved' ? applyInFlight : false"
         loadingText="Applying..."
         @click="apply"
       >
@@ -202,39 +199,21 @@ import {
   ErrorMessage,
   Icon,
   IconNames,
-  Modal,
   themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import clsx from "clsx";
-import {
-  ApprovalData,
-  ApprovalStatus,
-  approverForChangeSet,
-} from "@/store/change_sets.store";
-import { WorkspaceUser } from "@/store/auth.store";
 import { ChangeSetStatus, ChangeSet } from "@/api/sdf/dal/change_set";
 import { User } from "@/api/sdf/dal/user";
+import { ApprovalData, WorkspaceUser } from "./types";
 import { useContext } from "./logic_composables/context";
 import { routes, useApi } from "./api_composables";
-import { useApplyChangeSet } from "./logic_composables/change_set";
-
-const props = defineProps<{
-  approvalData: ApprovalData | undefined;
-  changeSet: ChangeSet;
-  workspaceUsers: Record<string, WorkspaceUser>;
-  user: User;
-}>();
-
-export type InsetApprovalModalMode =
-  | "requested"
-  | "approved"
-  | "rejected"
-  | "error";
-
-const changeSetName = computed(() => props.changeSet.name);
+import {
+  useApplyChangeSet,
+  approverForChangeSet,
+} from "./logic_composables/change_set";
 
 interface RequirementGroup {
   key: string;
@@ -243,10 +222,37 @@ interface RequirementGroup {
   satisfied: boolean;
   requiredCount: number;
 }
+
 interface Vote {
   user: WorkspaceUser;
-  status?: ApprovalStatus;
+  status?: "Approved" | "Rejected";
 }
+
+const props = defineProps<{
+  approvalData: ApprovalData | undefined;
+  changeSet: ChangeSet;
+  workspaceUsers: Record<string, WorkspaceUser>;
+  user: User;
+}>();
+
+const status = computed(
+  (): "approved" | "requested" | "rejected" | "unexpected" => {
+    if (!props.approvalData?.requirements.some((r) => r.isSatisfied === false))
+      return "approved";
+    switch (props.changeSet.status) {
+      case ChangeSetStatus.NeedsApproval:
+        return "requested";
+      case ChangeSetStatus.Approved:
+        return "approved";
+      case ChangeSetStatus.Rejected:
+        return "rejected";
+      default:
+        return "unexpected";
+    }
+  },
+);
+
+const changeSetName = computed(() => props.changeSet.name);
 
 const requirementGroups = computed(() => {
   const groups: Map<Set<string>, RequirementGroup> = new Map();
@@ -275,6 +281,7 @@ const requirementGroups = computed(() => {
     if (r.entityKind === "ApprovalRequirementDefinition") {
       label = ["Approval Requirement change"];
     }
+    // NOTE(nick): start here to restore approvals of different kinds.
     // else if (r.entityKind === "Schema") {
     //   const variantForSchema = assetStore.schemaVariants.find(
     //     (thing) => thing.schemaId === r.entityId,
@@ -324,10 +331,6 @@ const requirementGroups = computed(() => {
   return [...groups.values()];
 });
 
-const satisfied = computed(
-  () => !props.approvalData?.requirements.some((r) => r.isSatisfied === false),
-);
-
 const myVote = computed(() =>
   props.approvalData?.latestApprovals.find(
     (a) => a.isValid && a.userId === props.user.pk,
@@ -337,20 +340,6 @@ const myVote = computed(() =>
 const iApproved = computed(() => myVote.value?.status === "Approved");
 
 const iRejected = computed(() => myVote.value?.status === "Rejected");
-
-const mode = computed(() => {
-  if (satisfied.value === true) return "approved";
-  switch (props.changeSet.status) {
-    case ChangeSetStatus.NeedsApproval:
-      return "requested";
-    case ChangeSetStatus.Approved:
-      return "approved";
-    case ChangeSetStatus.Rejected:
-      return "rejected";
-    default:
-      return "error";
-  }
-});
 
 const requesterIsYou = computed(
   () => props.changeSet.mergeRequestedByUserId === props.user.pk,
@@ -369,8 +358,8 @@ const requestDate = computed(
   () => props.changeSet.mergeRequestedAt as IsoDateString,
 );
 
-const modalData = computed(() => {
-  if (mode.value === "requested") {
+const metadata = computed(() => {
+  if (status.value === "requested") {
     return {
       title: `Approval Requested by ${
         requesterIsYou.value ? "You" : requesterEmail.value
@@ -380,7 +369,7 @@ const modalData = computed(() => {
       messageIcon: "exclamation-circle" as IconNames,
     };
     // approved & rejected are deprecating with the new approach
-  } else if (mode.value === "approved") {
+  } else if (status.value === "approved") {
     return {
       title: approverEmail.value
         ? `Approval Granted by ${approverEmail.value}`
@@ -389,7 +378,7 @@ const modalData = computed(() => {
       messageTone: "success" as Tones,
       messageIcon: "check-circle" as IconNames,
     };
-  } else if (mode.value === "rejected") {
+  } else if (status.value === "rejected") {
     return {
       title: `Approval Rejected by ${approverEmail.value}`,
       date: approveDate.value,
@@ -414,18 +403,17 @@ const approve = () => {
   call.post({ status: "Approved" });
 };
 
-const { applyChangeSet, disableApplyChangeSet: _disable } = useApplyChangeSet();
-const applyingChangeSet = computed(() => applyChangeSet.loading.value);
+const { performApply, applyInFlight } = useApplyChangeSet(ctx);
 
 const apply = () => {
-  applyChangeSet.performApply();
+  performApply();
 };
 
 const reopenApi = useApi(ctx);
 const cancelApi = useApi(ctx);
 
 const withdraw = () => {
-  if (mode.value === "rejected") {
+  if (status.value === "rejected") {
     const reopenCall = reopenApi.endpoint(routes.ChangeSetReopen);
     reopenCall.post({});
   } else {
@@ -438,15 +426,8 @@ const withdraw = () => {
 
 const rejectApi = useApi(ctx);
 
-const rejectHandler = () => {
+const reject = () => {
   const call = rejectApi.endpoint(routes.ChangeSetApprove);
   call.post({ status: "Rejected" });
 };
-
-const modalRef = ref<InstanceType<typeof Modal> | null>(null);
-async function openModalHandler() {
-  // if (ctx?.onHead.value) return;
-  modalRef.value?.open();
-}
-defineExpose({ open: openModalHandler });
 </script>

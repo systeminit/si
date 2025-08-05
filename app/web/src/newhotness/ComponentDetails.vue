@@ -499,7 +499,7 @@ import {
   IncomingConnections,
   MgmtFuncKind,
 } from "@/workers/types/entity_kind_types";
-import { Context, ExploreContext, assertIsDefined } from "@/newhotness/types";
+import { ExploreContext } from "@/newhotness/types";
 import { funcRunStatus, FuncRun } from "@/newhotness/api_composables/func_run";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import AttributePanel from "./AttributePanel.vue";
@@ -525,14 +525,15 @@ import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 import { useManagementFuncJobState } from "./logic_composables/management";
 import { useComponentActions } from "./logic_composables/component_actions";
 import { openWorkspaceMigrationDocumentation } from "./util";
+import { useContext } from "./logic_composables/context";
 
 const props = defineProps<{
   componentId: string;
 }>();
 
 const realtimeStore = useRealtimeStore();
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
+
+const ctx = useContext();
 const explore = inject<ExploreContext | null>("EXPLORE_CONTEXT", null);
 
 const key = useMakeKey();
@@ -732,7 +733,7 @@ const showResourceInput = ref(false);
 const MGMT_RUN_KEY = "latestMgmtFuncRuns";
 
 const funcRunQuery = useQuery({
-  queryKey: [ctx?.changeSetId, MGMT_RUN_KEY],
+  queryKey: [ctx.changeSetId, MGMT_RUN_KEY],
   queryFn: async () =>
     api
       .endpoint<FuncRun[]>(routes.MgmtFuncGetLatest, {
@@ -777,7 +778,7 @@ watch([funcRuns], () => {
   if (funcRuns.value.find((run) => run.state === "Running")) {
     setTimeout(() => {
       queryClient.invalidateQueries({
-        queryKey: [ctx?.changeSetId, MGMT_RUN_KEY],
+        queryKey: [ctx.changeSetId, MGMT_RUN_KEY],
       });
     }, 5000);
   }
@@ -832,14 +833,14 @@ onMounted(() => {
     }
   });
 
-  realtimeStore.subscribe(MGMT_RUN_KEY, `changeset/${ctx?.changeSetId.value}`, [
+  realtimeStore.subscribe(MGMT_RUN_KEY, `changeset/${ctx.changeSetId.value}`, [
     {
       eventType: "FuncRunLogUpdated",
       callback: async (payload) => {
         if (mgmtFuncs.value.find((m) => m.funcId === payload.actionId)) {
           setTimeout(() => {
             queryClient.invalidateQueries({
-              queryKey: [ctx?.changeSetId, MGMT_RUN_KEY],
+              queryKey: [ctx.changeSetId, MGMT_RUN_KEY],
             });
           }, 500);
         }

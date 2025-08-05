@@ -96,7 +96,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { SiSearch, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRoute, useRouter } from "vue-router";
@@ -104,14 +104,13 @@ import Popover from "@/components/Popover.vue";
 import { usePresenceStore } from "@/store/presence.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
-import { assertIsDefined, Context } from "../types";
+import { useContext } from "../logic_composables/context";
 
 const presenceStore = usePresenceStore();
 const router = useRouter();
 const route = useRoute();
 
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
+const ctx = useContext();
 
 export type UserInfo = {
   name: string;

@@ -43,9 +43,10 @@ import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { Icon, PillCounter } from "@si/vue-lib/design-system";
 import { useQueries } from "@tanstack/vue-query";
 import { ChangeSetId, ChangeSet } from "@/api/sdf/dal/change_set";
-import { ApprovalData, approverForChangeSet } from "@/store/change_sets.store";
+import { ApprovalData } from "../types";
 import ApprovalPendingModal from "./ApprovalPendingModal.vue";
 import { useContext } from "../logic_composables/context";
+import { approverForChangeSet } from "../logic_composables/change_set";
 import { useApi, routes, apiContextForChangeSet } from "../api_composables";
 
 const props = defineProps<{

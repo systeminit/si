@@ -13,7 +13,6 @@ import {
   onMounted,
   onUnmounted,
   unref,
-  inject,
   onBeforeUnmount,
 } from "vue";
 import { useQuery } from "@tanstack/vue-query";
@@ -25,12 +24,12 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { useRainbow } from "@/newhotness/logic_composables/rainbow_counter";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
-import { Context, assertIsDefined } from "@/newhotness/types";
 import { useStatus } from "./logic_composables/status";
+import { useContext } from "./logic_composables/context";
 
 const realtimeStore = useRealtimeStore();
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
+
+const ctx = useContext();
 
 const status = useStatus();
 const bucket = reactive<Record<string, number>>({});

@@ -1,5 +1,5 @@
 import * as _ from "lodash-es";
-import { computed, ComputedRef, inject, Ref, ref } from "vue";
+import { computed, ComputedRef, Ref, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { RouteLocationNormalizedLoadedGeneric, Router } from "vue-router";
 import {
@@ -8,7 +8,7 @@ import {
   ChangeSetStatus,
 } from "@/api/sdf/dal/change_set";
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
-import { assertIsDefined, Context } from "../types";
+import { ApprovalData, Context, UserId } from "../types";
 import { routes, useApi } from "../api_composables";
 import { useStatus } from "./status";
 import { reset } from "./navigation_stack";
@@ -66,42 +66,25 @@ export const useChangeSets = (
   return { openChangeSets, changeSet, headChangeSetId, defaultApprovers };
 };
 
-// other components use the Context that is populated with the above data
-const useApplyChangeSetInner = (ctx: Context) => {
+export const useApplyChangeSet = (ctx: Context) => {
   const api = useApi(ctx);
+  const status = useStatus();
 
-  const loading = computed(() => api.inFlight.value);
-
+  const applyInFlight = computed(() => api.inFlight.value);
   const performApply = async () => {
     const call = api.endpoint(routes.ApplyChangeSet);
     const { req } = await call.post({});
     return { success: api.ok(req) };
   };
-
-  return { loading, performApply };
-};
-
-const useDisableApplyChangeSetInner = () => {
-  const ctx = inject<Context>("CONTEXT");
-  assertIsDefined(ctx);
-
-  const status = useStatus();
-
-  return computed(
+  const disallowApply = computed(
     () =>
       (ctx.changeSet.value?.status !== ChangeSetStatus.Open &&
         ctx.changeSet.value?.status !== ChangeSetStatus.NeedsApproval) ||
       ctx.onHead.value ||
       status.value === "syncing",
   );
-};
 
-export const useApplyChangeSet = () => {
-  const ctx = inject<Context>("CONTEXT");
-  assertIsDefined(ctx);
-  const applyChangeSet = useApplyChangeSetInner(ctx);
-  const disableApplyChangeSet = useDisableApplyChangeSetInner();
-  return { applyChangeSet, disableApplyChangeSet };
+  return { performApply, applyInFlight, disallowApply };
 };
 
 export const navigateToExistingChangeSet = async (
@@ -120,3 +103,14 @@ export const navigateToExistingChangeSet = async (
   });
   reset();
 };
+
+export const approverForChangeSet = (
+  userId: UserId,
+  approvalData: ApprovalData,
+) =>
+  approvalData.requirements.some((r) =>
+    Object.values(r.approverGroups)
+      .flat()
+      .concat(r.approverIndividuals)
+      .includes(userId),
+  );

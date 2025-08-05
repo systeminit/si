@@ -23,7 +23,7 @@ import {
   BifrostComponent,
 } from "@/workers/types/entity_kind_types";
 import QualificationView from "@/newhotness/QualificationView.vue";
-import { AttributeValueId } from "@/store/status.store";
+import { AttributeValueId } from "./types";
 import { findAvsAtPropPath } from "./util";
 import EmptyState from "./EmptyState.vue";
 

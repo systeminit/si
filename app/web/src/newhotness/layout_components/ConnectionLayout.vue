@@ -192,8 +192,7 @@ import {
   TruncateWithTooltip,
   Icon,
 } from "@si/vue-lib/design-system";
-import { inject } from "vue";
-import { assertIsDefined, Context } from "../types";
+import { useContext } from "../logic_composables/context";
 
 export interface SimpleConnection {
   key: string;
@@ -202,8 +201,7 @@ export interface SimpleConnection {
   other: string;
 }
 
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined<Context>(ctx);
+const ctx = useContext();
 
 const props = defineProps<{
   label: string;
