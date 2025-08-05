@@ -73,8 +73,8 @@ Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string, of
 Cypress.Commands.add('appModelPageLoaded', () => {
   // updated for the new hotness UI
   cy.wait(3000);
-  cy.get('#left-column-new-hotness-explore', { timeout: 600000 });
-  cy.get('#right-column-new-hotness-explore', { timeout: 600000 });
+  cy.get('#left-column-new-hotness-explore', { timeout: 60000 });
+  cy.get('#right-column-new-hotness-explore', { timeout: 60000 });
 })
 
 Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
