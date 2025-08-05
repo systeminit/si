@@ -1,6 +1,15 @@
 <template>
   <div>
-    <Modal ref="modalRef" hideExitButton title="Changes To Be Applied">
+    <Modal
+      ref="modalRef"
+      hideExitButton
+      title="Changes To Be Applied"
+      :size="
+        changeSet && changeSet.status === ChangeSetStatus.NeedsApproval
+          ? '4xl'
+          : 'md'
+      "
+    >
       <div class="max-h-[70vh] overflow-hidden flex flex-col">
         <div class="text-sm mb-xs pb-sm">
           Applying this change set may create, modify, or destroy real resources
@@ -39,7 +48,19 @@
             />
           </ul>
         </div>
+        <InsetApprovalModal
+          v-if="
+            changeSet &&
+            changeSet.status === ChangeSetStatus.NeedsApproval &&
+            ctx.user
+          "
+          :changeSet="changeSet"
+          :approvalData="approvalData"
+          :workspaceUsers="workspaceUsers"
+          :user="ctx.user"
+        />
         <div
+          v-else
           class="flex flex-row w-full items-center justify-center gap-sm mt-xs"
         >
           <VButton
@@ -48,18 +69,8 @@
             pill="Esc"
             @click="closeModalHandler"
           />
-          <!--
-          TODO(nick): restore the dynamic label when approvals are re-introduced.
-          ```
-          :label="
-            workspaceHasOneUser || !workspacesStore.workspaceApprovalsEnabled
-            ? 'Apply Change Set'
-            : 'Request Approval'
-          "
-          ```
-          -->
           <VButton
-            label="Apply Change Set"
+            :label="approvalsEnabled ? 'Request Approval' : 'Apply Change Set'"
             :class="
               clsx(
                 'grow !text-sm !border !cursor-pointer !px-xs',
@@ -69,11 +80,11 @@
                 ),
               )
             "
-            loadingText="Applying Changes"
-            :loading="applyChangeSet.loading.value"
-            :disabled="disableApplyChangeSet"
+            :loadingText="approvalsEnabled ? 'undefined' : 'Applying Changes'"
+            :loading="approvalsEnabled ? false : applyChangeSet.loading.value"
+            :disabled="approvalsEnabled ? false : disableApplyChangeSet"
             pill="Cmd + Enter"
-            @click="debouncedApply"
+            @click="debouncedApplyOrRequestApproval"
           />
         </div>
       </div>
@@ -92,17 +103,24 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRouter, useRoute } from "vue-router";
-import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, inject, onMounted, ref } from "vue";
 import { debounce } from "lodash-es";
 import { useToast, POSITION } from "vue-toastification";
+import { useQuery } from "@tanstack/vue-query";
 import { ActionProposedView } from "@/store/actions.store";
 import { ActionKind } from "@/api/sdf/dal/action";
+import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import { WorkspaceUser } from "@/store/auth.store";
+import { ApprovalData } from "@/store/change_sets.store";
 import { keyEmitter } from "./logic_composables/emitters";
 import ActionCard from "./ActionCard.vue";
-import { assertIsDefined, Context } from "./types";
+import InsetApprovalModal from "./InsetApprovalModal.vue";
 import { reset } from "./logic_composables/navigation_stack";
 import { useApplyChangeSet } from "./logic_composables/change_set";
 import ToastApplyingChanges from "./nav/ToastApplyingChanges.vue";
+import { useContext } from "./logic_composables/context";
+import { useApi, routes } from "./api_composables";
+import { Workspaces } from "./types";
 
 const props = defineProps<{
   actions: ActionProposedView[];
@@ -110,8 +128,49 @@ const props = defineProps<{
 
 const modalRef = ref<InstanceType<typeof Modal> | null>(null);
 
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
+const ctx = useContext();
+
+const changeSet = computed(() => ctx.changeSet.value);
+
+// First, check if the workspace has the approvals features enabled at the Auth API level.
+const workspaces = inject<Workspaces>("WORKSPACES");
+const workspace = computed(() => {
+  const maybeWorkspaces = workspaces?.workspaces?.value;
+  if (!maybeWorkspaces) return undefined;
+  return maybeWorkspaces[ctx.workspacePk.value];
+});
+const approvalsEnabledWithoutSoloUserCheck = computed(() => {
+  if (!workspace.value) return false;
+  return workspace.value.approvalsEnabled;
+});
+
+// Second, check if we are in a solo user workspace.
+const usersApi = useApi(ctx);
+const workspaceUsersQuery = useQuery<Record<string, WorkspaceUser>>({
+  enabled: () => approvalsEnabledWithoutSoloUserCheck.value,
+  queryKey: ["workspacelistusers"],
+  staleTime: 5000,
+  queryFn: async () => {
+    const call = usersApi.endpoint<{ users: WorkspaceUser[] }>(
+      routes.WorkspaceListUsers,
+    );
+    const response = await call.get();
+    if (usersApi.ok(response)) {
+      return _.keyBy(response.data.users, "id");
+    }
+    return {} as Record<string, WorkspaceUser>;
+  },
+});
+const workspaceUsers = computed(() => workspaceUsersQuery.data.value ?? {});
+const isSoloUserWorkspace = computed(
+  () => Object.keys(workspaceUsers.value).length === 1,
+);
+
+// Third, combine the two checks to determine if we should allow users to request approval.
+const approvalsEnabled = computed(
+  () =>
+    approvalsEnabledWithoutSoloUserCheck.value && !isSoloUserWorkspace.value,
+);
 
 const router = useRouter();
 const route = useRoute();
@@ -155,7 +214,7 @@ onMounted(() => {
 
   keyEmitter.on("Enter", (e) => {
     if (e.metaKey || e.ctrlKey) {
-      debouncedApply();
+      debouncedApplyOrRequestApproval();
     }
   });
 });
@@ -175,58 +234,45 @@ function closeModalHandler() {
 
 const { applyChangeSet, disableApplyChangeSet } = useApplyChangeSet();
 
-const debouncedApply = debounce(apply, 500);
+const debouncedApplyOrRequestApproval = debounce(applyOrRequestApproval, 500);
 onBeforeUnmount(() => {
-  debouncedApply.cancel();
+  debouncedApplyOrRequestApproval.cancel();
 });
 
 const toast = useToast();
 
-async function apply() {
-  // TODO(nick): restore approvals in the new UI.
-  // if (!workspacesStore.workspaceApprovalsEnabled && authStore.user) {
-  //   changeSetsStore.APPLY_CHANGE_SET_NEW_HOTNESS(authStore.user.name);
-  // } else {
-  //   if (workspaceHasOneUser.value && authStore.user) {
-  //     changeSetsStore.APPLY_CHANGE_SET_NEW_HOTNESS(authStore.user.name);
-  //   } else {
-  //     changeSetsStore.REQUEST_CHANGE_SET_APPROVAL();
-  //
-  //     // TODO(nick): we should remove this in favor of only the WsEvent fetching. It appears that
-  //     // requesting the approval itself is insufficient for getting the latest approval status at
-  //     // the time of writing and the reason appears to be that the change set is "open" by the
-  //     // time the inset modal opens. Fortunately, this will work since we are the requester.
-  //     if (changeSet.value) {
-  //       changeSetsStore.FETCH_APPROVAL_STATUS(changeSet.value.id);
-  //     }
-  //
-  //     presenceStore.leftDrawerOpen = false; // close the left draw for the InsetModal
-  //   }
-  // }
-  if (!ctx) return;
+const requestApprovalApi = useApi(ctx);
 
-  const result = await applyChangeSet.performApply();
-  if (result.success) {
-    closeModalHandler();
-    toast(
-      {
-        component: ToastApplyingChanges,
-      },
-      {
-        position: POSITION.BOTTOM_CENTER,
-        timeout: 5000,
-      },
+async function applyOrRequestApproval() {
+  if (approvalsEnabled.value) {
+    const requestApprovalCall = requestApprovalApi.endpoint(
+      routes.ChangeSetRequestApproval,
     );
-    const name = route.name;
-    router.push({
-      name,
-      params: {
-        ...route.params,
-        changeSetId: ctx.headChangeSetId.value,
-      },
-      query: route.query,
-    });
-    reset();
+    requestApprovalCall.post({});
+  } else {
+    const result = await applyChangeSet.performApply();
+    if (result.success) {
+      closeModalHandler();
+      toast(
+        {
+          component: ToastApplyingChanges,
+        },
+        {
+          position: POSITION.BOTTOM_CENTER,
+          timeout: 5000,
+        },
+      );
+      const name = route.name;
+      router.push({
+        name,
+        params: {
+          ...route.params,
+          changeSetId: ctx.headChangeSetId.value,
+        },
+        query: route.query,
+      });
+      reset();
+    }
   }
 }
 
@@ -251,6 +297,23 @@ async function apply() {
 //     }
 //   },
 // );
+
+const approvalDataApi = useApi(ctx);
+const approvalDataQuery = useQuery<ApprovalData | undefined>({
+  enabled: () => approvalsEnabled.value,
+  queryKey: ["approvalstatus", ctx.changeSetId.value],
+  queryFn: async () => {
+    const call = approvalDataApi.endpoint<ApprovalData>(
+      routes.ChangeSetApprovalStatus,
+    );
+    const response = await call.get();
+    if (approvalDataApi.ok(response)) {
+      return response.data;
+    }
+    return undefined;
+  },
+});
+const approvalData = computed(() => approvalDataQuery.data.value);
 
 defineExpose({ open: openModalHandler });
 </script>

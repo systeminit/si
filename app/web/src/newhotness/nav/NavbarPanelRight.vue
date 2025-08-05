@@ -3,7 +3,7 @@
     class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end"
   >
     <Collaborators />
-    <Notifications />
+    <Notifications :changeSetsNeedingApproval="changeSetsNeedingApproval" />
 
     <template v-if="featureFlagsStore.SQLITE_TOOLS">
       <NavbarButton icon="odin" size="sm">
@@ -96,7 +96,7 @@ import { URLPattern, describePattern } from "@si/vue-lib";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
 import { sdfApiInstance } from "@/store/apis.web";
-import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { ChangeSetId, ChangeSet } from "@/api/sdf/dal/change_set";
 import { EntityKind } from "@/workers/types/entity_kind_types";
 import ApplyChangeSetButton from "@/newhotness/ApplyChangeSetButton.vue";
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
@@ -108,6 +108,7 @@ import ProfileButton from "./ProfileButton.vue";
 const props = defineProps<{
   changeSetId: string;
   workspaceId: string;
+  changeSetsNeedingApproval: ChangeSet[];
 }>();
 
 const featureFlagsStore = useFeatureFlagsStore();
