@@ -23,7 +23,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       });
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
       // check that you're on head i.e. that you were redirected correctly
-      cy.wait(4000)
+      cy.wait(4000);
       cy.url().should("contain", SI_WORKSPACE_ID);
     });
 

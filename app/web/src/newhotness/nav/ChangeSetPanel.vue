@@ -43,6 +43,7 @@
     </label>
 
     <VButton
+      id="create-change-set-button"
       v-tooltip="{
         content: 'Create Change Set',
       }"

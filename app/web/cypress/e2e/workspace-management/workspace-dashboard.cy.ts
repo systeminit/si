@@ -35,8 +35,8 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         return false;
       });
 
-      // TODO: This needs to be updated to check for the new experience loading
-      // cy.appModelPageLoaded();
+      // checks for the new hotness UI Explore page
+      cy.appModelPageLoaded();
     });
   });
 });
