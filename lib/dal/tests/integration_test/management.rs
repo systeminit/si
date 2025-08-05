@@ -43,7 +43,10 @@ use dal_test::{
         ChangeSetTestHelpers,
         attribute::value,
         change_set,
-        component,
+        component::{
+            self,
+            find_management_prototype,
+        },
         create_component_for_default_schema_name_in_default_view,
         schema::variant,
     },
@@ -64,29 +67,13 @@ use veritech_client::{
     ResourceStatus,
 };
 
-async fn find_mgmt_prototype(
-    ctx: &DalContext,
-    component_id: ComponentId,
-    prototype_name: &str,
-) -> Result<ManagementPrototype> {
-    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
-        .await?
-        .into_iter()
-        .find(|proto| proto.name() == prototype_name)
-        .expect("could not find prototype");
-
-    Ok(management_prototype)
-}
-
 async fn exec_mgmt_func(
     ctx: &DalContext,
     component_id: ComponentId,
     prototype_name: &str,
     view_id: Option<ViewId>,
 ) -> Result<(ManagementPrototypeExecution, ManagementFuncReturn)> {
-    let management_prototype = find_mgmt_prototype(ctx, component_id, prototype_name).await?;
+    let management_prototype = find_management_prototype(ctx, component_id, prototype_name).await?;
 
     let mut execution_result = management_prototype
         .execute(ctx, component_id, view_id)
@@ -154,7 +141,7 @@ async fn import_and_refresh(ctx: &mut DalContext) -> Result<()> {
     AttributeValue::update(ctx, av_id, Some(serde_json::json!("import id"))).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     let management_prototype =
-        find_mgmt_prototype(ctx, small_even_lego.id(), "Import from AWS").await?;
+        find_management_prototype(ctx, small_even_lego.id(), "Import from AWS").await?;
     assert!(
         ManagementPrototype::kind_by_id(ctx, management_prototype.id()).await?
             == ManagementFuncKind::Import
@@ -2299,10 +2286,10 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> 
 
     change_set::commit(ctx).await?;
 
-    let prototype_id = find_mgmt_prototype(ctx, small_odd_lego.id(), "Clone")
+    let prototype_id = find_management_prototype(ctx, small_odd_lego.id(), "Clone")
         .await?
         .id();
-    let prototype_2_id = find_mgmt_prototype(ctx, small_odd_lego.id(), "Update")
+    let prototype_2_id = find_management_prototype(ctx, small_odd_lego.id(), "Update")
         .await?
         .id();
 

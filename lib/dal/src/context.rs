@@ -940,6 +940,16 @@ impl DalContext {
         Ok(())
     }
 
+    /// Start with a new connection state in this context, with new pg pool and
+    /// nats connections, and an empty job queue.
+    pub async fn restart_connections(&mut self) -> TransactionsResult<()> {
+        self.conns_state = Arc::new(Mutex::new(ConnectionState::new_from_conns(
+            self.services_context().connections().await?,
+        )));
+
+        Ok(())
+    }
+
     /// Rolls all inner transactions back, discarding all changes made within them.
     ///
     /// This is equivalent to the transaction's `Drop` implementations, but provides any error

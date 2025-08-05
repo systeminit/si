@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use dal::{
     AttributeValue,
     Component,
@@ -13,6 +15,7 @@ use dal_test::{
     helpers::{
         ChangeSetTestHelpers,
         PropEditorTestView,
+        component::find_management_prototype,
         connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
         extract_value_and_validation,
@@ -129,6 +132,99 @@ async fn prop_editor_validation(ctx: &mut DalContext) -> Result<()> {
         }),
         extract_value_and_validation(prop_view)?
     );
+
+    Ok(())
+}
+
+#[test]
+async fn validation_pre_post_mgmt_func(ctx: &mut DalContext) -> Result<()> {
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "ValidatedOutput", "Output")
+            .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // check default post create - should be one failure because a_number is required
+    let component_in_list =
+        dal_materialized_views::component::assemble(ctx.clone(), component.id()).await?;
+    assert!(component_in_list.qualification_totals.failed == 1);
+
+    // now let's run the mgmt func that should fix this one
+    let management_prototype =
+        find_management_prototype(ctx, component.id(), "Good import validated output").await?;
+
+    ChangeSetTestHelpers::enqueue_management_func_job(
+        ctx,
+        management_prototype.id(),
+        component.id(),
+        None,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Wait for dvu
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Check that the validation is now passing as the mgmt func wrote a valid value
+    // loop to wait for the validation job to finish
+    let seconds = 10;
+    let mut did_pass = false;
+    for _ in 0..(seconds * 10) {
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let component_in_list =
+            dal_materialized_views::component::assemble(ctx.clone(), component.id()).await?;
+
+        if component_in_list.qualification_totals.failed == 0 {
+            did_pass = true;
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    if !did_pass {
+        panic!(
+            "Validation job should have finished and set the value correctly, but it did not. Must investigate!"
+        );
+    }
+
+    // now let's run the bad import mgmt func (that sets a non-valid value)
+    let bad_management_prototype =
+        find_management_prototype(ctx, component.id(), "Bad import validated output").await?;
+
+    ChangeSetTestHelpers::enqueue_management_func_job(
+        ctx,
+        bad_management_prototype.id(),
+        component.id(),
+        None,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    // Wait for dvu
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+
+    // now check that the validation is failing again
+    // loop to wait for the validation job to finish
+    let seconds = 10;
+    let mut did_pass = false;
+    for _ in 0..(seconds * 10) {
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let component_in_list =
+            dal_materialized_views::component::assemble(ctx.clone(), component.id()).await?;
+
+        if component_in_list.qualification_totals.failed == 1 {
+            did_pass = true;
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    if !did_pass {
+        panic!(
+            "Validation job should have finished and set the value correctly, but it did not. Must investigate!"
+        );
+    }
 
     Ok(())
 }
