@@ -109,45 +109,48 @@
               <!-- arrays and maps do not show a value here! -->
             </template>
             <AttributeValueBox
-              v-else-if="isSetByConnection && props.externalSources"
+              v-else-if="isSetByConnection && externalSources"
+              :class="clsx(attributeInputContext?.blankInput && 'border-0')"
             >
               <template v-if="isSecret">
-                <!-- TODO: Paul make this an actual tailwind color! -->
-                <div
-                  :class="
-                    clsx(
-                      'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
-                      themeClasses(
-                        'text-green-light-mode',
-                        'text-green-dark-mode',
-                      ),
-                    )
-                  "
-                >
-                  <TruncateWithTooltip>{{
-                    props.externalSources[0]?.componentName
-                  }}</TruncateWithTooltip>
-                  <div class="flex-none">/</div>
-                  <TruncateWithTooltip>
-                    {{ field.state.value }}
-                  </TruncateWithTooltip>
-                </div>
+                <template v-if="field.state.value">
+                  <!-- TODO: Paul make this an actual tailwind color! -->
+                  <div
+                    :class="
+                      clsx(
+                        'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
+                        themeClasses(
+                          'text-green-light-mode',
+                          'text-green-dark-mode',
+                        ),
+                      )
+                    "
+                  >
+                    <TruncateWithTooltip>{{
+                      externalSources[0]?.componentName
+                    }}</TruncateWithTooltip>
+                    <div class="flex-none">/</div>
+                    <TruncateWithTooltip>
+                      {{ field.state.value }}
+                    </TruncateWithTooltip>
+                  </div>
+                </template>
               </template>
               <div
-                v-else
+                v-else-if="externalSources.length > 0"
                 class="max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit"
               >
                 <!-- TODO: Paul make this an actual tailwind color! -->
                 <TruncateWithTooltip class="text-purple">
-                  {{ props.externalSources[0]?.componentName }}
+                  {{ externalSources[0]?.componentName }}
                 </TruncateWithTooltip>
-                <div class="flex-none">/</div>
+                <div class="flex-none">?/</div>
                 <TruncateWithTooltip
                   :class="themeClasses('text-neutral-600', 'text-neutral-400')"
                 >
                   {{
                     field.state.value ||
-                    `<${props.externalSources[0]?.path?.replace(/^\//, "")}>`
+                    `<${externalSources[0]?.path?.replace(/^\//, "")}>`
                   }}
                 </TruncateWithTooltip>
               </div>
@@ -241,8 +244,8 @@
             clsx(
               'flex flex-col gap-xs text-sm font-normal border z-100 p-xs',
               themeClasses(
-                'bg-shade-0 border-neutral-400',
-                'bg-neutral-800 border-neutral-600',
+                'bg-neutral-100 border-neutral-400',
+                'bg-neutral-700 border-neutral-500',
               ),
             )
           "
@@ -655,7 +658,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from "vue";
+import { computed, inject, nextTick, reactive, ref, watch } from "vue";
 import { debounce } from "lodash-es";
 import clsx from "clsx";
 import {
@@ -700,11 +703,12 @@ import {
   mouseEmitter,
 } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
-import AttributeValueBox from "../AttributeValueBox.vue";
+import AttributeValueBox from "./AttributeValueBox.vue";
 import CodeEditorModal from "../CodeEditorModal.vue";
 import { findAttributeValueInTree } from "../util";
 import AttributeInputPossibleConnection from "./AttributeInputPossibleConnection.vue";
 import AttributeInputRequiredProperty from "./AttributeInputRequiredProperty.vue";
+import { AttributeInputContext } from "../types";
 
 type UIConnectionRow = {
   showAllButton?: boolean;
@@ -733,6 +737,14 @@ const props = defineProps<{
   forceReadOnly?: boolean;
   hasSocketConnection?: boolean;
 }>();
+
+const attributeInputContext = inject<AttributeInputContext>("ATTRIBUTEINPUT");
+
+const externalSources = computed(() => {
+  if (!props.externalSources) return undefined;
+  if (attributeInputContext?.blankInput) return [] as ExternalSource[];
+  else return props.externalSources;
+});
 
 const showAllPossibleConnections = ref(false);
 
@@ -768,8 +780,16 @@ const anchorRef = ref<InstanceType<typeof HTMLElement>>();
 type AttrData = { value: string };
 const wForm = useWatchedForm<AttrData>(
   `component.av.prop.${props.component.id}.${props.path}`,
+  attributeInputContext?.blankInput,
 );
+
+// this gets used by the watcher to ensure that data has propagated
+const rawAttrData = computed<AttrData>(() => {
+  return { value: props.value };
+});
+// this is used by the form & checks for submission
 const attrData = computed<AttrData>(() => {
+  if (attributeInputContext?.blankInput) return { value: "" };
   return { value: props.value };
 });
 
@@ -793,7 +813,7 @@ const valueForm = wForm.newForm({
     }
   },
   watchFn: () => {
-    return [attrData.value, props.externalSources];
+    return [rawAttrData.value, props.externalSources];
   },
 });
 
