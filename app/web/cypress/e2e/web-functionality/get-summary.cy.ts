@@ -15,7 +15,7 @@ describe('web', () => {
   it('get_summary', () => {
     // Go to the Synthetic Workspace
     cy.visit({
-        url: SI_WORKSPACE_URL + '/w/' + SI_WORKSPACE_ID + '/head',
+        url: SI_WORKSPACE_URL + '/n/' + SI_WORKSPACE_ID,
         failOnStatusCode: false
     });
     cy.on('uncaught:exception', (e) => {

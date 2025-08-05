@@ -23,11 +23,15 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
         return false;
       });
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
+      cy.wait(3000);
       cy.appModelPageLoaded();
-      cy.clickButtonByIdIfExists("first-time-modal-continue-button");
 
-      cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
-      cy.get('.modal-close-button').should('exist').click();
+      // create a change set
+      cy.clickButtonByIdIfExists("create-change-set-button");
+      cy.focused().type("test change set{enter}");
+      cy.contains('test change set', { timeout: 10000 }).should('be.visible');
+
+      // log out
       cy.get('[aria-label="Profile"]').should('exist').click();
       cy.get('.profile-dropdown-menu-logout').should('exist').should('be.visible').click({ force: true });
 
