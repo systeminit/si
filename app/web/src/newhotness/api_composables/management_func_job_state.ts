@@ -3,7 +3,7 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import { ManagementPrototypeId } from "@/api/sdf/dal/func";
 import { Timestamp } from "@/api/sdf/dal/timestamp";
 import { FuncRunId } from "./func_run";
-import { UserPk, WorkspacePk } from "./si_id";
+import { UserPk, WorkspacePk } from "../types";
 
 export type ManagementFuncJobStateId = string;
 

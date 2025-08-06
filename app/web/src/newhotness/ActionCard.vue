@@ -127,15 +127,15 @@ import {
   DropdownMenuItem,
 } from "@si/vue-lib/design-system";
 import { ActionKind, ActionState } from "@/api/sdf/dal/action";
+import ConfirmHoldModal from "./ConfirmHoldModal.vue";
+import DetailsPanelMenuIcon from "./layout_components/DetailsPanelMenuIcon.vue";
+import ActionCardLayout from "./ActionCardLayout.vue";
 import {
   actionKindToAbbreviation,
   actionIconClass,
   actionIcon,
-  ActionProposedView,
-} from "@/store/actions.store";
-import ConfirmHoldModal from "@/components/Actions/ConfirmHoldModal.vue";
-import DetailsPanelMenuIcon from "@/newhotness/layout_components/DetailsPanelMenuIcon.vue";
-import ActionCardLayout from "@/mead-hall/ActionCardLayout.vue";
+} from "./logic_composables/action";
+import { ActionProposedView } from "./types";
 import { routes, useApi } from "./api_composables";
 
 const props = defineProps<{

@@ -48,7 +48,7 @@
             />
           </ul>
         </div>
-        <InsetApprovalModal
+        <ApprovalFlow
           v-if="
             changeSet &&
             changeSet.status === ChangeSetStatus.NeedsApproval &&
@@ -81,8 +81,8 @@
               )
             "
             :loadingText="approvalsEnabled ? 'undefined' : 'Applying Changes'"
-            :loading="approvalsEnabled ? false : applyChangeSet.loading.value"
-            :disabled="approvalsEnabled ? false : disableApplyChangeSet"
+            :loading="approvalsEnabled ? false : applyInFlight"
+            :disabled="approvalsEnabled ? false : disallowApply"
             pill="Cmd + Enter"
             @click="debouncedApplyOrRequestApproval"
           />
@@ -107,20 +107,22 @@ import { computed, onBeforeUnmount, inject, onMounted, ref } from "vue";
 import { debounce } from "lodash-es";
 import { useToast, POSITION } from "vue-toastification";
 import { useQuery } from "@tanstack/vue-query";
-import { ActionProposedView } from "@/store/actions.store";
 import { ActionKind } from "@/api/sdf/dal/action";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
-import { WorkspaceUser } from "@/store/auth.store";
-import { ApprovalData } from "@/store/change_sets.store";
+import {
+  ActionProposedView,
+  ApprovalData,
+  WorkspaceUser,
+  Workspaces,
+} from "./types";
 import { keyEmitter } from "./logic_composables/emitters";
 import ActionCard from "./ActionCard.vue";
-import InsetApprovalModal from "./InsetApprovalModal.vue";
+import ApprovalFlow from "./ApprovalFlow.vue";
 import { reset } from "./logic_composables/navigation_stack";
 import { useApplyChangeSet } from "./logic_composables/change_set";
 import ToastApplyingChanges from "./nav/ToastApplyingChanges.vue";
 import { useContext } from "./logic_composables/context";
 import { useApi, routes } from "./api_composables";
-import { Workspaces } from "./types";
 
 const props = defineProps<{
   actions: ActionProposedView[];
@@ -232,7 +234,7 @@ function closeModalHandler() {
   modalRef.value?.close();
 }
 
-const { applyChangeSet, disableApplyChangeSet } = useApplyChangeSet();
+const { performApply, applyInFlight, disallowApply } = useApplyChangeSet(ctx);
 
 const debouncedApplyOrRequestApproval = debounce(applyOrRequestApproval, 500);
 onBeforeUnmount(() => {
@@ -250,7 +252,7 @@ async function applyOrRequestApproval() {
     );
     requestApprovalCall.post({});
   } else {
-    const result = await applyChangeSet.performApply();
+    const result = await performApply();
     if (result.success) {
       closeModalHandler();
       toast(
@@ -275,28 +277,6 @@ async function applyOrRequestApproval() {
     }
   }
 }
-
-// NOTE(nick): this should only be relevant when approval requirements come back.
-// watch(
-//   () => changeSetsStore.selectedChangeSet?.status,
-//   (newVal, oldVal) => {
-//     if (
-//       newVal === ChangeSetStatus.Open &&
-//       (oldVal === ChangeSetStatus.NeedsApproval ||
-//         oldVal === ChangeSetStatus.Approved ||
-//         oldVal === ChangeSetStatus.Rejected)
-//     ) {
-//       if (!changeSetsStore.headSelected) {
-//         toast({
-//           component: ApprovalFlowCancelled,
-//           props: {
-//             action: "applying",
-//           },
-//         });
-//       }
-//     }
-//   },
-// );
 
 const approvalDataApi = useApi(ctx);
 const approvalDataQuery = useQuery<ApprovalData | undefined>({

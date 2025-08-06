@@ -1,4 +1,4 @@
-import { computed, inject, MaybeRefOrGetter, ref, toValue } from "vue";
+import { computed, MaybeRefOrGetter, ref, toValue } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { useRoute } from "vue-router";
 import {
@@ -22,9 +22,9 @@ import {
   useMakeKey,
   useMakeKeyForHead,
 } from "@/store/realtime/heimdall";
-import { ActionProposedView } from "@/store/actions.store";
 import { routes, useApi } from "../api_composables";
-import { assertIsDefined, Context } from "../types";
+import { ActionProposedView } from "../types";
+import { useContext } from "./context";
 
 export const useComponentActions = (
   componentRef: MaybeRefOrGetter<
@@ -35,8 +35,7 @@ export const useComponentActions = (
   const makeKeyForHead = useMakeKeyForHead();
   const makeArgs = useMakeArgs();
   const makeArgsForHead = useMakeArgsForHead();
-  const ctx = inject<Context>("CONTEXT");
-  assertIsDefined(ctx);
+  const ctx = useContext(); // NOTE(nick): this should likely be passed in...
   const route = useRoute();
 
   const component = computed(() => toValue(componentRef));

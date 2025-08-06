@@ -15,14 +15,13 @@
 import { Icon } from "@si/vue-lib/design-system";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, watch } from "vue";
-import { ActionProposedView } from "@/store/actions.store";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import FuncRunDetails from "./FuncRunDetails.vue";
-import { FunctionKind } from "./types";
+import { ActionProposedView, FunctionKind } from "./types";
 import { useApi, routes } from "./api_composables";
 
 const api = useApi();

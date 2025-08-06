@@ -33,7 +33,7 @@
 import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { computed } from "vue";
 import clsx from "clsx";
-import { FuncRunState } from "@/store/func_runs.store";
+import { FuncRunState } from "./api_composables/func_run";
 
 const props = defineProps<{
   status: string | FuncRunState | null | undefined;

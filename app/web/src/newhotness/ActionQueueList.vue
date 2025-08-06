@@ -33,7 +33,7 @@
 import { PropType, ref, watch, nextTick } from "vue";
 import { themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { ActionProposedView } from "@/store/actions.store";
+import { ActionProposedView } from "./types";
 import ActionCard from "./ActionCard.vue";
 import EmptyState from "./EmptyState.vue";
 

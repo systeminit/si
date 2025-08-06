@@ -6,9 +6,25 @@ import {
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
-import { ChangeSet } from "@/api/sdf/dal/change_set";
-import { WorkspacePk } from "./api_composables/si_id";
+import { ChangeSet, ChangeSetId } from "@/api/sdf/dal/change_set";
+import {
+  ActionId,
+  ActionKind,
+  ActionPrototypeId,
+  ActionState,
+} from "@/api/sdf/dal/action";
+import { FuncRunId } from "./api_composables/func_run";
 
+// === IDs ===
+export type Ulid = string;
+
+export type AttributeValueId = string;
+export type ChangeSetApprovalId = string;
+export type UserId = string;
+export type UserPk = string;
+export type WorkspacePk = string;
+
+// === EVERYTHING ELSE ===
 type InstanceEnvType = "LOCAL" | "PRIVATE" | "SI";
 
 export type AuthApiWorkspace = {
@@ -62,4 +78,53 @@ export enum FunctionKind {
   CodeGeneration = "codeGeneration",
   Intrinsic = "intrinsic",
   Management = "management",
+}
+
+export interface ActionView {
+  id: ActionId;
+  actor?: string; // TODO i dont see this on the backend
+  prototypeId: ActionPrototypeId;
+  componentId: ComponentId | null;
+  name: string;
+  description?: string;
+  kind: ActionKind;
+  originatingChangeSetId: ChangeSetId;
+  funcRunId?: FuncRunId;
+}
+
+export interface ActionProposedView extends ActionView {
+  state: ActionState;
+  myDependencies: ActionId[];
+  dependentOn: ActionId[];
+  holdStatusInfluencedBy: ActionId[];
+  componentSchemaName?: string;
+  componentName?: string;
+}
+
+export interface WorkspaceUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface ChangeSetApprovalRequirement {
+  entityId: Ulid;
+  entityKind: string;
+  requiredCount: number;
+  isSatisfied: boolean;
+  applicableApprovalIds: ChangeSetApprovalId[];
+  approverGroups: Record<string, string[]>;
+  approverIndividuals: string[];
+}
+
+export interface ChangeSetApproval {
+  id: ChangeSetApprovalId;
+  userId: UserId;
+  status: "Approved" | "Rejected";
+  isValid: boolean; // is this approval "out of date" based on the checksum
+}
+
+export interface ApprovalData {
+  requirements: ChangeSetApprovalRequirement[];
+  latestApprovals: ChangeSetApproval[];
 }
