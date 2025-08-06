@@ -6,20 +6,32 @@ use si_id::{
 
 use crate::reference::ReferenceKind;
 
-const INDEX_UPDATE_KIND: &str = "IndexUpdate";
+const CHANGESET_INDEX_UPDATE_KIND: &str = "IndexUpdate";
+const DEPLOYMENT_INDEX_UPDATE_KIND: &str = "DeploymentIndexUpdate";
 const PATCH_BATCH_KIND: &str = "PatchMessage";
+const DEPLOYMENT_PATCH_BATCH_KIND: &str = "DeploymentPatchMessage";
 const STREAMING_PATCH_MESSAGE_KIND: &str = "StreamingPatch";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateMeta {
+pub struct ChangesetUpdateMeta {
     /// The workspace this patch batch is targeting.
-    pub workspace_id: Option<WorkspacePk>,
+    pub workspace_id: WorkspacePk,
     /// The change set this patch batch is targeting.
-    pub change_set_id: Option<ChangeSetId>,
+    pub change_set_id: ChangeSetId,
     /// The index checksum the patches will result in data for.
     pub to_index_checksum: String,
-    /// The index checksum the patches the patches are being applied to.
+    /// The index checksum the patches are being applied to.
+    /// Or in the case of rebuild or a brand new change set, will match the [`to_index_checksum`]
+    pub from_index_checksum: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentUpdateMeta {
+    /// The index checksum the patches will result in data for.
+    pub to_index_checksum: String,
+    /// The index checksum the patches are being applied to.
     /// Or in the case of rebuild or a brand new change set, will match the [`to_index_checksum`]
     pub from_index_checksum: String,
 }
@@ -83,31 +95,6 @@ impl StreamingPatch {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PatchBatch {
-    /// Metadata about the patch batch.
-    pub meta: UpdateMeta,
-    /// The message kind for the front end.
-    kind: &'static str,
-    /// The list of patches to apply.
-    pub patches: Vec<ObjectPatch>,
-}
-
-impl PatchBatch {
-    pub fn new(meta: UpdateMeta, patches: Vec<ObjectPatch>) -> Self {
-        Self {
-            meta,
-            kind: PATCH_BATCH_KIND,
-            patches,
-        }
-    }
-
-    pub fn kind(&self) -> &'static str {
-        self.kind
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ObjectPatch {
     pub kind: String,
     pub id: String,
@@ -124,20 +111,95 @@ pub struct ObjectPatch {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct IndexUpdate {
+pub struct ChangesetPatchBatch {
     /// Metadata about the patch batch.
-    pub meta: UpdateMeta,
+    pub meta: ChangesetUpdateMeta,
+    /// The message kind for the front end.
+    kind: &'static str,
+    /// The list of patches to apply.
+    pub patches: Vec<ObjectPatch>,
+}
+
+impl ChangesetPatchBatch {
+    pub fn new(meta: ChangesetUpdateMeta, patches: Vec<ObjectPatch>) -> Self {
+        Self {
+            meta,
+            kind: PATCH_BATCH_KIND,
+            patches,
+        }
+    }
+
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentPatchBatch {
+    /// Metadata about the patch batch.
+    pub meta: DeploymentUpdateMeta,
+    /// The message kind for the front end.
+    kind: &'static str,
+    /// The list of patches to apply.
+    pub patches: Vec<ObjectPatch>,
+}
+
+impl DeploymentPatchBatch {
+    pub fn new(meta: DeploymentUpdateMeta, patches: Vec<ObjectPatch>) -> Self {
+        Self {
+            meta,
+            kind: DEPLOYMENT_PATCH_BATCH_KIND,
+            patches,
+        }
+    }
+
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangesetIndexUpdate {
+    /// Metadata about the patch batch.
+    pub meta: ChangesetUpdateMeta,
     /// The message kind for the front end.
     kind: &'static str,
     /// Checksum
     pub index_checksum: String,
 }
 
-impl IndexUpdate {
-    pub fn new(meta: UpdateMeta, index_checksum: String) -> Self {
+impl ChangesetIndexUpdate {
+    pub fn new(meta: ChangesetUpdateMeta, index_checksum: String) -> Self {
         Self {
             meta,
-            kind: INDEX_UPDATE_KIND,
+            kind: CHANGESET_INDEX_UPDATE_KIND,
+            index_checksum,
+        }
+    }
+
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentIndexUpdate {
+    /// Metadata about the patch batch.
+    pub meta: DeploymentUpdateMeta,
+    /// The message kind for the front end.
+    kind: &'static str,
+    /// Checksum
+    pub index_checksum: String,
+}
+
+impl DeploymentIndexUpdate {
+    pub fn new(meta: DeploymentUpdateMeta, index_checksum: String) -> Self {
+        Self {
+            meta,
+            kind: DEPLOYMENT_INDEX_UPDATE_KIND,
             index_checksum,
         }
     }

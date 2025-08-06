@@ -267,6 +267,9 @@ impl CachedModule {
     /// Calls out to the module index server to fetch the latest module set, and
     /// updates the cache for any new builtin modules
     pub async fn update_cached_modules(ctx: &DalContext, edda_client: EddaClient) -> CachedModuleResult<Vec<CachedModule>> {
+        // FIXME this is for debugging only, sometimes the module index request fails
+        //  and i just want to test for this part.
+        edda_client.rebuild_for_deployment().await?;
         let module_index_client = {
             let services_context = ctx.services_context();
             let module_index_url = services_context
@@ -347,7 +350,8 @@ impl CachedModule {
         }
 
         // Ask edda to rebuild the deployment MVs, which include the cached modules
-        edda_client.rebuild_for_deployment().await?;
+        // FIXME uncomment this for the actual PR
+        // edda_client.rebuild_for_deployment().await?;
 
         Ok(new_modules)
     }

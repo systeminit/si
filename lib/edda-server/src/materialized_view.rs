@@ -50,7 +50,7 @@ use si_frontend_mv_types::{
         IncomingConnectionsList as IncomingConnectionsListMv,
         ManagementConnections as ManagementConnectionsMv,
     },
-    index::MvIndex,
+    index::ChangeSetMvIndex,
     materialized_view::{
         MaterializedViewInventoryItem,
         materialized_view_definitions_checksum,
@@ -58,11 +58,11 @@ use si_frontend_mv_types::{
     object::{
         FrontendObject,
         patch::{
-            IndexUpdate,
+            ChangesetIndexUpdate,
             ObjectPatch,
-            PatchBatch,
+            ChangesetPatchBatch,
             StreamingPatch,
-            UpdateMeta,
+            ChangesetUpdateMeta,
         },
     },
     reference::{
@@ -92,7 +92,9 @@ use tokio::{
     task::JoinSet,
     time::Instant,
 };
-use dal::cached_module::{CachedModule, CachedModuleError};
+use dal::cached_module::CachedModuleError;
+use si_frontend_mv_types::index::DeploymentMvIndex;
+use si_frontend_mv_types::object::patch::{DeploymentIndexUpdate, DeploymentPatchBatch, DeploymentUpdateMeta};
 use crate::updates::{
     EddaUpdates,
     EddaUpdatesError,
@@ -143,8 +145,8 @@ pub enum MaterializedViewError {
 }
 
 /// This function iterates active change sets that share the same snapshot address,
-/// and looks for an [`MvIndex`] it can use. If it finds one, create a new index pointer to
-/// the found [`MvIndex`] and return true. If none can be used, return false.
+/// and looks for an [`ChangeSetMvIndex`] it can use. If it finds one, create a new index pointer to
+/// the found [`ChangeSetMvIndex`] and return true. If none can be used, return false.
 /// NOTE: The copy will fail if we try to reuse an index for a change set that already has an index pointer
 #[instrument(
     name = "materialized_view.try_reuse_mv_index_for_new_change_set",
@@ -197,23 +199,23 @@ pub async fn try_reuse_mv_index_for_new_change_set(
                 )
                 .await?;
             span.record("si.from_change_set.id", change_set.id.to_string());
-            let meta = UpdateMeta {
-                workspace_id: Some(workspace_id),
-                change_set_id: Some(change_set_id),
+            let meta = ChangesetUpdateMeta {
+                workspace_id,
+                change_set_id,
                 from_index_checksum: pointer.clone().index_checksum.to_owned(), // These are the same because we're starting from current for the new change set
                 to_index_checksum: pointer.clone().index_checksum,
             };
-            let index_update = IndexUpdate::new(meta, pointer.index_checksum);
-            edda_updates.publish_index_update(index_update).await?;
+            let index_update = ChangesetIndexUpdate::new(meta, pointer.index_checksum);
+            edda_updates.publish_change_set_index_update(index_update).await?;
             return Ok(true);
         }
     }
     Ok(false)
 }
 
-/// This function first tries to copy and existing [`MvIndex`] if we find a valid one with the same snapshot address
+/// This function first tries to copy and existing [`ChangeSetMvIndex`] if we find a valid one with the same snapshot address
 /// If it cannot copy one, it builds all Materialized Views (MVs) for the change set in the [`DalContext`].
-/// It assumes there is no existing [`MvIndex`] for the change set.
+/// It assumes there is no existing [`ChangeSetMvIndex`] for the change set.
 #[instrument(
     name = "materialized_view.new_change_set",
     level = "info",
@@ -272,7 +274,7 @@ pub async fn reuse_or_rebuild_index_for_new_change_set(
 }
 
 /// This function builds all Materialized Views (MVs) for the change set in the [`DalContext`].
-/// It assumes there is no existing [`MvIndex`] for the change set.
+/// It assumes there is no existing [`ChangeSetMvIndex`] for the change set.
 /// If we're rebuilding due to a moved snapshot (Edda got behind), then we pass in the [`from_snapshot_address`]
 /// so that patches can be successfully processed.
 /// If we're rebuilding on demand, pass [`None`] for [`from_snapshot_address`]
@@ -344,18 +346,18 @@ pub async fn build_all_mv_for_change_set(
     let workspace_id = ctx.workspace_pk()?;
     let change_set_id = ctx.change_set_id();
     debug!("index_entries {:?}", index_entries);
-    let mv_index = MvIndex::new(snapshot_to_address.to_string(), index_entries);
+    let mv_index = ChangeSetMvIndex::new(snapshot_to_address.to_string(), index_entries);
     let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
-    let meta = UpdateMeta {
-        workspace_id: Some(workspace_id),
-        change_set_id: Some(change_set_id),
+    let meta = ChangesetUpdateMeta {
+        workspace_id,
+        change_set_id,
         from_index_checksum: from_index_checksum
             .map_or(mv_index_frontend_object.checksum.to_owned(), |check| check),
         to_index_checksum: mv_index_frontend_object.checksum.to_owned(),
     };
-    let patch_batch = PatchBatch::new(meta.clone(), patches);
+    let patch_batch = ChangesetPatchBatch::new(meta.clone(), patches);
     let change_set_mv_id = change_set_id.to_string();
-    let index_update = IndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned());
+    let index_update = ChangesetIndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned());
 
     frigg
         .put_change_set_index(
@@ -365,8 +367,8 @@ pub async fn build_all_mv_for_change_set(
         )
         .await?;
 
-    edda_updates.publish_patch_batch(patch_batch).await?;
-    edda_updates.publish_index_update(index_update).await?;
+    edda_updates.publish_change_set_patch_batch(patch_batch).await?;
+    edda_updates.publish_change_set_index_update(index_update).await?;
 
     Ok(())
 }
@@ -414,7 +416,7 @@ pub async fn build_mv_for_changes_in_change_set(
     changes: &[Change],
 ) -> Result<(), MaterializedViewError> {
     let workspace_id = ctx.workspace_pk()?;
-    debug!("building for changes: {:?}", changes);
+    info!("building for changes: {:?}", changes);
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", workspace_id.to_string());
     let (index_frontend_object, index_kv_revision) = frigg
@@ -455,7 +457,7 @@ pub async fn build_mv_for_changes_in_change_set(
         span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
     }
 
-    let mv_index: MvIndex = serde_json::from_value(index_frontend_object.data)?;
+    let mv_index: ChangeSetMvIndex = serde_json::from_value(index_frontend_object.data)?;
     let removal_checksum = "0".to_string();
     let removed_items: HashSet<(String, String)> = patches
         .iter()
@@ -484,17 +486,17 @@ pub async fn build_mv_for_changes_in_change_set(
     }
     index_entries.sort();
 
-    let new_mv_index = MvIndex::new(to_snapshot_address.to_string(), index_entries);
+    let new_mv_index = ChangeSetMvIndex::new(to_snapshot_address.to_string(), index_entries);
 
     let new_mv_index_frontend_object = FrontendObject::try_from(new_mv_index)?;
-    let meta = UpdateMeta {
-        workspace_id: Some(workspace_id),
-        change_set_id: Some(change_set_id),
+    let meta = ChangesetUpdateMeta {
+        workspace_id,
+        change_set_id,
         from_index_checksum,
         to_index_checksum: new_mv_index_frontend_object.checksum.to_owned(),
     };
-    let patch_batch = PatchBatch::new(meta.clone(), patches);
-    let index_update = IndexUpdate::new(meta, new_mv_index_frontend_object.checksum.to_owned());
+    let patch_batch = ChangesetPatchBatch::new(meta.clone(), patches);
+    let index_update = ChangesetIndexUpdate::new(meta, new_mv_index_frontend_object.checksum.to_owned());
     let change_set_mv_id = change_set_id.to_string();
 
     frigg
@@ -506,8 +508,8 @@ pub async fn build_mv_for_changes_in_change_set(
         )
         .await?;
 
-    edda_updates.publish_patch_batch(patch_batch).await?;
-    edda_updates.publish_index_update(index_update).await?;
+    edda_updates.publish_change_set_patch_batch(patch_batch).await?;
+    edda_updates.publish_change_set_index_update(index_update).await?;
 
     Ok(())
 }
@@ -536,32 +538,30 @@ pub async fn build_all_mvs_for_deployment(
     let op = BuildMvOp::Create;
 
     let (Some(patch), Some(frontend_object)) = build_mv(
-        op, CachedSchemasMv::STATIC_ID.to_string(), ReferenceKind::CachedSchemas,
-        dal_materialized_views::cached_schemas::assemble
-    ).await?;
+        op,
+        ReferenceKind::CachedSchemas,
+        dal_materialized_views::cached_schemas::assemble(ctx)
+    ).await? else {
+        return Ok(());
+    };
 
 
-    let index_reference = IndexReference::from(frontend_object);
-
+    let index_reference = IndexReference::from(frontend_object.clone());
 
     // Make an index, store it with the deployment function
-    let mut index_entries: Vec<_> = vec![index_reference];
+    let index_entries: Vec<_> = vec![index_reference];
 
-    // TODO create the new index type for deployment MVs
-    let snapshot_to_address = ctx.workspace_snapshot()?.address().await;
-    debug!("index_entries {:?}", index_entries);
-    let mv_index = MvIndex::new(snapshot_to_address.to_string(), index_entries);
+    info!("index_entries {:?}", index_entries);
+    let mv_index = DeploymentMvIndex::new(index_entries);
     let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
     let from_index_checksum = mv_index_frontend_object.checksum.to_owned();
     let to_index_checksum = from_index_checksum.clone();
-    let meta = UpdateMeta {
-        workspace_id: None,
-        change_set_id: None,
+    let meta = DeploymentUpdateMeta {
         from_index_checksum,
         to_index_checksum,
     };
-    let patch_batch = PatchBatch::new(meta.clone(), vec![patch]);
-    let index_update = IndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned());
+    let patch_batch = DeploymentPatchBatch::new(meta.clone(), vec![patch]);
+    let index_update = DeploymentIndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned());
 
     // Store it on frigg
     frigg
@@ -570,8 +570,8 @@ pub async fn build_all_mvs_for_deployment(
     frigg.insert_deployment_object(&frontend_object).await?;
 
     // publish updates
-    edda_updates.publish_patch_batch(patch_batch).await?;
-    edda_updates.publish_index_update(index_update).await?;
+    edda_updates.publish_deployment_patch_batch(patch_batch).await?;
+    edda_updates.publish_deployment_index_update(index_update).await?;
 
     Ok(())
 }
@@ -583,7 +583,7 @@ macro_rules! spawn_build_mv_task {
         // Record the currently running number of MV build tasks so we can see just how parallel this actually
         // ends up being.
         metric!(counter.edda.mv_build = 1);
-        $build_tasks.spawn(build_mv_task(
+        $build_tasks.spawn(build_mv_for_graph_task(
             $ctx.clone(),
             $frigg.clone(),
             $change,
@@ -737,7 +737,7 @@ type BuildMvTaskResult = (
     Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>,
 );
 
-async fn build_mv_task<F, T, E>(
+async fn build_mv_for_graph_task<F, T, E>(
     ctx: DalContext,
     frigg: FriggStore,
     change: Change,
@@ -755,7 +755,7 @@ where
     debug!(kind = %mv_kind, id = %mv_id, "Building MV");
     let start = Instant::now();
 
-    let result = build_mv_task_inner(
+    let result = build_mv_for_graph_task_inner(
         &ctx,
         &frigg,
         change,
@@ -773,6 +773,7 @@ type MvBuilderResult = Result<(Option<ObjectPatch>, Option<FrontendObject>), Mat
 pub enum BuildMvOp {
     Create,
     Delete {
+        id: String,
         checksum: String,
     },
     UpdateFrom {
@@ -781,7 +782,7 @@ pub enum BuildMvOp {
     },
 }
 
-async fn build_mv_task_inner<F, T, E>(
+async fn build_mv_for_graph_task_inner<F, T, E>(
     ctx: &DalContext,
     frigg: &FriggStore,
     change: Change,
@@ -810,7 +811,10 @@ where
         if !exists_on_snapshot {
             let checksum = maybe_previous_version.map(|obj| obj.checksum).unwrap_or_else(|| "0".to_string());
 
-            BuildMvOp::Delete {checksum}
+            BuildMvOp::Delete {
+                id: mv_id,
+                checksum
+            }
         } else {
             if let Some(previous_version) = maybe_previous_version {
                 BuildMvOp::UpdateFrom {
@@ -823,13 +827,12 @@ where
         }
     };
 
-    build_mv(op, mv_id, mv_kind, build_mv_future).await
+    build_mv(op, mv_kind, build_mv_future).await
 
 }
 
 pub async fn build_mv<F, T, E>(
     operation: BuildMvOp,
-    mv_id: String,
     mv_kind: ReferenceKind,
     build_mv_future: F,
 ) -> MvBuilderResult
@@ -842,12 +845,12 @@ where
 {
     let kind = mv_kind.to_string();
 
-    if let BuildMvOp::Delete { checksum } = operation {
+    if let BuildMvOp::Delete { id, checksum } = operation {
         Ok((
             Some(ObjectPatch {
                 kind,
-                id: mv_id,
-                from_checksum,
+                id,
+                from_checksum: checksum,
                 to_checksum: "0".to_string(),
                 patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
                     json_patch::RemoveOperation::default(),
@@ -874,7 +877,7 @@ where
             Ok((
                 Some(ObjectPatch {
                     kind,
-                    id: mv_id,
+                    id: frontend_object.id.clone(),
                     from_checksum,
                     to_checksum,
                     patch: json_patch::diff(&previous_data, &mv_json),
@@ -1166,7 +1169,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
 
         // Building the `MvIndex` itself is handled separately as the logic depends
         // on whether we're doing an incremental build or a full build from scratch.
-        ReferenceKind::MvIndex => {}
+        ReferenceKind::ChangeSetMvIndex | ReferenceKind::DeploymentMvIndex => {}
 
         // These `ReferenceKind` do not have associated `MaterializedView`s (yet?),
         // so we skip them.

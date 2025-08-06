@@ -10,9 +10,7 @@ use telemetry::prelude::*;
     level = "debug",
     skip_all
 )]
-pub async fn assemble(ctx: DalContext) -> super::Result<CachedSchemasMv> {
-    let ctx = &ctx;
-
+pub async fn assemble(ctx: &DalContext) -> super::Result<CachedSchemasMv> {
     let mut schemas = vec![];
 
     for module in CachedModule::latest_modules(ctx).await? {
@@ -21,6 +19,9 @@ pub async fn assemble(ctx: DalContext) -> super::Result<CachedSchemasMv> {
             name: module.schema_name,
         });
     };
+
+    // Try to get the order to be stable so that the checksums match for the content
+    schemas.sort_by(|a, b| a.id.cmp(&b.id));
 
     Ok(CachedSchemas::new(schemas))
 }
