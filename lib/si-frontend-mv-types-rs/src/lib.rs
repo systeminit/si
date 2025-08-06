@@ -37,6 +37,7 @@ pub mod schema_variant;
 pub mod secret;
 pub mod temporary_conversion_impls;
 pub mod view;
+pub mod cached_schemas;
 
 pub use crate::{
     materialized_view::MaterializedView,

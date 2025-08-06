@@ -12,6 +12,7 @@ rust_library(
         "//lib/billing-events:billing-events",
         "//lib/concurrent-extensions:concurrent-extensions",
         "//lib/dal-macros:dal-macros",
+        "//lib/edda-client:edda-client",
         "//lib/joi-validator:joi-validator",
         "//lib/module-index-client:module-index-client",
         "//lib/nats-std:nats-std",

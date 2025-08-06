@@ -79,12 +79,21 @@ impl EddaUpdates {
 
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
-        self.serialize_compress_publish(
+        let subject = if let Some(workspace_id) = patch_batch.meta.workspace_id {
             nats::subject::workspace_update_for(
                 self.subject_prefix.as_deref(),
-                patch_batch.meta.workspace_id.array_to_str(&mut id_buf),
+                workspace_id.array_to_str(&mut id_buf),
                 patch_batch.kind(),
-            ),
+            )
+        } else {
+            nats::subject::deployment_update_for(
+                self.subject_prefix.as_deref(),
+                patch_batch.kind(),
+            )
+        };
+        
+        self.serialize_compress_publish(
+            subject,
             patch_batch,
             true,
         )
@@ -127,13 +136,22 @@ impl EddaUpdates {
     )]
     pub(crate) async fn publish_index_update(&self, index_update: IndexUpdate) -> Result<()> {
         let mut id_buf = WorkspacePk::array_to_str_buf();
-
-        self.serialize_compress_publish(
+        
+        let subject = if let Some(workspace_id) = index_update.meta.workspace_id {
             nats::subject::workspace_update_for(
                 self.subject_prefix.as_deref(),
-                index_update.meta.workspace_id.array_to_str(&mut id_buf),
+                workspace_id.array_to_str(&mut id_buf),
                 index_update.kind(),
-            ),
+            )
+        } else {
+            nats::subject::deployment_update_for(
+                self.subject_prefix.as_deref(),
+                index_update.kind(),
+            )
+        };
+
+        self.serialize_compress_publish(
+            subject,
             index_update,
             false,
         )

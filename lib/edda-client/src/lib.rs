@@ -102,7 +102,7 @@ impl Client {
     }
 
     /// Asynchronously request an index update from a workspace past snapshot to the current
-    /// snapshot & return a [`RequestId`].
+    /// snapshot and return a [`RequestId`].
     #[instrument(
         name = "edda.client.update_from_workspace_snapshot"
         level = "info",
@@ -133,8 +133,7 @@ impl Client {
         let info = ContentInfo::from(&request);
 
         self.publish_inner(
-            workspace_id,
-            change_set_id,
+            Some((workspace_id, change_set_id)),
             id,
             request.to_vec()?.into(),
             info,
@@ -161,8 +160,7 @@ impl Client {
         let info = ContentInfo::from(&request);
 
         self.publish_inner(
-            workspace_id,
-            change_set_id,
+            Some((workspace_id, change_set_id)),
             id,
             request.to_vec()?.into(),
             info,
@@ -196,8 +194,7 @@ impl Client {
         let info = ContentInfo::from(&request);
 
         self.publish_inner(
-            workspace_id,
-            new_change_set_id,
+            Some((workspace_id, new_change_set_id)),
             id,
             request.to_vec()?.into(),
             info,
@@ -205,23 +202,58 @@ impl Client {
         .await
     }
 
+    pub async fn rebuild_for_deployment(
+        &self
+    ) -> Result<RequestId> {
+        let id = RequestId::new();
+        let request = RebuildRequest::new_current(RebuildRequestVCurrent { id });
+        let info = ContentInfo::from(&request);
+
+        self.publish_inner(
+            None,
+            id,
+            request.to_vec()?.into(),
+            info,
+        ).await
+    }
+
     async fn publish_inner(
         &self,
-        workspace_id: WorkspacePk,
-        change_set_id: ChangeSetId,
+        changeset_data: Option<(WorkspacePk, ChangeSetId)>,
         id: RequestId,
         payload: Bytes,
         info: ContentInfo<'_>,
     ) -> Result<RequestId> {
-        // Cut down on the amount of `String` allocations dealing with ids
+        // Cut down on the number of `String` allocations dealing with ids
         let mut wid_buf = [0; WorkspacePk::ID_LEN];
         let mut csid_buf = [0; ChangeSetId::ID_LEN];
 
-        let requests_subject = nats::subject::request_for_change_set(
-            self.context.metadata().subject_prefix(),
-            workspace_id.array_to_str(&mut wid_buf),
-            change_set_id.array_to_str(&mut csid_buf),
-        );
+        let (requests_subject, tasks_subject) = if let Some((workspace_id, change_set_id)) = changeset_data {
+            let wid_ref = workspace_id.array_to_str(&mut wid_buf);
+            let csid_ref = change_set_id.array_to_str(&mut csid_buf);
+
+            (
+                nats::subject::request_for_change_set(
+                    self.context.metadata().subject_prefix(),
+                    wid_ref,
+                    csid_ref,
+                ),
+                nats::subject::process_task_for_change_set(
+                    self.context.metadata().subject_prefix(),
+                    wid_ref,
+                    csid_ref,
+                ),
+            )
+        } else {
+            (
+                nats::subject::request_for_deployment(
+                    self.context.metadata().subject_prefix(),
+                ),
+                nats::subject::process_task_for_deployment(
+                    self.context.metadata().subject_prefix(),
+                ),
+            )
+        };
 
         let mut headers = HeaderMap::new();
         propagation::inject_headers(&mut headers);
@@ -233,11 +265,6 @@ impl Client {
             .await?
             .await?;
 
-        let tasks_subject = nats::subject::process_task_for_change_set(
-            self.context.metadata().subject_prefix(),
-            workspace_id.array_to_str(&mut wid_buf),
-            change_set_id.array_to_str(&mut csid_buf),
-        );
 
         // There is one more optional future here which is confirmation from the NATS server that
         // our publish was acked. However, the task stream will drop new messages that are

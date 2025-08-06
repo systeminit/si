@@ -38,7 +38,6 @@ use tokio_util::{
     sync::CancellationToken,
     task::TaskTracker,
 };
-
 use crate::{
     app_state::AppState,
     change_set_processor_task::{
@@ -86,7 +85,7 @@ impl IntoResponse for HandlerError {
                 warn!(si.error.message = ?self, "subject parse error");
                 Response::default_bad_request()
             }
-            // While propagated as an `Err`, a task being interupted is expected behavior and is
+            // While propagated as an `Err`, a task being interrupted is expected behavior and is
             // not an error (rather we use `Err` to ensure the task persists in the stream)
             Self::TaskInterrupted(subject) => {
                 debug!(subject, "task interrupted");

@@ -66,7 +66,6 @@ use crate::{
     updates::EddaUpdates,
 };
 
-mod materialized_view;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -334,12 +333,8 @@ mod handlers {
 
     use super::{
         app_state::AppState,
-        materialized_view,
     };
-    use crate::{
-        compressed_request::CompressedRequest,
-        updates::EddaUpdates,
-    };
+    use crate::{compressed_request::CompressedRequest, materialized_view, updates::EddaUpdates};
 
     #[remain::sorted]
     #[derive(Debug, Error)]

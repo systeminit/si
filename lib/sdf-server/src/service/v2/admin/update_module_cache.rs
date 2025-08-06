@@ -19,7 +19,7 @@ use serde::{
 use si_db::Tenancy;
 use telemetry::prelude::*;
 use ulid::Ulid;
-
+use sdf_extract::EddaClient;
 use super::{
     AdminAPIResult,
     AdminUserContext,
@@ -45,6 +45,7 @@ pub async fn update_module_cache(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
+    EddaClient(edda_client): EddaClient,
 ) -> AdminAPIResult<Json<UpdateModuleCacheResponse>> {
     let task_id = Ulid::new();
 
@@ -55,6 +56,7 @@ pub async fn update_module_cache(
             &original_uri,
             &host_name,
             PosthogClient(posthog_client),
+            edda_client,
         )
         .await
         {
@@ -81,9 +83,10 @@ pub async fn update_cached_modules_inner(
     original_uri: &Uri,
     host_name: &String,
     PosthogClient(posthog_client): PosthogClient,
+    edda_client: edda_client::EddaClient,
 ) -> AdminAPIResult<()> {
     info!("Starting module cache update");
-    CachedModule::update_cached_modules(ctx).await?;
+    CachedModule::update_cached_modules(ctx, edda_client).await?;
 
     track(
         &posthog_client,

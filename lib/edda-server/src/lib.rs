@@ -17,6 +17,7 @@ pub use si_settings::{
     ParameterProvider,
 };
 pub(crate) mod updates;
+mod materialized_view;
 
 pub use self::{
     config::{

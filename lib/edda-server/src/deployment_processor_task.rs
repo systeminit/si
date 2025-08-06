@@ -43,10 +43,7 @@ use tokio_util::{
 };
 
 use self::app_state::AppState;
-use crate::{
-    ServerMetadata,
-    updates::EddaUpdates,
-};
+use crate::{ServerMetadata, updates::EddaUpdates};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -236,7 +233,7 @@ mod handlers {
     use telemetry::prelude::*;
     use telemetry_utils::metric;
     use thiserror::Error;
-
+    use crate::materialized_view;
     use super::app_state::AppState;
     use crate::updates::EddaUpdates;
 
@@ -246,6 +243,8 @@ mod handlers {
         /// When failing to create a DAL context
         #[error("error creating a dal ctx: {0}")]
         DalTransactions(#[from] dal::TransactionsError),
+        #[error("materialized view error: {0}")]
+        MaterializedView(#[from] materialized_view::MaterializedViewError),
     }
 
     type Result<T> = result::Result<T, HandlerError>;
@@ -262,8 +261,10 @@ mod handlers {
     pub(crate) async fn default(
         State(state): State<AppState>,
         subject: Subject,
-        Json(request): Json<String>,
+        // TODO uncommenting this causes naxum to not call this function an just error out
+        // Json(request): Json<String>,
     ) -> Result<()> {
+        info!("deployment processor task for subject: {}", subject);
         let AppState {
             nats: _,
             frigg,
@@ -280,7 +281,6 @@ mod handlers {
             &edda_updates,
             parallel_build_limit,
             subject,
-            request,
         )
         .await
     }
@@ -297,12 +297,12 @@ mod handlers {
         )
     )]
     async fn process_request(
-        _ctx: &DalContext,
-        _frigg: &FriggStore,
-        _edda_updates: &EddaUpdates,
-        _parallel_build_limit: usize,
+        ctx: &DalContext,
+        frigg: &FriggStore,
+        edda_updates: &EddaUpdates,
+        parallel_build_limit: usize,
         subject: Subject,
-        request: String,
+        // request: String,
     ) -> Result<()> {
         let span = current_span_for_instrument_at!("info");
 
@@ -319,9 +319,17 @@ mod handlers {
         span.record("messaging.destination", subject.as_str());
         span.record("otel.name", otel_name.as_str());
 
-        // TODO(fnichol): implement request processing
-        info!(?request, "processing deployment request");
-        Ok(())
+        info!("processing deployment request");
+
+        materialized_view::build_all_mvs_for_deployment(
+            ctx,
+            frigg,
+            edda_updates,
+            parallel_build_limit,
+            "explicit rebuild",
+        )
+            .await
+            .map_err(Into::into)
     }
 }
 

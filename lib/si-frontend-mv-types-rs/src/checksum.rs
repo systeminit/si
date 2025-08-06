@@ -33,7 +33,7 @@ use si_id::{
     WorkspaceId,
     WorkspacePk,
 };
-
+use si_id::ulid::Ulid;
 use crate::{
     component::attribute_tree::ValidationStatus,
     schema_variant::{
@@ -87,6 +87,12 @@ impl FrontendChecksumInventoryItem {
 // Would be nice to do this automatically as part of the macros. As an impl for a trait
 // seems difficult to work around "conflicting implementations for trait" errors with
 // the other trait impls for the more basic types.
+impl FrontendChecksum for Ulid {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
 impl FrontendChecksum for ChangeSetId {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())

@@ -199,13 +199,14 @@ impl Migrator {
     #[instrument(name = "sdf.migrator.migrate_module_cache", level = "info", skip_all)]
     async fn migrate_module_cache(&self) -> MigratorResult<()> {
         async fn update_cached_modules(ctx: DalContext) -> MigratorResult<()> {
-            let new_modules = CachedModule::update_cached_modules(&ctx)
-                .await
-                .map_err(MigratorError::migrate_cached_modules)?;
-            info!(
-                "{} new builtin assets found in module index",
-                new_modules.len()
-            );
+            // TODO get an edda client and uncomment this code!
+            // let new_modules = CachedModule::update_cached_modules(&ctx)
+            //     .await
+            //     .map_err(MigratorError::migrate_cached_modules)?;
+            // info!(
+            //     "{} new builtin assets found in module index",
+            //     new_modules.len()
+            // );
             Ok::<(), MigratorError>(())
         }
 

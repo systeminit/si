@@ -5,7 +5,7 @@ use std::{
     },
     time::Duration,
 };
-
+use serde_json::Value;
 use dal::{
     ChangeSet,
     ChangeSetError,
@@ -78,6 +78,7 @@ use si_frontend_mv_types::{
         ViewComponentList as ViewComponentListMv,
         ViewList as ViewListMv,
     },
+    cached_schemas::CachedSchemas as CachedSchemasMv,
 };
 use si_id::{
     ChangeSetId,
@@ -91,7 +92,7 @@ use tokio::{
     task::JoinSet,
     time::Instant,
 };
-
+use dal::cached_module::{CachedModule, CachedModuleError};
 use crate::updates::{
     EddaUpdates,
     EddaUpdatesError,
@@ -104,6 +105,8 @@ pub enum MaterializedViewError {
     Action(#[from] ActionError),
     #[error("ActionPrototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("Cached module error: {0}")]
+    CachedModule(#[from] CachedModuleError),
     #[error("Change Set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("Component error: {0}")]
@@ -195,7 +198,7 @@ pub async fn try_reuse_mv_index_for_new_change_set(
                 .await?;
             span.record("si.from_change_set.id", change_set.id.to_string());
             let meta = UpdateMeta {
-                workspace_id,
+                workspace_id: Some(workspace_id),
                 change_set_id: Some(change_set_id),
                 from_index_checksum: pointer.clone().index_checksum.to_owned(), // These are the same because we're starting from current for the new change set
                 to_index_checksum: pointer.clone().index_checksum,
@@ -344,7 +347,7 @@ pub async fn build_all_mv_for_change_set(
     let mv_index = MvIndex::new(snapshot_to_address.to_string(), index_entries);
     let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
     let meta = UpdateMeta {
-        workspace_id,
+        workspace_id: Some(workspace_id),
         change_set_id: Some(change_set_id),
         from_index_checksum: from_index_checksum
             .map_or(mv_index_frontend_object.checksum.to_owned(), |check| check),
@@ -485,7 +488,7 @@ pub async fn build_mv_for_changes_in_change_set(
 
     let new_mv_index_frontend_object = FrontendObject::try_from(new_mv_index)?;
     let meta = UpdateMeta {
-        workspace_id,
+        workspace_id: Some(workspace_id),
         change_set_id: Some(change_set_id),
         from_index_checksum,
         to_index_checksum: new_mv_index_frontend_object.checksum.to_owned(),
@@ -503,6 +506,70 @@ pub async fn build_mv_for_changes_in_change_set(
         )
         .await?;
 
+    edda_updates.publish_patch_batch(patch_batch).await?;
+    edda_updates.publish_index_update(index_update).await?;
+
+    Ok(())
+}
+
+/// This function builds all Materialized Views (MVs) this deployment environment
+#[instrument(
+    name = "materialized_view.build_all_mvs_for_deployment",
+    level = "info",
+    skip_all,
+    fields(
+        si.materialized_view.reason = reason_message,
+        si.edda.mv.count = Empty,
+        si.edda.mv.avg_build_elapsed_ms = Empty,
+        si.edda.mv.max_build_elapsed_ms = Empty,
+        si.edda.mv.slowest_kind = Empty,
+    ),
+)]
+pub async fn build_all_mvs_for_deployment(
+    ctx: &DalContext,
+    frigg: &FriggStore,
+    edda_updates: &EddaUpdates,
+    _parallel_build_limit: usize,
+    reason_message: &'static str,
+) -> Result<(), MaterializedViewError> {
+    // TODO create update and delete ops when needed
+    let op = BuildMvOp::Create;
+
+    let (Some(patch), Some(frontend_object)) = build_mv(
+        op, CachedSchemasMv::STATIC_ID.to_string(), ReferenceKind::CachedSchemas,
+        dal_materialized_views::cached_schemas::assemble
+    ).await?;
+
+
+    let index_reference = IndexReference::from(frontend_object);
+
+
+    // Make an index, store it with the deployment function
+    let mut index_entries: Vec<_> = vec![index_reference];
+
+    // TODO create the new index type for deployment MVs
+    let snapshot_to_address = ctx.workspace_snapshot()?.address().await;
+    debug!("index_entries {:?}", index_entries);
+    let mv_index = MvIndex::new(snapshot_to_address.to_string(), index_entries);
+    let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
+    let from_index_checksum = mv_index_frontend_object.checksum.to_owned();
+    let to_index_checksum = from_index_checksum.clone();
+    let meta = UpdateMeta {
+        workspace_id: None,
+        change_set_id: None,
+        from_index_checksum,
+        to_index_checksum,
+    };
+    let patch_batch = PatchBatch::new(meta.clone(), vec![patch]);
+    let index_update = IndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned());
+
+    // Store it on frigg
+    frigg
+        .put_deployment_index(&mv_index_frontend_object)
+        .await?;
+    frigg.insert_deployment_object(&frontend_object).await?;
+
+    // publish updates
     edda_updates.publish_patch_batch(patch_batch).await?;
     edda_updates.publish_index_update(index_update).await?;
 
@@ -687,6 +754,7 @@ where
 {
     debug!(kind = %mv_kind, id = %mv_id, "Building MV");
     let start = Instant::now();
+
     let result = build_mv_task_inner(
         &ctx,
         &frigg,
@@ -701,6 +769,17 @@ where
 }
 
 type MvBuilderResult = Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>;
+
+pub enum BuildMvOp {
+    Create,
+    Delete {
+        checksum: String,
+    },
+    UpdateFrom {
+        checksum: String,
+        data: Value,
+    },
+}
 
 async fn build_mv_task_inner<F, T, E>(
     ctx: &DalContext,
@@ -717,25 +796,56 @@ where
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
 {
-    let mv_kind: String = mv_kind.to_string();
-    let (from_checksum, previous_data) = if let Some(previous_version) = frigg
-        .get_current_workspace_object(ctx.workspace_pk()?, ctx.change_set_id(), &mv_kind, &mv_id)
-        .await?
-    {
-        (previous_version.checksum, previous_version.data)
-    } else {
-        // Object doesn't exist in Frigg either
-        ("0".to_string(), serde_json::Value::Null)
+
+    let op = {
+        let maybe_previous_version = frigg
+            .get_current_workspace_object(ctx.workspace_pk()?, ctx.change_set_id(), &mv_kind.to_string(), &mv_id)
+            .await?;
+
+        let exists_on_snapshot = ctx
+            .workspace_snapshot()?
+            .node_exists(change.entity_id)
+            .await;
+
+        if !exists_on_snapshot {
+            let checksum = maybe_previous_version.map(|obj| obj.checksum).unwrap_or_else(|| "0".to_string());
+
+            BuildMvOp::Delete {checksum}
+        } else {
+            if let Some(previous_version) = maybe_previous_version {
+                BuildMvOp::UpdateFrom {
+                    checksum: previous_version.checksum,
+                    data: previous_version.data,
+                }
+            } else {
+                BuildMvOp::Create
+            }
+        }
     };
-    if !ctx
-        .workspace_snapshot()?
-        .node_exists(change.entity_id)
-        .await
-    {
-        // Object was removed
+
+    build_mv(op, mv_id, mv_kind, build_mv_future).await
+
+}
+
+pub async fn build_mv<F, T, E>(
+    operation: BuildMvOp,
+    mv_id: String,
+    mv_kind: ReferenceKind,
+    build_mv_future: F,
+) -> MvBuilderResult
+where
+    F: Future<Output = Result<T, E>>,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
+    E: Into<MaterializedViewError>,
+    MaterializedViewError: From<E>,
+    MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
+{
+    let kind = mv_kind.to_string();
+
+    if let BuildMvOp::Delete { checksum } = operation {
         Ok((
             Some(ObjectPatch {
-                kind: mv_kind,
+                kind,
                 id: mv_id,
                 from_checksum,
                 to_checksum: "0".to_string(),
@@ -750,8 +860,15 @@ where
         let mv_json = serde_json::to_value(&mv)?;
         let to_checksum = FrontendChecksum::checksum(&mv).to_string();
         let frontend_object: FrontendObject = mv.try_into()?;
-        let kind = mv_kind;
+
+        let (from_checksum, previous_data) = match operation {
+            BuildMvOp::Create => ("0".to_string(), serde_json::Value::Null),
+            BuildMvOp::UpdateFrom { checksum, data } => (checksum, data),
+            BuildMvOp::Delete { .. } => unreachable!(),
+        };
+
         if from_checksum == to_checksum {
+            // If checksum does not change, return the object but no patch
             Ok((None, Some(frontend_object)))
         } else {
             Ok((
@@ -1054,6 +1171,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         // These `ReferenceKind` do not have associated `MaterializedView`s (yet?),
         // so we skip them.
         ReferenceKind::ChangeSetList | ReferenceKind::ChangeSetRecord => {}
+
+        ReferenceKind::CachedSchemas => {
+            error!("Trying to build cached schemas via the graph task.")
+        }
     }
 
     Ok(())

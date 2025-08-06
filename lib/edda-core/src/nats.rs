@@ -205,4 +205,15 @@ pub mod subject {
             ),
         )
     }
+
+    #[inline]
+    pub fn deployment_update_for(prefix: Option<&str>, kind: &str) -> Subject {
+        nats_std::subject::prefixed(
+            prefix,
+            format!(
+                "{UPDATES_SUBJECT_PREFIX}.{}.{kind}",
+                Scope::Deployment.as_ref()
+            ),
+        )
+    }
 }

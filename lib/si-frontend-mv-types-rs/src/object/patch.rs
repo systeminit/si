@@ -14,7 +14,7 @@ const STREAMING_PATCH_MESSAGE_KIND: &str = "StreamingPatch";
 #[serde(rename_all = "camelCase")]
 pub struct UpdateMeta {
     /// The workspace this patch batch is targeting.
-    pub workspace_id: WorkspacePk,
+    pub workspace_id: Option<WorkspacePk>,
     /// The change set this patch batch is targeting.
     pub change_set_id: Option<ChangeSetId>,
     /// The index checksum the patches will result in data for.
@@ -115,7 +115,7 @@ pub struct ObjectPatch {
     pub from_checksum: String,
     /// Checksum of `"0"` means this is an existing object that must be removed
     pub to_checksum: String,
-    /// If neither of `from_checksum`, and `to_checksum` are all `0`, this field
+    /// If neither of `from_checksum` and `to_checksum` are all `0`, this field
     /// contains the JSON Patch document to apply to the version of the object with
     /// a checksum matching `from_checksum` that will result in a version with the
     /// checksum matching `to_checksum`.

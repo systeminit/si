@@ -38,6 +38,7 @@ pub enum ReferenceKind {
     ActionPrototypeViewList,
     ActionViewList,
     AttributeTree,
+    CachedSchemas,
     ChangeSetList,
     ChangeSetRecord,
     Component,

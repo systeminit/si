@@ -66,6 +66,7 @@ pub mod secret;
 pub mod view;
 pub mod view_component_list;
 pub mod view_list;
+pub mod cached_schemas;
 
 #[remain::sorted]
 #[derive(Debug, thiserror::Error)]

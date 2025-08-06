@@ -24,6 +24,7 @@ dal-macros = { path = "../../lib/dal-macros" }
 derive_more = { workspace = true }
 diff = { workspace = true }
 dyn-clone = { workspace = true }
+edda-client = { path = "../../lib/edda-client" }
 futures = { workspace = true }
 hex = { workspace = true }
 iftree = { workspace = true }
