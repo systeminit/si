@@ -167,14 +167,16 @@ jobs:
           # Check the exit code
           if [ -z "$exit_code" ]; then
             echo "Deno task succeeded [ or the orchestration failed for a totally non-valid reason ]!"
-            exit 0
+            exit_code=0
           else
             echo "Luminork API tests failed"
             cd ../..
             mkdir -p artifacts/luminork_tests
             echo "failure-marker" > artifacts/luminork_tests/failure-marker
-            exit "$exit_code"
           fi
+
+          echo "last_exit_code=$exit_code" >> "$GITHUB_ENV"
+          exit "$exit_code"
 
       - name: Upload artifact if exit code 53
         if: failure()
