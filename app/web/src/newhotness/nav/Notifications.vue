@@ -46,7 +46,7 @@ import { ChangeSetId, ChangeSet } from "@/api/sdf/dal/change_set";
 import { ApprovalData, approverForChangeSet } from "@/store/change_sets.store";
 import ApprovalPendingModal from "./ApprovalPendingModal.vue";
 import { useContext } from "../logic_composables/context";
-import { useApi, routes } from "../api_composables";
+import { useApi, routes, apiContextForChangeSet } from "../api_composables";
 
 const props = defineProps<{
   changeSetsNeedingApproval: ChangeSet[];
@@ -69,10 +69,8 @@ const queries = computed(() =>
       // twice.
       queryKey: ["approvalstatusbychangesetid", changeSetId],
       queryFn: async () => {
-        // TODO(nick): create or use a helper for using another ctx.
-        const newCtx = { ...ctx };
-        newCtx.changeSetId = computed(() => changeSetId);
-        const api = useApi(newCtx);
+        const apiCtx = apiContextForChangeSet(ctx, changeSetId);
+        const api = useApi(apiCtx);
 
         const call = api.endpoint<ApprovalData>(routes.ChangeSetApprovalStatus);
         const response = await call.get();

@@ -50,7 +50,12 @@ import {
   VButton,
   VormInput,
 } from "@si/vue-lib/design-system";
-import { routes, useApi } from "@/newhotness/api_composables";
+import {
+  apiContextForChangeSet,
+  routes,
+  useApi,
+} from "@/newhotness/api_composables";
+import { useContext } from "@/newhotness/logic_composables/context";
 
 const modal = ref<InstanceType<typeof Modal>>();
 const inputRef = ref<InstanceType<typeof VormInput>>();
@@ -60,7 +65,7 @@ const changesetName = ref("");
 const changesetIdRef = ref<string | undefined>();
 const apiErrorMessage = ref<string | undefined>();
 
-const renameChangesetApi = useApi();
+const ctx = useContext();
 
 const submit = async () => {
   if (
@@ -70,6 +75,8 @@ const submit = async () => {
   )
     return;
 
+  const apiCtx = apiContextForChangeSet(ctx, changesetIdRef.value);
+  const renameChangesetApi = useApi(apiCtx);
   const call = renameChangesetApi.endpoint(routes.ChangeSetRename, {
     changesetId: changesetIdRef.value,
   });
