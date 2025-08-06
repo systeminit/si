@@ -179,8 +179,8 @@
             "
             v-tooltip="
               props.isSecret
-                ? 'Remove connection to Secret'
-                : 'Remove connection'
+                ? 'Remove subscription to Secret'
+                : 'Remove subscription'
             "
             name="x"
             size="sm"
