@@ -102,7 +102,6 @@ export function useChangeSetsStore() {
         creatingChangeSet: false as boolean,
         postApplyActor: null as string | null,
         postAbandonActor: null as string | null,
-        changeSetApprovals: {} as Record<UserId, string>,
         statusWithBase: {} as Record<ChangeSetId, StatusWithBase>,
         defaultApprovers: [] as UserId[],
         changeSetsApprovalData: {} as Record<ChangeSetId, ApprovalData>,
@@ -338,26 +337,6 @@ export function useChangeSetsStore() {
               if (response.response.data.error.message) {
                 toast(response.response.data.error.message, { timeout: 5000 });
               }
-            },
-          });
-        },
-        async BEGIN_APPROVAL_PROCESS() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          return new ApiRequest({
-            method: "post",
-            url: "change_set/begin_approval_process",
-            params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
-            },
-          });
-        },
-        async CANCEL_APPROVAL_PROCESS() {
-          if (!this.selectedChangeSet) throw new Error("Select a change set");
-          return new ApiRequest({
-            method: "post",
-            url: "change_set/cancel_approval_process",
-            params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
             },
           });
         },
@@ -626,75 +605,6 @@ export function useChangeSetsStore() {
                       },
                     });
                 }
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetBeginApprovalProcess",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals = {};
-              }
-              const changeSet = this.changeSetsById[data.changeSetId];
-              if (changeSet) {
-                changeSet.status = ChangeSetStatus.NeedsApproval;
-                changeSet.mergeRequestedAt = new Date().toISOString();
-                changeSet.mergeRequestedByUserId = data.userPk;
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetCancelApprovalProcess",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals = {};
-              }
-              const changeSet = this.changeSetsById[data.changeSetId];
-              if (changeSet) {
-                changeSet.status = ChangeSetStatus.Open;
-              }
-            },
-          },
-
-          {
-            eventType: "ChangeSetBeginAbandonProcess",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals = {};
-              }
-              const changeSet = this.changeSetsById[data.changeSetId];
-              if (changeSet) {
-                changeSet.status = ChangeSetStatus.NeedsAbandonApproval;
-                changeSet.abandonRequestedAt = new Date().toISOString();
-                changeSet.abandonRequestedByUserId = data.userPk;
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetCancelAbandonProcess",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals = {};
-              }
-              const changeSet = this.changeSetsById[data.changeSetId];
-              if (changeSet) {
-                changeSet.status = ChangeSetStatus.Open;
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetMergeVote",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals[data.userPk] = data.vote;
-              }
-            },
-          },
-          {
-            eventType: "ChangeSetAbandonVote",
-            callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetId) {
-                this.changeSetApprovals[data.userPk] = data.vote;
               }
             },
           },
