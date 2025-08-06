@@ -44,40 +44,73 @@
         <li
           v-for="[idx, component] in Object.entries(selectedComponents)"
           :key="component.id"
-          :class="
-            clsx(
-              'ml-xs',
-              'flex flex-row items-center gap-xs [&>*]:text-sm [&>*]:font-bold',
-              themeClasses(
-                '[&>*]:border-neutral-400',
-                '[&>*]:border-neutral-600',
-              ),
-            )
-          "
+          :class="clsx('ml-xs', 'flex flex-col gap-2xs')"
         >
-          <input type="checkbox" checked @click="() => deselect(idx)" />
-          <MinimizedComponentQualificationStatus
-            :component="component"
-            noText
-          />
-          <TextPill
-            mono
+          <div
             :class="
               clsx(
-                'min-w-0',
-                themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+                'flex flex-row items-center gap-xs [&>*]:text-sm [&>*]:font-bold',
+                themeClasses(
+                  '[&>*]:border-neutral-400',
+                  '[&>*]:border-neutral-600',
+                ),
               )
             "
           >
-            <TruncateWithTooltip>
-              {{ component.schemaVariantName }}
-            </TruncateWithTooltip>
-          </TextPill>
-          <TextPill mono class="text-purple min-w-0">
-            <TruncateWithTooltip>
-              {{ component.name }}
-            </TruncateWithTooltip>
-          </TextPill>
+            <input type="checkbox" checked @click="() => deselect(idx)" />
+            <MinimizedComponentQualificationStatus
+              :component="component"
+              noText
+            />
+            <TextPill
+              mono
+              :class="
+                clsx(
+                  'min-w-0',
+                  themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+                )
+              "
+            >
+              <TruncateWithTooltip>
+                {{ component.schemaVariantName }}
+              </TruncateWithTooltip>
+            </TextPill>
+            <TextPill mono class="text-purple min-w-0">
+              <TruncateWithTooltip>
+                {{ component.name }}
+              </TruncateWithTooltip>
+            </TextPill>
+          </div>
+          <div v-if="errors[component.id]" class="mb-sm">
+            <div
+              v-for="[path, err] in Object.entries(errors[component.id]!)"
+              :key="path"
+              :class="
+                clsx(
+                  'border p-xs',
+                  themeClasses(
+                    'border-destructive-900 bg-destructive-200 text-black',
+                    'border-destructive-300 bg-newhotness-destructive text-white',
+                  ),
+                )
+              "
+            >
+              <p class="text-sm">{{ path }}</p>
+              <p
+                :class="
+                  clsx(
+                    'text-xs',
+                    themeClasses(
+                      'text-destructive-900',
+                      'text-destructive-300',
+                    ),
+                  )
+                "
+              >
+                {{ err }}
+              </p>
+            </div>
+          </div>
         </li>
       </ul>
       <DelayedLoader v-if="treesPending" :size="'full'" />
@@ -233,7 +266,6 @@ import {
   TruncateWithTooltip,
   TextPill,
 } from "@si/vue-lib/design-system";
-import { useToast } from "vue-toastification";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeTree,
@@ -261,7 +293,14 @@ import {
   makeAvTree,
   makeSavePayload,
 } from "../logic_composables/attribute_tree";
-import { componentTypes, ok, routes, UseApi, useApi } from "../api_composables";
+import {
+  componentTypes,
+  DoResponse,
+  ok,
+  routes,
+  UseApi,
+  useApi,
+} from "../api_composables";
 import { useContext } from "../logic_composables/context";
 import MinimizedComponentQualificationStatus from "../MinimizedComponentQualificationStatus.vue";
 import AttrComponentList from "../layout_components/AttrComponentList.vue";
@@ -340,6 +379,17 @@ const trees = computed<Trees>(() => {
     })
     .filter(nonNullable);
 });
+
+const errors = reactive<Record<ComponentId, Record<AttributePath, string>>>({});
+const upsertError = (id: ComponentId, path: AttributePath, error?: string) => {
+  let paths = errors[id];
+  if (!paths) {
+    paths = {} as Record<AttributePath, string>;
+    errors[id] = paths;
+  }
+  if (error) paths[path] = error;
+  else delete paths[path];
+};
 
 const history = reactive<Record<AttributePath, PathValueData>>(
   {} as Record<AttributePath, PathValueData>,
@@ -482,10 +532,12 @@ type ApiVal = {
 
 const saving = ref(0);
 
+type ApiArgs = { id: ComponentId };
+type SuccessResp = { success: boolean };
 const createCalls = () =>
   componentIds.value.map((componentId) => {
-    const saveApi = useApi(ctx);
-    const call = saveApi.endpoint<{ success: boolean }>(
+    const saveApi = useApi<ApiArgs>(ctx);
+    const call = saveApi.endpoint<SuccessResp>(
       routes.UpdateComponentAttributes,
       { id: componentId },
     );
@@ -494,6 +546,19 @@ const createCalls = () =>
 
 const createPayload = (path: AttributePath, vals: ApiVal) =>
   makeSavePayload(path, vals.value, vals.propKind, vals.connectingComponentId);
+
+const handleErrors = (
+  path: AttributePath,
+  resps: Array<DoResponse<SuccessResp, ApiArgs>>,
+): void => {
+  resps.forEach((resp) => {
+    let err;
+    if (!ok(resp.req)) {
+      err = resp.errorMessage;
+    }
+    upsertError(resp.endpointArgs.id, path, err);
+  });
+};
 
 const add = async (
   _: UseApi,
@@ -504,9 +569,8 @@ const add = async (
 
   const apis = createCalls();
 
+  const appendPath = `${attributeTree.attributeValue.path}/-` as AttributePath;
   const calls = apis.map(async (call) => {
-    const appendPath =
-      `${attributeTree.attributeValue.path}/-` as AttributePath;
     const payload = {
       [appendPath]: value,
     };
@@ -516,10 +580,7 @@ const add = async (
   saving.value = calls.length;
   const resps = await Promise.all(calls);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(appendPath, resps);
 };
 
 const setKey = async (
@@ -531,9 +592,9 @@ const setKey = async (
 
   const apis = createCalls();
 
+  const appendPath =
+    `${attributeTree.attributeValue.path}/${key}` as AttributePath;
   const calls = apis.map(async (call) => {
-    const appendPath =
-      `${attributeTree.attributeValue.path}/${key}` as AttributePath;
     const payload = {
       [appendPath]: value,
     };
@@ -544,13 +605,8 @@ const setKey = async (
   const resps = await Promise.all(calls);
   setHistory(attributeTree.attributeValue.path);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(appendPath, resps);
 };
-
-const toast = useToast();
 
 const save = async (
   path: AttributePath,
@@ -579,10 +635,7 @@ const save = async (
   const resps = await Promise.all(calls);
   setHistory(path);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(path, resps);
 };
 
 const removeSubscription = async (path: AttributePath) => {
@@ -603,10 +656,7 @@ const removeSubscription = async (path: AttributePath) => {
   const resps = await Promise.all(calls);
   setHistory(path);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(path, resps);
 };
 
 const remove = async (path: AttributePath) => {
@@ -621,10 +671,7 @@ const remove = async (path: AttributePath) => {
   const resps = await Promise.all(calls);
   setHistory(path);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(path, resps);
 };
 
 const onEscape = () => {

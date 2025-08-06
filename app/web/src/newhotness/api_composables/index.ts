@@ -165,7 +165,14 @@ export const apiContextForChangeSet = (
   };
 };
 
-export class APICall<Response> {
+export type DoResponse<R, A> = {
+  req: AxiosResponse<R>;
+  newChangeSetId: string | undefined;
+  errorMessage: string | undefined;
+  endpointArgs: A;
+};
+
+export class APICall<Response, Args> {
   workspaceId: string;
   changeSetId: string;
   path: string;
@@ -175,6 +182,7 @@ export class APICall<Response> {
   description: string;
   obs: LabeledObs;
   lobbyRequired: boolean;
+  endpointArgs: Args;
 
   constructor(
     ctx: ApiContext,
@@ -183,6 +191,7 @@ export class APICall<Response> {
     mustCompress: boolean,
     description: string,
     obs: LabeledObs,
+    endpointArgs: Args,
   ) {
     this.ctx = ctx;
     const workspaceId = unref(ctx.workspacePk);
@@ -195,6 +204,7 @@ export class APICall<Response> {
     this.description = description;
     this.obs = obs;
     this.lobbyRequired = false;
+    this.endpointArgs = endpointArgs;
   }
 
   url(): string {
@@ -226,7 +236,7 @@ export class APICall<Response> {
     method: string,
     data: D,
     params?: URLSearchParams,
-  ) {
+  ): Promise<DoResponse<Response, Args>> {
     this.obs.requested.value = true;
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
@@ -286,7 +296,12 @@ export class APICall<Response> {
       errorMessage = err.message;
     }
 
-    return { req, newChangeSetId, errorMessage };
+    return {
+      req,
+      newChangeSetId,
+      errorMessage,
+      endpointArgs: this.endpointArgs,
+    };
   }
 
   async delete<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
@@ -356,12 +371,10 @@ type ApiRequestStatus = {
   isSuccess: boolean;
 };
 
-export type UseApi = {
+export type EndpointArgs = Record<string, string>;
+export type UseApi<A = EndpointArgs> = {
   ok: (req: AxiosResponse) => boolean;
-  endpoint: <Response>(
-    key: routes,
-    args?: Record<string, string>,
-  ) => APICall<Response>;
+  endpoint: <Response>(key: routes, args?: A) => APICall<Response, A>;
   inFlight: Ref<boolean, boolean>;
   bifrosting: Ref<boolean, boolean>;
   requestStatuses: ComputedRef<ApiRequestStatus>;
@@ -373,7 +386,9 @@ export type UseApi = {
   ) => Promise<void>;
 };
 
-export const useApi = (ctx?: ApiContext): UseApi => {
+export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
+  ctx?: ApiContext,
+): UseApi<SpecificArgs> => {
   if (!ctx) ctx = inject<Context>("CONTEXT");
   assertIsDefined(ctx);
 
@@ -388,8 +403,8 @@ export const useApi = (ctx?: ApiContext): UseApi => {
   // You have to run endpoint BEFORE you call setWatchFn or it will break
   let labeledObs: LabeledObs;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-  let apiCall: APICall<any>;
-  const endpoint = <Response>(key: routes, args?: Record<string, string>) => {
+  let apiCall: APICall<any, SpecificArgs>;
+  const endpoint = <Response>(key: routes, args?: SpecificArgs) => {
     let path = _routes[key];
     const needsArgs = path.includes("<") && path.includes(">");
     if (!args && needsArgs)
@@ -398,7 +413,8 @@ export const useApi = (ctx?: ApiContext): UseApi => {
 
     if (args)
       Object.entries(args).forEach(([k, v]) => {
-        path = path.replace(`<${k}>`, v);
+        // tsc gets a little confused in that `k` could be a symbol?
+        path = path.replace(`<${k.toString()}>`, v);
       });
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
     const mustCompress = COMPRESSED_ROUTES.includes(key);
@@ -407,13 +423,14 @@ export const useApi = (ctx?: ApiContext): UseApi => {
       ctx.user?.name
     } on ${new Date().toLocaleDateString()}`;
     labeledObs = setLabel(obs, `${key}.${argList.join(".")}`);
-    const call = new APICall<Response>(
+    const call = new APICall<Response, SpecificArgs>(
       ctx,
       path,
       canMutateHead,
       mustCompress,
       desc,
       labeledObs,
+      args ?? ({} as SpecificArgs),
     );
     apiCall = call;
     return call;
