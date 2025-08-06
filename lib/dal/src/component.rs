@@ -168,10 +168,7 @@ use crate::{
         input::InputSocketError,
         output::OutputSocketError,
     },
-    validation::{
-        ValidationError,
-        ValidationOutput,
-    },
+    validation::ValidationError,
     workspace_snapshot::{
         DependentValueRoot,
         WorkspaceSnapshotError,
@@ -199,6 +196,7 @@ pub mod delete;
 pub mod diff;
 pub mod frame;
 pub mod inferred_connection_graph;
+pub mod new;
 pub mod properties;
 pub mod qualification;
 pub mod resource;
@@ -673,216 +671,6 @@ impl Component {
         discriminant: EdgeWeightKindDiscriminants::Manages,
         result: ComponentResult,
     );
-
-    #[instrument(
-        name = "component.new",
-        level = "info",
-        skip_all,
-        fields(
-            schema_variant.id = ?schema_variant_id
-        ))]
-    pub async fn new(
-        ctx: &DalContext,
-        name: impl Into<String>,
-        schema_variant_id: SchemaVariantId,
-        view_id: ViewId,
-    ) -> ComponentResult<Self> {
-        let content = ComponentContentV2 {
-            timestamp: Timestamp::now(),
-        };
-
-        let (hash, _) = ctx.layer_db().cas().write(
-            Arc::new(ComponentContent::V2(content.clone()).into()),
-            None,
-            ctx.events_tenancy(),
-            ctx.events_actor(),
-        )?;
-
-        let component =
-            Self::new_with_content_address_and_no_geometry(ctx, name, schema_variant_id, hash)
-                .await?;
-
-        // Create geometry node
-        Geometry::new_for_component(ctx, component.id, view_id).await?;
-
-        Ok(component)
-    }
-
-    /// Create new component node but retain existing content address
-    /// This is used to create the replacement nodes on upgrade, so geometries for it need
-    /// to be created by hand. Anywhere else you want to use [Self::new](Self::new)
-    pub async fn new_with_content_address_and_no_geometry(
-        ctx: &DalContext,
-        name: impl Into<String>,
-        schema_variant_id: SchemaVariantId,
-        content_address: ContentHash,
-    ) -> ComponentResult<Self> {
-        let name: String = name.into();
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let id = workspace_snapshot.generate_ulid().await?;
-        let lineage_id = workspace_snapshot.generate_ulid().await?;
-
-        let node_weight = NodeWeight::new_component(id, lineage_id, content_address);
-
-        // Attach component to category and add use edge to schema variant
-        workspace_snapshot.add_or_replace_node(node_weight).await?;
-
-        // Root --> Component Category --> Component (this)
-        let component_category_id = workspace_snapshot
-            .get_category_node_or_err(CategoryNodeKind::Component)
-            .await?;
-        Self::add_category_edge(
-            ctx,
-            component_category_id,
-            id.into(),
-            EdgeWeightKind::new_use(),
-        )
-        .await?;
-
-        // Create attribute values for all socket corresponding to input and output sockets.
-        for input_socket_id in
-            InputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?
-        {
-            let attribute_value =
-                AttributeValue::new(ctx, input_socket_id, Some(id.into()), None, None).await?;
-
-            DependentValueRoot::add_dependent_value_root(
-                ctx,
-                DependentValueRoot::Unfinished(attribute_value.id().into()),
-            )
-            .await?;
-        }
-        for output_socket_id in
-            OutputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?
-        {
-            let attribute_value =
-                AttributeValue::new(ctx, output_socket_id, Some(id.into()), None, None).await?;
-
-            DependentValueRoot::add_dependent_value_root(
-                ctx,
-                DependentValueRoot::Unfinished(attribute_value.id().into()),
-            )
-            .await?;
-        }
-
-        // Walk all the props for the schema variant and create attribute values for all of them
-        let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id).await?;
-        let mut work_queue = VecDeque::from([(root_prop_id, None::<AttributeValueId>, None)]);
-
-        while let Some((prop_id, maybe_parent_attribute_value_id, key)) = work_queue.pop_front() {
-            // If we came in with a key, we're the child of a map. We should not descend deeper
-            // into it because the value should be governed by its prototype function and will
-            // create child values when that function is executed
-            let should_descend = key.is_none();
-
-            let prop_kind = workspace_snapshot
-                .get_node_weight(prop_id)
-                .await?
-                .get_prop_node_weight()?
-                .kind();
-
-            // Create an attribute value for the prop.
-            let attribute_value = AttributeValue::new(
-                ctx,
-                prop_id,
-                Some(id.into()),
-                maybe_parent_attribute_value_id,
-                key,
-            )
-            .await?;
-            if ValidationOutput::get_format_for_attribute_value_id(ctx, attribute_value.id())
-                .await?
-                .is_some()
-            {
-                ctx.enqueue_compute_validations(attribute_value.id())
-                    .await?;
-            }
-
-            if should_descend {
-                match prop_kind {
-                    PropKind::Object => {
-                        let ordered_children = workspace_snapshot
-                            .ordered_children_for_node(prop_id)
-                            .await?
-                            .ok_or(ComponentError::ObjectPropHasNoOrderingNode(prop_id))?;
-
-                        for child_prop_id in ordered_children {
-                            work_queue.push_back((
-                                child_prop_id.into(),
-                                Some(attribute_value.id()),
-                                None,
-                            ));
-                        }
-                    }
-                    PropKind::Map => {
-                        let element_prop_id =
-                            Prop::direct_single_child_prop_id(ctx, prop_id).await?;
-
-                        for (key, _) in Prop::prototypes_by_key(ctx, element_prop_id).await? {
-                            if key.is_some() {
-                                work_queue.push_back((
-                                    element_prop_id,
-                                    Some(attribute_value.id()),
-                                    key,
-                                ))
-                            }
-                        }
-                    }
-                    // We want to only add leaves to the DVU roots
-                    _ => {
-                        DependentValueRoot::add_dependent_value_root(
-                            ctx,
-                            DependentValueRoot::Unfinished(attribute_value.id().into()),
-                        )
-                        .await?;
-                    }
-                }
-            } else {
-                DependentValueRoot::add_dependent_value_root(
-                    ctx,
-                    DependentValueRoot::Unfinished(attribute_value.id().into()),
-                )
-                .await?;
-            }
-        }
-
-        let (node_weight, content) = Self::get_node_weight_and_content(ctx, id.into()).await?;
-        let component = Self::assemble(&node_weight, content);
-
-        // Component (this) --> Schema Variant
-        Component::add_edge_to_schema_variant(
-            ctx,
-            component.id,
-            schema_variant_id,
-            EdgeWeightKind::new_use(),
-        )
-        .await?;
-
-        component.set_name(ctx, &name).await?;
-
-        //set a component specific prototype for the root/si/type as we don't want it to ever change other than manually
-        let sv_type = SchemaVariant::get_by_id(ctx, schema_variant_id)
-            .await?
-            .get_type(ctx)
-            .await?;
-        if let Some(sv_type) = sv_type {
-            component.set_type(ctx, sv_type).await?;
-        }
-
-        // Find all create action prototypes for the variant and create actions for them.
-        for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
-            ctx,
-            schema_variant_id,
-            ActionKind::Create,
-        )
-        .await?
-        {
-            Action::new(ctx, prototype_id, Some(component.id)).await?;
-        }
-
-        Ok(component)
-    }
 
     /// Attempts to merge the values other_component into this component, if
     /// values exist for the prop in other. Only use this immediately after
@@ -3988,13 +3776,14 @@ impl Component {
         // ================================================================================
         // Create new component and run changes that depend on the old one still existing
         // ================================================================================
-        let new_component_with_temp_id = Component::new_with_content_address_and_no_geometry(
-            ctx,
-            original_component_name.clone(),
-            schema_variant_id,
-            original_component_node_weight.content_hash(),
-        )
-        .await?;
+        let new_component_with_temp_id =
+            Component::new_with_content_address_and_no_geometry_no_default_subscriptions(
+                ctx,
+                original_component_name.clone(),
+                schema_variant_id,
+                original_component_node_weight.content_hash(),
+            )
+            .await?;
 
         // Move geometries to new component
         for geometry_id in geometry_ids {
