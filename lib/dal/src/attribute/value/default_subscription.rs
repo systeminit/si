@@ -214,6 +214,23 @@ pub async fn detect_possible_default_connections(
 }
 
 impl AttributeValue {
+    pub async fn remove_default_subscription_source(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        let category_id = get_or_create_default_subscription_category(ctx).await?;
+
+        ctx.workspace_snapshot()?
+            .remove_edge(
+                id,
+                category_id,
+                EdgeWeightKindDiscriminants::DefaultSubscriptionSource,
+            )
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn set_as_default_subscription_source(
         ctx: &DalContext,
         id: AttributeValueId,
@@ -229,6 +246,23 @@ impl AttributeValue {
         .await?;
 
         Ok(())
+    }
+
+    pub async fn is_default_subscription_source(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<bool> {
+        let category_id = get_or_create_default_subscription_category(ctx).await?;
+
+        Ok(ctx
+            .workspace_snapshot()?
+            .find_edge(
+                id,
+                category_id,
+                EdgeWeightKindDiscriminants::DefaultSubscriptionSource,
+            )
+            .await
+            .is_some())
     }
 
     pub async fn get_default_subscription_sources(

@@ -221,6 +221,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             validation,
             secret: maybe_secret,
             has_socket_connection,
+            is_default_source: AttributeValue::is_default_subscription_source(ctx, av_id).await?,
         };
         attribute_values.insert(av_id, av_mv);
 

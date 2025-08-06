@@ -10,6 +10,7 @@ use axum::{
         Response,
     },
     routing::{
+        delete,
         post,
         put,
     },
@@ -39,6 +40,7 @@ use tower_http::decompression::RequestDecompressionLayer;
 
 use super::{
     ComponentIdFromPath,
+    Error,
     Result,
 };
 use crate::app_state::AppState;
@@ -58,11 +60,82 @@ pub fn v2_routes() -> Router<AppState> {
                     ),
             ),
         )
+        .route("/default_source", put(set_as_default_source))
+        .route("/default_source", delete(delete_default_source))
         .route("/enqueue", post(enqueue_prototype_function))
 }
 
 async fn handle_decompression_error(err: BoxError) -> Response {
     ApiError::new(StatusCode::UNSUPPORTED_MEDIA_TYPE, err.to_string()).into_response()
+}
+
+async fn set_as_default_source(
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
+    Path(ComponentIdFromPath { component_id }): Path<ComponentIdFromPath>,
+    Json(av_ident): Json<AttributeValueIdent>,
+) -> Result<ForceChangeSetResponse<()>> {
+    let force_change_set_id = ChangeSet::force_new(ctx).await?;
+
+    let av_ident_string: String = av_ident.clone().into();
+    let attribute_value_id =
+        av_ident
+            .resolve(ctx, component_id)
+            .await?
+            .ok_or(Error::AttributeValueNotFound(
+                av_ident_string.clone(),
+                component_id,
+            ))?;
+    AttributeValue::set_as_default_subscription_source(ctx, attribute_value_id).await?;
+
+    tracker.track(
+        ctx,
+        "set_default_source",
+        json!({
+            "how": "/component/attributes/default_source",
+            "component_id": component_id,
+            "change_set_id": ctx.change_set_id(),
+            "av_id": attribute_value_id,
+            "av_identifier": av_ident_string,
+        }),
+    );
+
+    Ok(ForceChangeSetResponse::empty(force_change_set_id))
+}
+
+async fn delete_default_source(
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
+    Path(ComponentIdFromPath { component_id }): Path<ComponentIdFromPath>,
+    Json(av_ident): Json<AttributeValueIdent>,
+) -> Result<ForceChangeSetResponse<()>> {
+    let force_change_set_id = ChangeSet::force_new(ctx).await?;
+
+    let av_ident_string: String = av_ident.clone().into();
+    let attribute_value_id =
+        av_ident
+            .resolve(ctx, component_id)
+            .await?
+            .ok_or(Error::AttributeValueNotFound(
+                av_ident_string.clone(),
+                component_id,
+            ))?;
+
+    AttributeValue::set_as_default_subscription_source(ctx, attribute_value_id).await?;
+
+    tracker.track(
+        ctx,
+        "delete_default_source",
+        json!({
+            "how": "/component/attributes/default_source",
+            "component_id": component_id,
+            "change_set_id": ctx.change_set_id(),
+            "av_id": attribute_value_id,
+            "av_identifier": av_ident_string,
+        }),
+    );
+
+    Ok(ForceChangeSetResponse::empty(force_change_set_id))
 }
 
 async fn update_attributes(
@@ -90,7 +163,7 @@ async fn update_attributes(
         }),
     );
 
-    Ok(ForceChangeSetResponse::new(force_change_set_id, ()))
+    Ok(ForceChangeSetResponse::empty(force_change_set_id))
 }
 
 async fn enqueue_prototype_function(

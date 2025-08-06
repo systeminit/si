@@ -567,6 +567,12 @@ impl From<AttributeValueId> for AttributeValueIdent {
     }
 }
 
+impl From<AttributeValueIdent> for String {
+    fn from(ident: AttributeValueIdent) -> Self {
+        ident.0
+    }
+}
+
 impl AttributeValueIdent {
     pub fn new(path: impl Into<String>) -> Self {
         Self(path.into())
