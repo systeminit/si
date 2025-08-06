@@ -8,6 +8,7 @@ import {
 } from "@/store/apis.web";
 import { changeSetExists, muspelheimStatuses } from "@/store/realtime/heimdall";
 import router from "@/router";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { assertIsDefined, Context } from "../types";
 import * as rainbow from "../logic_composables/rainbow_counter";
 import { reset } from "../logic_composables/navigation_stack";
@@ -148,11 +149,27 @@ const setLabel = (obs: Obs, label: string): LabeledObs => {
   };
 };
 
+type ApiContext = Pick<
+  Context,
+  "changeSetId" | "workspacePk" | "onHead" | "user"
+>;
+export const apiContextForChangeSet = (
+  ctx: Context,
+  changeSetId: ChangeSetId,
+): ApiContext => {
+  return {
+    workspacePk: ctx.workspacePk,
+    user: ctx.user,
+    changeSetId: computed(() => changeSetId),
+    onHead: computed(() => ctx.headChangeSetId.value === changeSetId),
+  };
+};
+
 export class APICall<Response> {
   workspaceId: string;
   changeSetId: string;
   path: string;
-  ctx: Context;
+  ctx: ApiContext;
   canMutateHead: boolean;
   mustCompress: boolean;
   description: string;
@@ -160,17 +177,16 @@ export class APICall<Response> {
   lobbyRequired: boolean;
 
   constructor(
-    ctx: Context,
+    ctx: ApiContext,
     path: string,
     canMutateHead: boolean,
     mustCompress: boolean,
     description: string,
     obs: LabeledObs,
-    changesetId?: string,
   ) {
     this.ctx = ctx;
     const workspaceId = unref(ctx.workspacePk);
-    const changeSetId = changesetId ?? unref(ctx.changeSetId);
+    const changeSetId = unref(ctx.changeSetId);
     this.workspaceId = workspaceId;
     this.changeSetId = changeSetId;
     this.path = path;
@@ -357,7 +373,7 @@ export type UseApi = {
   ) => Promise<void>;
 };
 
-export const useApi = (ctx?: Context): UseApi => {
+export const useApi = (ctx?: ApiContext): UseApi => {
   if (!ctx) ctx = inject<Context>("CONTEXT");
   assertIsDefined(ctx);
 
@@ -380,14 +396,8 @@ export const useApi = (ctx?: Context): UseApi => {
       throw new Error(`Endpoint ${key}, ${path} requires arguments`);
     assertIsDefined(ctx);
 
-    // There are some endpoints that can operate on a changeset even if a user is not using it.
-    // Sending changesetId as an arg will override the changesetId for this request.
-    let changesetId;
     if (args)
       Object.entries(args).forEach(([k, v]) => {
-        if (k === "changesetId") {
-          changesetId = v;
-        }
         path = path.replace(`<${k}>`, v);
       });
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
@@ -404,7 +414,6 @@ export const useApi = (ctx?: Context): UseApi => {
       mustCompress,
       desc,
       labeledObs,
-      changesetId,
     );
     apiCall = call;
     return call;

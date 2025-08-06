@@ -60,11 +60,10 @@ import clsx from "clsx";
 import * as _ from "lodash-es";
 import { themeClasses, VButton, Timestamp } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
-import { computed } from "vue";
 import { ChangeSet, ChangeSetId } from "@/api/sdf/dal/change_set";
 import { navigateToExistingChangeSet } from "../logic_composables/change_set";
 import { useContext } from "../logic_composables/context";
-import { useApi, routes } from "../api_composables";
+import { useApi, routes, apiContextForChangeSet } from "../api_composables";
 
 defineProps<{
   changeSet: ChangeSet;
@@ -81,20 +80,16 @@ const goToChangeSet = (id: ChangeSetId) => {
 const ctx = useContext();
 
 const rejectChangeSet = (id: ChangeSetId) => {
-  // TODO(nick): create or use a helper for using another ctx.
-  const newCtx = { ...ctx };
-  newCtx.changeSetId = computed(() => id);
-  const api = useApi(newCtx);
+  const apiCtx = apiContextForChangeSet(ctx, id);
+  const api = useApi(apiCtx);
 
   const call = api.endpoint(routes.ChangeSetApprove);
   call.post({ status: "Rejected" });
 };
 
 const approveChangeSet = (id: ChangeSetId) => {
-  // TODO(nick): create or use a helper for using another ctx.
-  const newCtx = { ...ctx };
-  newCtx.changeSetId = computed(() => id);
-  const api = useApi(newCtx);
+  const apiCtx = apiContextForChangeSet(ctx, id);
+  const api = useApi(apiCtx);
 
   const call = api.endpoint(routes.ChangeSetApprove);
   call.post({ status: "Approved" });
