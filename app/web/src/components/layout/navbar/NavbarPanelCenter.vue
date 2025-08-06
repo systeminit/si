@@ -4,7 +4,7 @@
   >
     <NavbarButton
       tooltipText="Model"
-      icon="diagram"
+      icon="grid"
       :selected="
         ['workspace-compose', 'workspace-compose-view'].includes(
           route.name as string,
