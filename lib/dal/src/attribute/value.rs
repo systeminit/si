@@ -66,6 +66,7 @@ use crate::{
     Prop,
     PropId,
     PropKind,
+    SchemaVariantError,
     Secret,
     SecretError,
     TransactionsError,
@@ -264,6 +265,8 @@ pub enum AttributeValueError {
     PropMoreThanOneChild(PropId),
     #[error("prop not found for attribute value: {0}")]
     PropNotFound(AttributeValueId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("secret error: {0}")]
     Secret(#[from] Box<SecretError>),
     #[error("serde_json: {0}")]

@@ -1,5 +1,7 @@
 use std::collections::{
     HashMap,
+    HashSet,
+    VecDeque,
     hash_map::Entry,
 };
 
@@ -62,6 +64,30 @@ impl<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> DependencyG
                 .filter_map(|edge_ref| self.graph.node_weight(edge_ref.target()).copied())
                 .collect(),
         }
+    }
+
+    pub fn all_parents_of(&self, id: T) -> Vec<T> {
+        let mut result = vec![];
+        let mut seen_list = HashSet::new();
+        let mut work_queue = VecDeque::from([id]);
+
+        while let Some(current_id) = work_queue.pop_front() {
+            if let Some(value_idx) = self.id_to_index_map.get(&current_id) {
+                for parent_id in self
+                    .graph
+                    .edges_directed(*value_idx, Incoming)
+                    .filter_map(|edge_ref| self.graph.node_weight(edge_ref.source()).copied())
+                {
+                    if !seen_list.contains(&parent_id) {
+                        result.push(parent_id);
+                        work_queue.push_back(parent_id);
+                        seen_list.insert(parent_id);
+                    }
+                }
+            }
+        }
+
+        result
     }
 
     pub fn direct_reverse_dependencies_of(&self, id: T) -> Vec<T> {

@@ -17,10 +17,7 @@ use si_events::{
     ContentHash,
     Timestamp,
 };
-use si_id::{
-    SchemaId,
-    ulid::Ulid,
-};
+use si_id::ulid::Ulid;
 use si_pkg::PropSpecKind;
 use strum::{
     AsRefStr,
@@ -41,18 +38,20 @@ use crate::{
     FuncId,
     HelperError,
     InputSocketId,
-    Schema,
     SchemaError,
     SchemaVariant,
     SchemaVariantError,
     SchemaVariantId,
     TransactionsError,
-    attribute::prototype::{
-        AttributePrototypeError,
-        argument::{
-            AttributePrototypeArgument,
-            AttributePrototypeArgumentError,
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::{
+                AttributePrototypeArgument,
+                AttributePrototypeArgumentError,
+            },
         },
+        value::default_subscription::PropSuggestion,
     },
     change_set::ChangeSetError,
     func::{
@@ -179,15 +178,6 @@ impl WidgetOption {
 }
 pub type WidgetOptions = Vec<WidgetOption>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ResolvedPropSuggestion {
-    pub source_schema_id: SchemaId,
-    pub dest_schema_id: SchemaId,
-    pub source_prop_id: PropId,
-    pub dest_prop_id: PropId,
-}
-
 /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Prop {
@@ -274,6 +264,17 @@ impl PropPath {
 
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub fn as_prop_suggestion_path(&self) -> String {
+        format!(
+            "/{}",
+            self.as_parts()
+                .into_iter()
+                .skip(1)
+                .collect::<Vec<&str>>()
+                .join("/")
+        )
     }
 
     pub fn as_parts(&self) -> Vec<&str> {
@@ -1261,134 +1262,104 @@ impl Prop {
         Ok(Self::get_by_id(ctx, prop_id).await?.name)
     }
 
-    pub async fn suggested_sources_for(
-        &self,
-        ctx: &DalContext,
-    ) -> PropResult<Vec<ResolvedPropSuggestion>> {
-        let mut result = vec![];
-
-        #[derive(Clone, Debug, Deserialize)]
-        struct PropSuggestion {
-            schema: String,
-            prop: String,
-        }
-
-        let Some(my_schema_variant_id) = Prop::schema_variant_id(ctx, self.id()).await? else {
-            return Ok(result);
+    pub fn suggested_sources_for(&self) -> PropResult<Vec<PropSuggestion>> {
+        let Some(suggest_sources) = self.ui_optionals.get("suggestSources").cloned() else {
+            return Ok(vec![]);
         };
-        let my_schema_id = SchemaVariant::schema_id(ctx, my_schema_variant_id)
-            .await
-            .map_err(Box::new)?;
 
-        if let Some(suggest_as_source_for) = self.ui_optionals.get("suggestSources").cloned() {
-            let suggestion_serde: serde_json::Value = suggest_as_source_for.into();
-            let suggestions: Option<Vec<PropSuggestion>> =
-                serde_json::from_value(suggestion_serde).ok();
-            let Some(suggestions) = suggestions else {
-                return Ok(result);
-            };
+        let suggestion_serde: serde_json::Value = suggest_sources.into();
+        let suggestions: Option<Vec<PropSuggestion>> =
+            serde_json::from_value(suggestion_serde).ok();
+        let Some(suggestions) = suggestions else {
+            return Ok(vec![]);
+        };
 
-            for suggestion in suggestions {
-                let Some(schema) = Schema::get_by_name_opt(ctx, &suggestion.schema)
-                    .await
-                    .map_err(Box::new)?
-                else {
-                    continue;
-                };
-
-                let mut parts: Vec<&str> = suggestion.prop.split("/").collect();
-                parts[0] = "root";
-
-                for variant_id in Schema::list_schema_variant_ids(ctx, schema.id())
-                    .await
-                    .map_err(Box::new)?
-                {
-                    let Some(prop_id) = Prop::find_prop_id_by_path_opt(
-                        ctx,
-                        variant_id,
-                        &PropPath::new(parts.as_slice()),
-                    )
-                    .await?
-                    else {
-                        continue;
-                    };
-
-                    result.push(ResolvedPropSuggestion {
-                        source_schema_id: schema.id(),
-                        source_prop_id: prop_id,
-                        dest_schema_id: my_schema_id,
-                        dest_prop_id: self.id(),
-                    });
-                }
-            }
-        }
-
-        Ok(result)
+        Ok(suggestions)
     }
 
-    pub async fn suggested_as_source_for(
-        &self,
-        ctx: &DalContext,
-    ) -> PropResult<Vec<ResolvedPropSuggestion>> {
-        let mut result = vec![];
-
-        #[derive(Clone, Debug, Deserialize)]
-        struct PropSuggestion {
-            schema: String,
-            prop: String,
-        }
-
-        let Some(my_schema_variant_id) = Prop::schema_variant_id(ctx, self.id()).await? else {
-            return Ok(result);
+    pub fn suggested_as_source_for(&self) -> PropResult<Vec<PropSuggestion>> {
+        let Some(suggest_as_source_for) = self.ui_optionals.get("suggestAsSourceFor").cloned()
+        else {
+            return Ok(vec![]);
         };
-        let my_schema_id = SchemaVariant::schema_id(ctx, my_schema_variant_id)
-            .await
-            .map_err(Box::new)?;
 
-        if let Some(suggest_as_source_for) = self.ui_optionals.get("suggestAsSourceFor").cloned() {
-            let suggestion_serde: serde_json::Value = suggest_as_source_for.into();
-            let suggestions: Option<Vec<PropSuggestion>> =
-                serde_json::from_value(suggestion_serde).ok();
-            let Some(suggestions) = suggestions else {
-                return Ok(result);
-            };
+        let suggestion_serde: serde_json::Value = suggest_as_source_for.into();
+        let suggestions: Option<Vec<PropSuggestion>> =
+            serde_json::from_value(suggestion_serde).ok();
+        let Some(suggestions) = suggestions else {
+            return Ok(vec![]);
+        };
 
-            for suggestion in suggestions {
-                let Some(schema) = Schema::get_by_name_opt(ctx, &suggestion.schema)
-                    .await
-                    .map_err(Box::new)?
-                else {
-                    continue;
-                };
+        Ok(suggestions)
+    }
 
-                let mut parts: Vec<&str> = suggestion.prop.split("/").collect();
-                parts[0] = "root";
-
-                for variant_id in Schema::list_schema_variant_ids(ctx, schema.id())
-                    .await
-                    .map_err(Box::new)?
-                {
-                    let Some(prop_id) = Prop::find_prop_id_by_path_opt(
-                        ctx,
-                        variant_id,
-                        &PropPath::new(parts.as_slice()),
-                    )
-                    .await?
-                    else {
-                        continue;
-                    };
-
-                    result.push(ResolvedPropSuggestion {
-                        source_schema_id: my_schema_id,
-                        source_prop_id: self.id(),
-                        dest_schema_id: schema.id(),
-                        dest_prop_id: prop_id,
-                    });
+    /// Walk the prop trees underneath `self` and `other` and compare their types.
+    pub async fn is_same_type_as(&self, ctx: &DalContext, other: &Prop) -> PropResult<bool> {
+        struct PropTypeInfo {
+            id: PropId,
+            kind: PropKind,
+            name: Option<String>,
+        }
+        impl From<&Prop> for PropTypeInfo {
+            fn from(prop: &Prop) -> Self {
+                Self {
+                    id: prop.id(),
+                    kind: prop.kind,
+                    name: Some(prop.name.to_owned()),
                 }
             }
         }
 
-        Ok(result)
+        let mut self_queue: VecDeque<PropTypeInfo> = VecDeque::from([PropTypeInfo {
+            id: self.id,
+            kind: self.kind,
+            name: None,
+        }]);
+
+        let mut other_queue: VecDeque<PropTypeInfo> = VecDeque::from([PropTypeInfo {
+            id: other.id,
+            kind: other.kind,
+            name: None,
+        }]);
+
+        loop {
+            match (self_queue.pop_front(), other_queue.pop_front()) {
+                (Some(self_prop), Some(other_prop)) => {
+                    if self_prop.kind != other_prop.kind || self_prop.name != other_prop.name {
+                        return Ok(false);
+                    }
+
+                    let mut self_children =
+                        Prop::direct_child_props_ordered(ctx, self_prop.id).await?;
+                    self_queue.reserve(self_children.len());
+                    let mut other_children =
+                        Prop::direct_child_props_ordered(ctx, other_prop.id).await?;
+                    other_queue.reserve(other_children.len());
+
+                    // The name of the child is only relevant for objects.
+                    // Sorting by name to ensure we compare the matching child props
+                    if self_prop.kind == PropKind::Object {
+                        other_children.sort_by_cached_key(|prop| prop.name.to_owned());
+                        self_children.sort_by_cached_key(|prop| prop.name.to_owned());
+                        self_queue.extend(self_children.iter().map(Into::into));
+                        other_queue.extend(other_children.iter().map(Into::into));
+                    } else {
+                        self_queue.extend(self_children.iter().map(|prop| PropTypeInfo {
+                            id: prop.id,
+                            kind: prop.kind,
+                            name: None,
+                        }));
+                        other_queue.extend(other_children.iter().map(|prop| PropTypeInfo {
+                            id: prop.id,
+                            kind: prop.kind,
+                            name: None,
+                        }));
+                    }
+                }
+                (None, Some(_)) | (Some(_), None) => return Ok(false),
+                (None, None) => return Ok(true),
+            }
+        }
     }
 }
 

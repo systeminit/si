@@ -1,9 +1,6 @@
-use std::collections::{
-    BTreeMap,
-    BTreeSet,
-    VecDeque,
-};
+use std::collections::VecDeque;
 
+use serde::Deserialize;
 use si_id::{
     AttributeValueId,
     ComponentId,
@@ -24,11 +21,8 @@ use crate::{
     EdgeWeightKindDiscriminants,
     Prop,
     PropKind,
-    Schema,
     SchemaVariant,
     attribute::path::AttributePath,
-    prop::ResolvedPropSuggestion,
-    schema::variant::SchemaVariantResult,
     workspace_snapshot::node_weight::{
         CategoryNodeWeight,
         NodeWeight,
@@ -75,6 +69,21 @@ async fn get_or_create_default_subscription_category(
     )
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct PropSuggestion {
+    pub schema: String,
+    pub prop: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct DefaultSubscriptionSource {
+    pub av_id: AttributeValueId,
+    pub prop: Prop,
+    pub schema_name: String,
+    pub path: String,
+    pub suggest_as_source_for: Vec<PropSuggestion>,
+}
+
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub struct DefaultSubscription {
     pub source_av_id: AttributeValueId,
@@ -95,103 +104,109 @@ impl DefaultSubscription {
     }
 }
 
-pub async fn detect_possible_default_connections(
+pub async fn detect_possible_default_subscription_for_prop(
     ctx: &DalContext,
-    destination_component_id: ComponentId,
-    suggestions: &BTreeMap<PropId, BTreeSet<ResolvedPropSuggestion>>,
-) -> AttributeValueResult<Vec<DefaultSubscription>> {
-    let source_attribute_values = AttributeValue::get_default_subscription_sources(ctx).await?;
-    if source_attribute_values.is_empty() {
-        return Ok(vec![]);
+    dest_schema_name: String,
+    dest_prop_id: PropId,
+    default_subscription_sources: Option<&[DefaultSubscriptionSource]>,
+) -> AttributeValueResult<Option<AttributeValueId>> {
+    let Some(default_subscription_sources) = default_subscription_sources else {
+        return Ok(None);
+    };
+    if default_subscription_sources.is_empty() {
+        return Ok(None);
     }
 
-    let mut potential_source_props = BTreeMap::new();
-    for source_attribute_value_id in source_attribute_values {
-        let prop_id = AttributeValue::prop_id(ctx, source_attribute_value_id).await?;
-        let prop = Prop::get_by_id(ctx, prop_id).await?;
-        // TODO: Support for objects, maps, and arrays will come next,
-        // to support them we have to do a deep comparison on the two
-        // prop types.
-        if !matches!(
-            prop.kind,
-            PropKind::String | PropKind::Integer | PropKind::Boolean
-        ) {
+    let dest_prop = Prop::get_by_id(ctx, dest_prop_id).await?;
+    let dest_prop_path = dest_prop.path(ctx).await?.as_prop_suggestion_path();
+    let suggest_sources_for = dest_prop.suggested_sources_for()?;
+    let mut default_subscription = None;
+
+    let dest_as_prop_suggestion = PropSuggestion {
+        schema: dest_schema_name,
+        prop: dest_prop_path,
+    };
+
+    for default_source in default_subscription_sources {
+        let mut matches = default_source
+            .suggest_as_source_for
+            .contains(&dest_as_prop_suggestion);
+
+        if !matches {
+            matches = suggest_sources_for.contains(&PropSuggestion {
+                schema: default_source.schema_name.clone(),
+                prop: default_source.path.clone(),
+            });
+        }
+
+        if !matches {
             continue;
         }
 
-        potential_source_props.insert(prop_id, (prop, source_attribute_value_id));
+        let source_prop = &default_source.prop;
+
+        let scalar_match = matches!(
+            source_prop.kind,
+            PropKind::Boolean | PropKind::Integer | PropKind::String
+        ) && source_prop.kind == dest_prop.kind;
+
+        if scalar_match || source_prop.is_same_type_as(ctx, &dest_prop).await? {
+            if default_subscription.is_some() {
+                // Ambiguous match!
+                default_subscription = None;
+                break;
+            }
+
+            default_subscription = Some(default_source.av_id);
+        }
+    }
+
+    Ok(default_subscription)
+}
+
+pub async fn detect_possible_default_connections(
+    ctx: &DalContext,
+    destination_component_id: ComponentId,
+) -> AttributeValueResult<Vec<DefaultSubscription>> {
+    let default_subscription_sources =
+        AttributeValue::get_default_subscription_sources(ctx).await?;
+    if default_subscription_sources.is_empty() {
+        return Ok(vec![]);
     }
 
     let mut result = vec![];
+
+    let dest_schema_variant_id =
+        Component::schema_variant_id(ctx, destination_component_id).await?;
+    let dest_schema_name = SchemaVariant::schema_for_schema_variant_id(ctx, dest_schema_variant_id)
+        .await
+        .map_err(Box::new)?
+        .name()
+        .to_owned();
 
     let root_av_id = Component::root_attribute_value_id(ctx, destination_component_id).await?;
     let root_children = AttributeValue::child_av_ids(ctx, root_av_id).await?;
     let mut work_queue = VecDeque::from(root_children);
     while let Some(dest_av_id) = work_queue.pop_front() {
-        let dest_prop_id = AttributeValue::prop_id(ctx, dest_av_id).await?;
-        let prop = Prop::get_by_id(ctx, dest_prop_id).await?;
-        let mut potential = None;
-
         let children = AttributeValue::child_av_ids(ctx, dest_av_id).await?;
-        work_queue.extend(children);
-
-        if let Some(suggestions) = suggestions.get(&dest_prop_id) {
-            for &suggestion in suggestions {
-                if suggestion.dest_prop_id != dest_prop_id {
-                    continue;
-                }
-
-                let Some((source_prop, source_av_id)) =
-                    potential_source_props.get(&suggestion.source_prop_id)
-                else {
-                    continue;
-                };
-
-                if source_prop.kind == prop.kind {
-                    if potential.is_some() {
-                        // Ambiguous match!
-                        potential = None;
-                        break;
-                    }
-
-                    potential = Some(DefaultSubscription {
-                        source_av_id: *source_av_id,
-                        dest_av_id,
-                    });
-                }
-            }
+        for child_av_id in children {
+            work_queue.push_back(child_av_id);
         }
 
-        if let Some(potential) = potential {
-            result.push(potential);
-        }
-    }
+        let dest_prop_id = AttributeValue::prop_id(ctx, dest_av_id).await?;
 
-    Ok(result)
-}
-
-/// Returns a map of potential *destination* prop ids to the
-/// ResolvedPropSuggestion for the entire change set
-pub async fn calculate_all_prop_suggestions_for_change_set(
-    ctx: &DalContext,
-) -> SchemaVariantResult<BTreeMap<PropId, BTreeSet<ResolvedPropSuggestion>>> {
-    let mut result: BTreeMap<PropId, BTreeSet<ResolvedPropSuggestion>> = BTreeMap::new();
-
-    for schema_id in Schema::list_ids(ctx).await? {
-        for variant_id in Schema::list_schema_variant_ids(ctx, schema_id).await? {
-            let mut suggestions = vec![];
-            suggestions.extend(SchemaVariant::props_suggested_as_sources(ctx, variant_id).await?);
-            suggestions
-                .extend(SchemaVariant::props_suggested_as_destinations(ctx, variant_id).await?);
-
-            for suggestion in suggestions {
-                result
-                    .entry(suggestion.dest_prop_id)
-                    .and_modify(|sugs| {
-                        sugs.insert(suggestion);
-                    })
-                    .or_insert_with(|| BTreeSet::from([suggestion]));
-            }
+        if let Some(default_source) = detect_possible_default_subscription_for_prop(
+            ctx,
+            dest_schema_name.to_owned(),
+            dest_prop_id,
+            Some(default_subscription_sources.as_slice()),
+        )
+        .await?
+        {
+            result.push(DefaultSubscription {
+                source_av_id: default_source,
+                dest_av_id,
+            });
         }
     }
 
@@ -218,7 +233,8 @@ impl AttributeValue {
 
     pub async fn get_default_subscription_sources(
         ctx: &DalContext,
-    ) -> AttributeValueResult<Vec<AttributeValueId>> {
+    ) -> AttributeValueResult<Vec<DefaultSubscriptionSource>> {
+        let mut result = vec![];
         let snapshot = ctx.workspace_snapshot()?;
 
         let Some(default_subscription_category_id) = snapshot
@@ -228,7 +244,7 @@ impl AttributeValue {
             return Ok(vec![]);
         };
 
-        Ok(snapshot
+        let source_attribute_values: Vec<AttributeValueId> = snapshot
             .incoming_sources_for_edge_weight_kind(
                 default_subscription_category_id,
                 EdgeWeightKindDiscriminants::DefaultSubscriptionSource,
@@ -237,6 +253,33 @@ impl AttributeValue {
             .iter()
             .copied()
             .map(Into::into)
-            .collect())
+            .collect();
+
+        for av_id in source_attribute_values {
+            let prop_id = AttributeValue::prop_id(ctx, av_id).await?;
+            let prop = Prop::get_by_id(ctx, prop_id).await?;
+            let path = Prop::path_by_id(ctx, prop_id)
+                .await?
+                .as_prop_suggestion_path();
+            let Some(schema_variant_id) = Prop::schema_variant_id(ctx, prop_id).await? else {
+                continue;
+            };
+            let schema_name = SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant_id)
+                .await
+                .map_err(Box::new)?
+                .name()
+                .to_owned();
+            let suggest_as_source_for = prop.suggested_as_source_for()?;
+
+            result.push(DefaultSubscriptionSource {
+                av_id,
+                schema_name,
+                path,
+                suggest_as_source_for,
+                prop,
+            });
+        }
+
+        Ok(result)
     }
 }
