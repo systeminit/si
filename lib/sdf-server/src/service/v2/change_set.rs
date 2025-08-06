@@ -72,7 +72,7 @@ pub enum Error {
     Index(#[from] IndexError),
     #[error("index not found; workspace_pk={0}, change_set_id={1}")]
     IndexNotFound(WorkspacePk, ChangeSetId),
-    #[error("index not found after rebuild; workspace_pk={0}, change_set_id={1}")]
+    #[error("index not found after fresh rebuild; workspace_pk={0}, change_set_id={1}")]
     IndexNotFoundAfterFreshBuild(WorkspacePk, ChangeSetId),
     #[error("index not found after rebuild; workspace_pk={0}, change_set_id={1}")]
     IndexNotFoundAfterRebuild(WorkspacePk, ChangeSetId),

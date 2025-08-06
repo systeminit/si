@@ -35,8 +35,9 @@ use si_data_nats::{
 use si_frontend_mv_types::{
     index::{
         ChangeSetIndexPointerValue,
+        ChangeSetMvIndex,
         DeploymentIndexPointerValue,
-        MvIndex,
+        DeploymentMvIndex,
     },
     materialized_view::materialized_view_definitions_checksum,
     object::FrontendObject,
@@ -74,14 +75,16 @@ pub enum Error {
     #[error("object kind was expected to be 'MvIndex' but was '{0}'")]
     NotIndexKind(String),
     #[error(
-        "object listed in index not found: workspace: {workspace_id}, change set: {change_set_id}, kind: {kind}, id: {id}"
+        "object listed in changeset index not found: workspace: {workspace_id}, change set: {change_set_id}, kind: {kind}, id: {id}"
     )]
-    ObjectNotFoundFromIndex {
+    ObjectNotFoundForChangesetIndex {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         kind: String,
         id: String,
     },
+    #[error("object listed in deployment index not found: kind: {kind}, id: {id}")]
+    ObjectNotFoundForDeploymentIndex { kind: String, id: String },
     #[error("put error: {0}")]
     Put(#[from] kv::PutError),
     #[error("error serializing kv value: {0}")]
@@ -190,34 +193,26 @@ impl FriggStore {
         level = "debug",
         skip_all,
         fields(
-            si.workspace.id = %workspace_id,
             si.frontend_object.id = %id,
             si.frontend_object.kind = %kind,
     ))]
     pub async fn get_current_deployment_object(
         &self,
-        workspace_id: WorkspacePk,
-        change_set_id: ChangeSetId,
         kind: &str,
         id: &str,
     ) -> Result<Option<FrontendObject>> {
-        // FIXME: update this
-        let Some((current_index, _)) = self
-            .get_change_set_index(workspace_id, change_set_id)
-            .await?
-        else {
+        let Some((current_index, _)) = self.get_deployment_index().await? else {
             return Ok(None);
         };
-        let mv_index: MvIndex =
+        let mv_index: DeploymentMvIndex =
             serde_json::from_value(current_index.data).map_err(FriggError::Deserialize)?;
+
         for index_entry in mv_index.mv_list {
             if index_entry.kind == kind && index_entry.id == id {
                 return Ok(Some(
-                    self.get_workspace_object(workspace_id, kind, id, &index_entry.checksum)
+                    self.get_deployment_object(kind, id, &index_entry.checksum)
                         .await?
-                        .ok_or_else(|| FriggError::ObjectNotFoundFromIndex {
-                            workspace_id,
-                            change_set_id,
+                        .ok_or_else(|| FriggError::ObjectNotFoundForDeploymentIndex {
                             kind: kind.to_string(),
                             id: id.to_string(),
                         })?,
@@ -314,14 +309,14 @@ impl FriggStore {
         else {
             return Ok(None);
         };
-        let mv_index: MvIndex =
+        let mv_index: ChangeSetMvIndex =
             serde_json::from_value(current_index.data).map_err(FriggError::Deserialize)?;
         for index_entry in mv_index.mv_list {
             if index_entry.kind == kind && index_entry.id == id {
                 return Ok(Some(
                     self.get_workspace_object(workspace_id, kind, id, &index_entry.checksum)
                         .await?
-                        .ok_or_else(|| FriggError::ObjectNotFoundFromIndex {
+                        .ok_or_else(|| FriggError::ObjectNotFoundForChangesetIndex {
                             workspace_id,
                             change_set_id,
                             kind: kind.to_string(),
@@ -338,7 +333,7 @@ impl FriggStore {
         &self,
         object: &FrontendObject,
     ) -> Result<(Subject, Subject)> {
-        let mv_index_kind_string = ReferenceKind::MvIndex.to_string();
+        let mv_index_kind_string = ReferenceKind::DeploymentMvIndex.to_string();
         if object.kind != mv_index_kind_string {
             return Err(Error::NotIndexKind(object.kind.clone()));
         }
@@ -510,7 +505,7 @@ impl FriggStore {
         change_set_id: &str,
         object: &FrontendObject,
     ) -> Result<(Subject, Subject)> {
-        let mv_index_kind_string = ReferenceKind::MvIndex.to_string();
+        let mv_index_kind_string = ReferenceKind::ChangeSetMvIndex.to_string();
         if object.kind != mv_index_kind_string {
             return Err(Error::NotIndexKind(object.kind.clone()));
         }

@@ -58,4 +58,17 @@ impl EddaUpdatesMultiplexerClient {
             .await
             .map_err(Into::into)
     }
+
+    pub async fn messages_for_deployment(
+        &self,
+        prefix: Option<&str>,
+    ) -> Result<broadcast::Receiver<Message>, Box<dyn error::Error>> {
+        let subject = nats::subject::all_deployment_updates(prefix);
+
+        self.inner
+            .try_lock()?
+            .receiver(subject)
+            .await
+            .map_err(Into::into)
+    }
 }

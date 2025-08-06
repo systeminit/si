@@ -225,7 +225,6 @@ mod handlers {
     use dal::DalContext;
     use frigg::FriggStore;
     use naxum::{
-        Json,
         extract::State,
         response::{
             IntoResponse,
@@ -238,7 +237,10 @@ mod handlers {
     use thiserror::Error;
 
     use super::app_state::AppState;
-    use crate::updates::EddaUpdates;
+    use crate::{
+        materialized_view,
+        updates::EddaUpdates,
+    };
 
     #[remain::sorted]
     #[derive(Debug, Error)]
@@ -246,6 +248,8 @@ mod handlers {
         /// When failing to create a DAL context
         #[error("error creating a dal ctx: {0}")]
         DalTransactions(#[from] dal::TransactionsError),
+        #[error("materialized view error: {0}")]
+        MaterializedView(#[from] materialized_view::MaterializedViewError),
     }
 
     type Result<T> = result::Result<T, HandlerError>;
@@ -262,8 +266,10 @@ mod handlers {
     pub(crate) async fn default(
         State(state): State<AppState>,
         subject: Subject,
-        Json(request): Json<String>,
+        // TODO uncommenting this causes naxum to not call this function an just error out
+        // Json(request): Json<String>,
     ) -> Result<()> {
+        info!("deployment processor task for subject: {}", subject);
         let AppState {
             nats: _,
             frigg,
@@ -274,15 +280,7 @@ mod handlers {
         } = state;
         let ctx = ctx_builder.build_default(None).await?;
 
-        process_request(
-            &ctx,
-            &frigg,
-            &edda_updates,
-            parallel_build_limit,
-            subject,
-            request,
-        )
-        .await
+        process_request(&ctx, &frigg, &edda_updates, parallel_build_limit, subject).await
     }
 
     #[instrument(
@@ -297,12 +295,12 @@ mod handlers {
         )
     )]
     async fn process_request(
-        _ctx: &DalContext,
-        _frigg: &FriggStore,
-        _edda_updates: &EddaUpdates,
-        _parallel_build_limit: usize,
+        ctx: &DalContext,
+        frigg: &FriggStore,
+        edda_updates: &EddaUpdates,
+        parallel_build_limit: usize,
         subject: Subject,
-        request: String,
+        // request: String,
     ) -> Result<()> {
         let span = current_span_for_instrument_at!("info");
 
@@ -319,9 +317,17 @@ mod handlers {
         span.record("messaging.destination", subject.as_str());
         span.record("otel.name", otel_name.as_str());
 
-        // TODO(fnichol): implement request processing
-        info!(?request, "processing deployment request");
-        Ok(())
+        debug!("processing deployment request");
+
+        materialized_view::build_all_mvs_for_deployment(
+            ctx,
+            frigg,
+            edda_updates,
+            parallel_build_limit,
+            "explicit rebuild",
+        )
+        .await
+        .map_err(Into::into)
     }
 }
 

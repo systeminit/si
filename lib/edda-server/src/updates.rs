@@ -14,8 +14,10 @@ use si_data_nats::{
     Subject,
 };
 use si_frontend_mv_types::object::patch::{
-    IndexUpdate,
-    PatchBatch,
+    ChangesetIndexUpdate,
+    ChangesetPatchBatch,
+    DeploymentIndexUpdate,
+    DeploymentPatchBatch,
     StreamingPatch,
 };
 use si_id::WorkspacePk;
@@ -67,28 +69,48 @@ impl EddaUpdates {
     }
 
     #[instrument(
-        name = "edda_updates.publish_patch_batch",
+        name = "edda_updates.publish_change_set_patch_batch",
         level = "debug",
         skip_all,
         fields()
     )]
-    pub(crate) async fn publish_patch_batch(&self, patch_batch: PatchBatch) -> Result<()> {
+    pub(crate) async fn publish_change_set_patch_batch(
+        &self,
+        patch_batch: ChangesetPatchBatch,
+    ) -> Result<()> {
         if self.streaming_patches {
             return Ok(());
         }
 
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
-        self.serialize_compress_publish(
-            nats::subject::workspace_update_for(
-                self.subject_prefix.as_deref(),
-                patch_batch.meta.workspace_id.array_to_str(&mut id_buf),
-                patch_batch.kind(),
-            ),
-            patch_batch,
-            true,
-        )
-        .await
+        let subject = nats::subject::workspace_update_for(
+            self.subject_prefix.as_deref(),
+            patch_batch.meta.workspace_id.array_to_str(&mut id_buf),
+            patch_batch.kind(),
+        );
+
+        self.serialize_compress_publish(subject, patch_batch, true)
+            .await
+    }
+
+    #[instrument(
+        name = "edda_updates.publish_change_set_patch_batch",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
+    pub(crate) async fn publish_deployment_patch_batch(
+        &self,
+        patch_batch: DeploymentPatchBatch,
+    ) -> Result<()> {
+        let subject = nats::subject::deployment_update_for(
+            self.subject_prefix.as_deref(),
+            patch_batch.kind(),
+        );
+
+        self.serialize_compress_publish(subject, patch_batch, true)
+            .await
     }
 
     #[instrument(
@@ -120,24 +142,44 @@ impl EddaUpdates {
     }
 
     #[instrument(
-        name = "edda_updates.publish_index_update",
+        name = "edda_updates.publish_change_set_index_update",
         level = "debug",
         skip_all,
         fields()
     )]
-    pub(crate) async fn publish_index_update(&self, index_update: IndexUpdate) -> Result<()> {
+    pub(crate) async fn publish_change_set_index_update(
+        &self,
+        index_update: ChangesetIndexUpdate,
+    ) -> Result<()> {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
-        self.serialize_compress_publish(
-            nats::subject::workspace_update_for(
-                self.subject_prefix.as_deref(),
-                index_update.meta.workspace_id.array_to_str(&mut id_buf),
-                index_update.kind(),
-            ),
-            index_update,
-            false,
-        )
-        .await
+        let subject = nats::subject::workspace_update_for(
+            self.subject_prefix.as_deref(),
+            index_update.meta.workspace_id.array_to_str(&mut id_buf),
+            index_update.kind(),
+        );
+
+        self.serialize_compress_publish(subject, index_update, false)
+            .await
+    }
+
+    #[instrument(
+        name = "edda_updates.publish_deployment_index_update",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
+    pub(crate) async fn publish_deployment_index_update(
+        &self,
+        index_update: DeploymentIndexUpdate,
+    ) -> Result<()> {
+        let subject = nats::subject::deployment_update_for(
+            self.subject_prefix.as_deref(),
+            index_update.kind(),
+        );
+
+        self.serialize_compress_publish(subject, index_update, false)
+            .await
     }
 
     #[instrument(

@@ -86,7 +86,7 @@ impl IntoResponse for HandlerError {
                 warn!(si.error.message = ?self, "subject parse error");
                 Response::default_bad_request()
             }
-            // While propagated as an `Err`, a task being interupted is expected behavior and is
+            // While propagated as an `Err`, a task being interrupted is expected behavior and is
             // not an error (rather we use `Err` to ensure the task persists in the stream)
             Self::TaskInterrupted(subject) => {
                 debug!(subject, "task interrupted");
@@ -106,7 +106,8 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     match parse_subject(state.nats.metadata().subject_prefix(), subject_str)? {
         ParsedSubject::Deployment => run_deployment_processor_task(state, subject_str).await,
         ParsedSubject::Workspace(_parsed_workspace_id) => {
-            unimplemented!("workspace tasks are not currently implemented!")
+            error!("received workspace request, but this is not currently implemented!");
+            Ok(())
         }
         ParsedSubject::ChangeSet(parsed_workspace_id, parsed_change_set_id) => {
             run_change_set_processor_task(

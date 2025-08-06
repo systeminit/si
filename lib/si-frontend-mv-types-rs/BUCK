@@ -16,6 +16,7 @@ rust_library(
         "//third-party/rust:chrono",
         "//third-party/rust:inventory",
         "//third-party/rust:json-patch",
+        "//third-party/rust:lazy_static",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",

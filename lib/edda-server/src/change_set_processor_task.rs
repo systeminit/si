@@ -66,8 +66,6 @@ use crate::{
     updates::EddaUpdates,
 };
 
-mod materialized_view;
-
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub(crate) enum ChangeSetProcessorTaskError {
@@ -332,12 +330,10 @@ mod handlers {
     use telemetry_utils::metric;
     use thiserror::Error;
 
-    use super::{
-        app_state::AppState,
-        materialized_view,
-    };
+    use super::app_state::AppState;
     use crate::{
         compressed_request::CompressedRequest,
+        materialized_view,
         updates::EddaUpdates,
     };
 
@@ -431,8 +427,7 @@ mod handlers {
     }
 
     #[instrument(
-        // Will be renamed to: `edda.requests.change_set.:workspace_id.:change_set_id process`
-        name = "edda.change_set_processor_task.process_request",
+        name = "edda.requests.change_set.process",
         level = "info",
         skip_all,
         fields(

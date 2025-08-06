@@ -174,11 +174,13 @@ pub mod subject {
     }
 
     #[inline]
+    pub fn all_edda_updates(prefix: Option<&str>) -> Subject {
+        nats_std::subject::prefixed(prefix, format!("{UPDATES_SUBJECT_PREFIX}.>"))
+    }
+
+    #[inline]
     pub fn all_workspace_updates_for_all_workspaces(prefix: Option<&str>) -> Subject {
-        nats_std::subject::prefixed(
-            prefix,
-            format!("{UPDATES_SUBJECT_PREFIX}.{}.*.*", Scope::Workspace.as_ref()),
-        )
+        all_workspace_updates_for_workspace(prefix, "*")
     }
 
     #[inline]
@@ -204,5 +206,21 @@ pub mod subject {
                 Scope::Workspace.as_ref()
             ),
         )
+    }
+
+    #[inline]
+    pub fn deployment_update_for(prefix: Option<&str>, kind: &str) -> Subject {
+        nats_std::subject::prefixed(
+            prefix,
+            format!(
+                "{UPDATES_SUBJECT_PREFIX}.{}.{kind}",
+                Scope::Deployment.as_ref()
+            ),
+        )
+    }
+
+    #[inline]
+    pub fn all_deployment_updates(prefix: Option<&str>) -> Subject {
+        deployment_update_for(prefix, "*")
     }
 }

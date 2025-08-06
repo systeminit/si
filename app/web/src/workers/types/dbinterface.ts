@@ -333,8 +333,8 @@ export interface TabDBInterface {
   oneInOne(rows: SqlValue[][]): SqlValue | typeof NOROW;
   encodeDocumentForDB(doc: object): Promise<ArrayBuffer>;
   decodeDocumentFromDB(doc: ArrayBuffer): AtomDocument;
-  handlePatchMessage(data: PatchBatch): Promise<void>;
-  handleHammer(msg: AtomMessage): Promise<void>;
+  handleWorkspacePatchMessage(data: WorkspacePatchBatch): Promise<void>;
+  handleHammer(msg: WorkspaceAtomMessage): Promise<void>;
   exec(
     opts: ExecBaseOptions &
       ExecRowModeArrayOptions &
@@ -416,40 +416,61 @@ export interface AtomOperation extends AbstractAtom {
   patch: Operation[];
 }
 
-export interface AtomMeta {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
+export interface DeploymentAtomMeta {
   fromIndexChecksum: Checksum;
   toIndexChecksum: Checksum;
 }
 
+export interface WorkspaceAtomMeta extends DeploymentAtomMeta {
+  workspaceId: WorkspacePk;
+  changeSetId: ChangeSetId;
+}
+
+interface Atom extends AbstractAtom {
+  operations?: Operation[];
+}
+
+export type WorkspaceAtom = Atom & WorkspaceAtomMeta;
+export type DeploymentAtom = Atom & DeploymentAtomMeta;
+
 export enum MessageKind {
-  PATCH = "PatchMessage",
+  WORKSPACE_PATCH = "PatchMessage",
+  DEPLOYMENT_PATCH = "DeploymentPatchMessage",
   MJOLNIR = "MjolnirAtom",
-  INDEXUPDATE = "IndexUpdate",
+  WORKSPACE_INDEXUPDATE = "IndexUpdate",
+  DEPLOYMENT_INDEXUPDATE = "DeploymentIndexUpdate",
 }
 
-export interface PatchBatch {
-  meta: AtomMeta;
-  kind: MessageKind.PATCH;
-  patches: AtomOperation[];
-}
-
-export interface AtomMessage {
+export interface WorkspaceAtomMessage {
   kind: MessageKind.MJOLNIR;
-  atom: Atom;
+  atom: WorkspaceAtom;
   data: object;
 }
 
-export interface IndexUpdate {
-  kind: MessageKind.INDEXUPDATE;
-  meta: AtomMeta;
+export interface WorkspacePatchBatch {
+  meta: WorkspaceAtomMeta;
+  kind: MessageKind.WORKSPACE_PATCH;
+  patches: AtomOperation[];
+}
+
+export interface DeploymentPatchBatch {
+  meta: DeploymentAtomMeta;
+  kind: MessageKind.DEPLOYMENT_PATCH;
+  patches: AtomOperation[];
+}
+
+export interface WorkspaceIndexUpdate {
+  meta: WorkspaceAtomMeta;
+  kind: MessageKind.WORKSPACE_INDEXUPDATE;
   indexChecksum: string;
 }
 
-export interface Atom extends AbstractAtom, AtomMeta {
-  operations?: Operation[];
+export interface DeploymentIndexUpdate {
+  meta: DeploymentAtomMeta;
+  kind: MessageKind.DEPLOYMENT_INDEXUPDATE;
+  indexChecksum: string;
 }
+
 export interface Common {
   kind: EntityKind;
   id: Id;

@@ -43,9 +43,9 @@ pub enum IndexError {
     Frigg(#[from] frigg::FriggError),
     #[error("index not found; workspace_id={0}, change_set_id={1}")]
     IndexNotFound(WorkspacePk, ChangeSetId),
-    #[error("index not found after rebuild; workspace_id={0}, change_set_id={1}")]
+    #[error("index not found after fresh rebuild (v1); workspace_id={0}, change_set_id={1}")]
     IndexNotFoundAfterFreshBuild(WorkspacePk, ChangeSetId),
-    #[error("index not found after rebuild; workspace_id={0}, change_set_id={1}")]
+    #[error("index not found after rebuild (v1); workspace_id={0}, change_set_id={1}")]
     IndexNotFoundAfterRebuild(WorkspacePk, ChangeSetId),
     #[error("item with checksum not found; workspace_id={0}, change_set_id={1}, kind={2}")]
     ItemWithChecksumNotFound(WorkspacePk, ChangeSetId, String),
