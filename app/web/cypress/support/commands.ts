@@ -71,10 +71,10 @@ Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string, of
 });
 
 Cypress.Commands.add('appModelPageLoaded', () => {
-  // updated for the new hotness UI
+  // CURRENTLY NOT WORKING, NOT SURE WHY
   cy.wait(3000);
-  cy.get('#left-column-new-hotness-explore', { timeout: 60000 });
-  cy.get('#right-column-new-hotness-explore', { timeout: 60000 });
+  cy.get('#test-left-column-new-hotness-explore', { timeout: 60000 });
+  cy.get('#test-right-column-new-hotness-explore', { timeout: 60000 });
 })
 
 Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
@@ -92,18 +92,46 @@ Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
   });
 });
 
-//Cypress.Commands.add('setupVariables', () => {
-//  const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
-//  const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
-//  const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
-//  const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
-//  const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
-//  const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
-//
-//  Cypress.env('SI_CYPRESS_MULTIPLIER', SI_CYPRESS_MULTIPLIER);
-//  Cypress.env('AUTH0_USERNAME', AUTH0_USERNAME);
-//  Cypress.env('AUTH0_PASSWORD', AUTH0_PASSWORD);
-//  Cypress.env('AUTH_API_URL', AUTH_API_URL);
-//  Cypress.env('SI_WORKSPACE_ID', SI_WORKSPACE_ID);
-//  Cypress.env('UUID', UUID);
-//});
+Cypress.Commands.add('basicLogin', () => {
+  const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
+  const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+  const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+  const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
+  const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+
+  cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
+  cy.visit({
+    url:AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go',
+    failOnStatusCode: false
+  });
+  cy.on('uncaught:exception', (e) => {
+    console.log(e);
+    return false;
+  });
+  cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
+  // cy.appModelPageLoaded();
+});
+
+Cypress.Commands.add('createChangeSet', (changeSetName: string) => {
+  cy.clickButtonByIdIfExists("create-change-set-button");
+  cy.focused().type(`${changeSetName}{enter}`);
+  cy.contains(changeSetName, { timeout: 10000 }).should('be.visible');
+});
+
+// Cypress.Commands.add('setupVariables', () => {
+//   const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
+//   const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
+//   const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+//   const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+//   const AUTH_PORTAL_URL = Cypress.env('VITE_AUTH_PORTAL_URL') || import.meta.env.VITE_AUTH_PORTAL_URL;
+//   const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
+//   const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+
+//   Cypress.env('SI_CYPRESS_MULTIPLIER', SI_CYPRESS_MULTIPLIER);
+//   Cypress.env('AUTH0_USERNAME', AUTH0_USERNAME);
+//   Cypress.env('AUTH0_PASSWORD', AUTH0_PASSWORD);
+//   Cypress.env('AUTH_API_URL', AUTH_API_URL);
+//   Cypress.env('AUTH_PORTAL_URL', AUTH_PORTAL_URL);
+//   Cypress.env('SI_WORKSPACE_ID', SI_WORKSPACE_ID);
+//   Cypress.env('UUID', UUID);
+// });

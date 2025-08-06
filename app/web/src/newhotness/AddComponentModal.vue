@@ -32,6 +32,7 @@
           <div class="flex flex-col gap-xs grow p-xs max-h-[41svh]">
             <!-- Fuzzy search input, is focused when the Modal is opened-->
             <SiSearch
+              id="test-add-component-search"
               ref="searchRef"
               v-model="fuzzySearchString"
               placeholder="Start typing to filter components"
