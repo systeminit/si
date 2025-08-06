@@ -35,7 +35,6 @@ use thiserror::Error;
 
 pub mod abandon_change_set;
 pub mod add_action;
-mod begin_approval_process;
 pub mod create_change_set;
 
 #[remain::sorted]
@@ -103,21 +102,13 @@ impl IntoResponse for ChangeSetError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/add_action", post(add_action::add_action))
+        .route("/add_action", post(add_action::add_action)) // USED IN OLD UI
         .route(
-            "/create_change_set",
+            "/create_change_set", // USED IN NEW UI
             post(create_change_set::create_change_set),
         )
         .route(
-            "/abandon_change_set",
+            "/abandon_change_set", // USED IN NEW UI
             post(abandon_change_set::abandon_change_set),
-        )
-        .route(
-            "/begin_approval_process",
-            post(begin_approval_process::begin_approval_process),
-        )
-        .route(
-            "/cancel_approval_process",
-            post(begin_approval_process::cancel_approval_process),
         )
 }

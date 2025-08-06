@@ -656,25 +656,6 @@ impl ChangeSet {
         Ok(())
     }
 
-    pub async fn update_merge_requested_by_user_id(
-        &mut self,
-        ctx: &DalContext,
-        user_pk: UserPk,
-    ) -> ChangeSetResult<()> {
-        ctx.txns()
-            .await?
-            .pg()
-            .query_none(
-                "UPDATE change_set_pointers SET merge_requested_by_user_id = $2, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
-                &[&self.id, &user_pk],
-            )
-            .await?;
-
-        self.merge_requested_by_user_id = Some(user_pk);
-
-        Ok(())
-    }
-
     /// Finds a [`ChangeSet`] across all workspaces, ignoring the provided [`WorkspacePk`] on the
     /// current [`DalContext`]
     pub async fn get_by_id_across_workspaces(
@@ -1097,39 +1078,6 @@ impl ChangeSet {
 
     fn generate_name() -> String {
         Utc::now().format("%Y-%m-%d-%H:%M").to_string()
-    }
-
-    pub async fn begin_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
-        self.update_status(ctx, ChangeSetStatus::NeedsApproval)
-            .await?;
-        let user_id = Self::extract_userid_from_context(ctx).await;
-        if let Some(user_pk) = user_id {
-            self.update_merge_requested_by_user_id(ctx, user_pk).await?;
-        }
-        WsEvent::change_set_begin_approval_process(ctx, self.id, user_id)
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-        WsEvent::change_set_merge_vote(
-            ctx,
-            ctx.visibility().change_set_id,
-            user_id,
-            "Approve".to_string(),
-        )
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn cancel_approval_flow(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
-        self.update_status(ctx, ChangeSetStatus::Open).await?;
-        let user_id = Self::extract_userid_from_context(ctx).await;
-        WsEvent::change_set_cancel_approval_process(ctx, self.id, user_id)
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-        Ok(())
     }
 
     /// Updates the status for a ChangeSet to be [`ChangeSetStatus::Abandoned`] and fires necessary WSEvent

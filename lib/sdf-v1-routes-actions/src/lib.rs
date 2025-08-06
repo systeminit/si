@@ -95,9 +95,9 @@ impl IntoResponse for ActionError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/list", get(list_actions::list_actions))
-        .route("/put_on_hold", post(put_on_hold::put_on_hold))
-        .route("/cancel", post(cancel::cancel))
-        .route("/retry", post(retry::retry))
-        .route("/history", get(history::history))
+        .route("/list", get(list_actions::list_actions)) // USED IN OLD UI
+        .route("/put_on_hold", post(put_on_hold::put_on_hold)) // USED IN OLD UI
+        .route("/cancel", post(cancel::cancel)) // USED IN OLD UI
+        .route("/retry", post(retry::retry)) // USED IN OLD UI
+        .route("/history", get(history::history)) // USED IN OLD UI
 }

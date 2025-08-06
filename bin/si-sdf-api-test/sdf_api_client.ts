@@ -26,14 +26,6 @@ export const ROUTES = {
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/force_apply`,
     method: "POST",
   },
-  begin_approval_process: {
-    path: () => "/change_set/begin_approval_process",
-    method: "POST",
-  },
-  cancel_approval_process: {
-    path: () => "/change_set/cancel_approval_process",
-    method: "POST",
-  },
   create_change_set: {
     path: () => "/change_set/create_change_set",
     method: "POST",
@@ -277,12 +269,12 @@ export class SdfApiClient {
 
   public async call({ route, routeVars, params, body }: API_CALL, noThrow?: boolean) {
     const { path, method, headers } = ROUTES[route] as API_DESCRIPTION;
-  
+
     // Ensure routeVars is always defined and contains workspaceId
     routeVars = { ...routeVars, workspaceId: this.workspaceId };
-  
+
     const url = path(routeVars);
-  
+
     // Merge headers with default headers
     const optionsWithDefaultHeaders = {
       headers: {
@@ -295,13 +287,13 @@ export class SdfApiClient {
       method,
       body,
     };
-  
+
     if (noThrow) {
       // If the caller wants the raw response, let's give it to them
       return await this.fetch_no_throw(url, optionsWithDefaultHeaders);
     } else {
       const response = await this.fetch(url, optionsWithDefaultHeaders);
-  
+
       // Some endpoints return a body, others return nothing on success
       try {
         return await response.json();
