@@ -353,23 +353,20 @@ const keyForm = wForm.newForm({
 });
 
 const saveKeyIfFormValid = async () => {
-  if (keyForm.fieldInfo.key.instance?.state.meta.isDirty) {
-    if (!keyForm.baseStore.state.isSubmitted) {
-      await saveKey();
-    }
+  const keyValue = keyForm.fieldInfo?.key?.instance?.state?.value;
+  if (keyValue && keyValue.trim()) {
+    emit("setKey", props.attributeTree, keyValue.trim(), emptyChildValue());
+    // Reset the form completely
+    keyForm.reset({ key: "" });
   }
 };
 
-const saveKey = async () => {
-  await keyForm.handleSubmit();
-  // The keyForm has a watchFn that automatically handles bifrosting reset
-  // when props.attributeTree.children.length changes
-};
-
 const addApi = useApi();
-const add = () => {
+const add = (key?: string) => {
   if (props.attributeTree.prop?.kind === "map") {
-    saveKeyIfFormValid();
+    if (key && key.trim()) {
+      emit("setKey", props.attributeTree, key.trim(), emptyChildValue());
+    }
     return;
   }
 
