@@ -534,7 +534,7 @@ pub async fn build_all_mvs_for_deployment(
     _parallel_build_limit: usize,
     reason_message: &'static str,
 ) -> Result<(), MaterializedViewError> {
-    // TODO create update and delete ops when needed
+    // FIXME create update and delete ops when needed
     let op = BuildMvOp::Create;
 
     let (Some(patch), Some(frontend_object)) = build_mv(

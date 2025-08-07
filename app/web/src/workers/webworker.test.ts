@@ -2,9 +2,9 @@ import * as Comlink from "comlink";
 import {
   TabDBInterface,
   BustCacheFn,
-  PatchBatch,
+  WorkspacePatchBatch,
   MessageKind,
-  AtomMessage,
+  WorkspaceAtomMessage,
   NOROW,
 } from "@/workers/types/dbinterface";
 import { EntityKind } from "@/workers/types/entity_kind_types";
@@ -151,14 +151,14 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
    * First payload is changing the name of a view
    * */
 
-  const payload1: PatchBatch = {
+  const payload1: WorkspacePatchBatch = {
     meta: {
       workspaceId: "W",
       changeSetId: "new_change_set",
       fromIndexChecksum: "HEAD",
       toIndexChecksum: "test_index_checksum_1",
     },
-    kind: MessageKind.PATCH,
+    kind: MessageKind.WORKSPACE_PATCH,
     patches: [
       {
         kind: testRecord,
@@ -233,14 +233,14 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
    * Second payload is merging that change to HEAD
    * */
 
-  const payload2: PatchBatch = {
+  const payload2: WorkspacePatchBatch = {
     meta: {
       workspaceId: "W",
       changeSetId: "HEAD",
       fromIndexChecksum: "HEAD",
       toIndexChecksum: "test_index_checksum_2",
     },
-    kind: MessageKind.PATCH,
+    kind: MessageKind.WORKSPACE_PATCH,
     patches: [
       {
         kind: testRecord,
@@ -347,14 +347,14 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
    * Fourth thing that happens, add a new view, remove an existing view
    * */
 
-  const payload3: PatchBatch = {
+  const payload3: WorkspacePatchBatch = {
     meta: {
       workspaceId: "W",
       changeSetId: "add_remove",
       fromIndexChecksum: "test_index_checksum_2",
       toIndexChecksum: "test_index_checksum_3",
     },
-    kind: MessageKind.PATCH,
+    kind: MessageKind.WORKSPACE_PATCH,
     patches: [
       {
         kind: testRecord,
@@ -431,7 +431,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   log("~~ ADD / REMOVE COMPLETED ~~");
 
   // test mjolnir!
-  const hammer1: AtomMessage = {
+  const hammer1: WorkspaceAtomMessage = {
     kind: MessageKind.MJOLNIR,
     atom: {
       id: "fb1",

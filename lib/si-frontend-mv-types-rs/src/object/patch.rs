@@ -8,7 +8,7 @@ use crate::reference::ReferenceKind;
 
 const CHANGESET_INDEX_UPDATE_KIND: &str = "IndexUpdate";
 const DEPLOYMENT_INDEX_UPDATE_KIND: &str = "DeploymentIndexUpdate";
-const PATCH_BATCH_KIND: &str = "PatchMessage";
+const CHANGESET_PATCH_BATCH_KIND: &str = "PatchMessage";
 const DEPLOYMENT_PATCH_BATCH_KIND: &str = "DeploymentPatchMessage";
 const STREAMING_PATCH_MESSAGE_KIND: &str = "StreamingPatch";
 
@@ -124,7 +124,7 @@ impl ChangesetPatchBatch {
     pub fn new(meta: ChangesetUpdateMeta, patches: Vec<ObjectPatch>) -> Self {
         Self {
             meta,
-            kind: PATCH_BATCH_KIND,
+            kind: CHANGESET_PATCH_BATCH_KIND,
             patches,
         }
     }
