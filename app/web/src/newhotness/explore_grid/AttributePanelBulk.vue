@@ -469,37 +469,34 @@ const commonTree = computed<{
   secrets: AttrTree | undefined;
 }>(() => {
   const pathMap: Record<string, AttrTree> = {};
-  const first = trees.value[0];
-  if (!first) return { domain: undefined, secrets: undefined };
-  const firstPaths = new Set<string>();
-  const paths = new Set<string>();
-  const firstsChildren = [first.domain, first.secrets];
+  const commonPaths = new Set<string>();
 
-  // get all the paths from the first component
-  while (firstsChildren.length > 0) {
-    const attr = firstsChildren.shift();
-    if (!attr) continue;
-    pathMap[attr.attributeValue.path] = attr;
-    firstPaths.add(attr.attributeValue.path);
-    firstsChildren.push(...attr.children);
-  }
-
-  // find paths in the subsequent components that match the first
-  trees.value.slice(1).forEach((componentAttrs) => {
+  trees.value.forEach((componentAttrs) => {
     const walking = [componentAttrs.domain, componentAttrs.secrets];
+    const paths = new Set<string>();
     while (walking.length > 0) {
       const attr = walking.shift();
       if (!attr) continue;
-      if (!firstPaths.has(attr.attributeValue.path)) continue;
       pathMap[attr.attributeValue.path] = attr;
       paths.add(attr.attributeValue.path);
       walking.push(...attr.children);
     }
+    if (commonPaths.size === 0) {
+      paths.forEach((p) => commonPaths.add(p));
+    } else {
+      const common = new Set<string>();
+      commonPaths.forEach((p) => {
+        if (paths.has(p)) {
+          common.add(p);
+        }
+      });
+      commonPaths.clear();
+      common.forEach((p) => commonPaths.add(p));
+    }
   });
 
   // now remove any of the paths from the first component, that isn't in the rest
-  const commonPaths = [...firstPaths].filter((p) => paths.has(p));
-  const matches = commonPaths
+  const matches = [...commonPaths]
     .map((path) => pathMap[path])
     .filter(nonNullable)
     .map((t) => {
