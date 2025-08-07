@@ -77,9 +77,7 @@ const submit = async () => {
 
   const apiCtx = apiContextForChangeSet(ctx, changesetIdRef.value);
   const renameChangesetApi = useApi(apiCtx);
-  const call = renameChangesetApi.endpoint(routes.ChangeSetRename, {
-    changesetId: changesetIdRef.value,
-  });
+  const call = renameChangesetApi.endpoint(routes.ChangeSetRename);
 
   loading.value = true;
   apiErrorMessage.value = undefined;
