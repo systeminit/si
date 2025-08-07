@@ -63,21 +63,8 @@ export const ROUTES = {
       `/diagram/get_all_components_and_edges?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
     method: "GET",
   },
-  get_diagram: {
-    path: (vars: ROUTE_VARS) =>
-      `/diagram/get_diagram?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
-    method: "GET",
-  },
-  list_schemas: {
-    path: () => "/diagram/list_schemas",
-    method: "GET",
-  },
   remove_delete_intent: {
     path: () => "/diagram/remove_delete_intent",
-    method: "POST",
-  },
-  set_component_position: {
-    path: () => "/diagram/set_component_position",
     method: "POST",
   },
   set_component_type: {
@@ -88,10 +75,6 @@ export const ROUTES = {
   // Component Management -------------------------------------------------------
   delete_components: {
     path: () => "/diagram/delete_components",
-    method: "POST",
-  },
-  create_component: {
-    path: () => "/diagram/create_component",
     method: "POST",
   },
   create_connection: {
