@@ -85,6 +85,9 @@ pub enum EdgeWeightKind {
     /// category node, indicating that this value should be used as a default
     /// subscription source if it matches a prop suggestion on a component.
     DefaultSubscriptionSource,
+    /// An edge from anything to a Reason object which explains the reason for
+    /// the existence of said thing
+    Reason,
 }
 
 impl EdgeWeightKind {
@@ -156,7 +159,8 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::Manages
             | EdgeWeightKind::DiagramObject
             | EdgeWeightKind::DefaultSubscriptionSource
-            | EdgeWeightKind::ApprovalRequirementDefinition => None,
+            | EdgeWeightKind::ApprovalRequirementDefinition
+            | EdgeWeightKind::Reason => None,
         }
     }
 
@@ -184,8 +188,9 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::Manages
             | EdgeWeightKind::DiagramObject
             | EdgeWeightKind::ApprovalRequirementDefinition
-            | EdgeWeightKind::DefaultSubscriptionSource => false,
-            EdgeWeightKind::ValueSubscription(_) => false,
+            | EdgeWeightKind::DefaultSubscriptionSource
+            | EdgeWeightKind::ValueSubscription(_)
+            | EdgeWeightKind::Reason => false,
         }
     }
 
@@ -214,7 +219,8 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::DiagramObject
             | EdgeWeightKind::ApprovalRequirementDefinition
             | EdgeWeightKind::DefaultSubscriptionSource
-            | EdgeWeightKind::ValueSubscription(_) => self.clone(),
+            | EdgeWeightKind::ValueSubscription(_)
+            | EdgeWeightKind::Reason => self.clone(),
         }
     }
 }

@@ -222,6 +222,7 @@ impl WorkspaceSnapshotGraphV4 {
                     | NodeWeight::ManagementPrototype(_)
                     | NodeWeight::Func(_)
                     | NodeWeight::FuncArgument(_)
+                    | NodeWeight::Reason(_)
                     | NodeWeight::Secret(_) => Ok(petgraph::visit::Control::Prune),
                 }
             }

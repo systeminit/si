@@ -10,6 +10,7 @@ use dal::{
             AttributeValueIdent,
             Source,
         },
+        prototype::argument::AttributePrototypeArgument,
         value::default_subscription::{
             DefaultSubscription,
             detect_possible_default_connections,
@@ -17,6 +18,7 @@ use dal::{
     },
     diagram::view::View,
     prop::PropPath,
+    workspace_snapshot::node_weight::reason_node_weight::Reason,
 };
 use dal_test::{
     Result,
@@ -213,6 +215,24 @@ async fn test_set_as_default_subscription_source(ctx: &DalContext) -> Result<()>
     ];
 
     assert_eq!(expected_sources, sources);
+
+    let array_item_av = AttributeValueIdent::new("/domain/dest_array_of_object_1/0")
+        .resolve(ctx, frank_drebin.id())
+        .await?
+        .expect("should be able to resolve attribute value");
+
+    let prototype_id = AttributeValue::prototype_id(ctx, array_item_av).await?;
+    let apa_id = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id)
+        .await?
+        .pop()
+        .expect("should have at least one argument");
+
+    assert_eq!(
+        Some(Reason::DefaultSubscription),
+        AttributePrototypeArgument::get_reasons(ctx, apa_id)
+            .await?
+            .pop()
+    );
 
     Ok(())
 }

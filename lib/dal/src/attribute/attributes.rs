@@ -26,7 +26,10 @@ use crate::{
     PropKind,
     WsEvent,
     func::intrinsics::IntrinsicFunc,
-    workspace_snapshot::node_weight::NodeWeight,
+    workspace_snapshot::node_weight::{
+        NodeWeight,
+        reason_node_weight::Reason,
+    },
 };
 
 pub type Result<T> = result::Result<T, Error>;
@@ -268,6 +271,7 @@ pub async fn update_attributes(
                             target_av_id,
                             subscriptions,
                             maybe_func_id,
+                            Reason::new_user_added(ctx),
                         )
                         .await?;
                     }

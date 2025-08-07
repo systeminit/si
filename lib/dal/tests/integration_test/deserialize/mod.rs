@@ -79,6 +79,7 @@ use dal::{
             OrderingNodeWeight,
             category_node_weight::CategoryNodeKind,
             diagram_object_node_weight::DiagramObjectKind,
+            reason_node_weight::Reason,
             traits::SiVersionedNodeWeight,
         },
     },
@@ -231,6 +232,9 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
                     ContentHash::new("stellaris hurts my brain".as_bytes()),
                 )
             }
+            NodeWeightDiscriminants::Reason => {
+                NodeWeight::new_reason(Ulid::new(), Ulid::new(), Reason::UserAdded(None))
+            }
         };
 
         let idx = graph.add_or_replace_node(weight).expect("add node");
@@ -285,6 +289,7 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::DefaultSubscriptionSource => {
                 EdgeWeightKind::DefaultSubscriptionSource
             }
+            EdgeWeightKindDiscriminants::Reason => EdgeWeightKind::Reason,
         };
 
         if last_node + 1 == node_indexes.len() {
@@ -693,6 +698,9 @@ async fn graph_can_be_deserialized(_ctx: &DalContext) {
             NodeWeight::View(_) => {}
             NodeWeight::DiagramObject(_) => {}
             NodeWeight::ApprovalRequirementDefinition(_) => {}
+            NodeWeight::Reason(reason) => {
+                assert!(matches!(reason.inner().reason, Reason::UserAdded(_)));
+            }
         }
     }
 }

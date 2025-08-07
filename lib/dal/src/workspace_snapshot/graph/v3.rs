@@ -784,6 +784,7 @@ impl WorkspaceSnapshotGraphV3 {
                     EdgeWeightKindDiscriminants::ValidationOutput => "darkcyan",
                     EdgeWeightKindDiscriminants::ValueSubscription => "green",
                     EdgeWeightKindDiscriminants::DefaultSubscriptionSource => "green",
+                    EdgeWeightKindDiscriminants::Reason => "blue",
                 };
 
                 match edgeref.weight().kind() {
@@ -916,6 +917,7 @@ impl WorkspaceSnapshotGraphV3 {
                     NodeWeight::ApprovalRequirementDefinition(_) => {
                         ("ApprovalRequirementDefinition".to_string(), "black")
                     }
+                    NodeWeight::Reason(_) => ("Reason".to_string(), "black"),
                 };
                 let color = color.to_string();
                 let id = node_weight.id();
@@ -1459,7 +1461,8 @@ impl WorkspaceSnapshotGraphV3 {
                     | EdgeWeightKind::Manages
                     | EdgeWeightKind::DiagramObject
                     | EdgeWeightKind::ApprovalRequirementDefinition
-                    | EdgeWeightKind::DefaultSubscriptionSource => {}
+                    | EdgeWeightKind::DefaultSubscriptionSource
+                    | EdgeWeightKind::Reason => {}
                 }
             }
         }

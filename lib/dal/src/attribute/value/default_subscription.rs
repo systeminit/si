@@ -27,6 +27,7 @@ use crate::{
         CategoryNodeWeight,
         NodeWeight,
         category_node_weight::CategoryNodeKind,
+        reason_node_weight::Reason,
     },
 };
 
@@ -100,7 +101,14 @@ impl DefaultSubscription {
             path: AttributePath::from_json_pointer(path),
         };
 
-        AttributeValue::set_to_subscriptions(ctx, self.dest_av_id, vec![subscription], None).await
+        AttributeValue::set_to_subscriptions(
+            ctx,
+            self.dest_av_id,
+            vec![subscription],
+            None,
+            Reason::DefaultSubscription,
+        )
+        .await
     }
 }
 

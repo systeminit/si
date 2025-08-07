@@ -60,6 +60,7 @@ use crate::{
             NodeWeight,
             NodeWeightDiscriminants,
             NodeWeightError,
+            reason_node_weight::Reason,
             traits::SiNodeWeight as _,
         },
     },
@@ -216,6 +217,14 @@ impl AttributePrototypeArgument {
         result: AttributePrototypeArgumentResult,
     );
 
+    implement_add_edge_to!(
+        source_id: AttributePrototypeArgumentId,
+        destination_id: Ulid,
+        add_fn: add_reason_edge,
+        discriminant: EdgeWeightKindDiscriminants::Reason,
+        result: AttributePrototypeArgumentResult,
+    );
+
     pub async fn get_by_id(
         ctx: &DalContext,
         id: AttributePrototypeArgumentId,
@@ -227,6 +236,38 @@ impl AttributePrototypeArgument {
         Ok(node_weight
             .get_attribute_prototype_argument_node_weight()?
             .into())
+    }
+
+    pub async fn add_reason(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+        reason: Reason,
+    ) -> AttributePrototypeArgumentResult<()> {
+        let workspace = ctx.workspace_snapshot()?;
+
+        let reason_node = Reason::new_reason_node(reason);
+        let reason_id = reason_node.id();
+        workspace.add_or_replace_node(reason_node).await?;
+        Self::add_reason_edge(ctx, apa_id, reason_id, EdgeWeightKind::Reason).await?;
+
+        Ok(())
+    }
+
+    pub async fn get_reasons(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<Vec<Reason>> {
+        let workspace = ctx.workspace_snapshot()?;
+
+        Ok(workspace
+            .all_outgoing_targets(apa_id)
+            .await?
+            .into_iter()
+            .filter_map(|node| match node {
+                NodeWeight::Reason(reason_node_weight) => Some(reason_node_weight.reason()),
+                _ => None,
+            })
+            .collect())
     }
 
     pub async fn new(

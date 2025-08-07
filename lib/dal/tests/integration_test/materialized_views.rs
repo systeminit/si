@@ -18,7 +18,10 @@ use dal::{
     },
     prop::PropPath,
     qualification::QualificationSummary,
-    workspace_snapshot::graph::validator::connections::PropConnection,
+    workspace_snapshot::{
+        graph::validator::connections::PropConnection,
+        node_weight::reason_node_weight::Reason,
+    },
 };
 use dal_materialized_views::component::map_diff_status;
 use dal_test::{
@@ -649,6 +652,7 @@ async fn add_prop_connection(
             path: from_path,
         }],
         Some(func_id),
+        Reason::new_user_added(ctx),
     )
     .await?;
 
