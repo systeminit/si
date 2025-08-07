@@ -22,7 +22,7 @@
       />
       <div class="flex-none text-sm">Edit selected components</div>
     </div>
-    <div class="grow min-h-0 flex flex-row gap-xs mt-xs items-stretch">
+    <div :class="clsx('grow min-h-0 flex flex-row gap-xs mt-xs items-stretch')">
       <ul
         :class="
           clsx(
@@ -30,6 +30,10 @@
             'scrollable min-h-0',
             'w-1/4 flex-none flex flex-col gap-xs border p-sm',
             themeClasses('border-neutral-300', 'border-neutral-600'),
+            themeClasses(
+              'bg-shade-0 border-neutral-400',
+              'bg-neutral-800 border-neutral-600',
+            ),
           )
         "
       >
@@ -40,40 +44,73 @@
         <li
           v-for="[idx, component] in Object.entries(selectedComponents)"
           :key="component.id"
-          :class="
-            clsx(
-              'ml-xs',
-              'flex flex-row items-center gap-xs [&>*]:text-sm [&>*]:font-bold',
-              themeClasses(
-                '[&>*]:border-neutral-400',
-                '[&>*]:border-neutral-600',
-              ),
-            )
-          "
+          :class="clsx('ml-xs', 'flex flex-col gap-2xs')"
         >
-          <input type="checkbox" checked @click="() => deselect(idx)" />
-          <MinimizedComponentQualificationStatus
-            :component="component"
-            noText
-          />
-          <TextPill
-            mono
+          <div
             :class="
               clsx(
-                'min-w-0',
-                themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+                'flex flex-row items-center gap-xs [&>*]:text-sm [&>*]:font-bold',
+                themeClasses(
+                  '[&>*]:border-neutral-400',
+                  '[&>*]:border-neutral-600',
+                ),
               )
             "
           >
-            <TruncateWithTooltip>
-              {{ component.schemaVariantName }}
-            </TruncateWithTooltip>
-          </TextPill>
-          <TextPill mono class="text-purple min-w-0">
-            <TruncateWithTooltip>
-              {{ component.name }}
-            </TruncateWithTooltip>
-          </TextPill>
+            <input type="checkbox" checked @click="() => deselect(idx)" />
+            <MinimizedComponentQualificationStatus
+              :component="component"
+              noText
+            />
+            <TextPill
+              mono
+              :class="
+                clsx(
+                  'min-w-0',
+                  themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+                )
+              "
+            >
+              <TruncateWithTooltip>
+                {{ component.schemaVariantName }}
+              </TruncateWithTooltip>
+            </TextPill>
+            <TextPill mono class="text-purple min-w-0">
+              <TruncateWithTooltip>
+                {{ component.name }}
+              </TruncateWithTooltip>
+            </TextPill>
+          </div>
+          <div v-if="errors[component.id]" class="mb-sm">
+            <div
+              v-for="[path, err] in Object.entries(errors[component.id]!)"
+              :key="path"
+              :class="
+                clsx(
+                  'border p-xs',
+                  themeClasses(
+                    'border-destructive-900 bg-destructive-200 text-black',
+                    'border-destructive-300 bg-newhotness-destructive text-white',
+                  ),
+                )
+              "
+            >
+              <p class="text-sm">{{ path }}</p>
+              <p
+                :class="
+                  clsx(
+                    'text-xs',
+                    themeClasses(
+                      'text-destructive-900',
+                      'text-destructive-300',
+                    ),
+                  )
+                "
+              >
+                {{ err }}
+              </p>
+            </div>
+          </div>
         </li>
       </ul>
       <DelayedLoader v-if="treesPending" :size="'full'" />
@@ -90,6 +127,10 @@
               'border overflow-hidden mb-[-1px]', // basis-0 makes items take equal size when multiple are open
               '[&>dl]:m-xs', // pad the child attributes
               themeClasses('border-neutral-300', 'border-neutral-600'),
+              themeClasses(
+                'bg-shade-0 border-neutral-400',
+                'bg-neutral-800 border-neutral-600',
+              ),
             )
           "
         >
@@ -142,6 +183,10 @@
             'scrollable min-h-0',
             'w-1/5 flex-none flex flex-col gap-xs scrollable border',
             themeClasses('border-neutral-300', 'border-neutral-600'),
+            themeClasses(
+              'bg-shade-0 border-neutral-400',
+              'bg-neutral-800 border-neutral-600',
+            ),
           )
         "
       >
@@ -159,86 +204,43 @@
             {{ selectedPathName }} values
           </template>
         </h3>
-        <div
-          v-if="pathValueData"
-          class="m-sm flex flex-row items-center gap-xs"
-        >
-          <template
-            v-for="[valueKey, desc] in Object.entries(pathValueData)"
-            :key="valueKey"
-          >
-            <AttributeValueBox>
-              <template #components>
-                <ul>
-                  <li
-                    v-for="component in desc.components"
-                    :key="component.componentName"
-                    :class="
-                      clsx(
-                        'ml-xs',
-                        'flex flex-row items-center gap-xs [&>*]:text-sm [&>*]:font-bold',
-                        themeClasses(
-                          '[&>*]:border-neutral-400',
-                          '[&>*]:border-neutral-600',
-                        ),
-                      )
-                    "
-                  >
-                    <TextPill
-                      mono
-                      :class="
-                        clsx(
-                          'min-w-0',
-                          themeClasses(
-                            'text-green-light-mode',
-                            'text-green-dark-mode',
-                          ),
-                        )
-                      "
-                    >
-                      <TruncateWithTooltip>
-                        {{ component.schemaName }}
-                      </TruncateWithTooltip>
-                    </TextPill>
-                    <TextPill mono class="text-purple min-w-0">
-                      <TruncateWithTooltip>
-                        {{ component.componentName }}
-                      </TruncateWithTooltip>
-                    </TextPill>
-                  </li>
-                </ul>
-              </template>
-              <div
-                :class="
-                  clsx(
-                    'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
-                    'p-2xs text-sm font-bold',
-                    desc.isSecret &&
-                      themeClasses(
-                        'text-green-light-mode',
-                        'text-green-dark-mode',
-                      ),
-                  )
-                "
-              >
-                <TruncateWithTooltip class="text-purple">{{
-                  valueKey.split("|")[0]
-                }}</TruncateWithTooltip>
-                <div class="flex-none">/</div>
-                <TruncateWithTooltip
-                  :class="themeClasses('text-neutral-600', 'text-neutral-400')"
-                >
-                  <template
-                    v-if="!desc.isSecret && valueKey.split('|')[2] !== 'null'"
-                  >
-                    {{ valueKey.split("|")[2] }}
-                  </template>
-                  <template v-else>
-                    &lt; {{ valueKey.split("|")[1]?.replace(/^\//, "") }} &gt;
-                  </template>
-                </TruncateWithTooltip>
-              </div>
-            </AttributeValueBox>
+        <div class="m-sm flex flex-col gap-xs">
+          <template v-if="historyValueData">
+            <template
+              v-for="[valueKey, desc] in Object.entries(historyValueData)"
+              :key="valueKey"
+            >
+              <AttributeValueBox>
+                <template #components>
+                  <AttrComponentList :components="desc.components" />
+                </template>
+                <AttrValue
+                  strikeout
+                  :isSecret="desc.isSecret"
+                  :path="valueKey.split('|')[1]?.replace(/^\//, '')"
+                  :value="valueKey.split('|')[2]"
+                  :componentName="valueKey.split('|')[0]"
+                />
+              </AttributeValueBox>
+            </template>
+          </template>
+          <template v-if="pathValueData">
+            <template
+              v-for="[valueKey, desc] in Object.entries(pathValueData)"
+              :key="valueKey"
+            >
+              <AttributeValueBox>
+                <template #components>
+                  <AttrComponentList :components="desc.components" />
+                </template>
+                <AttrValue
+                  :isSecret="desc.isSecret"
+                  :path="valueKey.split('|')[1]?.replace(/^\//, '')"
+                  :value="valueKey.split('|')[2]"
+                  :componentName="valueKey.split('|')[0]"
+                />
+              </AttributeValueBox>
+            </template>
           </template>
         </div>
       </div>
@@ -249,14 +251,21 @@
 <script lang="ts" setup>
 import clsx from "clsx";
 import { useQueries } from "@tanstack/vue-query";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  provide,
+  reactive,
+  ref,
+  watch,
+} from "vue";
 import {
   themeClasses,
   IconButton,
   TruncateWithTooltip,
   TextPill,
 } from "@si/vue-lib/design-system";
-import { useToast } from "vue-toastification";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeTree,
@@ -272,7 +281,8 @@ import ComponentAttribute, {
   NewChildValue,
 } from "@/newhotness/layout_components/ComponentAttribute.vue";
 import ComponentSecretAttribute from "@/newhotness/layout_components/ComponentSecretAttribute.vue";
-import AttributeValueBox from "@/newhotness/AttributeValueBox.vue";
+import AttrValue from "@/newhotness/layout_components/AttrValue.vue";
+import AttributeValueBox from "@/newhotness/layout_components/AttributeValueBox.vue";
 import AttributeChildLayout from "@/newhotness/layout_components/AttributeChildLayout.vue";
 import DelayedLoader from "@/newhotness/layout_components/DelayedLoader.vue";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
@@ -280,13 +290,21 @@ import { PropKind } from "@/api/sdf/dal/prop";
 import {
   arrayAttrTreeIntoTree,
   AttrTree,
-  cleanForBulk,
   makeAvTree,
   makeSavePayload,
 } from "../logic_composables/attribute_tree";
-import { componentTypes, ok, routes, UseApi, useApi } from "../api_composables";
+import {
+  componentTypes,
+  DoResponse,
+  ok,
+  routes,
+  UseApi,
+  useApi,
+} from "../api_composables";
 import { useContext } from "../logic_composables/context";
 import MinimizedComponentQualificationStatus from "../MinimizedComponentQualificationStatus.vue";
+import AttrComponentList from "../layout_components/AttrComponentList.vue";
+import { AttributeInputContext } from "../types";
 
 const ctx = useContext();
 
@@ -332,6 +350,8 @@ type Trees = Array<{
   root: AttrTree | undefined;
   domain: AttrTree | undefined;
   secrets: AttrTree | undefined;
+  componentName: string;
+  schemaName: string;
 }>;
 const trees = computed<Trees>(() => {
   return avTrees.value
@@ -349,10 +369,97 @@ const trees = computed<Trees>(() => {
       const tree = makeAvTree(t, rootId, false);
       const domain = tree.children.find((c) => c.prop?.name === "domain");
       const secrets = tree.children.find((c) => c.prop?.name === "secrets");
-      return { domain, secrets, root: tree };
+      return {
+        domain,
+        secrets,
+        root: tree,
+        componentName: t.componentName,
+        schemaName: t.schemaName,
+      };
     })
     .filter(nonNullable);
 });
+
+const errors = reactive<Record<ComponentId, Record<AttributePath, string>>>({});
+const upsertError = (id: ComponentId, path: AttributePath, error?: string) => {
+  let paths = errors[id];
+  if (!paths) {
+    paths = {} as Record<AttributePath, string>;
+    errors[id] = paths;
+  }
+  if (error) paths[path] = error;
+  else delete paths[path];
+};
+
+const history = reactive<Record<AttributePath, PathValueData>>(
+  {} as Record<AttributePath, PathValueData>,
+);
+const showHistory = reactive<Record<AttributePath, boolean>>(
+  {} as Record<AttributePath, boolean>,
+);
+
+provide<AttributeInputContext>("ATTRIBUTEINPUT", { blankInput: true });
+
+const setHistory = (path: AttributePath) => {
+  showHistory[path] = true;
+  historyValueData.value = history[path];
+};
+
+// record history once we have the intitial set of trees.
+const onlyOnceStop = watch(
+  trees,
+  () => {
+    if (trees.value.length === 0) return;
+
+    const names = trees.value.reduce((obj, t) => {
+      if (!t.root) return obj;
+      obj[t.root.componentId] = {
+        componentName: t.componentName,
+        schemaName: t.schemaName,
+      };
+      return obj;
+    }, {} as Record<string, { componentName: string; schemaName: string }>);
+
+    const children = trees.value.flatMap((t) => {
+      const d = t.domain || { children: [] as AttrTree[] };
+      const s = t.secrets || { children: [] as AttrTree[] };
+      return [...d.children].concat([...s.children]);
+    });
+
+    while (children.length > 0) {
+      const child = children.shift();
+      if (!child) continue;
+
+      const av = child.attributeValue;
+      const source = (av.externalSources || [])[0];
+      const v =
+        typeof av.value === "object" ? JSON.stringify(av.value) : av.value;
+      const valKey: ValueKey = `${source?.componentName}|${source?.path}|${v}`;
+      let vals = history[av.path];
+      if (!vals) {
+        vals = {} as PathValueData;
+        history[av.path] = vals;
+      }
+      let data = vals[valKey];
+      if (!data) {
+        data = {
+          isSecret: !!av.secret,
+          components: [],
+        } as ComponentsWithValue;
+        vals[valKey] = data;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      data.components.push(names[child.componentId]!);
+
+      children.push(...child.children);
+    }
+
+    if (onlyOnceStop) {
+      onlyOnceStop();
+    }
+  },
+  { immediate: true },
+);
 
 // now filter them to the common AV paths present in all trees
 // the *actual* AVs will be from the very last component that has them
@@ -396,7 +503,7 @@ const commonTree = computed<{
     .map((path) => pathMap[path])
     .filter(nonNullable)
     .map((t) => {
-      return cleanForBulk(t);
+      return { ...t };
     });
   const map = matches.reduce((obj, attr) => {
     obj[attr.id] = attr;
@@ -425,10 +532,12 @@ type ApiVal = {
 
 const saving = ref(0);
 
+type ApiArgs = { id: ComponentId };
+type SuccessResp = { success: boolean };
 const createCalls = () =>
   componentIds.value.map((componentId) => {
-    const saveApi = useApi(ctx);
-    const call = saveApi.endpoint<{ success: boolean }>(
+    const saveApi = useApi<ApiArgs>(ctx);
+    const call = saveApi.endpoint<SuccessResp>(
       routes.UpdateComponentAttributes,
       { id: componentId },
     );
@@ -437,6 +546,19 @@ const createCalls = () =>
 
 const createPayload = (path: AttributePath, vals: ApiVal) =>
   makeSavePayload(path, vals.value, vals.propKind, vals.connectingComponentId);
+
+const handleErrors = (
+  path: AttributePath,
+  resps: Array<DoResponse<SuccessResp, ApiArgs>>,
+): void => {
+  resps.forEach((resp) => {
+    let err;
+    if (!ok(resp.req)) {
+      err = resp.errorMessage;
+    }
+    upsertError(resp.endpointArgs.id, path, err);
+  });
+};
 
 const add = async (
   _: UseApi,
@@ -447,9 +569,8 @@ const add = async (
 
   const apis = createCalls();
 
+  const appendPath = `${attributeTree.attributeValue.path}/-` as AttributePath;
   const calls = apis.map(async (call) => {
-    const appendPath =
-      `${attributeTree.attributeValue.path}/-` as AttributePath;
     const payload = {
       [appendPath]: value,
     };
@@ -459,10 +580,7 @@ const add = async (
   saving.value = calls.length;
   const resps = await Promise.all(calls);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(appendPath, resps);
 };
 
 const setKey = async (
@@ -474,9 +592,9 @@ const setKey = async (
 
   const apis = createCalls();
 
+  const appendPath =
+    `${attributeTree.attributeValue.path}/${key}` as AttributePath;
   const calls = apis.map(async (call) => {
-    const appendPath =
-      `${attributeTree.attributeValue.path}/${key}` as AttributePath;
     const payload = {
       [appendPath]: value,
     };
@@ -485,14 +603,10 @@ const setKey = async (
 
   saving.value = calls.length;
   const resps = await Promise.all(calls);
+  setHistory(attributeTree.attributeValue.path);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(appendPath, resps);
 };
-
-const toast = useToast();
 
 const save = async (
   path: AttributePath,
@@ -519,11 +633,9 @@ const save = async (
   });
   saving.value = calls.length;
   const resps = await Promise.all(calls);
+  setHistory(path);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(path, resps);
 };
 
 const removeSubscription = async (path: AttributePath) => {
@@ -542,11 +654,9 @@ const removeSubscription = async (path: AttributePath) => {
 
   saving.value = calls.length;
   const resps = await Promise.all(calls);
+  setHistory(path);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(path, resps);
 };
 
 const remove = async (path: AttributePath) => {
@@ -559,11 +669,9 @@ const remove = async (path: AttributePath) => {
 
   saving.value = calls.length;
   const resps = await Promise.all(calls);
+  setHistory(path);
   saving.value = 0;
-  if (!resps.every((r) => ok(r.req))) {
-    const errs = resps.map((r) => [r.req, r.req.status, r.req.request]);
-    toast(`API Error: ${errs}`);
-  }
+  handleErrors(path, resps);
 };
 
 const onEscape = () => {
@@ -619,11 +727,24 @@ const valuesByAvPath = computed(() => {
 });
 
 const selectedPathName = ref<string>("");
+const selectedPathPath = ref<string>("");
 const pathValueData = ref<PathValueData | undefined>();
+const historyValueData = ref<PathValueData | undefined>();
+// find the path based data for display
 attributeEmitter.on("selectedPath", ({ path, name }) => {
   selectedPathName.value = name;
+  selectedPathPath.value = path;
   const vals = valuesByAvPath.value[path as AttributePath];
   pathValueData.value = vals;
+  if (showHistory[path as AttributePath])
+    historyValueData.value = history[path as AttributePath];
+});
+
+watch(valuesByAvPath, () => {
+  if (selectedPathPath.value) {
+    const vals = valuesByAvPath.value[selectedPathPath.value as AttributePath];
+    pathValueData.value = vals;
+  }
 });
 
 const emit = defineEmits<{

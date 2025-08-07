@@ -157,6 +157,7 @@ import {
   computed,
   onBeforeUnmount,
   onMounted,
+  provide,
   reactive,
   ref,
   watch,
@@ -201,6 +202,9 @@ import {
   makeSavePayload,
 } from "./logic_composables/attribute_tree";
 import AttributeChildLayout from "./layout_components/AttributeChildLayout.vue";
+import { AttributeInputContext } from "./types";
+
+provide<AttributeInputContext>("ATTRIBUTEINPUT", { blankInput: false });
 
 const q = ref("");
 

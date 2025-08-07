@@ -98,22 +98,6 @@ export const arrayAttrTreeIntoTree = (
   return matchesAsTree;
 };
 
-export const cleanForBulk = (t: AttrTree): AttrTree => {
-  // clear out the AVs and externalSources
-  // because we don't want them showing up in the form
-  const m = {
-    ...t,
-    attributeValue: {
-      ...t.attributeValue,
-      value: null,
-      externalSources: undefined,
-    },
-    children: t.children.map((_t) => cleanForBulk(_t)),
-  };
-  delete m.secret;
-  return m;
-};
-
 export type MakePayload = (
   path: AttributePath,
   value: string,

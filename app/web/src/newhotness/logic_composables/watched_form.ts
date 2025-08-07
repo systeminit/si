@@ -37,7 +37,7 @@ const tracer = trace.getTracer("si-vue");
  * So the user know their form submission worked and we're waiting
  * for updated data
  */
-export const useWatchedForm = <Data>(label: string) => {
+export const useWatchedForm = <Data>(label: string, resetBlank?: boolean) => {
   /**
    * Lifecycle of `bifrosting`
    *
@@ -103,7 +103,8 @@ export const useWatchedForm = <Data>(label: string) => {
         const markComplete = () => {
           bifrosting.value = false;
           rainbow.remove(ctx.changeSetId.value, label);
-          if (!wForm.state.canSubmit) wForm.reset(props.value);
+          if (!wForm.state.canSubmit)
+            wForm.reset(resetBlank ? undefined : props.value);
           if (span) {
             span.setAttribute("measured_time", Date.now() - start);
             span.end();
@@ -114,7 +115,7 @@ export const useWatchedForm = <Data>(label: string) => {
         try {
           await onSubmit(props);
           // Set the form data optimistically
-          wForm.reset(props.value);
+          wForm.reset(resetBlank ? undefined : props.value);
         } catch (e) {
           // TODO report errors and display on caller forms
           // Cancel the spinner and bifrosting on failure
@@ -136,9 +137,12 @@ export const useWatchedForm = <Data>(label: string) => {
     });
 
     // Update form data as data changes
+    // im not 100% certain we always want this behavior
     watch(
       () => toValue(data),
-      (newData) => wForm.reset(newData),
+      (newData) => {
+        wForm.reset(newData);
+      },
     );
 
     return wForm;

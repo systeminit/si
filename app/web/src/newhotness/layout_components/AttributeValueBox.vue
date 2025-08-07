@@ -22,7 +22,7 @@
           'absolute z-[500] bottom-[-75px] left-[-17px] w-[300px]',
           themeClasses(
             'text-neutral-600 border-neutral-400 bg-neutral-100',
-            'text-neutral-400 border-neutral-600 bg-neutral-900',
+            'text-neutral-400 border-neutral-600 bg-neutral-800',
           ),
         )
       "

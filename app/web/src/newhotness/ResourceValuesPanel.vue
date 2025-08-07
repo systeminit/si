@@ -56,6 +56,7 @@ import {
   computed,
   onBeforeUnmount,
   onMounted,
+  provide,
   reactive,
   ref,
   watch,
@@ -73,6 +74,7 @@ import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
 import { AttrTree, makeAvTree } from "./logic_composables/attribute_tree";
 import EmptyState from "./EmptyState.vue";
+import { AttributeInputContext } from "./types";
 
 const q = ref("");
 
@@ -80,6 +82,8 @@ const props = defineProps<{
   component?: BifrostComponent;
   attributeTree?: AttributeTree;
 }>();
+
+provide<AttributeInputContext>("ATTRIBUTEINPUT", { blankInput: false });
 
 // TODO(nick): move the root computation to a shared location since this is a copy from "AttributePanel".
 const root = computed<AttrTree>(() => {

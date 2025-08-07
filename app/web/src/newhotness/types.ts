@@ -128,3 +128,8 @@ export interface ApprovalData {
   requirements: ChangeSetApprovalRequirement[];
   latestApprovals: ChangeSetApproval[];
 }
+
+// Bulk editing blanks inputs
+export interface AttributeInputContext {
+  blankInput: boolean;
+}
