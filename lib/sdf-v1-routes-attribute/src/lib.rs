@@ -50,7 +50,7 @@ impl_default_error_into_response!(AttributeError);
 
 pub fn routes() -> Router<AppState> {
     Router::new().route(
-        "/get_prototype_arguments",
+        "/get_prototype_arguments", // USED IN FUNC EDITOR
         get(get_prototype_arguments::get_prototype_arguments),
     )
 }

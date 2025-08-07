@@ -53,13 +53,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::conflicts_for_component::conflicts_for_component;
-
 mod autoconnect;
-pub mod conflicts_for_component;
 pub mod debug;
 pub mod delete_property_editor_value;
-pub mod get_actions;
 pub mod get_code;
 pub mod get_diff;
 pub mod get_property_editor_schema;
@@ -193,51 +189,49 @@ impl IntoResponse for ComponentError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/get_actions", get(get_actions::get_actions))
         .route(
-            "/get_property_editor_schema",
+            "/get_property_editor_schema", // USED IN OLD UI
             get(get_property_editor_schema::get_property_editor_schema),
         )
         .route(
-            "/get_property_editor_values",
+            "/get_property_editor_values", // USED IN OLD UI
             get(get_property_editor_values::get_property_editor_values),
         )
         .route(
-            "/list_qualifications",
+            "/list_qualifications", // USED IN OLD UI
             get(list_qualifications::list_qualifications),
         )
-        .route("/get_code", get(get_code::get_code))
-        .route("/get_diff", get(get_diff::get_diff))
-        .route("/get_resource", get(get_resource::get_resource))
+        .route("/get_code", get(get_code::get_code)) // USED IN OLD UI
+        .route("/get_diff", get(get_diff::get_diff)) // USED IN OLD UI
+        .route("/get_resource", get(get_resource::get_resource)) // USED IN OLD UI
         .route(
-            "/update_property_editor_value",
+            "/update_property_editor_value", // USED IN OLD UI
             post(update_property_editor_value::update_property_editor_value),
         )
         .route(
-            "/insert_property_editor_value",
+            "/insert_property_editor_value", // USED IN OLD UI
             post(insert_property_editor_value::insert_property_editor_value),
         )
         .route(
-            "/delete_property_editor_value",
+            "/delete_property_editor_value", // USED IN OLD UI
             post(delete_property_editor_value::delete_property_editor_value),
         )
         .route(
-            "/restore_default_function",
+            "/restore_default_function", // USED IN OLD UI
             post(restore_default_function::restore_default_function),
         )
-        .route("/set_type", post(set_type::set_type))
-        .route("/set_name", post(set_name::set_name))
-        .route("/set_resource_id", post(set_resource_id::set_resource_id))
-        .route("/refresh", post(refresh::refresh))
-        .route("/debug", get(debug::debug_component))
-        .route("/autoconnect", post(autoconnect::autoconnect))
+        .route("/set_type", post(set_type::set_type)) // USED IN OLD UI
+        .route("/set_name", post(set_name::set_name)) // USED IN OLD UI
+        .route("/set_resource_id", post(set_resource_id::set_resource_id)) // USED IN OLD UI
+        .route("/refresh", post(refresh::refresh)) // USED IN OLD UI
+        .route("/debug", get(debug::debug_component)) // USED IN OLD UI
+        .route("/autoconnect", post(autoconnect::autoconnect)) // USED IN OLD UI
         .route(
-            "/override_with_connection",
+            "/override_with_connection", // USED IN OLD UI
             post(override_with_connection::override_with_connection),
         )
-        .route("/json", get(json::json))
-        .route("/upgrade_component", post(upgrade::upgrade))
-        .route("/conflicts", get(conflicts_for_component))
-        .route("/manage", post(manage::manage))
-        .route("/unmanage", post(unmanage::unmanage))
+        .route("/json", get(json::json)) // USED IN FUNC EDITOR
+        .route("/upgrade_component", post(upgrade::upgrade)) // USED IN OLD UI
+        .route("/manage", post(manage::manage)) // USED IN OLD UI
+        .route("/unmanage", post(unmanage::unmanage)) // USED IN OLD UI
 }
