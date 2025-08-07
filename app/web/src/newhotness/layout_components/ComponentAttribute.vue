@@ -194,7 +194,10 @@
           </template>
           <div class="p-xs">
             <VButton
-              v-if="!attributeTree.attributeValue.externalSources?.length"
+              v-if="
+                !attributeTree.attributeValue.externalSources?.length &&
+                props.attributeTree.prop?.kind !== 'map'
+              "
               ref="addButtonRef"
               :class="
                 clsx(
@@ -243,7 +246,7 @@
         @save="(...args) => emit('save', ...args)"
         @delete="(...args) => emit('delete', ...args)"
         @remove-subscription="(...args) => emit('removeSubscription', ...args)"
-        @add="add"
+        @add="(...args) => add(...args)"
       />
     </template>
   </li>
@@ -352,6 +355,7 @@ const keyForm = wForm.newForm({
   watchFn: () => props.attributeTree.children.length,
 });
 
+// map (all except the first, see below) and object keys come through this FN
 const saveKeyIfFormValid = async () => {
   if (keyForm.fieldInfo.key.instance?.state.meta.isDirty) {
     if (!keyForm.baseStore.state.isSubmitted) {
@@ -367,12 +371,15 @@ const saveKey = async () => {
 };
 
 const addApi = useApi();
-const add = () => {
+const add = (keyName?: string) => {
+  // when adding a map key (for the first time), you're doing it from the child, which gives you the key name
   if (props.attributeTree.prop?.kind === "map") {
-    saveKeyIfFormValid();
+    if (!keyName) throw new Error("Expected key name");
+    emit("setKey", props.attributeTree, keyName, emptyChildValue());
     return;
   }
 
+  // when adding a net-new array, you're doing it from within this component (keyName does not apply)
   emit("add", addApi, props.attributeTree, emptyChildValue());
 };
 
