@@ -264,6 +264,8 @@ import MiniMap from "./MiniMap.vue";
 
 const MAX_STRING_LENGTH = 18;
 
+const router = useRouter();
+
 const props = defineProps<{
   active: boolean;
   components: ComponentInList[];
@@ -933,7 +935,6 @@ const HEIGHT = 75;
 
 const selectedGridTileRef = ref<InstanceType<typeof ExploreGridTile>>();
 
-const router = useRouter();
 const clickedNode = (e: MouseEvent, n: layoutNode) => {
   e.preventDefault();
   e.stopPropagation();
@@ -1659,10 +1660,21 @@ watch(
       else icons.push("check-hex-outline-success");
       return { id: nId, width: WIDTH, height: HEIGHT, component, icons };
     });
-    const edges: edge[] = [...mapData.value.edges].map((eId) => {
-      const [target, source] = eId.split("-");
-      return { id: eId, sources: [source ?? ""], targets: [target ?? ""] };
-    });
+
+    const validNodeIds = new Set(mapData.value.nodes);
+    const edges: edge[] = [...mapData.value.edges]
+      .map((eId) => {
+        const [target, source] = eId.split("-");
+        return { id: eId, sources: [source ?? ""], targets: [target ?? ""] };
+      })
+      .filter((edge) => {
+        // Only include edges where both source and target exist in the nodes
+        const source = edge.sources[0];
+        const target = edge.targets[0];
+        const sourceExists = source && validNodeIds.has(source);
+        const targetExists = target && validNodeIds.has(target);
+        return sourceExists && targetExists;
+      });
     if (!children || !edges) return null;
     const graph = {
       id: "root",
