@@ -547,8 +547,10 @@ const storeViewMode = () => {
 
   if (groupRef.value.isB) {
     localStorage.setItem(key, "grid");
+    fixContextMenu();
   } else {
     localStorage.setItem(key, "map");
+    componentContextMenuRef.value?.close();
   }
 };
 
