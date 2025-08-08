@@ -128,13 +128,15 @@ export const useRealtimeStore = defineStore("realtime", () => {
     const response = await fetch(
       "https://nhzefkyp7l.execute-api.us-east-1.amazonaws.com/data/payload.json",
     );
-    const data = await response.json();
-    return data;
+    if (response.status === 200) {
+      const data = await response.json();
+      return data;
+    }
   }
 
   // Custom sort function to sort incidents by severity
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function sortIncidentsBySeverity(incidents: any[]): any[] {
+  function sortIncidentsBySeverity(incidents?: any[]): any[] {
     const severityOrder: { [key: string]: number } = {
       MAINTENANCE: 4,
       UNAVAILABLE: 3,
@@ -142,11 +144,13 @@ export const useRealtimeStore = defineStore("realtime", () => {
       OPERATIONAL: 1,
     };
 
-    return incidents.sort((a, b) => {
-      const severityA = severityOrder[a.severitySlug?.toUpperCase()] || 5;
-      const severityB = severityOrder[b.severitySlug?.toUpperCase()] || 5;
-      return severityA - severityB;
-    });
+    return (
+      incidents?.sort((a, b) => {
+        const severityA = severityOrder[a.severitySlug?.toUpperCase()] || 5;
+        const severityB = severityOrder[b.severitySlug?.toUpperCase()] || 5;
+        return severityA - severityB;
+      }) ?? []
+    );
   }
 
   const applicationStatus = ref<string>("operational");
@@ -157,6 +161,9 @@ export const useRealtimeStore = defineStore("realtime", () => {
 
     try {
       const statusData = await fetchStatusPage();
+      if (!statusData) {
+        return;
+      }
 
       const incidents = sortIncidentsBySeverity(statusData.incidents);
 
