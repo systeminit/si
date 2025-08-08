@@ -1,6 +1,7 @@
 load(
     "//deno:toolchain.bzl",
     "DenoToolchainInfo",
+    "DenoWorkspaceInfo",
 )
 load(
     "@prelude//:paths.bzl",
@@ -10,120 +11,136 @@ load(
     "@prelude//python:toolchain.bzl",
     "PythonToolchainInfo",
 )
+load("@prelude//utils:cmd_script.bzl", "cmd_script")
+
 
 def deno_cache_impl(ctx: AnalysisContext) -> list[Provider]:
-    """Implementation of the deno_cache rule."""
+    """Implementation of the deno_cache rule for a workspace."""
     deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
-    out = ctx.actions.declare_output("deno_cache_marker")
+    deno_dir_output = ctx.actions.declare_output("deno_dir")
 
+    shim = cmd_script(
+        ctx=ctx,
+        name="deno_shim",
+        cmd=cmd_args(deno_toolchain.deno_binary),
+    )
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         deno_toolchain.deno_cache[DefaultInfo].default_outputs[0],
+        "--deno-binary",
+        shim,
+        "--workspace-dir",
+        ctx.attrs.workspace[DefaultInfo].default_outputs,
+        "--deno-dir",
+        deno_dir_output.as_output(),
     )
-    cmd.add("--marker", out.as_output())
 
     for src in ctx.attrs.srcs:
         cmd.add("--input", src)
 
-    ctx.actions.run(cmd, category = "deno", identifier = "deno_cache")
+    ctx.actions.run(
+        cmd,
+        category="deno",
+        identifier="deno_cache",
+    )
 
     return [
-        DefaultInfo(default_output = out),
-        RunInfo(args = cmd),
+        DefaultInfo(default_output=deno_dir_output),
     ]
 
+
 deno_cache = rule(
-    impl = deno_cache_impl,
-    attrs = {
-        "srcs": attrs.list(
+    impl=deno_cache_impl,
+    attrs={
+        "srcs":
+        attrs.list(
             attrs.source(),
-            default = [],
-            doc = "The source files to cache",
+            default=[],
+            doc="The source files to format",
         ),
-        "_python_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:python",
-            providers = [PythonToolchainInfo],
+        "workspace":
+        attrs.dep(doc="The assembled deno_workspace target.", ),
+        "_python_toolchain":
+        attrs.toolchain_dep(
+            default="toolchains//:python",
+            providers=[PythonToolchainInfo],
         ),
-        "_deno_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:deno",
-            providers = [DenoToolchainInfo],
+        "_deno_toolchain":
+        attrs.toolchain_dep(
+            default="toolchains//:deno",
+            providers=[DenoToolchainInfo],
         ),
     },
 )
 
-def deno_compile_impl(ctx: AnalysisContext) -> list[Provider]:
-    out = ctx.actions.declare_output(paths.basename(ctx.attrs.out))
 
+def deno_compile_impl(ctx: AnalysisContext) -> list[Provider]:
+    out = ctx.actions.declare_output(ctx.attrs.out)
     deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         deno_toolchain.deno_compile[DefaultInfo].default_outputs[0],
+        "--deno-binary",
+        deno_toolchain.deno_binary,
         "--input",
         ctx.attrs.main,
-        "--extra-srcs",
-        ctx.attrs.extra_srcs,
         "--output",
         out.as_output(),
-        hidden = ctx.attrs.srcs
+        hidden=ctx.attrs.srcs,
     )
 
+    if ctx.attrs.deno_cache:
+        deno_cache_provider = ctx.attrs.deno_cache[DenoWorkspaceInfo]
+        cmd.add("--deno-dir", deno_cache_provider.cache_dir)
+        cmd.add("--workspace-dir", deno_cache_provider.workspace_dir)
 
     if ctx.attrs.permissions:
-        cmd.add("--permissions")
-        cmd.add(ctx.attrs.permissions)
+        cmd.add("--permissions", *ctx.attrs.permissions)
 
     if ctx.attrs.unstable_flags:
-        cmd.add("--unstable-flags")
-        cmd.add(ctx.attrs.unstable_flags)
+        cmd.add("--unstable-flags", *ctx.attrs.unstable_flags)
 
-    ctx.actions.run(cmd, category = "deno", identifier = "deno_compile")
+    ctx.actions.run(cmd, category="deno", identifier="deno_compile")
 
     return [
-        DefaultInfo(default_output = out),
-        RunInfo(args = cmd_args(out)),
+        DefaultInfo(default_output=out),
+        RunInfo(args=cmd_args(out)),
     ]
 
+
 deno_compile = rule(
-    impl = deno_compile_impl,
-    attrs = {
-        "main": attrs.source(
-            doc = "The entry point TypeScript/JavaScript file",
-        ),
-        "srcs": attrs.list(
-            attrs.source(),
-            default = [],
-            doc = "All source files that are part of the compilation",
-        ),
-        "extra_srcs": attrs.list(
-            attrs.source(),
-            default = [],
-            doc = "Sources from other targets",
-        ),
-        "out": attrs.string(
-            doc = "The name of the output binary",
-        ),
-        "permissions": attrs.list(
+    impl=deno_compile_impl,
+    attrs={
+        "main":
+        attrs.source(doc="The entry point TypeScript/JavaScript file"),
+        "srcs":
+        attrs.list(attrs.source(),
+                   default=[],
+                   doc="All source files that are part of the compilation"),
+        "out":
+        attrs.string(doc="The name of the output binary"),
+        "deno_cache":
+        attrs.option(attrs.dep(providers=[DenoWorkspaceInfo]), default=None),
+        "permissions":
+        attrs.list(
             attrs.string(),
-            default = [],
-            doc = "List of Deno permissions to grant (e.g., read, write, net)",
-        ),
-        "unstable_flags": attrs.list(
-            attrs.string(),
-            default = [],
-            doc = "List of unstable flags to enable",
-        ),
-        "_python_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:python",
-            providers = [PythonToolchainInfo],
-        ),
-        "_deno_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:deno",
-            providers = [DenoToolchainInfo],
-        ),
+            default=[],
+            doc="List of Deno permissions to grant (e.g., read, write, net)"),
+        "unstable_flags":
+        attrs.list(attrs.string(),
+                   default=[],
+                   doc="List of unstable flags to enable"),
+        "_python_toolchain":
+        attrs.toolchain_dep(default="toolchains//:python",
+                            providers=[PythonToolchainInfo]),
+        "_deno_toolchain":
+        attrs.toolchain_dep(default="toolchains//:deno",
+                            providers=[DenoToolchainInfo]),
     },
 )
+
 
 def deno_format_impl(ctx: AnalysisContext) -> list[Provider]:
     """Implementation of the deno_format rule."""
@@ -132,6 +149,8 @@ def deno_format_impl(ctx: AnalysisContext) -> list[Provider]:
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         deno_toolchain.deno_format[DefaultInfo].default_outputs[0],
+        "--deno-binary",
+        deno_toolchain.deno_binary,
     )
 
     for src in ctx.attrs.srcs:
@@ -146,36 +165,43 @@ def deno_format_impl(ctx: AnalysisContext) -> list[Provider]:
 
     return [
         DefaultInfo(),
-        RunInfo(args = cmd),
+        RunInfo(args=cmd),
     ]
 
+
 deno_format = rule(
-    impl = deno_format_impl,
-    attrs = {
-        "srcs": attrs.list(
+    impl=deno_format_impl,
+    attrs={
+        "srcs":
+        attrs.list(
             attrs.source(),
-            default = [],
-            doc = "The source files to format",
+            default=[],
+            doc="The source files to format",
         ),
-        "check": attrs.bool(
-            default = False,
-            doc = "Check if files are formatted without making changes",
+        "check":
+        attrs.bool(
+            default=False,
+            doc="Check if files are formatted without making changes",
         ),
-        "ignore": attrs.list(
+        "ignore":
+        attrs.list(
             attrs.string(),
-            default = [],
-            doc = "List of files or directories to ignore",
+            default=[],
+            doc="List of files or directories to ignore",
         ),
-        "_python_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:python",
-            providers = [PythonToolchainInfo],
+        "_python_toolchain":
+        attrs.toolchain_dep(
+            default="toolchains//:python",
+            providers=[PythonToolchainInfo],
         ),
-        "_deno_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:deno",
-            providers = [DenoToolchainInfo],
+        "_deno_toolchain":
+        attrs.toolchain_dep(
+            default="toolchains//:deno",
+            providers=[DenoToolchainInfo],
         ),
     },
 )
+
 
 def deno_run_impl(ctx: AnalysisContext) -> list[Provider]:
     out = ctx.actions.declare_output(ctx.attrs.out)
@@ -184,70 +210,79 @@ def deno_run_impl(ctx: AnalysisContext) -> list[Provider]:
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         deno_toolchain.deno_run[DefaultInfo].default_outputs[0],
+        "--deno-binary",
+        deno_toolchain.deno_binary,
         "--input",
         ctx.attrs.main,
         "--output",
         out.as_output(),
-        hidden = ctx.attrs.srcs
-    )
+        hidden=ctx.attrs.srcs)
+
+    if ctx.attrs.deno_cache:
+        deno_cache_provider = ctx.attrs.deno_cache[DenoWorkspaceInfo]
+        cmd.add("--deno-dir", deno_cache_provider.cache_dir)
+        cmd.add("--workspace-dir", deno_cache_provider.workspace_dir)
 
     if ctx.attrs.permissions:
-        cmd.add("--permissions")
-        cmd.add(ctx.attrs.permissions)
+        cmd.add("--permissions", *ctx.attrs.permissions)
 
     if ctx.attrs.unstable_flags:
-        cmd.add("--unstable-flags")
-        cmd.add(ctx.attrs.unstable_flags)
+        cmd.add("--unstable-flags", *ctx.attrs.unstable_flags)
 
-
-    ctx.actions.run(cmd, category = "deno", identifier = "deno_run")
+    ctx.actions.run(cmd, category="deno", identifier="deno_run")
 
     return [
-        DefaultInfo(default_output = out),
+        DefaultInfo(default_output=out),
     ]
 
+
 deno_run = rule(
-    impl = deno_run_impl,
-    attrs = {
-        "main": attrs.source(
-            doc = "The entry point TypeScript/JavaScript file",
-        ),
-        "srcs": attrs.list(
-            attrs.source(),
-            default = [],
-            doc = "All source files that are part of the compilation",
-        ),
-        "out": attrs.string(
-            doc = "The name of the output binary",
-        ),
-        "permissions": attrs.list(
+    impl=deno_run_impl,
+    attrs={
+        "main":
+        attrs.source(doc="The entry point TypeScript/JavaScript file"),
+        "srcs":
+        attrs.list(attrs.source(),
+                   default=[],
+                   doc="All source files that are part of the compilation"),
+        "out":
+        attrs.string(doc="The name of the output binary"),
+        "deno_cache":
+        attrs.option(attrs.dep(providers=[DenoWorkspaceInfo]), default=None),
+        "permissions":
+        attrs.list(
             attrs.string(),
-            default = [],
-            doc = "List of Deno permissions to grant (e.g., read, write, net)",
-        ),
-        "unstable_flags": attrs.list(
-            attrs.string(),
-            default = [],
-            doc = "List of unstable flags to enable",
-        ),
-        "_python_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:python",
-            providers = [PythonToolchainInfo],
-        ),
-        "_deno_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:deno",
-            providers = [DenoToolchainInfo],
-        ),
+            default=[],
+            doc="List of Deno permissions to grant (e.g., read, write, net)"),
+        "unstable_flags":
+        attrs.list(attrs.string(),
+                   default=[],
+                   doc="List of unstable flags to enable"),
+        "_python_toolchain":
+        attrs.toolchain_dep(default="toolchains//:python",
+                            providers=[PythonToolchainInfo]),
+        "_deno_toolchain":
+        attrs.toolchain_dep(default="toolchains//:deno",
+                            providers=[DenoToolchainInfo]),
     },
 )
+
 
 def deno_test_impl(ctx: AnalysisContext) -> list[Provider]:
     """Implementation of the deno_test rule."""
     deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
 
+    shim = cmd_script(
+        ctx=ctx,
+        name="deno_shim",
+        cmd=cmd_args(deno_toolchain.deno_binary),
+    )
+
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         deno_toolchain.deno_test[DefaultInfo].default_outputs[0],
+        "--deno-binary",
+        deno_toolchain.deno_binary,
     )
 
     for src in ctx.attrs.srcs:
@@ -276,104 +311,131 @@ def deno_test_impl(ctx: AnalysisContext) -> list[Provider]:
 
     return [
         DefaultInfo(),
-        RunInfo(args = cmd),
+        RunInfo(args=cmd),
     ]
 
+
 deno_test = rule(
-    impl = deno_test_impl,
-    attrs = {
-        "srcs": attrs.list(
+    impl=deno_test_impl,
+    attrs={
+        "srcs":
+        attrs.list(
             attrs.source(),
-            default = [],
-            doc = "The test files to run",
+            default=[],
+            doc="The test files to run",
         ),
-        "filter": attrs.option(
+        "filter":
+        attrs.option(
             attrs.string(),
-            default = None,
-            doc = "Run tests with this string or pattern in the test name",
+            default=None,
+            doc="Run tests with this string or pattern in the test name",
         ),
-        "ignore": attrs.list(
+        "ignore":
+        attrs.list(
             attrs.string(),
-            default = [],
-            doc = "List of files or directories to ignore",
+            default=[],
+            doc="List of files or directories to ignore",
         ),
-        "parallel": attrs.bool(
-            default = True,
-            doc = "Run tests in parallel",
+        "parallel":
+        attrs.bool(
+            default=True,
+            doc="Run tests in parallel",
         ),
-        "permissions": attrs.list(
+        "permissions":
+        attrs.list(
             attrs.string(),
-            default = [],
-            doc = "List of Deno permissions to grant (e.g., read, write, net)",
+            default=[],
+            doc="List of Deno permissions to grant (e.g., read, write, net)",
         ),
-        "unstable_flags": attrs.list(
+        "unstable_flags":
+        attrs.list(
             attrs.string(),
-            default = [],
-            doc = "List of unstable flags to enable",
+            default=[],
+            doc="List of unstable flags to enable",
         ),
-        "watch": attrs.bool(
-            default = False,
-            doc = "Watch for file changes and restart tests",
+        "watch":
+        attrs.bool(
+            default=False,
+            doc="Watch for file changes and restart tests",
         ),
-        "_python_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:python",
-            providers = [PythonToolchainInfo],
+        "_python_toolchain":
+        attrs.toolchain_dep(
+            default="toolchains//:python",
+            providers=[PythonToolchainInfo],
         ),
-        "_deno_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:deno",
-            providers = [DenoToolchainInfo],
+        "_deno_toolchain":
+        attrs.toolchain_dep(
+            default="toolchains//:deno",
+            providers=[DenoToolchainInfo],
         ),
     },
 )
 
+
 def _deno_workspace_impl(ctx: AnalysisContext) -> list[Provider]:
     deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
-    out = ctx.actions.declare_output(paths.basename(ctx.attrs.out), dir = True)
+
+    workspace_out = ctx.actions.declare_output(ctx.attrs.workspace_out_name,
+                                               dir=True)
+    cache_out = ctx.actions.declare_output(ctx.attrs.cache_out_name, dir=True)
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         deno_toolchain.deno_workspace[DefaultInfo].default_outputs[0],
     )
-    root_config = ctx.attrs.root_config[DefaultInfo].default_outputs[0]
 
-    cmd.add("--root_config", root_config)
-    cmd.add("--workspace_dir", out.as_output())
+    cmd.add("--root-config",
+            ctx.attrs.root_config[DefaultInfo].default_outputs[0])
+    cmd.add("--workspace-dir", workspace_out.as_output())
+    cmd.add("--deno-binary", deno_toolchain.deno_binary)
+    cmd.add("--deno-dir", cache_out.as_output())
 
-    for pkg in ctx.attrs.packages:
-        for output in pkg[DefaultInfo].default_outputs:
-            cmd.add("--package", output)
+    for src in ctx.attrs.srcs:
+        cmd.add("--src", src)
 
     ctx.actions.run(
         cmd,
-        category = "deno_workspace",
+        category="deno_workspace",
     )
 
     return [
-        DefaultInfo(default_output = out),
+        DefaultInfo(default_output=workspace_out),
+        DenoWorkspaceInfo(
+            workspace_dir=workspace_out,
+            cache_dir=cache_out,
+        ),
     ]
 
+
 deno_workspace = rule(
-    impl = _deno_workspace_impl,
-    attrs = {
-        "root_config": attrs.dep(
-            doc = "Root deno.json configuration file",
+    impl=_deno_workspace_impl,
+    attrs={
+        "root_config":
+        attrs.dep(doc="Root deno.json configuration file", ),
+        "srcs":
+        attrs.list(
+            attrs.source(),
+            doc="All source files and deno.json files for the workspace.",
         ),
-        "packages": attrs.list(
-            attrs.dep(),
-            default = [],
-            doc = "List of package targets that include their deno.json and source files",
+        "workspace_out_name":
+        attrs.string(
+            default="workspace",
+            doc="The name of the output directory for the workspace structure.",
         ),
-        "out": attrs.string(
-            default = "workspace",
-            doc = "The name of the output directory",
+        "cache_out_name":
+        attrs.string(
+            default="deno_cache",
+            doc="The name of the output directory for the Deno cache.",
         ),
-        "_python_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:python",
-            providers = [PythonToolchainInfo],
+        "_python_toolchain":
+        attrs.toolchain_dep(
+            default="toolchains//:python",
+            providers=[PythonToolchainInfo],
         ),
-        "_deno_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:deno",
-            providers = [DenoToolchainInfo],
+        "_deno_toolchain":
+        attrs.toolchain_dep(
+            default="toolchains//:deno",
+            providers=[DenoToolchainInfo],
         ),
     },
 )

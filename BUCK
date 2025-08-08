@@ -121,16 +121,15 @@ pnpm_workspace(
 deno_workspace(
     name = "deno_workspace",
     root_config = ":deno.json",
-    packages = [
-        "//bin/clover:deno.json",
-        "//bin/lang-js:deno.json",
-        "//lib/ts-lib-deno:deno.json",
-        "//lib/jsr-systeminit/remove-empty:deno.json",
-        "//lib/jsr-systeminit/ecs-template-qualification:deno.json",
-        "//lib/jsr-systeminit/cf-db:deno.json",
-        "//lib/jsr-systeminit/ai-agent:deno.json",
-        "//bin/si-luminork-api-tests:deno.json",
-        "//bin/si-mcp-server:deno.json",
+    srcs = [
+        "//bin/clover:srcs",
+        "//bin/lang-js:srcs",
+        "//lib/ts-lib-deno:srcs",
+        "//lib/jsr-systeminit/remove-empty:srcs",
+        "//lib/jsr-systeminit/ecs-template-qualification:srcs",
+        "//lib/jsr-systeminit/cf-db:srcs",
+        "//lib/jsr-systeminit/ai-agent:srcs",
+        "//bin/si-luminork-api-tests:srcs",
     ],
     visibility = ["PUBLIC"],
 )

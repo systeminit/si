@@ -53,3 +53,10 @@ deno_toolchain = rule(
     },
     is_toolchain_rule = True,
 )
+
+DenoWorkspaceInfo = provider(
+    fields = {
+        "workspace_dir": provider_field(typing.Any, default = None),
+        "cache_dir": provider_field(typing.Any, default = None),
+    },
+)
