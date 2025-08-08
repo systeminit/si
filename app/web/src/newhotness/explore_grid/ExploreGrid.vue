@@ -17,6 +17,7 @@
   -->
   <div
     v-else
+    id="test-explore-grid"
     ref="scrollRef"
     class="scrollable grow"
     style="overflow-anchor: none"
