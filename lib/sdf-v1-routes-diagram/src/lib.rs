@@ -55,11 +55,13 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 mod add_components_to_view;
+pub mod create_component;
 pub mod create_connection;
 pub mod delete_component;
 pub mod delete_connection;
 pub mod dvu_roots;
 pub mod get_all_components_and_edges;
+pub mod get_diagram;
 pub mod remove_delete_intent;
 
 #[remain::sorted]
@@ -103,6 +105,8 @@ pub enum DiagramError {
     InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
+    #[error("invalid request: {0}")]
+    InvalidRequest(String),
     #[error("tokio join error: {0}")]
     Join(#[from] JoinError),
     #[error(transparent)]
@@ -194,6 +198,11 @@ pub fn routes() -> Router<AppState> {
             "/create_connection", // USED IN OLD UI
             post(create_connection::create_connection),
         )
+        .route(
+            "/create_component", // FIXME(nick): replace API tests that used this (this affects practically all of them)
+            post(create_component::create_component),
+        )
+        .route("/get_diagram", get(get_diagram::get_diagram)) // FIXME(nick): replace API tests that used this (this affects practically all of them)
         .route(
             "/get_all_components_and_edges", // USED IN OLD UI
             get(get_all_components_and_edges::get_all_components_and_edges),
