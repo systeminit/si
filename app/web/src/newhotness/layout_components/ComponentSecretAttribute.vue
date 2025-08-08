@@ -73,6 +73,28 @@
             @click="submitSecretForm"
           />
         </ul>
+        <div
+          v-if="featureFlagsStore.DEFAULT_SUBS"
+          :class="
+            clsx(
+              'border w-full',
+              themeClasses('border-neutral-300', 'border-neutral-600'),
+            )
+          "
+        >
+          <input
+            :id="`default-subs-checkbox-${attributeTree.prop?.id}`"
+            type="checkbox"
+            :checked="attributeTree.attributeValue.isDefaultSource"
+            @input="
+              (ev) =>
+                toggleIsDefaultSource(ev, attributeTree.attributeValue.path)
+            "
+          />
+          <label :for="`default-subs-checkbox-${attributeTree.prop?.id}`">
+            Make this the default subscription for new components
+          </label>
+        </div>
       </div>
     </AttributeChildLayout>
   </div>
@@ -111,6 +133,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import AttributeInputRequiredProperty from "./AttributeInputRequiredProperty.vue";
@@ -120,9 +143,19 @@ import { useWatchedForm } from "../logic_composables/watched_form";
 import SecretInput from "./SecretInput.vue";
 import { MouseDetails, mouseEmitter } from "../logic_composables/emitters";
 
+const featureFlagsStore = useFeatureFlagsStore();
+
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;
   attributeTree: AttrTree;
+}>();
+
+const emit = defineEmits<{
+  (
+    e: "setDefaultSubscriptionSource",
+    path: AttributePath,
+    setTo: boolean,
+  ): void;
 }>();
 
 const displayName = computed(() => {
@@ -348,5 +381,10 @@ const removeListeners = () => {
 const submitSecretForm = async () => {
   await secretForm.handleSubmit();
   closeSecretForm();
+};
+
+const toggleIsDefaultSource = (event: Event, path: AttributePath) => {
+  const checked = (event.target as HTMLInputElement).checked;
+  emit("setDefaultSubscriptionSource", path, checked);
 };
 </script>

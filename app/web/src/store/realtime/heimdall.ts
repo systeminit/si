@@ -559,6 +559,24 @@ export const getSchemaMembers = async (args: {
   else return [];
 };
 
+export const getDefaultSubscriptions = async (args: {
+  workspaceId: WorkspacePk;
+  changeSetId: ChangeSetId;
+}) => {
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
+  const start = performance.now();
+  const defaultSubscriptions = await db.getDefaultSubscriptions(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  const end = performance.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query defaultSubscriptions", end - start, "ms");
+
+  return defaultSubscriptions;
+};
+
 export const getOutgoingConnections = async (args: {
   workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;

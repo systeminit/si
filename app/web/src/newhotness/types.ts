@@ -70,6 +70,25 @@ export interface ComponentsHaveActionsWithState {
   running: Set<ComponentId>;
 }
 
+export type GridMode =
+  | { mode: "default"; label: "" }
+  | { mode: "pinned"; componentId: ComponentId; label: "" }
+  | { mode: "defaultSubscriptions"; label: "" }
+  | { mode: "groupBy"; criteria: "diff"; label: "Diff Status" }
+  | {
+      mode: "groupBy";
+      criteria: "qualification";
+      label: "Qualification Status";
+    }
+  | { mode: "groupBy"; criteria: "upgrade"; label: "Upgradeable" }
+  | { mode: "groupBy"; criteria: "schemaName"; label: "Schema Name" }
+  | { mode: "groupBy"; criteria: "resource"; label: "Resource" }
+  | {
+      mode: "groupBy";
+      criteria: "incompatibleComponents";
+      label: "Incompatible Components";
+    };
+
 export interface ExploreContext {
   viewId: ComputedRef<string>;
   upgradeableComponents: ComputedRef<Set<string>>;
@@ -86,6 +105,7 @@ export interface ExploreContext {
   allVisibleComponents: ComputedRef<ComponentInList[]>;
   hasMultipleSections: ComputedRef<boolean>;
   focusedComponentRef: Ref<HTMLElement | undefined>;
+  gridMode: Ref<GridMode>;
 }
 
 // Define an enum for function kinds

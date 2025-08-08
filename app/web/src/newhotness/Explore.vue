@@ -133,16 +133,21 @@
             </template>
           </TabGroupToggle>
           <div v-if="showGrid" class="flex flex-row gap-xs">
+            <DefaultSubscriptionsButton
+              v-if="featureFlagsStore.DEFAULT_SUBS"
+              :selected="gridMode.mode === 'defaultSubscriptions'"
+              @click="clickDefaultSubscriptionsButton"
+            />
             <DropdownMenuButton
-              class="rounded"
+              class="rounded-sm"
+              hoverBorder
               :options="groupByDropDownOptions"
-              :modelValue="groupBySelection"
+              :modelValue="gridMode.mode === 'groupBy' ? gridMode.criteria : ''"
               placeholder="Group by"
               minWidthToAnchor
               checkable
               alwaysShowPlaceholder
               highlightWhenModelValue
-              :disabled="pinnedComponentId !== undefined"
               @update:modelValue="updateGroupBy"
             >
               <template #beforeOptions>
@@ -150,7 +155,7 @@
                   label="None"
                   value="''"
                   checkable
-                  :checked="groupBySelection === ''"
+                  :checked="gridMode.mode !== 'groupBy'"
                   @select="clearGroupBy"
                 />
               </template>
@@ -163,7 +168,8 @@
             oldest" next to the placeholder.
             -->
             <DropdownMenuButton
-              class="rounded"
+              class="rounded-sm"
+              hoverBorder
               :options="sortByDropDownOptions"
               :modelValue="sortBySelection"
               placeholder="Sort by"
@@ -278,6 +284,7 @@
               :gridRows="gridRows"
               :scrollRef="scrollRef"
               :bulkEditing="bulkEditing"
+              @componentNavigate="componentNavigate"
               @resetFilter="resetFilter"
               @bulkDone="bulkDone"
               @childClicked="componentClicked"
@@ -291,7 +298,7 @@
                 }
               "
               @childUnhover="() => (hoveredComponentId = undefined)"
-              @unpin="() => (pinnedComponentId = undefined)"
+              @unpin="() => (gridMode = { mode: 'default', label: '' })"
               @scrollend="fixContextMenuAfterScroll"
               @collapse="collapse"
               @scroll="onScroll"
@@ -457,7 +464,7 @@
       :viewListOptions="viewListOptions"
       @clearSelected="clearSelection"
       @edit="navigateToFocusedComponent"
-      @pin="(c) => (pinnedComponentId = c)"
+      @pin="(c) => (gridMode = { mode: 'pinned', label: '', componentId: c })"
       @bulk="startBulkEdit"
     />
   </section>
@@ -502,6 +509,8 @@ import {
   ComponentInList,
   EntityKind,
   View,
+  DefaultSubscription,
+  DefaultSubscriptions,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -522,7 +531,11 @@ import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import { getQualificationStatus } from "./ComponentTileQualificationStatus.vue";
 import FuncRunList from "./FuncRunList.vue";
-import { ComponentsHaveActionsWithState, ExploreContext } from "./types";
+import {
+  ComponentsHaveActionsWithState,
+  ExploreContext,
+  GridMode,
+} from "./types";
 import {
   KeyDetails,
   keyEmitter,
@@ -534,6 +547,7 @@ import {
 import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import AddComponentModal from "./AddComponentModal.vue";
+import DefaultSubscriptionsButton from "./DefaultSubscriptionsButton.vue";
 import AddViewModal from "./AddViewModal.vue";
 import EditViewModal from "./EditViewModal.vue";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
@@ -547,6 +561,7 @@ import ActionQueueList from "./ActionQueueList.vue";
 import { useComponentSearch } from "./logic_composables/search";
 import { routes, useApi } from "./api_composables";
 import { ExploreGridRowData } from "./explore_grid/ExploreGridRow.vue";
+import { useDefaultSubscription } from "./logic_composables/default_subscriptions";
 import { useContext } from "./logic_composables/context";
 
 const featureFlagsStore = useFeatureFlagsStore();
@@ -590,6 +605,8 @@ const retrieveFilterAndGroup = (): SelectionsInQueryString => {
 
   return qString ? (JSON.parse(qString) as SelectionsInQueryString) : {};
 };
+
+const defaultSubscriptions = useDefaultSubscription();
 
 const groupRef = ref<InstanceType<typeof TabGroupToggle>>();
 const actionsRef = ref<typeof CollapsingGridItem>();
@@ -688,27 +705,22 @@ watch(gridMapSwitcherValue, (newShowGrid) => {
   router.push({ query });
 });
 
-// ================================================================================================
-// SETUP THE FILTERED COMPONENTS REACTIVE AND UPGRADEABLES
-const upgrade = useUpgrade();
-const upgradeableComponentIds = computed(() => {
-  const set: Set<ComponentId> = new Set();
+// Track hovered component for highlighting failed actions
+const hoveredComponentId = ref<ComponentId | undefined>(undefined);
 
-  // TODO(nick): try to swap this with the component list to see if we recompute this less
-  // frequently. This is not a problem today, but could be tomorrow.
-  for (const component of filteredComponents.value ?? []) {
-    // This needs to be split out into a variable for reactivity. Keep this here or drown in
-    // sorrow and suffering. Relevant pull request: https://github.com/systeminit/si/pull/6483
-    const canUpgrade = upgrade(
-      component.schemaId,
-      component.schemaVariantId,
-    ).value;
-    if (canUpgrade) {
-      set.add(component.id);
-    }
+const getQualificationStatusTitle = (component: ComponentInList) => {
+  const status = getQualificationStatus(component);
+  switch (status) {
+    case "success":
+      return "Passed qualifications";
+    case "failure":
+      return "Failed qualifications";
+    case "warning":
+      return "Warnings";
+    default:
+      return "Unknown qualification status";
   }
-  return set;
-});
+};
 
 // ================================================================================================
 // VIEWS
@@ -778,38 +790,207 @@ watch(
 );
 
 // ================================================================================================
-// COMPONENT PINNING
-//
-// You might wonder why the entire component isn't the ref. It was originally. The component
-// context menu emitted the entire object. The problem is that it's possible to have a pinned
-// component in the query string that no longer exists or has been filtered out. Therefore, we need
-// to compute the component from the ID rather than the other way around.
-const pinnedComponentId = ref<ComponentId | undefined>(undefined);
+// ALL COMPONENTS AVAILABLE FOR USE, INCLUDING VIEWS AND PINNING
+const componentListQueryKind = computed(() =>
+  selectedViewId.value
+    ? EntityKind.ViewComponentList
+    : EntityKind.ComponentList,
+);
+const componentListQueryId = computed(() =>
+  selectedViewId.value ? selectedViewId.value : ctx.workspacePk.value,
+);
+const componentQueryKey = key(componentListQueryKind, componentListQueryId);
+const componentListQuery = useQuery<ComponentInList[]>({
+  queryKey: componentQueryKey,
+  enabled: ctx.queriesEnabled,
+  queryFn: async () => {
+    const arg = selectedViewId.value
+      ? args<Listable>(EntityKind.ViewComponentList, selectedViewId.value)
+      : args<Listable>(EntityKind.ComponentList);
+    const list = await bifrostList<ComponentInList[]>(arg);
+    return list ?? [];
+  },
+});
+const placeholderSearchText = computed(
+  () =>
+    `Search across ${componentListQuery.data.value?.length ?? 0} Components`,
+);
+const componentList = computed(() => {
+  return componentListQuery.data.value ?? [];
+});
 
-// Track hovered component for highlighting failed actions
-const hoveredComponentId = ref<ComponentId | undefined>(undefined);
+const hasSocketConnections = computed(() => {
+  if (!componentList.value) return false;
+  return componentList.value.some((c) => c.hasSocketConnections);
+});
 
-watch([pinnedComponentId], () => {
-  // First, make sure we clear any selection.
+// ================================================================================================
+// GRID MODE: GROUP BY, PINNING, DEFAULT SUBSCRIPTIONS, ETC.
+const gridMode = ref<GridMode>({ mode: "default", label: "" });
+
+const groupByDropDownOptions = computed(() => {
+  const baseOptions = [
+    { value: "diff", label: "Diff Status" },
+    { value: "qualification", label: "Qualification Status" },
+    { value: "upgrade", label: "Upgradeable" },
+    { value: "schemaName", label: "Schema Name" },
+    { value: "resource", label: "Resource" },
+  ];
+
+  // Only show Socket Connections option if there are components with socket connections
+  if (hasSocketConnections.value) {
+    baseOptions.push({
+      value: "incompatibleComponents",
+      label: "Incompatible Components",
+    });
+  }
+
+  return baseOptions;
+});
+
+const gridModeFromGroupByCriteria = (value: string): GridMode => {
+  if (value === "diff")
+    return {
+      mode: "groupBy",
+      criteria: "diff",
+      label: "Diff Status",
+    };
+  if (value === "qualification")
+    return {
+      mode: "groupBy",
+      criteria: "qualification",
+      label: "Qualification Status",
+    };
+  if (value === "upgrade")
+    return {
+      mode: "groupBy",
+      criteria: "upgrade",
+      label: "Upgradeable",
+    };
+  if (value === "schemaName")
+    return {
+      mode: "groupBy",
+      criteria: "schemaName",
+      label: "Schema Name",
+    };
+  if (value === "resource")
+    return {
+      mode: "groupBy",
+      criteria: "resource",
+      label: "Resource",
+    };
+  if (value === "incompatibleComponents")
+    return {
+      mode: "groupBy",
+      criteria: "incompatibleComponents",
+      label: "Incompatible Components",
+    };
+  return {
+    mode: "default",
+    label: "",
+  };
+};
+
+const clickDefaultSubscriptionsButton = () => {
   clearSelection();
+  if (gridMode.value.mode === "defaultSubscriptions") {
+    gridMode.value = {
+      mode: "default",
+      label: "",
+    };
+  } else {
+    gridMode.value = {
+      mode: "defaultSubscriptions",
+      label: "",
+    };
+  }
+};
 
-  // Update the query of the route (allowing for URL links) when the pinned component changes.
+const updateGroupBy = (val: string) => {
+  clearSelection();
+  gridMode.value = gridModeFromGroupByCriteria(val);
+};
+const clearGroupBy = () => {
+  clearSelection();
+  gridMode.value = { mode: "default", label: "" };
+};
+
+watch(
+  [hasSocketConnections, gridMode],
+  ([newHasSocketConnections, newGridMode]) => {
+    // If groupBy is set to IncompatibleComponents but there are no socket connections, clear it
+    if (
+      !newHasSocketConnections &&
+      newGridMode.mode === "groupBy" &&
+      newGridMode.criteria === "incompatibleComponents"
+    ) {
+      gridMode.value = { mode: "default", label: "" };
+    }
+  },
+);
+
+watch(gridMode, (newMode, oldMode) => {
+  // If we are moving in or out of pinning mode, we need to clear the selection.
+  if (newMode.mode === "pinned" || oldMode.mode === "pinned") {
+    clearSelection();
+  }
+
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
   delete query.map;
+  delete query.groupBy;
   delete query.pinned;
+  delete query.defaultSubscriptions;
 
   query.grid = "1";
 
-  if (pinnedComponentId.value !== undefined) {
-    query.pinned = pinnedComponentId.value;
+  if (newMode.mode === "pinned") {
+    query.pinned = newMode.componentId;
+  } else if (newMode.mode === "groupBy") {
+    if (newMode.criteria === "diff") {
+      query.groupBy = "diffstatus";
+    } else if (newMode.criteria === "qualification") {
+      query.groupBy = "qualificationstatus";
+    } else if (newMode.criteria === "upgrade") {
+      query.groupBy = "upgradeable";
+    } else if (newMode.criteria === "schemaName") {
+      query.groupBy = "schemaname";
+    } else if (newMode.criteria === "resource") {
+      query.groupBy = "resource";
+    } else if (newMode.criteria === "incompatibleComponents") {
+      query.groupBy = "incompatibleComponents";
+    }
+  } else if (newMode.mode === "defaultSubscriptions") {
+    query.defaultSubscriptions = "1";
   }
 
   storeFilterAndGroup(query);
   router.push({
     query,
   });
+});
+
+// ================================================================================================
+// SETUP THE FILTERED COMPONENTS REACTIVE AND UPGRADEABLES
+const upgrade = useUpgrade();
+const upgradeableComponentIds = computed(() => {
+  const set: Set<ComponentId> = new Set();
+
+  // TODO(nick): try to swap this with the component list to see if we recompute this less
+  // frequently. This is not a problem today, but could be tomorrow.
+  for (const component of filteredComponents.value ?? []) {
+    // This needs to be split out into a variable for reactivity. Keep this here or drown in
+    // sorrow and suffering. Relevant pull request: https://github.com/systeminit/si/pull/6483
+    const canUpgrade = upgrade(
+      component.schemaId,
+      component.schemaVariantId,
+    ).value;
+    if (canUpgrade) {
+      set.add(component.id);
+    }
+  }
+  return set;
 });
 
 // ================================================================================================
@@ -856,17 +1037,6 @@ export type GroupByUrlQuery =
   | "schemaname"
   | "resource"
   | "incompatibleComponents";
-
-enum GroupByCriteria {
-  Diff = "Diff Status",
-  Upgrade = "Upgradeable",
-  Qualification = "Qualification Status",
-  SchemaName = "Schema Name",
-  Resource = "Resource",
-  IncompatibleComponents = "Incompatible Components",
-  None = "",
-}
-const groupBySelection = ref<GroupByCriteria>(GroupByCriteria.None);
 
 const bulkDone = () => {
   bulkEditing.value = false;
@@ -954,52 +1124,18 @@ const highlightedActionIds = computed(() => {
 });
 
 // ================================================================================================
-// ALL COMPONENTS AVAILABLE FOR USE, INCLUDING VIEWS AND PINNING
-const componentListQueryKind = computed(() =>
-  selectedViewId.value
-    ? EntityKind.ViewComponentList
-    : EntityKind.ComponentList,
-);
-const componentListQueryId = computed(() =>
-  selectedViewId.value ? selectedViewId.value : ctx.workspacePk.value,
-);
-const componentQueryKey = key(componentListQueryKind, componentListQueryId);
-const componentListQuery = useQuery<ComponentInList[]>({
-  queryKey: componentQueryKey,
-  enabled: ctx.queriesEnabled,
-  queryFn: async () => {
-    const arg = selectedViewId.value
-      ? args<Listable>(EntityKind.ViewComponentList, selectedViewId.value)
-      : args<Listable>(EntityKind.ComponentList);
-    const list = await bifrostList<ComponentInList[]>(arg);
-    return list ?? [];
-  },
-});
-const placeholderSearchText = computed(
-  () =>
-    `Search across ${componentListQuery.data.value?.length ?? 0} Components`,
-);
-const componentList = computed(() => {
-  return componentListQuery.data.value ?? [];
-});
-
-const hasSocketConnections = computed(() => {
-  if (!componentList.value) return false;
-  return componentList.value.some((c) => c.hasSocketConnections);
-});
-
-// ================================================================================================
 // PINNING, RESOURCE COUNT, ETC.
-const pinnedComponent = computed(() =>
-  componentList.value.find((c) => c.id === pinnedComponentId.value),
-);
+const pinnedComponent = computed(() => {
+  const mode = gridMode.value;
+  if (mode.mode !== "pinned") return undefined;
+  return componentList.value.find((c) => c.id === mode.componentId);
+});
 const connectionsGetter = useConnections();
 const pinnedComponentConnections = computed(() =>
   // This is critical. We only want to get the connections if we found the pinned component. The ID
-  // could have been provided via URL and the component may not exist anymore. In short, it is
-  // totally okay to have "pinnedComponentId" be populated, but "pinnedComponent" not be.
-  pinnedComponentId.value && pinnedComponent.value
-    ? connectionsGetter(pinnedComponentId.value).value
+  // could have been provided via URL and the component may not exist anymore.
+  pinnedComponent.value
+    ? connectionsGetter(pinnedComponent.value.id).value
     : undefined,
 );
 const pinnedComponentConnectionSets = computed(() => {
@@ -1104,70 +1240,78 @@ const sortedAndGroupedComponents = computed(() => {
         groups["No subscriptions"].push(component);
       }
     }
-  } else if (groupBySelection.value === "Diff Status") {
-    groups = {
-      "With Diffs": [],
-      "No Diffs": [],
-    };
-    for (const component of components) {
-      const title =
-        component.diffStatus && component.diffStatus !== "None"
-          ? "With Diffs"
-          : "No Diffs";
-      groups[title]?.push(component);
-    }
-  } else if (groupBySelection.value === "Qualification Status") {
-    groups = {
-      "Failed qualifications": [],
-      Warnings: [],
-      "Passed qualifications": [],
-      "Unknown qualification status": [],
-    };
-    for (const component of components) {
-      const title = getQualificationStatusTitle(component);
-      groups[title] ??= [];
-      groups[title]?.push(component);
-    }
-  } else if (groupBySelection.value === "Upgradeable") {
-    groups = {
-      Upgradeable: [],
-      "Up to date": [],
-    };
-    for (const component of components) {
-      const title = upgradeableComponentIds.value.has(component.id)
-        ? "Upgradeable"
-        : "Up to date";
-      groups[title]?.push(component);
-    }
-  } else if (groupBySelection.value === "Resource") {
-    groups = {
-      "Has Resource": [],
-      "No Resource": [],
-    };
-    for (const component of components) {
-      const title = component.hasResource ? "Has Resource" : "No Resource";
-      groups[title]?.push(component);
-    }
-  } else if (groupBySelection.value === "Incompatible Components") {
-    groups = {
-      "Incompatible Components": [],
-      "Compatible Components": [],
-    };
-    for (const component of components) {
-      const title = component.hasSocketConnections
-        ? "Incompatible Components"
-        : "Compatible Components";
-      groups[title]?.push(component);
-    }
-  } else if (groupBySelection.value === "Schema Name") {
-    const unsortedGroups: Record<string, ComponentInList[]> = {};
-    for (const component of components ?? []) {
-      const schemaName = component.schemaName;
-      (unsortedGroups[schemaName] ??= []).push(component);
-    }
+  } else if (gridMode.value.mode === "groupBy") {
+    if (gridMode.value.criteria === "diff") {
+      groups = {
+        "With Diffs": [],
+        "No Diffs": [],
+      };
+      for (const component of components) {
+        const title =
+          component.diffStatus && component.diffStatus !== "None"
+            ? "With Diffs"
+            : "No Diffs";
+        groups[title]?.push(component);
+      }
+    } else if (gridMode.value.criteria === "qualification") {
+      groups = {
+        "Failed qualifications": [],
+        Warnings: [],
+        "Passed qualifications": [],
+        "Unknown qualification status": [],
+      };
+      for (const component of components) {
+        const title = getQualificationStatusTitle(component);
+        groups[title] ??= [];
+        groups[title]?.push(component);
+      }
+    } else if (gridMode.value.criteria === "upgrade") {
+      groups = {
+        Upgradeable: [],
+        "Up to date": [],
+      };
+      for (const component of components) {
+        const title = upgradeableComponentIds.value.has(component.id)
+          ? "Upgradeable"
+          : "Up to date";
+        groups[title]?.push(component);
+      }
+    } else if (gridMode.value.criteria === "resource") {
+      groups = {
+        "Has Resource": [],
+        "No Resource": [],
+      };
+      for (const component of components) {
+        const title = component.hasResource ? "Has Resource" : "No Resource";
+        groups[title]?.push(component);
+      }
+    } else if (gridMode.value.criteria === "incompatibleComponents") {
+      groups = {
+        "Incompatible Components": [],
+        "Compatible Components": [],
+      };
+      for (const component of components) {
+        const title = component.hasSocketConnections
+          ? "Incompatible Components"
+          : "Compatible Components";
+        groups[title]?.push(component);
+      }
+    } else if (gridMode.value.criteria === "schemaName") {
+      const unsortedGroups: Record<string, ComponentInList[]> = {};
+      for (const component of components ?? []) {
+        const schemaName = component.schemaName;
+        (unsortedGroups[schemaName] ??= []).push(component);
+      }
 
-    groups = Object.fromEntries(
-      Object.entries(unsortedGroups).sort(([a], [b]) => a.localeCompare(b)),
+      groups = Object.fromEntries(
+        Object.entries(unsortedGroups).sort(([a], [b]) => a.localeCompare(b)),
+      );
+    }
+  } else if (gridMode.value.mode === "defaultSubscriptions") {
+    const defaultSubs = defaultSubscriptions.value;
+    groups = calculateDefaultSubscriptionGroups(
+      componentsById.value,
+      defaultSubs,
     );
   } else {
     groups[""] = components;
@@ -1175,6 +1319,62 @@ const sortedAndGroupedComponents = computed(() => {
 
   return groups;
 });
+
+const calculateDefaultSubscriptionGroups = (
+  componentMap: Record<ComponentId, ComponentInList>,
+  defaultSubs: DefaultSubscriptions,
+): Record<string, ComponentInList[]> => {
+  const groups: Record<string, ComponentInList[]> = {};
+
+  const defaultSubComponentIds = [];
+  const defaultSubsInverted: Record<ComponentId, string[]> = {};
+  for (const [key, sub] of defaultSubs.defaultSubscriptions.entries()) {
+    defaultSubComponentIds.push(sub.componentId);
+    (defaultSubsInverted[sub.componentId] ??= []).push(key);
+  }
+  for (const keys of Object.values(defaultSubsInverted)) {
+    keys.sort((a, b) =>
+      (defaultSubs.defaultSubscriptions.get(a)?.path ?? "").localeCompare(
+        defaultSubs.defaultSubscriptions.get(b)?.path ?? "",
+      ),
+    );
+  }
+  defaultSubComponentIds.sort((a, b) => -a.localeCompare(b));
+
+  for (const defaultSubComponentId of defaultSubComponentIds) {
+    for (const keyString of defaultSubsInverted[defaultSubComponentId] ?? []) {
+      const sub = defaultSubs.defaultSubscriptions.get(keyString);
+      if (!sub) {
+        continue;
+      }
+
+      const componentIds = defaultSubs.componentsForSubs.get(keyString);
+      if (componentIds) {
+        const componentIdsAsArray = Array.from(componentIds);
+        componentIdsAsArray.sort((a, b) => -a.localeCompare(b));
+
+        const sourceComponent = componentMap[sub.componentId];
+        if (!sourceComponent) {
+          continue;
+        }
+
+        const componentsForGroup: ComponentInList[] = [];
+        for (const componentId of componentIdsAsArray) {
+          const component = componentMap[componentId];
+          if (component) {
+            componentsForGroup.push(component);
+          }
+        }
+
+        groups[keyString] = componentsForGroup;
+      } else {
+        groups[keyString] = [];
+      }
+    }
+  }
+
+  return groups;
+};
 
 const MIN_GRID_TILE_WIDTH = 250;
 const GRID_TILE_GAP = 16; // this is being used for both the X and Y gap
@@ -1270,12 +1470,43 @@ const gridRows = computed(() => {
       collapsed = count === 0 || groupName === "Unconnected";
     }
 
-    if (hasMultipleSections.value) {
+    if (
+      hasMultipleSections.value &&
+      gridMode.value.mode !== "defaultSubscriptions"
+    ) {
       rows.push({
         type: "header",
         title: groupName,
         count,
         collapsed,
+      });
+    } else if (gridMode.value.mode === "defaultSubscriptions") {
+      const defaultSub: DefaultSubscription =
+        defaultSubscriptions.value.defaultSubscriptions.get(groupName) ?? {
+          componentId: "",
+          path: "unknown",
+        };
+
+      const {
+        name: componentName,
+        schemaName,
+        schemaCategory,
+      } = componentsById.value[defaultSub.componentId] ?? {
+        name: "Unknown",
+        schemaName: "Unknown schema",
+        schemaCategory: "Unknown category",
+      };
+
+      rows.push({
+        type: "defaultSubHeader",
+        schemaName,
+        schemaCategory,
+        componentName,
+        componentId: defaultSub.componentId,
+        path: defaultSub.path,
+        collapsed,
+        subKey: groupName,
+        count,
       });
     }
 
@@ -1291,7 +1522,9 @@ const gridRows = computed(() => {
             type: "contentRow",
             components,
             chunkInitialId: dataIndex,
-            insideSection: hasMultipleSections.value,
+            insideSection:
+              hasMultipleSections.value ||
+              gridMode.value.mode === "defaultSubscriptions",
           });
 
           // We need to increase the current index by the length of the row for the next iteration.
@@ -1306,7 +1539,10 @@ const gridRows = computed(() => {
     }
 
     // Whether or not we collapse the group, we need the footer.
-    if (hasMultipleSections.value) {
+    if (
+      hasMultipleSections.value ||
+      gridMode.value.mode === "defaultSubscriptions"
+    ) {
       rows.push({
         type: "footer",
       });
@@ -1390,6 +1626,7 @@ const exploreContext = computed<ExploreContext>(() => {
     componentsPendingActionNames,
     hasMultipleSections,
     focusedComponentRef,
+    gridMode,
   };
 });
 
@@ -1402,6 +1639,13 @@ const searchString = ref<string | null>("");
 const filteredComponents = useComponentSearch(
   () => searchString.value ?? "",
   componentList,
+);
+const componentsById = computed(
+  () =>
+    filteredComponents.value?.reduce((accum, comp) => {
+      accum[comp.id] = comp;
+      return accum;
+    }, {} as Record<ComponentId, ComponentInList>) ?? {},
 );
 
 // Filtered components counter state
@@ -1488,8 +1732,9 @@ watch(selectedComponentIndexes, () => {
 });
 
 const focusedComponentIsPinned = computed(() => {
+  if (gridMode.value.mode !== "pinned") return false;
   if (!focusedComponent.value) return false;
-  return focusedComponent.value.id === pinnedComponentId.value;
+  return focusedComponent.value.id === gridMode.value.componentId;
 });
 
 const nextComponent = (wrap = false) => {
@@ -1816,9 +2061,13 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
 
       // We do not need the context menu to pin and unpin.
       if (focusedComponentIsPinned.value) {
-        pinnedComponentId.value = undefined;
+        gridMode.value = { mode: "default", label: "" };
       } else {
-        pinnedComponentId.value = focusedComponent.value.id;
+        gridMode.value = {
+          mode: "pinned",
+          label: "",
+          componentId: focusedComponent.value.id,
+        };
       }
     } else {
       mapRef.value?.onP(e);
@@ -2017,31 +2266,59 @@ const setSelectionsFromQuery = async () => {
 
   switch (query.groupBy) {
     case "diffstatus":
-      groupBySelection.value = GroupByCriteria.Diff;
+      gridMode.value = {
+        mode: "groupBy",
+        criteria: "diff",
+        label: "Diff Status",
+      };
       break;
     case "qualificationstatus":
-      groupBySelection.value = GroupByCriteria.Qualification;
+      gridMode.value = {
+        mode: "groupBy",
+        criteria: "qualification",
+        label: "Qualification Status",
+      };
       break;
     case "upgradeable":
-      groupBySelection.value = GroupByCriteria.Upgrade;
+      gridMode.value = {
+        mode: "groupBy",
+        criteria: "upgrade",
+        label: "Upgradeable",
+      };
       break;
     case "schemaname":
-      groupBySelection.value = GroupByCriteria.SchemaName;
+      gridMode.value = {
+        mode: "groupBy",
+        criteria: "schemaName",
+        label: "Schema Name",
+      };
       break;
     case "resource":
-      groupBySelection.value = GroupByCriteria.Resource;
+      gridMode.value = {
+        mode: "groupBy",
+        criteria: "resource",
+        label: "Resource",
+      };
       break;
     case "incompatibleComponents":
-      groupBySelection.value = GroupByCriteria.IncompatibleComponents;
+      gridMode.value = {
+        mode: "groupBy",
+        criteria: "incompatibleComponents",
+        label: "Incompatible Components",
+      };
       break;
     case undefined:
     default:
-      groupBySelection.value = GroupByCriteria.None;
+      gridMode.value = { mode: "default", label: "" };
       break;
   }
 
   if (query.pinned !== undefined) {
-    pinnedComponentId.value = query.pinned;
+    gridMode.value = { mode: "pinned", label: "", componentId: query.pinned };
+  }
+
+  if (query.defaultSubscriptions === "1") {
+    gridMode.value = { mode: "defaultSubscriptions", label: "" };
   }
 
   if (query.viewId !== undefined) {
@@ -2132,101 +2409,6 @@ const openEditViewModal = (option: { value: string; label: string }) => {
 
 const onMapDeselect = () => {
   searchRef.value?.blur();
-};
-
-// ================================================================================================
-// GROUP BY STUFF
-
-const groupByFromString = (s: string): GroupByCriteria => {
-  const key = (
-    _.keys(GroupByCriteria) as (keyof typeof GroupByCriteria)[]
-  ).find((k) => GroupByCriteria[k] === s);
-
-  if (!key) return GroupByCriteria.None;
-  else return GroupByCriteria[key];
-};
-
-const updateGroupBy = (val: string) => {
-  clearSelection();
-  groupBySelection.value = groupByFromString(val);
-};
-const clearGroupBy = () => {
-  clearSelection();
-  groupBySelection.value = GroupByCriteria.None;
-};
-
-const groupByDropDownOptions = computed(() => {
-  const baseOptions = [
-    { value: GroupByCriteria.Diff, label: "Diff Status" },
-    { value: GroupByCriteria.Qualification, label: "Qualification Status" },
-    { value: GroupByCriteria.Upgrade, label: "Upgradeable" },
-    { value: GroupByCriteria.SchemaName, label: "Schema Name" },
-    { value: GroupByCriteria.Resource, label: "Resource" },
-  ];
-
-  // Only show Socket Connections option if there are components with socket connections
-  if (hasSocketConnections.value) {
-    baseOptions.push({
-      value: GroupByCriteria.IncompatibleComponents,
-      label: "Incompatible Components",
-    });
-  }
-
-  return baseOptions;
-});
-
-// Watch for when incompatible components groupBy should be cleared
-watch([hasSocketConnections, groupBySelection], ([hasSocket, groupBy]) => {
-  // If groupBy is set to IncompatibleComponents but there are no socket connections, clear it
-  if (!hasSocket && groupBy === GroupByCriteria.IncompatibleComponents) {
-    groupBySelection.value = GroupByCriteria.None;
-  }
-});
-
-watch([groupBySelection], () => {
-  // Update the query of the route (allowing for URL links) when the group by selection change.
-  const query: SelectionsInQueryString = {
-    ...router.currentRoute.value?.query,
-  };
-  delete query.map;
-  delete query.groupBy;
-
-  query.grid = "1";
-
-  if (groupBySelection.value === GroupByCriteria.Diff) {
-    query.groupBy = "diffstatus";
-  } else if (groupBySelection.value === GroupByCriteria.Qualification) {
-    query.groupBy = "qualificationstatus";
-  } else if (groupBySelection.value === GroupByCriteria.Upgrade) {
-    query.groupBy = "upgradeable";
-  } else if (groupBySelection.value === GroupByCriteria.SchemaName) {
-    query.groupBy = "schemaname";
-  } else if (groupBySelection.value === GroupByCriteria.Resource) {
-    query.groupBy = "resource";
-  } else if (
-    groupBySelection.value === GroupByCriteria.IncompatibleComponents
-  ) {
-    query.groupBy = "incompatibleComponents";
-  }
-
-  storeFilterAndGroup(query);
-  router.push({
-    query,
-  });
-});
-
-const getQualificationStatusTitle = (component: ComponentInList) => {
-  const status = getQualificationStatus(component);
-  switch (status) {
-    case "success":
-      return "Passed qualifications";
-    case "failure":
-      return "Failed qualifications";
-    case "warning":
-      return "Warnings";
-    default:
-      return "Unknown qualification status";
-  }
 };
 
 // ================================================================================================
