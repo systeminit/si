@@ -645,6 +645,24 @@
               :title="selectedConnection.possibleConnection.path"
             />
           </div>
+          <div
+            :class="
+              clsx(
+                'border w-full',
+                themeClasses('border-neutral-300', 'border-neutral-600'),
+              )
+            "
+          >
+            <input
+              :id="`checkbox-${prop?.id}`"
+              type="checkbox"
+              :checked="isDefaultSource"
+              @input="(ev) => toggleIsDefaultSource(ev, path)"
+            />
+            <label :for="`checkbox-${prop?.id}`">
+              Make this the default subscription for new components
+            </label>
+          </div>
         </div>
       </template>
       <CodeEditorModal
@@ -733,6 +751,7 @@ const props = defineProps<{
   isArray?: boolean;
   isMap?: boolean;
   isSecret?: boolean;
+  isDefaultSource?: boolean;
   disableInputWindow?: boolean;
   forceReadOnly?: boolean;
   hasSocketConnection?: boolean;
@@ -968,6 +987,7 @@ const createSubscriptionMutation = useMutation({
         if (updatedFound) {
           updatedFound.attributeValue.externalSources = [
             {
+              componentId: updatedData.id,
               componentName: selectedConnectionData.value.componentName,
               path: selectedConnectionData.value.propPath,
               isSecret: false,
@@ -1087,6 +1107,11 @@ const emit = defineEmits<{
   ): void;
   (e: "delete", path: AttributePath): void;
   (e: "removeSubscription", path: AttributePath): void;
+  (
+    e: "setDefaultSubscriptionSource",
+    path: AttributePath,
+    setTo: boolean,
+  ): void;
   (e: "add", key?: string): void;
   (e: "selected"): void;
   (e: "close"): void;
@@ -1570,6 +1595,11 @@ const openCodeEditorModal = () => {
 const setValueFromCodeEditorModal = (value: string) => {
   valueForm.setFieldValue("value", value);
   valueForm.handleSubmit();
+};
+
+const toggleIsDefaultSource = (event: Event, path: AttributePath) => {
+  const checked = (event.target as HTMLInputElement).checked;
+  emit("setDefaultSubscriptionSource", path, checked);
 };
 
 const optionIsSelected = computed(

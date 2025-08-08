@@ -56,6 +56,12 @@ const props = defineProps<{
   scrollRef: HTMLDivElement | undefined;
 }>();
 
+const treatAsMultipleSections = computed(
+  () =>
+    exploreContext.hasMultipleSections.value ||
+    exploreContext.gridMode.value.mode === "defaultSubscriptions",
+);
+
 const GRID_TILE_GAP = 16; // this is being used for both the X and Y gap
 
 const clickCollapse = (title: string, collapsed: boolean) => {
@@ -74,9 +80,11 @@ const getItemKey = (rowIndex: number) => {
   switch (row.type) {
     case "header":
       return `header-${row.title}`;
+    case "defaultSubHeader":
+      return `defaultSubHeader-${row.subKey}`;
     case "contentRow":
       if (
-        !exploreContext.hasMultipleSections.value &&
+        !treatAsMultipleSections.value &&
         rowIndex === props.gridRows.length - 1
       )
         return `contentRow-final-${rowIndex}`;
@@ -99,10 +107,11 @@ const rowHeights = computed(() => {
   return props.gridRows.map((row, index) => {
     switch (row.type) {
       case "header":
+      case "defaultSubHeader":
         return GROUP_HEADER_HEIGHT;
       case "contentRow":
         if (
-          !exploreContext.hasMultipleSections.value &&
+          !treatAsMultipleSections.value &&
           index === props.gridRows.length - 1
         ) {
           return GRID_TILE_HEIGHT;
@@ -218,6 +227,7 @@ section.grid.map {
 div.main {
   grid-area: "main";
 }
+
 div.right {
   grid-area: "right";
 }

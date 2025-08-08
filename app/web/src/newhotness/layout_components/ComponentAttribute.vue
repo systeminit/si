@@ -14,6 +14,7 @@
     :externalSources="attributeTree.attributeValue.externalSources"
     :isArray="false"
     :isMap="false"
+    :isDefaultSource="false"
     :forceReadOnly="false"
     :hasSocketConnection="hasSocketConnections"
     @close="closeSubscriptionInput"
@@ -156,6 +157,9 @@
             "
             @delete="(path) => emit('delete', path)"
             @remove-subscription="(path) => emit('removeSubscription', path)"
+            @set-default-subscription-source="
+              (path, setTo) => emit('setDefaultSubscriptionSource', path, setTo)
+            "
             @add="(...args) => emit('add', ...args)"
             @set-key="(...args) => emit('setKey', ...args)"
           />
@@ -243,8 +247,12 @@
         :isMap="attributeTree.prop?.kind === 'map'"
         :forceReadOnly="props.forceReadOnly || parentHasExternalSources"
         :hasSocketConnection="hasSocketConnections"
+        :isDefaultSource="attributeTree.attributeValue.isDefaultSource"
         @save="(...args) => emit('save', ...args)"
         @delete="(...args) => emit('delete', ...args)"
+        @set-default-subscription-source="
+          (path, setTo) => emit('setDefaultSubscriptionSource', path, setTo)
+        "
         @remove-subscription="(...args) => emit('removeSubscription', ...args)"
         @add="(...args) => add(...args)"
       />
@@ -482,6 +490,11 @@ const emit = defineEmits<{
     connectingComponentId?: ComponentId,
   ): void;
   (e: "delete", path: AttributePath): void;
+  (
+    e: "setDefaultSubscriptionSource",
+    path: AttributePath,
+    setTo: boolean,
+  ): void;
   (e: "removeSubscription", path: AttributePath): void;
   (e: "add", api: UseApi, attributeTree: AttrTree, value: NewChildValue): void;
   (

@@ -141,6 +141,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
                 let comp_id = AttributeValue::component_id(ctx, sub.attribute_value_id).await?;
                 let comp_name = Component::name_by_id(ctx, comp_id).await?;
                 let source = ExternalSource {
+                    component_id: comp_id,
                     path: sub.path.to_string(),
                     component_name: comp_name,
                     is_secret: sub.path.to_string().starts_with("/secrets/"),

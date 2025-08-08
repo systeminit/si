@@ -355,6 +355,13 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
+  async getDefaultSubscriptions(workspaceId: string, changeSetId: string) {
+    return await withLeader(
+      async (remote) =>
+        await remote.getDefaultSubscriptions(workspaceId, changeSetId),
+    );
+  },
+
   async mjolnir(
     workspaceId: string,
     changeSetId: string,

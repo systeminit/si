@@ -88,6 +88,9 @@ async fn set_as_default_source(
             ))?;
     AttributeValue::set_as_default_subscription_source(ctx, attribute_value_id).await?;
 
+    dbg!("setting");
+    ctx.commit().await?;
+
     tracker.track(
         ctx,
         "set_default_source",
@@ -121,7 +124,10 @@ async fn delete_default_source(
                 component_id,
             ))?;
 
-    AttributeValue::set_as_default_subscription_source(ctx, attribute_value_id).await?;
+    AttributeValue::remove_default_subscription_source(ctx, attribute_value_id).await?;
+    dbg!("removing");
+
+    ctx.commit().await?;
 
     tracker.track(
         ctx,

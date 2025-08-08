@@ -25,6 +25,7 @@ export enum EntityKind {
   ComponentList = "ComponentList",
   ComponentsInOnlyOneView = "ComponentsInOnlyOneView",
   ComponentsInViews = "ComponentsInViews",
+  DefaultSubscriptions = "DefaultSubscriptions",
   DependentValueComponentList = "DependentValueComponentList",
   IncomingConnections = "IncomingConnections",
   IncomingConnectionsList = "IncomingConnectionsList",
@@ -377,10 +378,12 @@ export interface AttributeValue {
   validation?: ValidationOutput;
   secret: Secret | null;
   hasSocketConnection: boolean;
+  isDefaultSource: boolean;
 }
 
 export interface ExternalSource {
   path: string;
+  componentId: ComponentId;
   componentName: string;
   isSecret: boolean;
 }
@@ -470,3 +473,20 @@ export interface DependentValueComponentList {
   id: string;
   componentIds: ComponentId[];
 }
+
+export interface DefaultSubscription {
+  componentId: ComponentId;
+  path: string;
+}
+
+export interface DefaultSubscriptions {
+  defaultSubscriptions: Map<string, DefaultSubscription>;
+  componentsForSubs: DefaultMap<string, Set<ComponentId>>;
+  subsForComponents: DefaultMap<ComponentId, Set<string>>;
+}
+
+export const emptyDefaultSubs: DefaultSubscriptions = {
+  defaultSubscriptions: new Map(),
+  componentsForSubs: new DefaultMap(() => new Set()),
+  subsForComponents: new DefaultMap(() => new Set()),
+};

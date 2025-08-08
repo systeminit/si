@@ -4,7 +4,7 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { BustCacheFn, Id } from "./types/dbinterface";
 import { EntityKind } from "./types/entity_kind_types";
 
-const _DEBUG = import.meta.env.VITE_SI_ENV === "local";
+const _DEBUG = false; // import.meta.env.VITE_SI_ENV === "local";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function debug(...args: any | any[]) {
   // eslint-disable-next-line no-console

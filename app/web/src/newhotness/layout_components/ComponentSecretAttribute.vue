@@ -73,6 +73,27 @@
             @click="submitSecretForm"
           />
         </ul>
+        <div
+          :class="
+            clsx(
+              'border w-full',
+              themeClasses('border-neutral-300', 'border-neutral-600'),
+            )
+          "
+        >
+          <input
+            :id="`checkbox-${attributeTree.prop?.id}`"
+            type="checkbox"
+            :checked="attributeTree.attributeValue.isDefaultSource"
+            @input="
+              (ev) =>
+                toggleIsDefaultSource(ev, attributeTree.attributeValue.path)
+            "
+          />
+          <label :for="`checkbox-${attributeTree.prop?.id}`">
+            Make this the default subscription for new components
+          </label>
+        </div>
       </div>
     </AttributeChildLayout>
   </div>
@@ -123,6 +144,14 @@ import { MouseDetails, mouseEmitter } from "../logic_composables/emitters";
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;
   attributeTree: AttrTree;
+}>();
+
+const emit = defineEmits<{
+  (
+    e: "setDefaultSubscriptionSource",
+    path: AttributePath,
+    setTo: boolean,
+  ): void;
 }>();
 
 const displayName = computed(() => {
@@ -348,5 +377,10 @@ const removeListeners = () => {
 const submitSecretForm = async () => {
   await secretForm.handleSubmit();
   closeSecretForm();
+};
+
+const toggleIsDefaultSource = (event: Event, path: AttributePath) => {
+  const checked = (event.target as HTMLInputElement).checked;
+  emit("setDefaultSubscriptionSource", path, checked);
 };
 </script>
