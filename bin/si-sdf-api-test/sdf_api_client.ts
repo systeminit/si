@@ -68,16 +68,8 @@ export const ROUTES = {
       `/diagram/get_diagram?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
     method: "GET",
   },
-  list_schemas: {
-    path: () => "/diagram/list_schemas",
-    method: "GET",
-  },
   remove_delete_intent: {
     path: () => "/diagram/remove_delete_intent",
-    method: "POST",
-  },
-  set_component_position: {
-    path: () => "/diagram/set_component_position",
     method: "POST",
   },
   set_component_type: {

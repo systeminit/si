@@ -57,17 +57,6 @@ async function emulate_paul_stack_inner(
 
   //await sleepBetween(3000, 6000);
 
-  await setComponentGeometry(
-    sdf,
-    changeSetId,
-    regionComponentId,
-    0,
-    0,
-    1800,
-    800,
-  );
-  //await sleepBetween(1000, 5000);
-
   // UPDATE REGION
   const regionValue = "us-east-1";
   const { values: RegionPropValues } = await getPropertyEditor(
@@ -123,19 +112,6 @@ async function emulate_paul_stack_inner(
     changeSetId,
     vpcComponentId,
     "configurationFrameDown",
-  );
-
-  await setComponentGeometry(
-    sdf,
-    changeSetId,
-    vpcComponentId,
-    0,
-    80,
-    1700,
-    600,
-    {
-      newParent: regionComponentId,
-    },
   );
 
   await sleepBetween(0, 750);
@@ -259,55 +235,6 @@ async function getDiagram(
   assert(Array.isArray(diagram?.edges), "Expected edges list on the diagram");
 
   return diagram;
-}
-
-async function setComponentGeometry(
-  sdf: SdfApiClient,
-  changeSetId: string,
-  componentId: string,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  parentArguments?: {
-    newParent?: string;
-    detach?: boolean;
-  },
-) {
-  const someParentArguments = parentArguments ?? {};
-  const setPositionPayload = {
-    dataByComponentId: {
-      [componentId]: {
-        geometry: {
-          x: x.toString(),
-          y: y.toString(),
-          width: w.toString(),
-          height: h.toString(),
-        },
-        detach: false,
-        ...someParentArguments,
-      },
-    },
-    diagramKind: "configuration",
-    visibility_change_set_pk: changeSetId,
-    workspaceId: sdf.workspaceId,
-    requestUlid: changeSetId,
-    clientUlid: ulid(),
-  };
-
-  const result = await sdf.call({
-    route: "set_component_position",
-    body: setPositionPayload,
-  });
-
-  // Make side effect calls
-  await Promise.all([
-    getQualificationSummary(sdf, changeSetId),
-    getActions(sdf, changeSetId),
-    getFuncs(sdf, changeSetId),
-  ]);
-
-  return result;
 }
 
 async function setComponentType(

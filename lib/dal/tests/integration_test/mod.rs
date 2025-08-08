@@ -26,7 +26,7 @@ mod property_editor;
 mod qualifications;
 mod rebaser;
 mod resource_metadata;
-mod schema;
+mod schema_variant;
 mod secret;
 mod split_snapshot;
 mod validations;

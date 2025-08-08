@@ -54,19 +54,15 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+mod add_components_to_view;
 pub mod create_component;
 pub mod create_connection;
-pub mod get_diagram;
-pub mod list_schemas;
-pub mod set_component_position;
-
 pub mod delete_component;
 pub mod delete_connection;
-pub mod remove_delete_intent;
-
-mod add_components_to_view;
 pub mod dvu_roots;
 pub mod get_all_components_and_edges;
+pub mod get_diagram;
+pub mod remove_delete_intent;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -93,8 +89,6 @@ pub enum DiagramError {
     DalFrame(#[from] dal::component::frame::FrameError),
     #[error("dal schema variant error: {0}")]
     DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
-    #[error("dal schema view error: {0}")]
-    DalSchemaView(#[from] dal::schema::view::SchemaViewError),
     #[error("dependent value root error: {0}")]
     DependentValueRoot(#[from] DependentValueRootError),
     #[error("duplicated connection")]
@@ -185,39 +179,33 @@ impl IntoResponse for DiagramError {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
-            "/add_components_to_view",
+            "/add_components_to_view", // USED IN OLD UI
             post(add_components_to_view::add_components_to_view),
         )
         .route(
-            "/delete_connection",
+            "/delete_connection", // USED IN OLD UI
             post(delete_connection::delete_connection),
         )
         .route(
-            "/delete_components",
+            "/delete_components", // USED IN OLD UI
             post(delete_component::delete_components),
         )
         .route(
-            "/remove_delete_intent",
+            "/remove_delete_intent", // USED IN OLD UI
             post(remove_delete_intent::remove_delete_intent),
         )
         .route(
-            "/create_connection",
+            "/create_connection", // USED IN OLD UI
             post(create_connection::create_connection),
         )
         .route(
-            "/create_component",
+            "/create_component", // FIXME(nick): replace API tests that used this (this affects practically all of them)
             post(create_component::create_component),
         )
+        .route("/get_diagram", get(get_diagram::get_diagram)) // FIXME(nick): replace API tests that used this (this affects practically all of them)
         .route(
-            "/set_component_position",
-            post(set_component_position::set_component_position),
-        )
-        // Gets diagram for default view TODO: Delete this
-        .route("/get_diagram", get(get_diagram::get_diagram))
-        .route(
-            "/get_all_components_and_edges",
+            "/get_all_components_and_edges", // USED IN OLD UI
             get(get_all_components_and_edges::get_all_components_and_edges),
         )
-        .route("/list_schemas", get(list_schemas::list_schemas))
-        .route("/dvu_roots", get(dvu_roots::dvu_roots))
+        .route("/dvu_roots", get(dvu_roots::dvu_roots)) // USED IN OLD UI
 }
