@@ -379,6 +379,7 @@ export interface AttributeValue {
   validation?: ValidationOutput;
   secret: Secret | null;
   hasSocketConnection: boolean;
+  isDefaultSource: boolean;
 }
 
 export interface ExternalSource {

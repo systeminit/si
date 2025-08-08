@@ -36,6 +36,7 @@ export enum routes {
   CreateTemplate = "CreateTemplate",
   CreateView = "CreateView",
   DeleteComponents = "DeleteComponents",
+  DeleteDefaultSubscriptionSource = "DeleteDefaultSubscriptionSource",
   DeleteView = "DeleteView",
   DuplicateComponents = "DuplicateComponents",
   EnqueueAttributeValue = "EnqueueAttributeValue",
@@ -46,6 +47,7 @@ export enum routes {
   GetPublicKey = "GetPublicKey",
   RefreshAction = "RefreshAction",
   RestoreComponents = "RestoreComponents",
+  SetDefaultSubscriptionSource = "SetDefaultSubscriptionSource",
   MgmtFuncRun = "MgmtFuncRun",
   MgmtFuncGetJobState = "MgmtFuncGetJobState",
   MgmtFuncGetLatest = "MgmtFuncGetLatest",
@@ -85,12 +87,12 @@ const COMPRESSED_ROUTES: readonly routes[] = [
 const _routes: Record<routes, string> = {
   ActionAdd: "/action/add",
   ActionCancel: "/action/<id>/cancel",
+  ActionFuncRunId: "/action/<id>/func_run_id",
   ActionHold: "/action/<id>/put_on_hold",
   ActionRetry: "/action/<id>/retry",
-  ActionFuncRunId: "/action/<id>/func_run_id",
   ApplyChangeSet: "/apply",
-  ChangeSetApprove: "/approve",
   ChangeSetApprovalStatus: "/approval_status",
+  ChangeSetApprove: "/approve",
   ChangeSetCancelApprovalRequest: "/cancel_approval_request",
   ChangeSetRename: "/rename",
   ChangeSetReopen: "/reopen",
@@ -100,6 +102,7 @@ const _routes: Record<routes, string> = {
   CreateTemplate: "/management/generate_template/<viewId>",
   CreateView: "/views",
   DeleteComponents: "/components/delete",
+  DeleteDefaultSubscriptionSource: "/components/<id>/attributes/default_source",
   DeleteView: "/views/<viewId>",
   DuplicateComponents: "/views/<viewId>/duplicate_components",
   EnqueueAttributeValue: "/components/<id>/attributes/enqueue",
@@ -108,11 +111,12 @@ const _routes: Record<routes, string> = {
   FuncRunLogs: "/funcs/runs/<id>/logs",
   GetFuncRunsPaginated: "/funcs/runs/paginated",
   GetPublicKey: "/components/<id>/secret/public_key",
-  RefreshAction: "/action/refresh/<componentId>",
-  RestoreComponents: "/components/restore",
-  MgmtFuncRun: "/management/prototype/<prototypeId>/<componentId>/<viewId>",
   MgmtFuncGetJobState: "/management/state/<funcRunId>",
   MgmtFuncGetLatest: "/management/component/<componentId>/latest",
+  MgmtFuncRun: "/management/prototype/<prototypeId>/<componentId>/<viewId>",
+  RefreshAction: "/action/refresh/<componentId>",
+  RestoreComponents: "/components/restore",
+  SetDefaultSubscriptionSource: "/components/<id>/attributes/default_source",
   UpdateComponentAttributes: "/components/<id>/attributes",
   UpdateComponentManage: "/components/<id>/manage",
   UpdateComponentName: "/components/<id>/name",
@@ -120,12 +124,13 @@ const _routes: Record<routes, string> = {
   UpgradeComponents: "/components/upgrade",
   ViewAddComponents: "/views/<viewId>/add_components",
   ViewEraseComponents: "/views/<viewId>/erase_components",
+
   // THESE ARE SPECIAL CASED & NOT V2
-  CreateChangeSet: "/change_set/create_change_set",
   AbandonChangeSet: "/change_set/abandon_change_set",
-  Workspaces: "/workspaces", // not a v2 url
   ChangeSets: "CHANGESETS", // a short v2 url
+  CreateChangeSet: "/change_set/create_change_set",
   WorkspaceListUsers: "WORKSPACELISTUSERS", // a short v2 url
+  Workspaces: "/workspaces", // not a v2 url
 } as const;
 
 // the mechanics

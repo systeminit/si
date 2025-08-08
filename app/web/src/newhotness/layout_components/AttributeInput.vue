@@ -645,6 +645,20 @@
               :title="selectedConnection.possibleConnection.path"
             />
           </div>
+            <div
+              :class="
+                clsx(
+                  'border w-full',
+                  themeClasses('border-neutral-300', 'border-neutral-600'),
+                )
+              "
+            >
+              <input type="checkbox" :id="`checkbox-${prop?.id}`" @input="() => toggleIsDefaultSource(path)" :checked="isDefaultSource" />
+              <label :for="`checkbox-${prop?.id}`">
+                Make this the default subscription for new components
+              </label>
+            </div>
+
         </div>
       </template>
       <CodeEditorModal
@@ -733,6 +747,7 @@ const props = defineProps<{
   isArray?: boolean;
   isMap?: boolean;
   isSecret?: boolean;
+  isDefaultSource?: boolean;
   disableInputWindow?: boolean;
   forceReadOnly?: boolean;
   hasSocketConnection?: boolean;
@@ -1087,6 +1102,8 @@ const emit = defineEmits<{
   ): void;
   (e: "delete", path: AttributePath): void;
   (e: "removeSubscription", path: AttributePath): void;
+  (e: "deleteDefaultSubscriptionSource", path: AttributePath): void;
+  (e: "setDefaultSubscriptionSource", path: AttributePath): void;
   (e: "add", key?: string): void;
   (e: "selected"): void;
   (e: "close"): void;
@@ -1564,6 +1581,14 @@ const openCodeEditorModal = () => {
 const setValueFromCodeEditorModal = (value: string) => {
   valueForm.setFieldValue("value", value);
   valueForm.handleSubmit();
+};
+
+const toggleIsDefaultSource = (path: AttributePath) => {
+  if (props.isDefaultSource) {
+    emit("deleteDefaultSubscriptionSource", path);
+  } else {
+    emit("setDefaultSubscriptionSource", path);
+  }
 };
 
 const optionIsSelected = computed(

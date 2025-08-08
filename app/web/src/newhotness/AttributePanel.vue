@@ -135,6 +135,12 @@
         @save="save"
         @delete="remove"
         @remove-subscription="removeSubscription"
+        @delete-default-subscription-source="
+          (path) => setDefaultSubscriptionSourceStatus(path, false)
+        "
+        @set-default-subscription-source="
+          (path) => setDefaultSubscriptionSourceStatus(path, true)
+        "
         @add="add"
         @set-key="setKey"
       />
@@ -511,6 +517,42 @@ const removeSubscriptionMutation = useMutation({
     }
   },
 });
+
+const setDefaultSubscriptionSourceApi = useApi();
+const deleteDefaultSubscriptionSourceApi = useApi();
+const setDefaultSubscriptionSourceStatus = async (
+  path: AttributePath,
+  isDefaultSource: boolean,
+) => {
+  const defaultSourceApi = isDefaultSource
+    ? deleteDefaultSubscriptionSourceApi
+    : setDefaultSubscriptionSourceApi;
+  const call = defaultSourceApi.endpoint(routes.SetDefaultSubscriptionSource, {
+    id: props.component.id,
+  });
+
+  console.log(isDefaultSource ? "t" : "f");
+
+  const { req, newChangeSetId } = isDefaultSource
+    ? await call.put(path)
+    : await call.delete(path);
+
+  if (defaultSourceApi.ok(req) && newChangeSetId) {
+    defaultSourceApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
+      },
+      newChangeSetId,
+    );
+  }
+
+  console.log(req);
+};
 
 const removeSubscription = async (path: AttributePath) => {
   removeSubscriptionMutation.mutate(path);
