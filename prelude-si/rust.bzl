@@ -7,6 +7,10 @@ load(
     "SiRustToolchainInfo",
 )
 load(
+    "//git:toolchain.bzl",
+    "GitToolchainInfo",
+)
+load(
     "@prelude//decls/re_test_common.bzl",
     "re_test_common",
 )
@@ -21,6 +25,14 @@ load(
 load(
     "@prelude-si//:test.bzl",
     "inject_test_env",
+)
+load(
+    "//git.bzl",
+    _git_info = "git_info",
+)
+load(
+    "@prelude-si//:artifact.bzl",
+    "ArtifactInfo"
 )
 
 def clippy_check_impl(ctx: AnalysisContext) -> list[[
@@ -176,3 +188,80 @@ def crate_context(ctx: AnalysisContext) -> CrateContext:
     return CrateContext(
         srcs_tree = srcs_tree,
     )
+
+def _rust_binary_artifact_impl(ctx):
+    binary = ctx.attrs.binary[DefaultInfo].default_outputs[0]
+    git_info = _git_info(ctx)
+    build_metadata = ctx.actions.declare_output("build_metadata.json")
+
+    si_rust_toolchain = ctx.attrs._si_rust_toolchain[SiRustToolchainInfo]
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        si_rust_toolchain.rust_metadata[DefaultInfo].default_outputs,
+        "--binary",
+        binary,
+        "--git-info-json",
+        git_info.file,
+        "--build-metadata-out-file",
+        build_metadata.as_output(),
+        "--name",
+        ctx.attrs.binary_name,
+        "--author",
+        ctx.attrs.author,
+        "--source-url",
+        ctx.attrs.source_url,
+        "--license",
+        ctx.attrs.license,
+    )
+
+    ctx.actions.run(cmd, category = "rust_metadata")
+
+    return [
+        DefaultInfo(default_output = binary),
+        ArtifactInfo(
+            artifact = binary,
+            metadata = build_metadata,
+            family = ctx.attrs.family,
+            variant = ctx.attrs.variant,
+        ),
+    ]
+
+rust_binary_artifact = rule(
+    impl = _rust_binary_artifact_impl,
+    attrs = {
+        "binary": attrs.dep(
+            doc = "The built rust_binary target."
+        ),
+        "binary_name": attrs.string(
+            doc = "Artifact name."
+        ),
+        "family": attrs.string(
+            doc = "Artifact family name."
+        ),
+        "variant": attrs.string(
+            doc = "Artifact variant."
+        ),
+        "author": attrs.string(
+            doc = """Image author to be used in package metadata.""",
+        ),
+        "source_url": attrs.string(
+            doc = """Source code URL to be used in package metadata.""",
+        ),
+        "license": attrs.string(
+            doc = """License string to be used in package metadata.""",
+        ),
+        "_git_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:git",
+            providers = [GitToolchainInfo],
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_si_rust_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:si_rust",
+            providers = [SiRustToolchainInfo],
+        ),
+    },
+)

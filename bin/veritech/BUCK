@@ -1,11 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
-    "export_file",
-    "nix_omnibus_pkg",
     "rust_binary",
-    "shellcheck",
-    "shfmt_check",
+    "rust_binary_pkg",
     "test_suite",
 )
 
@@ -46,34 +42,7 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
-export_file(
-    name = "docker-entrypoint.sh",
-)
-
-shfmt_check(
-    name = "check-format-shell",
-    srcs = [":docker-entrypoint.sh"],
-)
-
-shellcheck(
-    name = "check-lint-shell",
-    srcs = [":docker-entrypoint.sh"],
-)
-
-docker_image(
-    name = "image",
-    image_name = "veritech",
-    flake_lock = "//:flake.lock",
-    build_deps = [
-        "//bin/veritech:veritech",
-        "//bin/veritech:docker-entrypoint.sh",
-        "//bin/cyclone:cyclone",
-        "//bin/lang-js:bin",
-    ],
-)
-
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "veritech",
-    build_dep = "//bin/veritech:veritech",
+rust_binary_pkg(
+    name = "veritech",
+    binary = ":veritech"
 )

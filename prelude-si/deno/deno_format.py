@@ -12,27 +12,36 @@ from typing import List
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input",
-                        action='append',
-                        required=True,
-                        type=pathlib.Path,
-                        help="The files or directories to format")
+    parser.add_argument(
+        "--deno-binary",
+        required=True,
+        type=pathlib.Path,
+        help="The path to the deno binary",
+    )
+    parser.add_argument(
+        "--input",
+        action="append",
+        required=True,
+        type=pathlib.Path,
+        help="The files or directories to format",
+    )
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Check if files are formatted without making changes")
+        help="Check if files are formatted without making changes",
+    )
     parser.add_argument("--ignore",
-                        nargs='*',
+                        nargs="*",
                         default=[],
                         help="List of files or directories to ignore")
 
     return parser.parse_args()
 
 
-def run_format(input_paths: List[str], check_only: bool,
+def run_format(deno_binary: str, input_paths: List[str], check_only: bool,
                ignore_paths: List[str]) -> None:
     """Run deno fmt with the specified arguments."""
-    cmd = ["deno", "fmt"]
+    cmd = [str(deno_binary), "fmt"]
 
     if check_only:
         cmd.append("--check")
@@ -71,7 +80,7 @@ def main() -> int:
                 return 1
             input_paths.append(abs_path)
 
-        run_format(input_paths, args.check, args.ignore)
+        run_format(args.deno_binary, input_paths, args.check, args.ignore)
 
         if args.check:
             print("Format check completed successfully.")

@@ -74,14 +74,13 @@ export async function runCode(
     tempDirCache.set(execution_id, tempDir);
   }
 
-  // Reuse sandbox bundle if already written
+  // Generate and cache sandbox bundle dynamically
   let bundlePath = sandboxBundleCache.get(execution_id);
   if (!bundlePath) {
-    const SANDBOX_BUNDLE = await Deno.readTextFile(
-      import.meta.dirname + "/bundle.js",
-    );
+    // Import build function and generate bundle dynamically
+    const { buildSandbox } = await import("./build.ts");
     bundlePath = join(tempDir, "sandbox.bundle.js");
-    await Deno.writeTextFile(bundlePath, SANDBOX_BUNDLE);
+    await buildSandbox(bundlePath);
     sandboxBundleCache.set(execution_id, bundlePath);
   }
 

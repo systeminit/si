@@ -4,12 +4,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-      };
-    };
     # NOTE 2025-07-17
     # ---------------
     #
@@ -31,7 +25,6 @@
   outputs = {
     nixpkgs,
     flake-utils,
-    rust-overlay,
     pinnedDenoVersion,
     ...
   }:
@@ -40,7 +33,6 @@
         (self: super: {
           nodejs = super.nodejs_20;
         })
-        (import rust-overlay)
         # NOTE 2025-07-17: see inputs for explanation. When input is deleted,
         # remove this overlay too.
         (final: prev: {
@@ -50,12 +42,6 @@
 
       pkgs = import nixpkgs {inherit overlays system;};
 
-      rustVersion = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain;
-      rust-toolchain = rustVersion.override {
-        extensions = ["clippy" "rust-analyzer" "rust-src"];
-      };
-      rustfmt-nightly = pkgs.rust-bin.nightly."2025-04-17".rustfmt;
-
       nodePkgs = pkgs.nodePackages.override {
         nodejs = pkgs.nodejs_20;
       };
@@ -63,22 +49,12 @@
       buck2NativeBuildInputs = with pkgs;
         [
           b3sum
-          bash
           buck2
-          cacert
-          clang
-          deno
-          gitMinimal
-          lld
           makeWrapper
-          minica
           nodePkgs.pnpm
           nodejs
-          protobuf
           python3
           ripgrep
-          rust-toolchain
-          rustfmt-nightly
 
           # breakpointHook
         ]
@@ -89,10 +65,6 @@
       buck2BuildInputs = with pkgs;
         []
         ++ lib.optionals pkgs.stdenv.isLinux [
-          glibc
-          glibc.libgcc
-          lvm2
-          llvmPackages.libclang.lib
         ]
         ++ lib.optionals pkgs.stdenv.isDarwin [
           libiconv
@@ -409,17 +381,6 @@
 
         devShells.default = mkShell {
           # Env Vars so bindgen can find libclang
-          shellHook = ''
-            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
-            export BINDGEN_EXTRA_CLANG_ARGS="\
-              $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
-              $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
-              $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
-              $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
-              $NIX_CFLAGS_COMPILE"
-            export OUT=${placeholder "out"}
-            echo $OUT
-          '';
           packages =
             [
               alejandra

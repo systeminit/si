@@ -5,6 +5,14 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+def _get_remote_os_family(constraints: dict) -> str:
+    """Get the OS family string for remote execution based on CPU constraints."""
+    cpu_constraints = [str(c) for c in constraints.keys() if "cpu/constraints:" in str(c)]
+    for constraint in cpu_constraints:
+        if "arm64" in constraint:
+            return "linux-arm64"
+    return "linux-x64"
+
 def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
     constraints = dict()
     constraints.update(ctx.attrs.cpu_configuration[ConfigurationInfo].constraints)
@@ -12,13 +20,27 @@ def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
     constraints.update(ctx.attrs.rust_build_mode[ConfigurationInfo].constraints)
     cfg = ConfigurationInfo(constraints = constraints, values = {})
 
+    # Get dynamic OS family for remote execution
+    os_family = _get_remote_os_family(constraints)
+
     name = ctx.label.raw_target()
     platform = ExecutionPlatformInfo(
         label = name,
         configuration = cfg,
         executor_config = CommandExecutorConfig(
             local_enabled = True,
-            remote_enabled = False,
+            remote_enabled = True,
+            use_limited_hybrid = True,
+            remote_cache_enabled = True,
+            allow_limited_hybrid_fallbacks = True,
+            allow_hybrid_fallbacks_on_failure = True,
+            allow_cache_uploads = True,
+            remote_output_paths = "output_paths",
+            remote_execution_properties = {
+                "OSFamily": os_family,
+                "container-image": "docker://buildpack-deps:bookworm",
+            },
+            remote_execution_use_case = "buck2-default",
             use_windows_path_separators = ctx.attrs.use_windows_path_separators,
         ),
     )
