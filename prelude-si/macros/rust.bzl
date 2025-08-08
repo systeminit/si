@@ -9,16 +9,17 @@ load(
     "@prelude-si//:rust.bzl",
     _clippy_check = "clippy_check",
     _rustfmt_check = "rustfmt_check",
-)
-load(
-    "@prelude-si//:toml.bzl",
-    _toml_format = "toml_format",
-    _toml_format_check = "toml_format_check",
+    _rust_binary_artifact = "rust_binary_artifact",
 )
 load(
     "@prelude-si//macros:native.bzl",
     _alias = "alias",
     _test_suite = "test_suite",
+)
+load(
+    "@prelude-si//:artifact.bzl",
+    _artifact_promote = "artifact_promote",
+    _artifact_publish = "artifact_publish",
 )
 
 def rust_binary(
@@ -34,7 +35,13 @@ def rust_binary(
         test_unit_env = {},
         test_unit_resources = {},
         extra_test_targets = [],
-        toml_srcs = ["Cargo.toml"],
+        source_url = "http://github.com/systeminit/si.git",
+        author = "The System Initiative <dev@systeminit.com>",
+        license = "Apache-2.0",
+        publish_target = "publish-binary",
+        promote_target = "promote-binary",
+        artifact_destination = "s3://si-artifacts-prod",
+        artifact_cname = "artifacts.systeminit.com",
         visibility = ["PUBLIC"],
         **kwargs):
     native.rust_binary(
@@ -92,13 +99,6 @@ def rust_binary(
         visibility = visibility,
     )
 
-    if toml_srcs:
-        _toml_format_check(
-            name = "check-format-toml",
-            srcs = toml_srcs,
-            visibility = visibility,
-        )
-
     if not rule_exists("check-format"):
         _test_suite(
             name = "check-format",
@@ -152,21 +152,14 @@ def rust_binary(
     )
 
     _cargo_fmt(
-        name = "fix-format-rust",
+        name = "fix-format",
         crate = name,
         srcs = srcs,
         visibility = visibility,
     )
 
-    if toml_srcs:
-        _toml_format(
-            name = "fix-format-toml",
-            srcs = toml_srcs,
-            visibility = visibility,
-        )
-
     _cargo_clippy_fix(
-        name = "fix-lint-rust",
+        name = "fix-lint",
         crate = name,
         srcs = srcs,
         visibility = visibility,
@@ -178,6 +171,7 @@ def rust_binary(
         srcs = srcs,
         visibility = visibility,
     )
+
 
 def rust_library(
         name,
@@ -192,7 +186,6 @@ def rust_library(
         test_unit_env = {},
         test_unit_resources = {},
         extra_test_targets = [],
-        toml_srcs = ["Cargo.toml"],
         proc_macro = False,
         visibility = ["PUBLIC"],
         **kwargs):
@@ -252,13 +245,6 @@ def rust_library(
         visibility = visibility,
     )
 
-    if toml_srcs:
-        _toml_format_check(
-            name = "check-format-toml",
-            srcs = toml_srcs,
-            visibility = visibility,
-        )
-
     if not rule_exists("check-format"):
         _test_suite(
             name = "check-format",
@@ -312,21 +298,14 @@ def rust_library(
     )
 
     _cargo_fmt(
-        name = "fix-format-rust",
+        name = "fix-format",
         crate = name,
         srcs = srcs,
         visibility = visibility,
     )
 
-    if toml_srcs:
-        _toml_format(
-            name = "fix-format-toml",
-            srcs = toml_srcs,
-            visibility = visibility,
-        )
-
     _cargo_clippy_fix(
-        name = "fix-lint-rust",
+        name = "fix-lint",
         crate = name,
         srcs = srcs,
         visibility = visibility,
@@ -349,4 +328,44 @@ def rust_test(
         edition = edition,
         visibility = visibility,
         **kwargs
+    )
+
+def rust_binary_pkg(
+        name,
+        binary,
+        source_url = "http://github.com/systeminit/si.git",
+        author = "The System Initiative <dev@systeminit.com>",
+        license = "Apache-2.0",
+        publish_target = "publish-binary",
+        promote_target = "promote-binary",
+        artifact_destination = "s3://si-artifacts-prod",
+        artifact_cname = "artifacts.systeminit.com",
+        visibility = ["PUBLIC"]):
+
+    _rust_binary_artifact(
+        name = "{}-artifact-info".format(name),
+        binary = binary,
+        binary_name = name,
+        author = author,
+        family = name,
+        license = license,
+        source_url = source_url,
+        variant = "binary",
+    )
+
+    _artifact_publish(
+        name = publish_target,
+        artifact = ":{}-artifact-info".format(name),
+        destination = artifact_destination,
+        cname = artifact_cname,
+        visibility = visibility,
+    )
+
+    _artifact_promote(
+        name = promote_target,
+        family = name,
+        variant = "binary",
+        destination = artifact_destination,
+        cname = artifact_cname,
+        visibility = visibility,
     )

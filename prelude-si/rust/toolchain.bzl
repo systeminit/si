@@ -2,6 +2,7 @@ SiRustToolchainInfo = provider(
     fields = {
         "clippy_output": typing.Any,
         "crate_context": typing.Any,
+        "rust_metadata": typing.Any,
         "rustfmt_check": typing.Any,
         "rustfmt_toml": provider_field(typing.Any, default = None),
     },
@@ -21,6 +22,7 @@ def si_rust_toolchain_impl(ctx) -> list[[DefaultInfo, SiRustToolchainInfo]]:
         SiRustToolchainInfo(
             clippy_output = ctx.attrs._clippy_output,
             crate_context = ctx.attrs._crate_context,
+            rust_metadata = ctx.attrs._rust_metadata,
             rustfmt_check = ctx.attrs._rustfmt_check,
             rustfmt_toml = rustfmt_toml,
         ),
@@ -38,6 +40,9 @@ si_rust_toolchain = rule(
         ),
         "_crate_context": attrs.dep(
             default = "prelude-si//rust:crate_context.py",
+        ),
+        "_rust_metadata": attrs.dep(
+            default = "prelude-si//rust:generate_rust_metadata.py",
         ),
         "_rustfmt_check": attrs.dep(
             default = "prelude-si//rust:rustfmt_check.py",

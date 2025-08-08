@@ -1,5 +1,4 @@
 load("@prelude//tests:test_toolchain.bzl", "noop_test_toolchain")
-load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load(
     "@prelude//toolchains:python.bzl",
@@ -10,13 +9,15 @@ load(
     "@prelude//toolchains:remote_test_execution.bzl",
     "remote_test_execution_toolchain",
 )
-load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
+load(":clang_distribution.bzl", "download_clang_distribution", "hermetic_clang_toolchain")
+load(":deno_distribution.bzl", "download_deno_distribution", "hermetic_deno_toolchain")
+load(":rust_distribution.bzl", "download_rust_distribution", "hermetic_rust_toolchain")
 load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
-load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
+load("@prelude-si//mise:toolchain.bzl", "mise_toolchain")
 load("@prelude-si//nix:toolchain.bzl", "nix_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
@@ -36,8 +37,16 @@ noop_test_toolchain(
     visibility = ["PUBLIC"],
 )
 
-system_cxx_toolchain(
+download_clang_distribution(
+    name = "clang",
+    version = "20.1.0",
+    # target defaults to host platform (auto-detected)
+    visibility = ["PUBLIC"],
+)
+
+hermetic_clang_toolchain(
     name = "cxx",
+    distribution = ":clang",
     visibility = ["PUBLIC"],
 )
 
@@ -56,11 +65,19 @@ system_python_bootstrap_toolchain(
     visibility = ["PUBLIC"],
 )
 
-system_rust_toolchain(
+download_rust_distribution(
+    name = "rust_dist",
+    version = "1.86.0",
+    # target defaults to host platform (auto-detected)
+)
+
+hermetic_rust_toolchain(
     name = "rust_release",
+    distribution = ":rust_dist",
     default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
     visibility = ["PUBLIC"],
+    # rustc_target_triple auto-detected from distribution target
     rustc_flags = [
         "-Copt-level=3",
         # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
@@ -74,11 +91,13 @@ system_rust_toolchain(
     ],
 )
 
-system_rust_toolchain(
+hermetic_rust_toolchain(
     name = "rust_debug",
+    distribution = ":rust_dist",
     default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
     visibility = ["PUBLIC"],
+    # rustc_target_triple auto-detected from distribution target
     rustc_flags = [
         "-Copt-level=0",
         "-Cdebuginfo=full",
@@ -102,8 +121,16 @@ build_context_toolchain(
     visibility = ["PUBLIC"],
 )
 
-deno_toolchain(
+# Hermetic Deno toolchain
+download_deno_distribution(
+    name = "deno_dist",
+    version = "2.2.12",
+    # target defaults to host platform (auto-detected)
+)
+
+hermetic_deno_toolchain(
     name = "deno",
+    distribution = ":deno_dist",
     visibility = ["PUBLIC"],
 )
 
@@ -124,6 +151,11 @@ artifact_toolchain(
 
 git_toolchain(
     name = "git",
+    visibility = ["PUBLIC"],
+)
+
+mise_toolchain(
+    name = "mise",
     visibility = ["PUBLIC"],
 )
 
