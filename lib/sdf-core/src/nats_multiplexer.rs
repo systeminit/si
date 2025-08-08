@@ -47,7 +47,7 @@ impl EddaUpdatesMultiplexerClient {
     ) -> Result<broadcast::Receiver<Message>, Box<dyn error::Error>> {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
-        let subject = nats::subject::all_updates_for_workspace(
+        let subject = nats::subject::all_workspace_updates_for_workspace(
             prefix,
             workspace_id.array_to_str(&mut id_buf),
         );
