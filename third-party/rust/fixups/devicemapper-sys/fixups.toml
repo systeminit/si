@@ -1,2 +1,6 @@
 cargo_env = true
-buildscript.run = true
+
+buildscript.run = false
+
+env = { "OUT_DIR" = "$(location //third-party/rust/fixups/devicemapper-sys:out_dir)" }
+

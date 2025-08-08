@@ -140,6 +140,7 @@ rustls-pemfile = { version = "2.2.0" }
 sea-orm = { version = "1.1.2", features = ["debug-print", "macros", "runtime-tokio-rustls", "sqlx-postgres", "with-chrono"] }
 serde = { version = "1.0.216", features = ["derive", "rc"] }
 serde-aux = "4.5.0"
+serde-tuple-vec-map = "1.0.1"
 serde_json = { version = "1.0.133", features = ["preserve_order"] }
 serde_path_to_error = { version = "0.1.16" }
 serde_with = "3.14.0"
@@ -176,7 +177,6 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json", "st
 tracing-tunnel = "0.1.0"
 trybuild = { version = "1.0.101", features = ["diff"] }
 tryhard = "0.5.1"
-serde-tuple-vec-map = "1.0.1"
 ulid = { version = "1.1.3", features = ["serde"] }
 url = { version = "2.5.4", features = ["serde"] }
 utoipa = { version = "5.3.1", features = ["axum_extras"] }

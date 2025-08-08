@@ -1,5 +1,4 @@
 buildscript.run = false
-
 [[cxx_library]]
 name = "libsodium"
 srcs = [
