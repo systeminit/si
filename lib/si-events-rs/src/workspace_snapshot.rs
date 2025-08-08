@@ -57,6 +57,7 @@ pub enum EntityKind {
     Ordering,
     OutputSocket,
     Prop,
+    Reason,
     Root,
     Schema,
     SchemaVariant,

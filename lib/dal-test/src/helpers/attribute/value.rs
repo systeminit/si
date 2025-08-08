@@ -7,6 +7,7 @@ use dal::{
         path::AttributePath,
         value::subscription::ValueSubscription,
     },
+    workspace_snapshot::node_weight::reason_node_weight::Reason,
 };
 use si_id::{
     AttributeValueId,
@@ -52,7 +53,14 @@ pub async fn subscribe_with_custom_function<S: AttributeValueKey>(
     for subscription in subscriptions {
         converted_subscriptions.push(AttributeValueKey::to_subscription(ctx, subscription).await?);
     }
-    AttributeValue::set_to_subscriptions(ctx, subscriber, converted_subscriptions, func_id).await?;
+    AttributeValue::set_to_subscriptions(
+        ctx,
+        subscriber,
+        converted_subscriptions,
+        func_id,
+        Reason::new_user_added(ctx),
+    )
+    .await?;
     Ok(())
 }
 

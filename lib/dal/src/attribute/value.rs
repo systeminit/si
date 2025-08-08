@@ -115,6 +115,7 @@ use crate::{
             NodeWeight,
             NodeWeightDiscriminants,
             NodeWeightError,
+            reason_node_weight::Reason,
         },
         serde_value_to_string_type,
         traits::attribute_value::AttributeValueExt,
@@ -2119,6 +2120,7 @@ impl AttributeValue {
         subscriber_av_id: AttributeValueId,
         subscriptions: Vec<ValueSubscription>,
         func_id: Option<FuncId>,
+        reason: Reason,
     ) -> AttributeValueResult<()> {
         let func_id = if let Some(func_id) = func_id {
             func_id
@@ -2154,7 +2156,9 @@ impl AttributeValue {
         // Add the subscriptions as the argument
         let arg_id = FuncArgument::single_arg_for_func(ctx, func_id).await?;
         for subscription in subscriptions {
-            AttributePrototypeArgument::new(ctx, prototype_id, arg_id, subscription).await?;
+            let apa =
+                AttributePrototypeArgument::new(ctx, prototype_id, arg_id, subscription).await?;
+            AttributePrototypeArgument::add_reason(ctx, apa.id(), reason).await?;
         }
 
         // DVU all the way!

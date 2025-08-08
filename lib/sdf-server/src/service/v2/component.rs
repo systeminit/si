@@ -40,6 +40,8 @@ pub enum Error {
     Attributes(#[from] dal::attribute::attributes::Error),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
+    #[error("attribute value '{0}' not found for component {1}")]
+    AttributeValueNotFound(String, ComponentId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("component error: {0}")]
@@ -83,6 +85,7 @@ impl IntoResponse for Error {
             Error::SchemaVariantUpgradeSkipped | Error::UpgradeSkippedDueToActions => {
                 StatusCode::NOT_MODIFIED
             }
+            Error::AttributeValueNotFound(_, _) => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

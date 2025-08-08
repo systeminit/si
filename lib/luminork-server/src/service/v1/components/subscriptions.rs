@@ -11,7 +11,10 @@ use dal::{
         value::subscription::ValueSubscription,
     },
     func::intrinsics::IntrinsicFunc,
-    workspace_snapshot::node_weight::NodeWeight,
+    workspace_snapshot::node_weight::{
+        NodeWeight,
+        reason_node_weight::Reason,
+    },
 };
 use serde::{
     Deserialize,
@@ -76,7 +79,14 @@ pub async fn handle_subscription(
         None
     };
 
-    AttributeValue::set_to_subscriptions(ctx, target_av_id, subscriptions, maybe_func_id).await?;
+    AttributeValue::set_to_subscriptions(
+        ctx,
+        target_av_id,
+        subscriptions,
+        maybe_func_id,
+        Reason::new_user_added(ctx),
+    )
+    .await?;
 
     Ok(())
 }

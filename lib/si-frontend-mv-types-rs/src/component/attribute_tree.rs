@@ -80,6 +80,7 @@ pub struct AttributeValue {
     pub validation: Option<ValidationOutput>,
     pub secret: Option<Secret>,
     pub has_socket_connection: bool,
+    pub is_default_source: bool,
 }
 
 #[derive(
