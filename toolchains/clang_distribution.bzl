@@ -3,7 +3,7 @@
 load("@prelude//cxx:cxx_toolchain_types.bzl",
      "BinaryUtilitiesInfo", "CCompilerInfo", "CxxCompilerInfo",
      "LinkerInfo", "LinkerType", "ShlibInterfacesMode",
-     "CxxInternalTools", "PicBehavior", "StripFlagsInfo",
+     "CxxInternalTools", "StripFlagsInfo",
      "cxx_toolchain_infos")
 load("@prelude//cxx:headers.bzl", "HeaderMode")
 load("@prelude//cxx:linker.bzl", "is_pdb_generated")
@@ -50,7 +50,7 @@ def _get_clang_release(version: str, target: str):
 
 # Simple HTTP archive implementation
 def _simple_http_archive_impl(ctx: AnalysisContext) -> list[Provider]:
-    """Download and extract a tar.xz archive."""
+    """Download and extract a tar.xz archive using bundled static xz binary."""
     url = ctx.attrs.urls[0]
 
     # Download archive
@@ -62,7 +62,7 @@ def _simple_http_archive_impl(ctx: AnalysisContext) -> list[Provider]:
     else:
         fail("Must provide either sha256 or sha1 checksum")
 
-    # Extract archive
+    # Extract archive using system xz command (available in buildpack-deps)
     output = ctx.actions.declare_output(ctx.label.name, dir = True)
     script = [
         "mkdir -p $1",

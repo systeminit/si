@@ -175,7 +175,7 @@ def _hermetic_deno_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     return [
         DefaultInfo(),
         DenoToolchainInfo(
-            deno_binary = RunInfo(args = cmd_args(dist.deno)),
+            deno_binary = cmd_args(dist.deno),
             deno_compile = ctx.attrs._deno_compile,
             deno_format = ctx.attrs._deno_format,
             deno_run = ctx.attrs._deno_run,

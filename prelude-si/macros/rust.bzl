@@ -21,6 +21,11 @@ load(
     _artifact_promote = "artifact_promote",
     _artifact_publish = "artifact_publish",
 )
+load(
+    "@prelude-si//:toml.bzl",
+    _toml_format = "toml_format",
+    _toml_format_check = "toml_format_check",
+)
 
 def rust_binary(
         name,
@@ -35,6 +40,7 @@ def rust_binary(
         test_unit_env = {},
         test_unit_resources = {},
         extra_test_targets = [],
+        toml_srcs = ["Cargo.toml"],
         source_url = "http://github.com/systeminit/si.git",
         author = "The System Initiative <dev@systeminit.com>",
         license = "Apache-2.0",
@@ -55,6 +61,13 @@ def rust_binary(
         visibility = visibility,
         **kwargs
     )
+
+    if toml_srcs:
+        _toml_format_check(
+            name = "check-format-toml",
+            srcs = toml_srcs,
+            visibility = visibility,
+        )
 
     _alias(
         name = "build",
@@ -152,14 +165,22 @@ def rust_binary(
     )
 
     _cargo_fmt(
-        name = "fix-format",
+        name = "fix-format-rust",
         crate = name,
         srcs = srcs,
         visibility = visibility,
     )
 
+
+    if toml_srcs:
+        _toml_format(
+            name = "fix-format-toml",
+            srcs = toml_srcs,
+            visibility = visibility,
+        )
+
     _cargo_clippy_fix(
-        name = "fix-lint",
+        name = "fix-lint-rust",
         crate = name,
         srcs = srcs,
         visibility = visibility,
@@ -186,6 +207,7 @@ def rust_library(
         test_unit_env = {},
         test_unit_resources = {},
         extra_test_targets = [],
+        toml_srcs = ["Cargo.toml"],
         proc_macro = False,
         visibility = ["PUBLIC"],
         **kwargs):
@@ -298,14 +320,21 @@ def rust_library(
     )
 
     _cargo_fmt(
-        name = "fix-format",
+        name = "fix-format-rust",
         crate = name,
         srcs = srcs,
         visibility = visibility,
     )
 
+    if toml_srcs:
+        _toml_format(
+            name = "fix-format-toml",
+            srcs = toml_srcs,
+            visibility = visibility,
+        )
+
     _cargo_clippy_fix(
-        name = "fix-lint",
+        name = "fix-lint-rust",
         crate = name,
         srcs = srcs,
         visibility = visibility,

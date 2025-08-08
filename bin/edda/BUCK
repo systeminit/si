@@ -1,6 +1,5 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
     "rust_binary",
     "rust_binary_pkg",
 )

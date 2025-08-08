@@ -5,8 +5,6 @@ Similar to the zig toolchain approach but for Rust.
 """
 
 load("@prelude//rust:rust_toolchain.bzl", "PanicRuntime", "RustToolchainInfo")
-load("@prelude//os_lookup:defs.bzl", "ScriptLanguage")
-load("@prelude//utils:cmd_script.bzl", "cmd_script")
 
 # Rust release information with checksums
 # Updated for Rust 1.86.0
@@ -66,7 +64,6 @@ def _rust_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # Path to component directories in the extracted archive
     archive_path = cmd_args(ctx.attrs.archive[DefaultInfo].default_outputs[0])
-    rust_dir = "rust-{}-{}".format(ctx.attrs.version, ctx.attrs.target)
 
     # Just create a directory output that contains everything - keep it simple like zig
     rust_dist = ctx.actions.declare_output("rust", dir=True)
@@ -169,14 +166,14 @@ rust_distribution = rule(
 )
 
 def _http_archive_impl(ctx: AnalysisContext) -> list[Provider]:
-    """Download and extract a tar.xz archive."""
+    """Download and extract a tar.xz archive using bundled static xz binary."""
     url = ctx.attrs.urls[0]
 
     # Download archive
     archive = ctx.actions.declare_output("archive.tar.xz")
     ctx.actions.download_file(archive.as_output(), url, sha256 = ctx.attrs.sha256)
 
-    # Extract archive
+    # Extract archive using system xz command (should be available in buildpack-deps)
     output = ctx.actions.declare_output(ctx.label.name, dir = True)
     script = [
         "mkdir -p $1",
@@ -252,7 +249,6 @@ def _hermetic_rust_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # Create command-line wrappers for the tools
     rustc_cmd = cmd_args([dist.rustc])
-    cargo_cmd = cmd_args([dist.cargo])
     rustdoc_cmd = cmd_args([dist.rustdoc])
     clippy_cmd = cmd_args([dist.clippy])
 

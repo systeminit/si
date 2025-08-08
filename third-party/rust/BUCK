@@ -3,7 +3,7 @@
 ## Do not edit by hand.
 ##
 
-load("@prelude-si//rust:cargo_buildscript.bzl", "buildscript_run")
+load("@prelude//rust:cargo_buildscript.bzl", "buildscript_run")
 load("@prelude//rust:cargo_package.bzl", "cargo")
 load(
     "//third-party/macros:rust_third_party.bzl",
@@ -2681,6 +2681,19 @@ cargo.rust_library(
     crate = "basic_toml",
     crate_root = "basic-toml-0.1.10.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "CARGO_CRATE_NAME": "basic_toml",
+        "CARGO_MANIFEST_DIR": "basic-toml-0.1.10.crate",
+        "CARGO_PKG_AUTHORS": "Alex Crichton <alex@alexcrichton.com>:David Tolnay <dtolnay@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Minimal TOML library with few dependencies",
+        "CARGO_PKG_NAME": "basic-toml",
+        "CARGO_PKG_REPOSITORY": "https://github.com/dtolnay/basic-toml",
+        "CARGO_PKG_VERSION": "0.1.10",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "1",
+        "CARGO_PKG_VERSION_PATCH": "10",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     visibility = [],
     deps = [":serde-1.0.219"],
 )

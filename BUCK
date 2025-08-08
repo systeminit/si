@@ -130,6 +130,7 @@ deno_workspace(
         "//lib/jsr-systeminit/cf-db:srcs",
         "//lib/jsr-systeminit/ai-agent:srcs",
         "//bin/si-luminork-api-tests:srcs",
+        "//bin/si-mcp-server:srcs",
     ],
     visibility = ["PUBLIC"],
 )

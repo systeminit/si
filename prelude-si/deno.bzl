@@ -4,76 +4,10 @@ load(
     "DenoWorkspaceInfo",
 )
 load(
-    "@prelude//:paths.bzl",
-    "paths",
-)
-load(
     "@prelude//python:toolchain.bzl",
     "PythonToolchainInfo",
 )
 load("@prelude//utils:cmd_script.bzl", "cmd_script")
-
-
-def deno_cache_impl(ctx: AnalysisContext) -> list[Provider]:
-    """Implementation of the deno_cache rule for a workspace."""
-    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
-    deno_dir_output = ctx.actions.declare_output("deno_dir")
-
-    shim = cmd_script(
-        ctx=ctx,
-        name="deno_shim",
-        cmd=cmd_args(deno_toolchain.deno_binary),
-    )
-
-    cmd = cmd_args(
-        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        deno_toolchain.deno_cache[DefaultInfo].default_outputs[0],
-        "--deno-binary",
-        shim,
-        "--workspace-dir",
-        ctx.attrs.workspace[DefaultInfo].default_outputs,
-        "--deno-dir",
-        deno_dir_output.as_output(),
-    )
-
-    for src in ctx.attrs.srcs:
-        cmd.add("--input", src)
-
-    ctx.actions.run(
-        cmd,
-        category="deno",
-        identifier="deno_cache",
-    )
-
-    return [
-        DefaultInfo(default_output=deno_dir_output),
-    ]
-
-
-deno_cache = rule(
-    impl=deno_cache_impl,
-    attrs={
-        "srcs":
-        attrs.list(
-            attrs.source(),
-            default=[],
-            doc="The source files to format",
-        ),
-        "workspace":
-        attrs.dep(doc="The assembled deno_workspace target.", ),
-        "_python_toolchain":
-        attrs.toolchain_dep(
-            default="toolchains//:python",
-            providers=[PythonToolchainInfo],
-        ),
-        "_deno_toolchain":
-        attrs.toolchain_dep(
-            default="toolchains//:deno",
-            providers=[DenoToolchainInfo],
-        ),
-    },
-)
-
 
 def deno_compile_impl(ctx: AnalysisContext) -> list[Provider]:
     out = ctx.actions.declare_output(ctx.attrs.out)

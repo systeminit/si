@@ -66,6 +66,7 @@ def run_compile(
     flags: List[str],
     deno_dir: Optional[pathlib.Path],
     workspace_dir: Optional[pathlib.Path],
+    includes: List[str] = None,
 ) -> None:
     """Run deno compile with the specified arguments."""
     deno_binary_abs = deno_binary.resolve()
@@ -77,6 +78,11 @@ def run_compile(
 
     cmd.extend([f"--{p}" for p in permissions])
     cmd.extend([f"--unstable-{f}" for f in flags])
+
+    if includes:
+        for include in includes:
+            cmd.append("--include")
+            cmd.append(include)
 
     cmd.append(str(input_path))
 
@@ -115,6 +121,7 @@ def main() -> int:
             args.unstable_flags,
             args.deno_dir,
             args.workspace_dir,
+            [],
         )
 
         args.output.resolve().chmod(0o775)
