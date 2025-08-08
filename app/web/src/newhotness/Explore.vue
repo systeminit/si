@@ -136,13 +136,12 @@
             <DropdownMenuButton
               class="rounded"
               :options="groupByDropDownOptions"
-              :modelValue="groupBySelection"
+              :modelValue="gridMode.label"
               placeholder="Group by"
               minWidthToAnchor
               checkable
               alwaysShowPlaceholder
               highlightWhenModelValue
-              :disabled="pinnedComponentId !== undefined"
               @update:modelValue="updateGroupBy"
             >
               <template #beforeOptions>
@@ -150,7 +149,7 @@
                   label="None"
                   value="''"
                   checkable
-                  :checked="groupBySelection === ''"
+                  :checked="gridMode.mode !== 'groupBy'"
                   @select="clearGroupBy"
                 />
               </template>
@@ -663,6 +662,66 @@ watch(gridMapSwitcherValue, (newShowGrid) => {
   storeFilterAndGroup(query);
   router.push({ query });
 });
+
+// ================================================================================================
+// INITIALIZE GRID MODE
+const gridMode = ref<GridMode>({ mode: "default", label: ""});
+
+type GridMode =
+  | { mode: "default"; label: "" }
+  | { mode: "pinned"; componentId: ComponentId; label: "" }
+  | { mode: "defaultSubscription"; label: "" }
+  | { mode: "groupBy"; criteria: "diff"; label: string }
+  | { mode: "groupBy"; criteria: "qualification"; label: string }
+  | { mode: "groupBy"; criteria: "upgrade"; label: string }
+  | { mode: "groupBy"; criteria: "schemaName"; label: string }
+  | { mode: "groupBy"; criteria: "resource"; label: string };
+
+// NOTE(nick,zack): we may not need this
+//| { mode: "groupBy"; criteria: GroupByCriteria2; label: string };
+
+const groupByDropDownOptions = [
+  { value: "diff", label: "Diff Status" },
+  { value: "qualification", label: "Qualification Status" },
+  { value: "upgrade", label: "Upgradeable" },
+  { value: "schemaName", label: "Schema Name" },
+  { value: "resource", label: "Resource" },
+];
+
+// NOTE(nick,zack): we may not need this
+type GroupByCriteria2 = "diff" | "qualification" | "upgrade" | "schemaName" | "resource";
+
+const gridModeFromGroupByCriteria = (value: string): GridMode => {
+  if (value === "diff") return {
+    mode: "groupBy",
+    criteria: "diff",
+    label: "Diff Status"
+  };
+  if (value === "qualification") return {
+    mode: "groupBy",
+    criteria: "qualification",
+    label: "Qualification Status"
+  };
+  if (value === "upgrade") return {
+    mode: "groupBy",
+    criteria: "upgrade",
+    label: "Upgradeable"
+  };
+  if (value === "schemaName") return {
+    mode: "groupBy",
+    criteria: "schemaName",
+    label: "Schema Name"
+  };
+  if (value === "resource") return {
+    mode: "groupBy",
+    criteria: "resource",
+    label: "Resource"
+  };
+  return {
+    mode: "default",
+    label: ""
+  };
+};
 
 // ================================================================================================
 // SETUP THE FILTERED COMPONENTS REACTIVE AND UPGRADEABLES
@@ -1892,21 +1951,16 @@ const groupByFromString = (s: string): GroupByCriteria => {
 
 const updateGroupBy = (val: string) => {
   clearSelection();
-  groupBySelection.value = groupByFromString(val);
+  gridMode.value = gridModeFromGroupByCriteria(val);
 };
 const clearGroupBy = () => {
   clearSelection();
-  groupBySelection.value = GroupByCriteria.None;
+  gridMode.value = { mode: "default", label: "" };
 };
 
+// FIXME(nick, zack): delete these!
 const groupBySelection = ref<GroupByCriteria>(GroupByCriteria.None);
-const groupByDropDownOptions = [
-  { value: GroupByCriteria.Diff, label: "Diff Status" },
-  { value: GroupByCriteria.Qualification, label: "Qualification Status" },
-  { value: GroupByCriteria.Upgrade, label: "Upgradeable" },
-  { value: GroupByCriteria.SchemaName, label: "Schema Name" },
-  { value: GroupByCriteria.Resource, label: "Resource" },
-];
+const pinnedComponentId = ref<ComponentId | undefined>(undefined);
 
 watch([groupBySelection], () => {
   // Update the query of the route (allowing for URL links) when the group by selection change.

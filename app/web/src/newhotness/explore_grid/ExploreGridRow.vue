@@ -20,6 +20,27 @@
     </span>
     <PillCounter :count="row.count" class="text-xs" />
   </div>
+  <div
+    v-if="row.type === 'contentHeader'"
+    :class="
+      clsx(
+        'flex flex-row items-center gap-xs px-xs',
+        themeClasses('bg-neutral-200', 'bg-neutral-800'),
+      )
+    "
+    @click="emit('clickCollapse', row.title, !row.collapsed)"
+  >
+    <Icon :name="row.collapsed ? 'chevron--right' : 'chevron--down'" />
+    <span class="select-none">
+      {{ row.title }}
+    </span>
+    <!-- <Icon -->
+    <!-- v-if="titleIcon" -->
+    <!-- :name="titleIcon.iconName" -->
+    <!-- :tone="titleIcon.iconTone" -->
+    <!-- /> -->
+    <!-- <PillCounter :count="row.count" class="text-xs" /> -->
+  </div>
   <div v-else-if="row.type === 'pinnedContentRow'">
     <!-- We need an outer div because the card uses borders for the asset color. -->
     <div
@@ -305,6 +326,10 @@ const emptyAreaData = computed((): EmptyAreaData | null => {
       return {
         message: "All components are upgradable right now",
       };
+    case "Default Subscription Users":
+      return {
+        message: "No components are using this default subscription",
+      };
     default:
       return null;
   }
@@ -412,6 +437,11 @@ export type ExploreGridRowData =
   | {
       type: "filteredCounterRow";
       hiddenCount: number;
+    }
+  | {
+      type: "contentHeader";
+      title: string;
+      collapsed: boolean;
     };
 </script>
 
