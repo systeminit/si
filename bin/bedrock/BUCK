@@ -1,7 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "rust_binary",
-    "nix_omnibus_pkg",
+    "rust_binary_pkg",
 )
 
 rust_binary(
@@ -15,8 +15,7 @@ rust_binary(
     env = {"CARGO_BIN_NAME": "bedrock"},
 )
 
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "bedrock",
-    build_dep = "//bin/bedrock:bedrock",
+rust_binary_pkg(
+    name = "bedrock",
+    binary = ":bedrock"
 )

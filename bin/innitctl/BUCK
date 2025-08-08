@@ -21,6 +21,10 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "innitctl",
+    build_args = {
+        "BIN": "innitctl",
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = ["//bin/innitctl:innitctl"],
     srcs = {
         "configs/": ".",

@@ -1,8 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
-    "nix_omnibus_pkg",
     "rust_binary",
+    "rust_binary_pkg",
 )
 
 rust_binary(
@@ -22,14 +21,7 @@ rust_binary(
     },
 )
 
-docker_image(
-    name = "image",
-    image_name = "rebaser",
-    build_deps = ["//bin/rebaser:rebaser"],
-)
-
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "rebaser",
-    build_dep = "//bin/rebaser:rebaser",
+rust_binary_pkg(
+    name = "rebaser",
+    binary = ":rebaser"
 )
