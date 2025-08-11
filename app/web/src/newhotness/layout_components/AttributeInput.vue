@@ -144,7 +144,7 @@
                 <TruncateWithTooltip class="text-purple">
                   {{ externalSources[0]?.componentName }}
                 </TruncateWithTooltip>
-                <div class="flex-none">?/</div>
+                <div class="flex-none">/</div>
                 <TruncateWithTooltip
                   :class="themeClasses('text-neutral-600', 'text-neutral-400')"
                 >
