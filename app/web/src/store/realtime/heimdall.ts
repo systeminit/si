@@ -358,7 +358,7 @@ const lobbyExit: LobbyExitFn = async (
     });
   }
 
-  await niflheim(workspaceId, changeSetId, true);
+  await niflheim(workspaceId, changeSetId, true, false);
   muspelheimStatuses.value[changeSetId] = true;
 };
 
