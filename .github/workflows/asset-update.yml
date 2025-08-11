@@ -30,4 +30,5 @@ jobs:
           title: "chore: clover schema update"
           body: "Update for clover schemas. Check the diff comment to understand what has changed."
           add-paths: |
+              *
               !deno.lock
