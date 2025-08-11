@@ -54,6 +54,7 @@ use dal::WorkspaceSnapshotError;
 
 pub mod action_prototype_view_list;
 pub mod action_view_list;
+pub mod cached_schemas;
 pub mod component;
 pub mod component_list;
 pub mod dependent_value_component_list;

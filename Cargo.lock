@@ -2258,6 +2258,7 @@ dependencies = [
  "derive_more",
  "diff",
  "dyn-clone",
+ "edda-client",
  "futures",
  "hex",
  "iftree",
@@ -3466,6 +3467,7 @@ dependencies = [
  "si-events",
  "si-frontend-mv-types",
  "si-id",
+ "strum",
  "telemetry",
  "thiserror 2.0.12",
 ]
@@ -8494,6 +8496,7 @@ dependencies = [
  "chrono",
  "inventory",
  "json-patch",
+ "lazy_static",
  "module-index-types",
  "remain",
  "serde",

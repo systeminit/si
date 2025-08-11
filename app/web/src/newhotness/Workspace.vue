@@ -448,6 +448,7 @@ onBeforeMount(async () => {
   // NOTE: onBeforeMount doesn't wait on promises
   // the page will load before execution finishes
   await heimdall.muspelheim(thisWorkspacePk, true);
+  // TODO Add deployment init when we start handling deployment patches and indices
 });
 
 watch(

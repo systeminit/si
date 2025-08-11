@@ -55,6 +55,7 @@ pub enum EntityKind {
     ManagementPrototype,
     Module,
     Ordering,
+    OutOfGraph, // This is so we can generate deployment MVs, we should not have nodes of this kind on the graph
     OutputSocket,
     Prop,
     Reason,

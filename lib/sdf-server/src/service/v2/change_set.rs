@@ -72,7 +72,7 @@ pub enum Error {
     Index(#[from] IndexError),
     #[error("index not found; workspace_pk={0}, change_set_id={1}")]
     IndexNotFound(WorkspacePk, ChangeSetId),
-    #[error("index not found after rebuild; workspace_pk={0}, change_set_id={1}")]
+    #[error("index not found after fresh rebuild; workspace_pk={0}, change_set_id={1}")]
     IndexNotFoundAfterFreshBuild(WorkspacePk, ChangeSetId),
     #[error("index not found after rebuild; workspace_pk={0}, change_set_id={1}")]
     IndexNotFoundAfterRebuild(WorkspacePk, ChangeSetId),
@@ -237,7 +237,9 @@ pub async fn create_index_for_new_change_set_and_watch(
     to_snapshot_address: WorkspaceSnapshotAddress,
 ) -> Result<bool> {
     let span = Span::current();
-    let mut watch = frigg.watch_index(workspace_pk, change_set_id).await?;
+    let mut watch = frigg
+        .watch_change_set_index(workspace_pk, change_set_id)
+        .await?;
     let request_id = edda_client
         .new_change_set(
             workspace_pk,

@@ -6,20 +6,32 @@ use si_id::{
 
 use crate::reference::ReferenceKind;
 
-const INDEX_UPDATE_KIND: &str = "IndexUpdate";
-const PATCH_BATCH_KIND: &str = "PatchMessage";
+const CHANGESET_INDEX_UPDATE_KIND: &str = "IndexUpdate";
+const DEPLOYMENT_INDEX_UPDATE_KIND: &str = "DeploymentIndexUpdate";
+const CHANGESET_PATCH_BATCH_KIND: &str = "PatchMessage";
+const DEPLOYMENT_PATCH_BATCH_KIND: &str = "DeploymentPatchMessage";
 const STREAMING_PATCH_MESSAGE_KIND: &str = "StreamingPatch";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateMeta {
+pub struct ChangesetUpdateMeta {
     /// The workspace this patch batch is targeting.
     pub workspace_id: WorkspacePk,
     /// The change set this patch batch is targeting.
-    pub change_set_id: Option<ChangeSetId>,
+    pub change_set_id: ChangeSetId,
     /// The index checksum the patches will result in data for.
     pub to_index_checksum: String,
-    /// The index checksum the patches the patches are being applied to.
+    /// The index checksum the patches are being applied to.
+    /// Or in the case of rebuild or a brand new change set, will match the [`to_index_checksum`]
+    pub from_index_checksum: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentUpdateMeta {
+    /// The index checksum the patches will result in data for.
+    pub to_index_checksum: String,
+    /// The index checksum the patches are being applied to.
     /// Or in the case of rebuild or a brand new change set, will match the [`to_index_checksum`]
     pub from_index_checksum: String,
 }
@@ -83,20 +95,36 @@ impl StreamingPatch {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PatchBatch {
+pub struct ObjectPatch {
+    pub kind: String,
+    pub id: String,
+    /// Checksum of `"0"` means this is a new object that must be created.
+    pub from_checksum: String,
+    /// Checksum of `"0"` means this is an existing object that must be removed
+    pub to_checksum: String,
+    /// If neither of `from_checksum` and `to_checksum` are all `0`, this field
+    /// contains the JSON Patch document to apply to the version of the object with
+    /// a checksum matching `from_checksum` that will result in a version with the
+    /// checksum matching `to_checksum`.
+    pub patch: json_patch::Patch,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangesetPatchBatch {
     /// Metadata about the patch batch.
-    pub meta: UpdateMeta,
+    pub meta: ChangesetUpdateMeta,
     /// The message kind for the front end.
     kind: &'static str,
     /// The list of patches to apply.
     pub patches: Vec<ObjectPatch>,
 }
 
-impl PatchBatch {
-    pub fn new(meta: UpdateMeta, patches: Vec<ObjectPatch>) -> Self {
+impl ChangesetPatchBatch {
+    pub fn new(meta: ChangesetUpdateMeta, patches: Vec<ObjectPatch>) -> Self {
         Self {
             meta,
-            kind: PATCH_BATCH_KIND,
+            kind: CHANGESET_PATCH_BATCH_KIND,
             patches,
         }
     }
@@ -108,36 +136,70 @@ impl PatchBatch {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ObjectPatch {
-    pub kind: String,
-    pub id: String,
-    /// Checksum of `"0"` means this is a new object that must be created.
-    pub from_checksum: String,
-    /// Checksum of `"0"` means this is an existing object that must be removed
-    pub to_checksum: String,
-    /// If neither of `from_checksum`, and `to_checksum` are all `0`, this field
-    /// contains the JSON Patch document to apply to the version of the object with
-    /// a checksum matching `from_checksum` that will result in a version with the
-    /// checksum matching `to_checksum`.
-    pub patch: json_patch::Patch,
+pub struct DeploymentPatchBatch {
+    /// Metadata about the patch batch.
+    pub meta: DeploymentUpdateMeta,
+    /// The message kind for the front end.
+    kind: &'static str,
+    /// The list of patches to apply.
+    pub patches: Vec<ObjectPatch>,
+}
+
+impl DeploymentPatchBatch {
+    pub fn new(meta: DeploymentUpdateMeta, patches: Vec<ObjectPatch>) -> Self {
+        Self {
+            meta,
+            kind: DEPLOYMENT_PATCH_BATCH_KIND,
+            patches,
+        }
+    }
+
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct IndexUpdate {
+pub struct ChangesetIndexUpdate {
     /// Metadata about the patch batch.
-    pub meta: UpdateMeta,
+    pub meta: ChangesetUpdateMeta,
     /// The message kind for the front end.
     kind: &'static str,
     /// Checksum
     pub index_checksum: String,
 }
 
-impl IndexUpdate {
-    pub fn new(meta: UpdateMeta, index_checksum: String) -> Self {
+impl ChangesetIndexUpdate {
+    pub fn new(meta: ChangesetUpdateMeta, index_checksum: String) -> Self {
         Self {
             meta,
-            kind: INDEX_UPDATE_KIND,
+            kind: CHANGESET_INDEX_UPDATE_KIND,
+            index_checksum,
+        }
+    }
+
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentIndexUpdate {
+    /// Metadata about the patch batch.
+    pub meta: DeploymentUpdateMeta,
+    /// The message kind for the front end.
+    kind: &'static str,
+    /// Checksum
+    pub index_checksum: String,
+}
+
+impl DeploymentIndexUpdate {
+    pub fn new(meta: DeploymentUpdateMeta, index_checksum: String) -> Self {
+        Self {
+            meta,
+            kind: DEPLOYMENT_INDEX_UPDATE_KIND,
             index_checksum,
         }
     }
