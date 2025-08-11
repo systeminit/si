@@ -178,6 +178,7 @@ si_python_toolchain(
 si_rust_toolchain(
     name = "si_rust",
     rustfmt_toml = "root//:rustfmt.toml",
+    rust_dist = ":rust_dist",
     visibility = ["PUBLIC"],
 )
 

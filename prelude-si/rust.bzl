@@ -110,6 +110,11 @@ def rustfmt_check_impl(ctx: AnalysisContext) -> list[[
     if si_rust_toolchain.rustfmt_toml:
         run_cmd_args.add("--config-path")
         run_cmd_args.add(si_rust_toolchain.rustfmt_toml)
+    
+    # Add rustfmt binary path from the distribution
+    run_cmd_args.add("--rustfmt-path")
+    run_cmd_args.add(si_rust_toolchain.rustfmt_path)
+    
     run_cmd_args.add(cmd_args(
         [crate_ctx.srcs_tree, ctx.label.package, ctx.attrs.crate_root],
         delimiter = "/",

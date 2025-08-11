@@ -4,6 +4,7 @@ SiRustToolchainInfo = provider(
         "crate_context": typing.Any,
         "rust_metadata": typing.Any,
         "rustfmt_check": typing.Any,
+        "rustfmt_path": typing.Any,
         "rustfmt_toml": provider_field(typing.Any, default = None),
     },
 )
@@ -17,6 +18,13 @@ def si_rust_toolchain_impl(ctx) -> list[[DefaultInfo, SiRustToolchainInfo]]:
     else:
         rustfmt_toml = None
 
+    # Build rustfmt path from rust distribution
+    if ctx.attrs.rust_dist:
+        rust_dist_dir = ctx.attrs.rust_dist[DefaultInfo].default_outputs[0]
+        rustfmt_path = cmd_args(rust_dist_dir, "/bin/rustfmt", delimiter="")
+    else:
+        rustfmt_path = cmd_args("rustfmt")
+
     return [
         DefaultInfo(),
         SiRustToolchainInfo(
@@ -24,6 +32,7 @@ def si_rust_toolchain_impl(ctx) -> list[[DefaultInfo, SiRustToolchainInfo]]:
             crate_context = ctx.attrs._crate_context,
             rust_metadata = ctx.attrs._rust_metadata,
             rustfmt_check = ctx.attrs._rustfmt_check,
+            rustfmt_path = rustfmt_path,
             rustfmt_toml = rustfmt_toml,
         ),
     ]
@@ -33,6 +42,10 @@ si_rust_toolchain = rule(
     attrs = {
         "rustfmt_toml": attrs.option(
             attrs.dep(providers = [DefaultInfo]),
+            default = None,
+        ),
+        "rust_dist": attrs.option(
+            attrs.exec_dep(providers = [DefaultInfo]),
             default = None,
         ),
         "_clippy_output": attrs.dep(

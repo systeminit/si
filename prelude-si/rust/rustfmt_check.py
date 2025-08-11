@@ -14,6 +14,11 @@ def parse_args() -> argparse.Namespace:
         help="Path for the rustfmt configuration file",
     )
     parser.add_argument(
+        "--rustfmt-path",
+        help="Path to the rustfmt binary",
+        default="rustfmt",
+    )
+    parser.add_argument(
         "crate_root",
         help="Path to the top level source file of the crate",
     )
@@ -25,7 +30,7 @@ def main() -> int:
     args = parse_args()
 
     cmd = [
-        "rustfmt",
+        args.rustfmt_path,
         "--check",
     ]
     if args.config_path:
