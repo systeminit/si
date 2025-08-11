@@ -173,7 +173,7 @@ pub async fn try_reuse_mv_index_for_new_change_set(
         // found a match, so let's retrieve that MvIndex and put the same object as ours
         // If we're unable to parse the pointer for some reason, don't treat it as a hard error and just move on.
         let Ok(Some((pointer, _revision))) = frigg
-            .get_index_pointer_value(workspace_id, change_set.id)
+            .get_change_set_index_pointer_value(workspace_id, change_set.id)
             .await
         else {
             // try the next one
@@ -187,7 +187,7 @@ pub async fn try_reuse_mv_index_for_new_change_set(
             // found one, create a new index pointer to it!
             let change_set_mv_id = change_set_id.to_string();
             frigg
-                .insert_index_key_for_existing_index(
+                .insert_change_set_index_key_for_existing_index(
                     workspace_id,
                     &change_set_mv_id,
                     pointer.clone(),
@@ -355,7 +355,7 @@ pub async fn build_all_mv_for_change_set(
     let index_update = IndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned());
 
     frigg
-        .put_index(
+        .put_change_set_index(
             ctx.workspace_pk()?,
             &change_set_mv_id,
             &mv_index_frontend_object,
@@ -415,7 +415,7 @@ pub async fn build_mv_for_changes_in_change_set(
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", workspace_id.to_string());
     let (index_frontend_object, index_kv_revision) = frigg
-        .get_index(ctx.workspace_pk()?, change_set_id)
+        .get_change_set_index(ctx.workspace_pk()?, change_set_id)
         .await?
         .ok_or_else(|| MaterializedViewError::NoIndexForIncrementalBuild {
             workspace_pk: workspace_id,
@@ -495,7 +495,7 @@ pub async fn build_mv_for_changes_in_change_set(
     let change_set_mv_id = change_set_id.to_string();
 
     frigg
-        .update_index(
+        .update_change_set_index(
             workspace_id,
             &change_set_mv_id,
             &new_mv_index_frontend_object,
@@ -617,7 +617,9 @@ async fn build_mv_inner(
                     // a client can directly fetch it without racing against the object's insertion if the
                     // client does not already have the base object to apply the streaming patch to.
                     if let Some(frontend_object) = maybe_frontend_object {
-                        frigg.insert_object(workspace_pk, &frontend_object).await?;
+                        frigg
+                            .insert_workspace_object(workspace_pk, &frontend_object)
+                            .await?;
                         frontend_objects.push(frontend_object);
                     }
                     if let Some(patch) = maybe_patch {
@@ -717,7 +719,7 @@ where
 {
     let mv_kind: String = mv_kind.to_string();
     let (from_checksum, previous_data) = if let Some(previous_version) = frigg
-        .get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &mv_kind, &mv_id)
+        .get_current_workspace_object(ctx.workspace_pk()?, ctx.change_set_id(), &mv_kind, &mv_id)
         .await?
     {
         (previous_version.checksum, previous_version.data)

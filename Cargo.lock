@@ -3466,6 +3466,7 @@ dependencies = [
  "si-events",
  "si-frontend-mv-types",
  "si-id",
+ "strum",
  "telemetry",
  "thiserror 2.0.12",
 ]

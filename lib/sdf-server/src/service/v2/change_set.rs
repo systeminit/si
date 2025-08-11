@@ -237,7 +237,9 @@ pub async fn create_index_for_new_change_set_and_watch(
     to_snapshot_address: WorkspaceSnapshotAddress,
 ) -> Result<bool> {
     let span = Span::current();
-    let mut watch = frigg.watch_index(workspace_pk, change_set_id).await?;
+    let mut watch = frigg
+        .watch_change_set_index(workspace_pk, change_set_id)
+        .await?;
     let request_id = edda_client
         .new_change_set(
             workspace_pk,

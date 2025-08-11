@@ -391,15 +391,8 @@ where
 
         match self.prefix {
             Some(_) => {
-                if let (
-                    Some(prefix),
-                    Some(p1),
-                    Some(p2),
-                    Some(_workspace_id),
-                    Some(_change_set_id),
-                    Some(kind),
-                    None,
-                ) = (
+                match (
+                    parts.next(),
                     parts.next(),
                     parts.next(),
                     parts.next(),
@@ -408,19 +401,63 @@ where
                     parts.next(),
                     parts.next(),
                 ) {
-                    let matched = format!("{prefix}.{p1}.{p2}.:workspace_id.:change_set_id.{kind}");
-                    req.extensions_mut().insert(MatchedSubject::from(matched));
-                };
+                    // A deployment-wide request
+                    (
+                        Some(prefix),
+                        Some(p1),
+                        Some(p2),
+                        Some("deployment"),
+                        Some(kind),
+                        None,
+                        None,
+                        None,
+                    ) => {
+                        let matched = format!(
+                            "{prefix}.{p1}.{p2}.{}.{kind}",
+                            nats::subject::Scope::Deployment.as_ref()
+                        );
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    // A workspace request
+                    (
+                        Some(prefix),
+                        Some(p1),
+                        Some(p2),
+                        Some("workspace"),
+                        Some(_workspace_id),
+                        Some(kind),
+                        None,
+                        None,
+                    ) => {
+                        let matched = format!(
+                            "{prefix}.{p1}.{p2}.{}.:workspace_id.{kind}",
+                            nats::subject::Scope::Workspace.as_ref()
+                        );
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    // A change set request
+                    (
+                        Some(prefix),
+                        Some(p1),
+                        Some(p2),
+                        Some("change_set"),
+                        Some(_workspace_id),
+                        Some(_change_set_id),
+                        Some(kind),
+                        None,
+                    ) => {
+                        let matched = format!(
+                            "{prefix}.{p1}.{p2}.{}.:workspace_id.:change_set_id.{kind}",
+                            nats::subject::Scope::ChangeSet.as_ref()
+                        );
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    _ => {}
+                }
             }
             None => {
-                if let (
-                    Some(p1),
-                    Some(p2),
-                    Some(_workspace_id),
-                    Some(_change_set_id),
-                    Some(kind),
-                    None,
-                ) = (
+                match (
+                    parts.next(),
                     parts.next(),
                     parts.next(),
                     parts.next(),
@@ -428,9 +465,48 @@ where
                     parts.next(),
                     parts.next(),
                 ) {
-                    let matched = format!("{p1}.{p2}.:workspace_id.:change_set_id.{kind}");
-                    req.extensions_mut().insert(MatchedSubject::from(matched));
-                };
+                    // A deployment-wide request
+                    (Some(p1), Some(p2), Some("deployment"), Some(kind), None, None, None) => {
+                        let matched = format!(
+                            "{p1}.{p2}.{}.{kind}",
+                            nats::subject::Scope::Deployment.as_ref()
+                        );
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    // A workspace request
+                    (
+                        Some(p1),
+                        Some(p2),
+                        Some("workspace"),
+                        Some(_workspace_id),
+                        Some(kind),
+                        None,
+                        None,
+                    ) => {
+                        let matched = format!(
+                            "{p1}.{p2}.{}.:workspace_id.{kind}",
+                            nats::subject::Scope::Workspace.as_ref()
+                        );
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    // A change set request
+                    (
+                        Some(p1),
+                        Some(p2),
+                        Some("change_set"),
+                        Some(_workspace_id),
+                        Some(_change_set_id),
+                        Some(kind),
+                        None,
+                    ) => {
+                        let matched = format!(
+                            "{p1}.{p2}.{}.:workspace_id.:change_set_id.{kind}",
+                            nats::subject::Scope::ChangeSet.as_ref()
+                        );
+                        req.extensions_mut().insert(MatchedSubject::from(matched));
+                    }
+                    _ => {}
+                }
             }
         }
     }
