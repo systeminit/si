@@ -72,6 +72,7 @@ pub mod add_action;
 pub mod connections;
 pub mod create_component;
 pub mod delete_component;
+pub mod duplicate_components;
 pub mod execute_management_function;
 pub mod find_component;
 pub mod get_component;
@@ -775,6 +776,10 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(list_components::list_components))
         .route("/find", get(find_component::find_component))
         .route("/search", post(search_components::search_components))
+        .route(
+            "/duplicate",
+            post(duplicate_components::duplicate_components),
+        )
         .nest(
             "/:component_id",
             Router::new()
