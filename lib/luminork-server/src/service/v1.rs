@@ -63,6 +63,10 @@ pub use components::{
         CreateComponentV1Response,
     },
     delete_component::DeleteComponentV1Response,
+    duplicate_components::{
+        DuplicateComponentsV1Request,
+        DuplicateComponentsV1Response,
+    },
     execute_management_function::{
         ExecuteManagementFunctionV1Request,
         ExecuteManagementFunctionV1Response,
@@ -154,6 +158,7 @@ pub use crate::api_types::func_run::v1::{
         components::execute_management_function::execute_management_function,
         components::add_action::add_action,
         components::manage_component::manage_component,
+        components::duplicate_components::duplicate_components,
         schemas::list_schemas::list_schemas,
         schemas::find_schema::find_schema,
         schemas::get_schema::get_schema,
@@ -203,6 +208,8 @@ pub use crate::api_types::func_run::v1::{
             UpdateComponentV1Request,
             UpdateComponentV1Response,
             DeleteComponentV1Response,
+            DuplicateComponentsV1Request,
+            DuplicateComponentsV1Response,
             ExecuteManagementFunctionV1Request,
             ExecuteManagementFunctionV1Response,
             ComponentPropKey,
