@@ -1547,7 +1547,10 @@ const readOnly = computed(
 const kindAsString = computed(() => `${props.prop?.widgetKind}`.toLowerCase());
 
 const inputHtmlTag = computed(() => {
-  if (kindAsString.value === "textarea") {
+  if (
+    kindAsString.value === "textarea" ||
+    kindAsString.value === "codeeditor"
+  ) {
     return "textarea";
   }
 

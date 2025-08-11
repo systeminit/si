@@ -4,7 +4,7 @@
     :title="title"
     size="4xl"
     hideExitButton
-    @close="updateValue"
+    @close="cancel"
   >
     <template #titleIcons>
       <button
@@ -20,7 +20,6 @@
         <Icon name="x" size="md" />
       </button>
     </template>
-
     <div
       :class="
         clsx(
@@ -40,13 +39,36 @@
         :recordId="codeEditorId"
       />
     </div>
+
+    <div class="flex justify-end gap-sm mt-sm">
+      <VButton label="Cancel" tone="shade" variant="ghost" @click="cancel" />
+      <VButton
+        :class="
+          clsx(
+            '!text-sm !border !cursor-pointer !px-xs',
+            themeClasses(
+              '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+              '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+            ),
+          )
+        "
+        label="Save"
+        @click="save"
+      />
+    </div>
   </Modal>
 </template>
 
 <script setup lang="ts">
-import { Icon, Modal, themeClasses, useModal } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  Modal,
+  themeClasses,
+  useModal,
+  VButton,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { ref, watch } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 import CodeEditor from "@/components/CodeEditor.vue";
 
 defineProps({
@@ -79,16 +101,35 @@ const cancel = () => {
   close();
 };
 
+const save = () => {
+  emit("submit", newValueString.value);
+  close();
+};
+
+const handleKeydown = (e: KeyboardEvent) => {
+  if (e.key === "Escape" && isOpen.value) {
+    e.preventDefault();
+    e.stopPropagation();
+    cancel();
+  }
+};
+
+watch(isOpen, (open) => {
+  if (open) {
+    document.addEventListener("keydown", handleKeydown, true);
+  } else {
+    document.removeEventListener("keydown", handleKeydown, true);
+  }
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("keydown", handleKeydown, true);
+});
+
 const emit = defineEmits<{
   (e: "submit", value: string): void;
   (e: "cancel"): void;
 }>();
-
-const updateValue = () => {
-  if (submit.value) {
-    emit("submit", newValueString.value);
-  }
-};
 
 watch(
   () => newValueString.value,
