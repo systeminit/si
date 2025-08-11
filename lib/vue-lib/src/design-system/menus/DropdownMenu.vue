@@ -140,7 +140,7 @@ interface SubmenuParent {
 const props = defineProps({
   // Set an anchorTo element if you want the DropdownMenu to be attached to a DOM element
   // If no anchorTo element is used, each open() event for this Dropdown will try to determine where to anchor based on the mouse position or event target
-  anchorTo: { type: Object }, // TODO: figure out right type to say "template ref / dom element"
+  anchorTo: { type: Object || HTMLElement },
 
   // You can add DropdownMenuItems via this prop or in a template
   items: {
@@ -297,7 +297,11 @@ function open(e?: MouseEvent, anchorToMouse?: boolean) {
 
   if (props.anchorTo) {
     // can anchor to a specific element via props
-    anchorEl.value = props.anchorTo.$el;
+    if (props.anchorTo instanceof HTMLElement) {
+      anchorEl.value = props.anchorTo;
+    } else {
+      anchorEl.value = props.anchorTo.$el;
+    }
   } else if (e && (anchorToMouse || !clickTargetIsElement)) {
     // or can anchor to mouse position if anchorToMouse is true (or event has not target)
     anchorEl.value = undefined;

@@ -622,11 +622,10 @@ const createTemplateStart = () => {
 };
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-const anchor = ref<Object | undefined>(undefined);
+const anchor = ref<HTMLElement | object | undefined>(undefined);
 
 function open(
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  anchorTo: Object,
+  anchorTo: HTMLElement | object,
   componentsForMenu: ComponentInList[],
 ) {
   const oldAnchor = anchor.value;

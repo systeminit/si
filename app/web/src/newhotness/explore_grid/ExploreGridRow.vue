@@ -35,19 +35,19 @@
         :component="row.component"
         :data-index="row.dataIndex"
         @hoverPin="
-          (hovered) =>
+          (hovered: ComponentId) =>
             row.type === 'pinnedContentRow' && hover(row.component.id, !hovered)
         "
         @mouseenter="hover(row.component.id, true)"
         @mouseleave="hover(row.component.id, false)"
         @unpin="emit('unpin', row.component.id)"
         @click.stop.left="
-          (e) =>
+          (e: MouseEvent) =>
             row.type === 'pinnedContentRow' &&
             emit('childClicked', e, row.component.id, row.dataIndex)
         "
         @click.stop.right="
-          (e) =>
+          (e: MouseEvent) =>
             row.type === 'pinnedContentRow' &&
             emit('childClicked', e, row.component.id, row.dataIndex)
         "
@@ -87,18 +87,27 @@
   >
     <ExploreGridTile
       v-for="(component, columnIndex) in row.components"
-      ref="exploreGridTileRefs"
       :key="component.id"
       :data-index="dataIndexForTileInRow(row, columnIndex)"
       :component="component"
       class="flex-1"
       showSelectionCheckbox
       :selected="isSelected(row, columnIndex)"
-      :focused="focusedComponentId === component.id"
+      :focused="exploreContext.focusedComponent.value?.id === component.id"
       :hovered="hoveredId === component.id"
-      :hasFailedActions="componentsWithFailedActions.has(component.id)"
-      :hasRunningActions="componentsWithRunningActions.has(component.id)"
-      :pendingActionCounts="componentsPendingActionNames.get(component.id)"
+      :hasFailedActions="
+        exploreContext.componentsHaveActionsWithState.value.failed.has(
+          component.id,
+        )
+      "
+      :hasRunningActions="
+        exploreContext.componentsHaveActionsWithState.value.running.has(
+          component.id,
+        )
+      "
+      :pendingActionCounts="
+        exploreContext.componentsPendingActionNames.value.get(component.id)
+      "
       @select="emit('childSelect', dataIndexForTileInRow(row, columnIndex))"
       @deselect="emit('childDeselect', dataIndexForTileInRow(row, columnIndex))"
       @mouseenter="hover(component.id, true)"
@@ -124,7 +133,8 @@
     />
     <!--this fills in any extra spots in an unfilled row-->
     <div
-      v-for="emptySpot in lanesCount - row.components.length"
+      v-for="emptySpot in exploreContext.lanesCount.value -
+      row.components.length"
       :key="emptySpot"
       class="flex-1"
     />
@@ -200,7 +210,7 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 import * as _ from "lodash-es";
 import {
   themeClasses,
@@ -214,19 +224,14 @@ import { ComponentInList } from "@/workers/types/entity_kind_types";
 import { ComponentId } from "@/api/sdf/dal/component";
 import ComponentCard from "../ComponentCard.vue";
 import ExploreGridTile from "./ExploreGridTile.vue";
+import { assertIsDefined, ExploreContext } from "../types";
 
 const props = defineProps<{
   row: ExploreGridRowData;
-  lanesCount: number;
-  selectedComponentIndexes: Set<number>;
-  focusedComponentId?: ComponentId;
-  componentsWithFailedActions: Set<ComponentId>;
-  componentsWithRunningActions: Set<ComponentId>;
-  componentsPendingActionNames: Map<
-    ComponentId,
-    Record<string, { count: number; hasFailed: boolean }>
-  >;
 }>();
+
+const exploreContext = inject<ExploreContext>("EXPLORE_CONTEXT");
+assertIsDefined<ExploreContext>(exploreContext);
 
 interface TitleIcon {
   iconName: IconNames;
@@ -234,7 +239,9 @@ interface TitleIcon {
 }
 
 const isSelected = (row: ExploreGridRowData, columnIndex: number) =>
-  props.selectedComponentIndexes.has(dataIndexForTileInRow(row, columnIndex));
+  exploreContext.selectedComponentIndexes.has(
+    dataIndexForTileInRow(row, columnIndex),
+  );
 
 const titleIcon = computed((): TitleIcon | null => {
   if (props.row.type !== "header") return null;
@@ -312,10 +319,6 @@ const emptyAreaData = computed((): EmptyAreaData | null => {
 
 // You can only have one card in a row, but you have can multiple tiles in a row.
 const exploreGridPinnedRef = ref<InstanceType<typeof ComponentCard>>();
-const exploreGridTileRefs = ref<InstanceType<typeof ExploreGridTile>[]>();
-const exploreGridComponentRefs = computed(() =>
-  _.compact([exploreGridPinnedRef.value, ...(exploreGridTileRefs.value ?? [])]),
-);
 
 const dataIndexForTileInRow = (row: ExploreGridRowData, idx: number) => {
   if (row.type !== "contentRow") return -1;
@@ -353,7 +356,7 @@ const hoverPin = (pinnedComponentId: ComponentId, hovered: boolean) => {
 // Provide a background color because we need to fill the empty space between the div's border and
 // the inner border for the asset color.
 const pinnedBorderClasses = (componentId: string) => {
-  const focused = props.focusedComponentId === componentId;
+  const focused = exploreContext.focusedComponent.value?.id === componentId;
   if (focused)
     return themeClasses(
       tw`border-action-500 bg-action-500`,
@@ -379,8 +382,6 @@ const emit = defineEmits<{
   (e: "childDeselect", componentIdx: number): void;
   (e: "resetFilter"): void;
 }>();
-
-defineExpose({ exploreGridComponentRefs });
 </script>
 
 <script lang="ts">
