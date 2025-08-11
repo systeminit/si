@@ -1097,6 +1097,17 @@ const sortedAndGroupedComponents = computed(() => {
       const title = component.hasResource ? "Has Resource" : "No Resource";
       groups[title]?.push(component);
     }
+  } else if (groupBySelection.value === "Incompatible Components") {
+    groups = {
+      "Incompatible Components": [],
+      "Compatible Components": [],
+    };
+    for (const component of components) {
+      const title = component.hasSocketConnections
+        ? "Incompatible Components"
+        : "Compatible Components";
+      groups[title]?.push(component);
+    }
   } else if (groupBySelection.value === "Schema Name") {
     const unsortedGroups: Record<string, ComponentInList[]> = {};
     for (const component of components ?? []) {
@@ -1761,6 +1772,9 @@ const setSelectionsFromQuery = async () => {
     case "resource":
       groupBySelection.value = GroupByCriteria.Resource;
       break;
+    case "incompatibleComponents":
+      groupBySelection.value = GroupByCriteria.IncompatibleComponents;
+      break;
     case undefined:
     default:
       groupBySelection.value = GroupByCriteria.None;
@@ -1872,7 +1886,8 @@ export type GroupByUrlQuery =
   | "qualificationstatus"
   | "upgradeable"
   | "schemaname"
-  | "resource";
+  | "resource"
+  | "incompatibleComponents";
 
 enum GroupByCriteria {
   Diff = "Diff Status",
@@ -1880,6 +1895,7 @@ enum GroupByCriteria {
   Qualification = "Qualification Status",
   SchemaName = "Schema Name",
   Resource = "Resource",
+  IncompatibleComponents = "Incompatible Components",
   None = "",
 }
 
@@ -1902,13 +1918,33 @@ const clearGroupBy = () => {
 };
 
 const groupBySelection = ref<GroupByCriteria>(GroupByCriteria.None);
-const groupByDropDownOptions = [
-  { value: GroupByCriteria.Diff, label: "Diff Status" },
-  { value: GroupByCriteria.Qualification, label: "Qualification Status" },
-  { value: GroupByCriteria.Upgrade, label: "Upgradeable" },
-  { value: GroupByCriteria.SchemaName, label: "Schema Name" },
-  { value: GroupByCriteria.Resource, label: "Resource" },
-];
+const groupByDropDownOptions = computed(() => {
+  const baseOptions = [
+    { value: GroupByCriteria.Diff, label: "Diff Status" },
+    { value: GroupByCriteria.Qualification, label: "Qualification Status" },
+    { value: GroupByCriteria.Upgrade, label: "Upgradeable" },
+    { value: GroupByCriteria.SchemaName, label: "Schema Name" },
+    { value: GroupByCriteria.Resource, label: "Resource" },
+  ];
+
+  // Only show Socket Connections option if there are components with socket connections
+  if (hasSocketConnections.value) {
+    baseOptions.push({
+      value: GroupByCriteria.IncompatibleComponents,
+      label: "Incompatible Components",
+    });
+  }
+
+  return baseOptions;
+});
+
+// Watch for when incompatible components groupBy should be cleared
+watch([hasSocketConnections, groupBySelection], ([hasSocket, groupBy]) => {
+  // If groupBy is set to IncompatibleComponents but there are no socket connections, clear it
+  if (!hasSocket && groupBy === GroupByCriteria.IncompatibleComponents) {
+    groupBySelection.value = GroupByCriteria.None;
+  }
+});
 
 watch([groupBySelection], () => {
   // Update the query of the route (allowing for URL links) when the group by selection change.
@@ -1930,6 +1966,10 @@ watch([groupBySelection], () => {
     query.groupBy = "schemaname";
   } else if (groupBySelection.value === GroupByCriteria.Resource) {
     query.groupBy = "resource";
+  } else if (
+    groupBySelection.value === GroupByCriteria.IncompatibleComponents
+  ) {
+    query.groupBy = "incompatibleComponents";
   }
 
   storeFilterAndGroup(query);
