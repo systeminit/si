@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="gridTile"
     :class="
       clsx(
         'component tile',
@@ -222,7 +223,7 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { computed, inject } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import {
   ComponentInList,
   ComponentDiffStatus,
@@ -253,6 +254,8 @@ assertIsDefined<ExploreContext>(explore);
 const outgoing = computed(
   () => ctx.outgoingCounts.value[props.component.id] ?? 0,
 );
+
+const gridTile = ref<HTMLElement | undefined>();
 
 const canBeUpgraded = computed(() =>
   explore.upgradeableComponents.value.has(props.component.id),
@@ -333,6 +336,20 @@ const getPendingActionTooltip = (
     return `${count} pending ${actionWord} action${plural}`;
   }
 };
+
+watch(
+  () => [explore.focusedComponentIdx, gridTile],
+  () => {
+    if (
+      gridTile.value &&
+      gridTile.value.dataset.index ===
+        explore.focusedComponentIdx.value?.toString()
+    ) {
+      explore.focusedComponentRef.value = gridTile.value;
+    }
+  },
+  { immediate: true, deep: true },
+);
 
 const emit = defineEmits<{
   (e: "select"): void;

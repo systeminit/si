@@ -259,39 +259,43 @@
               </div>
             </div>
           </div>
-          <ExploreGrid
+          <div
             v-else
-            ref="exploreGridRef"
-            :components="sortedAndGroupedComponents"
-            :focusedComponentIdx="focusedComponentIdx"
-            :selectedComponentIndexes="selectedComponentIndexes"
-            :componentsWithFailedActions="componentsHaveActionsWithState.failed"
-            :componentsWithRunningActions="
-              componentsHaveActionsWithState.running
+            ref="scrollRef"
+            :class="
+              clsx(
+                'grow',
+                bulkEditing && 'min-h-0',
+                !bulkEditing && 'scrollable',
+              )
             "
-            :componentsPendingActionNames="componentsPendingActionNames"
-            :bulkEditing="bulkEditing"
-            :showFilteredCounter="shouldShowFilteredCounter"
-            :filteredCount="filteredComponents?.length ?? 0"
-            :totalCount="componentList.length"
-            @resetFilter="resetFilter"
-            @bulkDone="() => (bulkEditing = false)"
-            @childClicked="componentClicked"
-            @childSelect="selectComponent"
-            @childDeselect="deselectComponent"
-            @childHover="
-              (componentId) => {
-                if (componentsHaveActionsWithState.failed.has(componentId)) {
-                  hoveredComponentId = componentId;
+            :style="!bulkEditing && 'overflow-anchor: none;'"
+          >
+            <ExploreGrid
+              ref="exploreGridRef"
+              :components="sortedAndGroupedComponents"
+              :gridRows="gridRows"
+              :scrollRef="scrollRef"
+              :bulkEditing="bulkEditing"
+              @resetFilter="resetFilter"
+              @bulkDone="bulkDone"
+              @childClicked="componentClicked"
+              @childSelect="selectComponent"
+              @childDeselect="deselectComponent"
+              @childHover="
+                (componentId) => {
+                  if (componentsHaveActionsWithState.failed.has(componentId)) {
+                    hoveredComponentId = componentId;
+                  }
                 }
-              }
-            "
-            @childUnhover="() => (hoveredComponentId = undefined)"
-            @unpin="() => (pinnedComponentId = undefined)"
-            @scrollend="fixContextMenuAfterScroll"
-            @scroll="onScroll"
-          />
-
+              "
+              @childUnhover="() => (hoveredComponentId = undefined)"
+              @unpin="() => (pinnedComponentId = undefined)"
+              @scrollend="fixContextMenuAfterScroll"
+              @collapse="collapse"
+              @scroll="onScroll"
+            />
+          </div>
           <footer
             id="footer"
             :class="
@@ -333,7 +337,7 @@
           </footer>
         </template>
       </template>
-      <Map
+      <MapComponent
         v-else
         ref="mapRef"
         :active="!showGrid"
@@ -496,7 +500,7 @@ import ExploreSearchBarSkeleton from "@/newhotness/skeletons/ExploreSearchBarSke
 import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue";
 import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
-import Map from "./Map.vue";
+import MapComponent from "./Map.vue";
 import {
   collapsingGridStyles,
   openWorkspaceMigrationDocumentation,
@@ -505,13 +509,19 @@ import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import { getQualificationStatus } from "./ComponentTileQualificationStatus.vue";
 import FuncRunList from "./FuncRunList.vue";
-import { assertIsDefined, Context, ExploreContext } from "./types";
+import {
+  assertIsDefined,
+  ComponentsHaveActionsWithState,
+  Context,
+  ExploreContext,
+} from "./types";
 import {
   KeyDetails,
   keyEmitter,
   MouseDetails,
   mouseEmitter,
   windowResizeEmitter,
+  windowWidthReactive,
 } from "./logic_composables/emitters";
 import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
@@ -528,6 +538,7 @@ import ExploreModeTile from "./ExploreModeTile.vue";
 import ActionQueueList from "./ActionQueueList.vue";
 import { useComponentSearch } from "./logic_composables/search";
 import { routes, useApi } from "./api_composables";
+import { ExploreGridRowData } from "./explore_grid/ExploreGridRow.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -574,7 +585,7 @@ const retrieveFilterAndGroup = (): SelectionsInQueryString => {
 const groupRef = ref<InstanceType<typeof TabGroupToggle>>();
 const actionsRef = ref<typeof CollapsingGridItem>();
 const historyRef = ref<typeof CollapsingGridItem>();
-const mapRef = ref<InstanceType<typeof Map>>();
+const mapRef = ref<InstanceType<typeof MapComponent>>();
 const exploreGridRef = ref<InstanceType<typeof ExploreGrid>>();
 const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
@@ -638,6 +649,8 @@ const startBulkEdit = async () => {
     );
     return;
   }
+  // get rid of this old ref as its being removed from the DOM
+  exploreContext.value.focusedComponentRef.value = undefined;
   bulkEditing.value = true;
 };
 
@@ -687,11 +700,6 @@ const upgradeableComponentIds = computed(() => {
   }
   return set;
 });
-// This is the list of all components that get rendered but the explore grid, considering the filtering and grouping
-// done here and any removals caused by collapsing by the ExploreGrid
-const allVisibleComponents = computed(
-  () => exploreGridRef.value?.allVisibleComponents ?? [],
-);
 
 // ================================================================================================
 // VIEWS
@@ -805,16 +813,56 @@ const showSkeleton = computed(
 );
 
 // ================================================================================================
-// EXPLORE CONTEXT
-const exploreContext = computed<ExploreContext>(() => {
-  return {
-    viewId: selectedViewOrDefaultId,
-    upgradeableComponents: upgradeableComponentIds,
-    showSkeleton,
-  };
-});
+// INSTANTIATION OF REQUIRED VARIABLES
 
-provide("EXPLORE_CONTEXT", exploreContext.value);
+const focusedComponentIdx = ref<number | undefined>(-1);
+const selectedComponentIndexes = reactive<Set<number>>(new Set());
+
+const setFocusedComponentIdx = (idx: number | undefined) => {
+  exploreContext.value.focusedComponentRef.value = undefined;
+  focusedComponentIdx.value = idx;
+};
+
+const unfocus = () => {
+  setFocusedComponentIdx(undefined); // don't focus the search bar on unfocus
+  componentContextMenuRef.value?.close();
+};
+
+const collapse = (title: string, collapsed: boolean) => {
+  collapseTracker.value[title] = collapsed;
+};
+
+enum SortByCriteria {
+  FailingActions = "Failing actions",
+  RunningActions = "Running actions",
+  LatestToOldest = "Latest to oldest",
+  OldestToLatest = "Oldest to latest",
+}
+const sortBySelection = ref<SortByCriteria>(SortByCriteria.LatestToOldest);
+
+export type GroupByUrlQuery =
+  | "diffstatus"
+  | "qualificationstatus"
+  | "upgradeable"
+  | "schemaname"
+  | "resource"
+  | "incompatibleComponents";
+
+enum GroupByCriteria {
+  Diff = "Diff Status",
+  Upgrade = "Upgradeable",
+  Qualification = "Qualification Status",
+  SchemaName = "Schema Name",
+  Resource = "Resource",
+  IncompatibleComponents = "Incompatible Components",
+  None = "",
+}
+const groupBySelection = ref<GroupByCriteria>(GroupByCriteria.None);
+
+const bulkDone = () => {
+  bulkEditing.value = false;
+  fixContextMenu();
+};
 
 // ================================================================================================
 // ACTIONS INFORMATION FOR GROUP BY
@@ -826,11 +874,6 @@ const actionViewListRaw = useQuery<BifrostActionViewList | null>({
 const actionViewList = computed(
   () => actionViewListRaw.data.value?.actions ?? [],
 );
-
-interface ComponentsHaveActionsWithState {
-  failed: Set<ComponentId>;
-  running: Set<ComponentId>;
-}
 
 const componentsHaveActionsWithState = computed(() => {
   const results: ComponentsHaveActionsWithState = {
@@ -850,7 +893,7 @@ const componentsHaveActionsWithState = computed(() => {
 
 // Map component IDs to their pending action counts by type (can be multiple)
 const componentsPendingActionNames = computed(() => {
-  const results = new globalThis.Map<
+  const results = new Map<
     ComponentId,
     Record<string, { count: number; hasFailed: boolean }>
   >();
@@ -1125,6 +1168,225 @@ const sortedAndGroupedComponents = computed(() => {
   return groups;
 });
 
+const MIN_GRID_TILE_WIDTH = 250;
+const GRID_TILE_GAP = 16; // this is being used for both the X and Y gap
+const scrollRef = ref<HTMLDivElement>();
+
+function getScrollbarWidth(): number {
+  const temp = document.createElement("div");
+  const inner = document.createElement("div");
+
+  temp.style.visibility = "hidden";
+  temp.style.overflow = "scroll";
+  document.body.appendChild(temp);
+  temp.appendChild(inner);
+
+  const scrollbarWidth = temp.offsetWidth - inner.offsetWidth;
+  temp.parentNode?.removeChild(temp);
+
+  return scrollbarWidth;
+}
+
+// The expected number of components in a row based on the width of the scroll area
+const virtualizerLanes = computed(() => {
+  // We need to force a recompute of this value when the screen is resized
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  windowWidthReactive.value;
+
+  // We also need to force a recompute of this value if the number of tiles changes
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  sortedAndGroupedComponents.value;
+
+  // Our grid is based on the minimum tile width... so how many tiles can we fit?
+  let newLanes = 0;
+  let availableSpace = scrollRef.value?.getBoundingClientRect().width ?? 0;
+  if (
+    scrollRef.value &&
+    scrollRef.value.scrollHeight > scrollRef.value.clientHeight
+  ) {
+    // need to account for the width of the scrollbar!
+    availableSpace -= getScrollbarWidth();
+  }
+  while (availableSpace > 0) {
+    availableSpace -= MIN_GRID_TILE_WIDTH; // width of one grid tile
+    if (availableSpace > 0) {
+      newLanes++;
+    }
+    availableSpace -= GRID_TILE_GAP; // gap between grid tiles
+  }
+  return newLanes;
+});
+
+// This is how we show no headers when "group by" functionality is in use. This relies on the
+// fact that using "group by" will create at least two groups. If you find yourself working on
+// "group by", but only wanting to show one group, this is why you're not seeing any headers.
+const hasMultipleSections = computed(
+  () => _.keys(sortedAndGroupedComponents.value).length > 1,
+);
+
+const collapseTracker = ref<Record<string, boolean>>({});
+const gridRows = computed(() => {
+  const rows: ExploreGridRowData[] = [];
+  let dataIndex = 0;
+
+  for (const groupName in sortedAndGroupedComponents.value) {
+    const components = sortedAndGroupedComponents.value[groupName];
+    if (!components) continue;
+
+    // First, handle pinned components. They take up and entire row, so we can handle them upfront
+    // without having to worry about chunking. We'll add a footer for each one.
+    if (groupName === "Pinned") {
+      for (const component of components) {
+        rows.push({
+          type: "pinnedContentRow",
+          component,
+          dataIndex,
+        });
+        dataIndex += 1;
+        rows.push({
+          type: "footer",
+        });
+      }
+
+      // Move on after dealing with the pinned group.
+      continue;
+    }
+
+    const count = components.length;
+    let collapsed = collapseTracker.value[groupName];
+
+    // Handle the very first time everything is loaded. We want empty sections to begin collapsed
+    // and non-empty sections to be expanded by default. The "Unconnected" section should always
+    // start collapsed.
+    if (collapsed === undefined) {
+      collapsed = count === 0 || groupName === "Unconnected";
+    }
+
+    if (hasMultipleSections.value) {
+      rows.push({
+        type: "header",
+        title: groupName,
+        count,
+        collapsed,
+      });
+    }
+
+    // Only populate the component rows if the header is not collapsed. Note that this removes them
+    // from the virtualizer. We may eventually want to "hide" components instead to keep them
+    // virtualized (e.g. "zero height").
+    if (!collapsed) {
+      const componentChunks = _.chunk(components, virtualizerLanes.value);
+
+      if (componentChunks.length) {
+        for (const components of componentChunks) {
+          rows.push({
+            type: "contentRow",
+            components,
+            chunkInitialId: dataIndex,
+            insideSection: hasMultipleSections.value,
+          });
+
+          // We need to increase the current index by the length of the row for the next iteration.
+          dataIndex += components.length;
+        }
+      } else {
+        rows.push({
+          type: "emptyRow",
+          groupName,
+        });
+      }
+    }
+
+    // Whether or not we collapse the group, we need the footer.
+    if (hasMultipleSections.value) {
+      rows.push({
+        type: "footer",
+      });
+    }
+  }
+
+  // Remove the last footer when dealing with "group by" functionality.
+  if (hasMultipleSections.value) rows.pop();
+
+  // Add filtered counter row if needed
+  if (
+    shouldShowFilteredCounter.value &&
+    filteredComponents.value !== undefined &&
+    componentList.value.length !== undefined
+  ) {
+    const hiddenCount =
+      componentList.value.length - filteredComponents.value.length;
+    if (hiddenCount > 0) {
+      rows.push({
+        type: "filteredCounterRow",
+        hiddenCount,
+      });
+    }
+  }
+
+  return rows;
+});
+
+const allVisibleComponents = computed(() => {
+  // this excludes components which are inside collapsed groups
+  const components: ComponentInList[] = [];
+  for (const row of gridRows.value) {
+    if (row.type === "contentRow") {
+      components.push(...row.components);
+    }
+  }
+  return components;
+});
+
+const focusedComponent = computed(
+  () => allVisibleComponents.value[focusedComponentIdx.value ?? -1],
+);
+const selectedComponentsMap = computed(() => {
+  const selected: Record<number, ComponentInList> = {};
+
+  selectedComponentIndexes.forEach((index) => {
+    const component = allVisibleComponents.value[index];
+    if (component) {
+      selected[index] = component;
+    }
+  });
+
+  return selected;
+});
+
+const selectedComponents = computed(() => {
+  return Object.values(selectedComponentsMap.value);
+});
+
+const getGridComponentRefByIndex = (idx: number) => {
+  const el = document.querySelector(`.component.tile[data-index="${idx}"]`);
+  return (el as HTMLElement) || undefined;
+};
+
+const focusedComponentRef = ref<HTMLElement | undefined>();
+
+// ================================================================================================
+// EXPLORE CONTEXT
+const exploreContext = computed<ExploreContext>(() => {
+  return {
+    showSkeleton,
+    lanesCount: virtualizerLanes,
+    viewId: selectedViewOrDefaultId,
+    selectedComponentIndexes,
+    focusedComponentIdx,
+    upgradeableComponents: upgradeableComponentIds,
+    allVisibleComponents,
+    selectedComponentsMap,
+    focusedComponent,
+    componentsHaveActionsWithState,
+    componentsPendingActionNames,
+    hasMultipleSections,
+    focusedComponentRef,
+  };
+});
+
+provide("EXPLORE_CONTEXT", exploreContext.value);
+
 // ================================================================================================
 // THE SEARCH BAR AND FILTERING
 const searchString = ref("");
@@ -1192,11 +1454,6 @@ watch(searchString, (newValue, oldValue) => {
 
 // ================================================================================================
 // FOCUSING, TABBING, ETC.
-const focusedComponentIdx = ref<number | undefined>(-1);
-const selectedComponentIndexes = reactive<Set<number>>(new Set());
-const selectedComponents = computed(
-  () => exploreGridRef.value?.selectedComponents ?? [],
-);
 
 watch(selectedComponentIndexes, () => {
   const ids = [...selectedComponentIndexes];
@@ -1215,7 +1472,6 @@ watch(selectedComponentIndexes, () => {
   });
 });
 
-const focusedComponent = computed(() => exploreGridRef.value?.focusedComponent);
 const focusedComponentIsPinned = computed(() => {
   if (!focusedComponent.value) return false;
   return focusedComponent.value.id === pinnedComponentId.value;
@@ -1225,7 +1481,7 @@ const nextComponent = (wrap = false) => {
   if (!showGrid.value) return;
 
   if (focusedComponentIdx.value === undefined) {
-    focusedComponentIdx.value = -1;
+    setFocusedComponentIdx(-1);
     return;
   }
 
@@ -1233,9 +1489,9 @@ const nextComponent = (wrap = false) => {
 
   if (focusedComponentIdx.value > allVisibleComponents.value.length - 1) {
     if (wrap) {
-      focusedComponentIdx.value = -1;
+      setFocusedComponentIdx(-1);
     } else {
-      focusedComponentIdx.value = allVisibleComponents.value.length - 1;
+      setFocusedComponentIdx(allVisibleComponents.value.length - 1);
     }
   }
 };
@@ -1243,7 +1499,7 @@ const previousComponent = (wrap = false) => {
   if (!showGrid.value) return;
 
   if (focusedComponentIdx.value === undefined) {
-    focusedComponentIdx.value = -1;
+    setFocusedComponentIdx(-1);
     return;
   }
 
@@ -1257,7 +1513,7 @@ const previousComponent = (wrap = false) => {
     }
   }
 
-  focusedComponentIdx.value = desiredIdx;
+  setFocusedComponentIdx(desiredIdx);
 };
 
 watch([focusedComponentIdx], () => {
@@ -1265,14 +1521,6 @@ watch([focusedComponentIdx], () => {
     searchRef.value?.focus();
   }
 });
-
-const focusedGridComponentRef = computed(() =>
-  focusedComponentIdx.value !== undefined && focusedComponentIdx.value > -1
-    ? exploreGridRef.value?.getGridComponentRefByIndex(
-        focusedComponentIdx.value,
-      )
-    : undefined,
-);
 
 const selectionComponentsForAction = computed(() => {
   if (selectedComponents.value.length > 0) return selectedComponents.value;
@@ -1302,25 +1550,20 @@ const allSelectedComponentsAreRestorable = computed(() => {
 });
 
 const fixContextMenu = async () => {
-  // we potentially select a component on mount, so if the ref isn't here, nextTick it will be
   if (bulkEditing.value) return;
-  if (!focusedGridComponentRef.value) await nextTick();
+  if (!focusedComponentRef.value) await nextTick();
 
   // If we focus on the pinned component, do not bring up the context menu.
   if (
-    focusedGridComponentRef.value &&
+    exploreContext.value.focusedComponentRef.value &&
     selectionComponentsForAction.value &&
     !focusedComponentIsPinned.value
   ) {
     componentContextMenuRef.value?.open(
-      focusedGridComponentRef.value,
+      exploreContext.value.focusedComponentRef.value,
       selectionComponentsForAction.value,
     );
   }
-};
-const unfocus = () => {
-  focusedComponentIdx.value = undefined; // don't focus the search bar on unfocus
-  componentContextMenuRef.value?.close();
 };
 const clearSelection = () => {
   selectedComponentIndexes.clear();
@@ -1330,7 +1573,7 @@ const clearSelection = () => {
 
 const selectComponent = (componentIdx: number) => {
   selectedComponentIndexes.add(componentIdx);
-  focusedComponentIdx.value = componentIdx;
+  setFocusedComponentIdx(componentIdx);
   fixContextMenu();
 };
 const deselectComponent = (componentIdx: number | string) => {
@@ -1341,7 +1584,7 @@ const deselectComponent = (componentIdx: number | string) => {
     if (selectedComponentIndexes.size === 0) {
       clearSelection();
     } else {
-      focusedComponentIdx.value = [...selectedComponentIndexes].pop();
+      setFocusedComponentIdx([...selectedComponentIndexes].pop());
     }
   }
   fixContextMenu();
@@ -1373,7 +1616,7 @@ const componentClicked = (
   if (e.button === 0) {
     componentNavigate(componentId);
   } else if (e.button === 2) {
-    focusedComponentIdx.value = componentIdx;
+    setFocusedComponentIdx(componentIdx);
   }
 };
 const componentNavigate = (componentId: ComponentId) => {
@@ -1678,12 +1921,12 @@ const onScroll = (event: Event) => {
   }, 250);
 };
 
-const fixContextMenuAfterScroll = () => {
+const fixContextMenuAfterScroll = async () => {
   // We need to fix the context menu after scrolling!
   // If the element is scrolled into view, show the menu
   // If the element is scrolled offscreen, unfocus and reset selected component index
-  const el = focusedGridComponentRef.value?.$el;
-  if (elementIsScrolledIntoView(el)) {
+  const el = exploreContext.value.focusedComponentRef.value;
+  if (el && elementIsScrolledIntoView(el)) {
     fixContextMenu();
   } else {
     unfocus();
@@ -1692,15 +1935,14 @@ const fixContextMenuAfterScroll = () => {
       // try to find the best component to put it on
       const selectedIndexesArray = [...selectedComponentIndexes];
       for (const selectedIndex of selectedIndexesArray) {
-        const el =
-          exploreGridRef.value?.getGridComponentRefByIndex(selectedIndex)?.$el;
-        if (elementIsScrolledIntoView(el)) {
-          focusedComponentIdx.value = selectedIndex;
+        const el = getGridComponentRefByIndex(selectedIndex);
+        if (el && elementIsScrolledIntoView(el)) {
+          setFocusedComponentIdx(selectedIndex);
           break;
         }
       }
       if (focusedComponentIdx.value === undefined) {
-        focusedComponentIdx.value = selectedIndexesArray.pop();
+        setFocusedComponentIdx(selectedIndexesArray.pop());
       }
     }
   }
@@ -1881,23 +2123,6 @@ const onMapDeselect = () => {
 
 // ================================================================================================
 // GROUP BY STUFF
-export type GroupByUrlQuery =
-  | "diffstatus"
-  | "qualificationstatus"
-  | "upgradeable"
-  | "schemaname"
-  | "resource"
-  | "incompatibleComponents";
-
-enum GroupByCriteria {
-  Diff = "Diff Status",
-  Upgrade = "Upgradeable",
-  Qualification = "Qualification Status",
-  SchemaName = "Schema Name",
-  Resource = "Resource",
-  IncompatibleComponents = "Incompatible Components",
-  None = "",
-}
 
 const groupByFromString = (s: string): GroupByCriteria => {
   const key = (
@@ -1917,7 +2142,6 @@ const clearGroupBy = () => {
   groupBySelection.value = GroupByCriteria.None;
 };
 
-const groupBySelection = ref<GroupByCriteria>(GroupByCriteria.None);
 const groupByDropDownOptions = computed(() => {
   const baseOptions = [
     { value: GroupByCriteria.Diff, label: "Diff Status" },
@@ -1996,13 +2220,6 @@ const getQualificationStatusTitle = (component: ComponentInList) => {
 // SORT BY STUFF
 export type SortByUrlQuery = "failingactions" | "runningactions";
 
-enum SortByCriteria {
-  FailingActions = "Failing actions",
-  RunningActions = "Running actions",
-  LatestToOldest = "Latest to oldest",
-  OldestToLatest = "Oldest to latest",
-}
-
 const sortByFromString = (s: string): SortByCriteria => {
   const key = (_.keys(SortByCriteria) as (keyof typeof SortByCriteria)[]).find(
     (k) => SortByCriteria[k] === s,
@@ -2012,7 +2229,6 @@ const sortByFromString = (s: string): SortByCriteria => {
   else return SortByCriteria[key];
 };
 
-const sortBySelection = ref<SortByCriteria>(SortByCriteria.LatestToOldest);
 const sortByDropDownOptions = [
   { value: SortByCriteria.LatestToOldest, label: "Latest to oldest" },
   // NOTE(victor, wendy): We use this option for testing how things react to sorting,

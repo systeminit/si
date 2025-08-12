@@ -42,7 +42,9 @@
         </li>
         <!-- i took these styles and html nesting from connection panel, we should create a component that does this -->
         <li
-          v-for="[idx, component] in Object.entries(selectedComponents)"
+          v-for="[idx, component] in Object.entries(
+            exploreContext.selectedComponentsMap.value,
+          )"
           :key="component.id"
           :class="clsx('ml-xs', 'flex flex-col gap-2xs')"
         >
@@ -253,6 +255,7 @@ import clsx from "clsx";
 import { useQueries } from "@tanstack/vue-query";
 import {
   computed,
+  inject,
   onBeforeUnmount,
   onMounted,
   provide,
@@ -304,23 +307,28 @@ import {
 import { useContext } from "../logic_composables/context";
 import MinimizedComponentQualificationStatus from "../MinimizedComponentQualificationStatus.vue";
 import AttrComponentList from "../layout_components/AttrComponentList.vue";
-import { AttributeInputContext } from "../types";
+import {
+  assertIsDefined,
+  AttributeInputContext,
+  ExploreContext,
+} from "../types";
 
 const ctx = useContext();
-
-const props = defineProps<{
-  selectedComponents: Record<number, ComponentInList>;
-}>();
+const exploreContext = inject<ExploreContext>("EXPLORE_CONTEXT");
+assertIsDefined<ExploreContext>(exploreContext);
 
 const deselect = (index: number) => {
   emit("deselect", index);
 };
 
 const componentMap = computed(() =>
-  Object.values(props.selectedComponents).reduce((obj, component) => {
-    obj[component.id] = component;
-    return obj;
-  }, {} as Record<string, ComponentInList>),
+  Object.values(exploreContext.selectedComponentsMap.value).reduce(
+    (obj, component) => {
+      obj[component.id] = component;
+      return obj;
+    },
+    {} as Record<string, ComponentInList>,
+  ),
 );
 const componentIds = computed(() => Object.keys(componentMap.value));
 

@@ -1,8 +1,9 @@
-import { ComputedRef, Ref } from "vue";
+import { ComputedRef, Reactive, Ref } from "vue";
 import { User } from "@/api/sdf/dal/user";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
   ComponentDetails,
+  ComponentInList,
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
@@ -64,10 +65,27 @@ export function assertIsDefined<T>(value: T | undefined): asserts value is T {
   }
 }
 
+export interface ComponentsHaveActionsWithState {
+  failed: Set<ComponentId>;
+  running: Set<ComponentId>;
+}
+
 export interface ExploreContext {
   viewId: ComputedRef<string>;
   upgradeableComponents: ComputedRef<Set<string>>;
   showSkeleton: ComputedRef<boolean>;
+  lanesCount: ComputedRef<number>;
+  focusedComponentIdx: Ref<number | undefined>;
+  selectedComponentsMap: ComputedRef<Record<number, ComponentInList>>;
+  focusedComponent: ComputedRef<ComponentInList | undefined>;
+  componentsHaveActionsWithState: ComputedRef<ComponentsHaveActionsWithState>;
+  selectedComponentIndexes: Reactive<Set<number>>;
+  componentsPendingActionNames: ComputedRef<
+    Map<ComponentId, Record<string, { count: number; hasFailed: boolean }>>
+  >;
+  allVisibleComponents: ComputedRef<ComponentInList[]>;
+  hasMultipleSections: ComputedRef<boolean>;
+  focusedComponentRef: Ref<HTMLElement | undefined>;
 }
 
 // Define an enum for function kinds
