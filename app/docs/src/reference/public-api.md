@@ -570,6 +570,58 @@ Components management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Duplicate a list of components
+
+<a id="opIdduplicate_components"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/components/duplicate`
+
+> Body parameter
+
+```json
+{
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ],
+  "prefix": "copy-of-",
+  "viewName": "MyView"
+}
+```
+
+<h3 id="duplicate-a-list-of-components-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|body|body|[DuplicateComponentsV1Request](#schemaduplicatecomponentsv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ]
+}
+```
+
+<h3 id="duplicate-a-list-of-components-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Components duplicated successfully|[DuplicateComponentsV1Response](#schemaduplicatecomponentsv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Find a component by name or component Id
 
 <a id="opIdfind_component"></a>
@@ -2972,6 +3024,58 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |*anonymous*|string|false|none|A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as its separator|
+
+## [DuplicateComponentsV1Request](#tocS_DuplicateComponentsV1Request)
+
+<a id="schemaduplicatecomponentsv1request"></a>
+<a id="schema_DuplicateComponentsV1Request"></a>
+<a id="tocSduplicatecomponentsv1request"></a>
+<a id="tocsduplicatecomponentsv1request"></a>
+
+```json
+{
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ],
+  "prefix": "copy-of-",
+  "viewName": "MyView"
+}
+
+```
+
+### [Properties](#duplicatecomponentsv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|components|[array]|true|none|none|
+|prefix|string,null|false|none|none|
+|viewName|string,null|false|none|none|
+
+## [DuplicateComponentsV1Response](#tocS_DuplicateComponentsV1Response)
+
+<a id="schemaduplicatecomponentsv1response"></a>
+<a id="schema_DuplicateComponentsV1Response"></a>
+<a id="tocSduplicatecomponentsv1response"></a>
+<a id="tocsduplicatecomponentsv1response"></a>
+
+```json
+{
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ]
+}
+
+```
+
+### [Properties](#duplicatecomponentsv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|components|[array]|true|none|none|
 
 ## [ErrorDetail](#tocS_ErrorDetail)
 
