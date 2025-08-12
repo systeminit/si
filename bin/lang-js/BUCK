@@ -33,8 +33,8 @@ filegroup(
 deno_run(
     name = "build",
     main = "src/build.ts",
-    out = "bundle.js",
-    srcs =glob(["src/**/*.ts"]),
+    out = "prebuilt-bundle.ts",
+    srcs = glob(["src/**/*.ts"]),
     permissions = [
         "allow-all",
     ],
