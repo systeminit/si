@@ -128,6 +128,7 @@
 
     <template v-if="component">
       <div
+        data-testid="component-name-section"
         :class="
           clsx(
             'name flex flex-row items-center gap-xs',

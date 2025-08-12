@@ -3,7 +3,7 @@
     <!-- Left column -->
     <!-- 12 pixel padding to align with the SI logo -->
     <div
-      id="left-column-new-hotness-explore"
+      data-testid="left-column-new-hotness-explore"
       class="main pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]"
     >
       <!-- Socket connections banner -->
@@ -262,6 +262,7 @@
           <div
             v-else
             ref="scrollRef"
+            data-testid="tile-container"
             :class="
               clsx(
                 'grow',
@@ -349,7 +350,7 @@
     </div>
     <!-- Right column -->
     <div
-      id="right-column-new-hotness-explore"
+      data-testid="right-column-new-hotness-explore"
       :class="
         clsx(
           'right flex flex-col border-l',
