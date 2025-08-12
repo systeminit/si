@@ -29,9 +29,10 @@
           <LobbyTerminalOutputLine
             v-for="(data, index) in visibleSentences"
             :key="index"
-            :message="data.sentence"
+            :message="unref(data.sentence)"
             :isActive="index === visibleSentences.length - 1"
             :isLoader="data.isLoader"
+            :isLastElement="index === visibleSentences.length - 1"
           />
         </div>
       </div>
@@ -40,10 +41,24 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, unref, watch } from "vue";
 import clsx from "clsx";
 import { sleep } from "@si/ts-lib/src/async-sleep";
 import LobbyTerminalOutputLine from "@/newhotness/LobbyTerminalOutputLine.vue";
+
+const props = defineProps({
+  /// The number of loading steps that exist and whether they are complete
+  loadingSteps: { type: Array<boolean>, required: true },
+});
+
+const loadingSummaryText = computed(() => {
+  const totalLoadingSteps = props.loadingSteps.length;
+  const completedLoadingSteps = props.loadingSteps.filter(
+    (f) => f === true,
+  ).length;
+
+  return `${completedLoadingSteps}/${totalLoadingSteps}`;
+});
 
 const sentences = [
   { sentence: "Welcome to System Initiative!" },
@@ -72,7 +87,7 @@ const sentences = [
   { sentence: "Locating intent in a sea of configuration" },
   { sentence: "Applying structure without limiting flexibility" },
   { sentence: "Bringing your workspace to you — clean, clear, and traceable" },
-  { sentence: "Finalizing..." },
+  { sentence: computed(() => `Finalizing... (${loadingSummaryText.value})`) },
 ];
 
 const showPanel = ref(false);
