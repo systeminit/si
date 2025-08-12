@@ -16,15 +16,15 @@ _PYTHON_RELEASES = {
         },
         "aarch64-unknown-linux-gnu": {
             "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20250807/cpython-3.13.6+20250807-aarch64-unknown-linux-gnu-install_only.tar.gz",
-            "sha256": "",
+            "sha256": "4cc164b8b541bd9d86457bef6a5846599345148b297e248a05ccc040ef3021c7",
         },
         "x86_64-apple-darwin": {
             "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20250807/cpython-3.13.6+20250807-x86_64-apple-darwin-install_only.tar.gz",
-            "sha256": "",
+            "sha256": "24eb900f548a9cb07a300fbe3b393fd2b515f20548c08a8ff4d31ab55bc71933",
         },
         "aarch64-apple-darwin": {
             "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20250807/cpython-3.13.6+20250807-aarch64-apple-darwin-install_only.tar.gz",
-            "sha256": "",
+            "sha256": "b4e6b5ca0f5e59b4381886339f91dc0ecaf95b423e1a9e40bbea5b55c0cdd8ff",
         },
     },
 }

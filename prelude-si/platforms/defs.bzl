@@ -7,9 +7,9 @@
 
 def _get_remote_os_family(constraints: dict) -> str:
     """Get the OS family string for remote execution based on CPU constraints."""
-    cpu_constraints = [str(c) for c in constraints.keys() if "cpu/constraints:" in str(c)]
-    for constraint in cpu_constraints:
-        if "arm64" in constraint:
+    for constraint_key, constraint_value in constraints.items():
+        constraint_value_str = str(constraint_value)
+        if "prelude//cpu/constraints:arm64" in constraint_value_str or "cpu/constraints:arm64" in constraint_value_str:
             return "linux-arm64"
     return "linux-x64"
 
