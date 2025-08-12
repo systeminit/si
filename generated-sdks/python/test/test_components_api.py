@@ -47,6 +47,13 @@ class TestComponentsApi(unittest.TestCase):
         """
         pass
 
+    def test_duplicate_components(self) -> None:
+        """Test case for duplicate_components
+
+        Duplicate a list of components
+        """
+        pass
+
     def test_execute_management_function(self) -> None:
         """Test case for execute_management_function
 
