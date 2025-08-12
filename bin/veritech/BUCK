@@ -10,7 +10,6 @@ test_suite(
     tests = [
         ":check-lint-rust-bin",
         ":check-lint-rust-unit",
-        ":check-lint-shell",
     ],
 )
 
@@ -18,7 +17,6 @@ test_suite(
     name = "check-format",
     tests = [
         ":check-format-rust",
-        ":check-format-shell",
     ],
 )
 

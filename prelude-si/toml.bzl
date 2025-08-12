@@ -46,6 +46,17 @@ def toml_format_check_impl(ctx: AnalysisContext) -> list[[
         "--root-dir",
         sources_ctx.srcs_tree,
     )
+    
+    # Add taplo and cargo paths
+    if toml_toolchain.taplo_path:
+        run_cmd_args.add("--taplo-path")
+        run_cmd_args.add(toml_toolchain.taplo_path)
+    if toml_toolchain.cargo_path:
+        run_cmd_args.add("--cargo-path")
+        run_cmd_args.add(toml_toolchain.cargo_path)
+    if toml_toolchain.cargo_sort_path:
+        run_cmd_args.add("--cargo-sort-path")
+        run_cmd_args.add(toml_toolchain.cargo_sort_path)
     for src in ctx.attrs.srcs:
         run_cmd_args.add(cmd_args(src).relative_to(ctx.label.cell_root))
 
@@ -105,6 +116,17 @@ def toml_format_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
         "--root-dir",
         ctx.label.cell_root,
     )
+    
+    # Add taplo and cargo paths
+    if toml_toolchain.taplo_path:
+        run_cmd_args.add("--taplo-path")
+        run_cmd_args.add(toml_toolchain.taplo_path)
+    if toml_toolchain.cargo_path:
+        run_cmd_args.add("--cargo-path")
+        run_cmd_args.add(toml_toolchain.cargo_path)
+    if toml_toolchain.cargo_sort_path:
+        run_cmd_args.add("--cargo-sort-path")
+        run_cmd_args.add(toml_toolchain.cargo_sort_path)
     for src in ctx.attrs.srcs:
         run_cmd_args.add(cmd_args(src).relative_to(ctx.label.cell_root))
 

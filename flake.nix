@@ -50,11 +50,13 @@
         [
           b3sum
           buck2
+	  cargo-sort
           makeWrapper
           nodePkgs.pnpm
           nodejs
           python3
           ripgrep
+	  taplo
 
           # breakpointHook
         ]

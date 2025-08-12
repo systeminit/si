@@ -27,6 +27,16 @@ _RUST_RELEASES = {
             "sha256": "a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8",
         },
     },
+    "nightly-2025-06-23": {
+        "x86_64-unknown-linux-gnu": {
+            "url": "https://static.rust-lang.org/dist/2025-06-23/rust-nightly-x86_64-unknown-linux-gnu.tar.xz",
+            "sha256": "bf3491847e1d999160ae8b169438d248e889a2c8a7e849cd00e7d306b9065ba3",
+        },
+        "aarch64-unknown-linux-gnu": {
+            "url": "https://static.rust-lang.org/dist/2025-06-23/rust-nightly-aarch64-unknown-linux-gnu.tar.xz",
+            "sha256": "5749da11e45d7c492ac1a13d1463388af4153529c0ba3b81a244dcc7bd5b9d3d",
+        },
+    },
 }
 
 RustDistributionInfo = provider(
@@ -70,6 +80,13 @@ def _rust_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # Create setup script to avoid escaping issues
     setup_script = ctx.actions.declare_output("setup.sh")
+    
+    # Determine rust directory name pattern based on version
+    if ctx.attrs.version.startswith("nightly"):
+        rust_dir = "rust-nightly-{}".format(ctx.attrs.target)
+    else:
+        rust_dir = "rust-{}-{}".format(ctx.attrs.version, ctx.attrs.target)
+    
     ctx.actions.write(
         setup_script,
         [
@@ -82,14 +99,14 @@ def _rust_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
             "mkdir -p $OUTPUT_DIR/bin $OUTPUT_DIR/lib",
             "",
             "# Copy rustc libraries",
-            cmd_args("cp -r $ARCHIVE_DIR/rust-{}-{}/rustc/lib/* $OUTPUT_DIR/lib/".format(ctx.attrs.version, ctx.attrs.target)),
+            cmd_args("cp -r $ARCHIVE_DIR/{}/rustc/lib/* $OUTPUT_DIR/lib/".format(rust_dir)),
             "# Copy standard library to proper location in rustlib",
-            cmd_args("cp -r $ARCHIVE_DIR/rust-{}-{}/rust-std-{}/lib/rustlib/* $OUTPUT_DIR/lib/rustlib/".format(ctx.attrs.version, ctx.attrs.target, ctx.attrs.target)),
-            cmd_args("cp $ARCHIVE_DIR/rust-{}-{}/rustc/bin/rustc $OUTPUT_DIR/bin/rustc-actual".format(ctx.attrs.version, ctx.attrs.target)),
-            cmd_args("cp $ARCHIVE_DIR/rust-{}-{}/cargo/bin/cargo $OUTPUT_DIR/bin/cargo-actual".format(ctx.attrs.version, ctx.attrs.target)),
-            cmd_args("cp $ARCHIVE_DIR/rust-{}-{}/rustc/bin/rustdoc $OUTPUT_DIR/bin/rustdoc-actual".format(ctx.attrs.version, ctx.attrs.target)),
-            cmd_args("cp $ARCHIVE_DIR/rust-{}-{}/clippy-preview/bin/clippy-driver $OUTPUT_DIR/bin/clippy-driver-actual".format(ctx.attrs.version, ctx.attrs.target)),
-            cmd_args("cp $ARCHIVE_DIR/rust-{}-{}/rustfmt-preview/bin/rustfmt $OUTPUT_DIR/bin/rustfmt".format(ctx.attrs.version, ctx.attrs.target)),
+            cmd_args("cp -r $ARCHIVE_DIR/{}/rust-std-{}/lib/rustlib/* $OUTPUT_DIR/lib/rustlib/".format(rust_dir, ctx.attrs.target)),
+            cmd_args("cp $ARCHIVE_DIR/{}/rustc/bin/rustc $OUTPUT_DIR/bin/rustc-actual".format(rust_dir)),
+            cmd_args("cp $ARCHIVE_DIR/{}/cargo/bin/cargo $OUTPUT_DIR/bin/cargo-actual".format(rust_dir)),
+            cmd_args("cp $ARCHIVE_DIR/{}/rustc/bin/rustdoc $OUTPUT_DIR/bin/rustdoc-actual".format(rust_dir)),
+            cmd_args("cp $ARCHIVE_DIR/{}/clippy-preview/bin/clippy-driver $OUTPUT_DIR/bin/clippy-driver-actual".format(rust_dir)),
+            cmd_args("cp $ARCHIVE_DIR/{}/rustfmt-preview/bin/rustfmt $OUTPUT_DIR/bin/rustfmt".format(rust_dir)),
             "",
             "# Create wrapper scripts",
             "cat > $OUTPUT_DIR/bin/rustc << 'EOF'",

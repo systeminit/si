@@ -21,6 +21,21 @@ def parse_args() -> argparse.Namespace:
         help="Path to the top of the sources tree",
     )
     parser.add_argument(
+        "--taplo-path",
+        help="Path to the taplo binary",
+        default="taplo",
+    )
+    parser.add_argument(
+        "--cargo-path",
+        help="Path to the cargo binary",
+        default="cargo",
+    )
+    parser.add_argument(
+        "--cargo-sort-path",
+        help="Path to the cargo-sort binary",
+        default="cargo-sort",
+    )
+    parser.add_argument(
         "srcs",
         nargs="+",
         help="Source to process",
@@ -47,11 +62,19 @@ def main() -> int:
             continue
 
         if path.name == "Cargo.toml":
-            returncode = cargo_sort_file(path, args.root_dir, args.check)
-            if returncode != 0:
-                failed_cargo_tomls.append(path)
+            # Only run cargo-sort if the binary is actually available (not a dummy)
+            if "dummy" not in args.cargo_sort_path:
+                returncode = cargo_sort_file(path, args.root_dir, args.check,
+                                             args.cargo_sort_path)
+                if returncode != 0:
+                    failed_cargo_tomls.append(path)
+            else:
+                print(
+                    f"  - {path} [SKIPPED: cargo-sort not available for this platform]"
+                )
 
-        returncode = taplo_fmt_file(path, args.root_dir, args.check)
+        returncode = taplo_fmt_file(path, args.root_dir, args.check,
+                                    args.taplo_path)
         if returncode != 0:
             failed_tomls.append(path)
 
@@ -86,10 +109,10 @@ def main() -> int:
         return 0
 
 
-def cargo_sort_file(cargo_toml_path: Path, cwd: Path, is_check: bool) -> int:
+def cargo_sort_file(cargo_toml_path: Path, cwd: Path, is_check: bool,
+                    cargo_sort_path: str) -> int:
     cmd = [
-        "cargo",
-        "sort",
+        cargo_sort_path,
     ]
     if is_check:
         cmd.extend([
@@ -107,9 +130,10 @@ def cargo_sort_file(cargo_toml_path: Path, cwd: Path, is_check: bool) -> int:
     return result.returncode
 
 
-def taplo_fmt_file(toml_path: Path, cwd: Path, is_check: bool) -> int:
+def taplo_fmt_file(toml_path: Path, cwd: Path, is_check: bool,
+                   taplo_path: str) -> int:
     cmd = [
-        "taplo",
+        taplo_path,
         "fmt",
     ]
     if is_check:
