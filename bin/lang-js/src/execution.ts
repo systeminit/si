@@ -74,14 +74,28 @@ export async function runCode(
     tempDirCache.set(execution_id, tempDir);
   }
 
-  // Generate and cache sandbox bundle dynamically
+  // Check for pre-built bundle first, then generate dynamically if needed
   let bundlePath = sandboxBundleCache.get(execution_id);
   if (!bundlePath) {
-    // Import build function and generate bundle dynamically
-    const { buildSandbox } = await import("./build.ts");
-    bundlePath = join(tempDir, "sandbox.bundle.js");
-    await buildSandbox(bundlePath);
-    sandboxBundleCache.set(execution_id, bundlePath);
+    // First try to find a pre-built bundle from the build step
+    const baseDir = new URL(".", import.meta.url).pathname;
+    const prebuiltBundlePath = join(baseDir, "bundle.js");
+    
+    try {
+      // Check if the pre-built bundle exists
+      await Deno.stat(prebuiltBundlePath);
+      // Copy the pre-built bundle to our temp directory
+      bundlePath = join(tempDir, "sandbox.bundle.js");
+      await Deno.copyFile(prebuiltBundlePath, bundlePath);
+      sandboxBundleCache.set(execution_id, bundlePath);
+    } catch (error) {
+      // Pre-built bundle doesn't exist, fall back to dynamic generation
+      debug("Pre-built bundle not found, generating dynamically:", error);
+      const { buildSandbox } = await import("./build.ts");
+      bundlePath = join(tempDir, "sandbox.bundle.js");
+      await buildSandbox(bundlePath);
+      sandboxBundleCache.set(execution_id, bundlePath);
+    }
   }
 
   const mainFile = join(tempDir, "main.ts");
