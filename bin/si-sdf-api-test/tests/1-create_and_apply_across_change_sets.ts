@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import { SdfApiClient } from "../sdf_api_client.ts";
 import { extractSchemaVariant, getSchemaVariants } from "../test_helpers.ts";
+import abandon_all_change_sets from "../benchmark/abandon_all_change_sets.ts";
 
 export default async function create_and_and_apply_across_change_sets(
   sdfApiClient: SdfApiClient,
@@ -106,6 +107,8 @@ async function cleanupHead(sdf: SdfApiClient): Promise<void> {
       },
     });
   }
+  // also abandon all open change sets in case there are any leftover
+  await abandon_all_change_sets(sdf);
 }
 
 async function createChangeSet(sdf: SdfApiClient): Promise<string> {
