@@ -199,13 +199,27 @@ def _rust_binary_artifact_impl(ctx):
     git_info = _git_info(ctx)
     build_metadata = ctx.actions.declare_output("build_metadata.json")
 
+    # Create a tar.gz archive containing the binary
+    tarred_binary = ctx.actions.declare_output("{}.tar.gz".format(ctx.attrs.binary_name))
+    
+    tar_cmd = cmd_args(
+        "tar",
+        "-czf",
+        tarred_binary.as_output(),
+        "-C",
+        cmd_args(binary, format="{}/../"),
+        cmd_args(binary, format="{}").relative_to(cmd_args(binary, format="{}/../")),
+    )
+    
+    ctx.actions.run(tar_cmd, category = "tar_binary")
+
     si_rust_toolchain = ctx.attrs._si_rust_toolchain[SiRustToolchainInfo]
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         si_rust_toolchain.rust_metadata[DefaultInfo].default_outputs,
         "--binary",
-        binary,
+        tarred_binary,
         "--git-info-json",
         git_info.file,
         "--build-metadata-out-file",
@@ -223,9 +237,9 @@ def _rust_binary_artifact_impl(ctx):
     ctx.actions.run(cmd, category = "rust_metadata")
 
     return [
-        DefaultInfo(default_output = binary),
+        DefaultInfo(default_output = tarred_binary),
         ArtifactInfo(
-            artifact = binary,
+            artifact = tarred_binary,
             metadata = build_metadata,
             family = ctx.attrs.family,
             variant = ctx.attrs.variant,
