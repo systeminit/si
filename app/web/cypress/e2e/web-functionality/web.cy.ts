@@ -53,11 +53,14 @@ describe('web', () => {
 
     cy.focused().type("test name");
 
+    cy.wait(1000);
     cy.press(Cypress.Keyboard.Keys.TAB);
+    cy.wait(1000);
     cy.press(Cypress.Keyboard.Keys.TAB);
+    cy.wait(1000);
 
     cy.focused().type("{downArrow}{downArrow}");
-
+    cy.wait(1000);
     cy.press(Cypress.Keyboard.Keys.TAB);
 
     cy.contains("test name", { timeout: 60000 });
