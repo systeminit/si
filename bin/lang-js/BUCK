@@ -47,7 +47,6 @@ deno_compile(
     main = "src/index.ts",
     out = "lang-js",
     srcs = [":build"] + glob(["src/**/*.ts"]),
-    include = [":build"],
     permissions = [
         "allow-all",
     ],

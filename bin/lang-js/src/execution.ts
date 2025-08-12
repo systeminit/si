@@ -1,7 +1,7 @@
 import { FunctionKind } from "./function.ts";
 import { rawStorage, toJSON } from "./sandbox/requestStorage.ts";
 import { Debug } from "./debug.ts";
-import { join } from "https://deno.land/std/path/mod.ts";
+import { join, dirname, fromFileUrl } from "https://deno.land/std/path/mod.ts";
 import { makeConsole } from "./sandbox/console.ts";
 import * as _ from "https://deno.land/x/lodash_es@v0.0.2/mod.ts";
 
@@ -77,31 +77,45 @@ export async function runCode(
   // Check for pre-built bundle first, then generate dynamically if needed
   let bundlePath = sandboxBundleCache.get(execution_id);
   if (!bundlePath) {
-    // First try to find a pre-built bundle included with the compiled binary
-    // In Deno compiled binaries, included files are accessible via import.meta.resolve
-    let prebuiltBundlePath: string;
+    // Try multiple locations for the pre-built bundle
+    const possiblePaths = [
+      // Try to resolve bundle.js from current directory (works if build output is in src/)
+      join(dirname(fromFileUrl(import.meta.url)), "bundle.js"),
+      // Try relative to project root
+      join(dirname(dirname(fromFileUrl(import.meta.url))), "bundle.js"),
+      // Try via import.meta.resolve (for modules)
+    ];
+    
+    // Add import.meta.resolve if available
     try {
-      // Try to resolve the bundle.js that was included during compilation
-      prebuiltBundlePath = import.meta.resolve("./bundle.js");
-      if (prebuiltBundlePath.startsWith("file://")) {
-        prebuiltBundlePath = prebuiltBundlePath.substring(7);
+      const resolved = import.meta.resolve("./bundle.js");
+      if (resolved.startsWith("file://")) {
+        possiblePaths.unshift(resolved.substring(7));
       }
     } catch {
-      // Fallback to relative path for development
-      const baseDir = new URL(".", import.meta.url).pathname;
-      prebuiltBundlePath = join(baseDir, "bundle.js");
+      // Ignore if resolve doesn't work
     }
     
-    try {
-      // Check if the pre-built bundle exists
-      await Deno.stat(prebuiltBundlePath);
-      // Copy the pre-built bundle to our temp directory
-      bundlePath = join(tempDir, "sandbox.bundle.js");
-      await Deno.copyFile(prebuiltBundlePath, bundlePath);
-      sandboxBundleCache.set(execution_id, bundlePath);
-    } catch (error) {
+    let prebuiltFound = false;
+    for (const prebuiltBundlePath of possiblePaths) {
+      try {
+        await Deno.stat(prebuiltBundlePath);
+        // Copy the pre-built bundle to our temp directory
+        bundlePath = join(tempDir, "sandbox.bundle.js");
+        await Deno.copyFile(prebuiltBundlePath, bundlePath);
+        sandboxBundleCache.set(execution_id, bundlePath);
+        prebuiltFound = true;
+        debug(`Using pre-built bundle from: ${prebuiltBundlePath}`);
+        break;
+      } catch {
+        // Try next path
+        continue;
+      }
+    }
+    
+    if (!prebuiltFound) {
       // Pre-built bundle doesn't exist, fall back to dynamic generation
-      debug("Pre-built bundle not found, generating dynamically:", error);
+      debug("Pre-built bundle not found in any location, generating dynamically");
       const { buildSandbox } = await import("./build.ts");
       bundlePath = join(tempDir, "sandbox.bundle.js");
       await buildSandbox(bundlePath);

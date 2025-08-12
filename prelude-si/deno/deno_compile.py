@@ -55,12 +55,6 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="List of unstable flags to enable (e.g., ffi, node-globals).",
     )
-    parser.add_argument(
-        "--include",
-        action="append",
-        default=[],
-        help="Files to include in the compiled binary (can be used multiple times).",
-    )
     return parser.parse_args()
 
 
@@ -136,7 +130,7 @@ def main() -> int:
             args.unstable_flags,
             args.deno_dir,
             args.workspace_dir,
-            args.include,
+            [],
         )
 
         args.output.resolve().chmod(0o775)

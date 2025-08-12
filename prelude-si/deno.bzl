@@ -36,10 +36,6 @@ def deno_compile_impl(ctx: AnalysisContext) -> list[Provider]:
     if ctx.attrs.unstable_flags:
         cmd.add("--unstable-flags", *ctx.attrs.unstable_flags)
 
-    if ctx.attrs.include:
-        for include_file in ctx.attrs.include:
-            cmd.add("--include", include_file)
-
     ctx.actions.run(cmd, category="deno", identifier="deno_compile")
 
     return [
@@ -70,10 +66,6 @@ deno_compile = rule(
         attrs.list(attrs.string(),
                    default=[],
                    doc="List of unstable flags to enable"),
-        "include":
-        attrs.list(attrs.source(),
-                   default=[],
-                   doc="Additional files to include in the compiled binary"),
         "_python_toolchain":
         attrs.toolchain_dep(default="toolchains//:python",
                             providers=[PythonToolchainInfo]),
