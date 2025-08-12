@@ -1190,6 +1190,13 @@
       "AES256"
     ]
   },
+  "The IP address type for the mount target. The possible values are ``IPV4_ONLY`` (only IPv4 addresses), ``IPV6_ONLY`` (only IPv6 addresses), and ``DUAL_STACK`` (dual-stack, both IPv4 and IPv6 addresses). If you don’t specify an ``IpAddressType``, then ``IPV4_ONLY`` is used.\n  The ``IPAddressType`` must match the IP type of the subnet. Additionally, the ``IPAddressType`` parameter overrides the value set as the default IP address for the subnet in the VPC. For example, if the ``IPAddressType`` is ``IPV4_ONLY`` and ``AssignIpv6AddressOnCreation`` is ``true``, then IPv4 is used for the mount target. For more information, see [Modify the IP addressing attributes of your subnet](https://docs.aws.amazon.com/vpc/latest/userguide/subnet-public-ip.html).": {
+    "enum": [
+      "IPV4_ONLY",
+      "IPV6_ONLY",
+      "DUAL_STACK"
+    ]
+  },
   "Indicates whether the Resolver endpoint allows inbound or outbound DNS queries:\n- INBOUND: allows DNS queries to your VPC from your network \n- OUTBOUND: allows DNS queries from your VPC to your network \n- INBOUND_DELEGATION: allows DNS queries to your VPC from your network with authoritative answers from private hosted zones": {
     "enum": [
       "INBOUND",
@@ -1223,6 +1230,13 @@
       "ENABLED",
       "DISABLED",
       "REPLICATING"
+    ]
+  },
+  "The deployment controller type to use.\n The deployment controller is the mechanism that determines how tasks are deployed for your service. The valid options are:\n  +  ECS\n When you create a service which uses the ``ECS`` deployment controller, you can choose between the following deployment strategies:\n  +  ``ROLLING``: When you create a service which uses the *rolling update* (``ROLLING``) deployment strategy, the ECS service scheduler replaces the currently running tasks with new tasks. The number of tasks that ECS adds or removes from the service during a rolling update is controlled by the service deployment configuration. \n Rolling update deployments are best suited for the following scenarios:\n  +  Gradual service updates: You need to update your service incrementally without taking the entire service offline at once.\n  +  Limited resource requirements: You want to avoid the additional resource costs of running two complete environments simultaneously (as required by blue/green deployments).\n  +  Acceptable deployment time: Your application can tolerate a longer deployment process, as rolling updates replace tasks one by one.\n  +  No need for instant roll back: Your service can tolerate a rollback process that takes minutes rather than seconds.\n  +  Simple deployment process: You prefer a straightforward deployment approach without the complexity of managing multiple environments, target groups, and listeners.\n  +  No load balancer requirement: Your service doesn't use or require a load balancer, ALB, NLB, or Service Connect (which are required for blue/green deployments).\n  +  Stateful applications: Your application maintains state that makes it difficult to run two parallel environments.\n  +  Cost sensitivity: You want to minimize deployment costs by not running duplicate environments during deployment.\n  \n Rolling updates are the default deployment strategy for services and provide a balance between deployment safety and resource efficiency for many common application scenarios.\n  +  ``BLUE_GREEN``: A *blue/green* deployment strategy (``BLUE_GREEN``) is a release methodology that reduces downtime and risk by running two identical production environments called blue and green. With ECS blue/green deployments, you can validate new service revisions before directing production traffic to them. This approach provides a safer way to deploy changes with the ability to quickly roll back if needed.\n ECS blue/green deployments are best suited for the following scenarios:\n  +  Service validation: When you need to validate new service revisions before directing production traffic to them\n  +  Zero downtime: When your service requires zero-downtime deployments\n  +  Instant roll back: When you need the ability to quickly roll back if issues are detected\n  +  Load balancer requirement: When your service uses ALB, NLB, or Service Connect\n  \n  \n  +  External\n Use a third-party deployment controller.\n  +  Blue/green deployment (powered by ACD)\n ACD installs an updated version of the application as a new replacement task set and reroutes production traffic from the original application task set to the replacement task set. The original task set is terminated after a successful deployment. Use this deployment controller to verify a new deployment of a service before sending production traffic to it.\n  \n When updating the deployment controller for a service, consider the following depending on the type of migration you're performing.\n  +  If you have a template that contains the ``EXTERNAL`` deployment controller information as well as ``TaskSet`` and ``PrimaryTaskSet`` resources, and you remove the task set resources from the template when updating from ``EXTERNAL`` to ``ECS``, the ``DescribeTaskSet`` and ``DeleteTaskSet`` API calls will return a 400 error after the deployment controller is updated to ``ECS``. This results in a delete failure on the task set resources, even though the stack transitions to ``UPDATE_COMPLETE`` status. For more information, see [Resource removed from stack but not deleted](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/troubleshooting.html#troubleshooting-errors-resource-removed-not-deleted) in the CFNlong User Guide. To fix this issue, delete the task sets directly using the ECS``DeleteTaskSet`` API. For more information about how to delete a task set, see [DeleteTaskSet](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_DeleteTaskSet.html) in the ECSlong API Reference.\n  +  If you're migrating from ``CODE_DEPLOY`` to ``ECS`` with a new task definition and CFN performs a rollback operation, the ECS``UpdateService`` request fails with the following error:\n Resource handler returned message: \"Invalid request provided: Unable to update task definition on services with a CODE_DEPLOY deployment controller. \n  +  After a successful migration from ``ECS`` to ``EXTERNAL`` deployment controller, you need to manually remove the ``ACTIVE`` task set, because ECS no longer manages the deployment. For information about how to delete a task set, see [DeleteTaskSet](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_DeleteTaskSet.html) in the ECSlong API Reference.": {
+    "enum": [
+      "ECS",
+      "EXTERNAL",
+      "CODE_DEPLOY"
     ]
   },
   "The deployment controller type to use. There are three deployment controller types available:\n  + ECS The rolling update (ECS) deployment type involves replacing the current running version of the container with the latest version. The number of containers Amazon ECS adds or removes from the service during a rolling update is controlled by adjusting the minimum and maximum number of healthy tasks allowed during a service deployment, as specified in the DeploymentConfiguration. + CODE_DEPLOY The blue/green (CODE_DEPLOY) deployment type uses the blue/green deployment model powered by , which allows you to verify a new deployment of a service before sending production traffic to it. + EXTERNAL The external (EXTERNAL) deployment type enables you to use any third-party deployment controller for full control over the deployment process for an Amazon ECS service.": {
@@ -1342,6 +1356,13 @@
       "ATLEAST",
       "AND",
       "OR"
+    ]
+  },
+  "The type of the asset model (ASSET_MODEL OR COMPONENT_MODEL or INTERFACE)": {
+    "enum": [
+      "ASSET_MODEL",
+      "COMPONENT_MODEL",
+      "INTERFACE"
     ]
   },
   "Indicates whether to aggregate findings from all of the available Regions in the current partition. Also determines whether to automatically aggregate findings from new Regions as Security Hub supports them and you opt into them.\n The selected option also determines how to use the Regions provided in the Regions list.\n In CFN, the options for this property are as follows:\n  +   ``ALL_REGIONS`` - Indicates to aggregate findings from all of the Regions where Security Hub is enabled. When you choose this option, Security Hub also automatically aggregates findings from new Regions as Security Hub supports them and you opt into them. \n  +   ``ALL_REGIONS_EXCEPT_SPECIFIED`` - Indicates to aggregate findings from all of the Regions where Security Hub is enabled, except for the Regions listed in the ``Regions`` parameter. When you choose this option, Security Hub also automatically aggregates findings from new Regions as Security Hub supports them and you opt into them. \n  +   ``SPECIFIED_REGIONS`` - Indicates to aggregate findings only from the Regions listed in the ``Regions`` parameter. Security Hub does not automatically aggregate findings from new Regions.": {
@@ -1768,6 +1789,18 @@
       "balanced-best-effort"
     ]
   },
+  "The encryption type specified for a metadata table. To specify server-side encryption with KMSlong (KMS) keys (SSE-KMS), use the ``aws:kms`` value. To specify server-side encryption with Amazon S3 managed keys (SSE-S3), use the ``AES256`` value.": {
+    "enum": [
+      "aws:kms",
+      "AES256"
+    ]
+  },
+  "The type of the table bucket where the metadata configuration is stored. The ``aws`` value indicates an AWS managed table bucket, and the ``customer`` value indicates a customer-managed table bucket. V2 metadata configurations are stored in AWS managed table buckets, and V1 metadata configurations are stored in customer-managed table buckets.": {
+    "enum": [
+      "aws",
+      "customer"
+    ]
+  },
   "The name of the database engine to be used for this DB cluster. Valid Values: aurora (for MySQL 5.6-compatible Aurora), aurora-mysql (for MySQL 5.7-compatible Aurora).\nIf you specify the SourceDBClusterIdentifier property, don't specify this property. The value is inherited from the cluster.": {
     "enum": [
       "aurora",
@@ -1976,6 +2009,12 @@
     "enum": [
       "Replace",
       "NewVersion"
+    ]
+  },
+  "The deployment strategy for the service. Choose from these valid values:\n  +  ``ROLLING`` - When you create a service which uses the rolling update (``ROLLING``) deployment strategy, the Amazon ECS service scheduler replaces the currently running tasks with new tasks. The number of tasks that Amazon ECS adds or removes from the service during a rolling update is controlled by the service deployment configuration.\n  +  ``BLUE_GREEN`` - A blue/green deployment strategy (``BLUE_GREEN``) is a release methodology that reduces downtime and risk by running two identical production environments called blue and green. With Amazon ECS blue/green deployments, you can validate new service revisions before directing production traffic to them. This approach provides a safer way to deploy changes with the ability to quickly roll back if needed.": {
+    "enum": [
+      "ROLLING",
+      "BLUE_GREEN"
     ]
   },
   "The authorizer type. Specify ``REQUEST`` for a Lambda function using incoming request parameters. Specify ``JWT`` to use JSON Web Tokens (supported only for HTTP APIs).": {
@@ -3292,6 +3331,9 @@
     "enum": null
   },
   "A database in the GLUDC.": {
+    "enum": null
+  },
+  "A description about the computation model.": {
     "enum": null
   },
   "A description about the connector that's being registered.": {
@@ -4908,6 +4950,9 @@
   "Defines the session timeout in minutes": {
     "enum": null
   },
+  "Defines the target duration for recorded segments generated when recording a stage participant. Segments may have durations longer than the specified value when needed to ensure each segment begins with a keyframe. Default: 6.": {
+    "enum": null
+  },
   "Defines whether the VPC endpoints configured for the environment are created, and managed, by the customer or by Amazon MWAA.": {
     "enum": null
   },
@@ -5089,6 +5134,9 @@
     "enum": null
   },
   "Determines the processing capacity and feature set of the flow. Set this optional parameter to LARGE if you want to enable NDI outputs on the flow.": {
+    "enum": null
+  },
+  "Determines the scaling strategy for the SageMaker HyperPod cluster. When set to 'Continuous', enables continuous scaling which dynamically manages node provisioning. If the parameter is omitted, uses the standard scaling approach in previous release.": {
     "enum": null
   },
   "Determines the type of UTCTiming included in the Media Presentation Description (MPD)": {
@@ -5553,10 +5601,16 @@
   "If a service is using the rolling update (``ECS``) deployment type, the ``minimumHealthyPercent`` represents a lower limit on the number of your service's tasks that must remain in the ``RUNNING`` state during a deployment, as a percentage of the ``desiredCount`` (rounded up to the nearest integer). This parameter enables you to deploy without using additional cluster capacity. For example, if your service has a ``desiredCount`` of four tasks and a ``minimumHealthyPercent`` of 50%, the service scheduler may stop two existing tasks to free up cluster capacity before starting two new tasks. \n  If any tasks are unhealthy and if ``maximumPercent`` doesn't allow the Amazon ECS scheduler to start replacement tasks, the scheduler stops the unhealthy tasks one-by-one — using the ``minimumHealthyPercent`` as a constraint — to clear up capacity to launch replacement tasks. For more information about how the scheduler replaces unhealthy tasks, see [Amazon ECS services](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html) . \n For services that *do not* use a load balancer, the following should be noted:\n  +  A service is considered healthy if all essential containers within the tasks in the service pass their health checks.\n  +  If a task has no essential containers with a health check defined, the service scheduler will wait for 40 seconds after a task reaches a ``RUNNING`` state before the task is counted towards the minimum healthy percent total.\n  +  If a task has one or more essential containers with a health check defined, the service scheduler will wait for the task to reach a healthy status before counting it towards the minimum healthy percent total. A task is considered healthy when all essential containers within the task have passed their health checks. The amount of time the service scheduler can wait for is determined by the container health check settings. \n  \n For services that *do* use a load balancer, the following should be noted:\n  +  If a task has no essential containers with a health check defined, the service scheduler will wait for the load balancer target group health check to return a healthy status before counting the task towards the minimum healthy percent total.\n  +  If a task has an essential container with a health check defined, the service scheduler will wait for both the task to reach a healthy status and the load balancer target group health check to return a healthy status before counting the task towards the minimum healthy percent total.\n  \n The default value for a replica service for ``minimumHealthyPercent`` is 100%. The default ``minimumHealthyPercent`` value for a service using the ``DAEMON`` service schedule is 0% for the CLI, the AWS SDKs, and the APIs and 50% for the AWS Management Console.\n The minimum number of healthy tasks during a deployment is the ``desiredCount`` multiplied by the ``minimumHealthyPercent``/100, rounded up to the nearest integer value.\n If a service is using either the blue/green (``CODE_DEPLOY``) or ``EXTERNAL`` deployment types and is running tasks that use the EC2 launch type, the *minimum healthy percent* value is set to the default value. The *minimum healthy percent* value is used to define the lower limit on the number of the tasks in the service that remain in the ``RUNNING`` state while the container instances are in the ``DRAINING`` state.\n  You can't specify a custom ``minimumHealthyPercent`` value for a service that uses either the blue/green (``CODE_DEPLOY``) or ``EXTERNAL`` deployment types and has tasks that use the EC2 launch type.\n  If a service is using either the blue/green (``CODE_DEPLOY``) or ``EXTERNAL`` deployment types and is running tasks that use the Fargate launch type, the minimum healthy percent value is not used, although it is returned when describing your service.": {
     "enum": null
   },
+  "If a stage publisher disconnects and then reconnects within the specified interval, the multiple recordings will be considered a single recording and merged together. The default value is 0, which disables merging.": {
+    "enum": null
+  },
   "If log destination is CLOUDWATCH, logs are sent to the specified log group in Amazon CloudWatch.": {
     "enum": null
   },
   "If node auto-recovery is set to true, faulty nodes will be replaced or rebooted when a failure is detected. If set to false, nodes will be labelled when a fault is detected.": {
+    "enum": null
+  },
+  "If server-side encryption with KMSlong (KMS) keys (SSE-KMS) is specified, you must also specify the KMS key Amazon Resource Name (ARN). You must specify a customer-managed KMS key that's located in the same Region as the general purpose bucket that corresponds to the metadata table configuration.": {
     "enum": null
   },
   "If specified, the environment attempts to use this value as the prefix for the CNAME in your Elastic Beanstalk environment URL. If not specified, the CNAME is generated automatically by appending a random alphanumeric string to the environment name.": {
@@ -5569,6 +5623,12 @@
     "enum": null
   },
   "If the SLO monitors either the LATENCY or AVAILABILITY metric that Application Signals collects, this field displays which of those metrics is used.": {
+    "enum": null
+  },
+  "If the ``IPAddressType`` for the mount target is IPv6 (``IPV6_ONLY`` or ``DUAL_STACK``), then specify the IPv6 address to use. If you do not specify an ``Ipv6Address``, then Amazon EFS selects an unused IP address from the subnet specified for ``SubnetId``.": {
+    "enum": null
+  },
+  "If the ``IpAddressType`` for the mount target is IPv4 ( ``IPV4_ONLY`` or ``DUAL_STACK``), then specify the IPv4 address to use. If you do not specify an ``IpAddress``, then Amazon EFS selects an unused IP address from the subnet specified for ``SubnetId``.": {
     "enum": null
   },
   "If the distribution uses ``Aliases`` (alternate domain names or CNAMEs), specify the security policy that you want CloudFront to use for HTTPS connections with viewers. The security policy determines two settings:\n  +  The minimum SSL/TLS protocol that CloudFront can use to communicate with viewers.\n  +  The ciphers that CloudFront can use to encrypt the content that it returns to viewers.\n  \n For more information, see [Security Policy](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html#DownloadDistValues-security-policy) and [Supported Protocols and Ciphers Between Viewers and CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/secure-connections-supported-viewer-protocols-ciphers.html#secure-connections-supported-ciphers) in the *Amazon CloudFront Developer Guide*.\n  On the CloudFront console, this setting is called *Security Policy*.\n  When you're using SNI only (you set ``SSLSupportMethod`` to ``sni-only``), you must specify ``TLSv1`` or higher. (In CloudFormation, the field name is ``SslSupportMethod``. Note the different capitalization.)\n If the distribution uses the CloudFront domain name such as ``d111111abcdef8.cloudfront.net`` (you set ``CloudFrontDefaultCertificate`` to ``true``), CloudFront automatically sets the security policy to ``TLSv1`` regardless of the value that you set here.": {
@@ -5596,6 +5656,9 @@
     "enum": null
   },
   "If you are using a Bitbucket or GitHub account for identity verification, the Amazon Resource Name (ARN) for your connection to that account.": {
+    "enum": null
+  },
+  "If you enable journal table record expiration, you can set the number of days to retain your journal table records. Journal table records must be retained for a minimum of 7 days. To set this value, specify any whole number from ``7`` to ``2147483647``. For example, to retain your journal table records for one year, set this value to ``365``.": {
     "enum": null
   },
   "If you specify host for the Affinity property, the ID of a dedicated host that the instance is associated with. If you don't specify an ID, Amazon EC2 launches the instance onto any available, compatible dedicated host in your account.": {
@@ -5799,6 +5862,9 @@
   "Information about the policies assigned to a parameter.\n  [Assigning parameter policies](https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-policies.html) in the *User Guide*.": {
     "enum": null
   },
+  "Information about the policies assigned to a parameter.\n [Assigning parameter policies](https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-policies.html) in the *User Guide*.": {
+    "enum": null
+  },
   "Information that is added to all events that are related to this game session queue.": {
     "enum": null
   },
@@ -5809,6 +5875,9 @@
     "enum": null
   },
   "IngestConfiguration": {
+    "enum": null
+  },
+  "Input properties for anomaly detection.": {
     "enum": null
   },
   "Instance Role Arn": {
@@ -6462,6 +6531,9 @@
   "Number of days before data expires in the Amazon Security Lake object.": {
     "enum": null
   },
+  "Number of days to retain the telemetry data in the specified destination": {
+    "enum": null
+  },
   "Number of events that must be received from Amazon EventBridge before EventBridge event trigger fires.": {
     "enum": null
   },
@@ -6514,6 +6586,9 @@
     "enum": null
   },
   "Path to the filesystem where the endpoint data is available to the container.": {
+    "enum": null
+  },
+  "Pattern for telemetry data destination": {
     "enum": null
   },
   "Peer Region": {
@@ -6759,6 +6834,12 @@
   "ResolverQueryLogConfigName": {
     "enum": null
   },
+  "Resource Type associated with the Organization Telemetry Rule": {
+    "enum": null
+  },
+  "Resource Type associated with the Telemetry Rule": {
+    "enum": null
+  },
   "Resource Type definition for AWS::APS::Scraper": {
     "enum": null
   },
@@ -6790,6 +6871,9 @@
     "enum": null
   },
   "Response content.": {
+    "enum": null
+  },
+  "Result property for anomaly detection.": {
     "enum": null
   },
   "Retention period of failed canary runs represented in number of days": {
@@ -6943,6 +7027,12 @@
     "enum": null
   },
   "Select log version for Verified Access logs.": {
+    "enum": null
+  },
+  "Selection Criteria on resource level for rule application": {
+    "enum": null
+  },
+  "Selection Criteria on scope level for rule application": {
     "enum": null
   },
   "Server-side encryption algorithm": {
@@ -7428,6 +7518,9 @@
   "Specifies whether inventory table configuration is enabled or disabled.": {
     "enum": null
   },
+  "Specifies whether journal table record expiration is enabled or disabled.": {
+    "enum": null
+  },
   "Specifies whether record expiration is enabled or disabled.": {
     "enum": null
   },
@@ -7570,6 +7663,12 @@
     "enum": null
   },
   "Target Interval Seconds defines the interval at which thumbnails are recorded. This field is required if RecordingMode is INTERVAL.": {
+    "enum": null
+  },
+  "Telemetry Type associated with the Organization Telemetry Rule": {
+    "enum": null
+  },
+  "Telemetry Type associated with the Telemetry Rule": {
     "enum": null
   },
   "Templated configuration for airflow processes and backing infrastructure.": {
@@ -8739,6 +8838,9 @@
   "The Amazon Resource Name (ARN) of the table bucket to which the policy applies.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the table bucket where the metadata configuration is stored.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the target cluster": {
     "enum": null
   },
@@ -9007,6 +9109,9 @@
     "enum": null
   },
   "The Confluence host URL or instance URL.": {
+    "enum": null
+  },
+  "The Connect peer IP address on the transit gateway side of the tunnel.": {
     "enum": null
   },
   "The DB cluster identifier. Contains a user-supplied DB cluster identifier. This identifier is the unique key that identifies a DB cluster stored as a lowercase string.": {
@@ -9343,6 +9448,9 @@
     "enum": null
   },
   "The ID of the CloudWatch Logs log group.": {
+    "enum": null
+  },
+  "The ID of the Connect attachment.": {
     "enum": null
   },
   "The ID of the DHCP options set, or default to associate no DHCP options with the VPC.": {
@@ -9729,6 +9837,9 @@
   "The ID of the subnet to add the mount target in. For One Zone file systems, use the subnet that is associated with the file system's Availability Zone.": {
     "enum": null
   },
+  "The ID of the subnet to add the mount target in. For One Zone file systems, use the subnet that is associated with the file system's Availability Zone. The subnet type must be the same type as the ``IpAddressType``.": {
+    "enum": null
+  },
   "The ID of the subnet to associate with the network interface.": {
     "enum": null
   },
@@ -9835,6 +9946,9 @@
     "enum": null
   },
   "The IP address type for the distribution.": {
+    "enum": null
+  },
+  "The IP of the cluster (IPV4 or IPV6)": {
     "enum": null
   },
   "The IP port number.": {
@@ -10716,6 +10830,9 @@
   "The configuration set to use by default when sending from this identity. Note that any configuration set defined in the email sending request takes precedence.": {
     "enum": null
   },
+  "The configuration state of the inventory table, indicating whether the inventory table is enabled or disabled.": {
+    "enum": null
+  },
   "The configuration values to use with the add-on": {
     "enum": null
   },
@@ -11550,6 +11667,9 @@
   "The duration of the policy's cooldown period, in seconds. When a cooldown period is specified here, it overrides the default cooldown period defined for the Auto Scaling group.": {
     "enum": null
   },
+  "The duration when both blue and green service revisions are running simultaneously after the production traffic has shifted.\n The following rules apply when you don't specify a value:\n  +  For rolling deployments, the value is set to 3 hours (180 minutes).\n  +  When you use an external deployment controller (``EXTERNAL``), or the ACD blue/green deployment controller (``CODE_DEPLOY``), the value is set to 3 hours (180 minutes).\n  +  For all other cases, the value is set to 36 hours (2160 minutes).": {
+    "enum": null
+  },
   "The earliest scheduled start time to return. If scheduled action names are provided, this parameter is ignored.": {
     "enum": null
   },
@@ -11698,6 +11818,9 @@
     "enum": null
   },
   "The fields to include in the flow log record, in the order in which they should appear.": {
+    "enum": null
+  },
+  "The fields to include in the flow log record. If you omit this parameter, the flow log is created using the default format.": {
     "enum": null
   },
   "The file key for an object in an S3 bucket.": {
@@ -12463,6 +12586,9 @@
     "enum": null
   },
   "The maximum idle timeout value set in minutes": {
+    "enum": null
+  },
+  "The maximum interval of time, in seconds, during which a flow of packets is captured and aggregated into a flow log record. Default is 600s.": {
     "enum": null
   },
   "The maximum latency in milliseconds. This parameter applies only to RIST-based and Zixi-based streams.": {
@@ -13404,6 +13530,9 @@
   "The name of the component.": {
     "enum": null
   },
+  "The name of the computation model.": {
+    "enum": null
+  },
   "The name of the configuration": {
     "enum": null
   },
@@ -13866,6 +13995,9 @@
   "The name of the organization conformance pack.": {
     "enum": null
   },
+  "The name of the organization telemetry rule": {
+    "enum": null
+  },
   "The name of the origin resource.": {
     "enum": null
   },
@@ -13891,6 +14023,9 @@
     "enum": null
   },
   "The name of the parameter.\n  The maximum length constraint listed below includes capacity for additional system attributes that aren't part of the name. The maximum length for a parameter name, including the full length of the parameter Amazon Resource Name (ARN), is 1011 characters. For example, the length of the following parameter name is 65 characters, not 20 characters: ``arn:aws:ssm:us-east-2:111222333444:parameter/ExampleParameterName``": {
+    "enum": null
+  },
+  "The name of the parameter.\n  The reported maximum length of 2048 characters for a parameter name includes 1037 characters that are reserved for internal use by SYS. The maximum length for a parameter name that you specify is 1011 characters.\n This count of 1011 characters includes the characters in the ARN that precede the name you specify. This ARN length will vary depending on your partition and Region. For example, the following 45 characters count toward the 1011 character maximum for a parameter created in the US East (Ohio) Region: ``arn:aws:ssm:us-east-2:111122223333:parameter/``.": {
     "enum": null
   },
   "The name of the patch baseline.": {
@@ -14130,6 +14265,9 @@
   "The name of the task.": {
     "enum": null
   },
+  "The name of the telemetry rule": {
+    "enum": null
+  },
   "The name of the template.": {
     "enum": null
   },
@@ -14341,6 +14479,9 @@
     "enum": null
   },
   "The names to use for your new Lightsail instance.": {
+    "enum": null
+  },
+  "The namespace in the table bucket where the metadata tables for a metadata configuration are stored.": {
     "enum": null
   },
   "The namespace name or full Amazon Resource Name (ARN) of the CMAPlong namespace for use with Service Connect. The namespace must be in the same AWS Region as the Amazon ECS service and cluster. The type of namespace doesn't affect Service Connect. For more information about CMAPlong, see [Working with Services](https://docs.aws.amazon.com/cloud-map/latest/dg/working-with-services.html) in the *Developer Guide*.": {
@@ -14871,6 +15012,9 @@
   "The path you provided to perform the load balancer health check. If you didn't specify a health check path, Lightsail uses the root path of your website (e.g., \"/\").": {
     "enum": null
   },
+  "The peer IP address (GRE outer IP address) on the appliance side of the Connect peer.": {
+    "enum": null
+  },
   "The percentage of matching requests to instrument, after the reservoir is exhausted.": {
     "enum": null
   },
@@ -14908,6 +15052,9 @@
     "enum": null
   },
   "The period, in seconds, over which the specified statistic is applied.": {
+    "enum": null
+  },
+  "The period, in seconds, over which the statistic is applied. This is required for an alarm based on a metric. Valid values are 10, 20, 30, 60, and any multiple of 60.\n For an alarm based on a math expression, you can't specify ``Period``, and instead you use the ``Metrics`` parameter.\n *Minimum:* 10": {
     "enum": null
   },
   "The period, in seconds, over which the statistic is applied. This is required for an alarm based on a metric. Valid values are 10, 30, 60, and any multiple of 60.\n For an alarm based on a math expression, you can't specify ``Period``, and instead you use the ``Metrics`` parameter.\n  *Minimum:* 10": {
@@ -15975,6 +16122,9 @@
   "The target value for the metric. Although this property accepts numbers of type Double, it won't accept values that are either too small or too large. Values must be in the range of -2^360 to 2^360. The value must be a valid number based on the choice of metric. For example, if the metric is CPU utilization, then the target value is a percent value that represents how much of the CPU can be used before scaling out.": {
     "enum": null
   },
+  "The targeted thumbnail-generation interval in seconds. This is configurable only if recordingMode is INTERVAL. Default: 60.": {
+    "enum": null
+  },
   "The team ID in Slack, which uniquely identifies a workspace.": {
     "enum": null
   },
@@ -16266,6 +16416,9 @@
   "The type of parameter.": {
     "enum": null
   },
+  "The type of parameter.\n  Parameters of type ``SecureString`` are not supported by CFNlong.": {
+    "enum": null
+  },
   "The type of portal": {
     "enum": null
   },
@@ -16357,6 +16510,9 @@
     "enum": null
   },
   "The type of this environment tier.": {
+    "enum": null
+  },
+  "The type of traffic captured for the flow log. Default is ALL": {
     "enum": null
   },
   "The type of traffic configuration.": {
@@ -16941,6 +17097,9 @@
   "Thumbnail Recording Mode, which determines whether thumbnails are recorded at an interval or are disabled.": {
     "enum": null
   },
+  "Thumbnail recording mode. Default: DISABLED.": {
+    "enum": null
+  },
   "Tier name for tier configuration in content filters policy": {
     "enum": null
   },
@@ -17017,6 +17176,9 @@
     "enum": null
   },
   "Type of source connector": {
+    "enum": null
+  },
+  "Type of telemetry destination": {
     "enum": null
   },
   "Type of the policy.": {
