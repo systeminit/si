@@ -79,16 +79,15 @@ export async function runCode(
   if (!bundlePath) {
     // First try to use embedded pre-built bundle
     try {
-      // Use dynamic import with string concatenation to avoid static analysis
-      const moduleName = "./prebuilt-bundle" + ".ts";
-      const prebuiltModule = await import(moduleName).catch(() => null);
-      if (prebuiltModule?.PRE_BUILT_BUNDLE) {
+      // Try static import first
+      const { PRE_BUILT_BUNDLE } = await import("./prebuilt-bundle.ts");
+      if (PRE_BUILT_BUNDLE) {
         bundlePath = join(tempDir, "sandbox.bundle.js");
-        await Deno.writeTextFile(bundlePath, prebuiltModule.PRE_BUILT_BUNDLE);
+        await Deno.writeTextFile(bundlePath, PRE_BUILT_BUNDLE);
         sandboxBundleCache.set(execution_id, bundlePath);
         debug("Using embedded pre-built bundle");
       } else {
-        throw new Error("Pre-built bundle module not available");
+        throw new Error("Pre-built bundle is empty");
       }
     } catch (error) {
       // Embedded bundle not available, try file system locations
