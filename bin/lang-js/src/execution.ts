@@ -1,7 +1,7 @@
 import { FunctionKind } from "./function.ts";
 import { rawStorage, toJSON } from "./sandbox/requestStorage.ts";
 import { Debug } from "./debug.ts";
-import { join } from "https://deno.land/std/path/mod.ts";
+import { join, dirname, fromFileUrl } from "https://deno.land/std/path/mod.ts";
 import { makeConsole } from "./sandbox/console.ts";
 import * as _ from "https://deno.land/x/lodash_es@v0.0.2/mod.ts";
 
@@ -74,14 +74,29 @@ export async function runCode(
     tempDirCache.set(execution_id, tempDir);
   }
 
-  // Generate and cache sandbox bundle dynamically
+  // Check for pre-built bundle first, then generate dynamically if needed
   let bundlePath = sandboxBundleCache.get(execution_id);
   if (!bundlePath) {
-    // Import build function and generate bundle dynamically
-    const { buildSandbox } = await import("./build.ts");
-    bundlePath = join(tempDir, "sandbox.bundle.js");
-    await buildSandbox(bundlePath);
-    sandboxBundleCache.set(execution_id, bundlePath);
+    // First try to use embedded pre-built bundle
+    try {
+      // Try static import first
+      const { PRE_BUILT_BUNDLE } = await import("./prebuilt-bundle.ts");
+      if (PRE_BUILT_BUNDLE) {
+        bundlePath = join(tempDir, "sandbox.bundle.js");
+        await Deno.writeTextFile(bundlePath, PRE_BUILT_BUNDLE);
+        sandboxBundleCache.set(execution_id, bundlePath);
+        debug("Using embedded pre-built bundle");
+      } else {
+        throw new Error("Pre-built bundle is empty");
+      }
+    } catch (error) {
+      // Embedded bundle not available, fall back to dynamic generation
+      debug("Embedded bundle not available, generating dynamically:", error);
+      const { buildSandbox } = await import("./build.ts");
+      bundlePath = join(tempDir, "sandbox.bundle.js");
+      await buildSandbox(bundlePath);
+      sandboxBundleCache.set(execution_id, bundlePath);
+    }
   }
 
   const mainFile = join(tempDir, "main.ts");
