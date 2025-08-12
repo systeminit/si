@@ -116,8 +116,8 @@ fn v1_routes() -> Router<AppState> {
         .nest("/attribute", sdf_v1_routes_attribute::routes()) // ALL USED IN FUNC EDITOR
         .nest("/change_set", sdf_v1_routes_change_sets::routes()) // SOME USED IN NEW UI
         .nest("/component", sdf_v1_routes_component::routes()) // MOST USED IN OLD UI (ONE IN FUNC EDITOR)
-        .nest("/diagram", sdf_v1_routes_diagram::routes()) // INVESTIGATING NEXT
-        .nest("/qualification", sdf_v1_routes_qualification::routes())
+        .nest("/diagram", sdf_v1_routes_diagram::routes()) // ALL USED IN OLD UI
+        .nest("/qualification", sdf_v1_routes_qualification::routes()) // INVESTIGATING NEXT
         .nest("/secret", sdf_v1_routes_secret::routes())
         .nest("/session", sdf_v1_routes_session::routes())
         .nest("/ws", sdf_v1_routes_ws::routes())

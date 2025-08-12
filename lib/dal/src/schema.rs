@@ -69,7 +69,6 @@ use crate::{
 };
 
 pub mod variant;
-pub mod view;
 
 pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminants::V1;
 
