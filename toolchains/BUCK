@@ -39,14 +39,15 @@ download_deno_distribution(
 )
 
 download_rust_distribution(
-    name = "rust_dist",
-    version = "1.86.0",
+    name = "rust_nightly_dist",
+    version = "nightly-2025-06-23",
 )
 
 download_python_distribution(
     name = "python_dist",
     version = "3.13.6",
 )
+
 
 remote_test_execution_toolchain(
     name = "remote_test_execution",
@@ -76,9 +77,10 @@ system_python_bootstrap_toolchain(
 
 hermetic_rust_toolchain(
     name = "rust_release",
-    distribution = ":rust_dist",
+    distribution = ":rust_nightly_dist",
     default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
+    nightly_features = True,
     visibility = ["PUBLIC"],
     # rustc_target_triple auto-detected from distribution target
     rustc_flags = [
@@ -96,9 +98,10 @@ hermetic_rust_toolchain(
 
 hermetic_rust_toolchain(
     name = "rust_debug",
-    distribution = ":rust_dist",
+    distribution = ":rust_nightly_dist",
     default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
+    nightly_features = True,
     visibility = ["PUBLIC"],
     rustc_flags = [
         "-Copt-level=0",
@@ -179,7 +182,7 @@ si_python_toolchain(
 si_rust_toolchain(
     name = "si_rust",
     rustfmt_toml = "root//:rustfmt.toml",
-    rust_dist = ":rust_dist",
+    rust_dist = ":rust_nightly_dist",
     visibility = ["PUBLIC"],
 )
 
@@ -193,5 +196,6 @@ toml_toolchain(
     name = "toml",
     taplo_config = "root//:.taplo.toml",
     cargo_sort_config = "root//:tomlfmt.toml",
+    cargo_dist = ":rust_nightly_dist",
     visibility = ["PUBLIC"],
 )
