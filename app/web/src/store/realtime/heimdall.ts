@@ -358,6 +358,8 @@ const lobbyExit: LobbyExitFn = async (
     });
   }
 
+  // eslint-disable-next-line no-console
+  console.log("⁉️️ LOBBY EXIT ⁉️️");
   await niflheim(workspaceId, changeSetId, true, false);
   muspelheimStatuses.value[changeSetId] = true;
 };
@@ -620,6 +622,15 @@ const waitForInitCompletion = (): Promise<void> => {
 const MUSPELHEIM_CONCURRENCY = 1;
 
 export const muspelheimStatuses = ref<{ [key: string]: boolean }>({});
+watch(
+  muspelheimStatuses,
+  () => {
+    // eslint-disable-next-line no-console
+    console.log("🔥 MUSPELSTATUS: ", JSON.stringify(muspelheimStatuses.value));
+  },
+  { deep: true },
+);
+
 export const muspelheimInProgress = computed(() => {
   const muspelheimStates = muspelheimStatuses.value;
   if (Object.keys(muspelheimStates).length === 0) {
@@ -642,6 +653,13 @@ const fetchOpenChangeSets = async (
     url: `v2/workspaces/${workspaceId}/change-sets`,
   });
   return resp.data;
+};
+
+const jitter = (seconds = 15, jitter = 0.2) => {
+  const max = seconds * (1 + jitter) * 1000;
+  const min = seconds * (1 - jitter) * 1000;
+
+  return Math.floor(Math.random() * (max - min)) + min;
 };
 
 export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
@@ -668,15 +686,28 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
       continue;
     }
 
-    niflheimQueue.add(async () => {
-      await niflheim(workspaceId, changeSet.id, force);
-    });
+    // if an MV index responds with a 202, re-add it to the queue
+    const run = async () => {
+      const success = await niflheim(workspaceId, changeSet.id, force);
+      if (!success) {
+        niflheimQueue.add(async () => {
+          const p = new Promise<void>((resolve) => {
+            setTimeout(() => {
+              resolve();
+            }, jitter());
+          });
+          await p;
+          await run();
+        });
+      }
+    };
+    niflheimQueue.add(run);
   }
 
   await niflheimQueue.onEmpty();
 
   // eslint-disable-next-line no-console
-  console.log("🔥 DONE 🔥", performance.now() - start);
+  console.log("🔥 QUEUE EMPTY 🔥", performance.now() - start);
   return true;
 };
 
@@ -702,7 +733,7 @@ export const niflheim = async (
     console.log("❄️ NIFLHEIM ❄️", changeSetId);
     const success = await db.niflheim(workspaceId, changeSetId);
     // eslint-disable-next-line no-console
-    console.log("❄️ DONE ❄️", performance.now() - start);
+    console.log("❄️ DONE ❄️", changeSetId, performance.now() - start);
 
     // If niflheim returned false (202 response), navigate to lobby
     // Index is being rebuilt and is not ready yet.
