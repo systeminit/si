@@ -11,7 +11,7 @@
           clsx(!isLoader && isActive ? 'text-neutral-100' : 'text-neutral-400')
         "
       >
-        {{ croppedSentence }}
+        {{ cropSentence ? croppedSentence : message }}
       </span>
       <div
         v-if="isActive"
@@ -35,15 +35,23 @@ import { sleep } from "@si/ts-lib/src/async-sleep";
 
 const props = defineProps({
   message: { type: String, required: true },
-  /// Shows SI logo on the left side of line and in active colors, if false color will be greyer
+  /// Shows SI logo on the left side of the line and in active colors, if false color will be greyer
   isActive: { type: Boolean },
   /// When loader, will be shown in secondary greyer color, and without the initial delay
   isLoader: { type: Boolean },
+  // When the user goes out of the tab then comes back, we have an issue where multiple lines will be animating at the same time.
+  // this is because this component is mounted only at that time. This flag prevents that by forcing animate only on the last line.
+  isLastElement: { type: Boolean },
 });
 
 const visibleCharCount = ref(-1);
 const croppedSentence = computed(() =>
   props.message.slice(0, Math.max(visibleCharCount.value, 0)),
+);
+// Fuse so we don't animate when message contents change after we're done rendering.
+const finishedRendering = ref(false);
+const cropSentence = computed(
+  () => props.isLastElement && !finishedRendering.value,
 );
 
 // Kick-off line animation
@@ -60,7 +68,10 @@ const ellipsisDelay = () =>
   BASE_ELLIPSIS_DELAY_MS + Math.floor(Math.random() * 100);
 watch([visibleCharCount], async () => {
   const message = props.message ?? "";
-  if (visibleCharCount.value >= message.length) return;
+  if (visibleCharCount.value >= message.length) {
+    finishedRendering.value = true;
+    return;
+  }
 
   const latestChar = message[visibleCharCount.value - 1] ?? "";
 

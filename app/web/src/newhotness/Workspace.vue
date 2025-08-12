@@ -85,7 +85,10 @@
       leaveFromClass="opacity-100"
       leaveToClass="transform opacity-0"
     >
-      <Lobby v-if="!tokenFail && lobby" />
+      <Lobby
+        v-if="!tokenFail && lobby"
+        :loadingSteps="_.values(muspelheimStatuses)"
+      />
     </Transition>
 
     <main v-if="lobby && tokenFail" class="grow min-h-0">
@@ -126,6 +129,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import { muspelheimStatuses } from "@/store/realtime/heimdall";
 import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
