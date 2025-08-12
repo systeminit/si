@@ -108,6 +108,12 @@ if (import.meta.main) {
     
     // Write the TypeScript module with embedded bundle to the specified output
     await generateBundleModule(bundleContent, output);
+    
+    // Also write it to the source directory so it's available during compilation
+    const baseDir = dirname(fromFileUrl(import.meta.url));
+    const sourceOutput = join(baseDir, "prebuilt-bundle.ts");
+    await generateBundleModule(bundleContent, sourceOutput);
+    console.log(`✅ Also generated source bundle → ${sourceOutput}`);
   } else {
     throw new Error("Failed to build sandbox bundle");
   }
