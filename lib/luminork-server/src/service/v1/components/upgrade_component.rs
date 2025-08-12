@@ -4,14 +4,15 @@ use axum::{
 };
 use dal::{
     Component,
-    ComponentError,
-    ComponentId,
+    SchemaVariant,
+    action::Action,
 };
 use serde::{
     Deserialize,
     Serialize,
 };
 use serde_json::json;
+use si_events::ActionState;
 use utoipa::{
     self,
     ToSchema,
@@ -32,70 +33,76 @@ use crate::{
 
 #[utoipa::path(
     post,
-    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/manage",
+    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/upgrade",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
         ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("component_id" = String, Path, description = "Component identifier")
     ),
     tag = "components",
-    request_body = ManageComponentV1Request,
-    summary = "Putting a component under the management of another component",
+    summary = "Upgrade a component to the latest schema variant",
     responses(
-        (status = 200, description = "Component successfully under management", body = ManageComponentV1Response),
+        (status = 200, description = "Component successfully upgraded", body = UpgradeComponentV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 404, description = "Component not found"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
-pub async fn manage_component(
+pub async fn upgrade_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
     Path(ComponentV1RequestPath { component_id }): Path<ComponentV1RequestPath>,
-    payload: Result<Json<ManageComponentV1Request>, axum::extract::rejection::JsonRejection>,
-) -> ComponentsResult<Json<ManageComponentV1Response>> {
-    let Json(payload) = payload?;
-
+) -> ComponentsResult<Json<UpgradeComponentV1Response>> {
     if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
         return Err(ComponentsError::NotPermittedOnHead);
     }
 
-    let _manager_component = Component::get_by_id(ctx, component_id)
-        .await
-        .map_err(|_e| ComponentError::NotFound(component_id))?;
-    let _component_to_manage = Component::get_by_id(ctx, payload.component_id)
-        .await
-        .map_err(|_e| ComponentError::NotFound(payload.component_id))?;
+    let current_component = Component::get_by_id(ctx, component_id).await?;
+    let current_schema_variant = current_component.schema_variant(ctx).await?;
+    let schema = current_schema_variant.schema(ctx).await?;
 
-    Component::manage_component(ctx, component_id, payload.component_id).await?;
+    let upgrade_target_variant =
+        match SchemaVariant::get_unlocked_for_schema(ctx, schema.id()).await? {
+            Some(unlocked_variant) => unlocked_variant,
+            None => SchemaVariant::default_for_schema(ctx, schema.id()).await?,
+        };
+
+    if current_schema_variant.id() == upgrade_target_variant.id() {
+        return Err(ComponentsError::SchemaVariantUpgradeSkipped);
+    }
+
+    let current_blocking_actions = Action::find_for_states_and_component_id(
+        ctx,
+        component_id,
+        [ActionState::Dispatched, ActionState::Running].to_vec(),
+    )
+    .await?;
+    if !current_blocking_actions.is_empty() {
+        return Err(ComponentsError::UpgradeSkippedDueToActions);
+    }
+
+    Component::upgrade_to_new_variant(ctx, component_id, upgrade_target_variant.id()).await?;
 
     ctx.commit().await?;
 
     tracker.track(
         ctx,
-        "api_set_management_edge",
+        "api_upgrade_component",
         json!({
-            "manager": component_id,
-            "managee": payload.component_id,
+            "component_id": component_id,
+            "old_schema_variant_id": current_schema_variant.id(),
+            "new_schema_variant_id": upgrade_target_variant.id(),
         }),
     );
 
-    Ok(Json(ManageComponentV1Response {
+    Ok(Json(UpgradeComponentV1Response {
         component: ComponentViewV1::assemble(ctx, component_id).await?,
     }))
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ManageComponentV1Request {
-    #[serde(rename = "componentId")]
-    #[schema(value_type = String, required = true)]
-    pub component_id: ComponentId,
-}
-
-#[derive(Deserialize, Serialize, Debug, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ManageComponentV1Response {
+pub struct UpgradeComponentV1Response {
     #[schema(example = json!({
         "id": "01H9ZQD35JPMBGHH69BT0Q79AA",
         "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",

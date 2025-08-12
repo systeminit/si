@@ -81,6 +81,7 @@ pub mod manage_component;
 pub mod search_components;
 pub mod subscriptions;
 pub mod update_component;
+pub mod upgrade_component;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -147,6 +148,8 @@ pub enum ComponentsError {
     SchemaNameNotFound(String),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
+    #[error("schema variant upgrade not required")]
+    SchemaVariantUpgradeSkipped,
     #[error("secret error: {0}")]
     Secret(#[from] dal::SecretError),
     #[error("secret not found: {0}")]
@@ -157,6 +160,8 @@ pub enum ComponentsError {
     Transactions(#[from] dal::TransactionsError),
     #[error("Ulid Decode Error: {0}")]
     UlidDecode(#[from] ulid::DecodeError),
+    #[error("component upgrade skipped due to running or dispatched actions")]
+    UpgradeSkippedDueToActions,
     #[error("validation error: {0}")]
     Validation(String),
     #[error("view not found: {0}")]
@@ -791,6 +796,7 @@ pub fn routes() -> Router<AppState> {
                     post(execute_management_function::execute_management_function),
                 )
                 .route("/action", post(add_action::add_action))
-                .route("/manage", post(manage_component::manage_component)),
+                .route("/manage", post(manage_component::manage_component))
+                .route("/upgrade", post(upgrade_component::upgrade_component)),
         )
 }
