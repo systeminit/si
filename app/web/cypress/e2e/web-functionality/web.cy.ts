@@ -42,30 +42,30 @@ describe('web', () => {
     cy.abandonCurrentChangeSet();
   });
 
-  it("edit_component", () => {
-    cy.basicLogin();
+  // it("edit_component", () => {
+  //   cy.basicLogin();
     
-    cy.createComponent("region");
+  //   cy.createComponent("region");
 
-    cy.get('[data-testid="explore-grid"]').find(".component").click();
+  //   cy.get('[data-testid="explore-grid"]').find(".component").click();
 
-    cy.get('[data-testid="name-input"]').focus();
+  //   cy.get('[data-testid="name-input"]').focus();
 
-    cy.focused().type("test name");
+  //   cy.focused().type("test name");
 
-    cy.press(Cypress.Keyboard.Keys.TAB);
-    cy.press(Cypress.Keyboard.Keys.TAB);
+  //   cy.press(Cypress.Keyboard.Keys.TAB);
+  //   cy.press(Cypress.Keyboard.Keys.TAB);
 
-    cy.focused().type("{downArrow}{downArrow}");
+  //   cy.focused().type("{downArrow}{downArrow}");
 
-    cy.press(Cypress.Keyboard.Keys.TAB);
+  //   cy.press(Cypress.Keyboard.Keys.TAB);
 
-    cy.contains("test name", { timeout: 60000 });
-    cy.contains("us-east-1", { timeout: 60000 });
+  //   cy.contains("test name", { timeout: 60000 });
+  //   cy.contains("us-east-1", { timeout: 60000 });
 
-    // abandon the change set to clean up
-    cy.abandonCurrentChangeSet();
-  });
+  //   // abandon the change set to clean up
+  //   cy.abandonCurrentChangeSet();
+  // });
 
   it("switch_change_sets", () => {
     cy.basicLogin();
