@@ -44,9 +44,12 @@
             <secretForm.Field :name="fieldname">
               <template #default="{ field }">
                 <div class="grid grid-cols-2">
-                  <TruncateWithTooltip class="py-2xs">{{
-                    fieldname
-                  }}</TruncateWithTooltip>
+                  <div class="py-2xs">
+                    <AttributeInputRequiredProperty
+                      :text="fieldname"
+                      :showAsterisk="isFieldRequired(fieldname)"
+                    />
+                  </div>
                   <SecretInput
                     :field="field"
                     :fieldname="fieldname"
@@ -55,13 +58,7 @@
                     "
                   />
                 </div>
-                <div
-                  v-for="error in field.state.meta.errors"
-                  :key="error"
-                  class="text-destructive-500 text-right pb-2xs"
-                >
-                  {{ error }}
-                </div>
+                <!-- Validation errors are intentionally not displayed -->
               </template>
             </secretForm.Field>
           </li>
@@ -105,11 +102,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
-import {
-  themeClasses,
-  TruncateWithTooltip,
-  VButton,
-} from "@si/vue-lib/design-system";
+import { themeClasses, VButton } from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
 import {
@@ -120,6 +113,7 @@ import { encryptMessage } from "@/utils/messageEncryption";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
+import AttributeInputRequiredProperty from "./AttributeInputRequiredProperty.vue";
 import { AttrTree } from "../logic_composables/attribute_tree";
 import { useApi, routes, componentTypes } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
@@ -136,6 +130,11 @@ const displayName = computed(() => {
     return props.attributeTree.attributeValue.key;
   else return props.attributeTree.prop?.name || "XXX";
 });
+
+const isFieldRequired = (fieldname: string): boolean => {
+  // Only "Name" is required for secrets (no other secrets have validations)
+  return fieldname === "Name";
+};
 
 const secretFormData = computed(() => {
   if (
@@ -287,11 +286,10 @@ const secretForm = wForm.newForm({
   },
   validators: {
     onSubmit: ({ value }) => {
-      return {
-        fields: {
-          Name: !value.Name ? "Name required" : undefined,
-        },
-      };
+      if (!value.Name || value.Name.trim() === "") {
+        return " "; // Return non-empty string to indicate validation failure
+      }
+      return undefined; // Return undefined for successful validation
     },
   },
   watchFn: () => props.attributeTree.secret,
