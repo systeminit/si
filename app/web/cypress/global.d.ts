@@ -20,13 +20,24 @@ declare namespace Cypress {
     loginToAuth0(username: string, password: string): Chainable<any>;
 
     /**
+     *  In addition to doing loginToAuth0 this command also
+     *  fires off the standard Posthog event and
+     *  makes sure you reached the new UI successfully
+     */
+    basicLogin(): void;
+
+    /**
      * Sends Posthog Event for User Identification/Test Identification in Posthog
     */
     sendPosthogEvent(event: string, eventKey: string, eventData: string): Chainable<any>;
 
     dragTo(sourceElement: string, targetElement: string, offsetX? :number, offsetY?: number): void;
 
-    createComponent(componentName: string): void;
+    createComponent(componentName?: string, closeComponent?: boolean): void;
+
+    createChangeSet(changeSetName: string, immediatelyAbandon?: boolean): void;
+
+    abandonCurrentChangeSet(): void;
 
     appModelPageLoaded(): void;
     

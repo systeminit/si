@@ -34,6 +34,7 @@
             <SiSearch
               ref="searchRef"
               v-model="fuzzySearchString"
+              data-testid="add-component-search"
               placeholder="Start typing to filter components"
               :borderBottom="false"
               class="flex-none border"

@@ -71,10 +71,13 @@ Cypress.Commands.add('dragTo', (sourceElement: string, targetElement: string, of
 });
 
 Cypress.Commands.add('appModelPageLoaded', () => {
-  // updated for the new hotness UI
+  const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
+  
   cy.wait(3000);
-  cy.get('#left-column-new-hotness-explore', { timeout: 60000 });
-  cy.get('#right-column-new-hotness-explore', { timeout: 60000 });
+  cy.url().should("contain", SI_WORKSPACE_ID);
+  cy.get('[data-testid="left-column-new-hotness-explore"]', { timeout: 60000 });
+  cy.get('[data-testid="right-column-new-hotness-explore"]', { timeout: 60000 });
+  cy.get('[data-testid="lobby"]').should('not.exist', { timeout: 180000 });
 })
 
 Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
@@ -85,6 +88,11 @@ Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
       cy.log(`Trying to click the #${id} now`);
       // Sometimes the div is hidden behind another modal, the force allows it to be clicked anyway
       cy.get(`#${id}`).click( { force: true });
+    } else if (cy.get(`[data-testid="${id}"]`)) {
+      // Element exists, perform click
+      cy.log(`Trying to click the ${id} now`);
+      // Sometimes the div is hidden behind another modal, the force allows it to be clicked anyway
+      cy.get(`[data-testid="${id}"]`).click( { force: true });
     } else {
       // Element does not exist, continue with other actions
       cy.log('Button not found, continuing with other actions');
@@ -92,18 +100,66 @@ Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
   });
 });
 
-//Cypress.Commands.add('setupVariables', () => {
-//  const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
-//  const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
-//  const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
-//  const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
-//  const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
-//  const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
-//
-//  Cypress.env('SI_CYPRESS_MULTIPLIER', SI_CYPRESS_MULTIPLIER);
-//  Cypress.env('AUTH0_USERNAME', AUTH0_USERNAME);
-//  Cypress.env('AUTH0_PASSWORD', AUTH0_PASSWORD);
-//  Cypress.env('AUTH_API_URL', AUTH_API_URL);
-//  Cypress.env('SI_WORKSPACE_ID', SI_WORKSPACE_ID);
-//  Cypress.env('UUID', UUID);
-//});
+Cypress.Commands.add('basicLogin', () => {
+  const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
+  const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+  const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+  const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
+  const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+
+  cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
+  cy.visit({
+    url:AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go',
+    failOnStatusCode: false
+  });
+  cy.on('uncaught:exception', (e) => {
+    console.log(e);
+    return false;
+  });
+  cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
+  cy.appModelPageLoaded();
+  cy.wait(5000);
+});
+
+Cypress.Commands.add('createChangeSet', (changeSetName: string, immediatelyAbandon = false) => {
+  cy.get('[data-testid="create-change-set-button"]', { timeout: 60000 });
+  cy.clickButtonByIdIfExists("create-change-set-button");
+  cy.focused().type(`${changeSetName}`);
+  cy.contains("Create change set", { timeout: 10000 }).click();
+  cy.contains(changeSetName, { timeout: 10000 }).should('be.visible');
+  if (immediatelyAbandon) {
+    cy.abandonCurrentChangeSet();
+  }
+});
+
+Cypress.Commands.add('abandonCurrentChangeSet', () => {
+  cy.wait(1000);
+  cy.get('[data-testid="abandon-change-set-button"]', { timeout: 60000 });
+  cy.clickButtonByIdIfExists("abandon-change-set-button");
+  cy.wait(1000);
+  cy.get('[data-testid="abandon-change-set-modal-confirm-button"]', { timeout: 60000 });
+  cy.clickButtonByIdIfExists("abandon-change-set-modal-confirm-button");
+  cy.wait(3000);
+});
+
+// Cypress.Commands.add('abandonAllChangeSets', () => {
+
+// });
+
+// Cypress.Commands.add('setupVariables', () => {
+//   const SI_CYPRESS_MULTIPLIER = Cypress.env('VITE_SI_CYPRESS_MULTIPLIER') || import.meta.env.VITE_SI_CYPRESS_MULTIPLIER || 1;
+//   const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
+//   const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
+//   const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+//   const AUTH_PORTAL_URL = Cypress.env('VITE_AUTH_PORTAL_URL') || import.meta.env.VITE_AUTH_PORTAL_URL;
+//   const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
+//   const UUID = Cypress.env('VITE_UUID') || import.meta.env.VITE_UUID || "local";
+
+//   Cypress.env('SI_CYPRESS_MULTIPLIER', SI_CYPRESS_MULTIPLIER);
+//   Cypress.env('AUTH0_USERNAME', AUTH0_USERNAME);
+//   Cypress.env('AUTH0_PASSWORD', AUTH0_PASSWORD);
+//   Cypress.env('AUTH_API_URL', AUTH_API_URL);
+//   Cypress.env('AUTH_PORTAL_URL', AUTH_PORTAL_URL);
+//   Cypress.env('SI_WORKSPACE_ID', SI_WORKSPACE_ID);
+//   Cypress.env('UUID', UUID);
+// });

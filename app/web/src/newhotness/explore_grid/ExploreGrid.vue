@@ -1,21 +1,12 @@
 <template>
-  <!-- eslint-disable vue/no-multiple-template-root -->
   <AttributePanelBulk
     v-if="bulkEditing"
     @close="() => $emit('bulkDone')"
     @deselect="(idx) => $emit('childDeselect', idx)"
   />
-  <!--
-    NOTE(nick,victor,wendy): we need both divs here for the virtualizer. The first div is the
-    scrolling area itself (it will be whatever height fills the spot in the overall UI, which,
-    at the time of writing, is a CSS grid). The second div is a wrapper that maintains the height
-    of all of the virtualized rows, so that even when only a few rows are rendering, the scrollable
-    area will not change. If you mess with this, it will break in ways YOU MAY OR MAY NOT NOTICE.
-    BUYER BEWARE.
-  -->
   <div
     v-else
-    data-testid="tile-container"
+    data-testid="explore-grid"
     class="w-full relative flex flex-col"
     :style="{
       ['overflow-anchor']: 'none',

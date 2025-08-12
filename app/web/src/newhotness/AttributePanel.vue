@@ -1,5 +1,9 @@
 <template>
-  <div v-if="attributeTree && root" class="p-xs flex flex-col gap-xs">
+  <div
+    v-if="attributeTree && root"
+    data-testid="attribute-panel"
+    class="p-xs flex flex-col gap-xs"
+  >
     <div
       v-if="importFunc && !component.toDelete"
       class="grid grid-cols-2 gap-2xs relative text-sm h-lg"
@@ -80,6 +84,7 @@
           <input
             v-else
             ref="nameInputRef"
+            data-testid="name-input"
             :value="field.state.value"
             :placeholder="namePlaceholder"
             :class="

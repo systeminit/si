@@ -43,10 +43,10 @@
     </label>
 
     <VButton
-      id="create-change-set-button"
       v-tooltip="{
         content: 'Create Change Set',
       }"
+      data-testid="create-change-set-button"
       icon="git-branch-plus"
       size="sm"
       tone="action"
@@ -59,6 +59,7 @@
       v-tooltip="{
         content: 'Abandon Change Set',
       }"
+      data-testid="abandon-change-set-button"
       :disabled="
         !changeSet ||
         changeSet.isHead ||
@@ -249,7 +250,7 @@ const waitForChangeSetExists = (
 
 async function onSelectChangeSet(newVal: string) {
   if (newVal === "NEW") {
-    createModalRef.value?.open();
+    openCreateModal();
     return;
   }
 

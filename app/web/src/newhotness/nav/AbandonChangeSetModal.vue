@@ -21,6 +21,7 @@
       />
       <template v-if="!props.changeSet.isHead">
         <VButton
+          data-testid="abandon-change-set-modal-confirm-button"
           label="Abandon Change Set"
           tone="destructive"
           class="flex-grow"
