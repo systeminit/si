@@ -1729,47 +1729,48 @@ const updateChangeSetWithNewIndex = (
   });
 };
 
-const removeOldIndex = async (db: Database, span: Span) => {
+const removeOldIndex = async (_db: Database, _span: Span) => {
+  return;
   // Keep the last 5 indexes per changeset for debugging purposes
   // This helps track previous session checksums
-  const deleteIndexes = db.exec({
-    sql: `
-      DELETE FROM indexes
-      WHERE checksum NOT IN (
-        SELECT index_checksum FROM changesets
-      )
-      RETURNING *;
-    `,
-    returnValue: "resultRows",
-  });
+  // const deleteIndexes = db.exec({
+  //   sql: `
+  //     DELETE FROM indexes
+  //     WHERE checksum NOT IN (
+  //       SELECT index_checksum FROM changesets
+  //     )
+  //     RETURNING *;
+  //   `,
+  //   returnValue: "resultRows",
+  // });
 
   // Only delete atoms that aren't referenced by any index (including retained ones)
-  const deleteAtoms = db.exec({
-    sql: `
-      DELETE FROM atoms
-      WHERE (kind, args, checksum) NOT IN (
-        SELECT kind, args, checksum FROM index_mtm_atoms
-      ) returning atoms.kind, atoms.args, atoms.checksum;
-    `,
-    returnValue: "resultRows",
-  });
+  // const deleteAtoms = db.exec({
+  //   sql: `
+  //     DELETE FROM atoms
+  //     WHERE (kind, args, checksum) NOT IN (
+  //       SELECT kind, args, checksum FROM index_mtm_atoms
+  //     ) returning atoms.kind, atoms.args, atoms.checksum;
+  //   `,
+  //   returnValue: "resultRows",
+  // });
 
-  span.setAttributes({
-    deletedIndexes: JSON.stringify(deleteIndexes),
-    deletedAtoms: JSON.stringify(deleteAtoms),
-  });
+  // span.setAttributes({
+  //   deletedIndexes: JSON.stringify(deleteIndexes),
+  //   deletedAtoms: JSON.stringify(deleteAtoms),
+  // });
 
-  if (deleteIndexes.length > 0) {
-    debug(
-      "🗑️ Cleaned up",
-      deleteIndexes.length,
-      "old indexes (keeping recent 5 per workspace)",
-      deleteIndexes,
-    );
-  }
-  if (deleteAtoms.length > 0) {
-    debug("🗑️ Cleaned up", deleteAtoms.length, "orphaned atoms", deleteAtoms);
-  }
+  // if (deleteIndexes.length > 0) {
+  //   debug(
+  //     "🗑️ Cleaned up",
+  //     deleteIndexes.length,
+  //     "old indexes (keeping recent 5 per workspace)",
+  //     deleteIndexes,
+  //   );
+  // }
+  // if (deleteAtoms.length > 0) {
+  //   debug("🗑️ Cleaned up", deleteAtoms.length, "orphaned atoms", deleteAtoms);
+  // }
 };
 
 const pruneAtomsForClosedChangeSet = async (
