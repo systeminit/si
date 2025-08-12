@@ -206,9 +206,9 @@ def _rust_binary_artifact_impl(ctx):
         "tar",
         "-czf",
         tarred_binary.as_output(),
-        "-C",
-        cmd_args(binary, format="{}/../"),
-        cmd_args(binary, format="{}").relative_to(cmd_args(binary, format="{}/../")),
+        "--transform",
+        "s|.*/||",
+        binary,
     )
     
     ctx.actions.run(tar_cmd, category = "tar_binary")
