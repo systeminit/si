@@ -13,7 +13,6 @@ rust_library(
         "//third-party/rust:futures",
         "//third-party/rust:remain",
         "//third-party/rust:serde_json",
-        "//third-party/rust:strum",
         "//third-party/rust:thiserror",
     ],
     srcs = glob(["src/**/*.rs"]),

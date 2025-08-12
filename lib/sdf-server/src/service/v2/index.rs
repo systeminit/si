@@ -74,9 +74,7 @@ pub async fn request_rebuild_and_watch(
     change_set_id: ChangeSetId,
 ) -> IndexResult<bool> {
     let span = Span::current();
-    let mut watch = frigg
-        .watch_change_set_index(workspace_pk, change_set_id)
-        .await?;
+    let mut watch = frigg.watch_index(workspace_pk, change_set_id).await?;
     let request_id = edda_client
         .rebuild_for_change_set(workspace_pk, change_set_id)
         .await?;

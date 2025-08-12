@@ -12,10 +12,6 @@ use dal::{
     slow_rt::SlowRuntimeError,
     workspace_snapshot::migrator::SnapshotGraphMigrator,
 };
-use edda_client::{
-    ClientError as EddaClientError,
-    EddaClient,
-};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -34,8 +30,6 @@ use crate::{
 pub enum MigratorError {
     #[error("audit database context error: {0}")]
     AuditDatabaseContext(#[from] AuditDatabaseContextError),
-    #[error("edda client error error: {0}")]
-    EddaClientError(#[from] EddaClientError),
     #[error("error while initializing: {0}")]
     Init(#[from] init::InitError),
     #[error("tokio join error: {0}")]
@@ -147,10 +141,7 @@ impl Migrator {
         }
 
         if update_module_cache {
-            let nats_connection = self.services_context.nats_conn().clone();
-            let edda_client = EddaClient::new(nats_connection).await?;
-
-            self.migrate_module_cache(edda_client)
+            self.migrate_module_cache()
                 .await
                 .map_err(|err| span.record_err(err))?;
         }
@@ -206,12 +197,9 @@ impl Migrator {
     }
 
     #[instrument(name = "sdf.migrator.migrate_module_cache", level = "info", skip_all)]
-    async fn migrate_module_cache(&self, edda_client: EddaClient) -> MigratorResult<()> {
-        async fn update_cached_modules(
-            ctx: DalContext,
-            edda_client: EddaClient,
-        ) -> MigratorResult<()> {
-            let new_modules = CachedModule::update_cached_modules(&ctx, edda_client)
+    async fn migrate_module_cache(&self) -> MigratorResult<()> {
+        async fn update_cached_modules(ctx: DalContext) -> MigratorResult<()> {
+            let new_modules = CachedModule::update_cached_modules(&ctx)
                 .await
                 .map_err(MigratorError::migrate_cached_modules)?;
             info!(
@@ -230,7 +218,7 @@ impl Migrator {
         info!("Updating local module cache");
 
         tokio::spawn(async move {
-            match update_cached_modules(ctx, edda_client).await {
+            match update_cached_modules(ctx).await {
                 Ok(()) => {
                     info!("Module cache updated successfully");
                 }

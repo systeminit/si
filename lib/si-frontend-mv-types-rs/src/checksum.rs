@@ -32,7 +32,6 @@ use si_id::{
     ViewId,
     WorkspaceId,
     WorkspacePk,
-    ulid::Ulid,
 };
 
 use crate::{
@@ -88,12 +87,6 @@ impl FrontendChecksumInventoryItem {
 // Would be nice to do this automatically as part of the macros. As an impl for a trait
 // seems difficult to work around "conflicting implementations for trait" errors with
 // the other trait impls for the more basic types.
-impl FrontendChecksum for Ulid {
-    fn checksum(&self) -> Checksum {
-        FrontendChecksum::checksum(&self.to_string())
-    }
-}
-
 impl FrontendChecksum for ChangeSetId {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())

@@ -64,61 +64,24 @@ pub async fn edda_requests_jetstream_stream(
 
 pub mod subject {
     use si_data_nats::Subject;
-    use strum::AsRefStr;
 
-    #[remain::sorted]
-    #[derive(AsRefStr, Debug, PartialEq)]
-    #[strum(serialize_all = "snake_case")]
-    pub enum Scope {
-        ChangeSet,
-        Deployment,
-        Workspace,
-    }
-
-    // Tasks subjects:
-    // - `edda.tasks.$scope.[$scope_segments...]` (general pattern, grouped under a `$scope`)
-    // - `edda.tasks.deployment.$task_kind` (task for an entire deployment)
-    // - `edda.tasks.workspace.$workspace_id.$task_kind` (task for a workspace)
-    // - `edda.tasks.change_set.$workspace_id.$change_set_id.$task_kind` (task for a change set)
-    const TASKS_SUBJECT_PREFIX: &str = "edda.tasks";
-    const TASKS_INCOMING_SUBJECT: &str = "edda.tasks.>";
-
-    // Requests subjects:
-    // - `edda.requests.$scope.[$scope_segments...]` (general pattern, grouped under a `$scope`)
-    // - `edda.requests.deployment` (request for an entire deployment)
-    // - `edda.requests.workspace.$workspace_id` (request for a workspace)
-    // - `edda.requests.change_set.$workspace_id.$change_set_id` (request for a change set)
     const REQUESTS_SUBJECT_PREFIX: &str = "edda.requests";
-
-    // Updates subjects:
-    // - `edda.updates.$scope.[$scope_segments...]` (general pattern, grouped under a `$scope`)
-    // - `edda.updates.deployment.$kind` (update for an entire deployment)
-    // - `edda.updates.workspace.$workspace_id.$kind` (update for a workspace)
-    // - `edda.updates.change_set.$workspace_id.$change_set_id.$kind` (update for a change set)
+    const TASKS_SUBJECT_PREFIX: &str = "edda.tasks";
     const UPDATES_SUBJECT_PREFIX: &str = "edda.updates";
+
+    const ALL_UPDATES_SUBJECT: &str = "edda.updates.*.*";
+
+    // Targetting subjects:
+    // - `edda.tasks.$workspace_id.$change_set_id.$task_kind` (task for a change set)
+    //
+    // Possible future message subjects:
+    // - `edda.tasks.$workspace_id.$task_kind` (task for a workspace)
+    // - `edda.tasks.$task_kind` (task for an entire deployment)
+    const TASKS_INCOMING_SUBJECT: &str = "edda.tasks.*.*.*";
 
     #[inline]
     pub fn tasks_incoming(prefix: Option<&str>) -> Subject {
         nats_std::subject::prefixed(prefix, TASKS_INCOMING_SUBJECT)
-    }
-
-    #[inline]
-    pub fn request_for_deployment(prefix: Option<&str>) -> Subject {
-        nats_std::subject::prefixed(
-            prefix,
-            format!("{REQUESTS_SUBJECT_PREFIX}.{}", Scope::Deployment.as_ref()),
-        )
-    }
-
-    #[inline]
-    pub fn request_for_workspace(prefix: Option<&str>, workspace_id: &str) -> Subject {
-        nats_std::subject::prefixed(
-            prefix,
-            format!(
-                "{REQUESTS_SUBJECT_PREFIX}.{}.{workspace_id}",
-                Scope::Workspace.as_ref()
-            ),
-        )
     }
 
     #[inline]
@@ -129,32 +92,7 @@ pub mod subject {
     ) -> Subject {
         nats_std::subject::prefixed(
             prefix,
-            format!(
-                "{REQUESTS_SUBJECT_PREFIX}.{}.{workspace_id}.{change_set_id}",
-                Scope::ChangeSet.as_ref()
-            ),
-        )
-    }
-
-    #[inline]
-    pub fn process_task_for_deployment(prefix: Option<&str>) -> Subject {
-        nats_std::subject::prefixed(
-            prefix,
-            format!(
-                "{TASKS_SUBJECT_PREFIX}.{}.process",
-                Scope::Deployment.as_ref()
-            ),
-        )
-    }
-
-    #[inline]
-    pub fn process_task_for_workspace(prefix: Option<&str>, workspace_id: &str) -> Subject {
-        nats_std::subject::prefixed(
-            prefix,
-            format!(
-                "{TASKS_SUBJECT_PREFIX}.{}.{workspace_id}.process",
-                Scope::Workspace.as_ref()
-            ),
+            format!("{REQUESTS_SUBJECT_PREFIX}.{workspace_id}.{change_set_id}",),
         )
     }
 
@@ -166,61 +104,20 @@ pub mod subject {
     ) -> Subject {
         nats_std::subject::prefixed(
             prefix,
-            format!(
-                "{TASKS_SUBJECT_PREFIX}.{}.{workspace_id}.{change_set_id}.process",
-                Scope::ChangeSet.as_ref()
-            ),
+            format!("{TASKS_SUBJECT_PREFIX}.{workspace_id}.{change_set_id}.process",),
         )
     }
 
     #[inline]
-    pub fn all_edda_updates(prefix: Option<&str>) -> Subject {
-        nats_std::subject::prefixed(prefix, format!("{UPDATES_SUBJECT_PREFIX}.>"))
+    pub fn all_updates_for_all_workspace(prefix: Option<&str>) -> Subject {
+        nats_std::subject::prefixed(prefix, ALL_UPDATES_SUBJECT)
     }
 
     #[inline]
-    pub fn all_workspace_updates_for_all_workspaces(prefix: Option<&str>) -> Subject {
-        all_workspace_updates_for_workspace(prefix, "*")
-    }
-
-    #[inline]
-    pub fn all_workspace_updates_for_workspace(
-        prefix: Option<&str>,
-        workspace_id: &str,
-    ) -> Subject {
+    pub fn all_updates_for_workspace(prefix: Option<&str>, workspace_id: &str) -> Subject {
         nats_std::subject::prefixed(
             prefix,
-            format!(
-                "{UPDATES_SUBJECT_PREFIX}.{}.{workspace_id}.*",
-                Scope::Workspace.as_ref()
-            ),
+            format!("{UPDATES_SUBJECT_PREFIX}.{workspace_id}.*",),
         )
-    }
-
-    #[inline]
-    pub fn workspace_update_for(prefix: Option<&str>, workspace_id: &str, kind: &str) -> Subject {
-        nats_std::subject::prefixed(
-            prefix,
-            format!(
-                "{UPDATES_SUBJECT_PREFIX}.{}.{workspace_id}.{kind}",
-                Scope::Workspace.as_ref()
-            ),
-        )
-    }
-
-    #[inline]
-    pub fn deployment_update_for(prefix: Option<&str>, kind: &str) -> Subject {
-        nats_std::subject::prefixed(
-            prefix,
-            format!(
-                "{UPDATES_SUBJECT_PREFIX}.{}.{kind}",
-                Scope::Deployment.as_ref()
-            ),
-        )
-    }
-
-    #[inline]
-    pub fn all_deployment_updates(prefix: Option<&str>) -> Subject {
-        deployment_update_for(prefix, "*")
     }
 }

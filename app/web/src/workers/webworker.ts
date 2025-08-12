@@ -39,10 +39,10 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { ViewId } from "@/api/sdf/dal/views";
 import {
-  WorkspaceAtom,
+  Atom,
   AtomDocument,
-  WorkspaceAtomMessage,
-  WorkspaceAtomMeta,
+  AtomMessage,
+  AtomMeta,
   BroadcastMessage,
   BustCacheFn,
   Checksum,
@@ -52,13 +52,13 @@ import {
   Gettable,
   Id,
   IndexObjectMeta,
-  WorkspaceIndexUpdate,
+  IndexUpdate,
   Listable,
   LobbyExitFn,
   MessageKind,
   MjolnirBulk,
   NOROW,
-  WorkspacePatchBatch,
+  PatchBatch,
   QueryAttributesTerm,
   QueryKey,
   Ragnarok,
@@ -66,8 +66,6 @@ import {
   TabDBInterface,
   DB_NOT_INIT_ERR,
   UpdateFn,
-  DeploymentIndexUpdate,
-  DeploymentPatchBatch,
 } from "./types/dbinterface";
 import {
   BifrostComponent,
@@ -324,7 +322,7 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
  * INDEX LOGIC
  */
 
-const workspaceAtomExistsOnIndexes = (
+const atomExistsOnIndexes = (
   db: Database,
   kind: EntityKind,
   id: string,
@@ -356,9 +354,9 @@ const workspaceAtomExistsOnIndexes = (
  * @param meta the new and previous indexes for the changeset.
  * @param fromIndexChecksum the checksum the changeset currently has in the frontend
  */
-const newChangesetIndex = (
+const newIndex = (
   db: Database,
-  meta: WorkspaceAtomMeta,
+  meta: AtomMeta,
   fromIndexChecksum: string | undefined,
 ) => {
   //
@@ -382,19 +380,36 @@ const newChangesetIndex = (
     | undefined
     | typeof NOROW;
 
-  let sourceChecksum;
   if (fromIndexChecksum && fromIndexChecksum !== meta.toIndexChecksum) {
     // Copy the index from the previous changeset if one exists
-    sourceChecksum = fromIndexChecksum;
+    db.exec({
+      sql: `INSERT INTO index_mtm_atoms
+        SELECT
+          ?, kind, args, checksum
+        FROM index_mtm_atoms
+        WHERE
+          index_checksum = ?
+        `,
+      bind: [meta.toIndexChecksum, fromIndexChecksum],
+    });
   } else if (lastKnownFromChecksum && lastKnownFromChecksum !== NOROW) {
     // Copy the index from the previous changeset if one exists
     // TODO may be redundant; the only caller (indexLogic()) already gets fromIndexChecksum
     // from the same place.
     debug(`HIT ELSE BRANCH NEW FROM CHECKSUM SHIT`);
-    sourceChecksum = lastKnownFromChecksum;
+    db.exec({
+      sql: `INSERT INTO index_mtm_atoms
+        SELECT
+          ?, kind, args, checksum
+        FROM index_mtm_atoms
+        WHERE
+          index_checksum = ?
+        `,
+      bind: [meta.toIndexChecksum, lastKnownFromChecksum],
+    });
   } else {
     // we have a new change set and a patch at the same time
-    // which means that the change set record did not exist, no "from" in the DB
+    // which means that the change set record did not exist, no from in the DB
     // but we have the from in the payload
     //
     // NOTE: this could be incomplete! Cannot be sure an index/atoms are complete unless
@@ -402,20 +417,17 @@ const newChangesetIndex = (
     debug(
       `New changeset and patch at the same time! Copying index atoms from edda's changeset ${meta.fromIndexChecksum}`,
     );
-    sourceChecksum = meta.fromIndexChecksum;
-  }
-
-  // Copy all entries found for sourceChecksum, while rewriting the index_checksum to the incoming one.
-  db.exec({
-    sql: `INSERT INTO index_mtm_atoms
+    db.exec({
+      sql: `INSERT INTO index_mtm_atoms
         SELECT
           ?, kind, args, checksum
         FROM index_mtm_atoms
         WHERE
           index_checksum = ?
         `,
-    bind: [meta.toIndexChecksum, sourceChecksum],
-  });
+      bind: [meta.toIndexChecksum, meta.fromIndexChecksum],
+    });
+  }
 };
 
 const bulkRemoveAtoms = async (
@@ -457,11 +469,7 @@ const removeAtom = (
   });
 };
 
-const createAtomFromPatch = async (
-  db: Database,
-  atom: WorkspaceAtom,
-  span?: Span,
-) => {
+const createAtomFromPatch = async (db: Database, atom: Atom, span?: Span) => {
   const doc = {};
   let afterDoc = {};
   if (atom.operations) {
@@ -474,7 +482,7 @@ const createAtomFromPatch = async (
 
 const createAtom = async (
   db: Database,
-  atom: WorkspaceAtom,
+  atom: Atom,
   doc: object,
   _span?: Span,
 ) => {
@@ -599,7 +607,7 @@ const bustCacheAndReferences = (
   });
 };
 
-const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
+const handleHammer = async (db: Database, msg: AtomMessage) => {
   await tracer.startActiveSpan("Mjolnir", async (span) => {
     debug(
       "🔨 HAMMER RECEIVED:",
@@ -630,7 +638,7 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
       );
     }
     // in between throwing a hammer and receiving it, i might already have written the atom
-    const indexes = workspaceAtomExistsOnIndexes(
+    const indexes = atomExistsOnIndexes(
       db,
       msg.atom.kind,
       msg.atom.id,
@@ -839,11 +847,7 @@ const bulkInsertAtomMTMs = (
   }
 };
 
-const insertAtomMTM = (
-  db: Database,
-  atom: WorkspaceAtom,
-  indexChecksum: Checksum,
-) => {
+const insertAtomMTM = (db: Database, atom: Atom, indexChecksum: Checksum) => {
   try {
     const bind = [indexChecksum, atom.kind, atom.id, atom.toChecksum];
     db.exec({
@@ -864,15 +868,10 @@ const insertAtomMTM = (
 /**
  * Create an index and changeset if they don't exist, and copy the previous index if we have it.
  *
- * @param db the database client
  * @param meta new (and previous) index for the changeset
  * @param span tracing span to work with
  */
-const initIndexAndChangeSet = (
-  db: Database,
-  meta: WorkspaceAtomMeta,
-  span: Span,
-) => {
+const initIndexAndChangeSet = (db: Database, meta: AtomMeta, span: Span) => {
   const { toIndexChecksum } = {
     ...meta,
   };
@@ -928,7 +927,7 @@ const initIndexAndChangeSet = (
   //
   if (indexExists === NOROW) {
     span.setAttribute("newIndexCreated", true);
-    newChangesetIndex(db, meta, currentIndexChecksum);
+    newIndex(db, meta, currentIndexChecksum);
   }
 
   //
@@ -950,19 +949,15 @@ const initIndexAndChangeSet = (
   return toIndexChecksum;
 };
 
-const handleWorkspacePatchMessage = async (
-  db: Database,
-  data: WorkspacePatchBatch,
-) => {
+const handlePatchMessage = async (db: Database, data: PatchBatch) => {
   await tracer.startActiveSpan("PatchBatch", async (span) => {
     try {
       const batchId = `${data.meta.toIndexChecksum}-${data.patches.length}`;
       debug("📦 BATCH START:", batchId);
 
-      const { changeSetId, toIndexChecksum, workspaceId } = data.meta;
+      const { changeSetId, workspaceId, toIndexChecksum } = { ...data.meta };
 
       span.setAttributes({
-        patchKind: "workspace",
         batchId,
         numRawPatches: data.patches.length,
         rawPatches: JSON.stringify(data.patches),
@@ -978,6 +973,7 @@ const handleWorkspacePatchMessage = async (
       // Assumption: every patch is working on the same workspace and changeset
       // (e.g. we're not bundling messages across workspaces somehow)
 
+      if (!data.meta.changeSetId) throw new Error("Expected changeSetId");
       if (!data.meta.toIndexChecksum) throw new Error("Expected indexChecksum");
 
       // Log index checksum for tracing - this provides validation at the index level
@@ -1041,17 +1037,14 @@ const handleWorkspacePatchMessage = async (
 
       const atoms = data.patches
         .map((rawAtom) => {
-          const atom: WorkspaceAtom = {
+          const atom: Atom = {
             ...rawAtom,
             ...data.meta,
             operations: rawAtom.patch,
           };
           return atom;
         })
-        .filter(
-          (rawAtom): rawAtom is Required<WorkspaceAtom> =>
-            !!rawAtom.fromChecksum,
-        );
+        .filter((rawAtom): rawAtom is Required<Atom> => !!rawAtom.fromChecksum);
 
       span.setAttribute("numAtoms", atoms.length);
       if (!indexChecksum) {
@@ -1075,13 +1068,13 @@ const handleWorkspacePatchMessage = async (
       // from a view without it.
       const listAtomsToBust = await Promise.all(
         listAtoms.map(async (atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum);
+          return applyPatch(db, atom, indexChecksum);
         }),
       );
       // not busting these
       // await Promise.all(
       //   listAtoms.map(async (atom) => {
-      //     return applyWorkspacePatch(db, atom, indexChecksum);
+      //     return applyPatch(db, atom, indexChecksum);
       //   }),
       // );
 
@@ -1107,7 +1100,7 @@ const handleWorkspacePatchMessage = async (
 
       const atomsToBust = await Promise.all(
         nonListAtoms.map(async (atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum);
+          return applyPatch(db, atom, indexChecksum);
         }),
       );
 
@@ -1128,7 +1121,7 @@ const handleWorkspacePatchMessage = async (
       );
       const connAtomsToBust = await Promise.all(
         connectionAtoms.map(async (atom) => {
-          return await applyWorkspacePatch(db, atom, indexChecksum);
+          return await applyPatch(db, atom, indexChecksum);
         }),
       );
 
@@ -1145,7 +1138,7 @@ const handleWorkspacePatchMessage = async (
         bustCacheLength: atomsToBust.length + connAtomsToBust.length,
         bustCache: JSON.stringify(
           [...atomsToBust, ...connAtomsToBust]
-            .filter((a): a is Required<WorkspaceAtom> => !!a)
+            .filter((a): a is Required<Atom> => !!a)
             .map((a) => [a.kind, a.id]),
         ),
       });
@@ -1195,12 +1188,12 @@ const handleWorkspacePatchMessage = async (
   });
 };
 
-const applyWorkspacePatch = async (
+const applyPatch = async (
   db: Database,
-  atom: Required<WorkspaceAtom>,
+  atom: Required<Atom>,
   indexChecksum: Checksum,
 ) => {
-  return await tracer.startActiveSpan("applyWorkspacePatch", async (span) => {
+  return await tracer.startActiveSpan("applyPatch", async (span) => {
     span.setAttribute("atom", JSON.stringify(atom));
     debug(
       "🔧 Applying patch:",
@@ -1216,7 +1209,7 @@ const applyWorkspacePatch = async (
     let patchRequired = true;
 
     // Check if we actually have the atom data, not just the MTM relationship
-    const upToDateAtomIndexes = workspaceAtomExistsOnIndexes(
+    const upToDateAtomIndexes = atomExistsOnIndexes(
       db,
       atom.kind,
       atom.id,
@@ -1246,7 +1239,7 @@ const applyWorkspacePatch = async (
 
     if (patchRequired) {
       // do we have an index with the fromChecksum (without we cannot patch)
-      const previousIndexes = workspaceAtomExistsOnIndexes(
+      const previousIndexes = atomExistsOnIndexes(
         db,
         atom.kind,
         atom.id,
@@ -1306,9 +1299,9 @@ const applyWorkspacePatch = async (
             mjolnirAtom: JSON.stringify(atom),
             mjolnirPreviousIndexes: JSON.stringify(previousIndexes),
             mjolnirToChecksumIndexes: JSON.stringify([]), // indexes variable was removed
-            mjolnirSource: "applyWorkspacePatch",
+            mjolnirSource: "applyPatch",
           });
-          debug("applyWorkspacePatch mjolnir", atom.kind, atom.id);
+          debug("applyPatch mjolnir", atom.kind, atom.id);
           mjolnir(
             db,
             atom.workspaceId,
@@ -1368,7 +1361,7 @@ const applyWorkspacePatch = async (
   });
 };
 
-const patchAtom = async (db: Database, atom: Required<WorkspaceAtom>) => {
+const patchAtom = async (db: Database, atom: Required<Atom>) => {
   const atomRows = db.exec({
     sql: `SELECT kind, args, checksum, data
       FROM atoms
@@ -1514,7 +1507,7 @@ const mjolnirBulk = async (
     debug("🔨 MJOLNIR BULK NO FIRST?:", req.data.successful.length);
     return;
   }
-  const msg: WorkspaceAtomMessage = {
+  const msg: AtomMessage = {
     kind: MessageKind.MJOLNIR,
     atom: {
       id: first.frontEndObject.id,
@@ -1593,7 +1586,7 @@ const mjolnir = (
 
     // these are sent after patches are completed
     // double check that i am still necessary!
-    const exists = workspaceAtomExistsOnIndexes(db, kind, id, checksum);
+    const exists = atomExistsOnIndexes(db, kind, id, checksum);
     if (exists.length === 0) {
       return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
     } // if i have it, bust!
@@ -1697,7 +1690,7 @@ const mjolnirJob = async (
     );
   }
 
-  const msg: WorkspaceAtomMessage = {
+  const msg: AtomMessage = {
     kind: MessageKind.MJOLNIR,
     atom: {
       id: req.data.frontEndObject.id,
@@ -1721,7 +1714,7 @@ const mjolnirJob = async (
 
 const updateChangeSetWithNewIndex = (
   db: Database,
-  meta: Omit<WorkspaceAtomMeta, "fromIndexChecksum" | "workspaceId">,
+  meta: Omit<AtomMeta, "fromIndexChecksum" | "workspaceId">,
 ) => {
   db.exec({
     sql: "update changesets set index_checksum = ? where change_set_id = ?;",
@@ -3405,11 +3398,9 @@ const dbInterface: TabDBInterface = {
         // TODO: handle Index Updates!
         try {
           const data = JSON.parse(messageEvent.data) as
-            | WorkspacePatchBatch
-            | DeploymentPatchBatch
-            | WorkspaceAtomMessage
-            | WorkspaceIndexUpdate
-            | DeploymentIndexUpdate;
+            | PatchBatch
+            | AtomMessage
+            | IndexUpdate;
 
           if (import.meta.env.VITE_LOG_WS) {
             log("🌈 bifrost incoming", data);
@@ -3421,15 +3412,19 @@ const dbInterface: TabDBInterface = {
               messageKind: data.kind,
             });
             if ("meta" in data) {
+              const { changeSetId, workspaceId, toIndexChecksum } = {
+                ...data.meta,
+              };
               span.setAttributes({
                 messageKind: data.kind,
-                ...data.meta,
+                changeSetId,
+                workspaceId,
+                toIndexChecksum,
               });
             }
-
-            if (data.kind === MessageKind.WORKSPACE_PATCH) {
+            if (data.kind === MessageKind.PATCH) {
               debug(
-                "📨 WORKSPACE PATCH MESSAGE START:",
+                "📨 PATCH MESSAGE START:",
                 data.meta.toIndexChecksum,
                 "patches:",
                 data.patches.length,
@@ -3438,32 +3433,10 @@ const dbInterface: TabDBInterface = {
                 async () =>
                   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                   await sqlite!.transaction(
-                    async (db) => await handleWorkspacePatchMessage(db, data),
+                    async (db) => await handlePatchMessage(db, data),
                   ),
               );
-              debug(
-                "📨 WORKSPACE PATCH MESSAGE COMPLETE:",
-                data.meta.toIndexChecksum,
-              );
-            } else if (data.kind === MessageKind.DEPLOYMENT_PATCH) {
-              debug(
-                "📨 DEPLOYMENT PATCH MESSAGE START:",
-                data.meta.toIndexChecksum,
-                "patches:",
-                data.patches.length,
-              );
-
-              debug("📨 DEPLOYMENT PATCH IS NOT BEING HANDLED RIGHT NOW");
-            } else if (data.kind === MessageKind.WORKSPACE_INDEXUPDATE) {
-              // Index has been updated - signal lobby exit
-              if (lobbyExitFn) {
-                lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
-              }
-            } else if (data.kind === MessageKind.DEPLOYMENT_INDEXUPDATE) {
-              // NOOP for now, DEPLOYMENT_PATCH does the work
-              debug(
-                "📨 DEPLOYMENT INDEX UPDATE RECEIVED - IT IS NOT BEING HANDLED RIGHT NOW",
-              );
+              debug("📨 PATCH MESSAGE COMPLETE:", data.meta.toIndexChecksum);
             } else if (data.kind === MessageKind.MJOLNIR) {
               debug(
                 "📨 MJOLNIR MESSAGE START:",
@@ -3494,9 +3467,11 @@ const dbInterface: TabDBInterface = {
                 data.atom.kind,
                 data.atom.id,
               );
-            } else {
-              /* eslint-disable-next-line no-console */
-              console.error(`Unknown data kind on bifrost message: `, data);
+            } else if (data.kind === MessageKind.INDEXUPDATE) {
+              // Index has been updated - signal lobby exit
+              if (lobbyExitFn) {
+                lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
+              }
             }
           }
         } catch (err: unknown) {
@@ -3696,11 +3671,11 @@ const dbInterface: TabDBInterface = {
   },
   encodeDocumentForDB,
   decodeDocumentFromDB,
-  handleWorkspacePatchMessage(data) {
+  handlePatchMessage(data) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) => handleWorkspacePatchMessage(db, data));
+    return sqlite.transaction((db) => handlePatchMessage(db, data));
   },
   exec,
   oneInOne,

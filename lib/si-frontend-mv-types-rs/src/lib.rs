@@ -23,7 +23,6 @@
 )]
 
 pub mod action;
-pub mod cached_schemas;
 mod change_set;
 pub mod checksum;
 pub mod component;

@@ -11,7 +11,6 @@ use chrono::{
     DateTime,
     Utc,
 };
-use edda_client::EddaClient;
 use itertools::Itertools;
 use module_index_client::{
     ModuleDetailsResponse,
@@ -57,8 +56,6 @@ const PLACEHOLDER_OWNER_USER_ID: &str = "-";
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum CachedModuleError {
-    #[error("edda client error: {0}")]
-    EddaClient(#[from] edda_client::ClientError),
     #[error("join error: {0}")]
     Join(#[from] tokio::task::JoinError),
     #[error("json error: {0}")]
@@ -267,10 +264,7 @@ impl CachedModule {
 
     /// Calls out to the module index server to fetch the latest module set, and
     /// updates the cache for any new builtin modules
-    pub async fn update_cached_modules(
-        ctx: &DalContext,
-        edda_client: EddaClient,
-    ) -> CachedModuleResult<Vec<CachedModule>> {
+    pub async fn update_cached_modules(ctx: &DalContext) -> CachedModuleResult<Vec<CachedModule>> {
         let module_index_client = {
             let services_context = ctx.services_context();
             let module_index_url = services_context
@@ -294,8 +288,7 @@ impl CachedModule {
         let ctx_clone = ctx.clone();
         ctx_clone.commit_no_rebase().await?;
 
-        let new_modules =
-            Self::cache_modules(ctx, &modules, module_index_client, edda_client).await?;
+        let new_modules = Self::cache_modules(ctx, &modules, module_index_client).await?;
 
         // Now check and fix up any missing package summaries
         Self::update_missing_package_summaries(ctx).await?;
@@ -307,7 +300,6 @@ impl CachedModule {
         ctx: &DalContext,
         modules: &HashMap<String, ModuleDetailsResponse>,
         module_index_client: ModuleIndexClient,
-        edda_client: EddaClient,
     ) -> CachedModuleResult<Vec<CachedModule>> {
         let hashes = modules.keys().map(ToOwned::to_owned).collect_vec();
         let uncached_hashes = CachedModule::find_missing_entries(ctx, hashes).await?;
@@ -322,13 +314,13 @@ impl CachedModule {
                     continue;
                 };
 
-                let module_index = module_index_client.clone();
+                let client = module_index_client.clone();
                 join_set.spawn(async move {
                     let module_id = module.id.to_owned();
                     Ok::<(ModuleDetailsResponse, Arc<Vec<u8>>), CachedModuleError>((
                         module,
                         Arc::new(
-                            module_index
+                            client
                                 .get_builtin(Ulid::from_string(&module_id).unwrap_or_default())
                                 .await?,
                         ),
@@ -350,9 +342,6 @@ impl CachedModule {
             }
             tokio::time::sleep(WAIT_BETWEEN_BATCHES).await;
         }
-
-        // Ask edda to rebuild the deployment MVs, which include the cached modules
-        edda_client.rebuild_for_deployment().await?;
 
         Ok(new_modules)
     }

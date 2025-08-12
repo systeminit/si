@@ -86,7 +86,6 @@ impl EntityKind {
             | EntityKindEvents::DeprecatedActionRunner
             | EntityKindEvents::DeprecatedActionBatch
             | EntityKindEvents::ValidationPrototype
-            | EntityKindEvents::OutOfGraph
             | EntityKindEvents::Reason
             | EntityKindEvents::CategoryDefaultSubscriptionSources => None,
             EntityKindEvents::SchemaVariant => {

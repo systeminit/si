@@ -25,9 +25,9 @@ impl Ulid {
     }
 
     /// Constructs a [`Ulid`] from a string that represents a [`::ulid::Ulid`].
-    pub const fn from_string(encoded: &str) -> Result<Self, DecodeError> {
+    pub fn from_string(encoded: &str) -> Result<Self, DecodeError> {
         match CoreUlid::from_string(encoded) {
-            Ok(ulid) => Ok(Self(ulid)),
+            Ok(ulid) => Ok(ulid.into()),
             Err(err) => Err(err),
         }
     }

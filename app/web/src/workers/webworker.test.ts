@@ -2,9 +2,9 @@ import * as Comlink from "comlink";
 import {
   TabDBInterface,
   BustCacheFn,
-  WorkspacePatchBatch,
+  PatchBatch,
   MessageKind,
-  WorkspaceAtomMessage,
+  AtomMessage,
   NOROW,
 } from "@/workers/types/dbinterface";
 import { EntityKind } from "@/workers/types/entity_kind_types";
@@ -151,14 +151,14 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
    * First payload is changing the name of a view
    * */
 
-  const payload1: WorkspacePatchBatch = {
+  const payload1: PatchBatch = {
     meta: {
       workspaceId: "W",
       changeSetId: "new_change_set",
       fromIndexChecksum: "HEAD",
       toIndexChecksum: "test_index_checksum_1",
     },
-    kind: MessageKind.WORKSPACE_PATCH,
+    kind: MessageKind.PATCH,
     patches: [
       {
         kind: testRecord,
@@ -169,7 +169,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
       },
     ],
   };
-  await db.handleWorkspacePatchMessage(payload1);
+  await db.handlePatchMessage(payload1);
 
   const confirm1 = await db.exec({
     sql: `SELECT count(index_checksum) FROM index_mtm_atoms WHERE index_checksum = ?;`,
@@ -233,14 +233,14 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
    * Second payload is merging that change to HEAD
    * */
 
-  const payload2: WorkspacePatchBatch = {
+  const payload2: PatchBatch = {
     meta: {
       workspaceId: "W",
       changeSetId: "HEAD",
       fromIndexChecksum: "HEAD",
       toIndexChecksum: "test_index_checksum_2",
     },
-    kind: MessageKind.WORKSPACE_PATCH,
+    kind: MessageKind.PATCH,
     patches: [
       {
         kind: testRecord,
@@ -251,7 +251,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
       },
     ],
   };
-  await db.handleWorkspacePatchMessage(payload2);
+  await db.handlePatchMessage(payload2);
 
   const confirm4 = await db.exec({
     sql: `SELECT count(index_checksum) FROM index_mtm_atoms WHERE index_checksum = ?;`,
@@ -347,14 +347,14 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
    * Fourth thing that happens, add a new view, remove an existing view
    * */
 
-  const payload3: WorkspacePatchBatch = {
+  const payload3: PatchBatch = {
     meta: {
       workspaceId: "W",
       changeSetId: "add_remove",
       fromIndexChecksum: "test_index_checksum_2",
       toIndexChecksum: "test_index_checksum_3",
     },
-    kind: MessageKind.WORKSPACE_PATCH,
+    kind: MessageKind.PATCH,
     patches: [
       {
         kind: testRecord,
@@ -385,7 +385,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
       },
     ],
   };
-  await db.handleWorkspacePatchMessage(payload3);
+  await db.handlePatchMessage(payload3);
 
   const added_record = await db.exec({
     sql: `SELECT data FROM atoms WHERE checksum = ?`,
@@ -431,7 +431,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   log("~~ ADD / REMOVE COMPLETED ~~");
 
   // test mjolnir!
-  const hammer1: WorkspaceAtomMessage = {
+  const hammer1: AtomMessage = {
     kind: MessageKind.MJOLNIR,
     atom: {
       id: "fb1",

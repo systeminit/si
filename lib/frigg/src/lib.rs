@@ -34,10 +34,8 @@ use si_data_nats::{
 };
 use si_frontend_mv_types::{
     index::{
-        ChangeSetIndexPointerValue,
-        ChangeSetMvIndex,
-        DeploymentIndexPointerValue,
-        DeploymentMvIndex,
+        IndexPointerValue,
+        MvIndex,
     },
     materialized_view::materialized_view_definitions_checksum,
     object::FrontendObject,
@@ -47,11 +45,13 @@ use si_id::{
     ChangeSetId,
     WorkspacePk,
 };
-use strum::AsRefStr;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 const NATS_KV_BUCKET_NAME: &str = "FRIGG";
+
+const KEY_PREFIX_INDEX: &str = "index";
+const KEY_PREFIX_OBJECT: &str = "object";
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -75,16 +75,14 @@ pub enum Error {
     #[error("object kind was expected to be 'MvIndex' but was '{0}'")]
     NotIndexKind(String),
     #[error(
-        "object listed in changeset index not found: workspace: {workspace_id}, change set: {change_set_id}, kind: {kind}, id: {id}"
+        "object listed in index not found: workspace: {workspace_id}, change set: {change_set_id}, kind: {kind}, id: {id}"
     )]
-    ObjectNotFoundForChangesetIndex {
+    ObjectNotFoundFromIndex {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         kind: String,
         id: String,
     },
-    #[error("object listed in deployment index not found: kind: {kind}, id: {id}")]
-    ObjectNotFoundForDeploymentIndex { kind: String, id: String },
     #[error("put error: {0}")]
     Put(#[from] kv::PutError),
     #[error("error serializing kv value: {0}")]
@@ -112,23 +110,6 @@ impl From<u64> for KvRevision {
     }
 }
 
-#[remain::sorted]
-#[derive(AsRefStr, Debug, PartialEq)]
-#[strum(serialize_all = "snake_case")]
-enum Domain {
-    Index,
-    Object,
-}
-
-#[remain::sorted]
-#[derive(AsRefStr, Debug, PartialEq)]
-#[strum(serialize_all = "snake_case")]
-enum Scope {
-    ChangeSet,
-    Deployment,
-    Workspace,
-}
-
 #[derive(Clone, Debug)]
 pub struct FriggStore {
     nats: NatsClient,
@@ -141,90 +122,7 @@ impl FriggStore {
     }
 
     #[instrument(
-        name = "frigg.insert_deployment_object",
-        level = "debug",
-        skip_all,
-        fields(
-            si.frontend_object.id = %object.id,
-            si.frontend_object.kind = %object.kind,
-        )
-    )]
-    pub async fn insert_deployment_object(&self, object: &FrontendObject) -> Result<Subject> {
-        let key =
-            Self::deployment_object_key(&object.kind.to_string(), &object.id, &object.checksum);
-        let value = serde_json::to_vec(&object).map_err(Error::Serialize)?;
-        if let Err(err) = self.store.create(key.as_str(), value.into()).await {
-            if !matches!(err.kind(), CreateErrorKind::AlreadyExists) {
-                return Err(Error::Create(err));
-            }
-        };
-
-        Ok(key)
-    }
-
-    #[instrument(
-        name = "frigg.get_deployment_object",
-        level = "debug",
-        skip_all,
-        fields(
-            si.frontend_object.id = %id,
-            si.frontend_object.kind = %kind,
-            si.frontend_object.checksum = %checksum,
-    ))]
-    pub async fn get_deployment_object(
-        &self,
-        kind: &str,
-        id: &str,
-        checksum: &str,
-    ) -> Result<Option<FrontendObject>> {
-        match self
-            .get_object_raw_bytes(&Self::deployment_object_key(kind, id, checksum))
-            .await?
-        {
-            Some((bytes, _)) => Ok(Some(
-                serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?,
-            )),
-            None => Ok(None),
-        }
-    }
-
-    #[instrument(
-        name = "frigg.get_current_deployment_object",
-        level = "debug",
-        skip_all,
-        fields(
-            si.frontend_object.id = %id,
-            si.frontend_object.kind = %kind,
-    ))]
-    pub async fn get_current_deployment_object(
-        &self,
-        kind: &str,
-        id: &str,
-    ) -> Result<Option<FrontendObject>> {
-        let Some((current_index, _)) = self.get_deployment_index().await? else {
-            return Ok(None);
-        };
-        let mv_index: DeploymentMvIndex =
-            serde_json::from_value(current_index.data).map_err(FriggError::Deserialize)?;
-
-        for index_entry in mv_index.mv_list {
-            if index_entry.kind == kind && index_entry.id == id {
-                return Ok(Some(
-                    self.get_deployment_object(kind, id, &index_entry.checksum)
-                        .await?
-                        .ok_or_else(|| FriggError::ObjectNotFoundForDeploymentIndex {
-                            kind: kind.to_string(),
-                            id: id.to_string(),
-                        })?,
-                ));
-            }
-        }
-
-        Ok(None)
-    }
-
-    #[instrument(
-        name = "frigg.insert_workspace_object",
+        name = "frigg.insert_object",
         level = "debug",
         skip_all,
         fields(
@@ -233,12 +131,12 @@ impl FriggStore {
             si.frontend_object.kind = %object.kind,
         )
     )]
-    pub async fn insert_workspace_object(
+    pub async fn insert_object(
         &self,
         workspace_id: WorkspacePk,
         object: &FrontendObject,
     ) -> Result<Subject> {
-        let key = Self::workspace_object_key(
+        let key = Self::object_key(
             workspace_id,
             &object.kind.to_string(),
             &object.id,
@@ -255,7 +153,25 @@ impl FriggStore {
     }
 
     #[instrument(
-        name = "frigg.get_workspace_object",
+        name = "frigg.insert_objects",
+        level = "debug",
+        skip_all,
+        fields(si.workspace.id = %workspace_id),
+    )]
+    pub async fn insert_objects(
+        &self,
+        workspace_id: WorkspacePk,
+        objects: impl Iterator<Item = &FrontendObject>,
+    ) -> Result<()> {
+        for object in objects {
+            self.insert_object(workspace_id, object).await?;
+        }
+
+        Ok(())
+    }
+
+    #[instrument(
+        name = "frigg.get_object",
         level = "debug",
         skip_all,
         fields(
@@ -264,7 +180,7 @@ impl FriggStore {
             si.frontend_object.kind = %kind,
             si.frontend_object.checksum = %checksum,
     ))]
-    pub async fn get_workspace_object(
+    pub async fn get_object(
         &self,
         workspace_id: WorkspacePk,
         kind: &str,
@@ -272,12 +188,7 @@ impl FriggStore {
         checksum: &str,
     ) -> Result<Option<FrontendObject>> {
         match self
-            .get_object_raw_bytes(&Self::workspace_object_key(
-                workspace_id,
-                kind,
-                id,
-                checksum,
-            ))
+            .get_object_raw_bytes(&Self::object_key(workspace_id, kind, id, checksum))
             .await?
         {
             Some((bytes, _)) => Ok(Some(
@@ -288,7 +199,7 @@ impl FriggStore {
     }
 
     #[instrument(
-        name = "frigg.get_current_workspace_object",
+        name = "frigg.get_current_object",
         level = "debug",
         skip_all,
         fields(
@@ -296,27 +207,24 @@ impl FriggStore {
             si.frontend_object.id = %id,
             si.frontend_object.kind = %kind,
     ))]
-    pub async fn get_current_workspace_object(
+    pub async fn get_current_object(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         kind: &str,
         id: &str,
     ) -> Result<Option<FrontendObject>> {
-        let Some((current_index, _)) = self
-            .get_change_set_index(workspace_id, change_set_id)
-            .await?
-        else {
+        let Some((current_index, _)) = self.get_index(workspace_id, change_set_id).await? else {
             return Ok(None);
         };
-        let mv_index: ChangeSetMvIndex =
+        let mv_index: MvIndex =
             serde_json::from_value(current_index.data).map_err(FriggError::Deserialize)?;
         for index_entry in mv_index.mv_list {
             if index_entry.kind == kind && index_entry.id == id {
                 return Ok(Some(
-                    self.get_workspace_object(workspace_id, kind, id, &index_entry.checksum)
+                    self.get_object(workspace_id, kind, id, &index_entry.checksum)
                         .await?
-                        .ok_or_else(|| FriggError::ObjectNotFoundForChangesetIndex {
+                        .ok_or_else(|| FriggError::ObjectNotFoundFromIndex {
                             workspace_id,
                             change_set_id,
                             kind: kind.to_string(),
@@ -329,219 +237,48 @@ impl FriggStore {
         Ok(None)
     }
 
-    async fn insert_or_update_deployment_index_preamble(
-        &self,
-        object: &FrontendObject,
-    ) -> Result<(Subject, Subject)> {
-        let mv_index_kind_string = ReferenceKind::DeploymentMvIndex.to_string();
-        if object.kind != mv_index_kind_string {
-            return Err(Error::NotIndexKind(object.kind.clone()));
-        }
-
-        let index_object_key = self.insert_deployment_object(object).await?;
-        let index_pointer_key = Self::deployment_index_key();
-
-        Ok((index_object_key, index_pointer_key))
-    }
-
-    /// Insert a new deployment `MvIndex` into the store, and update the associated index pointer
-    /// to refer to the newly inserted `MvIndex`.
-    ///
-    /// Will fail if the index pointer already exists.
-    #[instrument(
-        name = "frigg.insert_deployment_index",
-        level = "debug",
-        skip_all,
-        fields(
-            si.frontend_object.id = %object.id,
-            si.frontend_object.kind = %object.kind,
-            si.frontend_object.checksum = %object.checksum,
-        )
-    )]
-    pub async fn insert_deployment_index(&self, object: &FrontendObject) -> Result<KvRevision> {
-        let (index_object_key, index_pointer_key) = self
-            .insert_or_update_deployment_index_preamble(object)
-            .await?;
-        let index_pointer_value = DeploymentIndexPointerValue {
-            index_object_key: index_object_key.into_string(),
-            definition_checksum: materialized_view_definitions_checksum(),
-            index_checksum: object.checksum.to_owned(),
-        };
-        let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
-        let new_revision = self.store.create(index_pointer_key, value.into()).await?;
-
-        Ok(new_revision.into())
-    }
-
-    /// Insert an updated `MvIndex` into the store, and update the associated index pointer to
-    /// refer to the newly inserted `MvIndex`.
-    ///
-    /// Will fail if the index pointer has been updated since `revision` was fetched.
-    #[instrument(
-        name = "frigg.update_deployment_index",
-        level = "debug",
-        skip_all,
-        fields(
-            si.frontend_object.id = %object.id,
-            si.frontend_object.kind = %object.kind,
-            si.frontend_object.checksum = %object.checksum,
-        )
-    )]
-    pub async fn update_deployment_index(
-        &self,
-        object: &FrontendObject,
-        revision: KvRevision,
-    ) -> Result<KvRevision> {
-        let (index_object_key, index_pointer_key) = self
-            .insert_or_update_deployment_index_preamble(object)
-            .await?;
-        let index_pointer_value = DeploymentIndexPointerValue {
-            index_object_key: index_object_key.into_string(),
-            definition_checksum: materialized_view_definitions_checksum(),
-            index_checksum: object.checksum.to_owned(),
-        };
-        let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
-
-        let new_revision = self
-            .store
-            .update(index_pointer_key, value.into(), revision.0)
-            .await?;
-
-        Ok(new_revision.into())
-    }
-
-    /// Put a new `MvIndex` into the store, and update the associated index pointer to refer
-    /// to the newly inserted `MvIndex`.
-    ///
-    /// Will NOT fail if the index pointer already exists.
-    #[instrument(
-        name = "frigg.put_deployment_index",
-        level = "debug",
-        skip_all,
-        fields(
-            si.frontend_object.id = %object.id,
-            si.frontend_object.kind = %object.kind,
-            si.frontend_object.checksum = %object.checksum,
-        )
-    )]
-    pub async fn put_deployment_index(&self, object: &FrontendObject) -> Result<KvRevision> {
-        let (index_object_key, index_pointer_key) = self
-            .insert_or_update_deployment_index_preamble(object)
-            .await?;
-        let index_pointer_value = DeploymentIndexPointerValue {
-            index_object_key: index_object_key.into_string(),
-            definition_checksum: materialized_view_definitions_checksum(),
-            index_checksum: object.checksum.to_owned(),
-        };
-        let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
-
-        let new_revision = self.store.put(index_pointer_key, value.into()).await?;
-
-        Ok(new_revision.into())
-    }
-
-    #[instrument(
-        name = "frigg.get_deployment_index",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
-    pub async fn get_deployment_index(&self) -> Result<Option<(FrontendObject, KvRevision)>> {
-        let index_pointer_key = Self::deployment_index_key();
-
-        let Some((bytes, revision)) = self.get_object_raw_bytes(&index_pointer_key).await? else {
-            return Ok(None);
-        };
-        let index_pointer_value: DeploymentIndexPointerValue =
-            match serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize) {
-                Ok(value) => value,
-                Err(err) => {
-                    debug!(
-                        "Unable to deserialize deployment index pointer value at {}: {}",
-                        index_pointer_key, err
-                    );
-                    return Ok(None);
-                }
-            };
-        // If the definition checksum for the current set of MVs is not the same as the one the
-        // MvIndex was built for, then the MvIndex is out of date and should not be used at all.
-        if index_pointer_value.definition_checksum != materialized_view_definitions_checksum() {
-            debug!(
-                "deployment index pointer is out of date: index checksum: {}, expected checksum: {}",
-                index_pointer_value.definition_checksum,
-                materialized_view_definitions_checksum()
-            );
-            return Ok(None);
-        }
-
-        let object_key = index_pointer_value.index_object_key;
-        let bytes = self
-            .store
-            .get(object_key.to_string())
-            .await?
-            .ok_or(Error::IndexObjectNotFound(object_key.into()))?;
-        let object = serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
-
-        Ok(Some((object, revision)))
-    }
-
-    #[instrument(
-        name = "frigg.watch_deployment_index",
-        level = "debug",
-        skip_all,
-        fields()
-    )]
-    pub async fn watch_deployment_index(&self) -> Result<Watch> {
-        let index_pointer_key = Self::deployment_index_key();
-        self.store
-            .watch(index_pointer_key)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn insert_or_update_change_set_index_preamble(
+    async fn insert_or_update_index_preamble(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: &str,
         object: &FrontendObject,
     ) -> Result<(Subject, Subject)> {
-        let mv_index_kind_string = ReferenceKind::ChangeSetMvIndex.to_string();
+        let mv_index_kind_string = ReferenceKind::MvIndex.to_string();
         if object.kind != mv_index_kind_string {
             return Err(Error::NotIndexKind(object.kind.clone()));
         }
 
-        let index_object_key = self.insert_workspace_object(workspace_id, object).await?;
-        let index_pointer_key = Self::change_set_index_key(workspace_id, change_set_id);
+        let index_object_key = self.insert_object(workspace_id, object).await?;
+        let index_pointer_key = Self::index_key(workspace_id, change_set_id);
 
         Ok((index_object_key, index_pointer_key))
     }
 
-    /// Insert a new change set `MvIndex` into the store, and update the associated index pointer
-    /// to refer to the newly inserted `MvIndex`.
+    /// Insert a new `MvIndex` into the store, and update the associated index pointer to refer
+    /// to the newly inserted `MvIndex`.
     ///
     /// Will fail if the index pointer already exists.
     #[instrument(
-        name = "frigg.insert_change_set_index",
+        name = "frigg.insert_index",
         level = "debug",
         skip_all,
         fields(
             si.workspace.id = %workspace_id,
-            si.change_set.id = change_set_id,
             si.frontend_object.id = %object.id,
             si.frontend_object.kind = %object.kind,
             si.frontend_object.checksum = %object.checksum,
         )
     )]
-    pub async fn insert_change_set_index(
+    pub async fn insert_index(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: &str,
         object: &FrontendObject,
     ) -> Result<KvRevision> {
         let (index_object_key, index_pointer_key) = self
-            .insert_or_update_change_set_index_preamble(workspace_id, change_set_id, object)
+            .insert_or_update_index_preamble(workspace_id, change_set_id, object)
             .await?;
-        let index_pointer_value = ChangeSetIndexPointerValue {
+        let index_pointer_value = IndexPointerValue {
             index_object_key: index_object_key.into_string(),
             snapshot_address: object.id.to_owned(),
             definition_checksum: materialized_view_definitions_checksum(),
@@ -553,27 +290,25 @@ impl FriggStore {
         Ok(new_revision.into())
     }
 
-    /// Creates a new index pointer to for the provided [`IndexPointerValue`], allowing a new
-    /// change set to reuse the index of another change set and avoid rebuilding the world
-    /// unnecessarily.
+    /// Creates a new index pointer to for the provided [`IndexPointerValue`], allowing a new change set
+    /// to reuse the index of another change set and avoid rebuilding the world unnecessarily.
     ///
     /// Will fail if the index pointer already exists.
     #[instrument(
-        name = "frigg.insert_change_set_index_key_for_existing",
+        name = "frigg.insert_index_key_for_existing",
         level = "debug",
         skip_all,
         fields(
             si.workspace.id = %workspace_id,
-            si.change_set.id = change_set_id,
         )
     )]
-    pub async fn insert_change_set_index_key_for_existing_index(
+    pub async fn insert_index_key_for_existing_index(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: &str,
-        index_pointer_value: ChangeSetIndexPointerValue,
+        index_pointer_value: IndexPointerValue,
     ) -> Result<KvRevision> {
-        let index_pointer_key = Self::change_set_index_key(workspace_id, change_set_id);
+        let index_pointer_key = Self::index_key(workspace_id, change_set_id);
 
         let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
         let new_revision = self.store.create(index_pointer_key, value.into()).await?;
@@ -581,23 +316,22 @@ impl FriggStore {
         Ok(new_revision.into())
     }
 
-    /// Insert an updated `MvIndex` into the store, and update the associated index pointer to
-    /// refer to the newly inserted `MvIndex`.
+    /// Insert an updated `MvIndex` into the store, and update the associated index pointer to refer
+    /// to the newly inserted `MvIndex`.
     ///
     /// Will fail if the index pointer has been updated since `revision` was fetched.
     #[instrument(
-        name = "frigg.update_change_set_index",
+        name = "frigg.update_index",
         level = "debug",
         skip_all,
         fields(
             si.workspace.id = %workspace_id,
-            si.change_set.id = change_set_id,
             si.frontend_object.id = %object.id,
             si.frontend_object.kind = %object.kind,
             si.frontend_object.checksum = %object.checksum,
         )
     )]
-    pub async fn update_change_set_index(
+    pub async fn update_index(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: &str,
@@ -605,9 +339,9 @@ impl FriggStore {
         revision: KvRevision,
     ) -> Result<KvRevision> {
         let (index_object_key, index_pointer_key) = self
-            .insert_or_update_change_set_index_preamble(workspace_id, change_set_id, object)
+            .insert_or_update_index_preamble(workspace_id, change_set_id, object)
             .await?;
-        let index_pointer_value = ChangeSetIndexPointerValue {
+        let index_pointer_value = IndexPointerValue {
             index_object_key: index_object_key.into_string(),
             snapshot_address: object.id.to_owned(),
             definition_checksum: materialized_view_definitions_checksum(),
@@ -628,27 +362,26 @@ impl FriggStore {
     ///
     /// Will NOT fail if the index pointer already exists.
     #[instrument(
-        name = "frigg.put_change_set_index",
+        name = "frigg.put_index",
         level = "debug",
         skip_all,
         fields(
             si.workspace.id = %workspace_id,
-            si.change_set.id = change_set_id,
             si.frontend_object.id = %object.id,
             si.frontend_object.kind = %object.kind,
             si.frontend_object.checksum = %object.checksum,
         )
     )]
-    pub async fn put_change_set_index(
+    pub async fn put_index(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: &str,
         object: &FrontendObject,
     ) -> Result<KvRevision> {
         let (index_object_key, index_pointer_key) = self
-            .insert_or_update_change_set_index_preamble(workspace_id, change_set_id, object)
+            .insert_or_update_index_preamble(workspace_id, change_set_id, object)
             .await?;
-        let index_pointer_value = ChangeSetIndexPointerValue {
+        let index_pointer_value = IndexPointerValue {
             index_object_key: index_object_key.into_string(),
             snapshot_address: object.id.to_owned(),
             definition_checksum: materialized_view_definitions_checksum(),
@@ -662,7 +395,7 @@ impl FriggStore {
     }
 
     #[instrument(
-        name = "frigg.get_change_set_index",
+        name = "frigg.get_index",
         level = "debug",
         skip_all,
         fields(
@@ -670,33 +403,32 @@ impl FriggStore {
             si.change_set.id = %change_set_id,
         )
     )]
-    pub async fn get_change_set_index(
+    pub async fn get_index(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
     ) -> Result<Option<(FrontendObject, KvRevision)>> {
-        let index_pointer_key =
-            Self::change_set_index_key(workspace_id, &change_set_id.to_string());
+        let index_pointer_key = Self::index_key(workspace_id, &change_set_id.to_string());
 
         let Some((bytes, revision)) = self.get_object_raw_bytes(&index_pointer_key).await? else {
             return Ok(None);
         };
-        let index_pointer_value: ChangeSetIndexPointerValue =
+        let index_pointer_value: IndexPointerValue =
             match serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize) {
                 Ok(value) => value,
                 Err(err) => {
                     debug!(
-                        "Unable to deserialize change set index pointer value at {}: {}",
+                        "Unable to deserialize index pointer value at {}: {}",
                         index_pointer_key, err
                     );
                     return Ok(None);
                 }
             };
-        // If the definition checksum for the current set of MVs is not the same as the one the
-        // MvIndex was built for, then the MvIndex is out of date and should not be used at all.
+        // If the definition checksum for the current set of MVs is not the same as the one the MvIndex was built for,
+        // then the MvIndex is out of date and should not be used at all.
         if index_pointer_value.definition_checksum != materialized_view_definitions_checksum() {
             debug!(
-                "change set index pointer is out of date: index checksum: {}, expected checksum: {}",
+                "Index pointer is out of date: index checksum: {}, expected checksum: {}",
                 index_pointer_value.definition_checksum,
                 materialized_view_definitions_checksum()
             );
@@ -715,7 +447,7 @@ impl FriggStore {
     }
 
     #[instrument(
-        name = "frigg.get_change_set_index_pointer_value",
+        name = "frigg.get_index_pointer_value",
         level = "debug",
         skip_all,
         fields(
@@ -723,25 +455,24 @@ impl FriggStore {
             si.change_set.id = %change_set_id,
         )
     )]
-    pub async fn get_change_set_index_pointer_value(
+    pub async fn get_index_pointer_value(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-    ) -> Result<Option<(ChangeSetIndexPointerValue, KvRevision)>> {
-        let index_pointer_key =
-            Self::change_set_index_key(workspace_id, &change_set_id.to_string());
+    ) -> Result<Option<(IndexPointerValue, KvRevision)>> {
+        let index_pointer_key = Self::index_key(workspace_id, &change_set_id.to_string());
 
         let Some((bytes, revision)) = self.get_object_raw_bytes(&index_pointer_key).await? else {
             return Ok(None);
         };
 
-        let index_pointer_value: ChangeSetIndexPointerValue =
+        let index_pointer_value: IndexPointerValue =
             serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
         Ok(Some((index_pointer_value, revision)))
     }
 
     #[instrument(
-        name = "frigg.watch_change_set_index",
+        name = "frigg.watch_index",
         level = "debug",
         skip_all,
         fields(
@@ -749,13 +480,12 @@ impl FriggStore {
             si.change_set.id = %change_set_id,
         )
     )]
-    pub async fn watch_change_set_index(
+    pub async fn watch_index(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
     ) -> Result<Watch> {
-        let index_pointer_key =
-            Self::change_set_index_key(workspace_id, &change_set_id.to_string());
+        let index_pointer_key = Self::index_key(workspace_id, &change_set_id.to_string());
         self.store
             .watch(index_pointer_key)
             .await
@@ -783,8 +513,8 @@ impl FriggStore {
 
     // NOTE: this will be useful when garbage-collecting old indexes
     #[allow(dead_code)]
-    async fn change_set_index_keys_for_workspace(&self, workspace_id: WorkspacePk) -> Result<Keys> {
-        let filter_subject = Self::change_set_index_key(workspace_id, "*").into_string();
+    async fn index_keys_for_workspace(&self, workspace_id: WorkspacePk) -> Result<Keys> {
+        let filter_subject = Self::index_key(workspace_id, "*").into_string();
 
         let mut keys_consumer = self
             .store
@@ -812,44 +542,15 @@ impl FriggStore {
     }
 
     #[inline]
-    fn deployment_object_key(kind: &str, id: &str, checksum: &str) -> Subject {
+    fn object_key(workspace_id: WorkspacePk, kind: &str, id: &str, checksum: &str) -> Subject {
         Subject::from(format!(
-            "{}.{}.{kind}.{id}.{checksum}",
-            Domain::Object.as_ref(),
-            Scope::Deployment.as_ref(),
+            "{KEY_PREFIX_OBJECT}.{workspace_id}.{kind}.{id}.{checksum}"
         ))
     }
 
     #[inline]
-    fn workspace_object_key(
-        workspace_id: WorkspacePk,
-        kind: &str,
-        id: &str,
-        checksum: &str,
-    ) -> Subject {
-        Subject::from(format!(
-            "{}.{}.{workspace_id}.{kind}.{id}.{checksum}",
-            Domain::Object.as_ref(),
-            Scope::Workspace.as_ref(),
-        ))
-    }
-
-    #[inline]
-    fn deployment_index_key() -> Subject {
-        Subject::from(format!(
-            "{}.{}",
-            Domain::Index.as_ref(),
-            Scope::Deployment.as_ref()
-        ))
-    }
-
-    #[inline]
-    fn change_set_index_key(workspace_id: WorkspacePk, change_set_id: &str) -> Subject {
-        Subject::from(format!(
-            "{}.{}.{workspace_id}.{change_set_id}",
-            Domain::Index.as_ref(),
-            Scope::ChangeSet.as_ref()
-        ))
+    fn index_key(workspace_id: WorkspacePk, change_set_id: &str) -> Subject {
+        Subject::from(format!("{KEY_PREFIX_INDEX}.{workspace_id}.{change_set_id}"))
     }
 }
 

@@ -138,7 +138,7 @@ impl Server {
         .await?;
         let (edda_updates_multiplexer, edda_updates_multiplexer_client) = Multiplexer::new(
             services_context.nats_conn(),
-            edda_core::nats::subject::all_edda_updates(
+            edda_core::nats::subject::all_updates_for_all_workspace(
                 services_context.nats_conn().metadata().subject_prefix(),
             ),
             helping_tasks_token.clone(),

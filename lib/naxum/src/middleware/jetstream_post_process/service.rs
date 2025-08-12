@@ -63,7 +63,7 @@ where
     }
 
     fn call(&mut self, req: Message<jetstream::Message>) -> Self::Future {
-        // Deconstruct the message into head and payload and save a copy of head
+        // Decontruct the message into head and payload and save a copy of head
         let parts = req.into_parts();
         let head = Arc::new(parts.0.clone());
 

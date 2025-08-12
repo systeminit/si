@@ -43,9 +43,9 @@ pub enum IndexError {
     Frigg(#[from] frigg::FriggError),
     #[error("index not found; workspace_id={0}, change_set_id={1}")]
     IndexNotFound(WorkspacePk, ChangeSetId),
-    #[error("index not found after fresh rebuild (v1); workspace_id={0}, change_set_id={1}")]
+    #[error("index not found after rebuild; workspace_id={0}, change_set_id={1}")]
     IndexNotFoundAfterFreshBuild(WorkspacePk, ChangeSetId),
-    #[error("index not found after rebuild (v1); workspace_id={0}, change_set_id={1}")]
+    #[error("index not found after rebuild; workspace_id={0}, change_set_id={1}")]
     IndexNotFoundAfterRebuild(WorkspacePk, ChangeSetId),
     #[error("item with checksum not found; workspace_id={0}, change_set_id={1}, kind={2}")]
     ItemWithChecksumNotFound(WorkspacePk, ChangeSetId, String),
@@ -83,7 +83,7 @@ pub async fn front_end_object_meta(
     request: &FrontEndObjectRequest,
 ) -> IndexResult<FrontEndObjectMeta> {
     let (checksum, address) = match frigg
-        .get_change_set_index_pointer_value(workspace_id, change_set_id)
+        .get_index_pointer_value(workspace_id, change_set_id)
         .await?
     {
         Some((index, _kv_revision)) => (index.index_checksum, index.snapshot_address),
@@ -92,7 +92,7 @@ pub async fn front_end_object_meta(
     let obj;
     if let Some(checksum) = &request.checksum {
         obj = frigg
-            .get_workspace_object(workspace_id, &request.kind, &request.id, checksum)
+            .get_object(workspace_id, &request.kind, &request.id, checksum)
             .await?
             .ok_or_else(|| {
                 IndexError::ItemWithChecksumNotFound(
@@ -103,7 +103,7 @@ pub async fn front_end_object_meta(
             })?;
     } else {
         obj = frigg
-            .get_current_workspace_object(workspace_id, change_set_id, &request.kind, &request.id)
+            .get_current_object(workspace_id, change_set_id, &request.kind, &request.id)
             .await?
             .ok_or_else(|| {
                 IndexError::LatestItemNotFound(workspace_id, change_set_id, request.kind.clone())

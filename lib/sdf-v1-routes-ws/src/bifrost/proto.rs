@@ -3,10 +3,6 @@ use std::{
         self,
         Error as _,
     },
-    fmt::{
-        Debug,
-        Formatter,
-    },
     string::FromUtf8Error,
     sync::Arc,
 };
@@ -36,10 +32,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_data_nats::{
-    ConnectionMetadata,
-    Message,
-};
+use si_data_nats::ConnectionMetadata;
 use si_frontend_types::FrontEndObjectRequest;
 use task::{
     BifrostFriggReadsTask,
@@ -47,11 +40,9 @@ use task::{
 };
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::mpsc;
-use tokio_stream::{
-    StreamExt,
-    adapters::Merge,
-    wrappers::BroadcastStream,
+use tokio::sync::{
+    broadcast,
+    mpsc,
 };
 use tokio_tungstenite::tungstenite;
 use tokio_util::sync::CancellationToken;
@@ -153,21 +144,10 @@ impl Bifrost {
         self,
         bifrost_multiplexer_client: EddaUpdatesMultiplexerClient,
     ) -> Result<BifrostStarted> {
-        let nats_workspace_messages = bifrost_multiplexer_client
+        let nats_messages = bifrost_multiplexer_client
             .messages_for_workspace(self.metadata.subject_prefix(), self.workspace_id)
             .await
             .map_err(Error::EddaUpdatesMultiplexerClient)?;
-
-        let nats_deployment_messages = bifrost_multiplexer_client
-            .messages_for_deployment(self.metadata.subject_prefix())
-            .await
-            .map_err(Error::EddaUpdatesMultiplexerClient)?;
-
-        let workspace_messages =
-            tokio_stream::wrappers::BroadcastStream::new(nats_workspace_messages);
-        let deployment_messages =
-            tokio_stream::wrappers::BroadcastStream::new(nats_deployment_messages);
-        let nats_messages = workspace_messages.merge(deployment_messages);
 
         let (requests_tx, requests_rx) = mpsc::channel(256);
         let (responses_tx, responses_rx) = mpsc::channel(128);
@@ -201,25 +181,14 @@ impl Bifrost {
     }
 }
 
+#[derive(Debug)]
 pub struct BifrostStarted {
     compute_executor: DedicatedExecutor,
-    nats_messages: Merge<BroadcastStream<Message>, BroadcastStream<Message>>,
+    nats_messages: broadcast::Receiver<si_data_nats::Message>,
     requests_tx: mpsc::Sender<WsFrontEndOjbectRequest>,
     responses_rx: mpsc::Receiver<WsFrontEndObjectResponse>,
     handle: BifrostFriggReadsTaskHandle,
     token: CancellationToken,
-}
-
-impl Debug for BifrostStarted {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BifrostStarted")
-            .field("compute_executor", &self.compute_executor)
-            .field("requests_tx", &self.requests_tx)
-            .field("responses_rx", &self.responses_rx)
-            .field("handle", &self.handle)
-            .field("token", &self.token)
-            .finish_non_exhaustive()
-    }
 }
 
 impl BifrostStarted {
@@ -352,7 +321,7 @@ impl BifrostStarted {
                                 }
                                 // Error sending message to client
                                 Some(Err(err)) => return Err(err),
-                                // Successfully sent web socket message to client
+                                // Sucessfully sent web socket message to client
                                 None => {}
                             }
                         }
@@ -363,11 +332,11 @@ impl BifrostStarted {
                         }
                     }
                 }
-                // NATS message from deployment or workspace subject
-                maybe_nats_message_result = self.nats_messages.next() => {
-                    match maybe_nats_message_result {
+                // NATS message from subscription
+                nats_message_result = self.nats_messages.recv() => {
+                    match nats_message_result {
                         // We have a message
-                        Some(Ok(nats_message)) => {
+                        Ok(nats_message) => {
                             let ws_message = match self.build_ws_message(nats_message).await {
                                 Ok(ws_message) => ws_message,
                                 Err(err) => {
@@ -394,20 +363,16 @@ impl BifrostStarted {
                                 }
                                 // Error sending message to client
                                 Some(Err(err)) => return Err(err),
-                                // Successfully sent web socket message to client
+                                // Sucessfully sent web socket message to client
                                 None => {}
                             }
                         }
                         // We have a `RecvError`
-                        Some(Err(err)) => {
+                        Err(err) => {
                             warn!(
                                 si.error.message = ?err,
                                 "encountered a recv error on NATS subscription; skipping",
                             );
-                        }
-                        // We have a `RecvError`
-                        None => {
-                            info!("nats listener has closed; bifrost is probably shutting down");
                         }
                     }
                 }
