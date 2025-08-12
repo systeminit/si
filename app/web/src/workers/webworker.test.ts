@@ -59,10 +59,10 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   const workspace = "W";
   await db.exec({
     sql: `
-        INSERT INTO indexes (checksum)
-        VALUES (?);
+        INSERT INTO indexes (checksum, change_set_id)
+        VALUES (?, ?);
       `,
-    bind: ["HEAD"],
+    bind: ["HEAD", "HEAD"],
   });
 
   await db.exec({

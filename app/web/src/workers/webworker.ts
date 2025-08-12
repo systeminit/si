@@ -219,7 +219,8 @@ const ensureTables = (testing: boolean) => {
   CREATE INDEX IF NOT EXISTS changeset_workspace_id ON changesets(workspace_id);
 
   CREATE TABLE IF NOT EXISTS indexes (
-    checksum TEXT PRIMARY KEY
+    checksum TEXT PRIMARY KEY,
+    change_set_id TEXT
   ) WITHOUT ROWID;
 
   CREATE TABLE IF NOT EXISTS atoms (
@@ -280,7 +281,22 @@ const ensureTables = (testing: boolean) => {
     throw new Error(DB_NOT_INIT_ERR);
   }
 
-  return sqlite.exec({ sql });
+  const r = sqlite.exec({ sql });
+
+  // OUR FIRST MIGRATION! add a column, allow it to silently fail when the column exists
+  try {
+    sqlite.exec({
+      sql: `
+        ALTER TABLE indexes ADD COLUMN change_set_id TEXT;
+        UPDATE indexes SET change_set_id = (SELECT change_set_id FROM changesets WHERE index_checksum = indexes.checksum);
+      `,
+    });
+  } catch (err) {
+    // When this migration has already been performed, the first SQL statement will fail (expected)
+    // Prevent exception from terminating by catching, no need to report it.
+  }
+
+  return r;
 };
 
 // NOTE: this is just for external test usage, do not use this within this file
@@ -365,8 +381,8 @@ const newChangesetIndex = (
   // Create a new empty index
   //
   db.exec({
-    sql: `INSERT INTO indexes (checksum) VALUES (?);`,
-    bind: [meta.toIndexChecksum],
+    sql: `INSERT INTO indexes (checksum, change_set_id) VALUES (?, ?);`,
+    bind: [meta.toIndexChecksum, meta.changeSetId],
   });
 
   //
@@ -716,7 +732,7 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
 
     updateChangeSetWithNewIndex(db, msg.atom);
     span.setAttribute("updatedWithNewIndex", true);
-    removeOldIndex(db, span);
+    removeOldIndex(db, span, msg.atom.changeSetId);
 
     if (
       COMPUTED_KINDS.includes(msg.atom.kind) ||
@@ -1134,7 +1150,7 @@ const handleWorkspacePatchMessage = async (
 
       updateChangeSetWithNewIndex(db, data.meta);
       span.setAttribute("updatedWithNewIndex", true);
-      removeOldIndex(db, span);
+      removeOldIndex(db, span, data.meta.changeSetId);
 
       debug(
         "🧹 Busting cache for atoms:",
@@ -1729,18 +1745,25 @@ const updateChangeSetWithNewIndex = (
   });
 };
 
-const removeOldIndex = async (db: Database, span: Span) => {
+const removeOldIndex = async (
+  db: Database,
+  span: Span,
+  changeSetId: ChangeSetId,
+) => {
   // Keep the last 5 indexes per changeset for debugging purposes
   // This helps track previous session checksums
   const deleteIndexes = db.exec({
     sql: `
       DELETE FROM indexes
-      WHERE checksum NOT IN (
-        SELECT index_checksum FROM changesets
+      WHERE 
+      change_set_id = ?
+      AND checksum NOT IN (
+        SELECT index_checksum FROM changesets WHERE change_set_id = ?
       )
       RETURNING *;
     `,
     returnValue: "resultRows",
+    bind: [changeSetId, changeSetId],
   });
 
   // Only delete atoms that aren't referenced by any index (including retained ones)
@@ -1785,7 +1808,7 @@ const pruneAtomsForClosedChangeSet = async (
       `,
       bind: [changeSetId],
     });
-    removeOldIndex(db, span);
+    removeOldIndex(db, span, changeSetId);
     span.end();
   });
 };
