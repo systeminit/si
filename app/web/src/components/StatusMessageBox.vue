@@ -1,12 +1,5 @@
 <template>
-  <div :class="divClasses" class="flex p-xs border rounded items-start">
-    <StatusIndicatorIcon
-      v-if="status"
-      :type="type"
-      :status="status"
-      class="w-8 mr-2 shrink-0"
-    />
-
+  <div :class="clsx('flex p-xs rounded items-start', getDivClasses)">
     <span class="self-center grow">
       <slot></slot>
     </span>
@@ -14,27 +7,24 @@
 </template>
 
 <script lang="ts" setup>
+import clsx from "clsx";
 import { computed, PropType } from "vue";
-import StatusIndicatorIcon, {
-  IconType,
-  Status,
-} from "@/components/StatusIndicatorIcon.vue";
+import { themeClasses } from "@si/vue-lib/design-system";
+import { IconType, Status } from "@/components/StatusIndicatorIcon.vue";
 
 const props = defineProps({
   status: { type: String as PropType<Status> },
   type: { type: String as PropType<IconType>, default: "qualification" },
 });
 
-const divClasses = computed(() => {
+const getDivClasses = computed(() => {
   switch (true) {
     case props.status === "success":
-      return "border-success-600 text-success-500";
+      return themeClasses("text-success-700", "text-success-300");
     case props.status === "warning":
-      return "border-warning-600 text-warning-500";
+      return themeClasses("text-warning-700", "text-warning-200");
     case props.status === "failure":
-      return "border-destructive-600 text-destructive-600";
-    case props.status === "running":
-      return "border-action-600 text-action-500";
+      return themeClasses("text-destructive-900", "text-destructive-200");
     default:
       return "";
   }

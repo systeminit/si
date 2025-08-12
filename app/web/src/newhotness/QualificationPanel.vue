@@ -119,6 +119,12 @@ const qualifications = computed<Qualification[]>(() => {
     });
   }
 
-  return items;
+  // Sort qualifications with failed first, then warning, then success, then unknown
+  return items.sort((a, b) => {
+    const statusOrder = { failure: 0, warning: 1, success: 2, unknown: 3 };
+    const aOrder = statusOrder[a.status as keyof typeof statusOrder] ?? 4;
+    const bOrder = statusOrder[b.status as keyof typeof statusOrder] ?? 4;
+    return aOrder - bOrder;
+  });
 });
 </script>
