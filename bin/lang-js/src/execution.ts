@@ -77,9 +77,20 @@ export async function runCode(
   // Check for pre-built bundle first, then generate dynamically if needed
   let bundlePath = sandboxBundleCache.get(execution_id);
   if (!bundlePath) {
-    // First try to find a pre-built bundle from the build step
-    const baseDir = new URL(".", import.meta.url).pathname;
-    const prebuiltBundlePath = join(baseDir, "bundle.js");
+    // First try to find a pre-built bundle included with the compiled binary
+    // In Deno compiled binaries, included files are accessible via import.meta.resolve
+    let prebuiltBundlePath: string;
+    try {
+      // Try to resolve the bundle.js that was included during compilation
+      prebuiltBundlePath = import.meta.resolve("./bundle.js");
+      if (prebuiltBundlePath.startsWith("file://")) {
+        prebuiltBundlePath = prebuiltBundlePath.substring(7);
+      }
+    } catch {
+      // Fallback to relative path for development
+      const baseDir = new URL(".", import.meta.url).pathname;
+      prebuiltBundlePath = join(baseDir, "bundle.js");
+    }
     
     try {
       // Check if the pre-built bundle exists

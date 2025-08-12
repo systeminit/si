@@ -29,11 +29,11 @@ filegroup(
     visibility = ["PUBLIC"],
 )
 
-# this builds bundle.ts so it can be used at runtime by function execution
+# this builds bundle.js so it can be used at runtime by function execution
 deno_run(
     name = "build",
     main = "src/build.ts",
-    out = "bundle.ts",
+    out = "bundle.js",
     srcs =glob(["src/**/*.ts"]),
     permissions = [
         "allow-all",
@@ -47,6 +47,7 @@ deno_compile(
     main = "src/index.ts",
     out = "lang-js",
     srcs = [":build"] + glob(["src/**/*.ts"]),
+    include = [":build"],
     permissions = [
         "allow-all",
     ],
