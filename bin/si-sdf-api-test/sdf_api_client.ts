@@ -1,6 +1,6 @@
 // sdf_client.ts
 import JWT from "npm:jsonwebtoken";
-import { retryWithBackoff } from "./test_helpers.ts";
+import { retryUntil, retryWithBackoff, sleep, sleepBetween } from "./test_helpers.ts";
 
 type HTTP_METHOD = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 type ROUTE_VARS = Record<string, string>;
@@ -97,6 +97,15 @@ export const ROUTES = {
   create_connection: {
     path: () => "/diagram/create_connection",
     method: "POST",
+  },
+  // TODO: Deprecate old routes in second pass
+  create_component_v2: {
+    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/views/${vars.viewId}/component`,
+    method: "POST",
+  },
+  delete_components_v2: {
+    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/delete`,
+    method: "DELETE",
   },
 
   // Property Editor ------------------------------------------------------------
@@ -204,8 +213,13 @@ export const ROUTES = {
   },
   mjolnir: {
     path: (vars: ROUTE_VARS) =>
-      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/index/mjolnir?changeSetId=${vars.changeSetId}&kind=${vars.referenceKind}&id=${vars.materializedViewId}&checksum=${vars.materializedViewChecksum}`,
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/index/mjolnir?changeSetId=${vars.changeSetId}&kind=${vars.referenceKind}&id=${vars.materializedViewId}`,
     method: "GET",
+  },
+  multi_mjolnir: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/index/multi_mjolnir`,
+    method: "POST",
   },
 
   // Websockets -----------------------------------------
@@ -435,6 +449,90 @@ export class SdfApiClient {
 
     return Promise.race([dvuPromise, timeoutPromise]);
   }
+  // Helper functions for interacting with MVs
+
+  public async mjolnir(
+    changeSetId: string,
+    kind: string,
+    id: string,
+  ): Promise<any | null> {
+
+    const response = await this.call({
+      route: "mjolnir",
+      routeVars: { changeSetId, materializedViewId: id, referenceKind: kind },
+    }, true);
+    if (response?.status === 200) {
+      try {
+        const json = await response.json();
+        return json.frontEndObject.data;
+      } catch (err) {
+        console.error("Error trying to parse response body as JSON", err);
+      }
+
+    } else if (response?.status === 404) {
+      console.warn(`Materialized view for ${kind} with ID ${id} not (yet?) found`);
+      throw new Error("Materialized view not (yet?) found for kind: " + kind + ", id: " + id);
+    } else {
+      // Fail on non-200 and non-404 errors
+      console.error(`Error ${response.status}: Unable to fetch MV for ${kind} with ID ${id}:`, await response.text());
+      throw new Error(`Error ${response.status}: ${await response.text()}`);
+    }
+    return null;
+  }
+
+  public async multiMjolnir(changeSetId: string, mvs: { kind: string; id: string }[]) {
+    const response = await this.call({
+      route: "multi_mjolnir",
+      routeVars: { changeSetId },
+      body: { requests: mvs },
+    }, true);
+
+    if (response?.status === 200) {
+      try {
+        const json = await response.json();
+        if (json.failed && json.failed.length > 0) {
+          console.warn("Some MVs were not found during multi mjolnir:", json.failed);
+        }
+        return json.successful.map((v: any) => v.frontEndObject.data);
+      } catch (err) {
+        console.error("Error trying to parse response body as JSON", err);
+      }
+    } else {
+      // Fail on non-200 errors
+      console.error(`Error ${response.status}: Unable to fetch MVs:`, await response.text());
+      throw new Error(`Error ${response.status}: ${await response.text()}`);
+    }
+  }
+
+  public async fetchChangeSetIndex(changeSetId: string, timeout_ms: number = 30000): Promise<any> {
+    await retryUntil(
+      async () => {
+        // your operation that might fail
+        const response = await this.call({
+          route: "index",
+          routeVars: { changeSetId },
+        }, true);
+        if (response?.status === 200) {
+          const json = await response.json();
+          return json;
+        } else if (response?.status === 404) {
+          console.warn(`ChangeSet index for ID ${changeSetId} not (yet?) found`);
+          throw new Error("Index not found yet for changeset: " + changeSetId);
+        }
+        else if (response?.status === 202) {
+          console.log(`ChangeSet index for ID ${changeSetId} is still being built (status 202)`);
+          throw new Error("Index still being built for changeset: " + changeSetId);
+        }
+        else {
+          // Fail on non-200 and non-404 errors
+          console.error(`Error ${response.status}: Unable to fetch ChangeSet index for ID ${changeSetId}:`, await response.text());
+          throw new Error(`Error ${response.status}: ${await response.text()}`);
+        }
+      },
+      timeout_ms,
+    );
+  }
+
 }
 
 // Helper functions for JWT generation and fetching

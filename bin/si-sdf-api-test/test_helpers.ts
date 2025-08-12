@@ -14,6 +14,24 @@ export function sleepBetween(minMs: number, maxMs: number) {
   return sleep(minMs + Math.floor((maxMs - minMs) * Math.random()));
 }
 
+export async function retryUntil(
+  fn: () => Promise<void>,
+  timeoutMs: number,
+  retries = 20,
+  backoffFactor = 1.2, // exponential backoff factor
+  initialDelay = .4, // in seconds
+): Promise<void> {
+  const retryPromise = retryWithBackoff(fn, retries, backoffFactor, initialDelay);
+  
+  const timeoutPromise = new Promise<void>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Timeout after ${timeoutMs}ms while retrying operation`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([retryPromise, timeoutPromise]);
+}
+
 // Run fn n times, with increasing intervals between tries
 export async function retryWithBackoff(
   fn: () => Promise<void>,
@@ -467,5 +485,109 @@ export async function createQualification(sdf: SdfApiClient, changeSetId: string
   });
   return funcId;
 
+}
+
+export function createComponentPayload(schemaVariantCategoriesMV: any, schemaName: string) {
+  const installedVariant = schemaVariantCategoriesMV.installed?.find((sv: any) => sv.schemaName === schemaName);
+  if (installedVariant) {
+    return {
+      schemaVariantId: installedVariant.schemaVariantId,
+      x: "0",
+      y: "0",
+      height: "0",
+      width: "0",
+      parentId: null,
+      schemaType: "installed",
+    };
+  }
+  else {
+    const uninstalledVariant = schemaVariantCategoriesMV.uninstalled?.find((sv: any) => sv.schemaName === schemaName);
+    assert(uninstalledVariant, `Expected to find ${schemaName} schema variant`);
+    return {
+      schemaId: uninstalledVariant.schemaId,
+      schemaType: "uninstalled",
+      x: "0",
+      y: "0",
+      height: "0",
+      width: "0",
+      parentId: null,
+    }
+  }
+}
+
+
+// MV Assertion Helpers -------------------------------------------------------
+
+
+export async function getVariants(sdf: SdfApiClient, changeSetId: string) {
+  const schemas = await sdf.mjolnir(changeSetId, "SchemaVariantCategories", sdf.workspaceId);
+  assert(schemas, "Expected to get schemas MV");
+
+  const installedList:{kind:string, id:string}[] = schemas.categories.flatMap((c: any) => c.schemaVariants.filter((v: any) => v.type === "installed").map((v: any) => {
+    return {
+      kind: "SchemaVariant",
+      id: v.id,
+    }
+  }));
+  let installed = [];
+  if (installedList.length > 0) {
+    let installedResp = await sdf.multiMjolnir(changeSetId, installedList);
+    assert(installedResp, "Expected to get installed variants data");
+    installed = installedResp;
+  }
+
+  const uninstalled = schemas.categories.flatMap((c: any) =>
+    c.schemaVariants
+      .filter((v: any) => v.type === "uninstalled")
+      .map((v: any) => {
+        const uninstalledMeta = schemas.uninstalled?.[v.id];
+        assert(uninstalledMeta, `Expected uninstalled metadata for schemaId ${v.id}`);
+        return uninstalledMeta;
+      })
+  );
+  return { installed, uninstalled };
+}
+
+
+export async function getViews(sdf: SdfApiClient, changeSetId: string) {
+  const viewsList = await sdf.mjolnir(changeSetId, "ViewList", sdf.workspaceId);
+  assert(viewsList, "Expected to get views MV");
+  let viewsToFetch = viewsList.views;
+  let views = await sdf.multiMjolnir(changeSetId, viewsToFetch);
+  assert(views, "Expected to get views data");
+  return views;
+}
+
+export async function eventualMVAssert(
+  sdf: SdfApiClient,
+  changeSetId: string,
+  kind: string,
+  id: string,
+  assertFn: (mv: any) => boolean,
+  message: string,
+   timeoutMs: number = 15000, // 15 seconds
+
+): Promise<void> {
+  // update this to use sdf.mjolnir and retryUntil 
+  if (!sdf || !changeSetId || !kind || !id) {
+    throw new Error("Invalid parameters for eventualAssert");
+  } 
+  try {
+    await retryUntil(async () => {
+      const mv = await sdf.mjolnir(changeSetId, kind, id);
+      if (mv) {
+        try {
+          if (assertFn(mv)) {
+            return; // Success!
+          }
+        } catch (error) {
+          // Continue polling if assertion throws
+          console.warn(`Assertion failed for ${kind} with ID ${id}:`, error);
+        }
+      }
+    }, timeoutMs);
+  } catch (err) {
+    throw new Error(`Timeout after ${timeoutMs}ms: ${message}`);
+  }
 }
 
