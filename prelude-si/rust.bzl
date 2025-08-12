@@ -207,7 +207,7 @@ def _rust_binary_artifact_impl(ctx):
         "-czf",
         tarred_binary.as_output(),
         "--transform",
-        "s|.*/|usr/local/bin/{}|".format(ctx.attrs.binary_name),
+        "s|.*|usr/local/bin/{}|".format(ctx.attrs.binary_name),
         binary,
     )
     
