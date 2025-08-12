@@ -9,20 +9,7 @@ import { denoPlugins } from "jsr:@luca/esbuild-deno-loader@^0.11.1";
 export async function buildSandbox(outputPath?: string) {
   const baseDir = dirname(fromFileUrl(import.meta.url));
 
-  // Create a unique cache directory for this process to avoid esbuild cache conflicts
-  const processId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
-  const uniqueCacheDir = Deno.env.get("TMPDIR") || Deno.env.get("TMP") || "/tmp";
-  const esbuildCacheDir = join(uniqueCacheDir, `esbuild-cache-${processId}`);
-  
-  // Set the ESBUILD_CACHE_DIR environment variable to use our unique directory
-  const originalEsbuildCache = Deno.env.get("ESBUILD_CACHE_DIR");
-  Deno.env.set("ESBUILD_CACHE_DIR", esbuildCacheDir);
-  
-  try {
-    // Ensure the cache directory exists
-    await Deno.mkdir(esbuildCacheDir, { recursive: true });
-
-    const result = await esbuild.build({
+  const result = await esbuild.build({
       plugins: denoPlugins({}),
       entryPoints: [join(baseDir, "sandbox.ts")],
       bundle: true,
@@ -68,21 +55,6 @@ export async function buildSandbox(outputPath?: string) {
     );
 
     return result;
-  } finally {
-    // Restore the original ESBUILD_CACHE_DIR environment variable
-    if (originalEsbuildCache !== undefined) {
-      Deno.env.set("ESBUILD_CACHE_DIR", originalEsbuildCache);
-    } else {
-      Deno.env.delete("ESBUILD_CACHE_DIR");
-    }
-    
-    // Clean up the temporary cache directory
-    try {
-      await Deno.remove(esbuildCacheDir, { recursive: true });
-    } catch (e) {
-      // Ignore cleanup errors - directory might not exist or be in use
-    }
-  }
 }
 
 // Function to generate TypeScript file with embedded bundle

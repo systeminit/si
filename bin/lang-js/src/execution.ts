@@ -90,51 +90,12 @@ export async function runCode(
         throw new Error("Pre-built bundle is empty");
       }
     } catch (error) {
-      // Embedded bundle not available, try file system locations
-      debug("Embedded bundle not available, trying file system:", error);
-      
-      const possiblePaths = [
-        // Try to resolve bundle.js from current directory (works if build output is in src/)
-        join(dirname(fromFileUrl(import.meta.url)), "bundle.js"),
-        // Try relative to project root
-        join(dirname(dirname(fromFileUrl(import.meta.url))), "bundle.js"),
-      ];
-      
-      // Add import.meta.resolve if available
-      try {
-        const resolved = import.meta.resolve("./bundle.js");
-        if (resolved.startsWith("file://")) {
-          possiblePaths.unshift(resolved.substring(7));
-        }
-      } catch {
-        // Ignore if resolve doesn't work
-      }
-      
-      let prebuiltFound = false;
-      for (const prebuiltBundlePath of possiblePaths) {
-        try {
-          await Deno.stat(prebuiltBundlePath);
-          // Copy the pre-built bundle to our temp directory
-          bundlePath = join(tempDir, "sandbox.bundle.js");
-          await Deno.copyFile(prebuiltBundlePath, bundlePath);
-          sandboxBundleCache.set(execution_id, bundlePath);
-          prebuiltFound = true;
-          debug(`Using pre-built bundle from: ${prebuiltBundlePath}`);
-          break;
-        } catch {
-          // Try next path
-          continue;
-        }
-      }
-      
-      if (!prebuiltFound) {
-        // Pre-built bundle doesn't exist, fall back to dynamic generation
-        debug("Pre-built bundle not found in any location, generating dynamically");
-        const { buildSandbox } = await import("./build.ts");
-        bundlePath = join(tempDir, "sandbox.bundle.js");
-        await buildSandbox(bundlePath);
-        sandboxBundleCache.set(execution_id, bundlePath);
-      }
+      // Embedded bundle not available, fall back to dynamic generation
+      debug("Embedded bundle not available, generating dynamically:", error);
+      const { buildSandbox } = await import("./build.ts");
+      bundlePath = join(tempDir, "sandbox.bundle.js");
+      await buildSandbox(bundlePath);
+      sandboxBundleCache.set(execution_id, bundlePath);
     }
   }
 
