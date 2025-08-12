@@ -8,15 +8,7 @@
         v-if="qualification.avId"
         label="Rerun qualification"
         size="xs"
-        :class="
-          clsx(
-            '!text-sm !border !cursor-pointer !px-xs',
-            themeClasses(
-              '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
-              '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
-            ),
-          )
-        "
+        tone="neutral"
         @click="enqueueDVU"
       />
     </div>
@@ -32,22 +24,21 @@
             qualificationStatus === 'failure' ||
             qualificationStatus === 'warning'
           "
-          class="w-full flex flex-row gap-xs"
+          class="w-full flex flex-row items-center gap-xs"
         >
           <span class="grow">
             {{ qualification.message }}
           </span>
-          <button
+          <VButton
             v-if="
               (qualification.avId || qualification.output) &&
               (qualification.message || output?.length)
             "
-            tabindex="-1"
-            class="underline text-action-400 shrink-0"
+            :label="showDetails ? 'Hide Details' : 'View Details'"
+            size="xs"
+            tone="neutral"
             @click="toggleHidden"
-          >
-            {{ showDetails ? "Hide" : "View" }} Details
-          </button>
+          />
         </div>
         <template v-else>
           The qualification has not yet ran or is actively running.
@@ -77,15 +68,13 @@
 <script lang="ts" setup>
 import { computed, ref, toRef } from "vue";
 import * as _ from "lodash-es";
-import {
-  LoadingMessage,
-  themeClasses,
-  VButton,
-} from "@si/vue-lib/design-system";
-import clsx from "clsx";
+import { LoadingMessage, VButton } from "@si/vue-lib/design-system";
 import StatusMessageBox from "@/components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
-import { Qualification } from "@/newhotness/QualificationPanel.vue";
+import {
+  Qualification,
+  QualificationStatus,
+} from "@/newhotness/QualificationPanel.vue";
 import { routes, useApi, funcRunTypes } from "@/newhotness/api_composables";
 
 const api = useApi();
@@ -99,8 +88,7 @@ const showDetails = ref(false);
 
 const qualification = toRef(props, "qualification");
 
-const qualificationStatus = computed(() => {
-  if (_.isNil(props.qualification.status)) return undefined;
+const qualificationStatus = computed((): QualificationStatus | undefined => {
   return props.qualification.status;
 });
 
