@@ -93,6 +93,7 @@ pub use components::{
         UpdateComponentV1Request,
         UpdateComponentV1Response,
     },
+    upgrade_component::UpgradeComponentV1Response,
 };
 pub use funcs::{
     FuncRunV1RequestPath,
@@ -159,6 +160,7 @@ pub use crate::api_types::func_run::v1::{
         components::add_action::add_action,
         components::manage_component::manage_component,
         components::duplicate_components::duplicate_components,
+        components::upgrade_component::upgrade_component,
         schemas::list_schemas::list_schemas,
         schemas::find_schema::find_schema,
         schemas::get_schema::get_schema,
@@ -196,6 +198,7 @@ pub use crate::api_types::func_run::v1::{
             CreateComponentV1Response,
             ManageComponentV1Request,
             ManageComponentV1Response,
+            UpgradeComponentV1Response,
             Connection,
             AddActionV1Response,
             AddActionV1Request,
