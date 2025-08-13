@@ -26,6 +26,10 @@ export const ROUTES = {
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/force_apply`,
     method: "POST",
   },
+  apply: {
+    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/apply`,
+    method: "POST",
+  },
   create_change_set: {
     path: () => "/change_set/create_change_set",
     method: "POST",
@@ -36,69 +40,7 @@ export const ROUTES = {
     method: "GET",
   },
 
-  // V2/Workspaces  ---------------------------------------------------------
-  // TODO(MegaWatt01): come back to properly format this hanging route
-  schema_variants: {
-    path: (vars: ROUTE_VARS) =>
-      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/schema-variants`,
-    method: "GET",
-  },
-
-  // Diagram Management ---------------------------------------------------------
-  add_components_to_view: {
-    path: () => "/diagram/add_components_to_view",
-    method: "POST",
-  },
-  delete_connection: {
-    path: () => "/diagram/delete_connection",
-    method: "POST",
-  },
-  dvu_roots: {
-    path: (vars: ROUTE_VARS) =>
-      `/diagram/dvu_roots?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
-    method: "GET",
-  },
-  get_all_components_and_edges: {
-    path: (vars: ROUTE_VARS) =>
-      `/diagram/get_all_components_and_edges?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
-    method: "GET",
-  },
-  get_diagram: {
-    path: (vars: ROUTE_VARS) =>
-      `/diagram/get_diagram?visibility_change_set_pk=${vars.changeSetId}&workspaceId=${vars.workspaceId}`,
-    method: "GET",
-  },
-  list_schemas: {
-    path: () => "/diagram/list_schemas",
-    method: "GET",
-  },
-  remove_delete_intent: {
-    path: () => "/diagram/remove_delete_intent",
-    method: "POST",
-  },
-  set_component_position: {
-    path: () => "/diagram/set_component_position",
-    method: "POST",
-  },
-  set_component_type: {
-    path: () => "/component/set_type",
-    method: "POST",
-  },
-
   // Component Management -------------------------------------------------------
-  delete_components: {
-    path: () => "/diagram/delete_components",
-    method: "POST",
-  },
-  create_component: {
-    path: () => "/diagram/create_component",
-    method: "POST",
-  },
-  create_connection: {
-    path: () => "/diagram/create_connection",
-    method: "POST",
-  },
-  // TODO: Deprecate old routes in second pass
   create_component_v2: {
     path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/views/${vars.viewId}/component`,
     method: "POST",
@@ -107,22 +49,15 @@ export const ROUTES = {
     path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/delete`,
     method: "DELETE",
   },
-
-  // Property Editor ------------------------------------------------------------
-  get_property_schema: {
-    path: (vars: ROUTE_VARS) =>
-      `/component/get_property_editor_schema?visibility_change_set_pk=${vars.changeSetId}&componentId=${vars.componentId}`,
-    method: "GET",
+  attributes: {
+    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/${vars.componentId}/attributes`,
+    method: "PUT",
   },
-  get_property_values: {
-    path: (vars: ROUTE_VARS) =>
-      `/component/get_property_editor_values?visibility_change_set_pk=${vars.changeSetId}&componentId=${vars.componentId}`,
-    method: "GET",
-  },
-  update_property_value: {
-    path: () => `/component/update_property_editor_value`,
+  upgrade: {
+    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/upgrade`,
     method: "POST",
   },
+
 
   // Variant Management -----------------------------------------------------------
   create_variant: {
@@ -146,13 +81,6 @@ export const ROUTES = {
     path: (vars: ROUTE_VARS) =>
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/schema-variants/${vars.schemaVariantId}`,
     method: "POST",
-  },
-
-  // Action Management -----------------------------------------------------------
-  action_list: {
-    path: (vars: ROUTE_VARS) =>
-      `/action/list?visibility_change_set_pk=${vars.changeSetId}`,
-    method: "GET",
   },
 
   // Qualification ------------------------------------------------------
@@ -388,34 +316,14 @@ export class SdfApiClient {
     timeout_ms: number,
   ): Promise<void> {
     console.log(`Waiting on DVUs for ${this.workspaceId}...`);
-    const dvuPromise = new Promise<void>((resolve) => {
-      const interval = setInterval(async () => {
-        const remainingRoots = await this.call({
-          route: "dvu_roots",
-          routeVars: { changeSetId },
-        });
-        if (remainingRoots?.count === 0) {
-          console.log(`All DVUs for ${this.workspaceId} finished!`);
-          clearInterval(interval);
-          resolve();
-        } else {
-          console.log(
-            `Waiting for DVUs in workspace ${this.workspaceId} to finish, ${remainingRoots?.count} remain...`,
-          );
-        }
-      }, interval_ms);
-    });
 
-    const timeoutPromise = new Promise<void>((_, reject) => {
-      setTimeout(() => {
-        console.log(
-          `Timeout reached while waiting for DVUs in workspace ${this.workspaceId}.`,
-        );
-        reject(new Error("Timeout while waiting for DVUs to finish."));
-      }, timeout_ms);
-    });
+    await retryUntil(async () => {
+      const dvuRoots = await this.mjolnir(changeSetId, "DependentValueComponentList", this.workspaceId);
+      if (dvuRoots.components && dvuRoots.components.length !== 0) {
+        throw new Error("DVU is still being processed");
+      }
+    }, timeout_ms, "Timeout waiting for dvu roots to clear", interval_ms);
 
-    return Promise.race([dvuPromise, timeoutPromise]);
   }
 
   public async waitForDVUs(
@@ -449,8 +357,9 @@ export class SdfApiClient {
 
     return Promise.race([dvuPromise, timeoutPromise]);
   }
-  // Helper functions for interacting with MVs
 
+
+  // Helper functions for interacting with MVs
   public async mjolnir(
     changeSetId: string,
     kind: string,

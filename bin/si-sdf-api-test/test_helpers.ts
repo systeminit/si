@@ -1,7 +1,5 @@
 import { SdfApiClient } from "./sdf_api_client.ts";
 import assert from "node:assert";
-import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-
 
 export function sleep(ms: number) {
   const natural_ms = Math.max(0, Math.floor(ms));
@@ -17,15 +15,16 @@ export function sleepBetween(minMs: number, maxMs: number) {
 export async function retryUntil(
   fn: () => Promise<void>,
   timeoutMs: number,
+  message?: string,
   retries = 20,
   backoffFactor = 1.2, // exponential backoff factor
   initialDelay = .4, // in seconds
 ): Promise<void> {
   const retryPromise = retryWithBackoff(fn, retries, backoffFactor, initialDelay);
-  
+
   const timeoutPromise = new Promise<void>((_, reject) => {
     setTimeout(() => {
-      reject(new Error(`Timeout after ${timeoutMs}ms while retrying operation`));
+      reject(new Error(`Timeout after ${timeoutMs}ms while retrying operation: ${message}`));
     }, timeoutMs);
   });
 
@@ -86,7 +85,8 @@ export async function runWithTemporaryChangeset(
     `Changeset name should be ${changeSetName}`,
   );
   const changeSetId = changeSet.id;
-
+  // FETCH CHANGESET INDEX before running fn so we ensure the index has been built
+  await sdf.fetchChangeSetIndex(changeSetId);
   // RUN FN
   let err;
   try {
@@ -110,28 +110,8 @@ export async function runWithTemporaryChangeset(
 
 export const nilId = "00000000000000000000000000";
 
-// Diagram Helpers ------------------------------------------------------------
+// Various Helpers ------------------------------------------------------------
 
-
-export async function getQualificationSummary(sdf: SdfApiClient, changeSetId: string) {
-  return await sdf.call({
-    route: "qualification_summary",
-    routeVars: {
-      workspaceId: sdf.workspaceId,
-      changeSetId,
-    },
-  });
-}
-
-export async function getActions(sdf: SdfApiClient, changeSetId: string) {
-  return await sdf.call({
-    route: "action_list",
-    routeVars: {
-      workspaceId: sdf.workspaceId,
-      changeSetId,
-    },
-  });
-}
 
 export async function getFuncs(sdf: SdfApiClient, changeSetId: string) {
   return await sdf.call({
@@ -144,41 +124,6 @@ export async function getFuncs(sdf: SdfApiClient, changeSetId: string) {
 }
 
 
-// Prop Helpers ------------------------------------------------------------
-
-
-export async function getPropertyEditor(
-  sdf: SdfApiClient,
-  changeSetId: string,
-  componentId: string,
-) {
-  const values = await sdf.call({
-    route: "get_property_values",
-    routeVars: {
-      componentId,
-      changeSetId,
-    },
-  });
-  assert(typeof values?.values === "object", "Expected prop values");
-  assert(typeof values?.childValues === "object", "Expected prop childValues:");
-
-  const schema = await sdf.call({
-    route: "get_property_schema",
-    routeVars: {
-      componentId,
-      changeSetId,
-    },
-  });
-  assert(typeof schema?.rootPropId === "string", "Expected rootPropId");
-  assert(typeof schema?.props === "object", "Expected props");
-  assert(typeof schema?.childProps === "object", "Expected childProps list");
-
-  return {
-    values,
-    schema,
-  };
-}
-
 export async function installModule(
   sdf: SdfApiClient,
   changeSetId: string,
@@ -189,115 +134,11 @@ export async function installModule(
     ids: [moduleId]
   };
 
-  await sdf.call({
+  return await sdf.call({
     route: "install_module",
     body: installModulePayload,
   });
 }
-export function extractSchemaVariant(
-  schemaVariants: any[],
-  schemaName: string,
-  category?: string,
-) {
-  const variant = schemaVariants.find(
-    (sv) =>
-      sv.schemaName === schemaName && (!category || sv.category === category),
-  );
-
-  const awsRegionVariantId = variant?.schemaVariantId;
-  assert(
-    awsRegionVariantId,
-    `Expected to find ${schemaName} schema and variant`,
-  );
-
-  return variant;
-}
-
-export async function getSchemaVariants(sdf: SdfApiClient, changeSetId: string) {
-  let schemaVariants = await sdf.call({
-    route: "schema_variants",
-    routeVars: {
-      workspaceId: sdf.workspaceId,
-      changeSetId,
-    },
-  });
-
-  const newCreateComponentApi = Array.isArray(schemaVariants?.installed);
-  if (newCreateComponentApi) {
-    schemaVariants = schemaVariants.installed;
-  }
-
-  assert(
-    Array.isArray(schemaVariants),
-    "List schema variants should return an array",
-  );
-
-  return { schemaVariants, newCreateComponentApi };
-}
-
-export async function setAttributeValue(
-  sdf: SdfApiClient,
-  changeSetId: string,
-  componentId: string,
-  attributeValueId: string,
-  parentAttributeValueId: string,
-  propId: string,
-  value: unknown,
-) {
-  const updateValuePayload = {
-    visibility_change_set_pk: changeSetId,
-    componentId,
-    attributeValueId,
-    parentAttributeValueId,
-    propId,
-    value,
-    isForSecret: false,
-  };
-
-  await sdf.call({
-    route: "update_property_value",
-    body: updateValuePayload,
-  });
-}
-
-export function attributeValueIdForPropPath(
-  propPath: string,
-  propList: any[],
-  attributeValuesView: {
-    values: any[];
-    childValues: any[];
-  },
-) {
-  const prop = propList.find((p) => p.path === propPath);
-  assert(prop, `Expected to find ${propPath} prop`);
-
-  let attributeValueId;
-  let value;
-  for (const attributeValue in attributeValuesView.values) {
-    if (attributeValuesView.values[attributeValue]?.propId === prop.id) {
-      attributeValueId = attributeValue;
-      value = attributeValuesView.values[attributeValue]?.value;
-    }
-  }
-  assert(attributeValueId, "Expected source attribute value");
-
-  let parentAttributeValueId;
-  for (const attributeValue in attributeValuesView?.childValues) {
-    const avChildren = attributeValuesView?.childValues[attributeValue] ?? [];
-    if (avChildren.includes(attributeValueId)) {
-      parentAttributeValueId = attributeValue;
-    }
-  }
-  assert(parentAttributeValueId, "Expected parent of source attribute value");
-
-  return {
-    attributeValueId,
-    parentAttributeValueId,
-    propId: prop.id,
-    value,
-  };
-}
-
 
 // Schema Variant Helpers ------------------------------------------------------------
 
@@ -367,38 +208,62 @@ export async function updateAssetCode(
 export async function createComponent(
   sdf: SdfApiClient,
   changeSetId: string,
-  schemaVariantId: string,
-  x: number,
-  y: number,
-  parentId?: string,
-  newCreateComponentApi?: boolean,
+  viewId: string,
+  request: any,
 ): Promise<string> {
-  const parentArgs = parentId ? { parentId } : {};
-  const payload = {
-    schemaType: newCreateComponentApi ? "installed" : undefined,
-    schemaVariantId,
-    x: x.toString(),
-    y: y.toString(),
-    visibility_change_set_pk: changeSetId,
-    workspaceId: sdf.workspaceId,
-    ...parentArgs,
-  };
-  const createResp = await sdf.call({
-    route: "create_component",
-    body: payload,
+  // Create a Component
+  const createComponentResp = await sdf.call({
+    route: "create_component_v2",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+      viewId: viewId,
+    },
+    body: request,
   });
-  const componentId = createResp?.componentId;
-  assert(componentId, "Expected to get a component id after creation");
+  const { newComponentId, newComponentName } = { newComponentId: createComponentResp?.componentId, newComponentName: createComponentResp?.materializedView?.name };
+  assert(newComponentId, "Expected to get a component id after creation");
 
-  // Run side effect calls
-  await Promise.all([
-    getQualificationSummary(sdf, changeSetId),
-    getActions(sdf, changeSetId),
-    getFuncs(sdf, changeSetId),
-    getPropertyEditor(sdf, changeSetId, componentId),
-  ]);
+  // Wait for and verify component MV
+  await eventualMVAssert(
+    sdf,
+    changeSetId,
+    "Component",
+    newComponentId,
+    (mv) => mv.name === newComponentName,
+    "Component MV should exist and have matching name"
+  );
 
-  return componentId;
+
+  return newComponentId;
+}
+
+export function createComponentPayload(schemaVariantCategoriesMV: any, schemaName: string) {
+  const installedVariant = schemaVariantCategoriesMV.installed?.find((sv: any) => sv.schemaName === schemaName);
+  if (installedVariant) {
+    return {
+      schemaVariantId: installedVariant.schemaVariantId,
+      x: "0",
+      y: "0",
+      height: "0",
+      width: "0",
+      parentId: null,
+      schemaType: "installed",
+    };
+  }
+  else {
+    const uninstalledVariant = schemaVariantCategoriesMV.uninstalled?.find((sv: any) => sv.schemaName === schemaName);
+    assert(uninstalledVariant, `Expected to find ${schemaName} schema variant`);
+    return {
+      schemaId: uninstalledVariant.schemaId,
+      schemaType: "uninstalled",
+      x: "0",
+      y: "0",
+      height: "0",
+      width: "0",
+      parentId: null,
+    }
+  }
 }
 
 // Func Helpers ------------------------------------------------------------
@@ -487,43 +352,44 @@ export async function createQualification(sdf: SdfApiClient, changeSetId: string
 
 }
 
-export function createComponentPayload(schemaVariantCategoriesMV: any, schemaName: string) {
-  const installedVariant = schemaVariantCategoriesMV.installed?.find((sv: any) => sv.schemaName === schemaName);
-  if (installedVariant) {
-    return {
-      schemaVariantId: installedVariant.schemaVariantId,
-      x: "0",
-      y: "0",
-      height: "0",
-      width: "0",
-      parentId: null,
-      schemaType: "installed",
-    };
-  }
-  else {
-    const uninstalledVariant = schemaVariantCategoriesMV.uninstalled?.find((sv: any) => sv.schemaName === schemaName);
-    assert(uninstalledVariant, `Expected to find ${schemaName} schema variant`);
-    return {
-      schemaId: uninstalledVariant.schemaId,
-      schemaType: "uninstalled",
-      x: "0",
-      y: "0",
-      height: "0",
-      width: "0",
-      parentId: null,
-    }
+
+
+// MV Helpers -------------------------------------------------------
+
+export async function abandon_all_change_sets(sdf: SdfApiClient) {
+  const workspaceId = sdf.workspaceId;
+  const data = await sdf.call({
+    route: "list_open_change_sets",
+    routeVars: {
+      workspaceId,
+    },
+  });
+  // loop through them and abandon each one that's not head
+  assert(data.defaultChangeSetId, "Expected headChangeSetId");
+  const changeSetsToAbandon = data.changeSets.filter((c) => c.id !== data.defaultChangeSetId);
+
+  for (const changeSet of changeSetsToAbandon) {
+    const changeSetId = changeSet.id;
+    await sdf.call({
+      route: "abandon_change_set",
+      body: {
+        changeSetId,
+      },
+    });
   }
 }
 
-
-// MV Assertion Helpers -------------------------------------------------------
-
+export async function getActions(sdf: SdfApiClient, changeSetId: string) {
+  const actions = await sdf.mjolnir(changeSetId, "ActionViewList", sdf.workspaceId);
+  assert(actions, "Expected to get actions MV");
+  return actions;
+}
 
 export async function getVariants(sdf: SdfApiClient, changeSetId: string) {
   const schemas = await sdf.mjolnir(changeSetId, "SchemaVariantCategories", sdf.workspaceId);
   assert(schemas, "Expected to get schemas MV");
 
-  const installedList:{kind:string, id:string}[] = schemas.categories.flatMap((c: any) => c.schemaVariants.filter((v: any) => v.type === "installed").map((v: any) => {
+  const installedList: { kind: string, id: string }[] = schemas.categories.flatMap((c: any) => c.schemaVariants.filter((v: any) => v.type === "installed").map((v: any) => {
     return {
       kind: "SchemaVariant",
       id: v.id,
@@ -565,13 +431,13 @@ export async function eventualMVAssert(
   id: string,
   assertFn: (mv: any) => boolean,
   message: string,
-   timeoutMs: number = 15000, // 15 seconds
+  timeoutMs: number = 45000, // 45 seconds
 
 ): Promise<void> {
   // update this to use sdf.mjolnir and retryUntil 
   if (!sdf || !changeSetId || !kind || !id) {
     throw new Error("Invalid parameters for eventualAssert");
-  } 
+  }
   try {
     await retryUntil(async () => {
       const mv = await sdf.mjolnir(changeSetId, kind, id);
@@ -579,11 +445,15 @@ export async function eventualMVAssert(
         try {
           if (assertFn(mv)) {
             return; // Success!
+          } else {
+            throw new Error(`Assertion failed for ${kind} with ID ${id}`);
           }
         } catch (error) {
           // Continue polling if assertion throws
-          console.warn(`Assertion failed for ${kind} with ID ${id}:`, error);
+          throw error; // Re-throw to trigger retry
         }
+      } else {
+        throw new Error(`No MV found for ${kind} with ID ${id}`);
       }
     }, timeoutMs);
   } catch (err) {

@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { SdfApiClient } from "../sdf_api_client.ts";
-import { runWithTemporaryChangeset } from "../test_helpers.ts";
+import { createComponent, eventualMVAssert, getViews, runWithTemporaryChangeset } from "../test_helpers.ts";
 
 export default async function create_variant(sdfApiClient: SdfApiClient) {
   return runWithTemporaryChangeset(sdfApiClient, create_variant_inner);
@@ -10,18 +10,17 @@ export async function create_variant_inner(
   sdfApiClient: SdfApiClient,
   changeSetId: string,
 ) {
+
+  // Get the views and find the default one
+  const views = await getViews(sdfApiClient, changeSetId);
+  const defaultView = views.find((v: any) => v.isDefault);
+  assert(defaultView, "Expected to find a default view");
+
   const startTime = new Date();
   const variantName = `Test_Variant - ${startTime.toISOString()}`;
 
-  const newCreateComponentApi = Array.isArray((await sdfApiClient.call({
-    route: "schema_variants",
-    routeVars: {
-      workspaceId: sdfApiClient.workspaceId,
-      changeSetId,
-    },
-  }))?.installed);
 
-  // Create the Varint
+  // Create the Variant
   const createVariantPayload = {
     "name": variantName,
     "color": "0",
@@ -36,53 +35,39 @@ export async function create_variant_inner(
     body: createVariantPayload,
   });
 
+
   const schemaVariantId = createVariantResp?.schemaVariantId;
   assert(schemaVariantId, "Expected to get a schemaVariantId after creation");
-
+  await eventualMVAssert(
+    sdfApiClient,
+    changeSetId,
+    "SchemaVariant",
+    schemaVariantId,
+    (mv) => mv.id === schemaVariantId,
+    "SchemaVariant MV should exist and have matching id"
+  );
   // create new variant as a component
   let createInstancePayload = {
     "schemaVariantId": schemaVariantId,
-    "x": "200",
+    "x": "0",
     "y": "0",
-    "visibility_change_set_pk": changeSetId,
-    "workspaceId": sdfApiClient.workspaceId,
+    "height": "0",
+    "width": "0",
+    "parentId": null,
+    "schemaType": "installed"
+
   };
-  if (newCreateComponentApi) {
-    createInstancePayload["schemaType"] = "installed";
-  }
-
-  const createInstanceResp = await sdfApiClient.call({
-    route: "create_component",
-    body: createInstancePayload,
-  });
-
-  const newSchemaComponentId = createInstanceResp?.componentId;
+  const newSchemaComponentId = await createComponent(sdfApiClient, changeSetId, defaultView.id, createInstancePayload);
   assert(newSchemaComponentId, "Expected to get a component id after creation");
 
-  // Check that components exists on diagram
-  const diagram = await sdfApiClient.call({
-    route: "get_diagram",
-    routeVars: {
-      workspaceId: sdfApiClient.workspaceId,
-      changeSetId,
-    },
-  });
-
-  assert(diagram?.components, "Expected components list on the diagram");
-  assert(
-    diagram.components.length === 1,
-    "Expected a single component on the diagram",
+// make sure component is in the list
+  await eventualMVAssert(
+    sdfApiClient,
+    changeSetId,
+    "ComponentList",
+    sdfApiClient.workspaceId,
+    (mv) => mv.components.some((c: any) => c.id === newSchemaComponentId) && mv.components.length === 1,
+    "ComponentList MV should include the new component",
   );
 
-  const regionComponentOnDiagram = diagram.components.find((c) =>
-    c.id === newSchemaComponentId
-  );
-  assert(
-    regionComponentOnDiagram,
-    "Expected to find the new schema variant on the diagram",
-  );
-  assert(
-    regionComponentOnDiagram?.schemaVariantId === schemaVariantId,
-    "Expected diagram component schema variant id to be correct",
-  );
 }

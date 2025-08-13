@@ -3,19 +3,13 @@ import assert from "node:assert";
 import { SdfApiClient } from "../sdf_api_client.ts";
 import {
   runWithTemporaryChangeset,
-  sleep,
   sleepBetween,
   createComponent,
-  getPropertyEditor,
-  setAttributeValue,
-  attributeValueIdForPropPath,
-  getQualificationSummary,
-  getActions,
-  getFuncs,
-  extractSchemaVariant,
-  getSchemaVariants,
+  getVariants,
+  createComponentPayload,
+  getViews,
+  eventualMVAssert,
 } from "../test_helpers.ts";
-import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 
 export default async function emulate_paul_stack(sdfApiClient: SdfApiClient) {
   await sleepBetween(0, 750);
@@ -26,155 +20,110 @@ async function emulate_paul_stack_inner(
   sdf: SdfApiClient,
   changeSetId: string,
 ) {
-  sdf.listenForDVUs();
-  // LOAD INITIAL DATA
-  const { schemaVariants, newCreateComponentApi } = await getSchemaVariants(
-    sdf,
-    changeSetId,
-  );
+  // Get the schema variants (uninstalled and installed)
+  let schemaVariants = await getVariants(sdf, changeSetId);
+  let createRegionBody = createComponentPayload(schemaVariants, "Region");
 
-  const awsRegionVariant = await extractSchemaVariant(
-    schemaVariants,
-    "Region",
-    "AWS",
-  );
-  const awsRegionVariantId = awsRegionVariant.schemaVariantId;
+  // Get the views and find the default one
+  const views = await getViews(sdf, changeSetId);
+  const defaultView = views.find((v: any) => v.isDefault);
+  assert(defaultView, "Expected to find a default view");
 
-  const _diagram = await getDiagram(sdf, changeSetId);
-  //await sleepBetween(2000, 10000);
-
-  // CREATE COMPONENTS
-  // create region component
+  // Create a region component
   const regionComponentId = await createComponent(
     sdf,
     changeSetId,
-    awsRegionVariantId,
-    0,
-    0,
-    undefined,
-    newCreateComponentApi,
+    defaultView.id,
+    createRegionBody,
   );
-
-  //await sleepBetween(3000, 6000);
-
-  await setComponentGeometry(
-    sdf,
-    changeSetId,
-    regionComponentId,
-    0,
-    0,
-    1800,
-    800,
-  );
-  //await sleepBetween(1000, 5000);
-
-  // UPDATE REGION
-  const regionValue = "us-east-1";
-  const { values: RegionPropValues } = await getPropertyEditor(
-    sdf,
-    changeSetId,
-    regionComponentId,
-  );
-  // await sleep(2000);
-
-  {
-    const { attributeValueId, parentAttributeValueId, propId } =
-      attributeValueIdForPropPath(
-        "/root/domain/region",
-        awsRegionVariant.props,
-        RegionPropValues,
-      );
-
-    await setAttributeValue(
-      sdf,
+  // update region prop
+  await sdf.call({
+    route: "attributes",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
       changeSetId,
-      regionComponentId,
-      attributeValueId,
-      parentAttributeValueId,
-      propId,
-      regionValue,
-    );
-  }
+      componentId: regionComponentId,
+    },
+    body: {
+      "/domain/region": "us-east-1",
+    },
+  });
 
-  // await sleepBetween(5000, 15000);
+
 
   // CREATE VPC
-  const vpcVariant = await extractSchemaVariant(
-    schemaVariants,
-    "VPC",
-    "AWS EC2",
-  );
-  const vpcVariantId = vpcVariant.schemaVariantId;
-
+  let createVPCBody = createComponentPayload(schemaVariants, "AWS::EC2::VPC");
   const vpcComponentId = await createComponent(
     sdf,
     changeSetId,
-    vpcVariantId,
-    0,
-    0,
-    undefined,
-    newCreateComponentApi,
+    defaultView.id,
+    createVPCBody,
   );
 
-  // await sleepBetween(1000, 2000);
-
-  await setComponentType(
-    sdf,
-    changeSetId,
-    vpcComponentId,
-    "configurationFrameDown",
-  );
-
-  await setComponentGeometry(
-    sdf,
-    changeSetId,
-    vpcComponentId,
-    0,
-    80,
-    1700,
-    600,
-    {
-      newParent: regionComponentId,
+  // subscribe vpc to region component
+  const subResponse = await sdf.call({
+    route: "attributes",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+      componentId: vpcComponentId,
     },
+    body: {
+      "/domain/extra/Region": {
+        "$source": {
+          "component": regionComponentId,
+          "path": "/domain/region",
+        }
+      },
+    },
+  });
+
+  // Check that the subscription was successful
+  await eventualMVAssert(
+    sdf,
+    changeSetId,
+    "AttributeTree",
+    vpcComponentId,
+    (mv) => Object.values(mv.attributeValues).some(
+      (av: any) => av.path === "/domain/extra/Region" &&
+        av.externalSources.length === 1,
+    ),
+    "Expected VPC to be subscribed to Region",
   );
 
-  await sleepBetween(0, 750);
 
   // CONFIGURE VPC
-  const { values: vpcPropValues } = await getPropertyEditor(
+  const updateVpcResponse = await sdf.call({
+    route: "attributes",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+      componentId: vpcComponentId,
+    },
+    body: {
+      "/si/name": "How to VPC",
+      "/domain/CidrBlock": "10.0.0.0/16",
+      "/domain/EnableDnsHostnames": true,
+      "/domain/EnableDnsSupport": true,
+    },
+  });
+  // Check that the value was updated on the VPC component
+  await eventualMVAssert(
     sdf,
     changeSetId,
+    "AttributeTree",
     vpcComponentId,
+    (mv) => Object.values(mv.attributeValues).some(
+      (av: any) => av.path === "/domain/CidrBlock" &&
+        av.value === "10.0.0.0/16"
+    ),
+    "Expected VPC to have CidrBlock set to 10.0.0.0/16"
   );
 
-  for (const { p: path, v: value } of [
-    { p: "/root/si/name", v: "How to VPC" },
-    { p: "/root/domain/CidrBlock", v: "10.0.0.0/16" },
-    { p: "/root/domain/EnableDnsHostnames", v: true },
-    { p: "/root/domain/EnableDnsResolution", v: true },
-  ]) {
-    const { attributeValueId, parentAttributeValueId, propId } =
-      attributeValueIdForPropPath(path, vpcVariant.props, vpcPropValues);
-
-    await setAttributeValue(
-      sdf,
-      changeSetId,
-      vpcComponentId,
-      attributeValueId,
-      parentAttributeValueId,
-      propId,
-      value,
-    );
-    await sleepBetween(0, 750);
-  }
 
   // Public Subnet Components
-  const subnetVariant = await extractSchemaVariant(
-    schemaVariants,
-    "Subnet",
-    "AWS EC2",
-  );
-  const subnetVariantId = subnetVariant.schemaVariantId;
+  const createSubnetBody = createComponentPayload(schemaVariants, "AWS::EC2::Subnet");
+
 
   for (const { index, data } of [
     { CidrBlock: "10.0.128.0/20", AvailabilityZone: "us-east-1a" },
@@ -184,162 +133,102 @@ async function emulate_paul_stack_inner(
     const subnetComponentId = await createComponent(
       sdf,
       changeSetId,
-      subnetVariantId,
-      -550 + 550 * index,
-      150,
-      vpcComponentId,
-      newCreateComponentApi,
+      defaultView.id,
+      createSubnetBody,
     );
     await sleepBetween(1000, 5000);
-
-    await setComponentType(
+    // subscribe subnet to region and vpc components
+    await sdf.call({
+      route: "attributes",
+      routeVars: {
+        workspaceId: sdf.workspaceId,
+        changeSetId,
+        componentId: subnetComponentId,
+      },
+      body: {
+        "/domain/extra/Region": {
+          "$source": {
+            "component": regionComponentId,
+            "path": "/domain/region",
+          },
+        },
+        "/domain/VpcId": {
+          "$source": {
+            "component": vpcComponentId,
+            "path": "/resource_value/VpcId",
+          },
+        },
+      },
+    });
+    // Check that the subscription was successful
+    await eventualMVAssert(
       sdf,
       changeSetId,
+      "AttributeTree",
       subnetComponentId,
-      "configurationFrameDown",
-    );
-
-    const { values: subnetPropValues } = await getPropertyEditor(
-      sdf,
-      changeSetId,
-      subnetComponentId,
+      (mv) => Object.values(mv.attributeValues).some(
+        (av: any) => av.path === "/domain/extra/Region" &&
+          av.externalSources.length === 1 &&
+          av.externalSources[0].path === "/domain/region",
+      ),
+      "Expected Subnet to be subscribed to Region",
     );
 
     // CONFIGURE Subnet
 
     for (const { p: path, v: value } of [
-      { p: "/root/si/name", v: `Public ${index + 1}` },
-      { p: "/root/domain/CidrBlock", v: data.CidrBlock },
-      { p: "/root/domain/AvailabilityZone", v: data.AvailabilityZone },
-      { p: "/root/domain/IsPublic", v: true },
+      { p: "/si/name", v: `Public ${index + 1}` },
+      { p: "/domain/CidrBlock", v: data.CidrBlock },
+      { p: "/domain/AvailabilityZone", v: data.AvailabilityZone },
+      { p: "/domain/MapPublicIpOnLaunch", v: true },
     ]) {
-      const { attributeValueId, parentAttributeValueId, propId } =
-        attributeValueIdForPropPath(
-          path,
-          subnetVariant.props,
-          subnetPropValues,
-        );
-
-      await setAttributeValue(
-        sdf,
-        changeSetId,
-        subnetComponentId,
-        attributeValueId,
-        parentAttributeValueId,
-        propId,
-        value,
-      );
-
-      // await sleepBetween(3000, 10000);
+      await sdf.call({
+        route: "attributes",
+        routeVars: {
+          workspaceId: sdf.workspaceId,
+          changeSetId,
+          componentId: subnetComponentId,
+        },
+        body: {
+          [path]: value,
+        },
+      });
     }
   }
 
-  await sdf.waitForDVURoots(changeSetId, 2000, 60000);
-
-}
-
-// REQUEST HELPERS WITH VALIDATIONS
-
-async function getDiagram(
-  sdf: SdfApiClient,
-  changeSetId: string,
-): Promise<{ components: any[]; edges: any[] }> {
-  const diagram = await sdf.call({
-    route: "get_diagram",
+  // update the region property on the region component to trigger propagation
+  await sdf.call({
+    route: "attributes",
     routeVars: {
       workspaceId: sdf.workspaceId,
       changeSetId,
+      componentId: regionComponentId,
+    },
+    body: {
+      "/domain/region": "us-east-1",
     },
   });
-
-  assert(
-    Array.isArray(diagram?.components),
-    "Expected components list on the diagram",
-  );
-  assert(Array.isArray(diagram?.edges), "Expected edges list on the diagram");
-
-  return diagram;
+  await sdf.waitForDVURoots(changeSetId, 500, 30000);
+  // verify that the region value propagated to the vpc and subnets
+  const componentsToCheck = await sdf.mjolnir(changeSetId, "ComponentList", sdf.workspaceId);
+  const componentIds = componentsToCheck.components.map((c) => c.id);
+  for (const id of componentIds) {
+    await eventualMVAssert(
+      sdf,
+      changeSetId,
+      "AttributeTree",
+      id,
+      (mv) => Object.values(mv.attributeValues).some(
+        (av: any) => av.path === "/domain/extra/Region" &&
+          av.value === "us-east-1",
+      ) || Object.values(mv.attributeValues).some(
+        (av: any) => av.path === "/domain/region" &&
+          av.value === "us-east-1",
+      ),
+      `Expected component ${id} to have region set to us-east-1`,
+    );
+  }
 }
 
-async function setComponentGeometry(
-  sdf: SdfApiClient,
-  changeSetId: string,
-  componentId: string,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  parentArguments?: {
-    newParent?: string;
-    detach?: boolean;
-  },
-) {
-  const someParentArguments = parentArguments ?? {};
-  const setPositionPayload = {
-    dataByComponentId: {
-      [componentId]: {
-        geometry: {
-          x: x.toString(),
-          y: y.toString(),
-          width: w.toString(),
-          height: h.toString(),
-        },
-        detach: false,
-        ...someParentArguments,
-      },
-    },
-    diagramKind: "configuration",
-    visibility_change_set_pk: changeSetId,
-    workspaceId: sdf.workspaceId,
-    requestUlid: changeSetId,
-    clientUlid: ulid(),
-  };
-
-  const result = await sdf.call({
-    route: "set_component_position",
-    body: setPositionPayload,
-  });
-
-  // Make side effect calls
-  await Promise.all([
-    getQualificationSummary(sdf, changeSetId),
-    getActions(sdf, changeSetId),
-    getFuncs(sdf, changeSetId),
-  ]);
-
-  return result;
-}
-
-async function setComponentType(
-  sdf: SdfApiClient,
-  changeSetId: string,
-  componentId: string,
-  componentType:
-    | "component"
-    | "configurationFrameDown"
-    | "configurationFrameUp",
-) {
-  const payload = {
-    componentId,
-    componentType,
-    visibility_change_set_pk: changeSetId,
-    requestUlid: changeSetId,
-  };
-
-  const result = await sdf.call({
-    route: "set_component_type",
-    body: payload,
-  });
-
-  // Make side effect calls
-  await Promise.all([
-    getActions(sdf, changeSetId),
-    getFuncs(sdf, changeSetId),
-    getPropertyEditor(sdf, changeSetId, componentId),
-  ]);
-  const res = getQualificationSummary(sdf, changeSetId);
-
-  return result;
-}
 
 
