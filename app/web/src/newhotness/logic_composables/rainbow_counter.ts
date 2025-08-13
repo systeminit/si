@@ -1,6 +1,6 @@
-import { computed, inject, reactive } from "vue";
+import { computed, ComputedRef, reactive } from "vue";
 import { DefaultMap } from "@/utils/defaultmap";
-import { assertIsDefined, Context } from "../types";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 
 const queueByChangeSet = new DefaultMap<string, Set<string>>(() => {
   return reactive(new Set<string>());
@@ -16,13 +16,10 @@ export const remove = (changeSetId: string, desc: string) => {
   if (queue) queue.delete(desc);
 };
 
-export const useRainbow = () => {
+export const useRainbow = (changeSetId: ComputedRef<ChangeSetId>) => {
   return computed(() => {
     try {
-      const ctx = inject<Context>("CONTEXT");
-      assertIsDefined(ctx);
-
-      const queue = queueByChangeSet.get(ctx.changeSetId.value);
+      const queue = queueByChangeSet.get(changeSetId.value);
 
       /**
        * This is a global "stuff is happening" counter

@@ -1,10 +1,10 @@
 <template>
   <div
-    v-if="status !== 'unexpected'"
+    v-if="changeSet.status === ChangeSetStatus.NeedsApproval"
     :class="
       clsx(
-        'flex flex-col gap-sm p-sm',
-        'rounded shadow-2xl overflow-hidden',
+        'flex flex-col gap-sm p-sm overflow-y-auto',
+        'rounded shadow-2xl',
         themeClasses('bg-shade-0 border', 'bg-neutral-900'),
       )
     "
@@ -24,13 +24,12 @@
       </div>
 
       <ErrorMessage
-        v-if="status === 'requested' || status === 'approved'"
         :tone="metadata.messageTone"
         :icon="metadata.messageIcon"
         variant="block"
         class="rounded grow"
       >
-        <template v-if="status === 'requested'">
+        <template v-if="!satisfied">
           There are approvals that must be met before the change set can be
           applied.
         </template>
@@ -45,16 +44,8 @@
       </ErrorMessage>
     </div>
 
-    <div
-      :class="
-        clsx('flex flex-row gap-xs flex-1 overflow-hidden place-content-evenly')
-      "
-    >
-      <div
-        :class="
-          clsx('flex flex-col gap-xs overflow-hidden text-center basis-1/2')
-        "
-      >
+    <div :class="clsx('flex flex-row gap-xs flex-1 place-content-evenly')">
+      <div :class="clsx('flex flex-col gap-xs text-center basis-1/2')">
         <RouterLink
           :to="{
             name: 'workspace-audit',
@@ -73,11 +64,7 @@
     </div>
 
     <!-- MAIN SECTION -->
-    <div
-      :class="
-        clsx('flex flex-row gap-xs flex-1 overflow-hidden place-content-evenly')
-      "
-    >
+    <div :class="clsx('flex flex-row gap-xs flex-1 place-content-evenly')">
       <div class="flex flex-col basis-1/2 text-sm gap-xs overflow-y-auto">
         <div
           v-for="group in requirementGroups"
@@ -156,7 +143,7 @@
         tone="warning"
         variant="ghost"
         icon="x"
-        @click="withdraw"
+        @click="cancel"
       />
       <template v-if="userIsApprover">
         <VButton
@@ -175,9 +162,9 @@
         />
       </template>
       <VButton
-        :disabled="status !== 'approved'"
+        :disabled="disallowApplyForApprovalFlow"
         tone="success"
-        :loading="status === 'approved' ? applyInFlight : false"
+        :loading="satisfied ? applyInFlight : false"
         loadingText="Applying..."
         @click="apply"
       >
@@ -214,6 +201,7 @@ import {
   useApplyChangeSet,
   approverForChangeSet,
 } from "./logic_composables/change_set";
+import { useStatus } from "./logic_composables/status";
 
 interface RequirementGroup {
   key: string;
@@ -235,21 +223,14 @@ const props = defineProps<{
   user: User;
 }>();
 
-const status = computed(
-  (): "approved" | "requested" | "rejected" | "unexpected" => {
-    if (!props.approvalData?.requirements.some((r) => r.isSatisfied === false))
-      return "approved";
-    switch (props.changeSet.status) {
-      case ChangeSetStatus.NeedsApproval:
-        return "requested";
-      case ChangeSetStatus.Approved:
-        return "approved";
-      case ChangeSetStatus.Rejected:
-        return "rejected";
-      default:
-        return "unexpected";
-    }
-  },
+const ctx = useContext();
+
+const satisfied = computed(
+  () => !props.approvalData?.requirements.some((r) => r.isSatisfied === false),
+);
+const status = useStatus();
+const disallowApplyForApprovalFlow = computed(
+  () => !satisfied.value || status[props.changeSet.id] === "syncing",
 );
 
 const changeSetName = computed(() => props.changeSet.name);
@@ -359,17 +340,7 @@ const requestDate = computed(
 );
 
 const metadata = computed(() => {
-  if (status.value === "requested") {
-    return {
-      title: `Approval Requested by ${
-        requesterIsYou.value ? "You" : requesterEmail.value
-      }`,
-      date: requestDate.value,
-      messageTone: "warning" as Tones,
-      messageIcon: "exclamation-circle" as IconNames,
-    };
-    // approved & rejected are deprecating with the new approach
-  } else if (status.value === "approved") {
+  if (satisfied.value) {
     return {
       title: approverEmail.value
         ? `Approval Granted by ${approverEmail.value}`
@@ -378,23 +349,16 @@ const metadata = computed(() => {
       messageTone: "success" as Tones,
       messageIcon: "check-circle" as IconNames,
     };
-  } else if (status.value === "rejected") {
-    return {
-      title: `Approval Rejected by ${approverEmail.value}`,
-      date: approveDate.value,
-      messageTone: "destructive" as Tones,
-      messageIcon: "exclamation-circle" as IconNames,
-    };
   }
-
   return {
-    title: "ERROR! Go back to HEAD",
-    date: new Date(),
-    messageTone: "destructive" as Tones,
+    title: `Approval Requested by ${
+      requesterIsYou.value ? "You" : requesterEmail.value
+    }`,
+    date: requestDate.value,
+    messageTone: "warning" as Tones,
+    messageIcon: "exclamation-circle" as IconNames,
   };
 });
-
-const ctx = useContext();
 
 const approveApi = useApi(ctx);
 
@@ -409,19 +373,11 @@ const apply = () => {
   performApply();
 };
 
-const reopenApi = useApi(ctx);
 const cancelApi = useApi(ctx);
 
-const withdraw = () => {
-  if (status.value === "rejected") {
-    const reopenCall = reopenApi.endpoint(routes.ChangeSetReopen);
-    reopenCall.post({});
-  } else {
-    const cancelCall = cancelApi.endpoint(
-      routes.ChangeSetCancelApprovalRequest,
-    );
-    cancelCall.post({});
-  }
+const cancel = () => {
+  const cancelCall = cancelApi.endpoint(routes.ChangeSetCancelApprovalRequest);
+  cancelCall.post({});
 };
 
 const rejectApi = useApi(ctx);

@@ -10,7 +10,6 @@ import {
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
 import { ApprovalData, Context, UserId } from "../types";
 import { routes, useApi } from "../api_composables";
-import { useStatus } from "./status";
 import { reset } from "./navigation_stack";
 
 /**
@@ -68,23 +67,16 @@ export const useChangeSets = (
 
 export const useApplyChangeSet = (ctx: Context) => {
   const api = useApi(ctx);
-  const status = useStatus();
 
   const applyInFlight = computed(() => api.inFlight.value);
+
   const performApply = async () => {
     const call = api.endpoint(routes.ApplyChangeSet);
     const { req } = await call.post({});
     return { success: api.ok(req) };
   };
-  const disallowApply = computed(
-    () =>
-      (ctx.changeSet.value?.status !== ChangeSetStatus.Open &&
-        ctx.changeSet.value?.status !== ChangeSetStatus.NeedsApproval) ||
-      ctx.onHead.value ||
-      status.value === "syncing",
-  );
 
-  return { performApply, applyInFlight, disallowApply };
+  return { performApply, applyInFlight };
 };
 
 export const navigateToExistingChangeSet = async (

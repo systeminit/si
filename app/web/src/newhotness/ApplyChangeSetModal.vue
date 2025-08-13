@@ -69,8 +69,29 @@
             pill="Esc"
             @click="closeModalHandler"
           />
+          <div v-if="isDeprecatedStatus">
+            <span class="text-destructive-500">
+              This change set has a deprecated status. You must re-open it
+              before being able to apply it.
+            </span>
+            <VButton
+              label="Re-Open Change Set"
+              :class="
+                clsx(
+                  'grow !text-sm !border !cursor-pointer !px-xs',
+                  themeClasses(
+                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                  ),
+                )
+              "
+              pill="Cmd + Enter"
+              @click="debouncedReopen"
+            />
+          </div>
           <VButton
-            :label="approvalsEnabled ? 'Request Approval' : 'Apply Change Set'"
+            v-else-if="approvalsEnabled"
+            label="Request Approval"
             :class="
               clsx(
                 'grow !text-sm !border !cursor-pointer !px-xs',
@@ -80,11 +101,26 @@
                 ),
               )
             "
-            :loadingText="approvalsEnabled ? 'undefined' : 'Applying Changes'"
-            :loading="approvalsEnabled ? false : applyInFlight"
-            :disabled="approvalsEnabled ? false : disallowApply"
             pill="Cmd + Enter"
-            @click="debouncedApplyOrRequestApproval"
+            @click="debouncedRequestApproval"
+          />
+          <VButton
+            v-else
+            label="Apply Change Set"
+            :class="
+              clsx(
+                'grow !text-sm !border !cursor-pointer !px-xs',
+                themeClasses(
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                ),
+              )
+            "
+            loadingText="Applying Changes"
+            :loading="applyInFlight"
+            :disabled="!allowedToApplyWithoutApprovals"
+            pill="Cmd + Enter"
+            @click="debouncedApply"
           />
         </div>
       </div>
@@ -123,6 +159,7 @@ import { useApplyChangeSet } from "./logic_composables/change_set";
 import ToastApplyingChanges from "./nav/ToastApplyingChanges.vue";
 import { useContext } from "./logic_composables/context";
 import { useApi, routes } from "./api_composables";
+import { useStatus } from "./logic_composables/status";
 
 const props = defineProps<{
   actions: ActionProposedView[];
@@ -133,6 +170,18 @@ const modalRef = ref<InstanceType<typeof Modal> | null>(null);
 const ctx = useContext();
 
 const changeSet = computed(() => ctx.changeSet.value);
+
+// Is the change set in a pre-ReBAC approval flow state?
+const isDeprecatedStatus = computed(() => {
+  if (!changeSet.value) return false;
+  if (
+    changeSet.value.status === ChangeSetStatus.Approved ||
+    changeSet.value.status === ChangeSetStatus.Rejected ||
+    changeSet.value.status === ChangeSetStatus.NeedsAbandonApproval
+  )
+    return true;
+  return false;
+});
 
 // First, check if the workspace has the approvals features enabled at the Auth API level.
 const workspaces = inject<Workspaces>("WORKSPACES");
@@ -173,6 +222,24 @@ const approvalsEnabled = computed(
   () =>
     approvalsEnabledWithoutSoloUserCheck.value && !isSoloUserWorkspace.value,
 );
+
+const status = useStatus();
+const allowedToApplyWithoutApprovals = computed(() => {
+  // Need a change set to apply...
+  if (!changeSet.value) return false;
+
+  // If we are dealing with approvalsthen we cannot apply without going through the approval flow.
+  if (approvalsEnabled.value) return false;
+
+  // If we are on HEAD, we cannot apply.
+  if (ctx.onHead.value) return false;
+
+  // If the change set is churning on work on flight, do not allow the ability to apply.
+  if (status[changeSet.value.id] === "syncing") return false;
+
+  // The only time you can apply is when all the above is true and the change set is "open".
+  return changeSet.value.status === ChangeSetStatus.Open;
+});
 
 const router = useRouter();
 const route = useRoute();
@@ -216,7 +283,13 @@ onMounted(() => {
 
   keyEmitter.on("Enter", (e) => {
     if (e.metaKey || e.ctrlKey) {
-      debouncedApplyOrRequestApproval();
+      if (isDeprecatedStatus.value) {
+        debouncedReopen();
+      } else if (approvalsEnabled.value) {
+        debouncedRequestApproval();
+      } else {
+        debouncedApply();
+      }
     }
   });
 });
@@ -225,7 +298,7 @@ onBeforeUnmount(() => {
 });
 
 async function openModalHandler() {
-  if (ctx?.onHead.value) return;
+  if (ctx.onHead.value) return;
 
   modalRef.value?.open();
 }
@@ -234,49 +307,60 @@ function closeModalHandler() {
   modalRef.value?.close();
 }
 
-const { performApply, applyInFlight, disallowApply } = useApplyChangeSet(ctx);
-
-const debouncedApplyOrRequestApproval = debounce(applyOrRequestApproval, 500);
-onBeforeUnmount(() => {
-  debouncedApplyOrRequestApproval.cancel();
-});
+const { performApply, applyInFlight } = useApplyChangeSet(ctx);
 
 const toast = useToast();
 
-const requestApprovalApi = useApi(ctx);
-
-async function applyOrRequestApproval() {
-  if (approvalsEnabled.value) {
-    const requestApprovalCall = requestApprovalApi.endpoint(
-      routes.ChangeSetRequestApproval,
+async function applyNotDebounced() {
+  const result = await performApply();
+  if (result.success) {
+    closeModalHandler();
+    toast(
+      {
+        component: ToastApplyingChanges,
+      },
+      {
+        position: POSITION.BOTTOM_CENTER,
+        timeout: 5000,
+      },
     );
-    requestApprovalCall.post({});
-  } else {
-    const result = await performApply();
-    if (result.success) {
-      closeModalHandler();
-      toast(
-        {
-          component: ToastApplyingChanges,
-        },
-        {
-          position: POSITION.BOTTOM_CENTER,
-          timeout: 5000,
-        },
-      );
-      const name = route.name;
-      router.push({
-        name,
-        params: {
-          ...route.params,
-          changeSetId: ctx.headChangeSetId.value,
-        },
-        query: route.query,
-      });
-      reset();
-    }
+    const name = route.name;
+    router.push({
+      name,
+      params: {
+        ...route.params,
+        changeSetId: ctx.headChangeSetId.value,
+      },
+      query: route.query,
+    });
+    reset();
   }
 }
+
+const reopenApi = useApi(ctx);
+
+async function reopenNotDebounced() {
+  const reopenCall = reopenApi.endpoint(routes.ChangeSetReopen);
+  reopenCall.post({});
+}
+
+const requestApprovalApi = useApi(ctx);
+
+async function requestApprovalNotDebounced() {
+  const requestApprovalCall = requestApprovalApi.endpoint(
+    routes.ChangeSetRequestApproval,
+  );
+  requestApprovalCall.post({});
+}
+
+const debouncedApply = debounce(applyNotDebounced, 500);
+const debouncedRequestApproval = debounce(requestApprovalNotDebounced, 500);
+const debouncedReopen = debounce(reopenNotDebounced, 500);
+onBeforeUnmount(() => {
+  debouncedApply.cancel();
+  debouncedReopen.cancel();
+  debouncedRequestApproval.cancel();
+});
 
 const approvalDataApi = useApi(ctx);
 const approvalDataQuery = useQuery<ApprovalData | undefined>({
