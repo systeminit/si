@@ -8,10 +8,12 @@ use dal::{
     UserPk,
     WorkspacePk,
 };
+use sdf_extract::PosthogEventTracker;
 use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::json;
 use si_jwt_public_key::SiJwt;
 use utoipa::ToSchema;
 
@@ -61,10 +63,22 @@ pub async fn whoami(
     _: TargetWorkspaceIdFromToken,
     _: AuthorizedForAutomationRole,
     ValidatedToken(token): ValidatedToken,
+    tracker: PosthogEventTracker,
     WorkspaceAuthorization {
-        workspace_id, user, ..
+        ctx,
+        workspace_id,
+        user,
+        ..
     }: WorkspaceAuthorization,
 ) -> impl IntoResponse {
+    tracker.track(
+        &ctx,
+        "api_whoami",
+        json!({
+            "user_id": user.pk(),
+            "user_email": user.email().clone(),
+        }),
+    );
     Json(WhoamiResponse {
         workspace_id,
         user_id: user.pk(),
