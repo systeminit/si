@@ -27,6 +27,36 @@ _RUST_RELEASES = {
             "sha256": "a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8",
         },
     },
+    "1.88.0": {
+        "x86_64-unknown-linux-gnu": {
+            "url": "https://static.rust-lang.org/dist/rust-1.88.0-x86_64-unknown-linux-gnu.tar.xz",
+            "sha256": "7b5437c1d18a174faae253a18eac22c32288dccfc09ff78d5ee99b7467e21bca",
+        },
+        "aarch64-unknown-linux-gnu": {
+            "url": "https://static.rust-lang.org/dist/rust-1.88.0-aarch64-unknown-linux-gnu.tar.xz",
+            "sha256": "d5decc46123eb888f809f2ee3b118d13586a37ffad38afaefe56aa7139481d34",
+        },
+    },
+    "nightly-2024-12-01": {
+        "x86_64-unknown-linux-gnu": {
+            "url": "https://static.rust-lang.org/dist/2024-12-01/rust-nightly-x86_64-unknown-linux-gnu.tar.xz",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        },
+        "aarch64-unknown-linux-gnu": {
+            "url": "https://static.rust-lang.org/dist/2024-12-01/rust-nightly-aarch64-unknown-linux-gnu.tar.xz",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        },
+    },
+    "nightly-2025-04-17": {
+        "x86_64-unknown-linux-gnu": {
+            "url": "https://static.rust-lang.org/dist/2025-04-17/rust-nightly-x86_64-unknown-linux-gnu.tar.xz",
+            "sha256": "7e7b4e92954e64fb7f936a7295d7a25baa35b3ce29546d2ef0855a16c6cad68f",
+        },
+        "aarch64-unknown-linux-gnu": {
+            "url": "https://static.rust-lang.org/dist/2025-04-17/rust-nightly-aarch64-unknown-linux-gnu.tar.xz",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        },
+    },
     "nightly-2025-06-23": {
         "x86_64-unknown-linux-gnu": {
             "url": "https://static.rust-lang.org/dist/2025-06-23/rust-nightly-x86_64-unknown-linux-gnu.tar.xz",

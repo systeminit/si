@@ -31,8 +31,8 @@ def main() -> int:
 
     cmd = [
         args.rustfmt_path,
-        "--check",
         "--unstable-features",
+        "--check",
     ]
     if args.config_path:
         cmd.append("--config-path")
