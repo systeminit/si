@@ -4,10 +4,6 @@
 const SI_WORKSPACE_URL = Cypress.env('VITE_SI_WORKSPACE_URL') || import.meta.env.VITE_SI_WORKSPACE_URL;
 
 describe('web', () => {
-  beforeEach(function () {
-    cy.visit("/");
-  });
-
   it('get_summary', () => {
     cy.basicLogin();
 
