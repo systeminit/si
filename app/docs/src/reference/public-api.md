@@ -1252,6 +1252,100 @@ Components management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Upgrade a component to the latest schema variant
+
+<a id="opIdupgrade_component"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/upgrade`
+
+<h3 id="upgrade-a-component-to-the-latest-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|component_id|path|string|true|Component identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
+    "canBeUpgraded": true,
+    "connections": [
+      {
+        "incoming": {
+          "from": "string",
+          "fromComponentId": "string",
+          "fromComponentName": "string",
+          "to": "string"
+        }
+      }
+    ],
+    "domainProps": [
+      {
+        "id": "string",
+        "path": "path/to/prop",
+        "propId": "string",
+        "value": {}
+      }
+    ],
+    "id": "string",
+    "name": "string",
+    "resourceId": "string",
+    "resourceProps": [
+      {
+        "id": "string",
+        "path": "path/to/prop",
+        "propId": "string",
+        "value": {}
+      }
+    ],
+    "schemaId": "string",
+    "schemaVariantId": "string",
+    "sockets": [
+      {
+        "arity": "one",
+        "direction": "input",
+        "id": "string",
+        "name": "string",
+        "value": {}
+      }
+    ],
+    "toDelete": true,
+    "views": [
+      {
+        "id": "string",
+        "isDefault": true,
+        "name": "string"
+      }
+    ]
+  }
+}
+```
+
+<h3 id="upgrade-a-component-to-the-latest-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Component successfully upgraded|[UpgradeComponentV1Response](#schemaupgradecomponentv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 # [schemas](#system-initiative-api-schemas)
 
 Schemas management endpoints
@@ -5023,6 +5117,85 @@ and
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |secret|[SecretV1](#schemasecretv1)|true|none|none|
+
+## [UpgradeComponentV1Response](#tocS_UpgradeComponentV1Response)
+
+<a id="schemaupgradecomponentv1response"></a>
+<a id="schema_UpgradeComponentV1Response"></a>
+<a id="tocSupgradecomponentv1response"></a>
+<a id="tocsupgradecomponentv1response"></a>
+
+```json
+{
+  "component": {
+    "attributes": {
+      "/domain/region": "us-east-1",
+      "/secrets/credential": {
+        "$source": {
+          "component": "demo-credential",
+          "path": "/secrets/AWS Credential"
+        }
+      }
+    },
+    "canBeUpgraded": true,
+    "connections": [
+      {
+        "incoming": {
+          "from": "string",
+          "fromComponentId": "string",
+          "fromComponentName": "string",
+          "to": "string"
+        }
+      }
+    ],
+    "domainProps": [
+      {
+        "id": "string",
+        "path": "path/to/prop",
+        "propId": "string",
+        "value": {}
+      }
+    ],
+    "id": "string",
+    "name": "string",
+    "resourceId": "string",
+    "resourceProps": [
+      {
+        "id": "string",
+        "path": "path/to/prop",
+        "propId": "string",
+        "value": {}
+      }
+    ],
+    "schemaId": "string",
+    "schemaVariantId": "string",
+    "sockets": [
+      {
+        "arity": "one",
+        "direction": "input",
+        "id": "string",
+        "name": "string",
+        "value": {}
+      }
+    ],
+    "toDelete": true,
+    "views": [
+      {
+        "id": "string",
+        "isDefault": true,
+        "name": "string"
+      }
+    ]
+  }
+}
+
+```
+
+### [Properties](#upgradecomponentv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|component|[ComponentViewV1](#schemacomponentviewv1)|true|none|none|
 
 ## [ViewV1](#tocS_ViewV1)
 

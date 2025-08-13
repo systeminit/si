@@ -103,6 +103,13 @@ class TestComponentsApi(unittest.TestCase):
         """
         pass
 
+    def test_upgrade_component(self) -> None:
+        """Test case for upgrade_component
+
+        Upgrade a component to the latest schema variant
+        """
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
