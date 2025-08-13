@@ -1433,7 +1433,10 @@ const filteredConnections = computed(() => {
       // our current UI hurdle - only suggesting valid secrets as connection sources for secret props
       if (props.isSecret) {
         matches = matches.filter(
-          (m) => secretKind.value && m.path === `/secrets/${secretKind.value}`,
+          (m) =>
+            secretKind.value &&
+            m.path === `/secrets/${secretKind.value}` &&
+            m.isOriginSecret,
         );
       } else {
         matches = matches.filter((m) => !m.path.startsWith("/secrets/"));

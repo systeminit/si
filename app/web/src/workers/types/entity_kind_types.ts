@@ -100,6 +100,7 @@ export type PossibleConnection = {
   schemaName: string;
   componentId: string;
   kind: string;
+  isOriginSecret: boolean;
   suggestAsSourceFor?: PropSuggestion[];
 };
 
