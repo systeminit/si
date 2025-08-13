@@ -2315,6 +2315,19 @@ export interface UpdateSecretV1Response {
 /**
  * 
  * @export
+ * @interface UpgradeComponentV1Response
+ */
+export interface UpgradeComponentV1Response {
+    /**
+     * 
+     * @type {ComponentViewV1}
+     * @memberof UpgradeComponentV1Response
+     */
+    'component': ComponentViewV1;
+}
+/**
+ * 
+ * @export
  * @interface ViewV1
  */
 export interface ViewV1 {
@@ -4247,6 +4260,48 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * 
+         * @summary Upgrade a component to the latest schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        upgradeComponent: async (workspaceId: string, changeSetId: string, componentId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('upgradeComponent', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('upgradeComponent', 'changeSetId', changeSetId)
+            // verify required parameter 'componentId' is not null or undefined
+            assertParamExists('upgradeComponent', 'componentId', componentId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/upgrade`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"component_id"}}`, encodeURIComponent(String(componentId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -4428,6 +4483,21 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
             const localVarOperationServerBasePath = operationServerMap['ComponentsApi.updateComponent']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * 
+         * @summary Upgrade a component to the latest schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async upgradeComponent(workspaceId: string, changeSetId: string, componentId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UpgradeComponentV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.upgradeComponent(workspaceId, changeSetId, componentId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ComponentsApi.upgradeComponent']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -4548,6 +4618,16 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         updateComponent(requestParameters: ComponentsApiUpdateComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<UpdateComponentV1Response> {
             return localVarFp.updateComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, requestParameters.updateComponentV1Request, options).then((request) => request(axios, basePath));
         },
+        /**
+         * 
+         * @summary Upgrade a component to the latest schema variant
+         * @param {ComponentsApiUpgradeComponentRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        upgradeComponent(requestParameters: ComponentsApiUpgradeComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<UpgradeComponentV1Response> {
+            return localVarFp.upgradeComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(axios, basePath));
+        },
     };
 };
 
@@ -4666,6 +4746,16 @@ export interface ComponentsApiInterface {
      * @memberof ComponentsApiInterface
      */
     updateComponent(requestParameters: ComponentsApiUpdateComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<UpdateComponentV1Response>;
+
+    /**
+     * 
+     * @summary Upgrade a component to the latest schema variant
+     * @param {ComponentsApiUpgradeComponentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApiInterface
+     */
+    upgradeComponent(requestParameters: ComponentsApiUpgradeComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<UpgradeComponentV1Response>;
 
 }
 
@@ -5020,6 +5110,34 @@ export interface ComponentsApiUpdateComponentRequest {
 }
 
 /**
+ * Request parameters for upgradeComponent operation in ComponentsApi.
+ * @export
+ * @interface ComponentsApiUpgradeComponentRequest
+ */
+export interface ComponentsApiUpgradeComponentRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ComponentsApiUpgradeComponent
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ComponentsApiUpgradeComponent
+     */
+    readonly changeSetId: string
+
+    /**
+     * Component identifier
+     * @type {string}
+     * @memberof ComponentsApiUpgradeComponent
+     */
+    readonly componentId: string
+}
+
+/**
  * ComponentsApi - object-oriented interface
  * @export
  * @class ComponentsApi
@@ -5156,6 +5274,18 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      */
     public updateComponent(requestParameters: ComponentsApiUpdateComponentRequest, options?: RawAxiosRequestConfig) {
         return ComponentsApiFp(this.configuration).updateComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, requestParameters.updateComponentV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Upgrade a component to the latest schema variant
+     * @param {ComponentsApiUpgradeComponentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApi
+     */
+    public upgradeComponent(requestParameters: ComponentsApiUpgradeComponentRequest, options?: RawAxiosRequestConfig) {
+        return ComponentsApiFp(this.configuration).upgradeComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
