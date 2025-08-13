@@ -2428,6 +2428,7 @@ const postProcess = (
             componentName: attributeTree.componentName,
             schemaName: attributeTree.schemaName,
             kind: prop.kind,
+            isOriginSecret: prop.isOriginSecret,
             suggestAsSourceFor: prop.suggestAsSourceFor,
           };
         }
