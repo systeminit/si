@@ -4,10 +4,6 @@ const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.V
 
 Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
   describe("auth", () => {
-    beforeEach(() => {
-      cy.visit("/");
-    });
-
     it("log_in", () => {
       cy.basicLogin();
       cy.appModelPageLoaded();
