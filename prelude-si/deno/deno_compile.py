@@ -79,6 +79,12 @@ def run_compile(
     cmd.extend([f"--{p}" for p in permissions])
     cmd.extend([f"--unstable-{f}" for f in flags])
 
+    # Add --no-check to avoid TypeScript checking issues that might embed paths
+    cmd.append("--no-check")
+    
+    # Add --cached-only to use only cached dependencies, avoiding network calls
+    cmd.append("--cached-only")
+
     if includes:
         for include in includes:
             cmd.append("--include")
@@ -89,6 +95,9 @@ def run_compile(
     env = os.environ.copy()
     if deno_dir_abs:
         env["DENO_DIR"] = str(deno_dir_abs)
+    
+    # Ensure we don't inherit any problematic environment variables
+    env.pop("PWD", None)  # Remove PWD to avoid path conflicts
 
     try:
         subprocess.run(cmd,
