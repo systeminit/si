@@ -73,6 +73,7 @@
         :functionKind="FunctionKind.Action"
         :actionId="actionId"
       />
+      <Review v-else-if="onReviewPage" />
       <Explore v-else @openChangesetModal="openChangesetModal" />
     </main>
 
@@ -147,6 +148,7 @@ import ComponentPage from "./ComponentDetails.vue";
 import NavbarPanelLeft from "./nav/NavbarPanelLeft.vue";
 import { useChangeSets } from "./logic_composables/change_set";
 import { routes, useApi } from "./api_composables";
+import Review from "./Review.vue";
 
 const tracer = trace.getTracer("si-vue");
 const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
@@ -781,6 +783,8 @@ watch(
   },
   { immediate: true },
 );
+
+const onReviewPage = computed(() => route.name === "new-hotness-review");
 
 onBeforeUnmount(() => {
   windowResizeEmitter.off("resize", windowResizeHandler);

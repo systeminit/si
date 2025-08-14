@@ -3,7 +3,7 @@
     <div
       :class="
         clsx(
-          'flex flex-col gap-xs',
+          'flex flex-col gap-xs scrollable max-h-[70vh]',
           '[&>div]:flex [&>*]:flex-row [&>*]:items-center [&>*]:gap-xs',
           '[&_.keys]:w-12 [&_.keys]:flex [&_.keys]:flex-row [&_.keys]:items-center [&_.keys]:justify-center',
           '[&_.key]:text-xl [&_.key]:font-bold [&_.key]:leading-none [&_.key]:flex-grow [&_.key]:text-center',
@@ -35,6 +35,15 @@
         <div>
           Press <TextPill tighter variant="key">K</TextPill> to select the
           search bar.
+        </div>
+      </div>
+      <div v-if="featureFlagsStore.REVIEW_PAGE">
+        <div class="keys">
+          <div class="key">R</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">R</TextPill> to open the review
+          screen.
         </div>
       </div>
       <div>
@@ -133,10 +142,10 @@
       </div>
       <div>
         <div class="keys">
-          <div class="key">R</div>
+          <div class="key">F</div>
         </div>
         <div>
-          Press <TextPill tighter variant="key">R</TextPill> to restore the
+          Press <TextPill tighter variant="key">F</TextPill> to restore the
           selected component (if set for deletion).
         </div>
       </div>
@@ -176,8 +185,11 @@
 import { ref } from "vue";
 import { Modal, useModal, Icon, TextPill } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open, close } = useModal(modalRef);
 defineExpose({ open, close, isOpen: modalRef.value?.isOpen });
+
+const featureFlagsStore = useFeatureFlagsStore();
 </script>
