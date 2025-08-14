@@ -33,13 +33,14 @@ import { bfsPropTree, ExpandedPropSpec } from "../spec/props.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { pruneCfAssets } from "../pipeline-steps/pruneCfAssets.ts";
 import { removeUnneededAssets } from "../pipeline-steps/removeUnneededAssets.ts";
-import {
-  reportDeprecatedAssets,
-} from "../pipeline-steps/reportDeprecatedAssets.ts";
+import { reportDeprecatedAssets } from "../pipeline-steps/reportDeprecatedAssets.ts";
 import { removeBadDocLinks } from "../pipeline-steps/removeBadDocLinks.ts";
 import { reorderProps } from "../pipeline-steps/reorderProps.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../pipeline-steps/createSuggestionsAcrossAssets.ts";
-import { createAwsRegionSpecificSuggestion } from "../pipeline-steps/awsRegionSpecificSuggestions.ts";
+import {
+  createRegionSuggestion,
+  createCredentialSuggestion,
+} from "../pipeline-steps/awsRegionAndCredentialSpecificSuggestions.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -103,7 +104,8 @@ export async function generateSiSpecs(
   // this step will eventually replace all the socket stuff. Must come before
   // overrides so it can be... overriden
   specs = createSuggestionsForPrimaryIdentifiers(specs);
-  specs = createAwsRegionSpecificSuggestion(specs);
+  specs = createRegionSuggestion(specs);
+  specs = createCredentialSuggestion(specs);
 
   // Our overrides right now only run after the prop tree and the sockets are generated
   specs = assetSpecificOverrides(specs);
