@@ -98,6 +98,8 @@ pub enum ManagementApiError {
     FuncAuthoring(#[from] FuncAuthoringError),
     #[error("generated mgmt func {0} has no prototype")]
     FuncMissingPrototype(FuncId),
+    #[error("generate template error: {0}")]
+    GenerateTemplate(#[from] sdf_core::generate_template::GenerateTemplateError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
     #[error("layer db error: {0}")]
@@ -118,8 +120,6 @@ pub enum ManagementApiError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("template error: {0}")]
-    Template(#[from] si_generate_template::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("translating string to ulid: {0} is not a valid ulid")]
