@@ -35,7 +35,7 @@ import {
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import { Context } from "@/newhotness/types";
+import { assertIsDefined, Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
@@ -758,25 +758,27 @@ export const prune = async (
 
 export const useMakeArgsForHead = () => {
   const ctx: Context | undefined = inject("CONTEXT");
+  assertIsDefined<Context>(ctx);
   return <K = Gettable>(kind: EntityKind, id?: string) => {
     return {
-      workspaceId: ctx?.workspacePk.value ?? "",
-      changeSetId: ctx?.headChangeSetId.value ?? "",
+      workspaceId: ctx.workspacePk.value,
+      changeSetId: ctx.headChangeSetId.value,
       kind: kind as K,
-      id: id ?? ctx?.workspacePk.value ?? "",
+      id: id ?? ctx.workspacePk.value,
     };
   };
 };
 
 export const useMakeArgs = () => {
   const ctx: Context | undefined = inject("CONTEXT");
+  assertIsDefined<Context>(ctx);
 
   return <K = Gettable>(kind: EntityKind, id?: string) => {
     return {
-      workspaceId: ctx?.workspacePk.value ?? "",
-      changeSetId: ctx?.changeSetId.value ?? "",
+      workspaceId: ctx.workspacePk.value,
+      changeSetId: ctx.changeSetId.value,
       kind: kind as K,
-      id: id ?? ctx?.workspacePk.value ?? "",
+      id: id ?? ctx.workspacePk.value,
     };
   };
 };
@@ -797,28 +799,30 @@ export const changeSetExists = async (
 /// const query = useQuery({ queryKey: makeKey(EntityKind.Component, componentId), ... });
 export const useMakeKey = () => {
   const ctx: Context | undefined = inject("CONTEXT");
+  assertIsDefined<Context>(ctx);
 
   return <K = Gettable>(
     kind: MaybeRefOrGetter<K>,
     id?: MaybeRefOrGetter<string>,
   ) =>
-    computed<[string?, string?, (ComputedRef<K> | K)?, string?]>(() => [
-      ctx?.workspacePk.value,
-      ctx?.changeSetId.value,
+    computed<[string, string, ComputedRef<K> | K, string]>(() => [
+      ctx.workspacePk.value,
+      ctx.changeSetId.value,
       toValue(kind),
-      toValue(id ?? ctx?.workspacePk),
+      toValue(id ?? ctx.workspacePk),
     ]);
 };
 
 export const useMakeKeyForHead = () => {
   const ctx: Context | undefined = inject("CONTEXT");
+  assertIsDefined<Context>(ctx);
   return <K = Gettable>(
     kind: MaybeRefOrGetter<K>,
     id?: MaybeRefOrGetter<string>,
   ) =>
-    computed<[string?, string?, (ComputedRef<K> | K)?, string?]>(() => [
-      ctx?.workspacePk.value,
-      ctx?.headChangeSetId.value,
+    computed<[string, string, ComputedRef<K> | K, string]>(() => [
+      ctx.workspacePk.value,
+      ctx.headChangeSetId.value,
       toValue(kind),
       toValue(id ?? ctx?.workspacePk),
     ]);
