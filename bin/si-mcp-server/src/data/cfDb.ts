@@ -320,6 +320,20 @@ function getManualSchemaDocumentation(
           return null;
       }
 
+    case "AWS Account":
+      switch (schemaAttributePath) {
+        case "/domain/AccountData/Account":
+          return "The AWS account ID number of the account that owns or contains the calling entity.\n\nDocumentation: https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html";
+        case "/domain/AccountData/Arn":
+          return "The AWS ARN associated with the calling entity.\n\nDocumentation: https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html";
+        case "/domain/AccountData/UserId":
+          return "The unique identifier of the calling entity. The exact value depends on the type of entity that is making the call. The values returned are those listed in the aws:userid column in the [Principal table](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_variables.html#principaltable) found on the Policy Variables reference page in the IAM User Guide.\n\nDocumentation: https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html";
+        case "/domain/CanonicalUserId":
+          return " Canonical user ID associated with the AWS account.\n\nDocumentation: https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-identifiers.html";
+        default:
+          return null;
+      }
+
     default:
       return null;
   }

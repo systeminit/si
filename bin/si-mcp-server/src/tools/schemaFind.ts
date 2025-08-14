@@ -266,6 +266,11 @@ Assume Role
 Alternatively, you can authenticate by assuming an IAM role, which provides longer-term, managed authentication. Follow the instructions in our guide: https://docs.systeminit.com/explanation/aws-authentication#assuming-a-role`;
           responseData.link =
             "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html";
+        } else if (responseData.schemaName == "AWS Account") {
+          responseData.description =
+            "You use this to get details about the AWS Account. For more information, see [AWS STS GetCallerIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html) in the *Amazon Security Token Service API Reference*.";
+          responseData.link =
+            "https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html";
         } else {
           const docs = getDocumentationForService(responseData.schemaName);
           responseData.description = docs.description;
