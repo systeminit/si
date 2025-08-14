@@ -30,24 +30,16 @@ where
     }
     Ok(())
 }
-
 #[instrument(
     name = "dal_materialized_views.cached_schema_variant",
     level = "debug",
     skip_all
 )]
-pub async fn assemble(
-    ctx: DalContext,
-    id: SchemaVariantId,
-) -> super::Result<CachedSchemaVariantMv> {
+pub async fn assemble(ctx: DalContext, id: SchemaVariantId) -> super::Result<CachedSchemaVariantMv> {
     // Find the cached module containing this variant by storing the module info
-    //
-    // TODO: We should really look at extracting the variant information into a table, so we
-    //       don't have to dig through the data like this.
     for mut module in CachedModule::latest_modules(&ctx).await? {
         let si_pkg = module.si_pkg(&ctx).await?;
         let schemas = si_pkg.schemas()?;
-
         for schema in schemas {
             let variants = schema.variants()?;
             for variant in variants {
