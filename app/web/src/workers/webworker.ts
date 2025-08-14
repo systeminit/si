@@ -2009,16 +2009,13 @@ const niflheim = async (
     // Use index checksum for validation - this is more reliable than snapshot addresses
     const indexChecksum = req.data.indexChecksum;
     const atoms = req.data.frontEndObject.data.mvList;
-    initIndexAndChangeSet(
-      db,
-      {
-        changeSetId,
-        workspaceId,
-        toIndexChecksum: indexChecksum,
-        fromIndexChecksum: indexChecksum,
-      },
-      frigg,
-    );
+    const meta = {
+      changeSetId,
+      workspaceId,
+      toIndexChecksum: indexChecksum,
+      fromIndexChecksum: indexChecksum,
+    };
+    initIndexAndChangeSet(db, meta, frigg);
     debug("niflheim atom count", atoms.length);
     frigg.setAttribute("numEntries", atoms.length);
     frigg.setAttribute("indexChecksum", indexChecksum);
@@ -2101,6 +2098,9 @@ const niflheim = async (
       // need to see the result
       bulkRemoveAtoms(db, atomsToUnlink, indexChecksum);
     }
+
+    // link the checksum to the change set (just in case its not done in init)
+    updateChangeSetWithNewIndex(db, meta);
 
     // Now to deal with all the atoms we don't have present. Throw the big hammer.
     if (hammerObjs.length > 0) {
