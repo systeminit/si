@@ -15498,6 +15498,9 @@
   "The resolver data source name.": {
     "enum": null
   },
+  "The resource ID of the source DB cluster from which to restore.": {
+    "enum": null
+  },
   "The resource ID of the source DB instance from which to restore.": {
     "enum": null
   },
