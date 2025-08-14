@@ -39,16 +39,19 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { ComponentInList } from "@/workers/types/entity_kind_types";
+import {
+  BifrostComponent,
+  ComponentInList,
+} from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon, getAssetColor } from "./util";
 import ComponentTileQualificationStatus from "./ComponentTileQualificationStatus.vue";
 
 defineProps<{
-  component: ComponentInList;
+  component: ComponentInList | BifrostComponent;
 }>();
 
-const borderStyle = (component: ComponentInList) => {
+const borderStyle = (component: ComponentInList | BifrostComponent) => {
   const color = getAssetColor(component.schemaCategory);
   return `border-color: ${color}`;
 };

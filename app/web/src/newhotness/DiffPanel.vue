@@ -1,6 +1,11 @@
 <template>
   <ul class="p-xs flex flex-col gap-xs">
-    <CodeViewer v-if="diff" :code="diff" codeLanguage="diff" />
+    <CodeViewer
+      v-if="diff"
+      :code="diff"
+      codeLanguage="diff"
+      copyTooltip="Copy diff to clipboard"
+    />
     <EmptyState v-else icon="diff" text="No changes" />
   </ul>
 </template>

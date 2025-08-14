@@ -454,7 +454,6 @@
 import * as _ from "lodash-es";
 import {
   computed,
-  inject,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -488,7 +487,6 @@ import {
 import {
   BifrostActionViewList,
   ComponentInList,
-  ComponentDiffStatus,
   EntityKind,
   View,
 } from "@/workers/types/entity_kind_types";
@@ -511,12 +509,7 @@ import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import { getQualificationStatus } from "./ComponentTileQualificationStatus.vue";
 import FuncRunList from "./FuncRunList.vue";
-import {
-  assertIsDefined,
-  ComponentsHaveActionsWithState,
-  Context,
-  ExploreContext,
-} from "./types";
+import { ComponentsHaveActionsWithState, ExploreContext } from "./types";
 import {
   KeyDetails,
   keyEmitter,
@@ -541,12 +534,12 @@ import ActionQueueList from "./ActionQueueList.vue";
 import { useComponentSearch } from "./logic_composables/search";
 import { routes, useApi } from "./api_composables";
 import { ExploreGridRowData } from "./explore_grid/ExploreGridRow.vue";
+import { useContext } from "./logic_composables/context";
 
 const featureFlagsStore = useFeatureFlagsStore();
 const router = useRouter();
 const route = useRoute();
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
+const ctx = useContext();
 
 const key = useMakeKey();
 const args = useMakeArgs();
@@ -1105,8 +1098,7 @@ const sortedAndGroupedComponents = computed(() => {
     };
     for (const component of components) {
       const title =
-        component.diffStatus &&
-        component.diffStatus !== ComponentDiffStatus.None
+        component.diffStatus && component.diffStatus !== "None"
           ? "With Diffs"
           : "No Diffs";
       groups[title]?.push(component);

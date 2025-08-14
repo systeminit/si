@@ -105,7 +105,7 @@
           <Icon name="tilde" class="text-warning-500" size="sm" />
           <div class="text-sm">Diff</div>
           <TextPill
-            v-if="component.diffStatus === ComponentDiffStatus.Added"
+            v-if="component.diffStatus === 'Added'"
             tighter
             :class="
               clsx(
@@ -120,7 +120,7 @@
             Added
           </TextPill>
           <TextPill
-            v-else-if="component.diffStatus === ComponentDiffStatus.Modified"
+            v-else-if="component.diffStatus === 'Modified'"
             tighter
             :class="
               clsx(
@@ -224,10 +224,7 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, inject, ref, watch } from "vue";
-import {
-  ComponentInList,
-  ComponentDiffStatus,
-} from "@/workers/types/entity_kind_types";
+import { ComponentInList } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
@@ -267,8 +264,7 @@ const dynamicRows = computed(() => {
     props.pendingActionCounts &&
     Object.keys(props.pendingActionCounts).length > 0;
   const hasDiff =
-    props.component.diffStatus &&
-    props.component.diffStatus !== ComponentDiffStatus.None;
+    props.component.diffStatus && props.component.diffStatus !== "None";
 
   // Row 2: Resource if exists, otherwise diff if exists, otherwise empty
   if (props.component.hasResource) {
