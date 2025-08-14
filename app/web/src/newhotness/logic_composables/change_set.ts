@@ -2,11 +2,7 @@ import * as _ from "lodash-es";
 import { computed, ComputedRef, Ref, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { RouteLocationNormalizedLoadedGeneric, Router } from "vue-router";
-import {
-  ChangeSet,
-  ChangeSetId,
-  ChangeSetStatus,
-} from "@/api/sdf/dal/change_set";
+import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
 import { ApprovalData, Context, UserId } from "../types";
 import { routes, useApi } from "../api_composables";
@@ -22,12 +18,9 @@ export const useChangeSets = (
   ctx: ComputedRef<Context>,
   enabled?: ComputedRef<boolean> | Ref<boolean>,
 ) => {
-  const headChangeSetId = ref();
-  const defaultApprovers = ref<string[]>([]);
-
   if (!enabled) enabled = ref(true);
   const changeSetApi = useApi(ctx.value);
-  const changeSetQuery = useQuery<Record<string, ChangeSet>>({
+  const changeSetQuery = useQuery<WorkspaceMetadata | null>({
     enabled,
     queryKey: ["changesets"],
     staleTime: 5000,
@@ -35,32 +28,42 @@ export const useChangeSets = (
       const call = changeSetApi.endpoint<WorkspaceMetadata>(routes.ChangeSets);
       const response = await call.get();
       if (changeSetApi.ok(response)) {
-        const changeSets = _.keyBy(response.data.changeSets, "id");
-        const head = changeSets[response.data.defaultChangeSetId];
-        headChangeSetId.value = response.data.defaultChangeSetId;
-        defaultApprovers.value = response.data.approvers;
-        if (head) head.isHead = true;
-        return changeSets;
+        return response.data;
       }
-      return {} as Record<string, ChangeSet>;
+      return null;
     },
   });
 
+  const headChangeSetId = computed(
+    () => changeSetQuery.data.value?.defaultChangeSetId ?? "",
+  );
+  const defaultApprovers = computed(
+    () => changeSetQuery.data.value?.approvers || [],
+  );
+
   const openChangeSets = computed(() => {
-    return Object.values(changeSetQuery.data.value ?? {}).filter((cs) =>
-      [
-        ChangeSetStatus.Open,
-        ChangeSetStatus.NeedsApproval,
-        ChangeSetStatus.NeedsAbandonApproval,
-        ChangeSetStatus.Rejected,
-        ChangeSetStatus.Approved,
-      ].includes(cs.status),
-    );
+    const changeSets = _.keyBy(changeSetQuery.data.value?.changeSets, "id");
+    return Object.values(changeSets)
+      .filter((cs) =>
+        [
+          ChangeSetStatus.Open,
+          ChangeSetStatus.NeedsApproval,
+          ChangeSetStatus.NeedsAbandonApproval,
+          ChangeSetStatus.Rejected,
+          ChangeSetStatus.Approved,
+        ].includes(cs.status),
+      )
+      .map((cs) => {
+        if (cs.id === changeSetQuery.data.value?.defaultChangeSetId)
+          cs.isHead = true;
+        return cs;
+      });
   });
 
   const changeSet = computed(() => {
     if (!changeSetQuery.data.value) return;
-    return changeSetQuery.data.value[ctx.value.changeSetId.value];
+    const changeSets = _.keyBy(changeSetQuery.data.value?.changeSets, "id");
+    return changeSets[ctx.value.changeSetId.value];
   });
 
   return { openChangeSets, changeSet, headChangeSetId, defaultApprovers };
