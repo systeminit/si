@@ -4,15 +4,12 @@ import { SdfApiClient } from "../sdf_api_client.ts";
 import {
     runWithTemporaryChangeset,
     sleepBetween,
-    createComponent,
     createAsset,
     updateAssetCode,
     nilId,
-    getQualificationSummary,
-    getPropertyEditor,
-    attributeValueIdForPropPath,
-    setAttributeValue,
     createQualification,
+    eventualMVAssert,
+    getViews,
 } from "../test_helpers.ts";
 
 export default async function emulate_authoring(sdfApiClient: SdfApiClient) {
@@ -23,31 +20,51 @@ export default async function emulate_authoring(sdfApiClient: SdfApiClient) {
 async function emulate_authoring_inner(sdf: SdfApiClient,
     changeSetId: string,
 ) {
-    sdf.listenForDVUs();
+
+    // Get the views and find the default one
+    const views = await getViews(sdf, changeSetId);
+    const defaultView = views.find((v: any) => v.isDefault);
+    assert(defaultView, "Expected to find a default view");
 
     // Create new asset
     let schemaVariantId = await createAsset(sdf, changeSetId, "doubler");
 
+    // wait for and verify schema variant MV
+    await eventualMVAssert(
+        sdf,
+        changeSetId,
+        "SchemaVariant",
+        schemaVariantId,
+        (mv) => mv.id === schemaVariantId,
+        "SchemaVariant MV should exist and have matching id"
+    );
+
     // Update Code and Regenerate
     schemaVariantId = await updateAssetCode(sdf, changeSetId, schemaVariantId, doublerAssetCode);
 
-    let doublerVariant = await sdf.call({
-        route: "get_variant", routeVars: {
-            workspaceId: sdf.workspaceId,
-            changeSetId,
-            schemaVariantId,
+    await eventualMVAssert(
+        sdf,
+        changeSetId,
+        "SchemaVariant",
+        schemaVariantId,
+        (mv) => {
+            const props = Object.values(mv.propTree?.props) || [];
+            return mv.id === schemaVariantId &&
+                props.some((p: any) => p.path === "root/domain/input") &&
+                props.some((p: any) => p.path === "root/domain/doubled");
         },
-    });
-    assert(doublerVariant?.props, "Expected props list");
-    assert(doublerVariant?.inputSockets, "Expected input sockets list");
-    assert(doublerVariant?.inputSockets.length === 0, "Expected no input sockets");
-    assert(doublerVariant?.outputSockets, "Expected output sockets list");
-    assert(doublerVariant?.outputSockets.length === 0, "Expected no output sockets");
+        "SchemaVariant MV should exist and have added input/doubled props"
+    );
+    let doublerVariant = await sdf.mjolnir(changeSetId, "SchemaVariant", schemaVariantId);
+    assert(doublerVariant?.propTree?.props, "Expected props list");
 
+    let doublerProps = Object.values(doublerVariant.propTree.props);
+
+    assert(Array.isArray(doublerProps), "Expected props to be an array");
     // Add an attribute function
-    const outputProp = doublerVariant.props.find((p) => p.path === "/root/domain/doubled");
-    assert(outputProp, "Expected to find output prop");
-    let inputProp = doublerVariant.props.find((p) => p.path === "/root/domain/input");
+    const outputProp = doublerProps.find((p: any) => p.path === "root/domain/doubled");
+    assert(outputProp, "Expected to find doubled prop");
+    let inputProp: any = doublerProps.find((p: any) => p.path === "root/domain/input");
     assert(inputProp, "Expected to find input prop");
     const args = [
         {
@@ -59,34 +76,61 @@ async function emulate_authoring_inner(sdf: SdfApiClient,
     ];
 
     const doubleFuncId = await createAttributeFunction(sdf, changeSetId, "double", doublerVariant.id, doubleFuncCode, outputProp.id, args);
+    let createComponentBody = {
+        "schemaVariantId": schemaVariantId,
+        "x": "0",
+        "y": "0",
+        "height": "0",
+        "width": "0",
+        "parentId": null,
+        "schemaType": "installed"
 
+    };
 
     // create a component for the doubler
-    const doublerComponentId = await createComponent(sdf, changeSetId, doublerVariant.schemaVariantId, 0, 0, undefined, true);
-
-    // update input prop to be a number
-    const { values: doublerPropValues } = await getPropertyEditor(
+    const createComponentResp = await sdf.call({
+        route: "create_component_v2",
+        routeVars: {
+            workspaceId: sdf.workspaceId,
+            changeSetId,
+            viewId: defaultView.id,
+        },
+        body: createComponentBody,
+    });
+    const doublerComponentId = createComponentResp?.componentId;
+    assert(doublerComponentId, "Expected to get a component id after creation");
+    await eventualMVAssert(
         sdf,
         changeSetId,
+        "Component",
         doublerComponentId,
+        (mv) => mv.id === doublerComponentId && mv.qualificationTotals.succeeded === 0,
+        "Component MV should exist"
     );
 
+    // update input prop to be a number
+    const updateRegionResponse = await sdf.call({
+        route: "attributes",
+        routeVars: {
+            workspaceId: sdf.workspaceId,
+            changeSetId,
+            componentId: doublerComponentId,
+        },
+        body: {
+            "/domain/input": "2",
+        },
+    });
 
-    const { attributeValueId, parentAttributeValueId, propId } =
-        attributeValueIdForPropPath(
-            "/root/domain/input",
-            doublerVariant.props,
-            doublerPropValues,
-        );
-    const inputValue = "2";
-    await setAttributeValue(
+    await eventualMVAssert(
         sdf,
         changeSetId,
+        "AttributeTree",
         doublerComponentId,
-        attributeValueId,
-        parentAttributeValueId,
-        propId,
-        inputValue,
+        (mv) => Object.values(mv.attributeValues).some(
+            (av: any) => av.path === "/domain/input" &&
+                av.value === "2",
+        ),
+        "Expected value to be set for domain/input",
     );
 
 
@@ -98,47 +142,49 @@ async function emulate_authoring_inner(sdf: SdfApiClient,
         doublerQualificationCode
     );
 
-    await sdf.waitForDVURoots(changeSetId, 2000, 60000);
 
-    // now let's check everything
-    const qualSummary = await getQualificationSummary(sdf, changeSetId);
-    assert(
-        Array.isArray(qualSummary?.components),
-        "Expected arguments list",
-    );
-    const componentQual = qualSummary?.components.find((c) => c.componentId === doublerComponentId);
-    assert(componentQual, "Expected to find qualification summary for created component");
-    assert(componentQual?.failed === 1, "Expected to have one qualification failed as it doesn't yet have the value set");
-    const { values: doublerValues } = await getPropertyEditor(
+    // it is failing
+    await eventualMVAssert(
         sdf,
         changeSetId,
+        "Component",
         doublerComponentId,
+        (mv) => mv.qualificationTotals.failed === 1,
+        "Component should have a failed qualification now",
     );
 
-    const doubleAV =
-        attributeValueIdForPropPath(
-            "/root/domain/doubled",
-            doublerVariant.props,
-            doublerValues,
-        );
 
-    assert(doubleAV?.value === "4", `Expected doubled attribute value to be 4 but found ${doubleAV?.value}`);
+    await eventualMVAssert(
+        sdf,
+        changeSetId,
+        "AttributeTree",
+        doublerComponentId,
+        (mv) => Object.values(mv.attributeValues).some(
+            (av: any) => av.path === "/domain/doubled" &&
+                av.value === "4",
+        ),
+        "Expected doubled attribute value to be 4",
+    );
 
     // Now let's add a prop, regenerate, add an attribute func, and make sure it all works
     schemaVariantId = await updateAssetCode(sdf, changeSetId, schemaVariantId, doublerAssetCodeAddedTripled);
-    doublerVariant = await sdf.call({
-        route: "get_variant", routeVars: {
-            workspaceId: sdf.workspaceId,
-            changeSetId,
-            schemaVariantId,
-        },
-    });
+    await eventualMVAssert(
+        sdf,
+        changeSetId,
+        "SchemaVariant",
+        schemaVariantId,
+        (mv) => Object.values(mv.propTree.props).some((p: any) => p.path === "root/domain/tripled"),
+        "SchemaVariant should have new tripled prop"
+    );
 
+    doublerVariant = await sdf.mjolnir(changeSetId, "SchemaVariant", schemaVariantId);
+    doublerProps = Object.values(doublerVariant.propTree.props);
+    assert(Array.isArray(doublerProps), "Expected props to be an array");
 
     // Add an attribute function
-    const tripleProp = doublerVariant.props.find((p) => p.path === "/root/domain/tripled");
+    const tripleProp = doublerProps.find((p: any) => p.path === "root/domain/tripled");
     assert(tripleProp, "Expected to find output prop");
-    inputProp = doublerVariant.props.find((p) => p.path === "/root/domain/input");
+    inputProp = doublerProps.find((p: any) => p.path === "root/domain/input");
     assert(inputProp, "Expected to find input prop");
     const triplerArgs = [
         {
@@ -151,29 +197,18 @@ async function emulate_authoring_inner(sdf: SdfApiClient,
 
     const tripleFuncId = await createAttributeFunction(sdf, changeSetId, "triple", schemaVariantId, tripleFuncCode, tripleProp.id, triplerArgs);
 
-    const newDoublerVariant = await sdf.call({
-        route: "get_variant", routeVars: {
-            workspaceId: sdf.workspaceId,
-            changeSetId,
-            schemaVariantId,
-        },
-    });
-    await sdf.waitForDVURoots(changeSetId, 2000, 60000);
-
-    // Let's make sure this updated accurately on the component
-    const { values: triplerValues } = await getPropertyEditor(
+    // now ensure the component has the new prop too and it's value has been updated
+    await eventualMVAssert(
         sdf,
         changeSetId,
+        "AttributeTree",
         doublerComponentId,
+        (mv) => Object.values(mv.attributeValues).some(
+            (av: any) => av.path === "/domain/tripled" &&
+                av.value === "6",
+        ),
+        "Expected tripled attribute value to be 6",
     );
-
-    const tripleAV =
-        attributeValueIdForPropPath(
-            "/root/domain/tripled",
-            newDoublerVariant.props,
-            triplerValues,
-        );
-    assert(tripleAV?.value === "6", `Expected doubled attribute value to be 6  but found ${tripleAV?.value}`);
 
 }
 
