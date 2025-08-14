@@ -501,6 +501,7 @@ import ExploreSearchBarSkeleton from "@/newhotness/skeletons/ExploreSearchBarSke
 import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue";
 import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import MapComponent from "./Map.vue";
 import {
   collapsingGridStyles,
@@ -541,6 +542,7 @@ import { useComponentSearch } from "./logic_composables/search";
 import { routes, useApi } from "./api_composables";
 import { ExploreGridRowData } from "./explore_grid/ExploreGridRow.vue";
 
+const featureFlagsStore = useFeatureFlagsStore();
 const router = useRouter();
 const route = useRoute();
 const ctx = inject<Context>("CONTEXT");
@@ -1640,153 +1642,22 @@ watch([focusedComponent], () => {
 const searchRef = ref<InstanceType<typeof VormInput>>();
 const mountEmitters = () => {
   removeEmitters();
-  keyEmitter.on("a", onA);
-  keyEmitter.on("c", onC);
-  keyEmitter.on("k", onK);
-  keyEmitter.on("n", onN);
-  keyEmitter.on("e", onE);
-  keyEmitter.on("d", onD);
-  keyEmitter.on("u", onU);
-  keyEmitter.on("r", onR);
-  keyEmitter.on("p", onP);
-  keyEmitter.on("t", onT);
-  keyEmitter.on("ArrowRight", onArrow);
-  keyEmitter.on("ArrowLeft", onArrow);
-  keyEmitter.on("Enter", onEnter);
-  keyEmitter.on("Tab", onTab);
-  keyEmitter.on("Escape", onEscape);
-  keyEmitter.on("Backspace", onBackspace);
-  keyEmitter.on("Delete", onBackspace);
-  keyEmitter.on("/", openShortcutModal);
-  keyEmitter.on("?", openShortcutModal);
-  keyEmitter.on("m", onM);
+  for (const [key, func] of Object.entries(shortcuts)) {
+    keyEmitter.on(key, func);
+  }
   windowResizeEmitter.on("resize", onResize);
 };
 const removeEmitters = () => {
-  keyEmitter.off("a", onA);
-  keyEmitter.off("c", onC);
-  keyEmitter.off("k", onK);
-  keyEmitter.off("n", onN);
-  keyEmitter.off("e", onE);
-  keyEmitter.off("d", onD);
-  keyEmitter.off("u", onU);
-  keyEmitter.off("r", onR);
-  keyEmitter.off("p", onP);
-  keyEmitter.off("ArrowRight", onArrow);
-  keyEmitter.off("ArrowLeft", onArrow);
-  keyEmitter.off("Enter", onEnter);
-  keyEmitter.off("Tab", onTab);
-  keyEmitter.off("Escape", onEscape);
-  keyEmitter.off("Backspace", onBackspace);
-  keyEmitter.off("Delete", onBackspace);
-  keyEmitter.off("/", openShortcutModal);
-  keyEmitter.off("?", openShortcutModal);
-  keyEmitter.off("m", onM);
+  for (const [key, func] of Object.entries(shortcuts)) {
+    keyEmitter.off(key, func);
+  }
   windowResizeEmitter.off("resize", onResize);
 };
 
-const onA = (e: KeyDetails["a"]) => {
-  e.preventDefault();
-  if (e.metaKey || e.ctrlKey) {
-    const components = allVisibleComponents.value;
-    [...components.keys()].forEach((index) => {
-      const component = componentList.value[index];
-      if (component) {
-        selectComponent(index);
-      }
-    });
-  }
+const onArrow = () => {
+  componentContextMenuRef.value?.focusFirstItem(true);
 };
 
-const onC = (e: KeyDetails["c"]) => {
-  e.preventDefault();
-  if (e.metaKey || e.ctrlKey) return;
-  emit("openChangesetModal");
-};
-
-const onK = (e: KeyDetails["k"]) => {
-  e.preventDefault();
-
-  // Deselect the current selection based on which screen you are on
-  if (showGrid.value) {
-    clearSelection();
-  } else {
-    mapRef.value?.deselect();
-  }
-
-  // same behavior on the grid and map!
-  searchRef.value?.focus();
-};
-const onN = (e: KeyDetails["n"]) => {
-  e.preventDefault();
-
-  // same behavior on the grid and map!
-  openAddComponentModal();
-};
-const onE = (e: KeyDetails["e"]) => {
-  e.preventDefault();
-  if (showGrid.value) {
-    if (!selectionComponentsForAction.value) return;
-
-    componentContextMenuRef.value?.componentsStartErase(
-      selectionComponentsForAction.value,
-    );
-  } else {
-    mapRef.value?.onE(e);
-  }
-};
-const onD = (e: KeyDetails["d"]) => {
-  e.preventDefault();
-
-  if (showGrid.value) {
-    if (!selectionComponentsForActionIds.value) return;
-    componentContextMenuRef.value?.duplicateComponentStart(
-      selectionComponentsForActionIds.value,
-    );
-  } else {
-    mapRef.value?.onD(e);
-  }
-};
-const onP = (e: KeyDetails["p"]) => {
-  // You can only pin one component at a time!
-  if (selectedComponentIndexes.size > 1) return;
-
-  e.preventDefault();
-  if (showGrid.value) {
-    if (!focusedComponent.value || selectedComponents.value.length > 1) return;
-
-    // We do not need the context menu to pin and unpin.
-    if (focusedComponentIsPinned.value) {
-      pinnedComponentId.value = undefined;
-    } else {
-      pinnedComponentId.value = focusedComponent.value.id;
-    }
-  } else {
-    mapRef.value?.onP(e);
-  }
-};
-const onU = (e: KeyDetails["u"]) => {
-  e.preventDefault();
-
-  if (showGrid.value) {
-    if (!selectionComponentsForActionIds.value) return;
-
-    if (allSelectedComponentsAreUpgradeable.value) {
-      componentContextMenuRef.value?.componentsUpgrade(
-        selectionComponentsForActionIds.value,
-      );
-    }
-  } else {
-    mapRef.value?.onU(e);
-  }
-};
-const onT = (e: KeyDetails["t"]) => {
-  e.preventDefault();
-
-  if (showGrid.value && selectedComponents.value.length > 0) {
-    componentContextMenuRef.value?.createTemplateStart();
-  }
-};
 const onBackspace = (e: KeyDetails["Backspace"] | KeyDetails["Delete"]) => {
   e.preventDefault();
 
@@ -1797,43 +1668,6 @@ const onBackspace = (e: KeyDetails["Backspace"] | KeyDetails["Delete"]) => {
     );
   } else {
     mapRef.value?.onBackspace(e);
-  }
-};
-
-const onR = (e: KeyDetails["r"]) => {
-  if (e.metaKey || e.ctrlKey) {
-    // This is the chrome hotkey combo for refreshing the page! Let it happen!
-    return;
-  }
-  e.preventDefault();
-
-  if (showGrid.value) {
-    if (!selectionComponentsForActionIds.value) return;
-    if (allSelectedComponentsAreRestorable.value) {
-      componentContextMenuRef.value?.componentsRestore(
-        selectionComponentsForActionIds.value,
-      );
-    }
-  } else {
-    mapRef.value?.onR(e);
-  }
-};
-const onM = (e: KeyDetails["m"]) => {
-  e.preventDefault();
-  if (showGrid.value) {
-    // Do nothing in grid mode
-    return;
-  }
-  mapRef.value?.onM(e);
-};
-const onEscape = () => {
-  if (isThereAModalOpen.value || bulkEditing.value) return;
-
-  if (showGrid.value) {
-    searchRef.value?.blur();
-    clearSelection();
-  } else {
-    mapRef.value?.onEscape();
   }
 };
 
@@ -1856,37 +1690,207 @@ const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
   }
 };
 
-const onEnter = (e: KeyDetails["Enter"]) => {
-  if (selectedComponentIndexes.size > 1) {
-    // TODO(Wendy) - for now, this does nothing.
-    return;
+const onEscape = () => {
+  if (isThereAModalOpen.value || bulkEditing.value) return;
+
+  if (showGrid.value) {
+    searchRef.value?.blur();
+    clearSelection();
+  } else {
+    mapRef.value?.onEscape();
   }
-
-  // If there is a focused component, we know we may have to ignore the "ENTER" key press.
-  if (focusedComponentIdx.value !== undefined) {
-    // If the focused component is actually a component (and not the search bar), and it is not a
-    // pinned component, then we ignore the "ENTER" key press since the component context menu will
-    // pop up.
-    if (focusedComponentIdx.value !== -1 && !focusedComponentIsPinned.value) {
-      return;
-    }
-  }
-
-  e.preventDefault();
-
-  // If dealing with the map view, use its navigation and return immediately.
-  if (!showGrid.value) {
-    if (mapRef.value) {
-      mapRef.value.navigateToSelectedComponent();
-    }
-    return;
-  }
-
-  navigateToFocusedComponent();
 };
 
-const onArrow = () => {
-  componentContextMenuRef.value?.focusFirstItem(true);
+const openShortcutModal = () => {
+  shortcutModalRef.value?.open();
+};
+
+const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
+  a: (e) => {
+    e.preventDefault();
+    if (e.metaKey || e.ctrlKey) {
+      const components = allVisibleComponents.value;
+      [...components.keys()].forEach((index) => {
+        const component = componentList.value[index];
+        if (component) {
+          selectComponent(index);
+        }
+      });
+    }
+  },
+  // b: undefined,
+  c: (e) => {
+    e.preventDefault();
+    if (e.metaKey || e.ctrlKey) return;
+    emit("openChangesetModal");
+  },
+  d: (e) => {
+    e.preventDefault();
+
+    if (showGrid.value) {
+      if (!selectionComponentsForActionIds.value) return;
+      componentContextMenuRef.value?.duplicateComponentStart(
+        selectionComponentsForActionIds.value,
+      );
+    } else {
+      mapRef.value?.onD(e);
+    }
+  },
+  e: (e) => {
+    e.preventDefault();
+    if (showGrid.value) {
+      if (!selectionComponentsForAction.value) return;
+
+      componentContextMenuRef.value?.componentsStartErase(
+        selectionComponentsForAction.value,
+      );
+    } else {
+      mapRef.value?.onE(e);
+    }
+  },
+  f: (e) => {
+    if (showGrid.value) {
+      if (!selectionComponentsForActionIds.value) return;
+      if (allSelectedComponentsAreRestorable.value) {
+        componentContextMenuRef.value?.componentsRestore(
+          selectionComponentsForActionIds.value,
+        );
+      }
+    } else {
+      mapRef.value?.onR(e);
+    }
+  },
+  // g: undefined,
+  // h: undefined,
+  // i: undefined,
+  // j: undefined,
+  k: (e) => {
+    e.preventDefault();
+
+    // Deselect the current selection based on which screen you are on
+    if (showGrid.value) {
+      clearSelection();
+    } else {
+      mapRef.value?.deselect();
+    }
+
+    // same behavior on the grid and map!
+    searchRef.value?.focus();
+  },
+  // l: undefined,
+  m: (e) => {
+    e.preventDefault();
+    if (showGrid.value) {
+      // Do nothing in grid mode
+      return;
+    }
+    mapRef.value?.onM(e);
+  },
+  n: (e) => {
+    e.preventDefault();
+
+    // same behavior on the grid and map!
+    openAddComponentModal();
+  },
+  // o: undefined,
+  p: (e) => {
+    // You can only pin one component at a time!
+    if (selectedComponentIndexes.size > 1) return;
+
+    e.preventDefault();
+    if (showGrid.value) {
+      if (!focusedComponent.value || selectedComponents.value.length > 1)
+        return;
+
+      // We do not need the context menu to pin and unpin.
+      if (focusedComponentIsPinned.value) {
+        pinnedComponentId.value = undefined;
+      } else {
+        pinnedComponentId.value = focusedComponent.value.id;
+      }
+    } else {
+      mapRef.value?.onP(e);
+    }
+  },
+  // q: undefined,
+  r: (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      // This is the chrome hotkey combo for refreshing the page! Let it happen!
+      return;
+    }
+
+    if (featureFlagsStore.REVIEW_PAGE) {
+      e.preventDefault();
+      router.push({
+        name: "new-hotness-review",
+      });
+    }
+  },
+  // s: undefined,
+  t: (e) => {
+    e.preventDefault();
+
+    if (showGrid.value && selectedComponents.value.length > 0) {
+      componentContextMenuRef.value?.createTemplateStart();
+    }
+  },
+  u: (e) => {
+    e.preventDefault();
+
+    if (showGrid.value) {
+      if (!selectionComponentsForActionIds.value) return;
+
+      if (allSelectedComponentsAreUpgradeable.value) {
+        componentContextMenuRef.value?.componentsUpgrade(
+          selectionComponentsForActionIds.value,
+        );
+      }
+    } else {
+      mapRef.value?.onU(e);
+    }
+  },
+  // w: undefined,
+  // x: undefined,
+  // y: undefined,
+  // z: undefined,
+
+  ArrowRight: onArrow,
+  ArrowLeft: onArrow,
+  // Up and Down arrows are used by the ComponentContextMenu
+  Enter: (e) => {
+    if (selectedComponentIndexes.size > 1) {
+      // TODO(Wendy) - for now, this does nothing.
+      return;
+    }
+
+    // If there is a focused component, we know we may have to ignore the "ENTER" key press.
+    if (focusedComponentIdx.value !== undefined) {
+      // If the focused component is actually a component (and not the search bar), and it is not a
+      // pinned component, then we ignore the "ENTER" key press since the component context menu will
+      // pop up.
+      if (focusedComponentIdx.value !== -1 && !focusedComponentIsPinned.value) {
+        return;
+      }
+    }
+
+    e.preventDefault();
+
+    // If dealing with the map view, use its navigation and return immediately.
+    if (!showGrid.value) {
+      if (mapRef.value) {
+        mapRef.value.navigateToSelectedComponent();
+      }
+      return;
+    }
+
+    navigateToFocusedComponent();
+  },
+  Tab: onTab,
+  Escape: onEscape,
+  Backspace: onBackspace,
+  Delete: onBackspace,
+  "/": openShortcutModal,
+  "?": openShortcutModal,
 };
 
 // ================================================================================================
@@ -2098,10 +2102,6 @@ const openAddComponentModal = () => {
 };
 
 const shortcutModalRef = ref<InstanceType<typeof ShortcutModal>>();
-
-const openShortcutModal = () => {
-  shortcutModalRef.value?.open();
-};
 
 const addViewModalRef = ref<InstanceType<typeof AddViewModal>>();
 
