@@ -35,12 +35,12 @@ use si_generate_template::{
 };
 
 pub async fn prepare_and_generate(
+    ctx: &dal::DalContext,
     component_ids: Vec<ComponentId>,
     asset_name: String,
     func_name: String,
     category: String,
     color: String,
-    ctx: &dal::DalContext,
 ) -> Result<
     (
         SchemaVariant,
