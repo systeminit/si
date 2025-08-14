@@ -9,7 +9,7 @@ import {
   removeInputSockets,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets } from "../spec/pkgs.ts";
 import {
   addPropSuggestSource,
   createScalarProp,
@@ -37,25 +37,20 @@ import { LeafFunctionSpec } from "../bindings/LeafFunctionSpec.ts";
 const logger = _logger.ns("assetOverrides").seal();
 
 export function assetSpecificOverrides(
-  incomingSpecs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
-
+  incomingSpecs: readonly ExpandedPkgSpecWithSockets[],
+) {
   for (const spec of incomingSpecs) {
     if (overrides.has(spec.name)) {
       logger.debug(`Running override for ${spec.name}`);
       overrides.get(spec.name)?.(spec);
     }
-    newSpecs.push(spec);
   }
-
-  return newSpecs;
 }
 
-type OverrideFn = (spec: ExpandedPkgSpec) => void;
+type OverrideFn = (spec: ExpandedPkgSpecWithSockets) => void;
 
 const overrides = new Map<string, OverrideFn>([
-  ["ContainerDefinitions Secrets", (spec: ExpandedPkgSpec) => {
+  ["ContainerDefinitions Secrets", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const prop = propForOverride(variant.domain, "ValueFrom");
@@ -64,7 +59,7 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(socket, { tokens: ["Id"] });
     variant.sockets.push(socket);
   }],
-  ["AWS::EC2::Instance", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::Instance", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const overrideUserDataAttributeFuncCode = Deno.readTextFileSync(
@@ -201,7 +196,7 @@ const overrides = new Map<string, OverrideFn>([
     spec.funcs.push(startFunc);
     variant.actionFuncs.push(startActionFuncSpec);
   }],
-  ["AWS::EC2::LaunchTemplate", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::LaunchTemplate", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     // Ensures we can connect to the Version input for the EC2 Instance and AutoScaling Group Assets
@@ -258,7 +253,7 @@ const overrides = new Map<string, OverrideFn>([
 
     modifyFunc(spec, discoverTargetId, newDiscoverId, discoverPath);
   }],
-  ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::NetworkInterface", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     // Add an annotation for the Id output socket to connect to HostedZoneId
@@ -276,7 +271,7 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
     variant.sockets.push(groupSocket);
   }],
-  ["AWS::EC2::Route", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::Route", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     removeInputSockets(variant, ["Gateway Id"]);
@@ -307,7 +302,7 @@ const overrides = new Map<string, OverrideFn>([
 
     variant.sockets.push(egressOnlyIgwInputSocket);
   }],
-  ["AWS::EC2::VPCEndpoint", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::VPCEndpoint", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const prop = propForOverride(variant.domain, "PolicyDocument");
@@ -315,7 +310,7 @@ const overrides = new Map<string, OverrideFn>([
     prop.kind = "json";
     prop!.data.widgetKind = "CodeEditor";
   }],
-  ["AWS::KMS::Key", (spec: ExpandedPkgSpec) => {
+  ["AWS::KMS::Key", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const prop = propForOverride(variant.domain, "KeyPolicy");
@@ -323,7 +318,7 @@ const overrides = new Map<string, OverrideFn>([
     prop.kind = "json";
     prop!.data.widgetKind = "CodeEditor";
   }],
-  ["AWS::Logs::LogGroup", (spec: ExpandedPkgSpec) => {
+  ["AWS::Logs::LogGroup", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const prop = propForOverride(variant.domain, "DataProtectionPolicy");
@@ -331,7 +326,7 @@ const overrides = new Map<string, OverrideFn>([
     prop.kind = "json";
     prop!.data.widgetKind = "CodeEditor";
   }],
-  ["AWS::RDS::DBParameterGroup", (spec: ExpandedPkgSpec) => {
+  ["AWS::RDS::DBParameterGroup", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const prop = propForOverride(variant.domain, "Parameters");
@@ -349,7 +344,7 @@ const overrides = new Map<string, OverrideFn>([
   }],
   [
     "AWS::SecretsManager::Secret",
-    (spec: ExpandedPkgSpec) => {
+    (spec) => {
       addSecretProp("Secret String", "secretString", ["SecretString"])(spec);
       const variant = spec.schemas[0].variants[0];
 
@@ -383,7 +378,7 @@ const overrides = new Map<string, OverrideFn>([
   ],
   [
     "AWS::RDS::DBInstance",
-    (spec: ExpandedPkgSpec) => {
+    (spec) => {
       addSecretProp("Secret String", "secretString", ["MasterUserPassword"])(
         spec,
       );
@@ -399,7 +394,7 @@ const overrides = new Map<string, OverrideFn>([
       setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
     },
   ],
-  ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::NetworkInterface", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const prop = propForOverride(variant.domain, "GroupSet");
@@ -409,7 +404,7 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
     variant.sockets.push(groupSocket);
   }],
-  ["AWS::EC2::SecurityGroupIngress", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::SecurityGroupIngress", (spec) => {
     const variant = spec.schemas[0].variants[0];
     const domainId = variant.domain.uniqueId;
 
@@ -446,7 +441,7 @@ const overrides = new Map<string, OverrideFn>([
     spec.funcs.push(func);
     variant.leafFunctions.push(leafFuncSpec);
   }],
-  ["AWS::EC2::SecurityGroup", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::SecurityGroup", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     // Add SG GroupName to an output socket
@@ -466,7 +461,7 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(groupIdSocket, { tokens: ["Security Group Id"] });
     setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
   }],
-  ["AWS::EC2::SecurityGroupEgress", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::SecurityGroupEgress", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     // Add Destination SG ID to an input socket
@@ -484,7 +479,7 @@ const overrides = new Map<string, OverrideFn>([
     variant.sockets.push(groupIdSocket);
   }],
 
-  ["AWS::AutoScaling::AutoScalingGroup", (spec: ExpandedPkgSpec) => {
+  ["AWS::AutoScaling::AutoScalingGroup", (spec) => {
     const variant = spec.schemas[0].variants[0];
     const launchTemplateProp = propForOverride(
       variant.domain,
@@ -545,7 +540,7 @@ const overrides = new Map<string, OverrideFn>([
       "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/awsCloudControlUpdate.ts";
     modifyFunc(spec, updateTargetId, newUpdateId, updatePath);
   }],
-  ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
+  ["TargetGroup Targets", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     // Add an annotation for the Id output socket to connect to HostedZoneId
@@ -558,14 +553,14 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(socket, { tokens: ["arn", "string"] });
     setAnnotationOnSocket(socket, { tokens: ["arn"] });
   }],
-  ["AWS::ImageBuilder::Component", (spec: ExpandedPkgSpec) => {
+  ["AWS::ImageBuilder::Component", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const prop = propForOverride(variant.domain, "Data");
     if (!prop) return;
     prop!.data.widgetKind = "CodeEditor";
   }],
-  ["AWS::S3::BucketPolicy", (spec: ExpandedPkgSpec) => {
+  ["AWS::S3::BucketPolicy", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const prop = propForOverride(variant.domain, "PolicyDocument");
@@ -573,7 +568,7 @@ const overrides = new Map<string, OverrideFn>([
     prop.kind = "json";
     prop!.data.widgetKind = "CodeEditor";
   }],
-  ["AWS::EC2::VPCCidrBlock", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::VPCCidrBlock", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const ipv6IpamProp = propForOverride(variant.domain, "Ipv6IpamPoolId");
@@ -595,7 +590,7 @@ const overrides = new Map<string, OverrideFn>([
     ]);
     variant.sockets.push(ipv4IpamSocket);
   }],
-  ["AWS::ECS::Cluster", (spec: ExpandedPkgSpec) => {
+  ["AWS::ECS::Cluster", (spec) => {
     const variant = spec.schemas[0].variants[0];
     const configurationProp = propForOverride(variant.domain, "Configuration");
     if (!configurationProp || configurationProp.kind !== "object") return;
@@ -645,7 +640,7 @@ const overrides = new Map<string, OverrideFn>([
       prop: "/resource_value/KeyId",
     });
   }],
-  ["AWS::EC2::VPCPeeringConnection", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::VPCPeeringConnection", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const peerVpcIdProp = propForOverride(
@@ -674,7 +669,7 @@ const overrides = new Map<string, OverrideFn>([
     ], "Peer Owner Id");
     variant.sockets.push(peerOwnerIdSocket);
   }],
-  ["AWS::ApiGatewayV2::Route", (spec: ExpandedPkgSpec) => {
+  ["AWS::ApiGatewayV2::Route", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const requestModelsProp = propForOverride(variant.domain, "RequestModels");
@@ -690,7 +685,7 @@ const overrides = new Map<string, OverrideFn>([
     requestParametersProp.kind = "json";
     requestParametersProp!.data.widgetKind = "CodeEditor";
   }],
-  ["Certificate DomainValidationOptions", (spec: ExpandedPkgSpec) => {
+  ["Certificate DomainValidationOptions", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const socket = variant.sockets.find(
@@ -701,7 +696,7 @@ const overrides = new Map<string, OverrideFn>([
 
     setAnnotationOnSocket(socket, { tokens: ["Id"] });
   }],
-  ["AWS::ElasticLoadBalancingV2::LoadBalancer", (spec: ExpandedPkgSpec) => {
+  ["AWS::ElasticLoadBalancingV2::LoadBalancer", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     // Add annotations to Security Groups input socket
@@ -713,7 +708,7 @@ const overrides = new Map<string, OverrideFn>([
 
     setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
   }],
-  ["Listener DefaultActions", (spec: ExpandedPkgSpec) => {
+  ["Listener DefaultActions", (spec) => {
     const targetGroupArnToListAttributeFunc = Deno.readTextFileSync(
       "./src/cloud-control-funcs/overrides/Listener DefaultActions/attribute/setTargetGroupArns.ts",
     );
@@ -770,7 +765,7 @@ const overrides = new Map<string, OverrideFn>([
       },
     ];
   }],
-  ["TaskDefinition ContainerDefinitions", (spec: ExpandedPkgSpec) => {
+  ["TaskDefinition ContainerDefinitions", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const imageSocket = variant.sockets.find(
@@ -781,7 +776,7 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(imageSocket, { tokens: ["repositoryuri"] });
     setAnnotationOnSocket(imageSocket, { tokens: ["repository uri"] });
   }],
-  ["AWS::Lambda::Function", (spec: ExpandedPkgSpec) => {
+  ["AWS::Lambda::Function", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const roleSocket = variant.sockets.find(
@@ -792,7 +787,7 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(roleSocket, { tokens: ["arn", "string"] });
     setAnnotationOnSocket(roleSocket, { tokens: ["arn"] });
   }],
-  ["AWS::ECS::TaskDefinition", (spec: ExpandedPkgSpec) => {
+  ["AWS::ECS::TaskDefinition", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     // List of props to remove read-only
@@ -863,7 +858,7 @@ const overrides = new Map<string, OverrideFn>([
       "./src/cloud-control-funcs/overrides/AWS::ECS::TaskDefinition/actions/update.ts";
     modifyFunc(spec, updateTargetId, newUpdateId, newUpdatePath);
   }],
-  ["AWS::ECR::RegistryPolicy", (spec: ExpandedPkgSpec) => {
+  ["AWS::ECR::RegistryPolicy", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const policyTextProp = propForOverride(variant.domain, "PolicyText");
@@ -879,7 +874,7 @@ const overrides = new Map<string, OverrideFn>([
     ], "Policy Document");
     variant.sockets.push(policyDocumentSocket);
   }],
-  ["AWS::EKS::Cluster", (spec: ExpandedPkgSpec) => {
+  ["AWS::EKS::Cluster", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const nameOutputSocket = variant.sockets.find(
@@ -890,7 +885,7 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(nameOutputSocket, { tokens: ["Cluster Name"] });
     setAnnotationOnSocket(nameOutputSocket, { tokens: ["ClusterName"] });
   }],
-  ["AWS::WAFv2::WebACLAssociation", (spec: ExpandedPkgSpec) => {
+  ["AWS::WAFv2::WebACLAssociation", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const resourceArnSocket = variant.sockets.find(
@@ -900,7 +895,7 @@ const overrides = new Map<string, OverrideFn>([
     if (!resourceArnSocket) return;
     setAnnotationOnSocket(resourceArnSocket, { tokens: ["LoadBalancerArn"] });
   }],
-  ["AWS::EKS::Nodegroup", (spec: ExpandedPkgSpec) => {
+  ["AWS::EKS::Nodegroup", (spec) => {
     const variant = spec.schemas[0].variants[0];
     const domain = variant.domain;
 
@@ -930,7 +925,7 @@ const overrides = new Map<string, OverrideFn>([
     ], "Node Role");
     variant.sockets.push(nodeRoleSocket);
   }],
-  ["AWS::RDS::DBSubnetGroup", (spec: ExpandedPkgSpec) => {
+  ["AWS::RDS::DBSubnetGroup", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const subnetIdSocket = variant.sockets.find(
@@ -940,7 +935,7 @@ const overrides = new Map<string, OverrideFn>([
     if (!subnetIdSocket) return;
     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
   }],
-  ["VPNConnection VpnTunnelOptionsSpecifications", (spec: ExpandedPkgSpec) => {
+  ["VPNConnection VpnTunnelOptionsSpecifications", (spec) => {
     const variant = spec.schemas[0].variants[0];
     const domainId = variant.domain.uniqueId;
 
@@ -998,7 +993,7 @@ const overrides = new Map<string, OverrideFn>([
       }
     }
   }],
-  ["AWS::ElastiCache::ServerlessCache", (spec: ExpandedPkgSpec) => {
+  ["AWS::ElastiCache::ServerlessCache", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const subnetIdSocket = variant.sockets.find(
@@ -1010,7 +1005,7 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnetid"] });
     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnets"] });
   }],
-  ["AWS::ElastiCache::SubnetGroup", (spec: ExpandedPkgSpec) => {
+  ["AWS::ElastiCache::SubnetGroup", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const subnetIdSocket = variant.sockets.find(
@@ -1022,7 +1017,7 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnetid"] });
     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnets"] });
   }],
-  ["AWS::EC2::TransitGateway", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::TransitGateway", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const idSocket = variant.sockets.find(
@@ -1033,10 +1028,9 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(idSocket, { tokens: ["TransitGatewayId"] });
     setAnnotationOnSocket(idSocket, { tokens: ["Transit Gateway Id"] });
   }],
-  ["AWS::EC2::VPNConnection", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::VPNConnection", (spec) => {
     const variant = spec.schemas[0].variants[0];
     const resource_value = variant.resourceValue;
-    const domain = variant.domain;
 
     removeInputSockets(variant, [
       "Type",
@@ -1087,7 +1081,7 @@ const overrides = new Map<string, OverrideFn>([
       "./src/cloud-control-funcs/overrides/AWS::EC2::VPNConnection/actions/refresh.ts";
     modifyFunc(spec, refreshTargetId, newRefreshId, refreshPath);
   }],
-  ["AWS::EC2::TransitGatewayAttachment", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::TransitGatewayAttachment", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const subnetInputSocket = variant.sockets.find(
@@ -1097,9 +1091,8 @@ const overrides = new Map<string, OverrideFn>([
     if (!subnetInputSocket) return;
     setAnnotationOnSocket(subnetInputSocket, { tokens: ["subnets"] });
   }],
-  ["AWS::EC2::CustomerGateway", (spec: ExpandedPkgSpec) => {
+  ["AWS::EC2::CustomerGateway", (spec) => {
     const variant = spec.schemas[0].variants[0];
-    const domain = variant.domain;
 
     removeInputSockets(variant, [
       "Type",
@@ -1116,7 +1109,7 @@ const overrides = new Map<string, OverrideFn>([
       ];
     }
   }],
-  ["AWS::S3::Bucket", (spec: ExpandedPkgSpec) => {
+  ["AWS::S3::Bucket", (spec) => {
     const variant = spec.schemas[0].variants[0];
     const domain = variant.domain;
 
@@ -1134,7 +1127,7 @@ const overrides = new Map<string, OverrideFn>([
       ];
     }
   }],
-  ["AWS::CloudFront::Distribution", (spec: ExpandedPkgSpec) => {
+  ["AWS::CloudFront::Distribution", (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const certificateInputSocket = variant.sockets.find(
@@ -1210,8 +1203,8 @@ function addSecretProp(
   secretKind: string,
   secretKey: string,
   propPath: string[],
-) {
-  return (spec: ExpandedPkgSpec) => {
+): OverrideFn {
+  return (spec) => {
     const variant = spec.schemas[0].variants[0];
 
     const [secretName] = propPath.slice(-1);

@@ -1,12 +1,10 @@
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets } from "../spec/pkgs.ts";
 import { bfsPropTree } from "../spec/props.ts";
 import { setAnnotationOnSocket } from "../spec/sockets.ts";
 
 export function prettifySocketNames(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
-
+  specs: readonly ExpandedPkgSpecWithSockets[],
+) {
   for (const spec of specs) {
     const { variants: [variant] } = spec.schemas[0];
     const sockets = variant.sockets;
@@ -29,11 +27,7 @@ export function prettifySocketNames(
         }
       }
     });
-
-    newSpecs.push(spec);
   }
-
-  return newSpecs;
 }
 
 function toSpaceCase(name: string) {

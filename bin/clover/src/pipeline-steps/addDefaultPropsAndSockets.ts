@@ -5,7 +5,7 @@ import {
   ExpandedPropSpec,
 } from "../spec/props.ts";
 import { createInputSocketFromProp } from "../spec/sockets.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets } from "../spec/pkgs.ts";
 
 export interface PropUsageMap {
   createOnly: string[];
@@ -17,10 +17,8 @@ export interface PropUsageMap {
 }
 
 export function addDefaultPropsAndSockets(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
-
+  specs: readonly ExpandedPkgSpecWithSockets[],
+) {
   for (const spec of specs) {
     const [schema] = spec.schemas;
     const [schemaVariant] = schema.variants;
@@ -132,10 +130,9 @@ export function addDefaultPropsAndSockets(
       schemaVariant.sockets.push(createInputSocketFromProp(credProp));
 
       if (schemaVariant.secrets.kind !== "object") {
-        console.log(
+        throw new Error(
           `Could not generate default props and sockets for ${spec.name}: secrets is not object`,
         );
-        continue;
       }
 
       schemaVariant.secrets.entries.push(credProp);
@@ -143,8 +140,5 @@ export function addDefaultPropsAndSockets(
 
     // Finalize
     domain.entries.push(extraProp);
-    newSpecs.push(spec);
   }
-
-  return newSpecs;
 }

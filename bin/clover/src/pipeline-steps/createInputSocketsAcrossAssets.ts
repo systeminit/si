@@ -12,14 +12,13 @@ import {
 import { bfsPropTree } from "../spec/props.ts";
 import pluralize from "npm:pluralize";
 import { getOrCreateInputSocketFromProp } from "../spec/sockets.ts";
-import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets, ExpandedSchemaVariantSpecWithSockets } from "../spec/pkgs.ts";
 
 export function createInputSocketsBasedOnOutputSockets(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
-  const foundOutputSockets = {} as Record<string, ExpandedSchemaVariantSpec[]>;
-  const specsByName = {} as Record<string, ExpandedSchemaVariantSpec[]>;
+  specs: readonly ExpandedPkgSpecWithSockets[],
+) {
+  const foundOutputSockets = {} as Record<string, ExpandedSchemaVariantSpecWithSockets[]>;
+  const specsByName = {} as Record<string, ExpandedSchemaVariantSpecWithSockets[]>;
 
   // Get all output sockets
   for (const spec of specs) {
@@ -162,8 +161,5 @@ export function createInputSocketsBasedOnOutputSockets(
         }
       }
     }, { skipTypeProps: true });
-
-    newSpecs.push(spec);
   }
-  return newSpecs;
 }

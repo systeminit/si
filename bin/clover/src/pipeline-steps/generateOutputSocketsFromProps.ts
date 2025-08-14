@@ -4,13 +4,11 @@ import {
   getOrCreateOutputSocketFromProp,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
-import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets, ExpandedSchemaVariantSpecWithSockets } from "../spec/pkgs.ts";
 
 export function generateOutputSocketsFromProps(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
-
+  specs: readonly ExpandedPkgSpecWithSockets[],
+) {
   for (const spec of specs) {
     const [schema] = spec.schemas;
     const [schemaVariant] = schema.variants;
@@ -19,15 +17,11 @@ export function generateOutputSocketsFromProps(
     createSocketsFromResource(schemaVariant);
     createSocketsFromPrimaryIdentifier(schemaVariant);
     createSocketsForCommonProps(schemaVariant);
-
-    newSpecs.push(spec);
   }
-
-  return newSpecs;
 }
 
 function createSocketsFromResource(
-  variant: ExpandedSchemaVariantSpec,
+  variant: ExpandedSchemaVariantSpecWithSockets,
 ) {
   const resource = variant.resourceValue;
 
@@ -47,7 +41,7 @@ function createSocketsFromResource(
 }
 
 function createSocketsFromPrimaryIdentifier(
-  variant: ExpandedSchemaVariantSpec,
+  variant: ExpandedSchemaVariantSpecWithSockets,
 ) {
   const domain = variant.domain;
 
@@ -66,7 +60,7 @@ function createSocketsFromPrimaryIdentifier(
 
 // VariantName, VariantId props should always have sockets
 function createSocketsForCommonProps(
-  variant: ExpandedSchemaVariantSpec,
+  variant: ExpandedSchemaVariantSpecWithSockets,
 ) {
   const { domain } = variant;
   const variantName = variant.data.displayName;

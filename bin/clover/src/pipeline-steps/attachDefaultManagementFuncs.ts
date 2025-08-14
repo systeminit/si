@@ -6,8 +6,8 @@ import {
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
 export function attachDefaultManagementFuncs(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
+  specs: readonly ExpandedPkgSpec[],
+) {
   const defaultMgmtFuncs = createDefaultManagementFuncs();
 
   for (const spec of specs) {
@@ -26,6 +26,4 @@ export function attachDefaultManagementFuncs(
       );
     }
   }
-
-  return specs;
 }

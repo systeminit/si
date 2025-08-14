@@ -2,12 +2,11 @@ import _logger from "../logger.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { ExpandedPropSpec } from "../spec/props.ts";
 
-export function reorderProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
+export function reorderProps(specs: readonly ExpandedPkgSpec[]) {
   for (const { schemas: [{ variants: [variant] }] } of specs) {
     reorderPropChildren(variant.domain);
     reorderPropChildren(variant.resourceValue);
   }
-  return specs;
 }
 
 function reorderPropChildren(prop: ExpandedPropSpec) {

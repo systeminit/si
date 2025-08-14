@@ -4,15 +4,13 @@ import {
   createExtendedAnnotationForProp,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets } from "../spec/pkgs.ts";
 import { socketNameFromProp } from "../spec/sockets.ts";
 import { getSocketOnVariant } from "../spec/sockets.ts";
 
 export function annotateCommonOutputSockets(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
-
+  specs: readonly ExpandedPkgSpecWithSockets[],
+) {
   for (const spec of specs) {
     const [schema] = spec.schemas;
     const [variant] = schema.variants;
@@ -84,9 +82,5 @@ export function annotateCommonOutputSockets(
     }, {
       skipTypeProps: true,
     });
-
-    newSpecs.push(spec);
   }
-
-  return newSpecs;
 }

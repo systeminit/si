@@ -6,8 +6,8 @@ import {
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
 export function generateDefaultLeafFuncs(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
+  specs: readonly ExpandedPkgSpec[],
+) {
   for (const spec of specs) {
     const [schema] = spec.schemas;
     const [schemaVariant] = schema.variants;
@@ -33,6 +33,4 @@ export function generateDefaultLeafFuncs(
       );
     }
   }
-
-  return specs;
 }

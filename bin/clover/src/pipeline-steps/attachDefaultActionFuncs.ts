@@ -7,8 +7,8 @@ import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { CfHandlerKind } from "../cfDb.ts";
 
 export function attachDefaultActionFuncs(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
+  specs: readonly ExpandedPkgSpec[],
+) {
   const defaultActionFuncs = createDefaultActionFuncs();
 
   for (const spec of specs) {
@@ -29,6 +29,4 @@ export function attachDefaultActionFuncs(
       actionFuncs.push(createActionFuncSpec(kind, actionFunc.uniqueId));
     }
   }
-
-  return specs;
 }

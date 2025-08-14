@@ -5,13 +5,11 @@ import { FuncSpec } from "../../../../lib/si-pkg/bindings/FuncSpec.ts";
 import _ from "lodash";
 import { strippedBase64 } from "../spec/funcs.ts";
 import { CREATE_ONLY_PROP_LABEL, ExpandedPropSpec } from "../spec/props.ts";
-import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets, ExpandedSchemaVariantSpecWithSockets } from "../spec/pkgs.ts";
 
 export function generateAssetFuncs(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
-
+  specs: readonly ExpandedPkgSpecWithSockets[],
+) {
   for (const spec of specs) {
     const [schema] = spec.schemas;
     const [schemaVariant] = schema.variants;
@@ -43,15 +41,11 @@ export function generateAssetFuncs(
       arguments: [],
     };
     spec.funcs.push(assetFunc);
-
-    newSpecs.push(spec);
   }
-
-  return newSpecs;
 }
 
 function generateAssetCodeFromVariantSpec(
-  variant: ExpandedSchemaVariantSpec,
+  variant: ExpandedSchemaVariantSpecWithSockets,
 ): string {
   let declarations = "";
   let adds = "";

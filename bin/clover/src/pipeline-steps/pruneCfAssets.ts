@@ -1,4 +1,4 @@
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets } from "../spec/pkgs.ts";
 import _logger from "../logger.ts";
 import {
   CODE_GENERATION_FUNC_SPECS,
@@ -12,8 +12,8 @@ import { createSocket, propPathToString } from "../spec/sockets.ts";
 const logger = _logger.ns("pruneCfAssets").seal();
 
 export function pruneCfAssets(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
+  specs: readonly ExpandedPkgSpecWithSockets[],
+) {
   for (const spec of specs) {
     const [schema] = spec.schemas;
     const [variant] = schema.variants;
@@ -43,7 +43,6 @@ export function pruneCfAssets(
     const socket = createCloudFormationResourceOutputSocket(attrFunc.uniqueId);
     variant.sockets.push(socket);
   }
-  return specs;
 }
 
 function createAttributeFunc() {

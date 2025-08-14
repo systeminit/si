@@ -1,7 +1,7 @@
 import { setAnnotationOnSocket } from "../spec/sockets.ts";
 import { ExpandedPropSpec } from "../spec/props.ts";
 import { getOrCreateInputSocketFromProp } from "../spec/sockets.ts";
-import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpecWithSockets, ExpandedSchemaVariantSpecWithSockets } from "../spec/pkgs.ts";
 
 //
 // Any prop ending with PolicyDocument is considered an IAM policy document, with these properties:
@@ -15,18 +15,17 @@ import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
 // TODO *Policy (too many props that aren't really policy documents here)
 //
 export function createPolicyDocumentInputSockets(
-  specs: ExpandedPkgSpec[],
-): ExpandedPkgSpec[] {
+  specs: readonly ExpandedPkgSpecWithSockets[],
+) {
   for (const { schemas: [schema] } of specs) {
     const { variants: [variant] } = schema;
     createPolicyDocumentInputSocketsFromProp(variant, variant.domain);
     createPolicyDocumentInputSocketsFromProp(variant, variant.resourceValue);
   }
-  return specs;
 }
 
 function createPolicyDocumentInputSocketsFromProp(
-  variant: ExpandedSchemaVariantSpec,
+  variant: ExpandedSchemaVariantSpecWithSockets,
   prop: ExpandedPropSpec,
 ) {
   const name = prop.name.toLowerCase();

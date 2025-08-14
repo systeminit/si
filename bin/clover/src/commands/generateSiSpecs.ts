@@ -17,9 +17,9 @@ import _logger from "../logger.ts";
 import { assetSpecificOverrides } from "../pipeline-steps/assetSpecificOverrides.ts";
 import { generateOutputSocketsFromProps } from "../pipeline-steps/generateOutputSocketsFromProps.ts";
 import {
-  ExpandedPkgSpec,
-  ExpandedSchemaSpec,
-  ExpandedSchemaVariantSpec,
+  ExpandedPkgSpecWithSockets,
+  ExpandedSchemaSpecWithSockets,
+  ExpandedSchemaVariantSpecWithSockets,
 } from "../spec/pkgs.ts";
 import { createPolicyDocumentInputSockets } from "../pipeline-steps/createPolicyDocumentInputSockets.ts";
 import { annotateCommonOutputSockets } from "../pipeline-steps/annotateCommonOutputSockets.ts";
@@ -33,9 +33,7 @@ import { bfsPropTree, ExpandedPropSpec } from "../spec/props.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { pruneCfAssets } from "../pipeline-steps/pruneCfAssets.ts";
 import { removeUnneededAssets } from "../pipeline-steps/removeUnneededAssets.ts";
-import {
-  reportDeprecatedAssets,
-} from "../pipeline-steps/reportDeprecatedAssets.ts";
+import { reportDeprecatedAssets } from "../pipeline-steps/reportDeprecatedAssets.ts";
 import { removeBadDocLinks } from "../pipeline-steps/removeBadDocLinks.ts";
 import { reorderProps } from "../pipeline-steps/reorderProps.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../pipeline-steps/createSuggestionsAcrossAssets.ts";
@@ -49,15 +47,13 @@ export function generateSiSpecForService(serviceName: string) {
   return pkgSpecFromCf(cf);
 }
 
-export async function generateSiSpecs(
-  options: {
-    forceUpdateExistingPackages?: boolean;
-    moduleIndexUrl: string;
-    docLinkCache: string;
-    inferred: string;
-    services?: string[];
-  },
-) {
+export async function generateSiSpecs(options: {
+  forceUpdateExistingPackages?: boolean;
+  moduleIndexUrl: string;
+  docLinkCache: string;
+  inferred: string;
+  services?: string[];
+}) {
   const db = await loadCfDatabase(options);
   const existing_specs = await getExistingSpecs(options);
   const inferred = await loadInferred(options.inferred);
@@ -66,7 +62,7 @@ export async function generateSiSpecs(
   let importSubAssets = 0;
   const cfSchemas = Object.values(db);
 
-  let specs = [] as ExpandedPkgSpec[];
+  let specs = [] as ExpandedPkgSpecWithSockets[];
 
   for (const cfSchema of cfSchemas) {
     try {
@@ -79,43 +75,43 @@ export async function generateSiSpecs(
   }
 
   // EXECUTE PIPELINE STEPS
-  specs = await removeBadDocLinks(specs, options.docLinkCache);
-  specs = addInferredEnums(specs, inferred);
-  specs = generateOutputSocketsFromProps(specs);
-  specs = annotateCommonOutputSockets(specs);
-  specs = addDefaultPropsAndSockets(specs);
-  specs = attachDefaultActionFuncs(specs);
-  specs = generateDefaultLeafFuncs(specs);
-  specs = attachDefaultManagementFuncs(specs);
-  specs = generateDefaultQualificationFuncs(specs);
+  await removeBadDocLinks(specs, options.docLinkCache);
+  addInferredEnums(specs, inferred);
+  generateOutputSocketsFromProps(specs);
+  annotateCommonOutputSockets(specs);
+  addDefaultPropsAndSockets(specs);
+  attachDefaultActionFuncs(specs);
+  generateDefaultLeafFuncs(specs);
+  attachDefaultManagementFuncs(specs);
+  generateDefaultQualificationFuncs(specs);
   // subAssets should not have any of the above, but need an asset func and
   // intrinsics
   specs = generateSubAssets(specs);
-  specs = generateIntrinsicFuncs(specs);
-  specs = createPolicyDocumentInputSockets(specs);
+  generateIntrinsicFuncs(specs);
+  createPolicyDocumentInputSockets(specs);
   // don't generate input sockets until we have all of the output sockets
-  specs = createInputSocketsBasedOnOutputSockets(specs);
-  specs = prettifySocketNames(specs);
+  createInputSocketsBasedOnOutputSockets(specs);
+  prettifySocketNames(specs);
   // remove these after socket generation so we can still connect to their
   // alternatives
   specs = removeUnneededAssets(specs);
 
   // this step will eventually replace all the socket stuff. Must come before
   // overrides so it can be... overriden
-  specs = createSuggestionsForPrimaryIdentifiers(specs);
-  specs = createAwsRegionSpecificSuggestion(specs);
+  createSuggestionsForPrimaryIdentifiers(specs);
+  createAwsRegionSpecificSuggestion(specs);
 
   // Our overrides right now only run after the prop tree and the sockets are generated
-  specs = assetSpecificOverrides(specs);
+  assetSpecificOverrides(specs);
 
   // prune assets that cannot be created by cloud control and must be create
   // using cf
-  specs = pruneCfAssets(specs);
+  pruneCfAssets(specs);
 
   // These need everything to be complete
-  specs = reorderProps(specs);
-  specs = generateAssetFuncs(specs);
-  specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
+  reorderProps(specs);
+  generateAssetFuncs(specs);
+  updateSchemaIdsForExistingSpecs(existing_specs, specs);
 
   // Reporting steps
   reportDeprecatedAssets(existing_specs, specs);
@@ -151,7 +147,9 @@ export async function generateSiSpecs(
   );
 }
 
-function unexpandPackageSpec(expandedSpec: ExpandedPkgSpec): PkgSpec {
+function unexpandPackageSpec(
+  expandedSpec: ExpandedPkgSpecWithSockets,
+): PkgSpec {
   // Take out cfSchema and other props we don't want in the final spec
   return {
     ...expandedSpec,
@@ -159,9 +157,7 @@ function unexpandPackageSpec(expandedSpec: ExpandedPkgSpec): PkgSpec {
   };
 }
 
-function unexpandSchema(
-  expanded: ExpandedSchemaSpec,
-): SchemaSpec {
+function unexpandSchema(expanded: ExpandedSchemaSpecWithSockets): SchemaSpec {
   return {
     ...expanded,
     variants: expanded.variants.map(unexpandVariant),
@@ -169,15 +165,18 @@ function unexpandSchema(
 }
 
 function unexpandVariant(
-  expanded: ExpandedSchemaVariantSpec,
+  expanded: ExpandedSchemaVariantSpecWithSockets,
 ): SchemaVariantSpec {
   const { cfSchema: _, ...variant } = expanded;
-  bfsPropTree([
-    variant.domain,
-    variant.resourceValue,
-    variant.secrets,
-    variant.secretDefinition,
-  ], unexpandProperty);
+  bfsPropTree(
+    [
+      variant.domain,
+      variant.resourceValue,
+      variant.secrets,
+      variant.secretDefinition,
+    ],
+    unexpandProperty,
+  );
   return variant;
 }
 

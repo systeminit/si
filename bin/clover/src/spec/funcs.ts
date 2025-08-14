@@ -113,8 +113,7 @@ export const QUALIFICATION_FUNC_SPECS = {
     backendKind: "jsAttribute",
     responseType: "qualification",
     displayName: "Qualification for checking Cloud Formation permissions",
-    path:
-      "./src/cloud-control-funcs/qualifications/awsPermissionsSimulation.ts",
+    path: "./src/cloud-control-funcs/qualifications/awsPermissionsSimulation.ts",
   },
 } as const satisfies Record<string, FuncSpecInfo>;
 
@@ -188,7 +187,7 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
         uniqueId: domain_id,
         deleted: false,
       },
-    ])
+    ]),
   );
 }
 
@@ -206,17 +205,15 @@ export function createDefaultQualificationFuncs(domain_id: string): FuncSpec[] {
         uniqueId: domain_id,
         deleted: false,
       },
-    ])
+    ]),
   );
 }
 
 export function createDefaultManagementFuncs() {
-  return Object.entries(MANAGEMENT_FUNCS).map(
-    ([func, spec]) => ({
-      func: createDefaultFuncSpec(func, spec, []),
-      handlers: spec.handlers,
-    }),
-  );
+  return Object.entries(MANAGEMENT_FUNCS).map(([func, spec]) => ({
+    func: createDefaultFuncSpec(func, spec, []),
+    handlers: spec.handlers,
+  }));
 }
 
 export function createActionFuncSpec(
@@ -255,7 +252,7 @@ export function createManagementFuncSpec(
     description: null,
     funcUniqueId,
     managedSchemas: null,
-  };
+  } as ManagementFuncSpec;
 }
 
 export function modifyFunc(
@@ -270,7 +267,9 @@ export function modifyFunc(
     variant.actionFuncs,
     variant.leafFunctions,
     variant.managementFuncs,
-  ].flat().find((item) => item.funcUniqueId === targetId);
+  ]
+    .flat()
+    .find((item) => item.funcUniqueId === targetId);
 
   const code = Deno.readTextFileSync(path);
   const codeBase64: string = strippedBase64(code);
