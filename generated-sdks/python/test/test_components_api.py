@@ -68,6 +68,13 @@ class TestComponentsApi(unittest.TestCase):
         """
         pass
 
+    def test_generate_template(self) -> None:
+        """Test case for generate_template
+
+        Generate a template
+        """
+        pass
+
     def test_get_component(self) -> None:
         """Test case for get_component
 
