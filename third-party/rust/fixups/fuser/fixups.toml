@@ -1,1 +1,8 @@
 buildscript.run = true
+features = []
+
+[platform_fixup."cfg(target_os = \"macos\")"]
+features = ["libfuse", "pkg-config"]
+
+[platform_fixup."cfg(not(target_os = \"macos\"))"]
+features = []
