@@ -369,6 +369,32 @@ export function schemaAttributesListTool(server: McpServer) {
             },
           ],
         };
+      } else if (schemaName == "AWS Account") {
+        responseData = {
+          schemaName: "AWS Account",
+          "attributes": [
+            {
+              "name": "Account",
+              "path": "/domain/AccountData/Account",
+              "required": false,
+            },
+            {
+              "name": "Arn",
+              "path": "/domain/AccountData/Arn",
+              "required": false,
+            },
+            {
+              "name": "UserId",
+              "path": "/domain/AccountData/UserId",
+              "required": false,
+            },
+            {
+              "name": "CanonicalUserId",
+              "path": "/domain/CanonicalUserId",
+              "required": false,
+            },
+          ],
+        };
       } else {
         const attributes = getAttributesForService(schemaName);
         responseData = { schemaName, attributes };
