@@ -4,7 +4,7 @@ use serde::{
     Serialize,
 };
 
-use super::SpecError;
+use super::{HasUniqueId, SpecError};
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,6 +18,12 @@ pub struct ManagementFuncSpec {
 
     #[builder(setter(into), default)]
     pub description: Option<String>,
+}
+
+impl HasUniqueId for ManagementFuncSpec {
+    fn unique_id(&self) -> Option<&str> {
+        Some(&self.func_unique_id)  // Always has a value
+    }
 }
 
 impl ManagementFuncSpec {

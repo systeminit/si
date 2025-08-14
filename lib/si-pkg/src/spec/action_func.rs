@@ -10,7 +10,7 @@ use strum::{
     EnumString,
 };
 
-use super::SpecError;
+use super::{HasUniqueId, SpecError};
 
 #[derive(
     Debug,
@@ -54,6 +54,12 @@ pub struct ActionFuncSpec {
     #[builder(setter(into), default)]
     #[serde(default)]
     pub deleted: bool,
+}
+
+impl HasUniqueId for ActionFuncSpec {
+    fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
+    }
 }
 
 impl ActionFuncSpec {
