@@ -70,7 +70,7 @@
         <div
           v-for="group in requirementGroups"
           :key="group.key"
-          class="border-neutral-200 dark:border-neutral-700 border"
+          class="border-neutral-200 dark:border-neutral-700 border flex-shrink-0"
         >
           <div class="bg-neutral-200 dark:bg-neutral-700 p-xs">
             {{ group.requiredCount }} of the following users for{{
@@ -138,12 +138,14 @@
     </div>
 
     <!-- BUTTONS -->
-    <div class="flex flex-row flex-none gap-sm justify-center mt-sm">
+    <div class="flex flex-row flex-none gap-sm justify-center mt-sm shrink-0">
       <VButton
         label="Withdraw Request"
         tone="warning"
         variant="ghost"
         icon="x"
+        :loading="cancelApi.inFlight.value || reopenApi.inFlight.value"
+        loadingText="Processing..."
         @click="withdraw"
       />
       <template v-if="userIsApprover">
@@ -152,6 +154,8 @@
           label="Reject Request"
           tone="destructive"
           icon="thumbs-down"
+          :loading="rejectApi.inFlight.value"
+          loadingText="Rejecting..."
           @click="reject"
         />
         <VButton
@@ -159,6 +163,8 @@
           label="Approve Request"
           tone="success"
           icon="thumbs-up"
+          :loading="approveApi.inFlight.value"
+          loadingText="Approving..."
           @click="approve"
         />
       </template>
@@ -221,6 +227,10 @@ const props = defineProps<{
   changeSet: ChangeSet;
   workspaceUsers: Record<string, WorkspaceUser>;
   user: User;
+}>();
+
+const emit = defineEmits<{
+  (e: "closeModal"): void;
 }>();
 
 const status = computed(
@@ -386,9 +396,9 @@ const ctx = useContext();
 
 const approveApi = useApi(ctx);
 
-const approve = () => {
+const approve = async () => {
   const call = approveApi.endpoint(routes.ChangeSetApprove);
-  call.post({ status: "Approved" });
+  await call.post({ status: "Approved" });
 };
 
 const { performApply, applyInFlight } = useApplyChangeSet(ctx);
@@ -400,22 +410,30 @@ const apply = () => {
 const reopenApi = useApi(ctx);
 const cancelApi = useApi(ctx);
 
-const withdraw = () => {
+const withdraw = async () => {
   if (status.value === "rejected") {
     const reopenCall = reopenApi.endpoint(routes.ChangeSetReopen);
-    reopenCall.post({});
+    const { req } = await reopenCall.post({});
+    if (reopenApi.ok(req)) {
+      // Successfully reopened - close modal
+      emit("closeModal");
+    }
   } else {
     const cancelCall = cancelApi.endpoint(
       routes.ChangeSetCancelApprovalRequest,
     );
-    cancelCall.post({});
+    const { req } = await cancelCall.post({});
+    if (cancelApi.ok(req)) {
+      // Successfully cancelled approval request - close modal
+      emit("closeModal");
+    }
   }
 };
 
 const rejectApi = useApi(ctx);
 
-const reject = () => {
+const reject = async () => {
   const call = rejectApi.endpoint(routes.ChangeSetApprove);
-  call.post({ status: "Rejected" });
+  await call.post({ status: "Rejected" });
 };
 </script>
