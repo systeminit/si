@@ -382,7 +382,7 @@ type OptionsAsObjectWithLabels = Record<
   { label: string; [key: string]: any }
 >;
 type OptionsAsSimpleArray = string[];
-export type OptionsAsArray = { value: any; label: string }[];
+export type OptionsAsArray = { value: ModelValue; label: string }[];
 type OptionsAsNestedArrays = Record<string, OptionsAsArray>;
 export type InputOptions =
   | OptionsAsSimpleObject
@@ -391,15 +391,13 @@ export type InputOptions =
   | OptionsAsArray
   | OptionsAsNestedArrays;
 
+type ModelValue = string | number | string[] | boolean | null;
 const props = defineProps({
   // to be used with v-model
   // TODO: make modelValue more flexible and typed better
   modelValue: {
     // TODO: resolve some ts issues around binding modelValue to
-    type: [String, Number, Array, Boolean, null] as PropType<
-      string | number | string[] | boolean | null
-    >,
-    // type: [String, Number, Array, Boolean, null] as PropType<any>,
+    type: [String, Number, Array, Boolean, null] as PropType<ModelValue>,
   },
   type: { type: String as PropType<InputTypes>, default: "text" },
   id: { type: String, required: false },
@@ -423,7 +421,7 @@ const props = defineProps({
   nullLabel: String,
 
   disabled: Boolean,
-  defaultValue: {}, // eslint-disable-line vue/require-prop-types
+  defaultValue: [String, Number, Array, Boolean, null] as PropType<ModelValue>,
   autocomplete: { type: String },
   name: { type: String },
   showCautionLines: Boolean,
@@ -620,7 +618,8 @@ const computedPlaceholder = computed(() => {
   return undefined;
 });
 
-function cleanValue(val: any) {
+function cleanValue(inputVal: ModelValue): ModelValue | null {
+  const val: any = inputVal;
   // called when setting a new value to clean/coerce values
   if (val === "") return null;
   if (!val) return val;
@@ -637,10 +636,10 @@ function cleanValue(val: any) {
     if (props.toUpperCase) cleanVal = cleanVal.toUpperCase();
     return cleanVal;
   } else if (props.type === "tel") {
-    return val.replace(/[^0-9+]/g, "");
+    return (val as string).replace(/[^0-9+]/g, "");
   } else if (props.type === "date") {
     try {
-      return new Date(val).toISOString().slice(0, 10);
+      return new Date(val as number | string).toISOString().slice(0, 10);
     } catch (err) {
       return val;
     }
@@ -658,12 +657,12 @@ function cleanValue(val: any) {
   return val;
 }
 
-function setNewValue(newValue: any, clean = true) {
+function setNewValue(newValue: ModelValue, clean = true) {
   emit("update:modelValue", clean ? cleanValue(newValue) : newValue);
 }
 
 // helpers to deal with input types that have child options (radio, multicheckbox, dropdown, dropdown-optgroup)
-function generateOptionKey(option: { value: string }, index: number) {
+function generateOptionKey(option: { value: ModelValue }, index: number) {
   return `vorm-input-option-${formInputId}-${index}`;
 }
 
@@ -675,7 +674,7 @@ const arrayOptionsFromProps = computed((): OptionsAsArray => {
     return Object.values(toRaw(props.options) as OptionsAsNestedArrays).flat();
   } else if (_.isArray(props.options)) {
     if (!_.isObject(props.options[0])) {
-      return _.map(props.options, (value) => ({
+      return _.map(props.options as OptionsAsSimpleArray, (value) => ({
         value,
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
@@ -684,10 +683,10 @@ const arrayOptionsFromProps = computed((): OptionsAsArray => {
     }
     // handle array of simple strings
     if (_.isString(props.options[0])) {
-      return _.map(props.options, (value) => ({ value, label: value })) as any;
+      return _.map(props.options as OptionsAsSimpleArray, (value) => ({ value, label: value }));
     }
     // otherwise its an array of { value, label } and we can pass through as is
-    return props.options as any;
+    return props.options as OptionsAsArray;
   } else if (_.isObject(props.options)) {
     // map object of options in format of { val1: label1, ... } to array of options
     return _.map(props.options, (value, key) => {

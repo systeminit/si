@@ -67,8 +67,8 @@ import { useDisabledBySelfOrParent } from "./helpers/form-disabling";
 import type { PropType } from "vue";
 
 const props = defineProps({
-  value: [String, Number, Boolean] as PropType<
-    string | number | boolean | null
+  value: [String, Number, Array, Boolean] as PropType<
+    string | number | string[] | boolean | null
   >,
   disabled: Boolean,
 });

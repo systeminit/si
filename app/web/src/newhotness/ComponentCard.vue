@@ -47,11 +47,15 @@ import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon, getAssetColor } from "./util";
 import ComponentTileQualificationStatus from "./ComponentTileQualificationStatus.vue";
 
+type ComponentCardDisplayInfo = Pick<
+  ComponentInList | BifrostComponent,
+  "name" | "schemaName" | "schemaCategory" | "hasResource" | "qualificationTotals"
+>;
 defineProps<{
-  component: ComponentInList | BifrostComponent;
+  component: ComponentCardDisplayInfo;
 }>();
 
-const borderStyle = (component: ComponentInList | BifrostComponent) => {
+const borderStyle = (component: ComponentCardDisplayInfo) => {
   const color = getAssetColor(component.schemaCategory);
   return `border-color: ${color}`;
 };

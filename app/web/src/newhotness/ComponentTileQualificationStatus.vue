@@ -95,7 +95,7 @@ import {
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 
 const props = defineProps<{
-  component: ComponentInList | BifrostComponent;
+  component: ComponentQualificationStatusDisplayInfo;
   hideTitle?: boolean;
 }>();
 
@@ -105,8 +105,12 @@ const qualificationStatus = computed(() =>
 </script>
 
 <script lang="ts">
+type ComponentQualificationStatusDisplayInfo = Pick<
+  ComponentInList | BifrostComponent,
+  "qualificationTotals"
+>;
 export function getQualificationStatus(
-  component: BifrostComponent | ComponentInList,
+  component: ComponentQualificationStatusDisplayInfo,
 ) {
   if (component.qualificationTotals.failed > 0) return "failure";
   if (component.qualificationTotals.warned > 0) return "warning";

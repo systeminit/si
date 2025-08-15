@@ -94,13 +94,14 @@
           ref="componentDiffRefs"
           :data-component-id="component.id"
         >
+          <ComponentCard :component="component" />
           <CodeViewer
-            :title="`${component.name}: ${component.schemaName}`"
-            :code="changedComponentData[component.id]?.resourceDiff.diff"
-            showTitle
+            v-if="component.diffStatus === 'Added' || component.diffStatus === 'Modified'"
+            :code="addedOrModifiedComponentData[component.id]?.data?.resourceDiff.diff"
             codeLanguage="diff"
             copyTooltip="Copy diff to clipboard"
           />
+          <div v-else>{{ component.diffStatus }}</div>
         </div>
       </div>
     </div>
@@ -108,6 +109,7 @@
 </template>
 
 <script setup lang="ts">
+import * as _ from "lodash-es";
 import { useQueries, useQuery } from "@tanstack/vue-query";
 import { computed, ref } from "vue";
 import clsx from "clsx";
@@ -117,7 +119,9 @@ import {
   bifrost,
   bifrostList,
   useMakeArgs,
+  useMakeArgsForHead,
   useMakeKey,
+  useMakeKeyForHead,
 } from "@/store/realtime/heimdall";
 import {
   BifrostComponent,
@@ -135,6 +139,23 @@ const ctx = useContext();
 
 const changeSetName = computed(() => ctx.changeSet.value?.name);
 
+const headKey = useMakeKeyForHead();
+const headArgs = useMakeArgsForHead();
+
+// All components on HEAD
+const headComponentListQuery = useQuery({
+  queryKey: headKey(EntityKind.ComponentList),
+  enabled: ctx.queriesEnabled,
+  queryFn: async () => {
+    console.log("head!", headArgs(EntityKind.ComponentList));
+    const result = await bifrostList<ComponentInList[]>(headArgs(EntityKind.ComponentList));
+    console.log("result", result);
+    return result;
+  }
+});
+const headComponentList = computed(() => headComponentListQuery.data.value ?? []);
+
+
 const key = useMakeKey();
 const args = useMakeArgs();
 
@@ -147,13 +168,22 @@ const componentListQuery = useQuery({
 });
 const componentList = computed(() => componentListQuery.data.value ?? []);
 
-const changedComponents = computed(() =>
+// Components in head but not this change set
+const removedComponents = computed(() => {
+  const componentIds = new Set(componentList.value.map((c) => c.id));
+  return headComponentList.value.filter(
+    (component) => !componentIds.has(component.id)
+  ).map((component) => ({ ...component, diffStatus: "Removed" as const }));
+});
+
+// Components that are added or modified in the current change set
+const addedOrModifiedComponents = computed(() =>
   componentList.value.filter((component) => component.diffStatus !== "None"),
 );
 
-const changedComponentDataQueries = useQueries({
+const addedOrModifiedComponentDataQueries = useQueries({
   queries: computed(() =>
-    changedComponents.value.map((component) => ({
+    addedOrModifiedComponents.value.map((component) => ({
       queryKey: key(EntityKind.Component, component.id),
       queryFn: async () =>
         await bifrost<BifrostComponent>(
@@ -162,15 +192,14 @@ const changedComponentDataQueries = useQueries({
     })),
   ),
 });
-const changedComponentData = computed<Record<ComponentId, BifrostComponent>>(
-  () =>
-    Object.fromEntries(
-      changedComponentDataQueries.value.map((component) => [
-        component.data?.id,
-        component.data,
-      ]),
-    ),
+// Component MV data for added or modified components
+const addedOrModifiedComponentData = computed(
+  () => _.keyBy(addedOrModifiedComponentDataQueries.value, (component) => component.data?.id ?? ""),
 );
+
+// All differences from head (removals, additions and modifications)
+const changedComponents = computed(() => [ ...addedOrModifiedComponents.value, ...removedComponents.value]);
+
 const addedCount = computed(
   () =>
     changedComponents.value.filter(
@@ -183,7 +212,11 @@ const updatedCount = computed(
       (component) => component.diffStatus === "Modified",
     ).length,
 );
-const removedCount = computed(() => 0);
+const removedCount = computed(() => 
+    changedComponents.value.filter(
+      (component) => component.diffStatus === "Removed",
+    ).length,
+);
 
 const mainScrollDivRef = ref<HTMLDivElement>();
 const componentDiffRefs = ref<HTMLDivElement[]>();

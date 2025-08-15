@@ -1384,8 +1384,8 @@ provide("EXPLORE_CONTEXT", exploreContext.value);
 
 // ================================================================================================
 // THE SEARCH BAR AND FILTERING
-const searchString = ref("");
-const filteredComponents = useComponentSearch(searchString, componentList);
+const searchString = ref<string | null>("");
+const filteredComponents = useComponentSearch(() => searchString.value ?? "", componentList);
 
 // Filtered components counter state
 const isScrolledToBottom = ref(false);
@@ -1395,7 +1395,7 @@ const shouldShowFilteredCounter = computed(() => {
     componentList.value.length > filteredComponents.value.length;
   return (
     hasFilteredComponents &&
-    (isScrolledToBottom.value || searchString.value.trim() !== "")
+    (isScrolledToBottom.value || searchString.value?.trim() !== "")
   );
 });
 
