@@ -88,7 +88,7 @@ pub async fn prepare_and_generate(
                     Source::Subscription {
                         component,
                         path,
-                        keep_existing_subscriptions: _keep_existing_subs,
+                        _keep_existing_subscriptions,
                         func,
                     } => {
                         let component_string: String = component.into();

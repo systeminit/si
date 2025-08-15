@@ -3,7 +3,6 @@ use dal::{
     AttributeValue,
     Component,
     DalContext,
-    attribute::value::subscription::ValueSubscription,
     func::authoring::FuncAuthoringClient,
 };
 use dal_test::{
@@ -50,7 +49,7 @@ async fn subscribe_to_name_on_same_component(ctx: &mut DalContext) -> Result<()>
     value::subscribe(
         ctx,
         (component_id, "/domain/Value"),
-        [(component_id, "/si/name")],
+        (component_id, "/si/name"),
     )
     .await?;
     change_set::commit(ctx).await?;
@@ -88,7 +87,7 @@ async fn subscribe_to_string(ctx: &mut DalContext) -> Result<()> {
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Value"),
-        [("source", "/domain/Value")],
+        ("source", "/domain/Value"),
     )
     .await?;
     change_set::commit(ctx).await?;
@@ -133,7 +132,7 @@ async fn subscribe_to_array_element(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(None, AttributeValue::view(ctx, value_av_id).await?);
 
     // Subscribe to a specific index and watch the value come through!
-    value::subscribe(ctx, value_av_id, [(component_id, "/domain/Values/1")]).await?;
+    value::subscribe(ctx, value_av_id, (component_id, "/domain/Values/1")).await?;
     change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("b")),
@@ -179,7 +178,7 @@ async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(None, AttributeValue::view(ctx, value_av_id).await?);
 
     // Subscribe to a specific index and watch the value come through!
-    value::subscribe(ctx, value_av_id, [(component_id, "/domain/ValueMap/B")]).await?;
+    value::subscribe(ctx, value_av_id, (component_id, "/domain/ValueMap/B")).await?;
     change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("b")),
@@ -229,13 +228,13 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Value"),
-        [("source", "/domain/Value")],
+        ("source", "/domain/Value"),
     )
     .await?;
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Value2"),
-        [("source", "/domain/Value2")],
+        ("source", "/domain/Value2"),
     )
     .await?;
     change_set::commit(ctx).await?;
@@ -289,7 +288,7 @@ async fn delete_component_with_subscriptions_correction(ctx: &mut DalContext) ->
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Value"),
-        [("source", "/domain/Value")],
+        ("source", "/domain/Value"),
     )
     .await?;
 
@@ -302,7 +301,7 @@ async fn delete_component_with_subscriptions_correction(ctx: &mut DalContext) ->
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Value2"),
-        [("source", "/domain/Value2")],
+        ("source", "/domain/Value2"),
     )
     .await?;
 
@@ -343,7 +342,7 @@ async fn array_subscription(ctx: &mut DalContext) -> Result<()> {
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Values"),
-        [("input", "/domain/Values")],
+        ("input", "/domain/Values"),
     )
     .await?;
     change_set::commit(ctx).await?;
@@ -364,43 +363,7 @@ async fn array_subscription(ctx: &mut DalContext) -> Result<()> {
 }
 
 #[test]
-async fn array_single_subscription(ctx: &mut DalContext) -> Result<()> {
-    create_testy_variant(ctx).await?;
-
-    // Create a component with a Value prop
-    component::create(ctx, "testy", "subscriber").await?;
-    change_set::commit(ctx).await?;
-    assert!(!value::has_value(ctx, ("subscriber", "/domain/Values")).await?);
-
-    // Create another component and subscribe to one of its values
-    component::create(ctx, "testy", "input").await?;
-    value::set(ctx, ("input", "/domain/Value"), "value1").await?;
-    value::subscribe(
-        ctx,
-        ("subscriber", "/domain/Values"),
-        [("input", "/domain/Value")],
-    )
-    .await?;
-    change_set::commit(ctx).await?;
-    // Make sure it was upleveled to an array
-    assert_eq!(
-        json!(["value1"]),
-        value::get(ctx, ("subscriber", "/domain/Values")).await?
-    );
-
-    // Update the values and watch them flow through!
-    value::set(ctx, ("input", "/domain/Value"), "alt1").await?;
-    change_set::commit(ctx).await?;
-    assert_eq!(
-        json!(["alt1"]),
-        value::get(ctx, ("subscriber", "/domain/Values")).await?
-    );
-
-    Ok(())
-}
-
-#[test]
-async fn array_multiple_subscriptions(ctx: &mut DalContext) -> Result<()> {
+async fn array_item_subscriptions(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
     // Create a component with a Value prop
@@ -414,8 +377,14 @@ async fn array_multiple_subscriptions(ctx: &mut DalContext) -> Result<()> {
     value::set(ctx, ("input", "/domain/Value2"), "value2").await?;
     value::subscribe(
         ctx,
-        ("subscriber", "/domain/Values"),
-        [("input", "/domain/Value"), ("input", "/domain/Value2")],
+        ("subscriber", "/domain/Values/-"),
+        ("input", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Values/-"),
+        ("input", "/domain/Value2"),
     )
     .await?;
     change_set::commit(ctx).await?;
@@ -438,7 +407,7 @@ async fn array_multiple_subscriptions(ctx: &mut DalContext) -> Result<()> {
 }
 
 #[test]
-async fn array_zero_subscriptions(ctx: &mut DalContext) -> Result<()> {
+async fn subscription_type_mismatch_array_to_single(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
     // Create a component with a Value prop
@@ -446,25 +415,24 @@ async fn array_zero_subscriptions(ctx: &mut DalContext) -> Result<()> {
     change_set::commit(ctx).await?;
     assert!(!value::has_value(ctx, ("subscriber", "/domain/Values")).await?);
 
-    // Subscribe to nothing and make sure the value is an empty array
-    value::subscribe(
-        ctx,
-        ("subscriber", "/domain/Values"),
-        Vec::<ValueSubscription>::new(),
-    )
-    .await?;
-    change_set::commit(ctx).await?;
-    // Make sure it was upleveled to an array
-    assert_eq!(
-        json!([]),
-        value::get(ctx, ("subscriber", "/domain/Values")).await?
+    // Create another component and subscribe to one of its values
+    component::create(ctx, "testy", "input").await?;
+    value::set(ctx, ("input", "/domain/Value"), "value1").await?;
+    assert!(
+        value::subscribe(
+            ctx,
+            ("subscriber", "/domain/Values"),
+            ("input", "/domain/Value"),
+        )
+        .await
+        .is_err()
     );
 
     Ok(())
 }
 
 #[test]
-async fn subscription_count_errors(ctx: &mut DalContext) -> Result<()> {
+async fn subscription_type_mismatch_single_to_array(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
     // Create a component with a Value prop
@@ -472,26 +440,14 @@ async fn subscription_count_errors(ctx: &mut DalContext) -> Result<()> {
     change_set::commit(ctx).await?;
     assert!(!value::has_value(ctx, ("subscriber", "/domain/Values")).await?);
 
-    // Create another component and subscribe to its values
+    // Create another component and subscribe to one of its values
     component::create(ctx, "testy", "input").await?;
-
-    // Test that you cannot subscribe a single valued prop to multiple subscriptions
+    value::set(ctx, ("input", "/domain/Value"), "value1").await?;
     assert!(
         value::subscribe(
             ctx,
             ("subscriber", "/domain/Value"),
-            [("input", "/domain/Value"), ("input", "/domain/Value2")],
-        )
-        .await
-        .is_err()
-    );
-
-    // Test that you cannot subscribe a single valued prop to zero subscriptions
-    assert!(
-        value::subscribe(
-            ctx,
-            ("subscriber", "/domain/Value"),
-            Vec::<ValueSubscription>::new(),
+            ("input", "/domain/Values"),
         )
         .await
         .is_err()
@@ -515,13 +471,13 @@ async fn delete_subscribed_to_array_item(ctx: &mut DalContext) -> Result<()> {
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Value"),
-        [("input", "/domain/Values/0")],
+        ("input", "/domain/Values/0"),
     )
     .await?;
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Value2"),
-        [("input", "/domain/Values/1")],
+        ("input", "/domain/Values/1"),
     )
     .await?;
 
@@ -581,7 +537,7 @@ async fn subscribe_with_custom_function(ctx: &mut DalContext) -> Result<()> {
     value::subscribe_with_custom_function(
         ctx,
         ("subscriber", "/domain/Value"),
-        [("source", "/domain/Value")],
+        ("source", "/domain/Value"),
         Some(func.id),
     )
     .await?;
@@ -628,7 +584,7 @@ async fn remove_subscribed_component(ctx: &mut DalContext) -> Result<()> {
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Value"),
-        [("source", "/domain/Value")],
+        ("source", "/domain/Value"),
     )
     .await?;
     change_set::commit(ctx).await?;

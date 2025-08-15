@@ -376,23 +376,19 @@ impl SubscribableTest {
             value::subscribe(
                 ctx,
                 (name, "/domain/One"),
-                [(from_name.as_str(), "/domain/Value")],
+                (from_name.as_str(), "/domain/Value"),
             )
             .await?;
         }
 
-        let many_sources: Vec<_> = subscribe_many.into_iter().collect();
-        if !many_sources.is_empty() {
-            let mut source_names = Vec::new();
-            let mut sources = Vec::new();
-            for from in many_sources {
-                let source_name = from.name(ctx).await?;
-                source_names.push(source_name);
-            }
-            for source_name in &source_names {
-                sources.push((source_name.as_str(), "/domain/Value"));
-            }
-            value::subscribe(ctx, (name, "/domain/Many"), sources).await?;
+        for from in subscribe_many {
+            let source_name = from.name(ctx).await?;
+            value::subscribe(
+                ctx,
+                (name, "/domain/Many/-"),
+                (source_name.as_str(), "/domain/Value"),
+            )
+            .await?;
         }
 
         Ok(subscribable)
@@ -425,7 +421,7 @@ impl SubscribableTest {
         value::subscribe(
             ctx,
             (child_name, "/domain/Inferred"),
-            [(parent_name, "/domain/Value")],
+            (parent_name, "/domain/Value"),
         )
         .await
     }

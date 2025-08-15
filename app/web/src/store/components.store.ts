@@ -341,19 +341,6 @@ type EventBusEvents = {
 //         }
 //       }
 //
-//
-//   SOON TO BE DEPRECATED: You may also APPEND a subscription by adding `keepExistingSubscriptions: true` to the
-//   subscription:
-//
-//       {
-//         "/domain/SubnetId": {
-//           "$source": { "component": "ComponentNameOrId", "path": "/resource/SubnetId", keepExistingSubscriptions: true }
-//         }
-//       }
-//
-//   If you do this, the subscription will be added to the list if it's not already there, and
-//   any other subscriptions will also be kept.
-//
 // - ESCAPE HATCH for setting a value: setting an attribute to `{ "$source": { "value": <value> } }`
 //   has the same behavior as all the above cases. The reason this exists is, if you happen to
 //   have an object with a "$source" key, the existing interface would treat that as an error.
@@ -380,7 +367,6 @@ type AttributeSourceSetSubscription = {
   $source: {
     component: ComponentId | ComponentName;
     path: AttributePath;
-    keepExistingSubscriptions?: boolean;
     func?: string;
   };
 };
@@ -1409,15 +1395,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     this.rawEdgesById[newEdge.id] = newEdge;
                     this.processRawEdge(newEdge.id);
 
-                    const edgesBeingReplaced = update.$source
-                      .keepExistingSubscriptions
-                      ? []
-                      : Object.values(this.rawEdgesById).filter(
-                          (e) =>
-                            isSubscriptionEdge(e) &&
-                            e.toAttributePath === toPath &&
-                            e.toComponentId === componentId,
-                        );
+                    const edgesBeingReplaced = Object.values(
+                      this.rawEdgesById,
+                    ).filter(
+                      (e) =>
+                        isSubscriptionEdge(e) &&
+                        e.toAttributePath === toPath &&
+                        e.toComponentId === componentId,
+                    );
 
                     // TODO Bring back the edges that were deleted by the optimistic call on the callback
                     // Or don't, this won't live much anyway

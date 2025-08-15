@@ -2223,12 +2223,6 @@ export interface Subscription {
     'function'?: string;
     /**
      * 
-     * @type {boolean}
-     * @memberof Subscription
-     */
-    'keepExistingSubscriptions'?: boolean | null;
-    /**
-     * 
      * @type {string}
      * @memberof Subscription
      */

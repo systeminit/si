@@ -33,30 +33,26 @@ pub async fn vivify(ctx: &DalContext, key: impl AttributeValueKey) -> Result<Att
 }
 
 /// Set the subscriptions on a value
-pub async fn subscribe<S: AttributeValueKey>(
+pub async fn subscribe(
     ctx: &DalContext,
     subscriber: impl AttributeValueKey,
-    subscriptions: impl IntoIterator<Item = S>,
+    subscription: impl AttributeValueKey,
 ) -> Result<()> {
-    subscribe_with_custom_function(ctx, subscriber, subscriptions, None).await
+    subscribe_with_custom_function(ctx, subscriber, subscription, None).await
 }
 
 /// Set the subscriptions on a value
-pub async fn subscribe_with_custom_function<S: AttributeValueKey>(
+pub async fn subscribe_with_custom_function(
     ctx: &DalContext,
     subscriber: impl AttributeValueKey,
-    subscriptions: impl IntoIterator<Item = S>,
+    subscription: impl AttributeValueKey,
     func_id: Option<FuncId>,
 ) -> Result<()> {
     let subscriber = vivify(ctx, subscriber).await?;
-    let mut converted_subscriptions = vec![];
-    for subscription in subscriptions {
-        converted_subscriptions.push(AttributeValueKey::to_subscription(ctx, subscription).await?);
-    }
-    AttributeValue::set_to_subscriptions(
+    AttributeValue::set_to_subscription(
         ctx,
         subscriber,
-        converted_subscriptions,
+        AttributeValueKey::to_subscription(ctx, subscription).await?,
         func_id,
         Reason::new_user_added(ctx),
     )

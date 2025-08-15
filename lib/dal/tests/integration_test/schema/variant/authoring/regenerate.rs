@@ -732,7 +732,7 @@ async fn dynamic_functions_on_new_attribute_values_are_rerun(ctx: &mut DalContex
     dal_test::helpers::attribute::value::subscribe(
         ctx,
         ("Destination Component", "/domain/inputNumbers/0"),
-        [("Source Component", "/si/name")],
+        ("Source Component", "/si/name"),
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;

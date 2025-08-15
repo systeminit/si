@@ -898,6 +898,14 @@ impl Prop {
             .get_prop_node_weight()?)
     }
 
+    pub async fn kind(ctx: &DalContext, id: PropId) -> PropResult<PropKind> {
+        Ok(Self::node_weight(ctx, id).await?.kind)
+    }
+
+    pub async fn name(ctx: &DalContext, id: PropId) -> PropResult<String> {
+        Ok(Self::node_weight(ctx, id).await?.name)
+    }
+
     pub async fn element_prop_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropId> {
         Self::direct_child_prop_ids_unordered(ctx, prop_id)
             .await?

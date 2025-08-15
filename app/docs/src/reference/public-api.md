@@ -4984,7 +4984,6 @@ xor
 {
   "component": "ComponentName",
   "function": "string",
-  "keepExistingSubscriptions": true,
   "propPath": "string"
 }
 
@@ -5004,7 +5003,6 @@ and
 |---|---|---|---|---|
 |*anonymous*|object|false|none|none|
 |» function|string|false|none|none|
-|» keepExistingSubscriptions|boolean,null|false|none|none|
 |» propPath|string|true|none|none|
 
 ## [SystemStatusResponse](#tocS_SystemStatusResponse)

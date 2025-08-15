@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -29,9 +29,8 @@ class Subscription(BaseModel):
     component: StrictStr
     component_id: StrictStr = Field(alias="componentId")
     function: Optional[StrictStr] = None
-    keep_existing_subscriptions: Optional[StrictBool] = Field(default=None, alias="keepExistingSubscriptions")
     prop_path: StrictStr = Field(alias="propPath")
-    __properties: ClassVar[List[str]] = ["component", "componentId", "function", "keepExistingSubscriptions", "propPath"]
+    __properties: ClassVar[List[str]] = ["component", "componentId", "function", "propPath"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -72,11 +71,6 @@ class Subscription(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # set to None if keep_existing_subscriptions (nullable) is None
-        # and model_fields_set contains the field
-        if self.keep_existing_subscriptions is None and "keep_existing_subscriptions" in self.model_fields_set:
-            _dict['keepExistingSubscriptions'] = None
-
         return _dict
 
     @classmethod
@@ -92,7 +86,6 @@ class Subscription(BaseModel):
             "component": obj.get("component"),
             "componentId": obj.get("componentId"),
             "function": obj.get("function"),
-            "keepExistingSubscriptions": obj.get("keepExistingSubscriptions"),
             "propPath": obj.get("propPath")
         })
         return _obj

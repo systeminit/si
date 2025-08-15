@@ -190,8 +190,8 @@ async fn test_set_as_default_subscription_source(ctx: &DalContext) -> Result<()>
             Source::Subscription {
                 component: source_component_a_id.into(),
                 path: "/domain/source_string".into(),
-                keep_existing_subscriptions: None,
                 func: None,
+                _keep_existing_subscriptions: None,
             },
         ),
         (
@@ -199,8 +199,8 @@ async fn test_set_as_default_subscription_source(ctx: &DalContext) -> Result<()>
             Source::Subscription {
                 component: source_component_a_id.into(),
                 path: "/domain/source_object_a".into(),
-                keep_existing_subscriptions: None,
                 func: None,
+                _keep_existing_subscriptions: None,
             },
         ),
         (
@@ -208,8 +208,8 @@ async fn test_set_as_default_subscription_source(ctx: &DalContext) -> Result<()>
             Source::Subscription {
                 component: source_component_a_id.into(),
                 path: "/domain/source_integer".into(),
-                keep_existing_subscriptions: None,
                 func: None,
+                _keep_existing_subscriptions: None,
             },
         ),
     ];
