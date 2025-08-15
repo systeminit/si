@@ -12,10 +12,10 @@ use telemetry::prelude::*;
     level = "debug",
     skip_all
 )]
-pub async fn assemble(ctx: DalContext, id: SchemaId) -> super::Result<CachedSchemaMv> {
+pub async fn assemble(ctx: DalContext, id: SchemaId) -> crate::Result<CachedSchemaMv> {
     let mut module = CachedModule::find_latest_for_schema_id(&ctx, id)
         .await?
-        .ok_or_else(|| super::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
+        .ok_or_else(|| crate::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
 
     // Get the SiPkg data to extract variant information
     let si_pkg = module.si_pkg(&ctx).await?;
@@ -23,14 +23,14 @@ pub async fn assemble(ctx: DalContext, id: SchemaId) -> super::Result<CachedSche
     let schema = schemas
         .into_iter()
         .next()
-        .ok_or_else(|| super::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
+        .ok_or_else(|| crate::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
 
     let variants = schema.variants()?;
 
     // Find the default variant based on the schema data
     let schema_data = schema
         .data()
-        .ok_or_else(|| super::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
+        .ok_or_else(|| crate::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
 
     let default_variant =
         if let Some(default_variant_unique_id) = schema_data.default_schema_variant() {
@@ -43,14 +43,14 @@ pub async fn assemble(ctx: DalContext, id: SchemaId) -> super::Result<CachedSche
             // No default specified, use first variant
             variants.first()
         }
-        .ok_or_else(|| super::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
+        .ok_or_else(|| crate::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
 
     // Extract the variant unique_id and convert to SchemaVariantId
     let default_variant_id: SchemaVariantId = default_variant
         .unique_id()
-        .ok_or_else(|| super::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?
+        .ok_or_else(|| crate::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?
         .parse::<SchemaVariantId>()
-        .map_err(|_| super::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
+        .map_err(|_| crate::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
 
     // Collect all variant IDs from their unique_ids
     let mut variant_ids = Vec::new();

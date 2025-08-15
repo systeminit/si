@@ -165,7 +165,7 @@ async fn cached_schema_variant_not_found(ctx: &DalContext) -> Result<()> {
     let non_existent_id = SchemaVariantId::new();
     
     // Should return an error for non-existent variant
-    let result = dal_materialized_views::cached_schema_variant::assemble(ctx.clone(), non_existent_id).await;
+    let result = dal_materialized_views::cached::schema_variant::assemble(ctx.clone(), non_existent_id).await;
     assert!(result.is_err(), "Should return error for non-existent schema variant");
     
     Ok(())

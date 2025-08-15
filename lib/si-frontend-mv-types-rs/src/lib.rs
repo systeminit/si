@@ -23,6 +23,7 @@
 )]
 
 pub mod action;
+pub mod cached_default_variant;
 pub mod cached_schema;
 pub mod cached_schema_variant;
 pub mod cached_schemas;

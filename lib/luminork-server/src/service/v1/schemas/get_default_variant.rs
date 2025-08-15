@@ -3,6 +3,7 @@ use dal::{
     Prop,
     Schema,
     SchemaVariant,
+    cached_module::CachedModule,
     schema::variant::root_prop::RootPropChild,
 };
 use sdf_extract::{
@@ -11,8 +12,7 @@ use sdf_extract::{
 };
 use serde_json::json;
 use si_frontend_mv_types::{
-    cached_schema::CachedSchema,
-    cached_schema_variant::CachedSchemaVariant,
+    cached_default_variant::CachedDefaultVariant,
     reference::ReferenceKind,
 };
 use telemetry::prelude::*;
@@ -105,109 +105,119 @@ pub async fn get_default_variant(
         }
     }
 
-    // Fall back to MV lookup for uninstalled schemas
-    // For default variant, we need to find the schema in cached modules first
+    // Fall back to MV lookup for uninstalled schemas using direct CachedDefaultVariant lookup
     match frigg
-        .get_current_deployment_objects_by_kind(ReferenceKind::CachedSchema)
+        .get_current_deployment_object(
+            ReferenceKind::CachedDefaultVariant,
+            &schema_id.to_string(),
+        )
         .await
     {
-        Ok(cached_schemas) => {
-            for cached_schema_obj in cached_schemas {
-                if let Ok(cached_schema) =
-                    serde_json::from_value::<CachedSchema>(cached_schema_obj.data)
-                {
-                    if cached_schema.id == schema_id {
-                        // Found the schema, now get its default variant
-                        let default_variant_id = cached_schema.default_variant_id;
-                        match frigg
-                            .get_current_deployment_object(
-                                ReferenceKind::CachedSchemaVariant,
-                                &default_variant_id.to_string(),
-                            )
-                            .await
-                        {
-                            Ok(Some(obj)) => {
-                                if let Ok(cached_variant) =
-                                    serde_json::from_value::<CachedSchemaVariant>(obj.data)
-                                {
-                                    // Build domain_props using current DAL approach since MV excludes them
-                                    let domain = Prop::find_prop_by_path(
-                                        ctx,
-                                        default_variant_id,
-                                        &RootPropChild::Domain.prop_path(),
-                                    )
-                                    .await
-                                    .map_err(Box::new)?;
-                                    let domain_prop_schema =
-                                        build_prop_schema_tree(ctx, domain.id).await?;
+        Ok(Some(obj)) => {
+            if let Ok(cached_default_variant) =
+                serde_json::from_value::<CachedDefaultVariant>(obj.data)
+            {
+                // Build domain_props using current DAL approach since MV excludes them
+                let domain = Prop::find_prop_by_path(
+                    ctx,
+                    cached_default_variant.variant_id,
+                    &RootPropChild::Domain.prop_path(),
+                )
+                .await
+                .map_err(Box::new)?;
+                let domain_prop_schema = build_prop_schema_tree(ctx, domain.id).await?;
 
-                                    // Clone values for logging before moving them
-                                    let display_name_for_log = cached_variant.display_name.clone();
-                                    let category_for_log = cached_variant.category.clone();
+                // Clone values for logging before moving them
+                let display_name_for_log = cached_default_variant.display_name.clone();
+                let category_for_log = cached_default_variant.category.clone();
 
-                                    let response = GetSchemaVariantV1Response {
-                                        variant_id: cached_variant.variant_id,
-                                        display_name: cached_variant.display_name,
-                                        category: cached_variant.category,
-                                        color: cached_variant.color,
-                                        is_locked: cached_variant.is_locked,
-                                        description: cached_variant.description,
-                                        link: cached_variant.link,
-                                        asset_func_id: cached_variant.asset_func_id,
-                                        variant_func_ids: cached_variant.variant_func_ids,
-                                        is_default_variant: true, // Always true for default variant endpoint
-                                        domain_props: Some(domain_prop_schema),
-                                    };
+                let response = GetSchemaVariantV1Response {
+                    variant_id: cached_default_variant.variant_id,
+                    display_name: cached_default_variant.display_name,
+                    category: cached_default_variant.category,
+                    color: cached_default_variant.color,
+                    is_locked: cached_default_variant.is_locked,
+                    description: cached_default_variant.description,
+                    link: cached_default_variant.link,
+                    asset_func_id: cached_default_variant.asset_func_id,
+                    variant_func_ids: cached_default_variant.variant_func_ids,
+                    is_default_variant: true, // Always true for default variant endpoint
+                    domain_props: Some(domain_prop_schema),
+                };
 
-                                    tracker.track(
-                                        ctx,
-                                        "api_get_default_variant",
-                                        json!({
-                                            "schema_id": schema_id,
-                                            "schema_variant_id": default_variant_id,
-                                            "schema_variant_name": display_name_for_log,
-                                            "schema_variant_category": category_for_log,
-                                            "is_locked": cached_variant.is_locked,
-                                            "source": "materialized_view"
-                                        }),
-                                    );
+                tracker.track(
+                    ctx,
+                    "api_get_default_variant",
+                    json!({
+                        "schema_id": schema_id,
+                        "schema_variant_id": cached_default_variant.variant_id,
+                        "schema_variant_name": display_name_for_log,
+                        "schema_variant_category": category_for_log,
+                        "is_locked": cached_default_variant.is_locked,
+                        "source": "materialized_view"
+                    }),
+                );
 
-                                    return Ok(SchemaVariantResponseV1::Success(response));
-                                }
-                            }
-                            Ok(None) => {
-                                // MV not found, trigger rebuild and return 202
-                                if let Err(e) = edda_client.rebuild_for_deployment().await {
-                                    tracing::warn!("Failed to trigger MV rebuild: {}", e);
-                                }
-                                let building_response = BuildingResponseV1 {
-                                        status: "building".to_string(),
-                                        message: "Schema variant data is being generated, please retry shortly".to_string(),
-                                        retry_after_seconds: 2,
-                                        estimated_completion_seconds: 10,
-                                    };
-                                return Ok(SchemaVariantResponseV1::Building(Box::new(
-                                    building_response,
-                                )));
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Failed to get MV for default variant {}: {}",
-                                    default_variant_id,
-                                    e
-                                );
-                            }
-                        }
-                        break;
+                return Ok(SchemaVariantResponseV1::Success(response));
+            }
+        }
+        Ok(None) => {
+            // CachedDefaultVariant not found - check if schema exists in cached_modules DB table
+            match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
+                Ok(Some(_)) => {
+                    // Schema exists in cached_modules but CachedDefaultVariant MV not built yet - trigger rebuild and return 202
+                    if let Err(e) = edda_client.rebuild_for_deployment().await {
+                        tracing::warn!("Failed to trigger MV rebuild: {}", e);
                     }
+                    let building_response = BuildingResponseV1 {
+                        status: "building".to_string(),
+                        message: "Schema variant data is being generated, please retry shortly".to_string(),
+                        retry_after_seconds: 2,
+                        estimated_completion_seconds: 10,
+                    };
+                    return Ok(SchemaVariantResponseV1::Building(Box::new(
+                        building_response,
+                    )));
+                }
+                Ok(None) => {
+                    // Schema doesn't exist in cached_modules at all - return 404
+                    return Err(SchemaError::SchemaNotFound(schema_id));
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to check cached module for schema {}: {}", schema_id, e);
+                    // Fall through to 404 if we can't check the DB
                 }
             }
         }
         Err(e) => {
-            tracing::warn!("Failed to get cached schemas: {}", e);
+            tracing::warn!("Failed to get MV for default variant of schema {}: {}", schema_id, e);
+            // Fall through to check if schema exists
+            match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
+                Ok(Some(_)) => {
+                    // Schema exists but MV lookup failed - trigger rebuild and return 202
+                    if let Err(e) = edda_client.rebuild_for_deployment().await {
+                        tracing::warn!("Failed to trigger MV rebuild: {}", e);
+                    }
+                    let building_response = BuildingResponseV1 {
+                        status: "building".to_string(),
+                        message: "Schema variant data is being generated, please retry shortly".to_string(),
+                        retry_after_seconds: 2,
+                        estimated_completion_seconds: 10,
+                    };
+                    return Ok(SchemaVariantResponseV1::Building(Box::new(
+                        building_response,
+                    )));
+                }
+                Ok(None) => {
+                    // Schema doesn't exist - return 404
+                }
+                Err(_) => {
+                    // Can't check DB - fall through to 404
+                }
+            }
         }
     }
 
-    // Schema not found in either DAL or MV
+    // Schema not found in either DAL or cached_modules
     Err(SchemaError::SchemaNotFound(schema_id))
 }

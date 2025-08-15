@@ -47,6 +47,7 @@ use si_frontend_mv_types::{
         attribute_tree::AttributeTree as AttributeTreeMv,
     },
     dependent_values::DependentValueComponentList as DependentValueComponentListMv,
+    materialized_view::MaterializedView,
     incoming_connections::{
         IncomingConnections as IncomingConnectionsMv,
         IncomingConnectionsList as IncomingConnectionsListMv,
@@ -139,6 +140,8 @@ pub enum MaterializedViewError {
     },
     #[error("Prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("Schema error: {0}")]
+    Schema(#[from] dal::SchemaError),
     #[error("SchemaVariant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde_json error: {0}")]
@@ -1002,7 +1005,7 @@ async fn discover_deployment_mvs(
     tasks.push(DeploymentMvTask {
         mv_kind: ReferenceKind::CachedSchemas,
         mv_id: "cached_schemas".to_string(), // Collection has a fixed ID
-        priority: BuildPriority::default(),
+        priority: <si_frontend_mv_types::cached_schemas::CachedSchemas as MaterializedView>::build_priority(),
     });
 
     // Discover individual CachedSchema and CachedSchemaVariant objects from cached modules
@@ -1015,7 +1018,14 @@ async fn discover_deployment_mvs(
             tasks.push(DeploymentMvTask {
                 mv_kind: ReferenceKind::CachedSchema,
                 mv_id: module.schema_id.to_string(),
-                priority: BuildPriority::default(),
+                priority: <si_frontend_mv_types::cached_schema::CachedSchema as MaterializedView>::build_priority(),
+            });
+
+            // Add CachedDefaultVariant MV task
+            tasks.push(DeploymentMvTask {
+                mv_kind: ReferenceKind::CachedDefaultVariant,
+                mv_id: module.schema_id.to_string(),
+                priority: <si_frontend_mv_types::cached_default_variant::CachedDefaultVariant as MaterializedView>::build_priority(),
             });
 
             // Add individual CachedSchemaVariant MV tasks
@@ -1026,7 +1036,7 @@ async fn discover_deployment_mvs(
                         tasks.push(DeploymentMvTask {
                             mv_kind: ReferenceKind::CachedSchemaVariant,
                             mv_id: variant_id.to_string(),
-                            priority: BuildPriority::default(),
+                            priority: <si_frontend_mv_types::cached_schema_variant::CachedSchemaVariant as MaterializedView>::build_priority(),
                         });
                     }
                 }
@@ -1141,34 +1151,42 @@ async fn spawn_deployment_mv_task(
                 frigg.clone(),
                 mv_id,
                 mv_kind,
-                dal_materialized_views::cached_schemas::assemble(ctx.clone()),
+                dal_materialized_views::cached::schemas::assemble(ctx.clone()),
             ));
         }
         ReferenceKind::CachedSchema => {
             let schema_id: dal::SchemaId = mv_id.parse()
-                .map_err(|_| MaterializedViewError::MaterializedViews(dal_materialized_views::Error::Schema(dal::SchemaError::UninstalledSchemaNotFoundByName(mv_id.clone()))))?;
+                .map_err(|_| dal::SchemaError::UninstalledSchemaNotFound(dal::SchemaId::from(ulid::Ulid::nil())))?;
             build_tasks.spawn(build_mv_for_deployment_task(
                 ctx.clone(),
                 frigg.clone(),
                 mv_id,
                 mv_kind,
-                dal_materialized_views::cached_schema::assemble(ctx.clone(), schema_id),
+                dal_materialized_views::cached::schema::assemble(ctx.clone(), schema_id),
             ));
         }
         ReferenceKind::CachedSchemaVariant => {
             let variant_id: dal::SchemaVariantId = mv_id.parse()
-                .map_err(|_| {
-                    // If we can't parse the mv_id, create a default SchemaVariantId for the error
-                    let default_id = dal::SchemaVariantId::from(ulid::Ulid::nil());
-                    MaterializedViewError::MaterializedViews(dal_materialized_views::Error::SchemaVariant(dal::SchemaVariantError::NotFound(default_id)))
-                })?;
+                .map_err(|_| dal::SchemaVariantError::NotFound(dal::SchemaVariantId::from(ulid::Ulid::nil())))?;
             
             build_tasks.spawn(build_mv_for_deployment_task(
                 ctx.clone(),
                 frigg.clone(),
                 mv_id,
                 mv_kind,
-                dal_materialized_views::cached_schema_variant::assemble(ctx.clone(), variant_id),
+                dal_materialized_views::cached::schema_variant::assemble(ctx.clone(), variant_id),
+            ));
+        }
+        ReferenceKind::CachedDefaultVariant => {
+            let schema_id: dal::SchemaId = mv_id.parse()
+                .map_err(|_| dal::SchemaError::UninstalledSchemaNotFound(dal::SchemaId::from(ulid::Ulid::nil())))?;
+            
+            build_tasks.spawn(build_mv_for_deployment_task(
+                ctx.clone(),
+                frigg.clone(),
+                mv_id,
+                mv_kind,
+                dal_materialized_views::cached::default_variant::assemble(ctx.clone(), schema_id),
             ));
         }
         _ => {
@@ -1501,7 +1519,8 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
 
         ReferenceKind::CachedSchemas
         | ReferenceKind::CachedSchema
-        | ReferenceKind::CachedSchemaVariant => {
+        | ReferenceKind::CachedSchemaVariant
+        | ReferenceKind::CachedDefaultVariant => {
             error!(
                 "Trying to build deployment-level MV '{}' via the changeset graph task. Deployment MVs should be built via build_all_mvs_for_deployment().",
                 mv_kind

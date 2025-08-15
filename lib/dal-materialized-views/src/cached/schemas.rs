@@ -14,7 +14,7 @@ use telemetry::prelude::*;
     level = "debug",
     skip_all
 )]
-pub async fn assemble(ctx: DalContext) -> super::Result<CachedSchemasMv> {
+pub async fn assemble(ctx: DalContext) -> crate::Result<CachedSchemasMv> {
     let mut schemas = vec![];
 
     for module in CachedModule::latest_modules(&ctx).await? {
