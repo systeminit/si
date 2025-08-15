@@ -729,6 +729,56 @@ Components management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Generate a template
+
+<a id="opIdgenerate_template"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/components/generate_template`
+
+> Body parameter
+
+```json
+{
+  "assetName": "My Cool Template",
+  "category": "Templates",
+  "componentIds": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ],
+  "funcName": "Generate My Template"
+}
+```
+
+<h3 id="generate-a-template-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|body|body|[GenerateTemplateV1Request](#schemageneratetemplatev1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79BB",
+  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79AA"
+}
+```
+
+<h3 id="generate-a-template-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Template generated successfully|[GenerateTemplateV1Response](#schemageneratetemplatev1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Complex search for components
 
 <a id="opIdsearch_components"></a>
@@ -3512,6 +3562,58 @@ continued
 |schemaName|string|true|none|none|
 |state|string|true|none|none|
 |updatedAt|string|true|none|none|
+
+## [GenerateTemplateV1Request](#tocS_GenerateTemplateV1Request)
+
+<a id="schemageneratetemplatev1request"></a>
+<a id="schema_GenerateTemplateV1Request"></a>
+<a id="tocSgeneratetemplatev1request"></a>
+<a id="tocsgeneratetemplatev1request"></a>
+
+```json
+{
+  "assetName": "My Cool Template",
+  "category": "Templates",
+  "componentIds": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ],
+  "funcName": "Generate My Template"
+}
+
+```
+
+### [Properties](#generatetemplatev1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|assetName|string|true|none|none|
+|category|string,null|false|none|none|
+|componentIds|[string]|true|none|none|
+|funcName|string|true|none|none|
+
+## [GenerateTemplateV1Response](#tocS_GenerateTemplateV1Response)
+
+<a id="schemageneratetemplatev1response"></a>
+<a id="schema_GenerateTemplateV1Response"></a>
+<a id="tocSgeneratetemplatev1response"></a>
+<a id="tocsgeneratetemplatev1response"></a>
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79BB",
+  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79AA"
+}
+
+```
+
+### [Properties](#generatetemplatev1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcId|string|true|none|none|
+|schemaVariantId|string|true|none|none|
 
 ## [GetActionsV1Response](#tocS_GetActionsV1Response)
 
