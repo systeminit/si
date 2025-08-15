@@ -463,19 +463,6 @@ cargo.rust_library(
     crate = "askama",
     crate_root = "askama-0.14.0.crate/src/lib.rs",
     edition = "2021",
-    env = {
-        "CARGO_CRATE_NAME": "askama",
-        "CARGO_MANIFEST_DIR": "askama-0.14.0.crate",
-        "CARGO_PKG_AUTHORS": "",
-        "CARGO_PKG_DESCRIPTION": "Type-safe, compiled Jinja-like templates for Rust",
-        "CARGO_PKG_NAME": "askama",
-        "CARGO_PKG_REPOSITORY": "https://github.com/askama-rs/askama",
-        "CARGO_PKG_VERSION": "0.14.0",
-        "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "14",
-        "CARGO_PKG_VERSION_PATCH": "0",
-        "CARGO_PKG_VERSION_PRE": "",
-    },
     features = [
         "alloc",
         "config",
@@ -2823,93 +2810,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "bindgen-0.68.1.crate",
-    sha256 = "726e4313eb6ec35d2730258ad4e15b547ee75d6afaa1361a922e78e59b7d8078",
-    strip_prefix = "bindgen-0.68.1",
-    urls = ["https://static.crates.io/crates/bindgen/0.68.1/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "bindgen-0.68.1",
-    srcs = [":bindgen-0.68.1.crate"],
-    crate = "bindgen",
-    crate_root = "bindgen-0.68.1.crate/lib.rs",
-    edition = "2018",
-    env = {
-        "CARGO_CRATE_NAME": "bindgen",
-        "CARGO_MANIFEST_DIR": "bindgen-0.68.1.crate",
-        "CARGO_PKG_AUTHORS": "Jyun-Yan You <jyyou.tw@gmail.com>:Emilio Cobos Álvarez <emilio@crisal.io>:Nick Fitzgerald <fitzgen@gmail.com>:The Servo project developers",
-        "CARGO_PKG_DESCRIPTION": "Automatically generates Rust FFI bindings to C and C++ libraries.",
-        "CARGO_PKG_NAME": "bindgen",
-        "CARGO_PKG_REPOSITORY": "https://github.com/rust-lang/rust-bindgen",
-        "CARGO_PKG_VERSION": "0.68.1",
-        "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "68",
-        "CARGO_PKG_VERSION_PATCH": "1",
-        "CARGO_PKG_VERSION_PRE": "",
-        "OUT_DIR": "$(location :bindgen-0.68.1-build-script-run[out_dir])",
-    },
-    features = ["runtime"],
-    rustc_flags = ["@$(location :bindgen-0.68.1-build-script-run[rustc_flags])"],
-    visibility = [],
-    deps = [
-        ":bitflags-2.9.1",
-        ":cexpr-0.6.0",
-        ":clang-sys-1.8.1",
-        ":lazy_static-1.5.0",
-        ":lazycell-1.3.0",
-        ":peeking_take_while-0.1.2",
-        ":proc-macro2-1.0.95",
-        ":quote-1.0.40",
-        ":regex-1.11.1",
-        ":rustc-hash-1.1.0",
-        ":shlex-1.3.0",
-        ":syn-2.0.104",
-    ],
-)
-
-cargo.rust_binary(
-    name = "bindgen-0.68.1-build-script-build",
-    srcs = [":bindgen-0.68.1.crate"],
-    crate = "build_script_build",
-    crate_root = "bindgen-0.68.1.crate/build.rs",
-    edition = "2018",
-    env = {
-        "CARGO_CRATE_NAME": "build_script_build",
-        "CARGO_MANIFEST_DIR": "bindgen-0.68.1.crate",
-        "CARGO_PKG_AUTHORS": "Jyun-Yan You <jyyou.tw@gmail.com>:Emilio Cobos Álvarez <emilio@crisal.io>:Nick Fitzgerald <fitzgen@gmail.com>:The Servo project developers",
-        "CARGO_PKG_DESCRIPTION": "Automatically generates Rust FFI bindings to C and C++ libraries.",
-        "CARGO_PKG_NAME": "bindgen",
-        "CARGO_PKG_REPOSITORY": "https://github.com/rust-lang/rust-bindgen",
-        "CARGO_PKG_VERSION": "0.68.1",
-        "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "68",
-        "CARGO_PKG_VERSION_PATCH": "1",
-        "CARGO_PKG_VERSION_PRE": "",
-    },
-    features = ["runtime"],
-    visibility = [],
-)
-
-buildscript_run(
-    name = "bindgen-0.68.1-build-script-run",
-    package_name = "bindgen",
-    buildscript_rule = ":bindgen-0.68.1-build-script-build",
-    env = {
-        "CARGO_PKG_AUTHORS": "Jyun-Yan You <jyyou.tw@gmail.com>:Emilio Cobos Álvarez <emilio@crisal.io>:Nick Fitzgerald <fitzgen@gmail.com>:The Servo project developers",
-        "CARGO_PKG_DESCRIPTION": "Automatically generates Rust FFI bindings to C and C++ libraries.",
-        "CARGO_PKG_REPOSITORY": "https://github.com/rust-lang/rust-bindgen",
-        "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "68",
-        "CARGO_PKG_VERSION_PATCH": "1",
-        "CARGO_PKG_VERSION_PRE": "",
-    },
-    features = ["runtime"],
-    version = "0.68.1",
-)
-
-http_archive(
     name = "binstring-0.1.7.crate",
     sha256 = "0669d5a35b64fdb5ab7fb19cae13148b6b5cbdf4b8247faf54ece47f699c8cef",
     strip_prefix = "binstring-0.1.7",
@@ -3487,24 +3387,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "cexpr-0.6.0.crate",
-    sha256 = "6fac387a98bb7c37292057cffc56d62ecb629900026402633ae9160df93a8766",
-    strip_prefix = "cexpr-0.6.0",
-    urls = ["https://static.crates.io/crates/cexpr/0.6.0/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "cexpr-0.6.0",
-    srcs = [":cexpr-0.6.0.crate"],
-    crate = "cexpr",
-    crate_root = "cexpr-0.6.0.crate/src/lib.rs",
-    edition = "2018",
-    visibility = [],
-    deps = [":nom-7.1.3"],
-)
-
-http_archive(
     name = "cfg-if-1.0.1.crate",
     sha256 = "9555578bc9e57714c812a1f84e4fc5b4d21fcb063490c624de019f7464c91268",
     strip_prefix = "cfg-if-1.0.1",
@@ -3673,119 +3555,6 @@ cargo.rust_library(
         ":ciborium-io-0.2.2",
         ":half-2.6.0",
     ],
-)
-
-http_archive(
-    name = "clang-sys-1.8.1.crate",
-    sha256 = "0b023947811758c97c59bf9d1c188fd619ad4718dcaa767947df1cadb14f39f4",
-    strip_prefix = "clang-sys-1.8.1",
-    urls = ["https://static.crates.io/crates/clang-sys/1.8.1/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "clang-sys-1.8.1",
-    srcs = [":clang-sys-1.8.1.crate"],
-    crate = "clang_sys",
-    crate_root = "clang-sys-1.8.1.crate/src/lib.rs",
-    edition = "2021",
-    env = {
-        "CARGO_CRATE_NAME": "clang_sys",
-        "CARGO_MANIFEST_DIR": "clang-sys-1.8.1.crate",
-        "CARGO_PKG_AUTHORS": "Kyle Mayes <kyle@mayeses.com>",
-        "CARGO_PKG_DESCRIPTION": "Rust bindings for libclang.",
-        "CARGO_PKG_NAME": "clang-sys",
-        "CARGO_PKG_REPOSITORY": "https://github.com/KyleMayes/clang-sys",
-        "CARGO_PKG_VERSION": "1.8.1",
-        "CARGO_PKG_VERSION_MAJOR": "1",
-        "CARGO_PKG_VERSION_MINOR": "8",
-        "CARGO_PKG_VERSION_PATCH": "1",
-        "CARGO_PKG_VERSION_PRE": "",
-        "OUT_DIR": "$(location :clang-sys-1.8.1-build-script-run[out_dir])",
-    },
-    features = [
-        "clang_3_5",
-        "clang_3_6",
-        "clang_3_7",
-        "clang_3_8",
-        "clang_3_9",
-        "clang_4_0",
-        "clang_5_0",
-        "clang_6_0",
-        "libloading",
-        "runtime",
-    ],
-    rustc_flags = ["@$(location :clang-sys-1.8.1-build-script-run[rustc_flags])"],
-    visibility = [],
-    deps = [
-        ":glob-0.3.2",
-        ":libc-0.2.174",
-        ":libloading-0.8.8",
-    ],
-)
-
-cargo.rust_binary(
-    name = "clang-sys-1.8.1-build-script-build",
-    srcs = [":clang-sys-1.8.1.crate"],
-    crate = "build_script_build",
-    crate_root = "clang-sys-1.8.1.crate/build.rs",
-    edition = "2021",
-    env = {
-        "CARGO_CRATE_NAME": "build_script_build",
-        "CARGO_MANIFEST_DIR": "clang-sys-1.8.1.crate",
-        "CARGO_PKG_AUTHORS": "Kyle Mayes <kyle@mayeses.com>",
-        "CARGO_PKG_DESCRIPTION": "Rust bindings for libclang.",
-        "CARGO_PKG_NAME": "clang-sys",
-        "CARGO_PKG_REPOSITORY": "https://github.com/KyleMayes/clang-sys",
-        "CARGO_PKG_VERSION": "1.8.1",
-        "CARGO_PKG_VERSION_MAJOR": "1",
-        "CARGO_PKG_VERSION_MINOR": "8",
-        "CARGO_PKG_VERSION_PATCH": "1",
-        "CARGO_PKG_VERSION_PRE": "",
-    },
-    features = [
-        "clang_3_5",
-        "clang_3_6",
-        "clang_3_7",
-        "clang_3_8",
-        "clang_3_9",
-        "clang_4_0",
-        "clang_5_0",
-        "clang_6_0",
-        "libloading",
-        "runtime",
-    ],
-    visibility = [],
-    deps = [":glob-0.3.2"],
-)
-
-buildscript_run(
-    name = "clang-sys-1.8.1-build-script-run",
-    package_name = "clang-sys",
-    buildscript_rule = ":clang-sys-1.8.1-build-script-build",
-    env = {
-        "CARGO_MANIFEST_LINKS": "clang",
-        "CARGO_PKG_AUTHORS": "Kyle Mayes <kyle@mayeses.com>",
-        "CARGO_PKG_DESCRIPTION": "Rust bindings for libclang.",
-        "CARGO_PKG_REPOSITORY": "https://github.com/KyleMayes/clang-sys",
-        "CARGO_PKG_VERSION_MAJOR": "1",
-        "CARGO_PKG_VERSION_MINOR": "8",
-        "CARGO_PKG_VERSION_PATCH": "1",
-        "CARGO_PKG_VERSION_PRE": "",
-    },
-    features = [
-        "clang_3_5",
-        "clang_3_6",
-        "clang_3_7",
-        "clang_3_8",
-        "clang_3_9",
-        "clang_4_0",
-        "clang_5_0",
-        "clang_6_0",
-        "libloading",
-        "runtime",
-    ],
-    version = "1.8.1",
 )
 
 alias(
@@ -4742,6 +4511,17 @@ cargo.rust_library(
     crate_root = "crunchy-0.2.4.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "crunchy",
+        "CARGO_MANIFEST_DIR": "crunchy-0.2.4.crate",
+        "CARGO_PKG_AUTHORS": "Eira Fransham <jackefransham@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Crunchy unroller: deterministically unroll constant loops",
+        "CARGO_PKG_NAME": "crunchy",
+        "CARGO_PKG_REPOSITORY": "https://github.com/eira-fransham/crunchy",
+        "CARGO_PKG_VERSION": "0.2.4",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "2",
+        "CARGO_PKG_VERSION_PATCH": "4",
+        "CARGO_PKG_VERSION_PRE": "",
         "CRUNCHY_LIB_SUFFIX": "/lib.rs",
         "OUT_DIR": "$(location :crunchy-0.2.4-build-script-run[out_dir])",
     },
@@ -4759,6 +4539,19 @@ cargo.rust_binary(
     crate = "build_script_build",
     crate_root = "crunchy-0.2.4.crate/build.rs",
     edition = "2021",
+    env = {
+        "CARGO_CRATE_NAME": "build_script_build",
+        "CARGO_MANIFEST_DIR": "crunchy-0.2.4.crate",
+        "CARGO_PKG_AUTHORS": "Eira Fransham <jackefransham@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Crunchy unroller: deterministically unroll constant loops",
+        "CARGO_PKG_NAME": "crunchy",
+        "CARGO_PKG_REPOSITORY": "https://github.com/eira-fransham/crunchy",
+        "CARGO_PKG_VERSION": "0.2.4",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "2",
+        "CARGO_PKG_VERSION_PATCH": "4",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "default",
         "limit_128",
@@ -4770,6 +4563,15 @@ buildscript_run(
     name = "crunchy-0.2.4-build-script-run",
     package_name = "crunchy",
     buildscript_rule = ":crunchy-0.2.4-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "Eira Fransham <jackefransham@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Crunchy unroller: deterministically unroll constant loops",
+        "CARGO_PKG_REPOSITORY": "https://github.com/eira-fransham/crunchy",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "2",
+        "CARGO_PKG_VERSION_PATCH": "4",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "default",
         "limit_128",
@@ -5639,49 +5441,9 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MINOR": "2",
         "CARGO_PKG_VERSION_PATCH": "0",
         "CARGO_PKG_VERSION_PRE": "",
-        "OUT_DIR": "$(location :devicemapper-sys-0.2.0-build-script-run[out_dir])",
-    },
-    rustc_flags = ["@$(location :devicemapper-sys-0.2.0-build-script-run[rustc_flags])"],
-    visibility = [],
-)
-
-cargo.rust_binary(
-    name = "devicemapper-sys-0.2.0-build-script-build",
-    srcs = [":devicemapper-sys-0.2.0.crate"],
-    crate = "build_script_build",
-    crate_root = "devicemapper-sys-0.2.0.crate/build.rs",
-    edition = "2021",
-    env = {
-        "CARGO_CRATE_NAME": "build_script_build",
-        "CARGO_MANIFEST_DIR": "devicemapper-sys-0.2.0.crate",
-        "CARGO_PKG_AUTHORS": "Stratis Developers <stratis-devel@lists.fedorahosted.org>",
-        "CARGO_PKG_DESCRIPTION": "Low level bindings for devicemapper",
-        "CARGO_PKG_NAME": "devicemapper-sys",
-        "CARGO_PKG_REPOSITORY": "https://github.com/stratis-storage/devicemapper-rs",
-        "CARGO_PKG_VERSION": "0.2.0",
-        "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "2",
-        "CARGO_PKG_VERSION_PATCH": "0",
-        "CARGO_PKG_VERSION_PRE": "",
+        "OUT_DIR": "$(location //third-party/rust/fixups/devicemapper-sys:out_dir)",
     },
     visibility = [],
-    deps = [":bindgen-0.68.1"],
-)
-
-buildscript_run(
-    name = "devicemapper-sys-0.2.0-build-script-run",
-    package_name = "devicemapper-sys",
-    buildscript_rule = ":devicemapper-sys-0.2.0-build-script-build",
-    env = {
-        "CARGO_PKG_AUTHORS": "Stratis Developers <stratis-devel@lists.fedorahosted.org>",
-        "CARGO_PKG_DESCRIPTION": "Low level bindings for devicemapper",
-        "CARGO_PKG_REPOSITORY": "https://github.com/stratis-storage/devicemapper-rs",
-        "CARGO_PKG_VERSION_MAJOR": "0",
-        "CARGO_PKG_VERSION_MINOR": "2",
-        "CARGO_PKG_VERSION_PATCH": "0",
-        "CARGO_PKG_VERSION_PRE": "",
-    },
-    version = "0.2.0",
 )
 
 alias(
@@ -9960,23 +9722,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "lazycell-1.3.0.crate",
-    sha256 = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55",
-    strip_prefix = "lazycell-1.3.0",
-    urls = ["https://static.crates.io/crates/lazycell/1.3.0/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "lazycell-1.3.0",
-    srcs = [":lazycell-1.3.0.crate"],
-    crate = "lazycell",
-    crate_root = "lazycell-1.3.0.crate/src/lib.rs",
-    edition = "2015",
-    visibility = [],
-)
-
-http_archive(
     name = "libc-0.2.174.crate",
     sha256 = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776",
     strip_prefix = "libc-0.2.174",
@@ -10029,43 +9774,6 @@ buildscript_run(
 )
 
 http_archive(
-    name = "libloading-0.8.8.crate",
-    sha256 = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667",
-    strip_prefix = "libloading-0.8.8",
-    urls = ["https://static.crates.io/crates/libloading/0.8.8/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "libloading-0.8.8",
-    srcs = [":libloading-0.8.8.crate"],
-    crate = "libloading",
-    crate_root = "libloading-0.8.8.crate/src/lib.rs",
-    edition = "2015",
-    platform = {
-        "linux-arm64": dict(
-            deps = [":cfg-if-1.0.1"],
-        ),
-        "linux-x86_64": dict(
-            deps = [":cfg-if-1.0.1"],
-        ),
-        "macos-arm64": dict(
-            deps = [":cfg-if-1.0.1"],
-        ),
-        "macos-x86_64": dict(
-            deps = [":cfg-if-1.0.1"],
-        ),
-        "windows-gnu": dict(
-            deps = [":windows-targets-0.53.2"],
-        ),
-        "windows-msvc": dict(
-            deps = [":windows-targets-0.53.2"],
-        ),
-    },
-    visibility = [],
-)
-
-http_archive(
     name = "libm-0.2.15.crate",
     sha256 = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de",
     strip_prefix = "libm-0.2.15",
@@ -10083,6 +9791,7 @@ cargo.rust_library(
         "arch",
         "default",
     ],
+    preferred_linkage = "static",
     visibility = [],
 )
 
@@ -11666,12 +11375,73 @@ cargo.rust_library(
     crate = "ntapi",
     crate_root = "ntapi-0.4.1.crate/src/lib.rs",
     edition = "2018",
+    env = {
+        "CARGO_CRATE_NAME": "ntapi",
+        "CARGO_MANIFEST_DIR": "ntapi-0.4.1.crate",
+        "CARGO_PKG_AUTHORS": "MSxDOS <melcodos@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "FFI bindings for Native API",
+        "CARGO_PKG_NAME": "ntapi",
+        "CARGO_PKG_REPOSITORY": "https://github.com/MSxDOS/ntapi",
+        "CARGO_PKG_VERSION": "0.4.1",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "4",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+        "OUT_DIR": "$(location :ntapi-0.4.1-build-script-run[out_dir])",
+    },
+    features = [
+        "default",
+        "user",
+    ],
+    rustc_flags = ["@$(location :ntapi-0.4.1-build-script-run[rustc_flags])"],
+    visibility = [],
+    deps = [":winapi-0.3.9"],
+)
+
+cargo.rust_binary(
+    name = "ntapi-0.4.1-build-script-build",
+    srcs = [":ntapi-0.4.1.crate"],
+    crate = "build_script_build",
+    crate_root = "ntapi-0.4.1.crate/build.rs",
+    edition = "2018",
+    env = {
+        "CARGO_CRATE_NAME": "build_script_build",
+        "CARGO_MANIFEST_DIR": "ntapi-0.4.1.crate",
+        "CARGO_PKG_AUTHORS": "MSxDOS <melcodos@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "FFI bindings for Native API",
+        "CARGO_PKG_NAME": "ntapi",
+        "CARGO_PKG_REPOSITORY": "https://github.com/MSxDOS/ntapi",
+        "CARGO_PKG_VERSION": "0.4.1",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "4",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "default",
         "user",
     ],
     visibility = [],
-    deps = [":winapi-0.3.9"],
+)
+
+buildscript_run(
+    name = "ntapi-0.4.1-build-script-run",
+    package_name = "ntapi",
+    buildscript_rule = ":ntapi-0.4.1-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "MSxDOS <melcodos@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "FFI bindings for Native API",
+        "CARGO_PKG_REPOSITORY": "https://github.com/MSxDOS/ntapi",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "4",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
+    features = [
+        "default",
+        "user",
+    ],
+    version = "0.4.1",
 )
 
 http_archive(
@@ -12977,23 +12747,6 @@ cargo.rust_library(
     crate = "pathdiff",
     crate_root = "pathdiff-0.2.3.crate/src/lib.rs",
     edition = "2018",
-    visibility = [],
-)
-
-http_archive(
-    name = "peeking_take_while-0.1.2.crate",
-    sha256 = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099",
-    strip_prefix = "peeking_take_while-0.1.2",
-    urls = ["https://static.crates.io/crates/peeking_take_while/0.1.2/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "peeking_take_while-0.1.2",
-    srcs = [":peeking_take_while-0.1.2.crate"],
-    crate = "peeking_take_while",
-    crate_root = "peeking_take_while-0.1.2.crate/src/lib.rs",
-    edition = "2015",
     visibility = [],
 )
 
@@ -14441,11 +14194,65 @@ cargo.rust_library(
     crate = "rayon_core",
     crate_root = "rayon-core-1.12.1.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "CARGO_CRATE_NAME": "rayon_core",
+        "CARGO_MANIFEST_DIR": "rayon-core-1.12.1.crate",
+        "CARGO_PKG_AUTHORS": "Niko Matsakis <niko@alum.mit.edu>:Josh Stone <cuviper@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Core APIs for Rayon",
+        "CARGO_PKG_NAME": "rayon-core",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rayon-rs/rayon",
+        "CARGO_PKG_VERSION": "1.12.1",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "12",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+        "OUT_DIR": "$(location :rayon-core-1.12.1-build-script-run[out_dir])",
+    },
+    rustc_flags = ["@$(location :rayon-core-1.12.1-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":crossbeam-deque-0.8.6",
         ":crossbeam-utils-0.8.21",
     ],
+)
+
+cargo.rust_binary(
+    name = "rayon-core-1.12.1-build-script-build",
+    srcs = [":rayon-core-1.12.1.crate"],
+    crate = "build_script_build",
+    crate_root = "rayon-core-1.12.1.crate/build.rs",
+    edition = "2021",
+    env = {
+        "CARGO_CRATE_NAME": "build_script_build",
+        "CARGO_MANIFEST_DIR": "rayon-core-1.12.1.crate",
+        "CARGO_PKG_AUTHORS": "Niko Matsakis <niko@alum.mit.edu>:Josh Stone <cuviper@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Core APIs for Rayon",
+        "CARGO_PKG_NAME": "rayon-core",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rayon-rs/rayon",
+        "CARGO_PKG_VERSION": "1.12.1",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "12",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
+    visibility = [],
+)
+
+buildscript_run(
+    name = "rayon-core-1.12.1-build-script-run",
+    package_name = "rayon-core",
+    buildscript_rule = ":rayon-core-1.12.1-build-script-build",
+    env = {
+        "CARGO_MANIFEST_LINKS": "rayon-core",
+        "CARGO_PKG_AUTHORS": "Niko Matsakis <niko@alum.mit.edu>:Josh Stone <cuviper@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Core APIs for Rayon",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rayon-rs/rayon",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "12",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
+    version = "1.12.1",
 )
 
 alias(
@@ -15927,27 +15734,6 @@ cargo.rust_library(
     crate = "rustc_demangle",
     crate_root = "rustc-demangle-0.1.25.crate/src/lib.rs",
     edition = "2015",
-    visibility = [],
-)
-
-http_archive(
-    name = "rustc-hash-1.1.0.crate",
-    sha256 = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2",
-    strip_prefix = "rustc-hash-1.1.0",
-    urls = ["https://static.crates.io/crates/rustc-hash/1.1.0/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "rustc-hash-1.1.0",
-    srcs = [":rustc-hash-1.1.0.crate"],
-    crate = "rustc_hash",
-    crate_root = "rustc-hash-1.1.0.crate/src/lib.rs",
-    edition = "2015",
-    features = [
-        "default",
-        "std",
-    ],
     visibility = [],
 )
 
@@ -18762,27 +18548,7 @@ cargo.rust_library(
     crate = "target_triple",
     crate_root = "target-triple-0.1.4.crate/src/lib.rs",
     edition = "2021",
-    env = {
-        "OUT_DIR": "$(location :target-triple-0.1.4-build-script-run[out_dir])",
-    },
-    rustc_flags = ["@$(location :target-triple-0.1.4-build-script-run[rustc_flags])"],
     visibility = [],
-)
-
-cargo.rust_binary(
-    name = "target-triple-0.1.4-build-script-build",
-    srcs = [":target-triple-0.1.4.crate"],
-    crate = "build_script_build",
-    crate_root = "target-triple-0.1.4.crate/build.rs",
-    edition = "2021",
-    visibility = [],
-)
-
-buildscript_run(
-    name = "target-triple-0.1.4-build-script-run",
-    package_name = "target-triple",
-    buildscript_rule = ":target-triple-0.1.4-build-script-build",
-    version = "0.1.4",
 )
 
 alias(
