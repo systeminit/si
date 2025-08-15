@@ -19,7 +19,7 @@ jobs:
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
-            Okay, starting a try! I\'ll update this comment once it\'s running...\n
+            Okay, starting a try! I\'ll update this comment once it\'s running...
 
       - uses: xt0rted/pull-request-comment-branch@v2
         id: comment-branch
