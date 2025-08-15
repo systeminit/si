@@ -13,7 +13,7 @@ export_file(
 )
 
 filegroup(
-    name = "cf-db",
+    name = "srcs",
     srcs = glob([
         "**/*",
     ]),
