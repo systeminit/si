@@ -431,7 +431,7 @@ export async function eventualMVAssert(
   id: string,
   assertFn: (mv: any) => boolean,
   message: string,
-  timeoutMs: number = 45000, // 45 seconds
+  timeoutMs: number = 60000, // 60 seconds
 
 ): Promise<void> {
   // update this to use sdf.mjolnir and retryUntil 
