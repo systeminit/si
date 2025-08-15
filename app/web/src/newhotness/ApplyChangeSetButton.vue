@@ -36,11 +36,12 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, ref, watchEffect, nextTick } from "vue";
 import * as _ from "lodash-es";
 import { VButton, PillCounter, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
+import { useRoute, useRouter } from "vue-router";
 import {
   BifrostActionViewList,
   EntityKind,
@@ -52,11 +53,32 @@ import { useContext } from "./logic_composables/context";
 
 const ctx = useContext();
 
+const route = useRoute();
+const router = useRouter();
+
 const applyChangeSetModalRef = ref<InstanceType<typeof ApplyChangeSetModal>>();
 
 const openApplyChangeSetModal = () => {
   applyChangeSetModalRef.value?.open();
 };
+
+// Watch for query parameter to auto-open modal after navigation
+watchEffect(() => {
+  if (route.query.openApplyModal === "true") {
+    // Clean up the query parameter
+    router.replace({
+      ...route,
+      query: { ...route.query, openApplyModal: undefined },
+    });
+
+    // Open the modal after navigation and context update are complete
+    setTimeout(() => {
+      nextTick(() => {
+        openApplyChangeSetModal();
+      });
+    }, 100); // Small delay to ensure context is updated
+  }
+});
 
 const { applyInFlight, disallowApply } = useApplyChangeSet(ctx);
 

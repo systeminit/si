@@ -59,10 +59,12 @@
             changeSet.status === ChangeSetStatus.NeedsApproval &&
             ctx.user
           "
+          class="flex-1 min-h-0"
           :changeSet="changeSet"
           :approvalData="approvalData"
           :workspaceUsers="workspaceUsers"
           :user="ctx.user"
+          @closeModal="closeModalHandler"
         />
         <div
           v-else
@@ -108,7 +110,7 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRouter, useRoute } from "vue-router";
-import { computed, onBeforeUnmount, inject, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, inject, onMounted, ref, watch } from "vue";
 import { debounce } from "lodash-es";
 import { useToast, POSITION } from "vue-toastification";
 import { useQuery } from "@tanstack/vue-query";
@@ -228,6 +230,22 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearKeyEmitters();
 });
+
+// Watch for change set status changes and close modal if it's no longer pending approval
+watch(
+  () => changeSet.value?.status,
+  (newStatus, oldStatus) => {
+    // If modal is open and status changed from NeedsApproval to something else, close it
+    if (
+      modalRef.value &&
+      oldStatus === ChangeSetStatus.NeedsApproval &&
+      newStatus !== ChangeSetStatus.NeedsApproval &&
+      newStatus !== undefined
+    ) {
+      closeModalHandler();
+    }
+  },
+);
 
 async function openModalHandler() {
   if (ctx?.onHead.value) return;
