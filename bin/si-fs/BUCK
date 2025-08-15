@@ -1,7 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
-    "nix_binary",
     "rust_binary",
+    "rust_binary_pkg",
 )
 
 rust_binary(
@@ -18,8 +18,7 @@ rust_binary(
     env = {"CARGO_BIN_NAME": "si-fs"},
 )
 
-nix_binary(
-    name = "binary",
-    binary_name = "si-fs",
-    build_dep = "//bin/si-fs:si-fs",
+rust_binary_pkg(
+    name = "si-fs",
+    binary = ":si-fs"
 )
