@@ -80,7 +80,7 @@ rootfs(
     pkg_name = "cyclone",
     rootfs_name = "cyclone-rootfs",
     build_deps = [
-        ":omnibus",
-        "//bin/lang-js:omnibus",
+        ":cyclone",
+        "//bin/lang-js:bin",
     ],
 )

@@ -13,7 +13,7 @@ export_file(
 )
 
 filegroup(
-    name = "remove-empty",
+    name = "srcs",
     srcs = glob([
         "**/*",
     ]),

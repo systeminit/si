@@ -13,6 +13,12 @@ from typing import List
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--deno-binary",
+        required=True,
+        type=pathlib.Path,
+        help="The path to the deno binary",
+    )
+    parser.add_argument(
         "--input",
         action="append",
         required=True,
@@ -36,13 +42,13 @@ def parse_args() -> argparse.Namespace:
                         help="Watch for file changes and restart tests")
     parser.add_argument(
         "--permissions",
-        nargs='*',
+        nargs="*",
         default=[],
         help="List of Deno permissions to grant (e.g., read write net)",
     )
     parser.add_argument(
         "--unstable-flags",
-        nargs='*',
+        nargs="*",
         default=[],
         help="List of unstable flags to enable",
     )
@@ -52,15 +58,16 @@ def parse_args() -> argparse.Namespace:
 
 def parse_permissions(perms: List[str]) -> List[str]:
     """Convert permission names to Deno CLI flags."""
-    return [f'--{perm}' for perm in perms]
+    return [f"--{perm}" for perm in perms]
 
 
 def parse_unstable_flags(flags: List[str]) -> List[str]:
     """Convert unstable flag names to Deno CLI flags."""
-    return [f'--unstable-{flag}' for flag in flags]
+    return [f"--unstable-{flag}" for flag in flags]
 
 
 def run_tests(
+    deno_binary: str,
     input_paths: List[str],
     filter_pattern: str | None,
     flags: List[str],
@@ -70,7 +77,7 @@ def run_tests(
     watch: bool,
 ) -> None:
     """Run deno test with the specified arguments."""
-    cmd = ["deno", "test"]
+    cmd = [str(deno_binary), "test"]
 
     if filter_pattern:
         cmd.extend(["--filter", filter_pattern])
@@ -123,8 +130,16 @@ def main() -> int:
         permissions_list = parse_permissions(args.permissions)
         flags_list = parse_unstable_flags(args.unstable_flags)
 
-        run_tests(input_paths, args.filter, flags_list, args.ignore,
-                  args.parallel, permissions_list, args.watch)
+        run_tests(
+            args.deno_binary,
+            input_paths,
+            args.filter,
+            flags_list,
+            args.ignore,
+            args.parallel,
+            permissions_list,
+            args.watch,
+        )
 
         print("Tests completed successfully.")
         return 0
