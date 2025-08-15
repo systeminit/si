@@ -16,7 +16,12 @@
           in the cloud. These actions will be applied to the real world:
         </div>
         <div
-          class="flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700"
+          :class="
+            clsx(
+              'flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700',
+              approvalsEnabled && 'max-h-[36vh]',
+            )
+          "
         >
           <div class="flex flex-row py-xs">
             <span class="ml-xs text-md">{{ actionsTitle }}</span>

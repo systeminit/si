@@ -3,8 +3,8 @@
     v-if="status !== 'unexpected'"
     :class="
       clsx(
-        'flex flex-col gap-sm p-sm',
-        'rounded shadow-2xl overflow-hidden',
+        'flex flex-col gap-sm p-sm overflow-y-auto',
+        'rounded shadow-2xl',
         themeClasses('bg-shade-0 border', 'bg-neutral-900'),
       )
     "
@@ -45,16 +45,8 @@
       </ErrorMessage>
     </div>
 
-    <div
-      :class="
-        clsx('flex flex-row gap-xs flex-1 overflow-hidden place-content-evenly')
-      "
-    >
-      <div
-        :class="
-          clsx('flex flex-col gap-xs overflow-hidden text-center basis-1/2')
-        "
-      >
+    <div :class="clsx('flex flex-row gap-xs flex-1 place-content-evenly')">
+      <div :class="clsx('flex flex-col gap-xs text-center basis-1/2')">
         <RouterLink
           :to="{
             name: 'workspace-audit',
@@ -73,11 +65,7 @@
     </div>
 
     <!-- MAIN SECTION -->
-    <div
-      :class="
-        clsx('flex flex-row gap-xs flex-1 overflow-hidden place-content-evenly')
-      "
-    >
+    <div :class="clsx('flex flex-row gap-xs flex-1 place-content-evenly')">
       <div class="flex flex-col basis-1/2 text-sm gap-xs overflow-y-auto">
         <div
           v-for="group in requirementGroups"
