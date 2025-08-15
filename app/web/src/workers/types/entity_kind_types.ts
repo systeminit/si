@@ -261,7 +261,7 @@ export interface BifrostComponent {
   color?: string;
   schemaName: string;
   schemaId: SchemaId;
-  // Needed for "BifrostComponentInList" usage where the "SchemaVariant" is dropped.
+  // Needed for "ComponentInList" usage where the "SchemaVariant" is dropped.
   schemaVariantId: WeakReference<EntityKind.SchemaVariant>;
   schemaVariant: SchemaVariant;
   schemaVariantName: string;
@@ -287,21 +287,17 @@ export interface BifrostComponent {
   toDelete: boolean;
 }
 
-export enum ComponentDiffStatus {
-  Added = "Added",
-  None = "None",
-  Modified = "Modified",
-}
+export type ComponentDiffStatus = "Added" | "None" | "Modified";
 
 // NOTE: when using `getMany` you don't end up with a BifrostComponent (b/c it doesnt have SchemaVariant)
-// You end up with a BifrostComponentInList
+// You end up with a ComponentInList
 export interface ComponentInList {
   id: ComponentId;
   name: string;
   color?: string;
   schemaName: string;
   schemaId: SchemaId;
-  // Needed for "BifrostComponentInList" usage where the "SchemaVariant" is dropped.
+  // Needed for "ComponentInList" usage where the "SchemaVariant" is dropped.
   schemaVariantId: SchemaVariantId;
   schemaVariantName: string;
   schemaCategory: string;

@@ -21,14 +21,14 @@ export function useComponentDeletion(viewId?: string, skipNavigation = false) {
     // Convert resourceDiff to diffStatus
     let diffStatus: ComponentDiffStatus;
     if (component.resourceDiff?.diff) {
-      diffStatus = ComponentDiffStatus.Modified;
+      diffStatus = "Modified";
     } else if (
       component.resourceDiff?.current &&
       !component.resourceDiff?.diff
     ) {
-      diffStatus = ComponentDiffStatus.Added;
+      diffStatus = "Added";
     } else {
-      diffStatus = ComponentDiffStatus.None;
+      diffStatus = "None";
     }
 
     return {
