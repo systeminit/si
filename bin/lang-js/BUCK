@@ -6,7 +6,6 @@ load(
 )
 load(
     "@prelude-si//:deno.bzl",
-    "deno_cache",
     "deno_compile",
     "deno_format",
     "deno_run",
@@ -22,28 +21,24 @@ alias(
     actual = ":bin"
 )
 
-deno_cache(
-  name = "cache",
-  srcs = glob(["src/**/*.ts"])
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/*",
+    ]),
+    visibility = ["PUBLIC"],
 )
 
-# this builds bundle.js so it can be used at runtime by function execution
+# this builds bundle.ts so it can be used at runtime by function execution
 deno_run(
     name = "build",
     main = "src/build.ts",
-    out = "src/bundle.js",
-    srcs = [
-        ":cache",
-        "//:deno_workspace"
-    ] +
-    glob([
-        "src/**/sandbox.ts",
-        "src/**/build.ts",
-        "src/sandbox/*.ts",
-    ]),
+    out = "bundle.js",
+    srcs = glob(["src/**/*.ts"]),
     permissions = [
         "allow-all",
     ],
+    deno_cache = "//:deno_workspace",
     visibility = ["PUBLIC"],
 )
 
@@ -64,6 +59,7 @@ deno_compile(
     unstable_flags = [
         "node-globals"
     ],
+    deno_cache = "//:deno_workspace",
     visibility = ["PUBLIC"],
 )
 

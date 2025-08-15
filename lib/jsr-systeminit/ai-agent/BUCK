@@ -13,7 +13,7 @@ export_file(
 )
 
 filegroup(
-    name = "ai-agent",
+    name = "srcs",
     srcs = glob([
         "**/*",
     ]),

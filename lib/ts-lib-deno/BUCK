@@ -19,7 +19,7 @@ package_node_modules(
 )
 
 filegroup(
-    name = "ts-lib-deno",
+    name = "srcs",
     srcs = glob([
         "**/*",
         "tsconfig.json"
