@@ -1392,8 +1392,12 @@ provide("EXPLORE_CONTEXT", exploreContext.value);
 
 // ================================================================================================
 // THE SEARCH BAR AND FILTERING
-const searchString = ref("");
-const filteredComponents = useComponentSearch(searchString, componentList);
+// searchString can be null because VormInput sets the value to null onBlur if it's an empty string
+const searchString = ref<string | null>("");
+const filteredComponents = useComponentSearch(
+  () => searchString.value ?? "",
+  componentList,
+);
 
 // Filtered components counter state
 const isScrolledToBottom = ref(false);
@@ -1403,7 +1407,7 @@ const shouldShowFilteredCounter = computed(() => {
     componentList.value.length > filteredComponents.value.length;
   return (
     hasFilteredComponents &&
-    (isScrolledToBottom.value || searchString.value.trim() !== "")
+    (isScrolledToBottom.value || (searchString.value ?? "").trim() !== "")
   );
 });
 
@@ -1423,6 +1427,7 @@ watch(searchString, () => {
   };
 
   if (!searchString.value) {
+    // if search string is empty, remove it from the URL
     delete query.searchQuery;
   } else {
     query.searchQuery = searchString.value;
@@ -1444,9 +1449,11 @@ watch(filteredComponents, () => {
   // which means the selected indexes could have moved in either direction
 });
 
+// this is so that when on the map view, if you have a component selected
+// and start searching, we clear the selected component
+// on grid view, this has no impact, because you can't focus on the search box if you've got component(s) selected
 watch(searchString, (newValue, oldValue) => {
   if (oldValue === "" && newValue === null) {
-    // this is not a real change in the search string!
     return;
   }
   if (mapRef.value && typeof mapRef.value.deselect === "function") {
@@ -2287,6 +2294,7 @@ section.grid.map {
 div.main {
   grid-area: "main";
 }
+
 div.right {
   grid-area: "right";
 }
