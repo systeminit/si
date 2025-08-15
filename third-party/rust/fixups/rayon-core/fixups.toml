@@ -1,1 +1,3 @@
-buildscript.run = false
+cargo_env = true
+
+buildscript.run = true
