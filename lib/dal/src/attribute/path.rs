@@ -86,8 +86,14 @@ impl AttributePath {
 
     /// Validate that the JSON pointer can refer to something real under the given prop.
     ///
+    /// Returns the PropId of the referenced path.
+    ///
     /// Errors if the JSON pointer refers to a missing field under an object.
-    pub async fn validate(&self, ctx: &DalContext, prop_id: PropId) -> AttributeValueResult<()> {
+    pub async fn validate(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> AttributeValueResult<PropId> {
         match self {
             AttributePath::JsonPointer(pointer) => {
                 let pointer = jsonptr::Pointer::parse(pointer)
@@ -270,7 +276,7 @@ async fn validate_json_pointer(
     ctx: &DalContext,
     mut parent_id: PropId,
     pointer: &jsonptr::Pointer,
-) -> AttributeValueResult<()> {
+) -> AttributeValueResult<PropId> {
     // Go through each segment of the JSON pointer (e.g. /foo/bar/0 = foo, bar, 0)
     // and validate that the child prop exists or that it is a valid index and not -
     for token in pointer {
@@ -311,5 +317,5 @@ async fn validate_json_pointer(
             }
         }
     }
-    Ok(())
+    Ok(parent_id)
 }

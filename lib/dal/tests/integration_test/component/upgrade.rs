@@ -1047,7 +1047,7 @@ async fn upgrade_component_with_subscriptions(ctx: &mut DalContext) -> Result<()
     let test = ConnectableTest::setup(ctx).await?;
     test.create_connectable(ctx, "in", None, []).await?;
     let out = test.create_connectable(ctx, "out", None, []).await?;
-    value::subscribe(ctx, ("out", "/domain/Value"), [("in", "/domain/Value")]).await?;
+    value::subscribe(ctx, ("out", "/domain/Value"), ("in", "/domain/Value")).await?;
     value::set(ctx, ("in", "/domain/Value"), "old").await?;
     change_set::commit(ctx).await?;
     assert_eq!("old", value::get(ctx, ("out", "/domain/Value")).await?);

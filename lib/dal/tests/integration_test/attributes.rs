@@ -1,7 +1,6 @@
 use dal::{
     Component,
     DalContext,
-    Func,
     action::{
         Action,
         prototype::ActionPrototype,
@@ -13,7 +12,6 @@ use dal::{
         },
         value::AttributeValueError,
     },
-    func::intrinsics::IntrinsicFunc,
 };
 use dal_test::{
     Result,
@@ -344,24 +342,19 @@ async fn component_sources_in_order(ctx: &mut DalContext) -> Result<()> {
 
     // If some of the array items are subscriptions, sources should show that
     let subscriber = component::create(ctx, "test", "subscriber").await?;
-    value::subscribe(
-        ctx,
-        ("subscriber", "/domain/Foo"),
-        [("test", "/domain/Foo")],
-    )
-    .await?;
+    value::subscribe(ctx, ("subscriber", "/domain/Foo"), ("test", "/domain/Foo")).await?;
     value::set(ctx, ("subscriber", "/domain/Bar"), "bar2").await?;
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Arr/-"),
-        [("test", "/domain/Arr/0")],
+        ("test", "/domain/Arr/0"),
     )
     .await?;
     value::set(ctx, ("subscriber", "/domain/Arr/-"), "a2").await?;
     value::subscribe(
         ctx,
         ("subscriber", "/domain/Arr/-"),
-        [("test", "/domain/Arr/1")],
+        ("test", "/domain/Arr/1"),
     )
     .await?;
     value::set(ctx, ("subscriber", "/domain/Arr/-"), "b2").await?;
@@ -397,12 +390,7 @@ async fn component_sources_in_order(ctx: &mut DalContext) -> Result<()> {
 
     // If the entire array is a subscription, child values should not be included even if DVU has run
     let subscriber2 = component::create(ctx, "test", "subscriber2").await?;
-    value::subscribe(
-        ctx,
-        ("subscriber2", "/domain/Arr"),
-        [("test", "/domain/Arr")],
-    )
-    .await?;
+    value::subscribe(ctx, ("subscriber2", "/domain/Arr"), ("test", "/domain/Arr")).await?;
     change_set::commit(ctx).await?;
     assert_eq!(
         json!({
@@ -413,7 +401,6 @@ async fn component_sources_in_order(ctx: &mut DalContext) -> Result<()> {
         }),
         component::domain(ctx, "subscriber2").await?
     );
-    let normalize_to_array = Func::find_intrinsic(ctx, IntrinsicFunc::NormalizeToArray).await?;
     assert_eq!(
         json!({
             "/si/name": "subscriber2",
@@ -421,7 +408,6 @@ async fn component_sources_in_order(ctx: &mut DalContext) -> Result<()> {
             "/domain/Arr": { "$source": {
                 "component": test.to_string(),
                 "path": "/domain/Arr",
-                "func": normalize_to_array.to_string()
             } },
         }),
         serde_json::to_value(AttributeSources::from(
@@ -465,9 +451,9 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
     value::set(ctx, ("source", "/domain/Map/b"), "valueB").await?;
     value::set(ctx, ("source", "/domain/Arr"), ["a", "b"]).await?;
     let dest = component::create(ctx, "test", "dest").await?;
-    value::subscribe(ctx, ("dest", "/domain/Obj"), [("source", "/domain/Obj")]).await?;
-    value::subscribe(ctx, ("dest", "/domain/Map"), [("source", "/domain/Map")]).await?;
-    value::subscribe(ctx, ("dest", "/domain/Arr"), [("source", "/domain/Arr")]).await?;
+    value::subscribe(ctx, ("dest", "/domain/Obj"), ("source", "/domain/Obj")).await?;
+    value::subscribe(ctx, ("dest", "/domain/Map"), ("source", "/domain/Map")).await?;
+    value::subscribe(ctx, ("dest", "/domain/Arr"), ("source", "/domain/Arr")).await?;
     change_set::commit(ctx).await?;
     assert_eq!(
         json!({

@@ -1613,8 +1613,8 @@ async fn delete_multiple_components_with_subscriptions(ctx: &mut DalContext) -> 
     let b = component::create(ctx, "B", "B").await?;
 
     // both A's subscribe to B
-    value::subscribe(ctx, ("A1", "/domain/prop"), [("B", "/domain/prop")]).await?;
-    value::subscribe(ctx, ("A2", "/domain/prop"), [("B", "/domain/prop")]).await?;
+    value::subscribe(ctx, ("A1", "/domain/prop"), ("B", "/domain/prop")).await?;
+    value::subscribe(ctx, ("A2", "/domain/prop"), ("B", "/domain/prop")).await?;
 
     // update value for B
     value::set(ctx, ("B", "/domain/prop"), "hello world").await?;

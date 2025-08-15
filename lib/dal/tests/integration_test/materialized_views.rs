@@ -568,13 +568,13 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
         value::subscribe(
             ctx,
             charlie_si_name_attribute_value_id,
-            [(alpha.id(), alpha_si_name_attribute_value_path.as_str())],
+            (alpha.id(), alpha_si_name_attribute_value_path.as_str()),
         )
         .await?;
         value::subscribe(
             ctx,
             charlie_domain_name_attribute_value_id,
-            [(beta.id(), beta_domain_name_attribute_value_path.as_str())],
+            (beta.id(), beta_domain_name_attribute_value_path.as_str()),
         )
         .await?;
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -644,13 +644,13 @@ async fn add_prop_connection(
     // Create the subscription
     let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
     let from_path = AttributePath::from_json_pointer(from_path.to_string());
-    AttributeValue::set_to_subscriptions(
+    AttributeValue::set_to_subscription(
         ctx,
         to_av_id,
-        vec![ValueSubscription {
+        ValueSubscription {
             attribute_value_id: from_root_av_id,
             path: from_path,
-        }],
+        },
         Some(func_id),
         Reason::new_user_added(ctx),
     )

@@ -485,13 +485,19 @@ async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()>
     value::subscribe(
         ctx,
         ("original1", "/domain/One"),
-        [("input1", "/domain/Value")],
+        ("input1", "/domain/Value"),
     )
     .await?;
     value::subscribe(
         ctx,
-        ("original1", "/domain/Many"),
-        [("input1", "/domain/Value"), ("input2", "/domain/Value")],
+        ("original1", "/domain/Many/-"),
+        ("input1", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("original1", "/domain/Many/-"),
+        ("input2", "/domain/Value"),
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -509,17 +515,25 @@ async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()>
     value::subscribe(
         ctx,
         ("original2", "/domain/One"),
-        [("original1", "/domain/Value")],
+        ("original1", "/domain/Value"),
     )
     .await?;
     value::subscribe(
         ctx,
-        ("original2", "/domain/Many"),
-        [
-            ("input1", "/domain/Value"),
-            ("input2", "/domain/Value"),
-            ("original1", "/domain/Value"),
-        ],
+        ("original2", "/domain/Many/-"),
+        ("input1", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("original2", "/domain/Many/-"),
+        ("input2", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("original2", "/domain/Many/-"),
+        ("original1", "/domain/Value"),
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -537,18 +551,31 @@ async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()>
     value::subscribe(
         ctx,
         ("output", "/domain/One"),
-        [("original2", "/domain/Value")],
+        ("original2", "/domain/Value"),
     )
     .await?;
     value::subscribe(
         ctx,
-        ("output", "/domain/Many"),
-        [
-            ("input1", "/domain/Value"),
-            ("input2", "/domain/Value"),
-            ("original1", "/domain/Value"),
-            ("original2", "/domain/Value"),
-        ],
+        ("output", "/domain/Many/-"),
+        ("input1", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("output", "/domain/Many/-"),
+        ("input2", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("output", "/domain/Many/-"),
+        ("original1", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("output", "/domain/Many/-"),
+        ("original2", "/domain/Value"),
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -664,13 +691,19 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
     value::subscribe(
         ctx,
         ("original1", "/domain/One"),
-        [("input1", "/domain/Value")],
+        ("input1", "/domain/Value"),
     )
     .await?;
     value::subscribe(
         ctx,
-        ("original1", "/domain/Many"),
-        [("input1", "/domain/Value"), ("input2", "/domain/Value")],
+        ("original1", "/domain/Many/-"),
+        ("input1", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("original1", "/domain/Many/-"),
+        ("input2", "/domain/Value"),
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -688,17 +721,25 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
     value::subscribe(
         ctx,
         ("original2", "/domain/One"),
-        [("original1", "/domain/Value")],
+        ("original1", "/domain/Value"),
     )
     .await?;
     value::subscribe(
         ctx,
-        ("original2", "/domain/Many"),
-        [
-            ("input1", "/domain/Value"),
-            ("input2", "/domain/Value"),
-            ("original1", "/domain/Value"),
-        ],
+        ("original2", "/domain/Many/-"),
+        ("input1", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("original2", "/domain/Many/-"),
+        ("input2", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("original2", "/domain/Many/-"),
+        ("original1", "/domain/Value"),
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -716,18 +757,31 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
     value::subscribe(
         ctx,
         ("output", "/domain/One"),
-        [("original2", "/domain/Value")],
+        ("original2", "/domain/Value"),
     )
     .await?;
     value::subscribe(
         ctx,
-        ("output", "/domain/Many"),
-        [
-            ("input1", "/domain/Value"),
-            ("input2", "/domain/Value"),
-            ("original1", "/domain/Value"),
-            ("original2", "/domain/Value"),
-        ],
+        ("output", "/domain/Many/-"),
+        ("input1", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("output", "/domain/Many/-"),
+        ("input2", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("output", "/domain/Many/-"),
+        ("original1", "/domain/Value"),
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("output", "/domain/Many/-"),
+        ("original2", "/domain/Value"),
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;

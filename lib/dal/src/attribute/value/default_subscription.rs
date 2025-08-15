@@ -101,10 +101,10 @@ impl DefaultSubscription {
             path: AttributePath::from_json_pointer(path),
         };
 
-        AttributeValue::set_to_subscriptions(
+        AttributeValue::set_to_subscription(
             ctx,
             self.dest_av_id,
-            vec![subscription],
+            subscription,
             None,
             Reason::DefaultSubscription,
         )

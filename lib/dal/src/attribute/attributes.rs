@@ -159,18 +159,6 @@ pub struct AttributeUpdateCounts {
 ///         }
 ///       }
 ///
-///   SOON TO BE DEPRECATED: You may also APPEND a subscription by adding `keepExistingSubscriptions: true` to the
-///   subscription:
-///
-///       {
-///         "/domain/SubnetId": {
-///           "$source": { "component": "ComponentNameOrId", "path": "/resource/SubnetId", keepExistingSubscriptions: true }
-///         }
-///       }
-///
-///   If you do this, the subscription will be added to the list if it's not already there, and
-///   any other subscriptions will also be kept.
-///
 /// - ESCAPE HATCH for setting a value: setting an attribute to `{ "$source": { "value": <value> } }`
 ///   has the same behavior as all the above cases. The reason this exists is, if you happen to
 ///   have an object with a "$source" key, the existing interface would treat that as an error.
@@ -223,8 +211,8 @@ pub async fn update_attributes(
                     Source::Subscription {
                         component: source_component,
                         path: source_path,
-                        keep_existing_subscriptions,
                         func: func_ident,
+                        _keep_existing_subscriptions,
                     } => {
                         counts.subscription_count += 1;
 
@@ -243,22 +231,6 @@ pub async fn update_attributes(
                             path: AttributePath::from_json_pointer(source_path),
                         };
 
-                        // Make sure the subscribed-to path is valid (i.e. it doesn't have to resolve
-                        // to a value *right now*, but it must be a valid path to the schema as it
-                        // exists--correct prop names, numeric indices for arrays, etc.)
-                        subscription.validate(ctx).await?;
-
-                        // TODO remove keep_existing_subscriptions so we can only have an av subscribe to single source
-                        // Add our subscription unless the subscription is already there
-                        let existing_subscriptions = match keep_existing_subscriptions {
-                            Some(true) => AttributeValue::subscriptions(ctx, target_av_id).await?,
-                            Some(false) | None => None,
-                        };
-                        let mut subscriptions = existing_subscriptions.unwrap_or(vec![]);
-                        if !subscriptions.contains(&subscription) {
-                            subscriptions.push(subscription);
-                        }
-
                         let maybe_func_id = if let Some(func) = func_ident {
                             func.resolve(ctx).await?
                         } else {
@@ -266,10 +238,10 @@ pub async fn update_attributes(
                         };
 
                         // Subscribe!
-                        AttributeValue::set_to_subscriptions(
+                        AttributeValue::set_to_subscription(
                             ctx,
                             target_av_id,
-                            subscriptions,
+                            subscription,
                             maybe_func_id,
                             Reason::new_user_added(ctx),
                         )
@@ -363,9 +335,13 @@ pub enum Source {
         component: ComponentIdent,
         path: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        keep_existing_subscriptions: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         func: Option<FuncIdent>,
+        // DEPRECATED and ignored. But kept here until we're sure callers are not using it
+        #[serde(
+            rename = "keep_existing_subscriptions",
+            skip_serializing_if = "Option::is_none"
+        )]
+        _keep_existing_subscriptions: Option<bool>,
     },
 }
 

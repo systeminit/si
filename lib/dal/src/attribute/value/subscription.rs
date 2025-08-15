@@ -1,4 +1,7 @@
-use si_id::AttributeValueId;
+use si_id::{
+    AttributeValueId,
+    PropId,
+};
 
 use super::{
     AttributeValue,
@@ -30,7 +33,7 @@ impl ValueSubscription {
     }
 
     /// Validate the subscription path matches the schema of the attribute value
-    pub async fn validate(&self, ctx: &DalContext) -> AttributeValueResult<()> {
+    pub async fn validate(&self, ctx: &DalContext) -> AttributeValueResult<PropId> {
         let prop_id = AttributeValue::prop_id(ctx, self.attribute_value_id).await?;
         self.path.validate(ctx, prop_id).await
     }

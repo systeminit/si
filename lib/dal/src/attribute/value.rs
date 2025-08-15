@@ -280,6 +280,15 @@ pub enum AttributeValueError {
     SplitGraph(#[from] SplitGraphError),
     #[error("Cannot set subscription with function that isn't builtin or transformation")]
     SubscribingWithInvalidFunction,
+    #[error(
+        "Type mismatch on subscription: {subscriber_av_id} is {subscriber_prop_kind}, but subscription {subscription} is {subscription_prop_kind}"
+    )]
+    SubscriptionTypeMismatch {
+        subscriber_av_id: AttributeValueId,
+        subscriber_prop_kind: PropKind,
+        subscription: String,
+        subscription_prop_kind: PropKind,
+    },
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -2115,39 +2124,31 @@ impl AttributeValue {
     /// This overwrites or overrides any existing value; if your intent is to append
     /// subscriptions, you should first call AttributeValue::subscriptions() and append to that
     /// list.
-    pub async fn set_to_subscriptions(
+    pub async fn set_to_subscription(
         ctx: &DalContext,
         subscriber_av_id: AttributeValueId,
-        subscriptions: Vec<ValueSubscription>,
+        subscription: ValueSubscription,
         func_id: Option<FuncId>,
         reason: Reason,
     ) -> AttributeValueResult<()> {
-        let func_id = if let Some(func_id) = func_id {
-            func_id
-        } else {
-            // TODO(victor) remove this new ui comes around
-            // Pick the prototype for the function based on prop type: if it's Array, use
-            // si:normalizeToArray, otherwise use si:identity
-            let intrinsic_func = match Self::prop_kind(ctx, subscriber_av_id).await? {
-                PropKind::Array => IntrinsicFunc::NormalizeToArray,
-                kind @ PropKind::Boolean
-                | kind @ PropKind::Integer
-                | kind @ PropKind::Json
-                | kind @ PropKind::Map
-                | kind @ PropKind::Object
-                | kind @ PropKind::String
-                | kind @ PropKind::Float => {
-                    if subscriptions.len() != 1 {
-                        return Err(AttributeValueError::SingleValueMustHaveOneSubscription(
-                            subscriber_av_id,
-                            kind,
-                            subscriptions.len(),
-                        ));
-                    }
-                    IntrinsicFunc::Identity
-                }
-            };
-            Func::find_intrinsic(ctx, intrinsic_func).await?
+        // Make sure the subscribed-to path is valid (i.e. it doesn't have to resolve
+        // to a value *right now*, but it must be a valid path to the schema as it
+        // exists--correct prop names, numeric indices for arrays, etc.)
+        let subscription_prop_id = subscription.validate(ctx).await?;
+        let subscription_prop_kind = Prop::kind(ctx, subscription_prop_id).await?;
+        let subscriber_prop_kind = AttributeValue::prop_kind(ctx, subscriber_av_id).await?;
+        if subscription_prop_kind != subscriber_prop_kind {
+            return Err(AttributeValueError::SubscriptionTypeMismatch {
+                subscriber_av_id,
+                subscriber_prop_kind,
+                subscription: subscription.fmt_title(ctx).await,
+                subscription_prop_kind,
+            });
+        }
+
+        let func_id = match func_id {
+            Some(func_id) => func_id,
+            None => Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?,
         };
 
         let prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
@@ -2155,11 +2156,8 @@ impl AttributeValue {
 
         // Add the subscriptions as the argument
         let arg_id = FuncArgument::single_arg_for_func(ctx, func_id).await?;
-        for subscription in subscriptions {
-            let apa =
-                AttributePrototypeArgument::new(ctx, prototype_id, arg_id, subscription).await?;
-            AttributePrototypeArgument::add_reason(ctx, apa.id(), reason).await?;
-        }
+        let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg_id, subscription).await?;
+        AttributePrototypeArgument::add_reason(ctx, apa.id(), reason).await?;
 
         // DVU all the way!
         ctx.add_dependent_values_and_enqueue(vec![subscriber_av_id])
@@ -2230,7 +2228,7 @@ impl AttributeValue {
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<PropKind> {
         let prop_id = Self::prop_id(ctx, attribute_value_id).await?;
-        Ok(Prop::node_weight(ctx, prop_id).await?.kind)
+        Ok(Prop::kind(ctx, prop_id).await?)
     }
 
     pub async fn prop_name(
@@ -2238,7 +2236,7 @@ impl AttributeValue {
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<String> {
         let prop_id = Self::prop_id(ctx, attribute_value_id).await?;
-        Ok(Prop::node_weight(ctx, prop_id).await?.name)
+        Ok(Prop::name(ctx, prop_id).await?)
     }
 
     pub async fn prop_id(

@@ -38,7 +38,6 @@ class TestSubscription(unittest.TestCase):
                 component = '',
                 component_id = '01H9ZQD35JPMBGHH69BT0Q79VY',
                 function = '',
-                keep_existing_subscriptions = True,
                 prop_path = ''
             )
         else:

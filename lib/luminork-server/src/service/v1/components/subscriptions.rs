@@ -40,9 +40,6 @@ pub struct Subscription {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(value_type = String)]
     pub function: Option<FuncReference>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub keep_existing_subscriptions: Option<bool>,
 }
 
 pub async fn handle_subscription(
@@ -64,25 +61,16 @@ pub async fn handle_subscription(
 
     subscription.validate(ctx).await?;
 
-    let existing_subscriptions = match sub.keep_existing_subscriptions {
-        Some(true) => AttributeValue::subscriptions(ctx, target_av_id).await?,
-        Some(false) | None => None,
-    };
-    let mut subscriptions = existing_subscriptions.unwrap_or(vec![]);
-    if !subscriptions.contains(&subscription) {
-        subscriptions.push(subscription);
-    }
-
     let maybe_func_id = if let Some(func) = sub.function.clone() {
         func.resolve(ctx).await?
     } else {
         None
     };
 
-    AttributeValue::set_to_subscriptions(
+    AttributeValue::set_to_subscription(
         ctx,
         target_av_id,
-        subscriptions,
+        subscription,
         maybe_func_id,
         Reason::new_user_added(ctx),
     )

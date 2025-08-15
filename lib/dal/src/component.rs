@@ -1342,8 +1342,8 @@ impl Component {
                 Source::Subscription {
                     component: source_component_id.into(),
                     path,
-                    keep_existing_subscriptions: None,
                     func,
+                    _keep_existing_subscriptions: None,
                 }
             }
             ValueSource::StaticArgumentValue(value_id) => {

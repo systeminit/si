@@ -942,7 +942,6 @@ const processHighlighted = () => {
         $source: {
           component: from.componentId,
           path: from.attributePath,
-          keepExistingSubscriptions: appendConnection.value,
         },
       },
     });
@@ -953,8 +952,6 @@ const processHighlighted = () => {
   focusOnInput();
 };
 
-const appendConnection = ref(false);
-
 // Modal Mgmt
 function open(initialState: ConnectionMenuData) {
   highlightedIndex.value = 0;
@@ -962,7 +959,6 @@ function open(initialState: ConnectionMenuData) {
   activeSide.value = "a";
   connectionData.A = {};
   connectionData.B = {};
-  appendConnection.value = initialState.appendConnection ?? false;
 
   if (inputBRef.value) {
     inputBRef.value.searchString = "";

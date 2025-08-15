@@ -1061,7 +1061,7 @@ async fn secret_definition_daisy_chain_subscriptions(ctx: &mut DalContext, nw: &
         value::subscribe(
             ctx,
             double_dummy_secret_prop.attribute_value(ctx).await.id(),
-            [(dummy.id(), "/secrets/dummy")],
+            (dummy.id(), "/secrets/dummy"),
         )
         .await
         .expect("could not subscribe");
