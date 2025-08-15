@@ -1,56 +1,24 @@
-use std::collections::{
-    HashMap,
-    VecDeque,
-};
+use std::collections::{HashMap, VecDeque};
 
 use async_trait::async_trait;
 use pinga_core::api_types::job_execution_request::JobArgsVCurrent;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use si_events::{
-    ActionResultState,
-    FuncRunId,
-    audit_log::AuditLogKind,
-};
-use si_id::{
-    ChangeSetId,
-    WorkspacePk,
-};
+use serde::{Deserialize, Serialize};
+use si_events::{ActionResultState, FuncRunId, audit_log::AuditLogKind};
+use si_id::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
-use veritech_client::{
-    ActionRunResultSuccess,
-    ResourceStatus,
-};
+use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
-    ActionPrototypeId,
-    Component,
-    ComponentId,
-    DalContext,
-    Func,
-    WsEvent,
+    ActionPrototypeId, Component, ComponentId, DalContext, Func, WsEvent,
     action::{
-        Action,
-        ActionError,
-        ActionId,
-        ActionState,
-        prototype::{
-            ActionKind,
-            ActionPrototype,
-        },
+        Action, ActionError, ActionId, ActionState,
+        prototype::{ActionKind, ActionPrototype},
     },
     billing_publish,
     change_status::ChangeStatus,
     func::runner::FuncRunner,
-    job::consumer::{
-        DalJob,
-        JobCompletionState,
-        JobConsumer,
-        JobConsumerResult,
-    },
+    job::consumer::{DalJob, JobCompletionState, JobConsumer, JobConsumerResult},
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -120,6 +88,12 @@ impl JobConsumer for ActionJob {
 
         if let Err(err) = inner_run(ctx, self.action_id).await {
             error!(si.error.message = ?err, si.action.id = %self.action_id, "unable to finish action");
+            // After an error, we do not know what the state of the context
+            // connections is, so restart them here to process the failed actions, and
+            // re-fetch the snapshot, since whatever we did to the snapshot in the action
+            // was likely not persisted (since we failed).
+            ctx.restart_connections().await?;
+            ctx.update_snapshot_to_visibility().await?;
             if let Err(err) = process_failed_action(ctx, self.action_id).await {
                 error!(si.error.message = ?err, "failed to process action failure");
             }
