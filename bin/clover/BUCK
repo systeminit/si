@@ -13,7 +13,7 @@ export_file(
 )
 
 filegroup(
-    name = "clover",
+    name = "srcs",
     srcs = glob([
         "**/*",
     ]),
