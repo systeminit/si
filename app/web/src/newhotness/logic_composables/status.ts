@@ -1,6 +1,7 @@
-import { ref } from "vue";
+import { reactive } from "vue";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 
-const status = ref<"syncing" | "synced" | undefined>(undefined);
+const status = reactive<Record<ChangeSetId, "syncing" | "synced">>({});
 
 export function useStatus() {
   return status;
