@@ -1,6 +1,9 @@
-use std::collections::{
-    HashSet,
-    VecDeque,
+use std::{
+    collections::{
+        HashSet,
+        VecDeque,
+    },
+    time::Instant,
 };
 
 use itertools::Itertools;
@@ -314,12 +317,17 @@ impl Action {
 
     /// Returns whether or not any Actions were dispatched.
     pub async fn dispatch_actions(ctx: &DalContext) -> ActionResult<bool> {
+        let span = current_span_for_instrument_at!("info");
+        let mut actions_dispatched = 0;
         let mut did_dispatch = false;
+        // get a count of actions currently running/dispatched
         for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await? {
+            // only dispatch new ones if there's capacity aka - total parallel actions for a workspace can't exceed 40
             Action::dispatch_action(ctx, dispatchable_ation_id).await?;
             did_dispatch = true;
+            actions_dispatched += 1;
         }
-
+        span.record("si.rebase.actions_dispatched", actions_dispatched);
         Ok(did_dispatch)
     }
 
@@ -717,13 +725,23 @@ impl Action {
     ///     *ANY* [`AttributeValue`s](AttributeValue) for the same
     ///     [`Component`](crate::Component) as the [`Action`].
     pub async fn eligible_to_dispatch(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
+        let span = current_span_for_instrument_at!("info");
+        let start = Instant::now();
         let action_dependency_graph = ActionDependencyGraph::for_workspace(ctx).await?;
+        span.record(
+            "si.rebase.action_dependency_graph_time",
+            start.elapsed().as_millis(),
+        );
         let mut result = Vec::with_capacity(action_dependency_graph.remaining_actions().len());
         let dependent_value_graph = DependentValueGraph::new(
             ctx,
             DependentValueRoot::get_dependent_value_roots(ctx).await?,
         )
         .await?;
+        span.record(
+            "si.rebase.dependent_value_graph_time",
+            start.elapsed().as_millis(),
+        );
 
         // Find the ComponentIds for all AttributeValues in the full dependency graph for the
         // queued/running DependentValuesUpdate. We'll want to hold off on dispatching any Actions

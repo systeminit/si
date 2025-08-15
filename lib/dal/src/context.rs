@@ -80,6 +80,7 @@ use si_runtime::DedicatedExecutor;
 use si_split_graph::SuperGraph;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::{
     sync::{
@@ -2017,7 +2018,8 @@ async fn rebase_with_reply(
     event_session_id: EventSessionId,
 ) -> TransactionsResult<()> {
     let timeout = Duration::from_secs(60);
-
+    let metric_label = format!("{workspace_pk}:{change_set_id}");
+    metric!(counter.dal.rebase_requested = 1, label = metric_label);
     let (request_id, reply_fut) = rebaser
         .enqueue_updates_with_reply(
             workspace_pk,
@@ -2039,6 +2041,8 @@ async fn rebase_with_reply(
         .map_err(|_elapsed| {
             TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
         })??;
+
+    metric!(counter.dal.rebase_requested = -1, label = metric_label);
 
     match &reply.status {
         RebaseStatus::Success { .. } => Ok(()),
