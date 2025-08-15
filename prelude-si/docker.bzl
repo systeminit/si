@@ -224,8 +224,6 @@ def build_docker_image(
     else:
         fail("Either full_image_name or organization must be provided")
 
-    git_info_file = git_info.file
-
     tar_name_prefix = "{}".format(image_name.replace("/", "--"))
 
     artifact = ctx.actions.declare_output("{}.tar".format(tar_name_prefix))
