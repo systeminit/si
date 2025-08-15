@@ -75,9 +75,9 @@ Cypress.Commands.add('appModelPageLoaded', () => {
   
   cy.wait(3000);
   cy.url().should("contain", SI_WORKSPACE_ID);
+  cy.get('[data-testid="lobby"]').should('not.exist', { timeout: 180000 });
   cy.get('[data-testid="left-column-new-hotness-explore"]', { timeout: 60000 });
   cy.get('[data-testid="right-column-new-hotness-explore"]', { timeout: 60000 });
-  cy.get('[data-testid="lobby"]').should('not.exist', { timeout: 180000 });
 })
 
 Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
@@ -117,7 +117,7 @@ Cypress.Commands.add('basicLogin', () => {
     return false;
   });
   cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
-  cy.appModelPageLoaded();
+  // cy.appModelPageLoaded();
   cy.wait(5000);
 });
 

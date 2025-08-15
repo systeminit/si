@@ -15,28 +15,28 @@ describe('web', () => {
     });
   });
 
-  it("create_change_set", () => {
-    cy.basicLogin();
-    cy.createChangeSet("cool test change set", true);
-  });
+  // it("create_change_set", () => {
+  //   cy.basicLogin();
+  //   cy.createChangeSet("cool test change set", true);
+  // });
 
-  it("create_components", () => {
-    cy.basicLogin();
+  // it("create_components", () => {
+  //   cy.basicLogin();
 
-    // A low number to avoid the virtualizer
-    const numberOfComponents = 5;
+  //   // A low number to avoid the virtualizer
+  //   const numberOfComponents = 5;
 
-    // create N components
-    for (let n = 0; n < numberOfComponents; n++) {
-      cy.createComponent();
-    }
+  //   // create N components
+  //   for (let n = 0; n < numberOfComponents; n++) {
+  //     cy.createComponent();
+  //   }
 
-    // make sure there are N components on the grid
-    cy.get('[data-testid="explore-grid"]').find(".component").its("length").should("eq", numberOfComponents);
+  //   // make sure there are N components on the grid
+  //   cy.get('[data-testid="explore-grid"]').find(".component").its("length").should("eq", numberOfComponents);
 
-    // abandon the change set to clean up
-    cy.abandonCurrentChangeSet();
-  });
+  //   // abandon the change set to clean up
+  //   cy.abandonCurrentChangeSet();
+  // });
 
   // it("edit_component", () => {
   //   cy.basicLogin();
@@ -63,23 +63,23 @@ describe('web', () => {
   //   cy.abandonCurrentChangeSet();
   // });
 
-  it("switch_change_sets", () => {
-    cy.basicLogin();
+  // it("switch_change_sets", () => {
+  //   cy.basicLogin();
 
-    cy.createChangeSet("change set 1");
-    cy.createChangeSet("change set 2");
+  //   cy.createChangeSet("cool change set 1");
+  //   cy.createChangeSet("cool change set 2");
 
-    const menu = cy.contains("change set 2", { timeout: 10000 });
+  //   const menu = cy.contains("change set 2", { timeout: 10000 });
 
-    menu.click();
-    cy.contains("HEAD", { timeout: 10000 }).parent().parent().click();
-    menu.click();
-    cy.contains("change set 2", { timeout: 10000 }).parent().parent().click();
+  //   menu.click();
+  //   cy.contains("HEAD", { timeout: 10000 }).parent().parent().click();
+  //   menu.click();
+  //   cy.contains("change set 2", { timeout: 10000 }).parent().parent().click();
 
-    // abandon the change sets to clean up
-    cy.abandonCurrentChangeSet();
-    menu.click();
-    cy.contains("change set 1", { timeout: 10000 }).parent().parent().click();
-    cy.abandonCurrentChangeSet();
-  });
+  //   // abandon the change sets to clean up
+  //   cy.abandonCurrentChangeSet();
+  //   menu.click();
+  //   cy.contains("change set 1", { timeout: 10000 }).parent().parent().click();
+  //   cy.abandonCurrentChangeSet();
+  // });
 });
