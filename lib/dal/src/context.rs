@@ -319,6 +319,10 @@ impl ConnectionState {
         mem::replace(self, Self::Invalid)
     }
 
+    fn is_invalid(&self) -> bool {
+        matches!(self, Self::Invalid)
+    }
+
     fn is_conns(&self) -> bool {
         matches!(self, Self::Connections(_))
     }
@@ -1189,6 +1193,8 @@ impl DalContext {
         if conns_state.is_conns() {
             // If we are Connections, then we need to start Transactions
             *guard = conns_state.start_txns().await?;
+        } else if conns_state.is_invalid() {
+            return Err(SiDbTransactionsError::ConnStateInvalid);
         } else {
             // Otherwise, we return the state back to the guard--it's Transactions under normal
             // circumstances, and Invalid if something went wrong with a previous Transactions
@@ -1655,6 +1661,8 @@ pub enum TransactionsError {
     ChangeSet(#[from] Box<ChangeSetError>),
     #[error("change set not set on DalContext")]
     ChangeSetNotSet,
+    #[error("transactions cannot be run when connection state invalid")]
+    ConnStateInvalid,
     #[error("job queue processor error: {0}")]
     JobQueueProcessor(#[from] Box<JobQueueProcessorError>),
     #[error("tokio join error: {0}")]
@@ -1764,6 +1772,7 @@ impl From<SiDbTransactionsError> for TransactionsError {
         match err {
             SiDbTransactionsError::Pg(err) => TransactionsError::Pg(Box::new(err)),
             SiDbTransactionsError::TxnStart(state) => TransactionsError::TxnStart(state),
+            SiDbTransactionsError::ConnStateInvalid => TransactionsError::ConnStateInvalid,
         }
     }
 }

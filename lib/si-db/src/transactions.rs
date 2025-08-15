@@ -14,6 +14,8 @@ pub trait SiDbTransactions {
 #[remain::sorted]
 #[derive(Debug, Error, strum::EnumDiscriminants)]
 pub enum SiDbTransactionsError {
+    #[error("cannot use transactions when connection state invalid")]
+    ConnStateInvalid,
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("cannot start transactions without connections; state={0}")]
