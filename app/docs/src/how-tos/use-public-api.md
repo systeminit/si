@@ -10,6 +10,7 @@ This how-to assumes:
 - Basic [familiarity with System Initiative](../tutorials/getting-started)
 - Have generated a
   [workspace scoped API token](../explanation/generate-a-workspace-api-token)
+- Access to an AWS account
 
 It will teach you how to use the
 [System Initiative Public API](../reference/public-api) to manage your
@@ -231,20 +232,19 @@ def main():
         credential_component_id = credential_component_data["component"]["id"]
         print(f'AWS Credential created with ID: {credential_component_id}')
 
-        print('3. Creating Localstack secret')
+        print('3. Creating secret using AWS account')
         create_secret(change_set_id,
                 "demo-credential", # SecretName
                 "AWS Credential",  # SecretDefinitionName
                 {
-                    # If you are setting real credentials
-                    # please read these from environment variables to ensure
-                    # that we don't hard code credentials in our application
-                    "AccessKeyId": "test",
-                    "SecretAccessKey": "test",
-                    "Endpoint": "http://localstack.dev"
+                    # FIXME: set environment variables and read from them here to
+                    # ensure that we don't hard code credentials in our application
+                    "AccessKeyId": "<your-access-key-id-via-environment-variable>",
+                    "SecretAccessKey": "<your-secret-access-key-via-environment-variable>",
+                    "SessionToken": "<your-session-token-via-environment-variable>"
                 })
 
-        print('4. Setting Localstack secret to AWS Credential component')
+        print('4. Setting secret to AWS Credential component')
         update_component(change_set_id, credential_component_id, {
             'secrets': {
                 'AWS Credential': 'demo-credential'
@@ -268,8 +268,8 @@ Getting started with the System Initiative Public API
 Change set ID: 01JWATWKKQZQEN7KGWAXNZRSEA
 2. Creating AWS Credential
 AWS Credential created with ID: 01JWATWM7NR32CK2ATRDYRXM63
-3. Creating Localstack secret
-4. Setting Localstack secret to AWS Credential component
+3. Creating secret using AWS account
+4. Setting secret to AWS Credential component
 (venv)
 ```
 
@@ -390,8 +390,8 @@ Getting started with the System Initiative Public API
 Change set ID: 01JWAVDGMEDYK1TRJJVQMQ6ACN
 2. Creating AWS Credential
 AWS Credential created with ID: 01JWAVDH83NJWJ1K2X5DXWEQ8M
-3. Creating Localstack secret
-4. Setting Localstack secret to AWS Credential component
+3. Creating secret using AWS account
+4. Setting secret to AWS Credential component
 5. Creating Region
 Region created with ID: 01JWAVDK6T7TP47H33PJZFXA90
 6. Creating AWS Standard VPC Template
@@ -509,17 +509,19 @@ def main():
         credential_component_id = credential_component_data["component"]["id"]
         print(f'AWS Credential created with ID: {credential_component_id}')
 
-        print('3. Creating Localstack secret')
+        print('3. Creating secret using AWS account')
         create_secret(change_set_id,
                 "demo-credential",
                 "AWS Credential",
                 {
-                    "AccessKeyId": "test",
-                    "SecretAccessKey": "test",
-                    "Endpoint": "http://localstack.keeb.dev"
+                    # FIXME: set environment variables and read from them here to
+                    # ensure that we don't hard code credentials in our application
+                    "AccessKeyId": "<your-access-key-id-via-environment-variable>",
+                    "SecretAccessKey": "<your-secret-access-key-via-environment-variable>",
+                    "SessionToken": "<your-session-token-via-environment-variable>"
                 })
 
-        print('4. Setting Localstack secret to AWS Credential component')
+        print('4. Setting secret to AWS Credential component')
         update_component(change_set_id, credential_component_id, {
             'secrets': {
                 'AWS Credential': 'demo-credential'
@@ -775,14 +777,16 @@ async function main(): Promise<void> {
     const credentialComponentId = credentialComponentData.component.id;
     console.log(`AWS Credential created with ID: ${credentialComponentId}`);
 
-    console.log("Creating Localstack secret");
+    console.log("Creating secret using AWS account");
     await createSecret(changeSetId, "demo-credential", "AWS Credential", {
-      AccessKeyId: "test",
-      SecretAccessKey: "test",
-      Endpoint: "http://localstack.dev",
+      // FIXME: set environment variables and read from them here to
+      // ensure that we don't hard code credentials in our application
+      "AccessKeyId": "<your-access-key-id-via-environment-variable>",
+      "SecretAccessKey": "<your-secret-access-key-via-environment-variable>",
+      "SessionToken": "<your-session-token-via-environment-variable>"
     });
 
-    console.log("4. Setting Localstack secret to AWS Credential component");
+    console.log("4. Setting secret to AWS Credential component");
     await updateComponent(changeSetId, credentialComponentId, {
       secrets: {
         "AWS Credential": "demo-credential",

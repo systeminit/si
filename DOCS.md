@@ -17,7 +17,6 @@ Above all, for any and all questions related to either using or developing the s
 - [Development Environment](#development-environment)
 - [Troubleshooting](#troubleshooting)
 - [Running the Stack Locally](#running-the-stack-locally)
-- [Using LocalStack for Secrets and Credentials](#using-localstack-for-secrets-and-credentials)
 - [Using buck2](#using-buck2)
 - [Reading and Writing Rust-based Code Documentation](#reading-and-writing-rust-based-code-documentation)
 - [Learning About SI Concepts](#learning-about-si-concepts)
@@ -280,26 +279,6 @@ TILT_HOST=0.0.0.0 DEV_HOST=0.0.0.0 buck2 run dev:up
 > [!NOTE]
 > Unless you are using "localhost", your remote workspace must be accessible using SSL.
 > For example, if you are using [Tailscale](https://tailscale.com/) and running SI on a remote instance without SSL, you may want to port foward over SSH and use a local development workspace instead.
-
-# Using LocalStack for Secrets and Credentials
-
-This section contains information related to using [LocalStack](https://github.com/localstack/localstack) when working on the System Initiative software.
-
-## How to Use with the "AWS Credential" Builtin `SchemaVariant`
-
-You can use the "AWS Credential" builtin `SchemaVariant` with LocalStack when running the System Initiative software with the following command:
-
-```shell
-buck2 run //dev:up
-```
-
-To use LocalStack with "AWS Credential", do the following:
-
-1. Create a `Component` using the `SchemaVariant`.
-1. Create a `Secret` and use it in the property editor.
-1. Populate `http://localhost:4566` (or `http://0.0.0.0:4566`, depending on your system) in the "Endpoint" field for the `Secret`.
-
-Now, you can use LocalStack in your development setup.
 
 # Using buck2
 
