@@ -369,7 +369,10 @@ async fn rebase_legacy(
         .await?;
 
     debug!("updates complete: {:?}", start.elapsed());
-
+    span.record(
+        "si.rebase.perform_updates_time",
+        start.elapsed().as_millis(),
+    );
     if !corrected_updates.is_empty() {
         // Once all updates have been performed, we can write out, and update the pointer.
         to_rebase_workspace_snapshot.write(ctx).await?;
