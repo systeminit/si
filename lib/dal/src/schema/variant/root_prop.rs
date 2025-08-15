@@ -300,6 +300,10 @@ impl RootProp {
         // useful for importing an existing resource from reality into the model
         Prop::new_without_ui_optionals(ctx, "resourceId", PropKind::String, si_prop.id()).await?;
 
+        let tags_prop =
+            Prop::new_without_ui_optionals(ctx, "tags", PropKind::Map, si_prop.id()).await?;
+        Prop::new_without_ui_optionals(ctx, "tag", PropKind::String, tags_prop.id()).await?;
+
         Ok(si_prop.id())
     }
 
