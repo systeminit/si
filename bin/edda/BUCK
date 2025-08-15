@@ -1,8 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
-    "nix_omnibus_pkg",
     "rust_binary",
+    "rust_binary_pkg",
 )
 
 rust_binary(
@@ -22,14 +21,7 @@ rust_binary(
     },
 )
 
-docker_image(
-    name = "image",
-    image_name = "edda",
-    build_deps = ["//bin/edda:edda"],
-)
-
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "edda",
-    build_dep = "//bin/edda:edda",
+rust_binary_pkg(
+    name = "edda",
+    binary = ":edda"
 )
