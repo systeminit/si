@@ -6,7 +6,7 @@ import * as esbuild from "https://deno.land/x/esbuild@v0.20.0/mod.js";
 import { dirname, fromFileUrl, join } from "https://deno.land/std/path/mod.ts";
 import { denoPlugins } from "jsr:@luca/esbuild-deno-loader@^0.11.1";
 
-async function buildSandbox(outputPath?: string) {
+export async function buildSandbox(outputPath?: string) {
   const baseDir = dirname(fromFileUrl(import.meta.url));
 
   const result = await esbuild.build({
