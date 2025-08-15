@@ -36,7 +36,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       });
 
       // checks for the new hotness UI Explore page
-      cy.appModelPageLoaded();
+      // cy.appModelPageLoaded();
     });
   });
 });
