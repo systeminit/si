@@ -4752,6 +4752,12 @@
   "Cluster to associate with the Control Panel": {
     "enum": null
   },
+  "Code Security Integration name": {
+    "enum": null
+  },
+  "Code Security Scan Configuration name": {
+    "enum": null
+  },
   "CodePipeline provides the following pipeline types, which differ in characteristics and price, so that you can tailor your pipeline features and cost to the needs of your applications.": {
     "enum": null
   },
@@ -4774,6 +4780,9 @@
     "enum": null
   },
   "Config type for security config": {
+    "enum": null
+  },
+  "Configuration Level": {
     "enum": null
   },
   "Configuration Source": {
@@ -5887,6 +5896,9 @@
     "enum": null
   },
   "Instructions for interpreting the contents of a document.": {
+    "enum": null
+  },
+  "Integration Type": {
     "enum": null
   },
   "Integration behavior for a handler configuration.": {
@@ -9783,6 +9795,9 @@
   "The ID of the project.": {
     "enum": null
   },
+  "The ID of the public IPv4 pool.": {
+    "enum": null
+  },
   "The ID of the region that contains the source DB instance for the read replica.": {
     "enum": null
   },
@@ -12232,6 +12247,9 @@
     "enum": null
   },
   "The index name of a fleet metric": {
+    "enum": null
+  },
+  "The initialization timeout in milliseconds. Required when IsService is true.": {
     "enum": null
   },
   "The inline json job document associated with a software package version": {
