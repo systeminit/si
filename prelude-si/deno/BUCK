@@ -14,10 +14,6 @@ export_file(
 )
 
 export_file(
-    name = "deno_cache.py",
-)
-
-export_file(
     name = "deno_run.py",
 )
 
