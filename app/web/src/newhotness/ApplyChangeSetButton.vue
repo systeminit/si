@@ -15,7 +15,6 @@
       "
       loadingText="Applying Changes"
       :loading="applyInFlight"
-      :disabled="disallowApply"
       @click="openApplyChangeSetModal"
     >
       <template #iconRight>
@@ -80,7 +79,7 @@ watchEffect(() => {
   }
 });
 
-const { applyInFlight, disallowApply } = useApplyChangeSet(ctx);
+const { applyInFlight } = useApplyChangeSet(ctx);
 
 const key = useMakeKey();
 const args = useMakeArgs();

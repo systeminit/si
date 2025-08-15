@@ -4,12 +4,12 @@ export enum ChangeSetStatus {
   Open = "Open",
   Applied = "Applied",
   Failed = "Failed",
-  Closed = "Closed",
+  Closed = "Closed", // FIXME(nick): DEAD, LIKELY CAN BE DELETED
   Abandoned = "Abandoned",
   NeedsApproval = "NeedsApproval",
-  NeedsAbandonApproval = "NeedsAbandonApproval",
-  Rejected = "Rejected",
-  Approved = "Approved",
+  NeedsAbandonApproval = "NeedsAbandonApproval", // FIXME(nick): DEPRECATED, GET RID OF THIS, MAY NEED MIGRATION
+  Rejected = "Rejected", // FIXME(nick): DEPRECATED, GET RID OF THIS, MAY NEED MIGRATION
+  Approved = "Approved", // FIXME(nick): DEPRECATED, GET RID OF THIS, MAY NEED MIGRATION
 }
 
 export type ChangeSetId = string;

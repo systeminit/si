@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="status !== 'unexpected'"
+    v-if="flowStatus !== 'unexpected'"
     :class="
       clsx(
         'flex flex-col gap-sm p-sm overflow-y-auto',
@@ -24,13 +24,13 @@
       </div>
 
       <ErrorMessage
-        v-if="status === 'requested' || status === 'approved'"
+        v-if="flowStatus === 'requested' || flowStatus === 'approved'"
         :tone="metadata.messageTone"
         :icon="metadata.messageIcon"
         variant="block"
         class="rounded grow"
       >
-        <template v-if="status === 'requested'">
+        <template v-if="flowStatus === 'requested'">
           There are approvals that must be met before the change set can be
           applied.
         </template>
@@ -169,9 +169,9 @@
         />
       </template>
       <VButton
-        :disabled="status !== 'approved'"
+        :disabled="disallowApplyForApprovalFlow"
         tone="success"
-        :loading="status === 'approved' ? applyInFlight : false"
+        :loading="flowStatus === 'approved' ? applyInFlight : false"
         loadingText="Applying..."
         @click="apply"
       >
@@ -208,6 +208,7 @@ import {
   useApplyChangeSet,
   approverForChangeSet,
 } from "./logic_composables/change_set";
+import { useStatus } from "./logic_composables/status";
 
 interface RequirementGroup {
   key: string;
@@ -233,10 +234,20 @@ const emit = defineEmits<{
   (e: "closeModal"): void;
 }>();
 
-const status = computed(
+// FIXME(nick): remove all pre-ReBAC stuff from this component and only use "satisfied" below to
+// determine if something has been approved. This component should only be used if the change set
+// is in "NeedsApproval" state, but that will require a small refactor.
+const satisfied = computed(
+  () => !props.approvalData?.requirements.some((r) => r.isSatisfied === false),
+);
+const status = useStatus();
+const disallowApplyForApprovalFlow = computed(
+  () => !satisfied.value || status[props.changeSet.id] === "syncing",
+);
+
+const flowStatus = computed(
   (): "approved" | "requested" | "rejected" | "unexpected" => {
-    if (!props.approvalData?.requirements.some((r) => r.isSatisfied === false))
-      return "approved";
+    if (satisfied.value) return "approved";
     switch (props.changeSet.status) {
       case ChangeSetStatus.NeedsApproval:
         return "requested";
@@ -357,7 +368,7 @@ const requestDate = computed(
 );
 
 const metadata = computed(() => {
-  if (status.value === "requested") {
+  if (flowStatus.value === "requested") {
     return {
       title: `Approval Requested by ${
         requesterIsYou.value ? "You" : requesterEmail.value
@@ -367,7 +378,7 @@ const metadata = computed(() => {
       messageIcon: "exclamation-circle" as IconNames,
     };
     // approved & rejected are deprecating with the new approach
-  } else if (status.value === "approved") {
+  } else if (flowStatus.value === "approved") {
     return {
       title: approverEmail.value
         ? `Approval Granted by ${approverEmail.value}`
@@ -376,7 +387,7 @@ const metadata = computed(() => {
       messageTone: "success" as Tones,
       messageIcon: "check-circle" as IconNames,
     };
-  } else if (status.value === "rejected") {
+  } else if (flowStatus.value === "rejected") {
     return {
       title: `Approval Rejected by ${approverEmail.value}`,
       date: approveDate.value,
@@ -411,7 +422,7 @@ const reopenApi = useApi(ctx);
 const cancelApi = useApi(ctx);
 
 const withdraw = async () => {
-  if (status.value === "rejected") {
+  if (flowStatus.value === "rejected") {
     const reopenCall = reopenApi.endpoint(routes.ChangeSetReopen);
     const { req } = await reopenCall.post({});
     if (reopenApi.ok(req)) {
