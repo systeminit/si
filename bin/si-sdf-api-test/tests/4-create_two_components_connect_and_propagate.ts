@@ -113,11 +113,13 @@ async function create_two_components_connect_and_propagate_inner(
     changeSetId,
     "AttributeTree",
     newEC2ComponentId,
-    (mv) =>
-      Object.values(mv.attributeValues).some(
+    (mv) =>{
+      const av = Object.values(mv.attributeValues).find((av:any)=> av.path === "/domain/extra/Region");
+      console.log("AV IS: ", av);
+      return Object.values(mv.attributeValues).some(
         (av: any) => av.path === "/domain/extra/Region" &&
           av.value === regionValue,
-      )
+      )}
     ,
     "Expected propagated region value on EC2 Instance to match source",
     90000, // give it 90 seconds to make it's way through dvu
