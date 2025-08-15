@@ -120,6 +120,7 @@ async function create_two_components_connect_and_propagate_inner(
       )
     ,
     "Expected propagated region value on EC2 Instance to match source",
+    90000, // give it 90 seconds to make it's way through dvu
   );
 
   // Now remove the subscription and verify the value is no longer propagated
