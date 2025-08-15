@@ -171,7 +171,7 @@ realtimeStore.subscribe(
 );
 
 // This watcher ejects expired items.
-watch([trigger, changeSetId.value], () => {
+watch([trigger, changeSetId], () => {
   const now = Date.now();
 
   for (const [key, value] of Object.entries(
