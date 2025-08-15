@@ -5,17 +5,24 @@ outline:
 
 # Road map
 
-Updated May 21, 2025.
+Updated August 16, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
 
-## Job specific interface (In development)
+## Job specific interface (In public beta)
 
 We are adding a more purpose-built job specific user interface for interacting
 with System Initiative. The user interface will be focused on the model itself,
 allowing you to get to the work - building, editing, and visualizing
 infrastructure - quicker.
+
+## System Initiative MCP Server (In public beta)
+
+We are introducing a dedicated MCP server for System Initiative. This server
+enables you to bring AI directly into your infrastructure workflows—acting as a
+companion that understands your context, helps you generate and refine
+resources, and accelerates your path from idea to working infrastructure.
 
 ## Better data connectivity (In public beta)
 
