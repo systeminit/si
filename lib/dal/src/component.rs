@@ -4736,21 +4736,6 @@ impl WsEvent {
         .await
     }
 
-    pub async fn component_created(
-        ctx: &DalContext,
-        component: DiagramComponentView,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ComponentCreated(ComponentCreatedPayload {
-                change_set_id: ctx.change_set_id(),
-                inferred_edges: None,
-                component,
-            }),
-        )
-        .await
-    }
-
     pub async fn component_created_with_inferred_edges(
         ctx: &DalContext,
         component: DiagramComponentView,
