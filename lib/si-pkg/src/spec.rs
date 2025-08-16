@@ -33,6 +33,15 @@ mod si_prop_func;
 mod socket;
 mod variant;
 
+#[cfg(test)]
+mod tests;
+
+/// Trait for function specs that have a unique identifier
+pub trait HasUniqueId {
+    /// Returns the unique identifier for this function, if available
+    fn unique_id(&self) -> Option<&str>;
+}
+
 pub use action_func::*;
 pub use attr_func_input::*;
 pub use attribute_value::*;

@@ -54,7 +54,7 @@ use dal::WorkspaceSnapshotError;
 
 pub mod action_prototype_view_list;
 pub mod action_view_list;
-pub mod cached_schemas;
+pub mod cached;
 pub mod component;
 pub mod component_list;
 pub mod dependent_value_component_list;
@@ -111,6 +111,8 @@ pub enum Error {
     Secret(#[from] dal::SecretError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si pkg error: {0}")]
+    SiPkg(#[from] si_pkg::SiPkgError),
     #[error("validation error: {0}")]
     Validation(#[from] dal::validation::ValidationError),
     #[error("workspace snapshot error: {0}")]

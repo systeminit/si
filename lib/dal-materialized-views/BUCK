@@ -6,6 +6,7 @@ rust_library(
         "//lib/dal:dal",
         "//lib/si-frontend-mv-types-rs:si-frontend-mv-types",
         "//lib/si-id:si-id",
+        "//lib/si-pkg:si-pkg",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:remain",
         "//third-party/rust:serde_json",

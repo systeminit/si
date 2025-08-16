@@ -12,6 +12,7 @@ use super::{
 use crate::{
     ActionFuncSpec,
     ActionFuncSpecKind,
+    HasUniqueId,
     node::PkgNode,
 };
 
@@ -81,6 +82,12 @@ impl<'a> SiPkgActionFunc<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> HasUniqueId for SiPkgActionFunc<'a> {
+    fn unique_id(&self) -> Option<&str> {
+        self.unique_id()
     }
 }
 

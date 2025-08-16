@@ -11,6 +11,7 @@ use super::{
 };
 use crate::{
     LeafFunctionSpec,
+    HasUniqueId,
     node::PkgNode,
     spec::{
         LeafInputLocation,
@@ -101,6 +102,12 @@ impl<'a> SiPkgLeafFunction<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> HasUniqueId for SiPkgLeafFunction<'a> {
+    fn unique_id(&self) -> Option<&str> {
+        self.unique_id()
     }
 }
 
