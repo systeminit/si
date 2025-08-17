@@ -498,6 +498,8 @@ async fn for_intrinsics(ctx: &mut DalContext) {
         PropPath::new(["root", "si"]),
         PropPath::new(["root", "si", "protected"]),
         PropPath::new(["root", "si", "resourceId"]),
+        PropPath::new(["root", "si", "tags"]),
+        PropPath::new(["root", "si", "tags", "tag"]),
         PropPath::new(["root", "secrets"]),
         PropPath::new(["root", "resource"]),
         PropPath::new(["root", "resource", "message"]),
