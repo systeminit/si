@@ -28,8 +28,8 @@
     "jsr:@std/io@0.223": "0.223.0",
     "jsr:@std/path@0.223": "0.223.0",
     "jsr:@std/path@^1.0.6": "1.1.1",
-    "jsr:@std/text@~1.0.7": "1.0.15",
-    "jsr:@systeminit/api-client@^1.0.3": "1.0.3",
+    "jsr:@std/text@~1.0.7": "1.0.16",
+    "jsr:@systeminit/api-client@^1.0.6": "1.0.6",
     "jsr:@systeminit/cf-db@~0.1.4": "0.1.4",
     "jsr:@systeminit/remove-empty@0.1.3": "0.1.3",
     "npm:@apidevtools/json-schema-ref-parser@11.9.3": "11.9.3",
@@ -196,8 +196,11 @@
     "@std/text@1.0.15": {
       "integrity": "91f5cc1e12779a3d95f1be34e763f9c28a75a078b7360e6fcaef0d8d9b1e3e7f"
     },
-    "@systeminit/api-client@1.0.3": {
-      "integrity": "a9e05367d618c66dcadf09308452cca73b3bb6a72b71d75ecad8963985adc447",
+    "@std/text@1.0.16": {
+      "integrity": "ddb9853b75119a2473857d691cf1ec02ad90793a2e8b4a4ac49d7354281a0cf8"
+    },
+    "@systeminit/api-client@1.0.6": {
+      "integrity": "2b036cc6731c67b6f6e61f59f94527b880d6a119e9a563d822655c2e4493f224",
       "dependencies": [
         "npm:axios"
       ]
@@ -1639,7 +1642,7 @@
           "jsr:@onjara/optic@^2.0.3",
           "jsr:@std/assert@1",
           "jsr:@std/encoding@^1.0.10",
-          "jsr:@systeminit/api-client@^1.0.3",
+          "jsr:@systeminit/api-client@^1.0.6",
           "jsr:@systeminit/cf-db@~0.1.4",
           "npm:@modelcontextprotocol/sdk@^1.16.0",
           "npm:axios@^1.6.1",
