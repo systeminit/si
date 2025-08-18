@@ -11,6 +11,7 @@ rust_library(
         "//third-party/rust:remain",
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
+        "//third-party/rust:tracing",
     ],
     srcs = glob([
         "src/**/*.rs",
