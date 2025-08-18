@@ -918,6 +918,9 @@ const clearGroupBy = () => {
 watch(
   [hasSocketConnections, gridMode],
   ([newHasSocketConnections, newGridMode]) => {
+    // Only new socket connections with incompatible components group by when in grid view.
+    if (!showGrid.value) return;
+
     // If groupBy is set to IncompatibleComponents but there are no socket connections, clear it
     if (
       !newHasSocketConnections &&
@@ -930,6 +933,9 @@ watch(
 );
 
 watch(gridMode, (newMode, oldMode) => {
+  // Ignore the grid mode in map view.
+  if (!showGrid.value) return;
+
   // If we are moving in or out of pinning mode, we need to clear the selection.
   if (newMode.mode === "pinned" || oldMode.mode === "pinned") {
     clearSelection();
