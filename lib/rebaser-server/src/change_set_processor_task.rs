@@ -380,7 +380,10 @@ async fn graceful_shutdown_signal(
 }
 
 mod handlers {
-    use std::result;
+    use std::{
+        result,
+        time::Instant,
+    };
 
     use dal::{
         ChangeSet,
@@ -494,13 +497,15 @@ mod handlers {
             server_tracker,
             features,
         } = state;
-        let mut ctx = ctx_builder
-            .build_for_change_set_as_system(workspace_id, change_set_id, None)
-            .await?;
-
         let span = Span::current();
         span.record("si.workspace.id", workspace_id.to_string());
         span.record("si.change_set.id", change_set_id.to_string());
+        let metric_label = format!("{workspace_id}:{change_set_id}");
+
+        metric!(counter.rebaser.rebase_processing = 1, label = metric_label);
+        let mut ctx = ctx_builder
+            .build_for_change_set_as_system(workspace_id, change_set_id, None)
+            .await?;
 
         let rebase_status = perform_rebase(&mut ctx, &edda, &request, &server_tracker, features)
             .await
@@ -548,6 +553,7 @@ mod handlers {
         event.set_workspace_pk(workspace_id);
         event.set_change_set_id(Some(change_set_id));
         event.publish_immediately(&ctx).await?;
+        metric!(counter.rebaser.rebase_processing = -1, label = metric_label);
 
         match maybe_post_rebase_activities_result {
             // If no error is returned in post-rebase activities, return ok
@@ -557,11 +563,27 @@ mod handlers {
         }
     }
 
+    #[instrument(
+    name = "rebase.post_rebase_activities",
+    level = "info",
+    skip_all,
+    fields(
+        si.workspace.id = %workspace_id,
+        si.rebase.actions_dispatched = Empty,
+        si.rebase.snapshot_write_time = Empty,
+        si.rebase.pointer_updated_post_rebase = Empty,
+        si.rebase.dispatch_actions_time = Empty,
+        si.rebase.action_dependency_graph_time = Empty,
+        si.rebase.dependent_value_graph_time = Empty,
+    ))]
     async fn post_rebase_activities(
         workspace_id: dal::WorkspacePk,
         run_notify: std::sync::Arc<tokio::sync::Notify>,
         ctx: &dal::DalContext,
     ) -> Result<()> {
+        let start = Instant::now();
+        let span = current_span_for_instrument_at!("info");
+
         if DependentValueRoot::roots_exist(ctx).await? {
             run_notify.notify_one();
         }
@@ -572,15 +594,25 @@ mod handlers {
             if workspace.default_change_set_id() == ctx.visibility().change_set_id {
                 let mut change_set =
                     ChangeSet::get_by_id(ctx, ctx.visibility().change_set_id).await?;
-                if Action::dispatch_actions(ctx).await? {
+                let did_actions_dispatch = Action::dispatch_actions(ctx).await?;
+                span.record(
+                    "si.rebase.dispatch_actions_time",
+                    start.elapsed().as_millis(),
+                );
+                if did_actions_dispatch {
                     // Write out the snapshot to get the new address/id.
                     let new_snapshot_id = ctx
                         .write_snapshot()
                         .await?
                         .ok_or(dal::WorkspaceSnapshotError::WorkspaceSnapshotNotWritten)?;
+                    span.record("si.rebase.snapshot_write_time", start.elapsed().as_millis());
                     // Manually update the pointer to the new address/id that reflects the new
                     // Action states.
                     change_set.update_pointer(ctx, new_snapshot_id).await?;
+                    span.record(
+                        "si.rebase.pointer_updated_post_rebase",
+                        start.elapsed().as_millis(),
+                    );
 
                     if let Err(err) =
                         billing_publish::for_head_change_set_pointer_update(ctx, &change_set).await
