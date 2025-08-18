@@ -62,7 +62,8 @@
       data-testid="abandon-change-set-button"
       :disabled="
         !changeSet ||
-        changeSet.isHead ||
+        (ctx.headChangeSetId.value &&
+          changeSet.id === ctx.headChangeSetId.value) ||
         createApi.inFlight.value ||
         changeSet.status === ChangeSetStatus.NeedsApproval
       "
