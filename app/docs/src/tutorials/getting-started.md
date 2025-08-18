@@ -14,10 +14,12 @@ To follow along, you'll need three things:
 
 3. Your System Initiative workspace open in another window.
 
-::: warning Your AWS account must have a
-[Default VPC](https://docs.aws.amazon.com/vpc/latest/userguide/default-vpc.html)
-to complete the quick start guide. Most accounts do!
+::: warning Your AWS account must have a [Default VPC](https://docs.aws.amazon.com/vpc/latest/userguide/default-vpc.html) to complete the quick start guide.
+Most accounts do!
+:::
 
+::: info SI is developed in compliance with modern web standards, but the only officially supported browsers are Chrome and Firefox.
+If you encounter issues while using another browser, we recommend switching to one of the supported options.
 :::
 
 ## Keyboard Controls

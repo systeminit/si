@@ -138,6 +138,10 @@ buck2 run dev:stop
 
 To log into SI locally, you need to create a new Workspace of type `Local Dev Instance` and select it at `https://auth.systeminit.com/workspaces`.
 
+> [!NOTE]
+> SI is developed in compliance with modern web standards, but the only officially supported browsers are Chrome and Firefox.
+> If you encounter issues while using another browser, we recommend switching to one of the supported options.
+
 ## Where Do I Learn More?
 
 For more information on how to use and develop the System Initiative software, talk to us on
