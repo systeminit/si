@@ -1428,7 +1428,7 @@ const mjolnirBulk = async (
   const hammerObjs: MjolnirBulk = [];
   for (const obj of objs) {
     if (obj.checksum) {
-      const doc = getCachedDocument(obj.id, obj.checksum);
+      const doc = getCachedDocument(obj);
       if (doc) {
         cachedAtoms.push({
           id: obj.id,
@@ -1798,19 +1798,16 @@ const pruneAtomsForClosedChangeSet = async (
 const MAX_CACHE_SIZE = 65536 * 2;
 const decodedAtomCache = new QuickLRU({ maxSize: MAX_CACHE_SIZE });
 
-const atomCacheKey = (id: string, checksum: string) => `${id}-${checksum}`;
+const atomCacheKey = (atom: Common) =>
+  `${atom.id}-${atom.kind}-${atom.checksum}`;
 
-const getCachedDocument = (id: string, checksum: string) => {
-  const cacheKey = atomCacheKey(id, checksum);
+const getCachedDocument = (atom: Common) => {
+  const cacheKey = atomCacheKey(atom);
   return decodedAtomCache.get(cacheKey);
 };
 
-const setCachedDocument = (
-  id: string,
-  checksum: string,
-  data: AtomDocument,
-) => {
-  const cacheKey = atomCacheKey(id, checksum);
+const setCachedDocument = (atom: Common, data: AtomDocument) => {
+  const cacheKey = atomCacheKey(atom);
   decodedAtomCache.set(cacheKey, data);
 };
 
@@ -1820,7 +1817,8 @@ const atomDocumentForChecksum = (
   id: string,
   checksum: string,
 ): AtomDocument | undefined => {
-  const maybeCachedAtom = getCachedDocument(id, checksum);
+  const atom = { kind, id, checksum };
+  const maybeCachedAtom = getCachedDocument(atom);
   if (maybeCachedAtom) {
     return maybeCachedAtom;
   }
@@ -1834,7 +1832,7 @@ const atomDocumentForChecksum = (
   const atomData = rows[0]?.[0];
   if (atomData) {
     const decoded = decodeDocumentFromDB(atomData as ArrayBuffer);
-    setCachedDocument(id, checksum, decoded);
+    setCachedDocument(atom, decoded);
     return decoded;
   }
 
@@ -1854,9 +1852,6 @@ const atomDocumentsForChecksums = (
 } => {
   const existingAtoms = new Map<string, AtomWithDocument>();
   const uncachedAtoms = new Map<string, Common>();
-
-  const makeKeyForAtom = (atom: Omit<Common, "kind">) =>
-    atomCacheKey(atom.id, atom.checksum);
 
   const placeholders = [];
   const bind: string[] = [];
@@ -1888,16 +1883,16 @@ const atomDocumentsForChecksums = (
         id: id as string,
         checksum: checksum as string,
       };
-      const key = makeKeyForAtom(atom);
-      const maybeCached = getCachedDocument(atom.id, atom.checksum);
+      const key = atomCacheKey(atom);
+      const maybeCached = getCachedDocument(atom);
       const doc = maybeCached ?? decodeDocumentFromDB(data as ArrayBuffer);
-      setCachedDocument(atom.id, atom.checksum, doc);
+      setCachedDocument(atom, doc);
       existingAtoms.set(key, { ...atom, doc });
     }
   }
 
   for (const atom of atoms) {
-    const key = makeKeyForAtom(atom);
+    const key = atomCacheKey(atom);
     if (!existingAtoms.has(key)) {
       uncachedAtoms.set(key, atom);
     }
@@ -1914,7 +1909,7 @@ interface AtomWithArrayBuffer extends Common {
 }
 const atomsForChangeSet = (
   db: Database,
-  changeSetId: ChangeSetId,
+  indexChecksum: string,
 ): AtomWithArrayBuffer[] => {
   const rows = db.exec({
     sql: `
@@ -1923,11 +1918,10 @@ const atomsForChangeSet = (
     inner join index_mtm_atoms mtm
       ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
     inner join indexes ON mtm.index_checksum = indexes.checksum
-    inner join changesets ON changesets.index_checksum = indexes.checksum
-    where changesets.change_set_id = ?
+    WHERE indexes.checksum = ?
     ;
     `,
-    bind: [changeSetId],
+    bind: [indexChecksum],
     returnValue: "resultRows",
   });
   return rows.map((row) => ({
@@ -2032,7 +2026,7 @@ const niflheim = async (
     // Gather up a set of all atoms for detecting atoms to remove
     const atomSet = new Set();
     for (const atom of atoms) {
-      atomSet.add(atomCacheKey(atom.id, atom.checksum));
+      atomSet.add(atomCacheKey(atom));
     }
 
     // Insert all atoms into the database, or throw hammers for them
@@ -2048,14 +2042,14 @@ const niflheim = async (
     }
 
     // Now that all atoms have been inserted, refetch all atoms currently in the change set
-    const finalAtoms = atomsForChangeSet(db, changeSetId);
+    const finalAtoms = atomsForChangeSet(db, indexChecksum);
     const atomsToUnlink: Array<Common> = [];
 
     const processAtom = async (atom: AtomWithArrayBuffer) => {
-      let doc = getCachedDocument(atom.id, atom.checksum);
+      let doc = getCachedDocument(atom);
       if (!doc) {
         doc = decodeDocumentFromDB(atom.data);
-        setCachedDocument(atom.id, atom.checksum, doc);
+        setCachedDocument(atom, doc);
       }
 
       postProcess(
@@ -2084,7 +2078,7 @@ const niflheim = async (
 
     for (const atom of finalAtoms) {
       // Atom is in the database, but not in the index? Delete it
-      if (!atomSet.has(atomCacheKey(atom.id, atom.checksum))) {
+      if (!atomSet.has(atomCacheKey(atom))) {
         atomsToUnlink.push(atom);
       } else {
         // Placing this in a promise to yield control back to the event loop

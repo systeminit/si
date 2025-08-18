@@ -63,9 +63,9 @@ export type LobbyExitFn = (
 ) => void;
 
 export type MjolnirBulk = Array<{
-  kind: string;
+  kind: EntityKind;
   id: Id;
-  checksum?: Checksum;
+  checksum: Checksum;
 }>;
 
 export const SHARED_BROADCAST_CHANNEL_NAME = "SHAREDWORKER_BROADCAST";
