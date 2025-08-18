@@ -70,6 +70,7 @@ rust_library(
         "//third-party/rust:tokio-util",
         "//third-party/rust:tower",
         "//third-party/rust:tower-http",
+        "//third-party/rust:tracing",
         "//third-party/rust:tracing-tunnel",
         "//third-party/rust:ulid",
         "//third-party/rust:utoipa",
