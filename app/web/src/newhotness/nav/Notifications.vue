@@ -1,6 +1,6 @@
 <template>
   <button
-    v-if="numberICanApprove > 0"
+    v-if="numberICanApprove > 0 || currentChangeSetNeedsApproval"
     v-tooltip="{
       content: tooltipText,
       theme: 'notifications',
@@ -8,29 +8,50 @@
     :class="
       clsx(
         'relative h-full flex flex-row gap-2xs items-center children:pointer-events-none font-bold',
-        numberICanApprove > 0 ? 'bg-destructive-900' : 'hover:bg-black',
-        numberICanApprove > 0 && !compact ? 'p-xs' : 'p-sm',
+        numberICanApprove > 0 || currentChangeSetNeedsApproval
+          ? 'bg-destructive-900'
+          : 'hover:bg-black',
+        (numberICanApprove > 0 || currentChangeSetNeedsApproval) && !compact
+          ? 'p-xs'
+          : 'p-sm',
       )
     "
-    @click="openPendingApprovalsModal"
+    @click="handleNotificationClick"
   >
     <Icon
       name="bell"
       :class="
-        clsx(numberICanApprove > 0 ? 'text-destructive-500' : 'text-shade-0')
+        clsx(
+          numberICanApprove > 0 || currentChangeSetNeedsApproval
+            ? 'text-destructive-500'
+            : 'text-shade-0',
+        )
       "
     />
-    <template v-if="numberICanApprove > 0 && !compact">
+    <template
+      v-if="
+        (numberICanApprove > 0 || currentChangeSetNeedsApproval) && !compact
+      "
+    >
       <PillCounter
-        :count="numberICanApprove"
+        :count="
+          Math.max(numberICanApprove, currentChangeSetNeedsApproval ? 1 : 0)
+        "
         noColorStyles
         hideIfZero
         class="bg-destructive-500 py-2xs"
       />
-      <div class="text-xs">Approval{{ numberICanApprove > 1 ? "s" : "" }}</div>
+      <div class="text-xs">
+        Approval{{
+          numberICanApprove > 1 ||
+          (numberICanApprove === 0 && currentChangeSetNeedsApproval)
+            ? "s"
+            : ""
+        }}
+      </div>
     </template>
     <ApprovalPendingModal
-      v-if="numberICanApprove > 0"
+      v-if="numberICanApprove > 0 || currentChangeSetNeedsApproval"
       ref="pendingApprovalModalRef"
       :changeSetsNeedingApproval="changeSetsNeedingApproval"
     />
@@ -42,7 +63,11 @@ import clsx from "clsx";
 import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { Icon, PillCounter } from "@si/vue-lib/design-system";
 import { useQueries } from "@tanstack/vue-query";
-import { ChangeSetId, ChangeSet } from "@/api/sdf/dal/change_set";
+import {
+  ChangeSetId,
+  ChangeSet,
+  ChangeSetStatus,
+} from "@/api/sdf/dal/change_set";
 import { ApprovalData } from "../types";
 import ApprovalPendingModal from "./ApprovalPendingModal.vue";
 import { useContext } from "../logic_composables/context";
@@ -106,11 +131,17 @@ const numberICanApprove = computed(() => {
   return approvable;
 });
 
+const currentChangeSetNeedsApproval = computed(() => {
+  return ctx.changeSet.value?.status === ChangeSetStatus.NeedsApproval;
+});
+
 const tooltipText = computed(() => {
   if (numberICanApprove.value === 1) {
     return "You have a Change Set to approve.";
   } else if (numberICanApprove.value > 1) {
     return `You have ${numberICanApprove.value} Change Sets to approve.`;
+  } else if (currentChangeSetNeedsApproval.value) {
+    return "This change set requires approval before it can be applied.";
   } else {
     return "No Notifications";
   }
@@ -133,8 +164,15 @@ onBeforeUnmount(() => {
 const compact = computed(() => windowWidth.value < 850);
 
 const openPendingApprovalsModal = () => {
-  if (numberICanApprove.value > 0) {
+  if (numberICanApprove.value > 0 || currentChangeSetNeedsApproval.value) {
     pendingApprovalModalRef.value?.open();
+  }
+};
+
+const handleNotificationClick = () => {
+  if (numberICanApprove.value > 0 || currentChangeSetNeedsApproval.value) {
+    // Open the approvals modal if you have change sets to approve OR if current change set needs approval
+    openPendingApprovalsModal();
   }
 };
 </script>

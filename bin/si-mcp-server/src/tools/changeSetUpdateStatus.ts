@@ -11,29 +11,32 @@ import {
 
 const name = "change-set-update-status";
 const title = "Update the status of a change set";
-const description =
-  `<description>Update the status of a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Abandon (or 'delete') a change set, Apply a change set, or Force Apply the change set (ignoring all approvals). You may *never* update the status of the HEAD change set.</usage>`;
+const description = `<description>Update the status of a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Abandon (or 'delete') a change set, Apply a change set, or Force Apply the change set (ignoring all approvals). You may *never* update the status of the HEAD change set.</usage>`;
 
 const UpdateChangeSetInputSchemaRaw = {
-  newStatus: z.enum(["abandon", "apply", "force-apply"]).describe(
-    "'abandon' will abandon this change set, effectively deleting it. 'apply' will attempt to apply this change set, pending any approval requirements. 'force-apply' will apply the change set *ignoring* all approval requirements.",
-  ),
-  changeSetId: z.string().describe(
-    "the ID of the change set to update the status of",
-  ),
+  newStatus: z
+    .enum(["abandon", "apply", "force-apply"])
+    .describe(
+      "'abandon' will abandon this change set, effectively deleting it. 'apply' will apply the change set and follow any workspace approval requirements. 'force-apply' will apply the change set *ignoring* all approval requirements",
+    ),
+  changeSetId: z
+    .string()
+    .describe("the ID of the change set to update the status of"),
 };
 
 const UpdateChangeSetOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
-  data: z.object({ "success": z.boolean().describe("will always be true") })
+  errorMessage: z
+    .string()
+    .optional()
+    .describe(
+      "If the status is failure, the error message will contain information about what went wrong",
+    ),
+  data: z
+    .object({ success: z.boolean().describe("will always be true") })
     .describe("will be true if the request succeeds"),
 };
-const UpdateChangeSetOutputSchema = z.object(
-  UpdateChangeSetOutputSchemaRaw,
-);
+const UpdateChangeSetOutputSchema = z.object(UpdateChangeSetOutputSchemaRaw);
 
 export function changeSetUpdateTool(server: McpServer) {
   server.registerTool(
@@ -88,9 +91,7 @@ export function changeSetUpdateTool(server: McpServer) {
             workspaceId: WORKSPACE_ID,
             changeSetId,
           });
-          return successResponse(
-            response.data,
-          );
+          return successResponse(response.data);
         } else if (newStatus == "apply") {
           const response = await siApi.requestApproval({
             workspaceId: WORKSPACE_ID,
@@ -117,13 +118,10 @@ export function changeSetUpdateTool(server: McpServer) {
             workspaceId: WORKSPACE_ID,
             changeSetId,
           });
-          return successResponse(
-            response.data,
-          );
+          return successResponse(response.data);
         } else {
           return errorResponse({
-            message:
-              `Invalid status '${newStatus}'. Must be one of: abandon, apply, force-apply`,
+            message: `Invalid status '${newStatus}'. Must be one of: abandon, apply or force-apply`,
           });
         }
       } catch (error) {
