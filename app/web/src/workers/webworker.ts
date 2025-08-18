@@ -35,7 +35,7 @@ import Axios, {
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { DefaultMap } from "@/utils/defaultmap";
-import { ComponentId } from "@/api/sdf/dal/component";
+import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { ViewId } from "@/api/sdf/dal/views";
 import {
@@ -84,6 +84,9 @@ import {
   UninstalledVariant,
   AttributeTree,
   ManagementConnections,
+  DefaultSubscriptions,
+  DefaultSubscription,
+  AttributeValue,
 } from "./types/entity_kind_types";
 import {
   bulkDone,
@@ -1482,7 +1485,7 @@ const mjolnirBulk = async (
         url,
         data: { requests: hammerObjs },
       });
-      log(
+      debug(
         "🔨 MJOLNIR BULK HTTP SUCCESS:",
         indexChecksum,
         `${performance.now() - startBulkMjolnirReq}ms`,
@@ -2218,6 +2221,14 @@ const COMPUTED_KINDS: EntityKind[] = [
   EntityKind.Component,
 ];
 
+const defaultSubscriptions = new DefaultMap<ChangeSetId, DefaultSubscriptions>(
+  () => ({
+    defaultSubscriptions: new Map(),
+    componentsForSubs: new DefaultMap(() => new Set()),
+    subsForComponents: new DefaultMap(() => new Set()),
+  }),
+);
+
 // A mapping of possible connections per component, per change set
 const possibleConns = new DefaultMap<
   ChangeSetId,
@@ -2235,6 +2246,137 @@ const allIncomingMgmt = new DefaultMap<
   ChangeSetId,
   DefaultMap<ComponentId, Record<string, Connection>>
 >(() => new DefaultMap(() => ({})));
+
+// const logDefaultSubscriptionsForChangeSet = (changeSetId: ChangeSetId) => {
+//   const defaultSubsForChangeSet = defaultSubscriptions.get(changeSetId);
+//   log("Default subscriptions for change set:", changeSetId);
+//   log(
+//     "defaultSubscriptions map:",
+//     defaultSubsForChangeSet.defaultSubscriptions.size,
+//     "entries",
+//   );
+//   for (const [
+//     key,
+//     value,
+//   ] of defaultSubsForChangeSet.defaultSubscriptions.entries()) {
+//     log("  defaultSubscription:", key, "->", value);
+//   }
+
+//   log(
+//     "componentsForSubs map:",
+//     defaultSubsForChangeSet.componentsForSubs.size,
+//     "entries",
+//   );
+//   for (const [
+//     key,
+//     componentSet,
+//   ] of defaultSubsForChangeSet.componentsForSubs.entries()) {
+//     log("  componentsForSub:", key, "->", Array.from(componentSet));
+//   }
+
+//   log(
+//     "subsForComponents map:",
+//     defaultSubsForChangeSet.subsForComponents.size,
+//     "entries",
+//   );
+//   for (const [
+//     componentId,
+//     subSet,
+//   ] of defaultSubsForChangeSet.subsForComponents.entries()) {
+//     log("  subsForComponent:", componentId, "->", Array.from(subSet));
+//   }
+// };
+
+// Given a single Av, process all the data related to default subscriptions (is
+// it a default sub, does it have external sources?)
+const processAvForDefaultSubscriptions = (
+  changeSetId: ChangeSetId,
+  componentId: ComponentId,
+  av: AttributeValue,
+  defaultSubsForComponent: Set<string>,
+) => {
+  const defaultSubKey: DefaultSubscription = {
+    componentId,
+    path: av.path,
+  };
+
+  const defaultSubKeyString = JSON.stringify(defaultSubKey);
+
+  const defaultSubscriptionsForChangeSet =
+    defaultSubscriptions.get(changeSetId);
+  if (av.isDefaultSource) {
+    defaultSubscriptionsForChangeSet.defaultSubscriptions.set(
+      defaultSubKeyString,
+      defaultSubKey,
+    );
+  } else {
+    defaultSubscriptionsForChangeSet.defaultSubscriptions.delete(
+      defaultSubKeyString,
+    );
+  }
+
+  for (const externalSource of av.externalSources ?? []) {
+    const externalSourceKey: DefaultSubscription = {
+      componentId: externalSource.componentId,
+      path: externalSource.path as AttributePath,
+    };
+    defaultSubsForComponent.add(JSON.stringify(externalSourceKey));
+  }
+};
+
+// A component was deleted, so we have to remove all references to it
+// from the default subscriptions data
+const removeDefaultSubscriptionsForComponent = (
+  changeSetId: ChangeSetId,
+  componentId: ComponentId,
+) => {
+  const defaultSubsForChangeSet = defaultSubscriptions.get(changeSetId);
+  for (const [
+    keyString,
+    defaultSub,
+  ] of defaultSubsForChangeSet.defaultSubscriptions.entries()) {
+    if (defaultSub.componentId === componentId) {
+      defaultSubscriptions
+        .get(changeSetId)
+        .defaultSubscriptions.delete(keyString);
+    }
+  }
+
+  for (const componentSet of defaultSubsForChangeSet.componentsForSubs.values()) {
+    if (componentSet.has(componentId)) {
+      componentSet.delete(componentId);
+    }
+  }
+
+  defaultSubsForChangeSet.subsForComponents.delete(componentId);
+};
+
+// All the avs for this component have been processed, so we can
+// now finalize the default subscription data
+const finalizeDefaultSubscriptionsForComponent = (
+  changeSetId: ChangeSetId,
+  componentId: ComponentId,
+  defaultSubsForComponent: Set<string>,
+) => {
+  const defaultSubsForChangeSet = defaultSubscriptions.get(changeSetId);
+
+  defaultSubsForChangeSet.subsForComponents.set(
+    componentId,
+    defaultSubsForComponent,
+  );
+
+  const componentsForSubs = defaultSubsForChangeSet.componentsForSubs;
+
+  for (const key of defaultSubsForComponent) {
+    componentsForSubs.get(key).add(componentId);
+  }
+
+  for (const [key, componentIds] of componentsForSubs.entries()) {
+    if (componentIds.has(componentId) && !defaultSubsForComponent.has(key)) {
+      componentIds.delete(componentId);
+    }
+  }
+};
 
 const postProcess = (
   db: Database,
@@ -2415,8 +2557,16 @@ const postProcess = (
 
     const attributeTree = doc as AttributeTree;
     if (doc) {
+      const defaultSubsForComponent: Set<string> = new Set();
       const possibleConnsForComponent: Record<string, PossibleConnection> = {};
       Object.values(attributeTree.attributeValues).forEach((av) => {
+        processAvForDefaultSubscriptions(
+          changeSetId,
+          attributeTree.id,
+          av,
+          defaultSubsForComponent,
+        );
+
         const prop = attributeTree.props[av.propId ?? ""];
         if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
           possibleConnsForComponent[av.id] = {
@@ -2433,12 +2583,21 @@ const postProcess = (
           };
         }
       });
+
       possibleConns
         .get(changeSetId)
         .set(attributeTree.id, possibleConnsForComponent);
+
+      finalizeDefaultSubscriptionsForComponent(
+        changeSetId,
+        attributeTree.id,
+        defaultSubsForComponent,
+      );
     }
+
     if (removed) {
       possibleConns.get(changeSetId).delete(id);
+      removeDefaultSubscriptionsForComponent(changeSetId, id);
     }
 
     // dont bust individually on cold start
@@ -2446,10 +2605,21 @@ const postProcess = (
       bustCacheFn(
         workspaceId,
         changeSetId,
+        EntityKind.AttributeTree,
+        attributeTree?.id ?? id,
+      );
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
         EntityKind.PossibleConnections,
         workspaceId,
       );
-
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        EntityKind.DefaultSubscriptions,
+        workspaceId,
+      );
       bustCacheFn(
         workspaceId,
         changeSetId,
@@ -2494,6 +2664,13 @@ const getIncomingManagementByComponentId = (
   changeSetId: string,
 ) => {
   return allIncomingMgmt.get(changeSetId);
+};
+
+const getDefaultSubscriptions = (
+  _workspaceId: string,
+  changeSetId: string,
+): DefaultSubscriptions => {
+  return defaultSubscriptions.get(changeSetId);
 };
 
 const getComponentDetails = (
@@ -3653,6 +3830,7 @@ const dbInterface: TabDBInterface = {
       getSchemaMembers(db, workspaceId, changeSetId),
     );
   },
+  getDefaultSubscriptions,
   getPossibleConnections,
   queryAttributes(workspaceId, changeSetId, terms) {
     if (!sqlite) {

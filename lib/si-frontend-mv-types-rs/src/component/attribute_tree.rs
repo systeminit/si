@@ -52,6 +52,7 @@ pub struct ValidationOutput {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalSource {
+    pub component_id: ComponentId,
     pub component_name: String,
     pub path: String,
     pub is_secret: bool,

@@ -16,6 +16,7 @@ import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { ViewId } from "@/api/sdf/dal/views";
 import {
   Connection,
+  DefaultSubscriptions,
   EntityKind,
   PossibleConnection,
 } from "./entity_kind_types";
@@ -175,6 +176,10 @@ export interface SharedDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Promise<string>;
+  getDefaultSubscriptions(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Promise<DefaultSubscriptions>;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -278,6 +283,10 @@ export interface TabDBInterface {
     changeSetId: ChangeSetId,
   ): Record<ComponentId, ViewId>;
   getSchemaMembers(workspaceId: string, changeSetId: ChangeSetId): string;
+  getDefaultSubscriptions(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): DefaultSubscriptions;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,

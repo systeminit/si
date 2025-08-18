@@ -10,6 +10,8 @@
           modelValueLabel &&
           themeClasses('bg-action-200', 'bg-action-900'),
         variant === 'navbar' && 'flex-1 font-bold min-w-[80px] max-w-fit',
+        hoverBorder &&
+          themeClasses('hover:border-action-500', 'hover:border-action-300'),
         disabled
           ? [
               'cursor-not-allowed',
@@ -134,6 +136,7 @@ const props = defineProps({
   },
   minWidthToAnchor: { type: Boolean },
   noBorder: { type: Boolean },
+  hoverBorder: { type: Boolean },
   alignRightOnAnchor: { type: Boolean },
   enableSecondaryAction: { type: Function },
   secondaryActionIcon: { type: String as PropType<IconNames> },

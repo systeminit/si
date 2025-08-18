@@ -526,7 +526,10 @@
               This will allow us to only create HTML elements for visible items, and speeds up
               the rendering and initialization of the list.
             -->
-            <div ref="filteredConnectionsListRef" class="scrollable h-[10rem]">
+            <div
+              ref="filteredConnectionsListRef"
+              class="scrollable max-h-[10rem]"
+            >
               <!-- Create a relative-positioned container so that children are relative to its (0,0) -->
               <div
                 :class="clsx('relative w-full')"
@@ -645,6 +648,28 @@
               :title="selectedConnection.possibleConnection.path"
             />
           </div>
+          <label
+            v-if="
+              featureFlagsStore.DEFAULT_SUBS &&
+              filteredConnections.length - 1 > 0
+            "
+            :for="`checkbox-${prop?.id}`"
+            :class="
+              clsx(
+                'border w-full flex flex-row items-center gap-xs px-xs py-2xs cursor-pointer',
+                themeClasses('border-neutral-400', 'border-neutral-600'),
+              )
+            "
+          >
+            <input
+              :id="`default-source-checkbox-${prop?.id}`"
+              type="checkbox"
+              :checked="isDefaultSource"
+              @input="(ev) => toggleIsDefaultSource(ev, path)"
+              @click.stop
+            />
+            <div>Make this the default subscription for new components</div>
+          </label>
         </div>
       </template>
       <CodeEditorModal
@@ -697,6 +722,7 @@ import CodeViewer from "@/components/CodeViewer.vue";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { CategorizedPossibleConnections } from "@/workers/types/dbinterface";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   attributeEmitter,
   MouseDetails,
@@ -719,6 +745,8 @@ export type UIPotentialConnection = PossibleConnection & {
   pathArray: string[];
 };
 
+const featureFlagsStore = useFeatureFlagsStore();
+
 const props = defineProps<{
   path: AttributePath;
   value: string;
@@ -733,6 +761,7 @@ const props = defineProps<{
   isArray?: boolean;
   isMap?: boolean;
   isSecret?: boolean;
+  isDefaultSource?: boolean;
   disableInputWindow?: boolean;
   forceReadOnly?: boolean;
   hasSocketConnection?: boolean;
@@ -968,6 +997,7 @@ const createSubscriptionMutation = useMutation({
         if (updatedFound) {
           updatedFound.attributeValue.externalSources = [
             {
+              componentId: updatedData.id,
               componentName: selectedConnectionData.value.componentName,
               path: selectedConnectionData.value.propPath,
               isSecret: false,
@@ -1087,6 +1117,11 @@ const emit = defineEmits<{
   ): void;
   (e: "delete", path: AttributePath): void;
   (e: "removeSubscription", path: AttributePath): void;
+  (
+    e: "setDefaultSubscriptionSource",
+    path: AttributePath,
+    setTo: boolean,
+  ): void;
   (e: "add", key?: string): void;
   (e: "selected"): void;
   (e: "close"): void;
@@ -1570,6 +1605,12 @@ const openCodeEditorModal = () => {
 const setValueFromCodeEditorModal = (value: string) => {
   valueForm.setFieldValue("value", value);
   valueForm.handleSubmit();
+};
+
+const toggleIsDefaultSource = (event: Event, path: AttributePath) => {
+  event.stopPropagation();
+  const checked = (event.target as HTMLInputElement).checked;
+  emit("setDefaultSubscriptionSource", path, checked);
 };
 
 const optionIsSelected = computed(

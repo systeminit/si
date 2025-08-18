@@ -23,6 +23,7 @@ const USER_FLAG_MAPPING = {
   PROPS_TO_PROPS_CONNECTIONS: "props-to-props-connections",
   ENABLE_NEW_EXPERIENCE: "enable-new-experience",
   REVIEW_PAGE: "review-page",
+  DEFAULT_SUBS: "default-subs",
 } as const;
 const WORKSPACE_FLAG_MAPPING = {
   FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",
