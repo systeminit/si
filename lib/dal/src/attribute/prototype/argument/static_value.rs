@@ -4,7 +4,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::Timestamp;
+use si_events::{
+    ContentHash,
+    Timestamp,
+};
 pub use si_id::StaticArgumentValueId;
 
 use super::AttributePrototypeArgumentResult;
@@ -74,23 +77,30 @@ impl StaticArgumentValue {
         ctx: &DalContext,
         id: StaticArgumentValueId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let ulid: si_events::ulid::Ulid = id.into();
-        let node_weight = workspace_snapshot.get_node_weight(ulid).await?;
-        let hash = node_weight.content_hash();
+        let hash = Self::value_content_hash(ctx, id).await?;
 
         let content: StaticArgumentValueContent = ctx
             .layer_db()
             .cas()
             .try_read_as(&hash)
             .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let StaticArgumentValueContent::V1(inner) = content;
 
         Ok(StaticArgumentValue::assemble(id, inner))
+    }
+
+    pub async fn value_content_hash(
+        ctx: &DalContext,
+        id: StaticArgumentValueId,
+    ) -> AttributePrototypeArgumentResult<ContentHash> {
+        Ok(ctx
+            .workspace_snapshot()?
+            .get_node_weight(id)
+            .await?
+            .content_hash())
     }
 
     /// Get the value, formatted for debugging/display.

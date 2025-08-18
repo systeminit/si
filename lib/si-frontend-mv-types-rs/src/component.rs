@@ -3,13 +3,13 @@ use serde::{
     Serialize,
 };
 use serde_json::Value;
-use si_events::{
+use si_events::workspace_snapshot::EntityKind;
+use si_id::{
     ComponentId,
     SchemaId,
     SchemaVariantId,
-    workspace_snapshot::EntityKind,
+    WorkspacePk,
 };
-use si_id::WorkspacePk;
 use strum::{
     AsRefStr,
     Display,
@@ -23,6 +23,7 @@ use crate::reference::{
 };
 
 pub mod attribute_tree;
+pub mod component_diff;
 
 #[derive(
     Debug,
@@ -51,7 +52,7 @@ pub struct ComponentQualificationStats {
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
-pub struct ComponentDiff {
+pub struct ComponentTextDiff {
     pub current: Option<String>,
     pub diff: Option<String>,
 }
@@ -88,7 +89,7 @@ pub struct Component {
     pub has_resource: bool,
     pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
-    pub resource_diff: ComponentDiff,
+    pub resource_diff: ComponentTextDiff,
     pub is_secret_defining: bool,
     pub to_delete: bool,
 }
@@ -111,6 +112,7 @@ pub enum ComponentDiffStatus {
     Added,
     Modified,
     None,
+    Removed,
 }
 
 #[derive(

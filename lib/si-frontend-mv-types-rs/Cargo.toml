@@ -16,6 +16,7 @@ lazy_static = { workspace = true }
 module-index-types = { path = "../../lib/module-index-types" }
 remain = { workspace = true }
 serde = { workspace = true }
+serde-tuple-vec-map = { workspace = true }
 serde_json = { workspace = true }
 si-events = { path = "../../lib/si-events-rs" }
 si-frontend-mv-types-macros = { path = "../../lib/si-frontend-mv-types-macros" }

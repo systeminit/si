@@ -7,6 +7,7 @@ use dal::{
     DalContext,
     InputSocket,
     OutputSocket,
+    attribute::attributes,
     diagram::{
         geometry::Geometry,
         view::View,
@@ -53,6 +54,37 @@ pub async fn create(
             .await?
             .id(),
     )
+}
+
+/// Create a component with the given name and schema variant, and set some attributes
+pub async fn create_and_set(
+    ctx: &DalContext,
+    variant: impl SchemaVariantKey,
+    name: impl AsRef<str>,
+    values: impl Into<serde_json::Value>,
+) -> Result<ComponentId> {
+    let component_id = create(ctx, variant, name).await?;
+    update(ctx, component_id, values).await?;
+    Ok(component_id)
+}
+
+/// Create a component with the given name and schema variant
+pub async fn update(
+    ctx: &DalContext,
+    component: impl ComponentKey,
+    values: impl Into<serde_json::Value>,
+) -> Result<()> {
+    let component_id = self::id(ctx, component).await?;
+    let values = serde_json::from_value(values.into())?;
+    attributes::update_attributes(ctx, component_id, values).await?;
+    Ok(())
+}
+
+/// Remove a component from the graph (even if it has connections/sockets/children)
+pub async fn remove(ctx: &DalContext, component: impl ComponentKey) -> Result<()> {
+    let component_id = id(ctx, component).await?;
+    Component::remove(ctx, component_id).await?;
+    Ok(())
 }
 
 /// Find a management prototype by the prototype name (NOT THE FUNC NAME)

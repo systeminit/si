@@ -45,6 +45,7 @@ use si_frontend_mv_types::{
         ComponentList as ComponentListMv,
         SchemaMembers,
         attribute_tree::AttributeTree as AttributeTreeMv,
+        component_diff::ComponentDiff as ComponentDiffMv,
     },
     dependent_values::DependentValueComponentList as DependentValueComponentListMv,
     incoming_connections::{
@@ -1020,6 +1021,22 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 entity_mv_id,
                 ComponentMv,
                 dal_materialized_views::component::assemble(
+                    ctx.clone(),
+                    si_events::ulid::Ulid::from(change.entity_id).into(),
+                ),
+            );
+        }
+        ReferenceKind::ComponentDiff => {
+            let entity_mv_id = change.entity_id.to_string();
+
+            spawn_build_mv_task!(
+                build_tasks,
+                ctx,
+                frigg,
+                change,
+                entity_mv_id,
+                ComponentDiffMv,
+                dal_materialized_views::component::component_diff::assemble(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into(),
                 ),

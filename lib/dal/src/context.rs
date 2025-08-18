@@ -1013,6 +1013,10 @@ impl DalContext {
         new
     }
 
+    pub async fn is_head(&self) -> TransactionsResult<bool> {
+        Ok(self.get_workspace_default_change_set_id().await? == self.change_set_id())
+    }
+
     pub async fn parent_is_head(&self) -> TransactionsResult<bool> {
         let change_set = self.change_set()?;
         let base_change_set_id = change_set

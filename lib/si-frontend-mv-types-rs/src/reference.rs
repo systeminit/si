@@ -43,6 +43,7 @@ pub enum ReferenceKind {
     ChangeSetMvIndex,
     ChangeSetRecord,
     Component,
+    ComponentDiff,
     ComponentInList,
     ComponentList,
     DependentValueComponentList,

@@ -8502,6 +8502,7 @@ dependencies = [
  "module-index-types",
  "remain",
  "serde",
+ "serde-tuple-vec-map",
  "serde_json",
  "si-events",
  "si-frontend-mv-types-macros",
