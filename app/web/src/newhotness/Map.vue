@@ -810,46 +810,7 @@ const connections = useQuery<IncomingConnections[]>({
     const d = await bifrostList<IncomingConnections[] | null>(
       args(EntityKind.IncomingConnectionsList),
     );
-
-    if (d) {
-      // this sets the component from the URL querystring on load, and then doesn't re-enter
-      if (fillDefault.value && fillDefault.value.length > 0) {
-        nextTick(() => {
-          const selectedComps: ComponentInList[] = [];
-          fillDefault.value?.forEach((componentId) => {
-            const component = componentsById.value[componentId];
-            if (component) {
-              selectedComps.push(component);
-            }
-          });
-
-          if (selectedComps.length > 0) {
-            selectedComponents.value = new Set(selectedComps);
-            // Set up pending pan for when layout becomes available
-            if (selectedComps[0]) {
-              pendingPanComponent.value = selectedComps[0].id;
-            }
-
-            // Force filtering to run after component selection when hideSubscriptions is active
-            const shouldHideUnconnected =
-              router.currentRoute.value.query.hideSubscriptions === "1";
-            if (shouldHideUnconnected) {
-              setTimeout(() => {
-                applyConnectionFiltering();
-                // Clear the loading flag after filtering is applied
-                isLoadingFromURL.value = false;
-              }, 500);
-            } else {
-              // Clear the loading flag even if no filtering needed
-              isLoadingFromURL.value = false;
-            }
-          }
-          fillDefault.value = undefined;
-        });
-      }
-
-      return d;
-    } else return [];
+    return d ?? [];
   },
 });
 
