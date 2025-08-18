@@ -14,6 +14,7 @@ import { componentGetTool } from "./tools/componentGet.ts";
 import { componentCreateTool } from "./tools/componentCreate.ts";
 import { componentUpdateTool } from "./tools/componentUpdate.ts";
 import { componentEnqueueActionTool } from "./tools/componentEnqueueAction.ts";
+import { componentUpgradeTool } from "./tools/componentUpgrade.ts";
 import { componentImportTool } from "./tools/componentImport.ts";
 import { importPrompt } from "./prompts/import.ts";
 import { componentDiscoverTool } from "./tools/componentDiscover.ts";
@@ -38,6 +39,7 @@ export function createServer(): McpServer {
   componentGetTool(server);
   componentCreateTool(server);
   componentUpdateTool(server);
+  componentUpgradeTool(server);
   componentEnqueueActionTool(server);
   componentImportTool(server);
   componentDiscoverTool(server);
