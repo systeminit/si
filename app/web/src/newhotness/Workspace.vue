@@ -281,7 +281,9 @@ const ctx = computed<Context>(() => {
     changeSet,
     approvers,
     user: authStore.user,
-    onHead: computed(() => changeSetId.value === _headChangeSetId.value),
+    onHead: computed(() => {
+      return changeSetId.value === _headChangeSetId.value;
+    }),
     headChangeSetId: _headChangeSetId,
     outgoingCounts,
     componentDetails,
@@ -329,15 +331,30 @@ const changeSetsNeedingApproval = computed(() =>
   ),
 );
 
-watch(defaultApprovers, () => {
-  approvers.value = defaultApprovers.value;
-});
-watch(activeChangeSet, () => {
-  changeSet.value = activeChangeSet.value;
-});
-watch(headChangeSetId, () => {
-  _headChangeSetId.value = headChangeSetId.value;
-});
+watch(
+  defaultApprovers,
+  () => {
+    approvers.value = defaultApprovers.value;
+  },
+  { immediate: true },
+);
+watch(
+  activeChangeSet,
+  () => {
+    changeSet.value = activeChangeSet.value;
+  },
+  { immediate: true },
+);
+watch(
+  headChangeSetId,
+  () => {
+    // never assign a blank value over a truth-y value
+    if (_headChangeSetId.value && !headChangeSetId.value) return;
+
+    _headChangeSetId.value = headChangeSetId.value;
+  },
+  { immediate: true },
+);
 watch(
   () => openChangeSets,
   () => {
