@@ -301,8 +301,7 @@
             id="footer"
             :class="
               clsx(
-                'flex-none h-12 px-xs border-t flex flex-row items-center',
-                'justify-between',
+                'flex-none h-12 px-xs border-t flex flex-row items-center gap-sm',
                 themeClasses(
                   'bg-neutral-100 border-neutral-400',
                   'bg-neutral-800 border-neutral-600',
@@ -312,14 +311,28 @@
           >
             <!-- footer, for bulk editing we teleport contents in here -->
             <template v-if="!bulkEditing">
-              <VButton
+              <div
+                v-if="!ctx.onHead.value && ctx.changeSet.value"
+                :class="
+                  clsx(
+                    'h-[30px] leading-[24px]',
+                    'text-sm font-mono py-3xs px-2xs text-center',
+                    themeClasses('text-success-700', 'text-success-300'),
+                  )
+                "
+              >
+                You are in a simulated change set:
+                {{ ctx.changeSet.value.name }}
+              </div>
+              <!-- <VButton
                 label="See keyboard shortcuts"
                 pill="?"
                 tone="neutral"
                 size="sm"
                 @click="openShortcutModal"
-              />
+              /> -->
               <VButton
+                class="ml-auto"
                 label="Add a component"
                 pill="N"
                 size="sm"
