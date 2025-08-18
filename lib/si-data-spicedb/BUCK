@@ -17,6 +17,7 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tonic",
+        "//third-party/rust:tracing",
         "//third-party/rust:url",
     ],
     srcs = glob([
