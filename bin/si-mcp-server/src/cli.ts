@@ -16,7 +16,7 @@ export async function run() {
       "The System Initiative Workspace to connect the MCP Server to",
     )
     .globalEnv(
-      "SI_BASE_URI=<string>",
+      "SI_BASE_URL=<string>",
       "The base URI for System Initiative. Defaults to https://api.systeminit.com",
     )
     .action(() => {
