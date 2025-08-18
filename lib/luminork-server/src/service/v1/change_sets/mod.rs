@@ -52,6 +52,8 @@ pub enum ChangeSetError {
     Transactions(#[from] dal::TransactionsError),
     #[error("validation error: {0}")]
     Validation(String),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] dal::WorkspaceError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("ws event error: {0}")]

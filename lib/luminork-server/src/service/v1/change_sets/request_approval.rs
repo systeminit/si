@@ -3,6 +3,7 @@ use axum::{
     extract::Host,
 };
 use dal::{
+    Workspace,
     WsEvent,
     change_set::ChangeSet,
 };
@@ -44,7 +45,12 @@ use crate::extract::{
 )]
 pub async fn request_approval(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
-    WorkspaceAuthorization { .. }: WorkspaceAuthorization,
+    WorkspaceAuthorization {
+        workspace_id,
+        ctx: _,
+        user: _,
+        authorized_role: _,
+    }: WorkspaceAuthorization,
     tracker: PosthogEventTracker,
     Host(_host_name): Host,
 ) -> ChangeSetResult<Json<RequestApprovalChangeSetV1Response>> {
@@ -57,34 +63,61 @@ pub async fn request_approval(
     }
 
     let old_status = change_set.status;
-
-    change_set.request_change_set_approval(ctx).await?;
-
-    tracker.track(
-        ctx,
-        "api_request_change_set_approval",
-        json!({
-            "change_set_name": change_set.name,
-        }),
-    );
-
     let change_set_view = ChangeSet::get_by_id(ctx, change_set_id)
         .await?
         .into_frontend_type(ctx)
         .await?;
 
-    ctx.write_audit_log(
-        AuditLogKind::RequestChangeSetApproval {
-            from_status: old_status.into(),
-        },
-        change_set_view.name.clone(),
-    )
-    .await?;
+    let workspace = Workspace::get_by_pk(ctx, workspace_id).await?;
+    if workspace.approvals_enabled() {
+        change_set.request_change_set_approval(ctx).await?;
+        tracker.track(
+            ctx,
+            "api_request_change_set_approval",
+            json!({
+                "change_set_name": change_set.name,
+            }),
+        );
 
-    WsEvent::change_set_status_changed(ctx, old_status, change_set_view)
-        .await?
-        .publish_on_commit(ctx)
+        ctx.write_audit_log(
+            AuditLogKind::RequestChangeSetApproval {
+                from_status: old_status.into(),
+            },
+            change_set_view.name.clone(),
+        )
         .await?;
+
+        WsEvent::change_set_status_changed(ctx, old_status, change_set_view)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+    } else {
+        ChangeSet::prepare_for_force_apply(ctx).await?;
+        ctx.write_audit_log(
+            AuditLogKind::ApproveChangeSetApply {
+                from_status: old_status.into(),
+            },
+            ctx.change_set()?.name.clone(),
+        )
+        .await?;
+
+        // We need to run a commit before apply so changes get saved
+        ctx.commit().await?;
+
+        ChangeSet::apply_to_base_change_set(ctx).await?;
+
+        tracker.track(
+            ctx,
+            "api_apply_change_set",
+            json!({
+                "merged_change_set": change_set_id,
+            }),
+        );
+
+        let change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
+        ctx.write_audit_log(AuditLogKind::ApplyChangeSet, change_set.name)
+            .await?;
+    }
 
     ctx.commit().await?;
 
