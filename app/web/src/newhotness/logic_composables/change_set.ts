@@ -33,9 +33,9 @@ export const useChangeSets = (
     },
   });
 
-  const headChangeSetId = computed(
-    () => changeSetQuery.data.value?.defaultChangeSetId ?? "",
-  );
+  const headChangeSetId = computed(() => {
+    return changeSetQuery.data.value?.defaultChangeSetId ?? "";
+  });
   const defaultApprovers = computed(
     () => changeSetQuery.data.value?.approvers || [],
   );
