@@ -321,7 +321,7 @@
                   )
                 "
               >
-                You are in a simulated change set:
+                You are in a simulated environment:
                 {{ ctx.changeSet.value.name }}
               </div>
               <!-- <VButton
