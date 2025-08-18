@@ -1,5 +1,6 @@
 use dal::{
     AttributeValue,
+    ChangeSet,
     Component,
     DalContext,
 };
@@ -193,8 +194,7 @@ async fn update_object_multiplayer(ctx: &mut DalContext) -> Result<()> {
     }
 
     // Check its effect on the merged changeset
-    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
-    ctx.update_snapshot_to_visibility().await?;
+    ChangeSet::wait_for_dvu(ctx, false).await?;
     for &attr in &attrs {
         // The object must have exactly 4 child AVs and the value should be the merged value
         let av_id = value::id(ctx, attr).await?;

@@ -220,8 +220,6 @@ async fn import_and_refresh(ctx: &mut DalContext) -> Result<()> {
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    // wait for dvu
-    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
     // check actions, there should be one refresh enqueued but not dispatched since this component now exists on head
     let actions = Action::all_ids(ctx).await?;
     assert!(actions.len() == 1);

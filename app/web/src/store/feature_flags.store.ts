@@ -24,6 +24,7 @@ const USER_FLAG_MAPPING = {
   ENABLE_NEW_EXPERIENCE: "enable-new-experience",
   REVIEW_PAGE: "review-page",
   DEFAULT_SUBS: "default-subs",
+  INITIALIZER_ONBOARD: "initializer-onboard",
 } as const;
 const WORKSPACE_FLAG_MAPPING = {
   FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",

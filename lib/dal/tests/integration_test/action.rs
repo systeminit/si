@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use dal::{
     AttributeValue,
+    ChangeSet,
     Component,
     DalContext,
     SchemaVariant,
@@ -889,7 +890,7 @@ async fn resource_value_propagation_subscriptions_works(ctx: &mut DalContext) ->
     // wait for actions to run
     ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
     // also wait for dvu!
-    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    ChangeSet::wait_for_dvu(ctx, false).await?;
     // need to update snapshot to visibility again for some reason??
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 

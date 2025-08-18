@@ -137,6 +137,8 @@ pub enum ChangeSetError {
     SiDb(#[from] Box<si_db::Error>),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
+    #[error("timeout out waiting for dvu after {0}ms")]
+    TimedOutAwaitingDvu(u64),
     #[error("transactions error: {0}")]
     Transactions(#[from] Box<TransactionsError>),
     #[error("ulid decode error: {0}")]
@@ -1183,6 +1185,33 @@ impl ChangeSet {
             .await?
             .publish_on_commit(ctx)
             .await?;
+
+        Ok(())
+    }
+
+    /// Wait for the changeset's DVUs to be completely processed before continuing
+    /// This func also runs update_snapshot_to_visibility on the passed in ctx
+    /// with_timeout makes the function fail after a minute, since that's also the rebaser timeout.
+    /// On prod code, always pass `true`. `false` is for testing only.
+    pub async fn wait_for_dvu(ctx: &mut DalContext, with_timeout: bool) -> ChangeSetResult<()> {
+        let mut retry_count = 0;
+        const AWAIT_MS: u64 = 25;
+        const MAX_RETRIES: u64 = (60 * 1000) / AWAIT_MS;
+
+        loop {
+            ctx.update_snapshot_to_visibility().await?;
+            if !DependentValueRoot::roots_exist(ctx).await? {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(AWAIT_MS)).await;
+
+            if with_timeout {
+                retry_count += 1;
+                if retry_count > MAX_RETRIES {
+                    return Err(ChangeSetError::TimedOutAwaitingDvu(AWAIT_MS * retry_count));
+                }
+            }
+        }
 
         Ok(())
     }

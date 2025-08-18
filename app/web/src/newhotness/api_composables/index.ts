@@ -28,6 +28,7 @@ export enum routes {
   ChangeSetApprovalStatus = "ChangeSetApprovalStatus",
   ChangeSetApprove = "ChangeSetApprove",
   ChangeSetCancelApprovalRequest = "ChangeSetCancelApprovalRequest",
+  ChangeSetInitializeAndApply = "ChangeSetInitializeAndApply",
   ChangeSetRename = "ChangeSetRename",
   ChangeSetReopen = "ChangeSetReopen",
   ChangeSetRequestApproval = "ChangeSetRequestApproval",
@@ -78,6 +79,7 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
   routes.AbandonChangeSet,
   routes.EnqueueAttributeValue,
   routes.RefreshAction,
+  routes.ChangeSetInitializeAndApply,
 ] as const;
 
 const COMPRESSED_ROUTES: readonly routes[] = [
@@ -126,11 +128,13 @@ const _routes: Record<routes, string> = {
   ViewEraseComponents: "/views/<viewId>/erase_components",
 
   // THESE ARE SPECIAL CASED & NOT V2
-  AbandonChangeSet: "/change_set/abandon_change_set",
-  ChangeSets: "CHANGESETS", // a short v2 url
   CreateChangeSet: "/change_set/create_change_set",
-  WorkspaceListUsers: "WORKSPACELISTUSERS", // a short v2 url
+  AbandonChangeSet: "/change_set/abandon_change_set",
   Workspaces: "/workspaces", // not a v2 url
+  // URLs without the default `change-set/:id` section
+  ChangeSets: "/change-sets",
+  ChangeSetInitializeAndApply: "/change-sets/create_initialize_apply",
+  WorkspaceListUsers: "/users",
 } as const;
 
 // the mechanics
@@ -222,12 +226,16 @@ export class APICall<Response, Args> {
     ) {
       return this.path;
     }
-    if ([_routes.ChangeSets].includes(this.path)) {
-      return `v2/workspaces/${this.workspaceId}/change-sets`;
+    if (
+      [
+        _routes.ChangeSets,
+        _routes.ChangeSetInitializeAndApply,
+        _routes.WorkspaceListUsers,
+      ].includes(this.path)
+    ) {
+      return `v2/workspaces/${this.workspaceId}${this.path}`;
     }
-    if ([_routes.WorkspaceListUsers].includes(this.path)) {
-      return `v2/workspaces/${this.workspaceId}/users`;
-    }
+
     const API_PREFIX = `v2/workspaces/${this.workspaceId}/change-sets/${this.changeSetId}`;
     return `${API_PREFIX}${this.path}`;
   }

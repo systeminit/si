@@ -96,7 +96,7 @@ pub enum ComponentsError {
     #[error("component error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute error: {0}")]
-    Attribute(#[from] dal::attribute::attributes::Error),
+    Attribute(#[from] dal::attribute::attributes::AttributesError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("attribute value {0} not from component {1}")]

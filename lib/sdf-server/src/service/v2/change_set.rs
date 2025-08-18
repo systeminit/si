@@ -15,9 +15,15 @@ use axum::{
 use dal::{
     ChangeSetId,
     DalContext,
+    SchemaError,
+    SchemaVariantError,
+    SecretError,
     WorkspacePk,
     WorkspaceSnapshotAddress,
     WsEventError,
+    diagram::DiagramError,
+    prop::PropError,
+    property_editor::PropertyEditorError,
     workspace_integrations::WorkspaceIntegration,
     workspace_snapshot::dependent_value_root::DependentValueRootError,
 };
@@ -41,6 +47,7 @@ mod approval_status;
 mod approve;
 mod cancel_approval_request;
 mod create;
+mod create_initialize_apply;
 mod force_apply;
 mod list;
 mod rename;
@@ -50,18 +57,24 @@ mod request_approval;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("attributes error: {0}")]
+    Attributes(#[from] dal::attribute::attributes::AttributesError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set apply error: {0}")]
     ChangeSetApply(#[from] dal::ChangeSetApplyError),
     #[error("change set approval error: {0}")]
     ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
+    #[error("component error: {0}")]
+    Component(#[from] dal::ComponentError),
     #[error("dal wrapper error: {0}")]
     DalWrapper(#[from] sdf_core::dal_wrapper::DalWrapperError),
     #[error("dependent value root error: {0}")]
     DependentValueRoot(#[from] DependentValueRootError),
     #[error("deserializing mv index data error: {0}")]
     DeserializingMvIndexData(#[source] serde_json::Error),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] DiagramError),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
     #[error("edda client error: {0}")]
@@ -84,8 +97,20 @@ pub enum Error {
     ItemWithChecksumNotFound(WorkspacePk, ChangeSetId, String),
     #[error("latest item not found; workspace_pk={0}, change_set_id={1}, kind={2}")]
     LatestItemNotFound(WorkspacePk, ChangeSetId, String),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
+    #[error("property editor error: {0}")]
+    PropertyEditor(#[from] PropertyEditorError),
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
     SiDb(#[from] si_db::Error),
     #[error("slow runtime error: {0}")]
@@ -192,6 +217,10 @@ pub fn change_sets_routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list::list_actionable))
         .route("/create_change_set", post(create::create_change_set))
+        .route(
+            "/create_initialize_apply",
+            post(create_initialize_apply::create_initialize_apply),
+        )
 }
 
 pub fn change_set_routes(state: AppState) -> Router<AppState> {
