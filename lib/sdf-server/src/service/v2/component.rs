@@ -37,7 +37,7 @@ pub enum Error {
     #[error("action error: {0}")]
     Action(#[from] dal::action::ActionError),
     #[error("attributes error: {0}")]
-    Attributes(#[from] dal::attribute::attributes::Error),
+    Attributes(#[from] dal::attribute::attributes::AttributesError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("attribute value '{0}' not found for component {1}")]

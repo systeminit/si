@@ -20,10 +20,7 @@ use dal::{
         dependency_graph::ActionDependencyGraph,
     },
     diagram::view::View,
-    workspace_snapshot::{
-        DependentValueRoot,
-        selector::WorkspaceSnapshotSelectorDiscriminants,
-    },
+    workspace_snapshot::selector::WorkspaceSnapshotSelectorDiscriminants,
 };
 use si_db::ManagementFuncJobState;
 use si_id::{
@@ -59,13 +56,6 @@ pub async fn apply(mut ctx: DalContext) -> Result<()> {
     Ok(())
 }
 
-/// Waits for DVU to finish and updates the snapshot
-pub async fn wait_for_dvu(ctx: &mut DalContext) -> Result<()> {
-    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
-    ctx.update_snapshot_to_visibility().await?;
-    Ok(())
-}
-
 /// This unit struct provides helper functions for working with [`ChangeSets`](ChangeSet). It is
 /// designed to centralize logic for test authors wishing to commit changes, fork, apply, abandon,
 /// etc.
@@ -76,8 +66,23 @@ impl ChangeSetTestHelpers {
     /// First, this function performs a blocking commit which will return an error if
     /// there are conflicts.  Then, it updates the snapshot to the current visibility.
     pub async fn commit_and_update_snapshot_to_visibility(ctx: &mut DalContext) -> Result<()> {
-        Self::blocking_commit(ctx).await?;
-        ctx.update_snapshot_to_visibility().await?;
+        // The rebaser has responsibility for executing dvu jobs, so we should
+        // prevent them from running in tests
+        let has_roots = ctx
+            .txns()
+            .await?
+            .job_queue()
+            .clear_dependent_values_jobs()
+            .await;
+        ctx.blocking_commit().await?;
+
+        // But we have to wait until the dvu jobs complete
+        if has_roots {
+            ChangeSet::wait_for_dvu(ctx, false).await?;
+        } else {
+            ctx.update_snapshot_to_visibility().await?;
+        }
+
         Ok(())
     }
 
@@ -293,38 +298,5 @@ impl ChangeSetTestHelpers {
             .await?;
 
         Ok(new_change_set)
-    }
-
-    /// Wait for the changeset's DVUs to be completely processed before continuing
-    pub async fn wait_for_dvu(ctx: &DalContext) -> Result<()> {
-        loop {
-            let mut ctx_clone = ctx.clone();
-            ctx_clone.update_snapshot_to_visibility().await?;
-            if !DependentValueRoot::roots_exist(&ctx_clone).await? {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(25)).await;
-        }
-
-        Ok(())
-    }
-
-    async fn blocking_commit(ctx: &DalContext) -> Result<()> {
-        // The rebaser has responsibility for executing dvu jobs, so we should
-        // prevent them from running in tests
-        let has_roots = ctx
-            .txns()
-            .await?
-            .job_queue()
-            .clear_dependent_values_jobs()
-            .await;
-        ctx.blocking_commit().await?;
-
-        // But we have to wait until the dvu jobs complete
-        if has_roots {
-            Self::wait_for_dvu(ctx).await?;
-        }
-
-        Ok(())
     }
 }

@@ -591,7 +591,6 @@ impl Schema {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaResult<SchemaVariantId> {
-        // Install the schema, if it isn't already
         Self::ensure_installed(ctx, schema_id).await?;
         Self::default_variant_id(ctx, schema_id).await
     }

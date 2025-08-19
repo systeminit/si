@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use dal::{
     AttributeValue,
+    ChangeSet,
     Component,
     DalContext,
     workspace_snapshot::{
@@ -162,7 +163,7 @@ async fn validation_pre_post_mgmt_func(ctx: &mut DalContext) -> Result<()> {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Wait for dvu
-    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    ChangeSet::wait_for_dvu(ctx, false).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Check that the validation is now passing as the mgmt func wrote a valid value
@@ -201,7 +202,7 @@ async fn validation_pre_post_mgmt_func(ctx: &mut DalContext) -> Result<()> {
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     // Wait for dvu
-    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    ChangeSet::wait_for_dvu(ctx, false).await?;
 
     // now check that the validation is failing again
     // loop to wait for the validation job to finish

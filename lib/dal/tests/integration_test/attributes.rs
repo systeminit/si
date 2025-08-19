@@ -479,7 +479,7 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
             }))?,
         )
         .await,
-        Err(attributes::Error::AttributeValue(
+        Err(attributes::AttributesError::AttributeValue(
             AttributeValueError::CannotSetChildOfDynamicValue(..)
         )),
     ));
@@ -492,7 +492,7 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
             }))?,
         )
         .await,
-        Err(attributes::Error::AttributeValue(
+        Err(attributes::AttributesError::AttributeValue(
             AttributeValueError::CannotSetChildOfDynamicValue(..)
         )),
     ));
@@ -505,7 +505,7 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
             }))?,
         )
         .await,
-        Err(attributes::Error::AttributeValue(
+        Err(attributes::AttributesError::AttributeValue(
             AttributeValueError::CannotSetChildOfDynamicValue(..)
         )),
     ));
@@ -518,7 +518,7 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
             }))?,
         )
         .await,
-        Err(attributes::Error::AttributeValue(
+        Err(attributes::AttributesError::AttributeValue(
             AttributeValueError::CannotSetChildOfDynamicValue(..)
         )),
     ));
@@ -533,7 +533,7 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
             }))?,
         )
         .await,
-        Err(attributes::Error::AttributeValue(
+        Err(attributes::AttributesError::AttributeValue(
             AttributeValueError::CannotSetChildOfDynamicValue(..)
         )),
     ));
@@ -546,7 +546,7 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
             }))?,
         )
         .await,
-        Err(attributes::Error::AttributeValue(
+        Err(attributes::AttributesError::AttributeValue(
             AttributeValueError::CannotSetChildOfDynamicValue(..)
         )),
     ));
@@ -559,7 +559,7 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
             }))?,
         )
         .await,
-        Err(attributes::Error::AttributeValue(
+        Err(attributes::AttributesError::AttributeValue(
             AttributeValueError::CannotSetChildOfDynamicValue(..)
         )),
     ));

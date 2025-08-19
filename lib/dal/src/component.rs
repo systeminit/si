@@ -214,7 +214,7 @@ pub enum ComponentError {
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attributes error: {0}")]
-    Attributes(#[from] Box<attributes::Error>),
+    Attributes(#[from] Box<attributes::AttributesError>),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error(
@@ -505,8 +505,8 @@ impl From<WsEventError> for ComponentError {
         Box::new(value).into()
     }
 }
-impl From<attributes::Error> for ComponentError {
-    fn from(value: attributes::Error) -> Self {
+impl From<attributes::AttributesError> for ComponentError {
+    fn from(value: attributes::AttributesError) -> Self {
         Box::new(value).into()
     }
 }

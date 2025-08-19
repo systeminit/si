@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use dal::{
     AttributeValue,
+    ChangeSet,
     Component,
     ComponentId,
     ComponentType,
@@ -886,8 +887,7 @@ async fn upgrade_component_multiplayer(ctx: &mut DalContext) -> Result<()> {
     }
 
     // Find out how the changeset ended up
-    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
-    ctx.update_snapshot_to_visibility().await?;
+    ChangeSet::wait_for_dvu(ctx, false).await?;
     assert_eq!(expect_conns, connections(ctx, component.id).await?);
     assert_eq!(expect_domain, component.domain(ctx).await?);
 
@@ -1017,8 +1017,7 @@ async fn upgrade_component_multiplayer_new_and_removed_sockets(ctx: &mut DalCont
     }
 
     // Find out how the changeset ended up
-    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
-    ctx.update_snapshot_to_visibility().await?;
+    ChangeSet::wait_for_dvu(ctx, false).await?;
     // Make absolutely sure the socket AVs were not duplicated
     assert_eq!(
         3,

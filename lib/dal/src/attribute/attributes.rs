@@ -32,11 +32,11 @@ use crate::{
     },
 };
 
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T> = result::Result<T, AttributesError>;
 
 #[remain::sorted]
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum AttributesError {
     #[error("attribute $source: {0} has extra fields: {1}")]
     AttributeSourceHasExtraFields(serde_json::Value, serde_json::Value),
     #[error("invalid attribute $source: {0}")]
@@ -221,7 +221,7 @@ pub async fn update_attributes(
                         let source_component_id = source_component
                             .resolve(ctx)
                             .await?
-                            .ok_or(Error::SourceComponentNotFound(source_component.0))?;
+                            .ok_or(AttributesError::SourceComponentNotFound(source_component.0))?;
                         let subscription = ValueSubscription {
                             attribute_value_id: Component::root_attribute_value_id(
                                 ctx,
@@ -395,15 +395,17 @@ impl From<MaybeSource> for Option<Source> {
 }
 
 impl TryFrom<ValueOrSourceSpec> for Option<Source> {
-    type Error = Error;
+    type Error = AttributesError;
     fn try_from(from: ValueOrSourceSpec) -> Result<Self> {
         match from {
             ValueOrSourceSpec::SourceSpec(SourceSpec { source }) => Ok(source.into()),
             ValueOrSourceSpec::BadSourceSpec { source, extra } => {
                 if extra.as_object().is_none_or(|o| o.is_empty()) {
-                    Err(Error::AttributeSourceInvalid(source))
+                    Err(AttributesError::AttributeSourceInvalid(source))
                 } else {
-                    Err(Error::AttributeSourceHasExtraFields(source, extra))
+                    Err(AttributesError::AttributeSourceHasExtraFields(
+                        source, extra,
+                    ))
                 }
             }
             ValueOrSourceSpec::RawValue(value) => Ok(Some(Source::Value(value))),
@@ -602,7 +604,10 @@ impl AttributeValueIdent {
         // If it *does* exist but is from a different component or not from a component,
         // that is a hard error.
         if AttributeValue::component_id(ctx, id).await? != component_id {
-            return Err(Error::AttributeValueNotFromComponent(id, component_id));
+            return Err(AttributesError::AttributeValueNotFromComponent(
+                id,
+                component_id,
+            ));
         }
         Ok(Some(id))
     }

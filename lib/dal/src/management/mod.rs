@@ -118,7 +118,7 @@ pub enum ManagementError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error("attributes error: {0}")]
-    Attributes(#[from] Box<crate::attribute::attributes::Error>),
+    Attributes(#[from] Box<crate::attribute::attributes::AttributesError>),
     #[error("cannot create component with 'self' as a placeholder")]
     CannotCreateComponentWithSelfPlaceholder,
     #[error("component error: {0}")]
@@ -1998,8 +1998,8 @@ impl From<ActionPrototypeError> for ManagementError {
     }
 }
 
-impl From<crate::attribute::attributes::Error> for ManagementError {
-    fn from(value: crate::attribute::attributes::Error) -> Self {
+impl From<crate::attribute::attributes::AttributesError> for ManagementError {
+    fn from(value: crate::attribute::attributes::AttributesError) -> Self {
         Box::new(value).into()
     }
 }

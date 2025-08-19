@@ -32,6 +32,7 @@ use crate::{
         value::AttributeValueError,
     },
     property_editor::{
+        PropertyEditorError,
         PropertyEditorPropId,
         PropertyEditorResult,
         PropertyEditorValueId,
@@ -256,6 +257,22 @@ impl PropertyEditorValues {
             .map(|(_, found_property_editor_value)| {
                 found_property_editor_value.attribute_value_id()
             })
+    }
+
+    /// Finds the [`AttributeValueId`](AttributeValue) for a given [`PropId`](Prop).
+    ///
+    /// This is useful for non-maps and non-array [`Props`](Prop).
+    pub fn find_by_prop_id_or_err(
+        &self,
+        prop_id: PropId,
+    ) -> PropertyEditorResult<AttributeValueId> {
+        self.values
+            .iter()
+            .find(|(_, property_editor_value)| property_editor_value.prop_id() == prop_id)
+            .map(|(_, found_property_editor_value)| {
+                found_property_editor_value.attribute_value_id()
+            })
+            .ok_or_else(|| PropertyEditorError::PropertyEditorValueNotFoundByPropId(prop_id))
     }
 
     /// Finds the [`AttributeValueId`](AttributeValue) and the [`Value`] corresponding to it for a

@@ -33,6 +33,8 @@ impl SensitiveStrings {
     pub fn has_sensitive(&self, s: &str) -> bool {
         self.0
             .iter()
+            // Let's not redact empty strings
+            .filter(|sensitive_s| !sensitive_s.as_str().is_empty())
             .any(|sensitive_s| s.contains(sensitive_s.as_str()))
     }
 
@@ -42,6 +44,11 @@ impl SensitiveStrings {
         let mut redacted = s.to_string();
 
         for redacted_str in self.0.iter() {
+            // Don't redact empty strings, since this would just add [redacted] after every char
+            if redacted_str.as_str().trim().is_empty() {
+                continue;
+            }
+
             // Note: This brings a possibility of random substrings being matched out of context,
             // exposing that we have a secret by censoring it but trying to infer word boundary
             // might leak the plaintext credential which is arguably worse
@@ -78,6 +85,15 @@ mod tests {
     }
 
     #[test]
+    fn has_sensitive_with_empty_string() {
+        let mut sensitive_strings = SensitiveStrings::default();
+        sensitive_strings.insert("not contained");
+        sensitive_strings.insert("");
+
+        assert!(!sensitive_strings.has_sensitive("nope"));
+    }
+
+    #[test]
     fn has_sensitive_single_match() {
         let mut sensitive_strings = SensitiveStrings::default();
         sensitive_strings.insert("careful");
@@ -97,6 +113,18 @@ mod tests {
     #[test]
     fn redact_with_empty() {
         let sensitive_strings = SensitiveStrings::default();
+
+        assert_eq!(
+            "nothing changed",
+            sensitive_strings.redact("nothing changed")
+        );
+    }
+
+    #[test]
+    fn redact_with_empty_string() {
+        let mut sensitive_strings = SensitiveStrings::default();
+        sensitive_strings.insert("not contained");
+        sensitive_strings.insert("");
 
         assert_eq!(
             "nothing changed",
