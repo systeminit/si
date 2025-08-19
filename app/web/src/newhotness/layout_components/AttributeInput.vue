@@ -27,7 +27,7 @@
           :class="
             clsx(
               'flex flex-row items-center gap-2xs pl-xs',
-              validationStatus === 'failing' && 'mt-xs',
+              (hasError || validationStatus === 'failing') && 'mt-xs',
             )
           "
         >
@@ -66,7 +66,7 @@
             clsx(
               'w-full h-lg p-xs ml-auto text-sm border font-mono flex flex-row items-center gap-3xs',
 
-              validationStatus === 'failing'
+              hasError || validationStatus === 'failing'
                 ? [
                     'mt-xs',
                     themeClasses(
@@ -207,8 +207,8 @@
       <div
         v-if="
           !inputOpen &&
-          validationStatus === 'failing' &&
-          props.validation?.message
+          (hasError ||
+            (validationStatus === 'failing' && props.validation?.message))
         "
         :class="
           clsx(
@@ -220,9 +220,10 @@
           )
         "
       >
-        <span>
+        <span v-if="props.validation?.message">
           {{ props.validation.message }}
         </span>
+        <span v-else-if="hasError"> `{{ errorValue }}` failed to save </span>
       </div>
 
       <!-- socket connections incompatibility message -->
@@ -850,12 +851,13 @@ const attrData = computed<AttrData>(() => {
 const errorContext = inject<ComputedRef<AttributeErrors>>("ATTRIBUTE_ERRORS");
 assertIsDefined<ComputedRef<AttributeErrors>>(errorContext);
 
-const hasError = computed(() => {
-  return !!errorContext.value.saveErrors.value[props.path];
+const errorValue = computed(() => {
+  const key = `${props.component.id}-${props.path}`;
+  return errorContext.value.saveErrors.value[key];
 });
-const errorValue = computed(
-  () => errorContext.value.saveErrors.value[props.path],
-);
+const hasError = computed(() => {
+  return !!errorValue.value;
+});
 
 const valueForm = wForm.newForm({
   data: attrData,
