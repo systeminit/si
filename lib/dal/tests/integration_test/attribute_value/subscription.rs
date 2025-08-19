@@ -407,6 +407,124 @@ async fn array_item_subscriptions(ctx: &mut DalContext) -> Result<()> {
 }
 
 #[test]
+async fn subscription_object_to_map(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create and subscribe subscriber:ObjectValue -> input:ValueMap
+    component::create(ctx, "testy", "input").await?;
+    component::create(ctx, "testy", "subscriber").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/ObjectValue"),
+        ("input", "/domain/ValueMap"),
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(json!({}), component::domain(ctx, "subscriber").await?);
+
+    // Set input:ValueMap and watch the value flow through to subscriber
+    value::set(
+        ctx,
+        ("input", "/domain/ValueMap"),
+        json!({ "Foo": "foo", "Bar": "bar", "Baz": "baz" }),
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!({ "ObjectValue": { "Foo": "foo", "Bar": "bar" } }),
+        component::domain(ctx, "subscriber").await?
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn subscription_map_to_object(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create and subscribe subscriber:ValueMap -> input:ObjectValue
+    component::create(ctx, "testy", "input").await?;
+    component::create(ctx, "testy", "subscriber").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/ValueMap"),
+        ("input", "/domain/ObjectValue"),
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(json!({}), component::domain(ctx, "subscriber").await?);
+
+    // Set input:ObjectValue and watch the value flow through to subscriber
+    value::set(
+        ctx,
+        ("input", "/domain/ObjectValue"),
+        json!({ "Foo": "foo", "Bar": "bar", "Baz": "baz" }),
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!({ "ValueMap": { "Foo": "foo", "Bar": "bar" } }),
+        component::domain(ctx, "subscriber").await?
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn subscription_json_to_string(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create and subscribe subscriber:JsonValue -> input:Value
+    component::create(ctx, "testy", "input").await?;
+    component::create(ctx, "testy", "subscriber").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/JsonValue"),
+        ("input", "/domain/Value"),
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(json!({}), component::domain(ctx, "subscriber").await?);
+
+    // Set input:Value and watch the value flow through to subscriber
+    value::set(ctx, ("input", "/domain/Value"), "value").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!({ "JsonValue": "value" }),
+        component::domain(ctx, "subscriber").await?
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn subscription_string_to_json(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create and subscribe subscriber:Value -> input:JsonValue
+    component::create(ctx, "testy", "input").await?;
+    component::create(ctx, "testy", "subscriber").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Value"),
+        ("input", "/domain/JsonValue"),
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(json!({}), component::domain(ctx, "subscriber").await?);
+
+    // Set input:JsonValue and watch the value flow through to subscriber
+    value::set(ctx, ("input", "/domain/JsonValue"), "value").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!({ "Value": "value" }),
+        component::domain(ctx, "subscriber").await?
+    );
+
+    Ok(())
+}
+
+#[test]
 async fn subscription_type_mismatch_array_to_single(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -631,6 +749,13 @@ async fn create_testy_variant(ctx: &DalContext) -> Result<()> {
                         },
                         { name: "ValueMap", kind: "map",
                             entry: { name: "ValueMapItem", kind: "string" },
+                        },
+                        { name: "JsonValue", kind: "json" },
+                        { name: "ObjectValue", kind: "object",
+                            children: [
+                                { name: "Foo", kind: "string" },
+                                { name: "Bar", kind: "string" },
+                            ]
                         },
                     ]
                 };

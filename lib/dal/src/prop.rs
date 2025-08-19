@@ -423,6 +423,19 @@ impl PropKind {
             PropKind::String => IntrinsicFunc::SetString,
         }
     }
+
+    /// Check if the two PropKinds are both the same JavaScript type ({}, [], string, number, boolean)
+    pub fn js_compatible_with(&self, other: PropKind) -> bool {
+        match self {
+            PropKind::Array => matches!(other, PropKind::Array),
+            PropKind::Boolean => matches!(other, PropKind::Boolean),
+            PropKind::Integer | PropKind::Float => {
+                matches!(other, PropKind::Integer | PropKind::Float)
+            }
+            PropKind::Json | PropKind::String => matches!(other, PropKind::Json | PropKind::String),
+            PropKind::Map | PropKind::Object => matches!(other, PropKind::Map | PropKind::Object),
+        }
+    }
 }
 
 impl From<PropKind> for PropSpecKind {
