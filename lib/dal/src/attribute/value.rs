@@ -2137,7 +2137,7 @@ impl AttributeValue {
         let subscription_prop_id = subscription.validate(ctx).await?;
         let subscription_prop_kind = Prop::kind(ctx, subscription_prop_id).await?;
         let subscriber_prop_kind = AttributeValue::prop_kind(ctx, subscriber_av_id).await?;
-        if subscription_prop_kind != subscriber_prop_kind {
+        if !subscription_prop_kind.js_compatible_with(subscriber_prop_kind) {
             return Err(AttributeValueError::SubscriptionTypeMismatch {
                 subscriber_av_id,
                 subscriber_prop_kind,
