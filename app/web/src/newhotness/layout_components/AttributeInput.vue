@@ -666,10 +666,7 @@
             />
           </div>
           <label
-            v-if="
-              featureFlagsStore.DEFAULT_SUBS &&
-              filteredConnections.length - 1 > 0
-            "
+            v-if="featureFlagsStore.DEFAULT_SUBS"
             :for="`checkbox-${prop?.id}`"
             :class="
               clsx(
