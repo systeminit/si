@@ -1026,6 +1026,12 @@ watch(
     // Only restore hidden elements when hideSubscriptions should be cleared due to manual component selection
     // Don't restore during URL loading process
     const currentQuery = router.currentRoute.value.query;
+
+    // NOTE(nick,victor): this watcher is colliding with the "Explore.vue" watcher that handles
+    // "retainSessionState". This isn't an ideal situation, but this ensures that the "Explore.vue"
+    // watchers handle setting things up appropriately before anything else happens.
+    if (currentQuery.retainSessionState) return;
+
     if (currentQuery.hideSubscriptions === "1" && !isLoadingFromURL.value) {
       // Restore all hidden elements
       document
