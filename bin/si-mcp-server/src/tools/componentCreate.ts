@@ -9,6 +9,8 @@ import {
   successResponse,
 } from "./commonBehavior.ts";
 import { AttributesSchema } from "../data/components.ts";
+import { generateComponentDeepLink } from "../utils/deepLinks.ts";
+import { createRequiredDataResponseSchema } from "../data/base.ts";
 
 const name = "component-create";
 const title = "Create a new component for a given schema";
@@ -24,20 +26,11 @@ const CreateComponentInputSchemaRaw = {
   attributes: AttributesSchema,
 };
 
-const CreateComponentOutputSchemaRaw = {
-  status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
-  data: z.object({
-    componentId: z.string().describe("the component id"),
-    componentName: z.string().describe("the components name"),
-    schemaName: z.string().describe("the schema for the component"),
-  }),
-};
-const CreateComponentOutputSchema = z.object(
-  CreateComponentOutputSchemaRaw,
-);
+const CreateComponentOutputSchema = createRequiredDataResponseSchema({
+  componentId: z.string().describe("the component id"),
+  componentName: z.string().describe("the components name"),
+  schemaName: z.string().describe("the schema for the component"),
+});
 
 type CreateComponentResult = z.infer<
   typeof CreateComponentOutputSchema
@@ -54,7 +47,7 @@ export function componentCreateTool(server: McpServer) {
         CreateComponentOutputSchema,
       ),
       inputSchema: CreateComponentInputSchemaRaw,
-      outputSchema: CreateComponentOutputSchemaRaw,
+      outputSchema: CreateComponentOutputSchema.shape,
     },
     async (
       { changeSetId, componentName, schemaName, attributes },
@@ -76,8 +69,12 @@ export function componentCreateTool(server: McpServer) {
           schemaName: schemaName,
         };
 
+        const deepLink = generateComponentDeepLink(changeSetId, result.componentId);
+        
         return successResponse(
           result,
+          undefined,
+          deepLink,
         );
       } catch (error) {
         return errorResponse(error);

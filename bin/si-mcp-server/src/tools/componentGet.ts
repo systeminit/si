@@ -10,6 +10,8 @@ import {
 } from "./commonBehavior.ts";
 import _ from "lodash";
 import { AttributesSchema } from "../data/components.ts";
+import { generateComponentDeepLink } from "../utils/deepLinks.ts";
+import { createResponseSchema } from "../data/base.ts";
 
 const name = "component-get";
 const title = "Get the details of a component";
@@ -29,64 +31,55 @@ const GetComponentInputSchemaRaw = {
   ),
 };
 
-const GetComponentOutputSchemaRaw = {
-  status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
+const GetComponentOutputSchema = createResponseSchema({
+  componentId: z.string().describe("the component id"),
+  componentName: z.string().describe("the components name"),
+  resourceId: z.string().describe(
+    "the resource id this component maps to in the real world; frequently the primary identifier for a cloud service, like AWS",
   ),
-  data: z.object({
-    componentId: z.string().describe("the component id"),
-    componentName: z.string().describe("the components name"),
-    resourceId: z.string().describe(
-      "the resource id this component maps to in the real world; frequently the primary identifier for a cloud service, like AWS",
+  attributes: AttributesSchema,
+  resource: z.object({
+    status: z.enum(["ok", "error", "warning"]).describe(
+      "if 'ok', the resource exists and is ok. if 'warning', the resource exists but may have a problem. if 'error', then the resource may exist, but there is an error.",
     ),
-    attributes: AttributesSchema,
-    resource: z.object({
-      status: z.enum(["ok", "error", "warning"]).describe(
-        "if 'ok', the resource exists and is ok. if 'warning', the resource exists but may have a problem. if 'error', then the resource may exist, but there is an error.",
-      ),
-      resourceData: z.any().optional().describe(
-        "the raw resource data returned from the cloud provider; likely a JSON object, but not guaranteed",
-      ),
-      lastSynced: z.string().describe(
-        "the last time the resource was refreshed",
-      ),
-    }).optional().describe(
-      "the raw resource data, as returned from the cloud provider. the real state of the resource.",
+    resourceData: z.any().optional().describe(
+      "the raw resource data returned from the cloud provider; likely a JSON object, but not guaranteed",
     ),
-    code: z.record(
-      z.string().describe("the name of the code generator function"),
-      z.object({
-        code: z.string().describe("the generated source code"),
-        format: z.string().describe(
-          "the language/format of the generated code",
-        ),
-      }).describe("the generated code"),
-    ).optional().describe(
-      "optional code generation output; useful when troubleshooting",
+    lastSynced: z.string().describe(
+      "the last time the resource was refreshed",
     ),
-    qualifications: z.record(
-      z.string().describe("the name of the qualification"),
-      z.object({
-        result: z.enum(["failure", "success", "unknown", "warning"]).describe(
-          "'failure' means the qualification has failed, and there is a problem; 'success' means there is no problem; 'unknown' means we don't know the state of the qualification; and 'warning' means there may be a problem",
-        ),
-        message: z.string().describe("the message about this qualification"),
-      }).describe("the qualification result and message"),
-    ).optional().describe("optional qualification results"),
-    actions: z.array(
-      z.object({ actionName: z.string().describe("the action function name") }),
-    ).describe("the list of actions this component supports"),
-    management: z.array(
-      z.object({
-        managementName: z.string().describe("the management function name"),
-      }),
-    ).describe("the list of management functions this component supports"),
-  }).describe("the component data"),
-};
-const GetComponentOutputSchema = z.object(
-  GetComponentOutputSchemaRaw,
-);
+  }).optional().describe(
+    "the raw resource data, as returned from the cloud provider. the real state of the resource.",
+  ),
+  code: z.record(
+    z.string().describe("the name of the code generator function"),
+    z.object({
+      code: z.string().describe("the generated source code"),
+      format: z.string().describe(
+        "the language/format of the generated code",
+      ),
+    }).describe("the generated code"),
+  ).optional().describe(
+    "optional code generation output; useful when troubleshooting",
+  ),
+  qualifications: z.record(
+    z.string().describe("the name of the qualification"),
+    z.object({
+      result: z.enum(["failure", "success", "unknown", "warning"]).describe(
+        "'failure' means the qualification has failed, and there is a problem; 'success' means there is no problem; 'unknown' means we don't know the state of the qualification; and 'warning' means there may be a problem",
+      ),
+      message: z.string().describe("the message about this qualification"),
+    }).describe("the qualification result and message"),
+  ).optional().describe("optional qualification results"),
+  actions: z.array(
+    z.object({ actionName: z.string().describe("the action function name") }),
+  ).describe("the list of actions this component supports"),
+  management: z.array(
+    z.object({
+      managementName: z.string().describe("the management function name"),
+    }),
+  ).describe("the list of management functions this component supports"),
+});
 
 type GetComponentResult = z.infer<typeof GetComponentOutputSchema>["data"];
 
@@ -104,7 +97,7 @@ export function componentGetTool(server: McpServer) {
         readOnlyHint: true,
       },
       inputSchema: GetComponentInputSchemaRaw,
-      outputSchema: GetComponentOutputSchemaRaw,
+      outputSchema: GetComponentOutputSchema.shape,
     },
     async (
       { changeSetId, componentId, code, qualifications },
@@ -210,8 +203,12 @@ export function componentGetTool(server: McpServer) {
           };
         }
 
+        const deepLink = generateComponentDeepLink(changeSetId, result.componentId);
+
         return successResponse(
           result,
+          undefined,
+          deepLink,
         );
       } catch (error) {
         return errorResponse(error);

@@ -9,6 +9,7 @@ import {
   successResponse,
 } from "./commonBehavior.ts";
 import { ChangeSetSchema } from "../data/changeSets.ts";
+import { generateChangeSetListHints } from "../utils/deepLinks.ts";
 
 const name = "change-set-list";
 const title = "List change sets";
@@ -17,16 +18,13 @@ const description =
 const hints =
   "Apply, Force-Apply, and Abandon change sets using their 'id' and the change-set-status-update tool.";
 
-const ListChangeSetsOutputSchemaRaw = {
+const ListChangeSetsOutputSchema = z.object({
   status: z.enum(["success", "failure"]),
   errorMessage: z.string().optional().describe(
     "If the status is failure, the error message will contain information about what went wrong",
   ),
   data: z.array(ChangeSetSchema).optional().describe("The list of change sets"),
-};
-const ListChangeSetsOutputSchema = z.object(
-  ListChangeSetsOutputSchemaRaw,
-);
+});
 
 export function changeSetListTool(server: McpServer) {
   server.registerTool(
@@ -41,7 +39,7 @@ export function changeSetListTool(server: McpServer) {
       annotations: {
         readOnlyHint: true,
       },
-      outputSchema: ListChangeSetsOutputSchemaRaw,
+      outputSchema: ListChangeSetsOutputSchema.shape,
     },
     async (): Promise<CallToolResult> => {
       const siApi = new ChangeSetsApi(apiConfig);
@@ -49,9 +47,13 @@ export function changeSetListTool(server: McpServer) {
         const response = await siApi.listChangeSets({
           workspaceId: WORKSPACE_ID,
         });
+        const changeSetsWithLinks = generateChangeSetListHints(
+          response.data.changeSets.map((cs: { id: string; name: string }) => ({ id: cs.id, name: cs.name }))
+        );
+        
         return successResponse(
           response.data.changeSets,
-          hints,
+          `${hints}\n\n${changeSetsWithLinks}`,
         );
       } catch (error) {
         return errorResponse(error);

@@ -8,6 +8,7 @@ import {
   generateDescription,
   successResponse,
 } from "./commonBehavior.ts";
+import { generateChangeSetHint } from "../utils/deepLinks.ts";
 
 const name = "change-set-update-status";
 const title = "Update the status of a change set";
@@ -85,6 +86,13 @@ export function changeSetUpdateTool(server: McpServer) {
       }
 
       try {
+        // Get change set details for generating hints
+        const changeSetResponse = await siApi.getChangeSet({
+          workspaceId: WORKSPACE_ID,
+          changeSetId,
+        });
+        const changeSetName = changeSetResponse.data.changeSet.name;
+
         // Confirm the change set you want to manipulate isn't HEAD
         if (newStatus == "abandon") {
           const response = await siApi.abandonChangeSet({
@@ -103,9 +111,10 @@ export function changeSetUpdateTool(server: McpServer) {
               changeSetId,
             });
             if (newResponse.data.changeSet.status == "NeedsApproval") {
+              const hint = generateChangeSetHint(changeSetId, changeSetName);
               return successResponse(
                 response.data,
-                "Tell the user that while the request was successful, the Change Set requires review and explicit Approval.",
+                `Tell the user that while the request was successful, the Change Set requires review and explicit Approval.\n\n${hint}`,
               );
             } else {
               return successResponse(response.data);

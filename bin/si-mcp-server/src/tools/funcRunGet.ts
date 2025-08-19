@@ -9,6 +9,8 @@ import {
   successResponse,
 } from "./commonBehavior.ts";
 import { decodeBase64 } from "@std/encoding/base64";
+import { generateFuncRunDeepLink } from "../utils/deepLinks.ts";
+import { createResponseSchema } from "../data/base.ts";
 
 const name = "func-run-get";
 const title = "Get a function run information";
@@ -34,64 +36,55 @@ const GetFuncRunInputSchemaRaw = {
   ),
 };
 
-const GetFuncRunOutputSchemaRaw = {
-  status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
+const GetFuncRunOutputSchema = createResponseSchema({
+  funcRunId: z.string().describe("the func run id"),
+  funcRunState: z.enum([
+    "Created",
+    "Dispatched",
+    "Killed",
+    "Running",
+    "PostProcessing",
+    "Failure",
+    "Success",
+  ]).describe(
+    "the state of this function execution run. 'Created' is the initial state, but not yet dispatched to the job system. 'Dispatched' means it is send to the job system. 'Killed' means it has been manually stopped during execution. 'Running' means it is currently executing. 'PostProcessing' means the system is taking the results of the function and appying them to System Initiative. 'Failure' means the function execution has failed. 'Success' means the function has run succesfully (but it does not neccessarily mean that it was successful from the user perspective; it only means the function executed without error.",
   ),
-  data: z.object({
-    funcRunId: z.string().describe("the func run id"),
-    funcRunState: z.enum([
-      "Created",
-      "Dispatched",
-      "Killed",
-      "Running",
-      "PostProcessing",
-      "Failure",
-      "Success",
-    ]).describe(
-      "the state of this function execution run. 'Created' is the initial state, but not yet dispatched to the job system. 'Dispatched' means it is send to the job system. 'Killed' means it has been manually stopped during execution. 'Running' means it is currently executing. 'PostProcessing' means the system is taking the results of the function and appying them to System Initiative. 'Failure' means the function execution has failed. 'Success' means the function has run succesfully (but it does not neccessarily mean that it was successful from the user perspective; it only means the function executed without error.",
-    ),
-    componentId: z.string().describe(
-      "the component id this function run was for",
-    ),
-    componentName: z.string().describe(
-      "the component name this function run was for",
-    ),
-    schemaName: z.string().describe(
-      "the schema name of the component this function was for",
-    ),
-    functionName: z.string().describe("the name of the function"),
-    functionKind: z.enum([
-      "Action",
-      "Attribute",
-      "Authentication",
-      "CodeGeneration",
-      "Intrinsic",
-      "Qualification",
-      "SchemaVariantDefinition",
-      "Unknown",
-      "Management",
-    ]).describe(
-      "'Action' means an action function on a component; 'Attribute' means an attribute function on a components attribute; 'CodeGeneration' means a code generation function on a component; 'Intrinsic' means it is not a javascript function, but instead implemented directly by SI; 'Qualification' means a qualification that a component is valid; 'SchemaVariantDefinition' means the typescript that defines the schema for a component; 'Unknown' means a function type that is not yet known to the system; 'Management' means a management function on a component (like import or discover.)",
-    ),
-    args: z.string().optional().describe(
-      "A JSON string representing the arguments passed as input to this function",
-    ),
-    resultValue: z.string().optional().describe(
-      "A JSON string representing the return value of the function",
-    ),
-    logs: z.string().optional().describe(
-      "A string of logs produced by the function; only included if the logs argument to the tool is true",
-    ),
-    code: z.string().optional().describe(
-      "The source code executed for this func run; useful for troubleshooting. Only included if the code argument to the tool is true",
-    ),
-  }).describe("the func run data"),
-};
-const GetFuncRunOutputSchema = z.object(
-  GetFuncRunOutputSchemaRaw,
-);
+  componentId: z.string().describe(
+    "the component id this function run was for",
+  ),
+  componentName: z.string().describe(
+    "the component name this function run was for",
+  ),
+  schemaName: z.string().describe(
+    "the schema name of the component this function was for",
+  ),
+  functionName: z.string().describe("the name of the function"),
+  functionKind: z.enum([
+    "Action",
+    "Attribute",
+    "Authentication",
+    "CodeGeneration",
+    "Intrinsic",
+    "Qualification",
+    "SchemaVariantDefinition",
+    "Unknown",
+    "Management",
+  ]).describe(
+    "'Action' means an action function on a component; 'Attribute' means an attribute function on a components attribute; 'CodeGeneration' means a code generation function on a component; 'Intrinsic' means it is not a javascript function, but instead implemented directly by SI; 'Qualification' means a qualification that a component is valid; 'SchemaVariantDefinition' means the typescript that defines the schema for a component; 'Unknown' means a function type that is not yet known to the system; 'Management' means a management function on a component (like import or discover.)",
+  ),
+  args: z.string().optional().describe(
+    "A JSON string representing the arguments passed as input to this function",
+  ),
+  resultValue: z.string().optional().describe(
+    "A JSON string representing the return value of the function",
+  ),
+  logs: z.string().optional().describe(
+    "A string of logs produced by the function; only included if the logs argument to the tool is true",
+  ),
+  code: z.string().optional().describe(
+    "The source code executed for this func run; useful for troubleshooting. Only included if the code argument to the tool is true",
+  ),
+});
 
 type FuncRunResult = z.infer<typeof GetFuncRunOutputSchema>["data"];
 
@@ -109,7 +102,7 @@ export function funcRunGetTool(server: McpServer) {
         readOnlyHint: true,
       },
       inputSchema: GetFuncRunInputSchemaRaw,
-      outputSchema: GetFuncRunOutputSchemaRaw,
+      outputSchema: GetFuncRunOutputSchema.shape,
     },
     async (
       {
@@ -164,8 +157,12 @@ export function funcRunGetTool(server: McpServer) {
           result.code = textDecoder.decode(codeString);
         }
 
+        const deepLink = generateFuncRunDeepLink(changeSetId, result.funcRunId);
+
         return successResponse(
           result,
+          undefined,
+          deepLink,
         );
       } catch (error) {
         return errorResponse(error);

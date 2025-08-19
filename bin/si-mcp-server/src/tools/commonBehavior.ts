@@ -16,10 +16,12 @@ export function successResponse(
   // deno-lint-ignore no-explicit-any
   rawResponse: any,
   hints?: string,
+  deepLink?: string,
 ): CallToolResult {
   const structuredResponse = {
     status: "success",
     data: rawResponse,
+    ...(deepLink && { deepLink }),
   };
   let textResponse = `<response>${
     JSON.stringify(structuredResponse)

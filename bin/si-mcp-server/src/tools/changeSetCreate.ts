@@ -8,7 +8,8 @@ import {
   generateDescription,
   successResponse,
 } from "./commonBehavior.ts";
-import { ChangeSetSchema } from "../data/changeSets.ts";
+import { generateChangeSetDeepLink } from "../utils/deepLinks.ts";
+import { createResponseSchema } from "../data/base.ts";
 
 const name = "change-set-create";
 const title = "Create change set";
@@ -21,16 +22,12 @@ const CreateChangeSetInputSchemaRaw = {
   ),
 };
 
-const CreateChangeSetOutputSchemaRaw = {
-  status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
-  data: ChangeSetSchema.optional().describe("The new change set"),
-};
-const CreateChangeSetOutputSchema = z.object(
-  CreateChangeSetOutputSchemaRaw,
-);
+const CreateChangeSetOutputSchema = createResponseSchema({
+  id: z.string().describe("Change Set ID"),
+  isHead: z.boolean().describe("True if the change set is HEAD; false if not"),
+  name: z.string().describe("The name of the Change Set"),
+  status: z.enum(["Abandoned", "Applied", "Approved", "Failed", "NeedsApproval", "Open", "Rejected"]).describe("The status of the change set. 'Abandoned' means it is no longer accessible. 'Applied' means it has been applied to HEAD. 'Approved' means any neccessary approvals have been applied. 'Failed' means a snapshot migrations has failed. 'NeedsApproval' means applying to HEAD is desired, but approvals are required first. 'Open' means it is available for users to modify. 'Rejected' means a request to apply with approval was rejected."),
+});
 
 export function changeSetCreateTool(server: McpServer) {
   server.registerTool(
@@ -43,7 +40,7 @@ export function changeSetCreateTool(server: McpServer) {
         CreateChangeSetOutputSchema,
       ),
       inputSchema: CreateChangeSetInputSchemaRaw,
-      outputSchema: CreateChangeSetOutputSchemaRaw,
+      outputSchema: CreateChangeSetOutputSchema.shape,
     },
     async ({ changeSetName }): Promise<CallToolResult> => {
       if (!changeSetName) {
@@ -58,8 +55,11 @@ export function changeSetCreateTool(server: McpServer) {
           workspaceId: WORKSPACE_ID,
           createChangeSetV1Request: { changeSetName },
         });
+        const deepLink = generateChangeSetDeepLink(response.data.changeSet.id);
         return successResponse(
           response.data.changeSet,
+          undefined,
+          deepLink,
         );
       } catch (error) {
         return errorResponse(error);
