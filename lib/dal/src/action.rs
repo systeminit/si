@@ -316,18 +316,37 @@ impl Action {
     );
 
     /// Returns whether or not any Actions were dispatched.
-    pub async fn dispatch_actions(ctx: &DalContext) -> ActionResult<bool> {
+    pub async fn dispatch_actions(
+        ctx: &DalContext,
+        concurrency_max: Option<usize>,
+    ) -> ActionResult<bool> {
         let span = current_span_for_instrument_at!("info");
+        let concurrency_max = concurrency_max.unwrap_or(usize::MAX);
         let mut actions_dispatched = 0;
         let mut did_dispatch = false;
-        // get a count of actions currently running/dispatched
+
+        // Only dispatch actions if capacity exists. Too many actions running at
+        // once can overwhelm the rebaser for the HEAD change set.
+        let dispatched_count = Action::dispatched_count(ctx).await?;
+        if dispatched_count >= concurrency_max {
+            return Ok(false);
+        }
+
         for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await? {
-            // only dispatch new ones if there's capacity aka - total parallel actions for a workspace can't exceed 40
             Action::dispatch_action(ctx, dispatchable_ation_id).await?;
             did_dispatch = true;
             actions_dispatched += 1;
+
+            if actions_dispatched + dispatched_count >= concurrency_max {
+                break;
+            }
         }
         span.record("si.rebase.actions_dispatched", actions_dispatched);
+        span.record(
+            "si.rebase.dispatched_actions_total",
+            actions_dispatched + dispatched_count,
+        );
+
         Ok(did_dispatch)
     }
 
@@ -648,6 +667,30 @@ impl Action {
         }
     }
 
+    /// Returns the number of dispatched (or running) actions.
+    pub async fn dispatched_count(ctx: &DalContext) -> ActionResult<usize> {
+        let mut count = 0;
+
+        let action_category_node_index = ctx
+            .workspace_snapshot()?
+            .get_category_node_or_err(CategoryNodeKind::Action)
+            .await?;
+        let action_edges = ctx
+            .workspace_snapshot()?
+            .edges_directed(action_category_node_index, Outgoing)
+            .await?;
+
+        for (_, _, action_id) in action_edges {
+            let action = ctx.workspace_snapshot()?.get_node_weight(action_id).await?;
+
+            if action.get_action_node_weight()?.is_dispatched_or_running() {
+                count += 1;
+            }
+        }
+
+        Ok(count)
+    }
+
     pub async fn all_ids(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
         let action_category_node_index = ctx
             .workspace_snapshot()?
@@ -658,12 +701,7 @@ impl Action {
             .edges_directed(action_category_node_index, Outgoing)
             .await?;
         let mut result = Vec::with_capacity(action_edges.len());
-        for (_, _, action_node_index) in action_edges {
-            let action_id = ctx
-                .workspace_snapshot()?
-                .get_node_weight(action_node_index)
-                .await?
-                .id();
+        for (_, _, action_id) in action_edges {
             result.push(action_id.into());
         }
 

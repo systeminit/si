@@ -5,15 +5,18 @@ use std::collections::{
     hash_map::Entry,
 };
 
+use itertools::Itertools;
 use petgraph::prelude::*;
 
 #[derive(Debug, Clone)]
-pub struct DependencyGraph<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> {
+pub struct DependencyGraph<
+    T: Copy + std::cmp::Ord + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash,
+> {
     graph: StableDiGraph<T, ()>,
     id_to_index_map: HashMap<T, NodeIndex>,
 }
 
-impl<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> Default
+impl<T: Copy + std::cmp::Eq + std::cmp::Ord + std::cmp::PartialEq + std::hash::Hash> Default
     for DependencyGraph<T>
 {
     fn default() -> Self {
@@ -24,7 +27,9 @@ impl<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> Default
     }
 }
 
-impl<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> DependencyGraph<T> {
+impl<T: Copy + std::cmp::Ord + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash>
+    DependencyGraph<T>
+{
     pub fn new() -> Self {
         Self {
             id_to_index_map: HashMap::new(),
@@ -117,6 +122,8 @@ impl<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> DependencyG
         self.graph
             .externals(Outgoing)
             .filter_map(|node_idx| self.graph.node_weight(node_idx).copied())
+            // Sorting this list ensures, in the case of ULIDs, that we prioritize older values
+            .sorted()
             .collect()
     }
 

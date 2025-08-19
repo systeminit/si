@@ -66,6 +66,14 @@ use crate::{
     ServerMetadata,
 };
 
+/// Only allow 50 actions to be run at once With a 60 second rebaser deadline,
+/// this means that actions will begin to timeout once the average rebase loop
+/// hits 1200ms (or 600ms for Destroy actions, which rebase twice) and 50 are
+/// enqueued at once. An even better strategy would be to adapt this dynamically
+/// by measuring rebase time on head per workspace, so that we we're always
+/// throttling by how many concurrent actions could fit inside 60,000ms.
+const DEFAULT_ACTION_CONCURRENCY_LIMIT: Option<usize> = Some(50);
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub(crate) enum ChangeSetProcessorTaskError {
@@ -423,7 +431,10 @@ mod handlers {
     use telemetry_utils::metric;
     use thiserror::Error;
 
-    use super::app_state::AppState;
+    use super::{
+        DEFAULT_ACTION_CONCURRENCY_LIMIT,
+        app_state::AppState,
+    };
     use crate::{
         extract::{
             ApiTypesNegotiate,
@@ -570,6 +581,7 @@ mod handlers {
     fields(
         si.workspace.id = %workspace_id,
         si.rebase.actions_dispatched = Empty,
+        si.rebase.dispatched_actions_total = Empty,
         si.rebase.snapshot_write_time = Empty,
         si.rebase.pointer_updated_post_rebase = Empty,
         si.rebase.dispatch_actions_time = Empty,
@@ -594,7 +606,8 @@ mod handlers {
             if workspace.default_change_set_id() == ctx.visibility().change_set_id {
                 let mut change_set =
                     ChangeSet::get_by_id(ctx, ctx.visibility().change_set_id).await?;
-                let did_actions_dispatch = Action::dispatch_actions(ctx).await?;
+                let did_actions_dispatch =
+                    Action::dispatch_actions(ctx, DEFAULT_ACTION_CONCURRENCY_LIMIT).await?;
                 span.record(
                     "si.rebase.dispatch_actions_time",
                     start.elapsed().as_millis(),
