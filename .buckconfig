@@ -39,16 +39,10 @@ restarter = true
 action_cache_address = bb.systeminit.com:8980
 cas_address =  bb.systeminit.com:8980
 engine_address = bb.systeminit.com:8980
+http_headers = Authorization:$SI_RBE_TOKEN
 respect_symlinks=true
 enabled = true
 capabilities = true
 
 [build]
 execution_platforms = prelude-si//platforms:default
-
-[buildkite]
-# TEMPORARY: Remote build control for CI migration
-# TODO: Remove this section once CI migration is complete
-# Default to local builds - CI will override with .buckconfig.local
-enabled = false
-
