@@ -78,6 +78,12 @@ impl ActionNodeWeight {
         self.state
     }
 
+    /// Is this action in the state of [`ActionState::Dispatched`](ActionState)
+    /// or [`ActionState::Running`](ActionState)?
+    pub fn is_dispatched_or_running(&self) -> bool {
+        matches!(self.state, ActionState::Dispatched | ActionState::Running)
+    }
+
     pub fn originating_change_set_id(&self) -> ChangeSetId {
         self.originating_change_set_id
     }
