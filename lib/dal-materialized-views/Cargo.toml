@@ -14,6 +14,7 @@ remain = { workspace = true }
 serde_json = { workspace = true }
 si-frontend-mv-types = { path = "../../lib/si-frontend-mv-types-rs" }
 si-id = { path = "../../lib/si-id" }
+si-pkg = { path = "../../lib/si-pkg" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 

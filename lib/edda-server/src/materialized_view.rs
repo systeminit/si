@@ -57,6 +57,7 @@ use si_frontend_mv_types::{
         DeploymentMvIndex,
     },
     materialized_view::{
+        MaterializedView,
         MaterializedViewInventoryItem,
         materialized_view_definitions_checksum,
     },
@@ -139,6 +140,8 @@ pub enum MaterializedViewError {
     },
     #[error("Prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("Schema error: {0}")]
+    Schema(#[from] dal::SchemaError),
     #[error("SchemaVariant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde_json error: {0}")]
@@ -548,26 +551,39 @@ pub async fn build_all_mvs_for_deployment(
     ctx: &DalContext,
     frigg: &FriggStore,
     edda_updates: &EddaUpdates,
-    _parallel_build_limit: usize,
+    parallel_build_limit: usize,
     reason_message: &'static str,
 ) -> Result<(), MaterializedViewError> {
-    // TODO create update and delete ops when needed
-    let op = BuildMvOp::Create;
+    let span = current_span_for_instrument_at!("info");
 
-    let (Some(patch), Some(frontend_object)) = build_mv(
-        op,
-        ReferenceKind::CachedSchemas,
-        dal_materialized_views::cached_schemas::assemble(ctx),
-    )
-    .await?
-    else {
-        return Ok(());
-    };
+    // Discover all deployment MVs that need to be built
+    let deployment_tasks = discover_deployment_mvs(ctx).await?;
 
-    let index_reference = IndexReference::from(frontend_object.clone());
+    // Use the deployment MV parallel processing system
+    let (
+        frontend_objects,
+        patches,
+        build_count,
+        build_total_elapsed,
+        build_max_elapsed,
+        build_slowest_mv_kind,
+    ) = build_deployment_mv_inner(ctx, frigg, parallel_build_limit, &deployment_tasks).await?;
+    span.record("si.edda.mv.count", build_count);
+    if build_count > 0 {
+        span.record(
+            "si.edda.mv.avg_build_elapsed_ms",
+            build_total_elapsed.as_millis() / build_count,
+        );
+        span.record(
+            "si.edda.mv.max_build_elapsed_ms",
+            build_max_elapsed.as_millis(),
+        );
+        span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
+    }
 
-    // Make an index, store it with the deployment function
-    let index_entries: Vec<_> = vec![index_reference];
+    // Build the deployment index from all the frontend objects
+    let mut index_entries: Vec<_> = frontend_objects.into_iter().map(Into::into).collect();
+    index_entries.sort();
 
     debug!("index_entries {:?}", index_entries);
     let mv_index = DeploymentMvIndex::new(index_entries);
@@ -578,15 +594,14 @@ pub async fn build_all_mvs_for_deployment(
         from_index_checksum,
         to_index_checksum,
     };
-    let patch_batch = DeploymentPatchBatch::new(meta.clone(), vec![patch]);
+    let patch_batch = DeploymentPatchBatch::new(meta.clone(), patches);
     let index_update =
         DeploymentIndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned());
 
-    // Store it on frigg
+    // Store the index on frigg
     frigg
         .put_deployment_index(&mv_index_frontend_object)
         .await?;
-    frigg.insert_deployment_object(&frontend_object).await?;
 
     // publish updates
     edda_updates
@@ -918,6 +933,16 @@ struct QueuedBuildMvTask {
     pub priority: BuildPriority,
 }
 
+/// A deployment MV task that needs to be built for the deployment environment.
+/// Unlike changeset MVs, these are not triggered by graph changes but by deployment-scoped
+/// data that exists outside the workspace graph (e.g., cached modules, global configuration, etc.).
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct DeploymentMvTask {
+    pub mv_kind: ReferenceKind,
+    pub mv_id: String,
+    pub priority: BuildPriority,
+}
+
 impl Ord for QueuedBuildMvTask {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match self.priority.cmp(&other.priority) {
@@ -937,6 +962,296 @@ impl PartialOrd for QueuedBuildMvTask {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
+}
+
+impl Ord for DeploymentMvTask {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.priority.cmp(&other.priority) {
+            std::cmp::Ordering::Equal => {
+                // Within the same priority, order by MV kind and then by ID
+                match self.mv_kind.cmp(&other.mv_kind) {
+                    std::cmp::Ordering::Equal => self.mv_id.cmp(&other.mv_id),
+                    ord => ord,
+                }
+            }
+            ord => ord,
+        }
+    }
+}
+
+impl PartialOrd for DeploymentMvTask {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// Discovers all deployment-scoped MVs that need to be built.
+/// This function examines deployment-scoped data sources and creates tasks
+/// for all individual objects and collections that should be built.
+async fn discover_deployment_mvs(
+    ctx: &DalContext,
+) -> Result<Vec<DeploymentMvTask>, MaterializedViewError> {
+    use dal::cached_module::CachedModule;
+
+    let mut tasks = Vec::new();
+
+    // Add the existing CachedSchemas collection MV
+    tasks.push(DeploymentMvTask {
+        mv_kind: ReferenceKind::CachedSchemas,
+        mv_id: "cached_schemas".to_string(), // Collection has a fixed ID
+        priority: <si_frontend_mv_types::cached_schemas::CachedSchemas as MaterializedView>::build_priority(),
+    });
+
+    // Discover individual CachedSchema and CachedSchemaVariant objects from cached modules
+    let modules = CachedModule::latest_modules(ctx).await?;
+    for mut module in modules {
+        let si_pkg = module.si_pkg(ctx).await?;
+        let schemas = si_pkg.schemas().map_err(CachedModuleError::SiPkg)?;
+        for schema in schemas {
+            // Add individual CachedSchema MV task
+            tasks.push(DeploymentMvTask {
+                mv_kind: ReferenceKind::CachedSchema,
+                mv_id: module.schema_id.to_string(),
+                priority: <si_frontend_mv_types::cached_schema::CachedSchema as MaterializedView>::build_priority(),
+            });
+
+            // Add CachedDefaultVariant MV task
+            tasks.push(DeploymentMvTask {
+                mv_kind: ReferenceKind::CachedDefaultVariant,
+                mv_id: module.schema_id.to_string(),
+                priority: <si_frontend_mv_types::cached_default_variant::CachedDefaultVariant as MaterializedView>::build_priority(),
+            });
+
+            // Add individual CachedSchemaVariant MV tasks
+            let variants = schema.variants().map_err(CachedModuleError::SiPkg)?;
+            for variant in variants {
+                if let Some(unique_id) = variant.unique_id() {
+                    if let Ok(variant_id) = unique_id.parse::<dal::SchemaVariantId>() {
+                        tasks.push(DeploymentMvTask {
+                            mv_kind: ReferenceKind::CachedSchemaVariant,
+                            mv_id: variant_id.to_string(),
+                            priority: <si_frontend_mv_types::cached_schema_variant::CachedSchemaVariant as MaterializedView>::build_priority(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(tasks)
+}
+
+/// Builds deployment MVs using the same parallel processing pattern as changeset MVs.
+/// Uses a priority queue and JoinSet for concurrent execution with error handling.
+#[instrument(
+    name = "materialized_view.build_deployment_mv_inner",
+    level = "debug",
+    skip_all
+)]
+async fn build_deployment_mv_inner(
+    ctx: &DalContext,
+    frigg: &FriggStore,
+    parallel_build_limit: usize,
+    deployment_tasks: &[DeploymentMvTask],
+) -> Result<BuildMvInnerReturn, MaterializedViewError> {
+    let mut frontend_objects = Vec::new();
+    let mut patches = Vec::new();
+    let mut build_tasks = JoinSet::new();
+    let mut queued_mv_builds = BinaryHeap::new();
+
+    // Queue all deployment tasks
+    for task in deployment_tasks {
+        queued_mv_builds.push(task.clone());
+    }
+
+    let mut build_total_elapsed = Duration::from_nanos(0);
+    let mut build_count: u128 = 0;
+    let mut build_max_elapsed = Duration::from_nanos(0);
+    let mut build_slowest_mv_kind: &str = "N/A";
+
+    loop {
+        // If there aren't any queued builds waiting for the concurrency limit then
+        // we've finished everything and are able to send off the collected
+        // FrontendObjects and ObjectPatches to update the index.
+        if queued_mv_builds.is_empty() && build_tasks.is_empty() {
+            break;
+        }
+
+        // Spawn as many of the queued build tasks as we can, up to the concurrency limit.
+        while !queued_mv_builds.is_empty() && build_tasks.len() < parallel_build_limit {
+            let Some(DeploymentMvTask { mv_kind, mv_id, .. }) = queued_mv_builds.pop() else {
+                // This _really_ shouldn't ever return `None` as we just checked that
+                // `queued_mv_builds` is not empty.
+                break;
+            };
+            spawn_deployment_mv_task(&mut build_tasks, ctx, frigg, mv_kind, mv_id).await?;
+        }
+
+        if let Some(join_result) = build_tasks.join_next().await {
+            let (kind, mv_id, build_duration, execution_result) = join_result?;
+            metric!(counter.edda.mv_build = -1);
+
+            match execution_result {
+                Ok((maybe_patch, maybe_frontend_object)) => {
+                    // Store deployment objects using deployment storage
+                    if let Some(frontend_object) = maybe_frontend_object {
+                        frigg.insert_deployment_object(&frontend_object).await?;
+                        frontend_objects.push(frontend_object);
+                    }
+                    if let Some(patch) = maybe_patch {
+                        // Deployment MVs don't need streaming patches since they're not changeset-scoped
+                        debug!("Deployment Patch: {:?}", patch);
+                        patches.push(patch);
+                    }
+                    build_count += 1;
+                    if build_duration > build_max_elapsed {
+                        build_max_elapsed = build_duration;
+                        build_slowest_mv_kind = kind.into();
+                    }
+                    build_total_elapsed += build_duration;
+                }
+                Err(err) => {
+                    warn!(name = "deployment_mv_build_error", si.error.message = err.to_string(), kind = %kind, id = %mv_id);
+                }
+            }
+        }
+    }
+
+    Ok((
+        frontend_objects,
+        patches,
+        build_count,
+        build_total_elapsed,
+        build_max_elapsed,
+        build_slowest_mv_kind,
+    ))
+}
+
+/// Spawns a build task for a specific deployment MV.
+async fn spawn_deployment_mv_task(
+    build_tasks: &mut JoinSet<BuildMvTaskResult>,
+    ctx: &DalContext,
+    frigg: &FriggStore,
+    mv_kind: ReferenceKind,
+    mv_id: String,
+) -> Result<(), MaterializedViewError> {
+    // Record the currently running number of MV build tasks
+    metric!(counter.edda.mv_build = 1);
+
+    match mv_kind {
+        ReferenceKind::CachedSchemas => {
+            build_tasks.spawn(build_mv_for_deployment_task(
+                ctx.clone(),
+                frigg.clone(),
+                mv_id,
+                mv_kind,
+                dal_materialized_views::cached::schemas::assemble(ctx.clone()),
+            ));
+        }
+        ReferenceKind::CachedSchema => {
+            let schema_id: dal::SchemaId = mv_id.parse().map_err(|_| {
+                dal::SchemaError::UninstalledSchemaNotFound(dal::SchemaId::from(ulid::Ulid::nil()))
+            })?;
+            build_tasks.spawn(build_mv_for_deployment_task(
+                ctx.clone(),
+                frigg.clone(),
+                mv_id,
+                mv_kind,
+                dal_materialized_views::cached::schema::assemble(ctx.clone(), schema_id),
+            ));
+        }
+        ReferenceKind::CachedSchemaVariant => {
+            let variant_id: dal::SchemaVariantId = mv_id.parse().map_err(|_| {
+                dal::SchemaVariantError::NotFound(dal::SchemaVariantId::from(ulid::Ulid::nil()))
+            })?;
+
+            build_tasks.spawn(build_mv_for_deployment_task(
+                ctx.clone(),
+                frigg.clone(),
+                mv_id,
+                mv_kind,
+                dal_materialized_views::cached::schema::variant::assemble(ctx.clone(), variant_id),
+            ));
+        }
+        ReferenceKind::CachedDefaultVariant => {
+            let schema_id: dal::SchemaId = mv_id.parse().map_err(|_| {
+                dal::SchemaError::UninstalledSchemaNotFound(dal::SchemaId::from(ulid::Ulid::nil()))
+            })?;
+
+            build_tasks.spawn(build_mv_for_deployment_task(
+                ctx.clone(),
+                frigg.clone(),
+                mv_id,
+                mv_kind,
+                dal_materialized_views::cached::schema::variant::default::assemble(
+                    ctx.clone(),
+                    schema_id,
+                ),
+            ));
+        }
+        _ => {
+            // This shouldn't happen for deployment MVs, but we'll handle it gracefully
+            warn!("Unexpected MV kind for deployment: {:?}", mv_kind);
+            return Ok(());
+        }
+    }
+
+    Ok(())
+}
+
+/// Builds an MV task specifically for deployment (no Change context needed).
+async fn build_mv_for_deployment_task<F, T, E>(
+    _ctx: DalContext,
+    frigg: FriggStore,
+    mv_id: String,
+    mv_kind: ReferenceKind,
+    build_mv_future: F,
+) -> BuildMvTaskResult
+where
+    F: Future<Output = Result<T, E>>,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
+    E: Into<MaterializedViewError>,
+    MaterializedViewError: From<E>,
+    MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
+{
+    debug!(kind = %mv_kind, id = %mv_id, "Building Deployment MV");
+    let start = Instant::now();
+
+    let result =
+        build_mv_for_deployment_task_inner(&frigg, mv_id.clone(), mv_kind, build_mv_future).await;
+
+    (mv_kind, mv_id, start.elapsed(), result)
+}
+
+/// Inner function for building deployment MV tasks.
+async fn build_mv_for_deployment_task_inner<F, T, E>(
+    frigg: &FriggStore,
+    mv_id: String,
+    mv_kind: ReferenceKind,
+    build_mv_future: F,
+) -> MvBuilderResult
+where
+    F: Future<Output = Result<T, E>>,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
+    E: Into<MaterializedViewError>,
+    MaterializedViewError: From<E>,
+    MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
+{
+    // For deployment MVs, check if object exists in deployment storage
+    let op = {
+        let maybe_previous_version = frigg.get_current_deployment_object(mv_kind, &mv_id).await?;
+
+        if let Some(previous_version) = maybe_previous_version {
+            BuildMvOp::UpdateFrom {
+                checksum: previous_version.checksum,
+                data: previous_version.data,
+            }
+        } else {
+            BuildMvOp::Create
+        }
+    };
+
+    build_mv(op, mv_kind, build_mv_future).await
 }
 
 async fn spawn_build_mv_task_for_change_and_mv_kind(
@@ -1195,8 +1510,14 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         // so we skip them.
         ReferenceKind::ChangeSetList | ReferenceKind::ChangeSetRecord => {}
 
-        ReferenceKind::CachedSchemas => {
-            error!("Trying to build cached schemas via the graph task.")
+        ReferenceKind::CachedSchemas
+        | ReferenceKind::CachedSchema
+        | ReferenceKind::CachedSchemaVariant
+        | ReferenceKind::CachedDefaultVariant => {
+            error!(
+                "Trying to build deployment-level MV '{}' via the changeset graph task. Deployment MVs should be built via build_all_mvs_for_deployment().",
+                mv_kind
+            );
         }
     }
 
