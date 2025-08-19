@@ -338,10 +338,11 @@ const save = async (
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 
+  const key = `${props.component.id}-${path}`;
   if (!saveApi.ok(req)) {
-    saveErrors.value[path] = value;
+    saveErrors.value[key] = value;
   } else {
-    delete saveErrors.value[path];
+    delete saveErrors.value[key];
   }
 
   if (saveApi.ok(req) && newChangeSetId) {
