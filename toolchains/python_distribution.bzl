@@ -4,7 +4,12 @@ Downloads and manages Python toolchains using pre-built binaries.
 Similar to the Rust/Deno/Clang toolchain approach using python-build-standalone.
 """
 
-load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
+load(
+    "@prelude//:artifacts.bzl",
+    "ArtifactGroupInfo",
+)
+load("@prelude//python:toolchain.bzl", "PythonPlatformInfo", "PythonToolchainInfo")
+load("@prelude//python_bootstrap:python_bootstrap.bzl", "PythonBootstrapToolchainInfo")
 
 # Python release information with checksums from python-build-standalone
 # Using Python 3.13.6 from https://github.com/astral-sh/python-build-standalone
@@ -229,14 +234,58 @@ def _hermetic_python_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     return [
         DefaultInfo(),
         PythonToolchainInfo(
+            binary_linker_flags = ctx.attrs.binary_linker_flags,
+            linker_flags = ctx.attrs.linker_flags,
+            fail_with_message = ctx.attrs.fail_with_message[RunInfo],
+            generate_static_extension_info = ctx.attrs.generate_static_extension_info,
+            make_source_db = ctx.attrs.make_source_db[RunInfo],
+            make_source_db_no_deps = ctx.attrs.make_source_db_no_deps[RunInfo],
+            host_interpreter = RunInfo(args = python_cmd),
             interpreter = RunInfo(args = python_cmd),
-            # Note: PythonToolchainInfo may have different fields depending on prelude version
-            # This follows the basic pattern - may need adjustment based on actual prelude requirements
+            make_py_package_modules = ctx.attrs.make_py_package_modules[RunInfo],
+            make_py_package_inplace = ctx.attrs.make_py_package_inplace[RunInfo],
+            compile = RunInfo(args = ["echo", "COMPILEINFO"]),
+            package_style = "inplace",
+            pex_extension = ctx.attrs.pex_extension,
+            native_link_strategy = "separate",
+            runtime_library = ctx.attrs.runtime_library,
         ),
+        PythonPlatformInfo(name = "x86_64"),
     ]
 
 hermetic_python_toolchain = rule(
     impl = _hermetic_python_toolchain_impl,
+    attrs = {
+        "distribution": attrs.exec_dep(providers = [PythonDistributionInfo]),
+        "binary_linker_flags": attrs.default_only(attrs.list(attrs.arg(), default = [])),
+        "fail_with_message": attrs.default_only(attrs.dep(providers = [RunInfo], default = "prelude//python/tools:fail_with_message")),
+        "generate_static_extension_info": attrs.default_only(attrs.dep(providers = [RunInfo], default = "prelude//python/tools:generate_static_extension_info")),
+        "linker_flags": attrs.default_only(attrs.list(attrs.arg(), default = [])),
+        "make_py_package_inplace": attrs.default_only(attrs.dep(providers = [RunInfo], default = "prelude//python/tools:make_py_package_inplace")),
+        "make_py_package_modules": attrs.default_only(attrs.dep(providers = [RunInfo], default = "prelude//python/tools:make_py_package_modules")),
+        "make_source_db": attrs.default_only(attrs.dep(providers = [RunInfo], default = "prelude//python/tools:make_source_db")),
+        "make_source_db_no_deps": attrs.default_only(attrs.dep(providers = [RunInfo], default = "prelude//python/tools:make_source_db_no_deps")),
+        "pex_extension": attrs.string(default = ".pex"),
+        "runtime_library": attrs.default_only(attrs.dep(providers = [ArtifactGroupInfo], default = "prelude//python/runtime:bootstrap_files")),
+    },
+    is_toolchain_rule = True,
+)
+
+def _hermetic_python_bootstrap_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
+    """Create a hermetic Python bootstrap toolchain from a distribution."""
+
+    dist = ctx.attrs.distribution[PythonDistributionInfo]
+
+    # Create command-line wrapper for the interpreter
+    python_cmd = cmd_args([dist.python])
+
+    return [
+        DefaultInfo(),
+        PythonBootstrapToolchainInfo(interpreter = python_cmd),
+    ]
+
+hermetic_python_bootstrap_toolchain = rule(
+    impl = _hermetic_python_bootstrap_toolchain_impl,
     attrs = {
         "distribution": attrs.exec_dep(providers = [PythonDistributionInfo]),
     },
