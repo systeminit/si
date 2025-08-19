@@ -10,7 +10,10 @@ use strum::{
     EnumString,
 };
 
-use super::SpecError;
+use super::{
+    HasUniqueId,
+    SpecError,
+};
 
 #[remain::sorted]
 #[derive(
@@ -75,6 +78,12 @@ pub struct LeafFunctionSpec {
 
     #[builder(setter(into), default)]
     pub inputs: Vec<LeafInputLocation>,
+}
+
+impl HasUniqueId for LeafFunctionSpec {
+    fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
+    }
 }
 
 impl LeafFunctionSpec {

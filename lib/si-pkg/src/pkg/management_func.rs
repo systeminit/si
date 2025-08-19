@@ -10,6 +10,7 @@ use super::{
     Source,
 };
 use crate::{
+    HasUniqueId,
     ManagementFuncSpec,
     node::PkgNode,
 };
@@ -68,6 +69,12 @@ impl<'a> SiPkgManagementFunc<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> HasUniqueId for SiPkgManagementFunc<'a> {
+    fn unique_id(&self) -> Option<&str> {
+        Some(&self.func_unique_id)
     }
 }
 

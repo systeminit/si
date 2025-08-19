@@ -11,6 +11,7 @@ use super::{
 };
 use crate::{
     AuthenticationFuncSpec,
+    HasUniqueId,
     node::PkgNode,
 };
 
@@ -74,6 +75,12 @@ impl<'a> SiPkgAuthFunc<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> HasUniqueId for SiPkgAuthFunc<'a> {
+    fn unique_id(&self) -> Option<&str> {
+        self.unique_id()
     }
 }
 

@@ -12,6 +12,7 @@ use strum::{
 
 use super::{
     AttrFuncInputSpec,
+    HasUniqueId,
     SpecError,
 };
 
@@ -67,6 +68,12 @@ pub struct SiPropFuncSpec {
 
     #[builder(setter(each(name = "input"), into), default)]
     pub inputs: Vec<AttrFuncInputSpec>,
+}
+
+impl HasUniqueId for SiPropFuncSpec {
+    fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
+    }
 }
 
 impl SiPropFuncSpec {

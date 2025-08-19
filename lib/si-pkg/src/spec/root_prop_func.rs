@@ -6,6 +6,7 @@ use serde::{
 
 use super::{
     AttrFuncInputSpec,
+    HasUniqueId,
     SpecError,
 };
 use crate::SchemaVariantSpecPropRoot;
@@ -28,6 +29,12 @@ pub struct RootPropFuncSpec {
 
     #[builder(setter(each(name = "input"), into), default)]
     pub inputs: Vec<AttrFuncInputSpec>,
+}
+
+impl HasUniqueId for RootPropFuncSpec {
+    fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
+    }
 }
 
 impl RootPropFuncSpec {
