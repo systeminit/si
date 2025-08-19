@@ -1,8 +1,7 @@
-# Getting Started
+# Getting Started:
 
-Welcome to System Initiative! This tutorial will teach you how to use System
-Initiative to model your infrastructure. We will be deploying a single free-tier
-EC2 instance in AWS, and cleaning it up. There should be no cost to you.
+Welcome to System Initiative! These tutorial will teach you how to use System
+Initiative and AI to model your infrastructure.
 
 To follow along, you'll need three things:
 

@@ -74,17 +74,27 @@ export default defineConfig({
         link: "/tutorials/",
         items: [
           {
-            text: "Getting Started",
+            text: "Getting Started:",
             link: "/tutorials/getting-started",
+            items: [
+              {
+                text: "- Discovery",
+                link: "/tutorials/discovery",
+              },
+              {
+                text: "- Create",
+                link: "/tutorials/create",
+              },
+            ],
           },
-          {
-            text: "Actions and Resources",
-            link: "/tutorials/actions-and-resources",
-          },
-          {
-            text: "Creating Components",
-            link: "/tutorials/creating-components",
-          },
+          // {
+          //   text: "Actions and Resources",
+          //   link: "/tutorials/actions-and-resources",
+          // },
+          // {
+          //   text: "Creating Components",
+          //   link: "/tutorials/creating-components",
+          // },
         ],
       },
       {
@@ -100,10 +110,10 @@ export default defineConfig({
           //   text: "AWS IAM Policy",
           //   link: "/how-tos/aws-iam",
           // },
-          {
-            text: "AWS VPC",
-            link: "/how-tos/aws-vpc",
-          },
+          // {
+          //   text: "AWS VPC",
+          //   link: "/how-tos/aws-vpc",
+          // },
           // {
           //   text: "AWS HA EC2",
           //   link: "/how-tos/aws-ha-ec2",
