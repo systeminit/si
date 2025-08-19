@@ -29,25 +29,19 @@ def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
             is_macos = True
             break
 
-    # TEMPORARY: Disable remote builds unless explicitly enabled via config
-    # TODO: Remove this check once CI migration is complete
-    # CI should create .buckconfig.local with [buildkite] enabled = true
-    buildkite_enabled = read_root_config("buildkite", "enabled", "false")
-    disable_remote_for_buildkite = buildkite_enabled != "true"
-
     # Get dynamic OS family for remote execution
     os_family = _get_remote_os_family(constraints)
 
     name = ctx.label.raw_target()
 
-    final_remote_enabled = False if (is_macos or disable_remote_for_buildkite) else True
+    remote_enabled = False if (is_macos) else True
 
     platform = ExecutionPlatformInfo(
         label = name,
         configuration = cfg,
         executor_config = CommandExecutorConfig(
             local_enabled = True,
-            remote_enabled = final_remote_enabled,
+            remote_enabled = remote_enabled,
             use_limited_hybrid = True,
             remote_cache_enabled = True,
             allow_limited_hybrid_fallbacks = True,
