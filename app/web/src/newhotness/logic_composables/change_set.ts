@@ -42,21 +42,15 @@ export const useChangeSets = (
 
   const openChangeSets = computed(() => {
     const changeSets = _.keyBy(changeSetQuery.data.value?.changeSets, "id");
-    return Object.values(changeSets)
-      .filter((cs) =>
-        [
-          ChangeSetStatus.Open,
-          ChangeSetStatus.NeedsApproval,
-          ChangeSetStatus.NeedsAbandonApproval,
-          ChangeSetStatus.Rejected,
-          ChangeSetStatus.Approved,
-        ].includes(cs.status),
-      )
-      .map((cs) => {
-        if (cs.id === changeSetQuery.data.value?.defaultChangeSetId)
-          cs.isHead = true;
-        return cs;
-      });
+    return Object.values(changeSets).filter((cs) =>
+      [
+        ChangeSetStatus.Open,
+        ChangeSetStatus.NeedsApproval,
+        ChangeSetStatus.NeedsAbandonApproval,
+        ChangeSetStatus.Rejected,
+        ChangeSetStatus.Approved,
+      ].includes(cs.status),
+    );
   });
 
   const changeSet = computed(() => {

@@ -19,7 +19,7 @@
         icon="x"
         @click="closeModalHandler"
       />
-      <template v-if="!props.changeSet.isHead">
+      <template v-if="notHead">
         <VButton
           data-testid="abandon-change-set-modal-confirm-button"
           label="Abandon Change Set"
@@ -37,19 +37,28 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { VButton, Modal } from "@si/vue-lib/design-system";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { routes, useApi } from "@/newhotness/api_composables";
+import { useContext } from "../logic_composables/context";
 
 const props = defineProps<{
   changeSet: ChangeSet;
 }>();
 
+const ctx = useContext();
+
+const notHead = computed(
+  () =>
+    ctx.headChangeSetId.value &&
+    props.changeSet.id !== ctx.headChangeSetId.value,
+);
+
 const modalRef = ref<InstanceType<typeof Modal> | null>(null);
 
 async function openModalHandler() {
-  if (props.changeSet.name === "HEAD" || props.changeSet.isHead) return;
+  if (props.changeSet.name === "HEAD" || !notHead.value) return;
   modalRef.value?.open();
 }
 
