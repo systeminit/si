@@ -40,25 +40,25 @@ describe('web', () => {
     function checkTileCount() {
       // For virtual scrolling, we need to scroll through the entire list
       // First scroll to top, then gradually scroll down to ensure all items are rendered
-      cy.get('[data-testid="tile-container"]').parent().scrollTo('top');
+      cy.get('[data-testid="explore-grid"]').parent().scrollTo('top');
       cy.wait(500);
       
       // Scroll through the list in increments to trigger rendering of all items
       const scrollSteps = 10;
       for (let i = 0; i <= scrollSteps; i++) {
         const scrollPosition = (i / scrollSteps) * 100;
-        cy.get('[data-testid="tile-container"]').parent().scrollTo(0, `${scrollPosition}%`);
+        cy.get('[data-testid="explore-grid"]').parent().scrollTo(0, `${scrollPosition}%`);
         cy.wait(200);
       }
       
       // Final scroll to bottom and wait
-      cy.get('[data-testid="tile-container"]').parent().scrollTo('bottom');
+      cy.get('[data-testid="explore-grid"]').parent().scrollTo('bottom');
       cy.wait(1000);
       
       cy.get('body').then(() => {
         // For virtual scrolling, we should check if we have the expected data structure
         // Look for the tile container and check its total height or data attributes
-        cy.get('[data-testid="tile-container"]').then(($container) => {
+        cy.get('[data-testid="explore-grid"]').then(($container) => {
           cy.log(`Container style: ${$container.attr('style')}`);
           
           // Count currently visible components

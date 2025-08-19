@@ -90,8 +90,39 @@ jobs:
 
           echo "Tunneling EC2 node @ $remote_ip"
 
-          # Start SSH tunnel in background for 3020 (Bedrock)
-          nohup ssh -o StrictHostKeyChecking=no -L 3020:localhost:3020 "arch@$remote_ip" -i ssh-key.pem -N &
+          # Start SSH tunnel in background for 3020 (Bedrock) with retry logic
+          tunnel_retries=0
+          max_tunnel_retries=5
+          while [ $tunnel_retries -lt $max_tunnel_retries ]; do
+            echo "Attempting to establish SSH tunnel for port 3020 (attempt $((tunnel_retries + 1))/$max_tunnel_retries)..."
+            
+            # Kill any existing SSH processes to this host
+            pkill -f "ssh.*arch@$remote_ip.*3020" || true
+            sleep 2
+            
+            # Start SSH tunnel
+            nohup ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ServerAliveInterval=60 -L 3020:localhost:3020 "arch@$remote_ip" -i ssh-key.pem -N &
+            ssh_pid=$!
+            
+            # Give SSH time to establish connection
+            sleep 5
+            
+            # Verify tunnel is working
+            if nc -z localhost 3020; then
+              echo "✅ SSH tunnel for port 3020 established successfully"
+              break
+            else
+              echo "⚠️ SSH tunnel attempt $((tunnel_retries + 1)) failed, retrying..."
+              kill $ssh_pid 2>/dev/null || true
+              tunnel_retries=$((tunnel_retries + 1))
+              sleep 3
+            fi
+          done
+          
+          if [ $tunnel_retries -eq $max_tunnel_retries ]; then
+            echo "❌ Failed to establish SSH tunnel for port 3020 after $max_tunnel_retries attempts"
+            exit 1
+          fi
 
           # Wait for Bedrock (EC2 localhost:3020) to be ready
           echo "Waiting for Bedrock to be ready..."
@@ -118,8 +149,39 @@ jobs:
             exit 1
           fi
 
-          # Start SSH tunnel in background for 8080 (Web App)
-          nohup ssh -o StrictHostKeyChecking=no -L 8080:localhost:8080 "arch@$remote_ip" -i ssh-key.pem -N &
+          # Start SSH tunnel in background for 8080 (Web App) with retry logic
+          tunnel_retries=0
+          max_tunnel_retries=5
+          while [ $tunnel_retries -lt $max_tunnel_retries ]; do
+            echo "Attempting to establish SSH tunnel for port 8080 (attempt $((tunnel_retries + 1))/$max_tunnel_retries)..."
+            
+            # Kill any existing SSH processes to this host
+            pkill -f "ssh.*arch@$remote_ip.*8080" || true
+            sleep 2
+            
+            # Start SSH tunnel
+            nohup ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ServerAliveInterval=60 -L 8080:localhost:8080 "arch@$remote_ip" -i ssh-key.pem -N &
+            ssh_pid=$!
+            
+            # Give SSH time to establish connection
+            sleep 5
+            
+            # Verify tunnel is working
+            if nc -z localhost 8080; then
+              echo "✅ SSH tunnel for port 8080 established successfully"
+              break
+            else
+              echo "⚠️ SSH tunnel attempt $((tunnel_retries + 1)) failed, retrying..."
+              kill $ssh_pid 2>/dev/null || true
+              tunnel_retries=$((tunnel_retries + 1))
+              sleep 3
+            fi
+          done
+          
+          if [ $tunnel_retries -eq $max_tunnel_retries ]; then
+            echo "❌ Failed to establish SSH tunnel for port 8080 after $max_tunnel_retries attempts"
+            exit 1
+          fi
 
           # Wait for tunnel Web App (EC2 localhost:8080) to be ready
           echo "Waiting up to 30 minutes for remote web app to be ready..."
@@ -182,8 +244,39 @@ jobs:
           remote_ip="${{ needs.launch-ec2-node.outputs.remote-ip }}"
           echo "Tunneling EC2 node @ $remote_ip"
 
-          # Start SSH tunnel in background for 8080 (Web App) & 3020 (Bedrock)
-          nohup ssh -o StrictHostKeyChecking=no -L 8080:localhost:8080 arch@$remote_ip -i ssh-key.pem -N &
+          # Start SSH tunnel in background for 8080 (Web App) with retry logic
+          tunnel_retries=0
+          max_tunnel_retries=5
+          while [ $tunnel_retries -lt $max_tunnel_retries ]; do
+            echo "Attempting to establish SSH tunnel for port 8080 (attempt $((tunnel_retries + 1))/$max_tunnel_retries)..."
+            
+            # Kill any existing SSH processes to this host
+            pkill -f "ssh.*arch@$remote_ip.*8080" || true
+            sleep 2
+            
+            # Start SSH tunnel
+            nohup ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ServerAliveInterval=60 -L 8080:localhost:8080 arch@$remote_ip -i ssh-key.pem -N &
+            ssh_pid=$!
+            
+            # Give SSH time to establish connection
+            sleep 5
+            
+            # Verify tunnel is working
+            if nc -z localhost 8080; then
+              echo "✅ SSH tunnel for port 8080 established successfully"
+              break
+            else
+              echo "⚠️ SSH tunnel attempt $((tunnel_retries + 1)) failed, retrying..."
+              kill $ssh_pid 2>/dev/null || true
+              tunnel_retries=$((tunnel_retries + 1))
+              sleep 3
+            fi
+          done
+          
+          if [ $tunnel_retries -eq $max_tunnel_retries ]; then
+            echo "❌ Failed to establish SSH tunnel for port 8080 after $max_tunnel_retries attempts"
+            exit 1
+          fi
 
           # Wait for tunnel Web App (EC2 localhost:8080) to be ready
           echo "Waiting up to 30 minutes for remote web app to be ready..."
