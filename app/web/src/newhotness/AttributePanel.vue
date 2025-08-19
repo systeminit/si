@@ -170,6 +170,7 @@ import {
   onMounted,
   provide,
   reactive,
+  Ref,
   ref,
   watch,
 } from "vue";
@@ -309,6 +310,18 @@ const route = useRoute();
 
 const saveApi = useApi();
 
+const saveErrors = ref<Record<string, string>>({});
+
+export interface AttributeErrors {
+  saveErrors: Ref<Record<string, string>>;
+}
+const errorContext = computed<AttributeErrors>(() => {
+  return {
+    saveErrors,
+  };
+});
+provide("ATTRIBUTE_ERRORS", errorContext);
+
 const save = async (
   path: AttributePath,
   value: string,
@@ -324,6 +337,13 @@ const save = async (
 
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+
+  if (!saveApi.ok(req)) {
+    saveErrors.value[path] = value;
+  } else {
+    delete saveErrors.value[path];
+  }
+
   if (saveApi.ok(req) && newChangeSetId) {
     saveApi.navigateToNewChangeSet(
       {

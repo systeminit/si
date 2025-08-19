@@ -9,7 +9,7 @@
             'grid grid-cols-2 items-center gap-2xs relative text-sm font-normal',
             inputOpen && 'hidden',
             isSecret && 'mb-[-1px]',
-            validationStatus === 'failing' && [
+            (hasError || validationStatus === 'failing') && [
               'pr-xs',
               themeClasses('bg-destructive-200', 'bg-newhotness-destructive'),
             ],
@@ -322,6 +322,22 @@
               "
               @click.stop="openCodeEditorModal"
             />
+          </div>
+
+          <!-- error display -->
+          <div
+            v-if="hasError"
+            :class="
+              clsx(
+                'p-xs text-sm',
+                themeClasses(
+                  'text-destructive-600 bg-destructive-200',
+                  'text-destructive-200 bg-newhotness-destructive',
+                ),
+              )
+            "
+          >
+            `{{ errorValue }}` failed to save
           </div>
 
           <!-- raw value selection area -->
@@ -683,7 +699,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, nextTick, reactive, ref, watch } from "vue";
+import {
+  computed,
+  ComputedRef,
+  inject,
+  nextTick,
+  reactive,
+  ref,
+  watch,
+} from "vue";
 import { debounce } from "lodash-es";
 import clsx from "clsx";
 import {
@@ -734,7 +758,8 @@ import CodeEditorModal from "../CodeEditorModal.vue";
 import { findAttributeValueInTree } from "../util";
 import AttributeInputPossibleConnection from "./AttributeInputPossibleConnection.vue";
 import AttributeInputRequiredProperty from "./AttributeInputRequiredProperty.vue";
-import { AttributeInputContext } from "../types";
+import { assertIsDefined, AttributeInputContext } from "../types";
+import { AttributeErrors } from "../AttributePanel.vue";
 
 type UIConnectionRow = {
   showAllButton?: boolean;
@@ -821,6 +846,16 @@ const attrData = computed<AttrData>(() => {
   if (attributeInputContext?.blankInput) return { value: "" };
   return { value: props.value };
 });
+
+const errorContext = inject<ComputedRef<AttributeErrors>>("ATTRIBUTE_ERRORS");
+assertIsDefined<ComputedRef<AttributeErrors>>(errorContext);
+
+const hasError = computed(() => {
+  return !!errorContext.value.saveErrors.value[props.path];
+});
+const errorValue = computed(
+  () => errorContext.value.saveErrors.value[props.path],
+);
 
 const valueForm = wForm.newForm({
   data: attrData,
