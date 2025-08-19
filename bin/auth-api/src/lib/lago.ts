@@ -4,7 +4,8 @@ import _ from "lodash";
 const client = Client(process.env.LAGO_API_KEY as string, {
   baseUrl: "https://api.getlago.com/api/v1",
 });
-
+const PAY_AS_YOU_GO = "launch_pay_as_you_go";
+const TRIAL = "launch_trial";
 export async function createCustomer(
   userPk: string,
   firstName: string,
@@ -45,7 +46,7 @@ export async function createTrialSubscription(userPk: string) {
 }
 
 export async function createPaidSubscription(userPk: string) {
-  const plan_code = "launch_pay_as_you_go";
+  const plan_code = PAY_AS_YOU_GO;
   const external_id = `${userPk}_${plan_code}`;
   const subscriptionStartDate = new Date(
     new Date().getTime() + 31 * 24 * 60 * 60 * 1000,
@@ -60,6 +61,44 @@ export async function createPaidSubscription(userPk: string) {
     },
   });
 }
+
+export async function restCustomerTrialSubscription(userPk: string) {
+    const currentPlan = await getCustomerActiveSubscription(userPk);
+    if (currentPlan.planCode === PAY_AS_YOU_GO) {
+        // if the user is currently on the pay as you go plan
+        // update the trial plan to start today, ending in 30 days
+        // and update the pay as you go plan to start 31 days from today
+        const trialStartDate = new Date(
+          new Date().getTime()
+        );
+        trialStartDate.setUTCHours(0,0,0,0);
+        const trialEndDate = new Date(
+          new Date().getTime() + 30 * 24 * 60 * 60 * 1000,
+        );
+        trialEndDate.setUTCHours(0,0,0,0);
+        const payAsYouGoStartDate = new Date(
+          new Date().getTime() + 31 * 24 * 60 * 60 * 1000,
+        );
+        payAsYouGoStartDate.setUTCHours(0,0,0,0);
+        try {
+         const updatedTrial =  await client.subscriptions.updateSubscription(`${userPk}_${TRIAL}`,{
+            subscription: {
+              subscription_at: trialStartDate.toISOString(),
+              ending_at: `${trialEndDate.toISOString().split(".")[0]}Z`, // todo test if this is needed still!
+            },
+          });
+          const updatedPayAsYouGo = await client.subscriptions.updateSubscription(`${userPk}_${PAY_AS_YOU_GO}`,{
+            subscription: {
+              subscription_at: payAsYouGoStartDate.toISOString(),
+              ending_at: null,
+            },
+          });
+        }
+        catch(e) {
+          // error?
+        }
+    }
+} 
 
 export type CustomerDetail = {
   id: string;
@@ -138,10 +177,11 @@ export async function getCustomerPortalUrl(userPk: string) {
   return null;
 }
 
+
 export async function getCustomerActiveSubscription(userPk: string) {
   try {
     const trial_resp = await client.subscriptions.findSubscription(
-      `${userPk}_launch_trial`,
+      `${userPk}_${TRIAL}`,
     );
     if (trial_resp.ok && trial_resp.data.subscription.status === "active") {
       return {
@@ -159,7 +199,7 @@ export async function getCustomerActiveSubscription(userPk: string) {
 
   try {
     const payg_resp = await client.subscriptions.findSubscription(
-      `${userPk}_launch_pay_as_you_go`,
+      `${userPk}_${PAY_AS_YOU_GO}`,
     );
     if (payg_resp.ok) {
       const charges = _.get(
