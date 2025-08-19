@@ -1218,6 +1218,13 @@
       "HTTP2"
     ]
   },
+  "Supported options are GITHUB_HMAC, IP, and UNAUTHENTICATED.": {
+    "enum": [
+      "GITHUB_HMAC",
+      "IP",
+      "UNAUTHENTICATED"
+    ]
+  },
   "Specifies the logging level for this configuration:ERROR,INFO or NONE. This property affects the log entries pushed to Amazon CloudWatch logs": {
     "enum": [
       "ERROR",
@@ -13465,6 +13472,9 @@
   "The name of the acl.": {
     "enum": null
   },
+  "The name of the action in a pipeline you want to connect to the webhook.": {
+    "enum": null
+  },
   "The name of the aggregator.": {
     "enum": null
   },
@@ -14077,6 +14087,9 @@
   "The name of the permission.": {
     "enum": null
   },
+  "The name of the pipeline you want to connect to the webhook.": {
+    "enum": null
+  },
   "The name of the pipeline.": {
     "enum": null
   },
@@ -14357,6 +14370,9 @@
     "enum": null
   },
   "The name of the view.": {
+    "enum": null
+  },
+  "The name of the webhook": {
     "enum": null
   },
   "The name of the worker configuration.": {
@@ -15368,6 +15384,12 @@
     "enum": null
   },
   "The property specifies the rules of selecting objects for data migration.": {
+    "enum": null
+  },
+  "The property used to configure GitHub authentication. For GITHUB_HMAC, only the SecretToken property must be set.": {
+    "enum": null
+  },
+  "The property used to configure acceptance of webhooks in an IP address range. For IP, only the AllowedIPRange property must be set. This property must be set to a valid CIDR range.": {
     "enum": null
   },
   "The protection strategy for deployment on the container fleet; defaults to WITH_PROTECTION.": {
@@ -16901,6 +16923,9 @@
     "enum": null
   },
   "The version number of the launch template.\n Specifying ``$Latest`` or ``$Default`` for the template version number is not supported. However, you can specify ``LatestVersionNumber`` or ``DefaultVersionNumber`` using the ``Fn::GetAtt`` intrinsic function. For more information, see [Fn::GetAtt](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html).\n  For an example of using the ``Fn::GetAtt`` function, see the [Examples](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-autoscaling-autoscalinggroup.html#aws-resource-autoscaling-autoscalinggroup--examples) section of the ``AWS::AutoScaling::AutoScalingGroup`` resource.": {
+    "enum": null
+  },
+  "The version number of the pipeline to be connected to the trigger request.": {
     "enum": null
   },
   "The version of Grafana to support in your workspace.": {
