@@ -667,6 +667,8 @@
           </div>
           <label
             v-if="featureFlagsStore.DEFAULT_SUBS"
+            tabindex="0"
+            data-default-sub-checkbox="label"
             :for="`checkbox-${prop?.id}`"
             :class="
               clsx(
@@ -674,13 +676,28 @@
                 themeClasses('border-neutral-400', 'border-neutral-600'),
               )
             "
+            @click="
+              () =>
+                toggleIsDefaultSource(
+                  `default-source-checkbox-${prop?.id}`,
+                  path,
+                  true,
+                )
+            "
           >
             <input
               :id="`default-source-checkbox-${prop?.id}`"
+              data-default-sub-checkbox="input"
               type="checkbox"
               :checked="isDefaultSource"
-              @input="(ev) => toggleIsDefaultSource(ev, path)"
-              @click.stop
+              @click.stop="
+                () =>
+                  toggleIsDefaultSource(
+                    `default-source-checkbox-${prop?.id}`,
+                    path,
+                    false,
+                  )
+              "
             />
             <div>Make this the default subscription for new components</div>
           </label>
@@ -1127,8 +1144,15 @@ const selectDefault = () => {
   closeInput();
 };
 
-const blur = () => {
-  inputRef.value?.focus();
+const blur = (event: FocusEvent) => {
+  if (
+    event.relatedTarget instanceof HTMLElement &&
+    (event.relatedTarget as HTMLElement).dataset.defaultSubCheckbox
+  ) {
+    inputRef.value?.focus({ preventScroll: true });
+  } else {
+    inputRef.value?.focus();
+  }
 };
 
 const bifrostingTrash = ref(false);
@@ -1641,10 +1665,21 @@ const setValueFromCodeEditorModal = (value: string) => {
   valueForm.handleSubmit();
 };
 
-const toggleIsDefaultSource = (event: Event, path: AttributePath) => {
-  event.stopPropagation();
-  const checked = (event.target as HTMLInputElement).checked;
-  emit("setDefaultSubscriptionSource", path, checked);
+const toggleIsDefaultSource = (
+  checkboxId: string,
+  path: AttributePath,
+  invertBox: boolean,
+) => {
+  const checkboxElement = document.getElementById(checkboxId);
+  if (!checkboxElement) {
+    return;
+  }
+  const checked = (checkboxElement as HTMLInputElement).checked;
+  // If the checkbox input element is clicked the box will be in the real value,
+  // if the label is clicked, it will not yet be set to the users intention
+  const newValue = invertBox ? !checked : checked;
+
+  emit("setDefaultSubscriptionSource", path, newValue);
 };
 
 const optionIsSelected = computed(

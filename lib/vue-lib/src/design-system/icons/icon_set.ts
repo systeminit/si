@@ -105,6 +105,7 @@ import Scissors from "~icons/clarity/scissors-solid";
 import Frame from "~icons/iconamoon/frame-light";
 import MaterialSymbolsKeyboardDoubleArrowLeftRounded from "~icons/material-symbols/keyboard-double-arrow-left-rounded";
 import MaterialSymbolsStopCircleOutlineRounded from "~icons/material-symbols/stop-circle-outline-rounded";
+import MaterialSymbolsArrowOutward from "~icons/material-symbols/arrow-outward";
 import MaterialSymbolsLightTouchpadMouseRounded from "~icons/material-symbols-light/touchpad-mouse";
 import IcBaselinePlusMinusAlt from "~icons/ic/baseline-plus-minus-alt";
 import MaterialSymbolsKeyboardCommandKey from "~icons/material-symbols/keyboard-command-key";
@@ -246,6 +247,7 @@ export const ICONS = Object.freeze({
   "alert-triangle": AlertTriangle,
   "alert-triangle-filled": CarbonWarningAltFilled,
   "alert-triangle-outline": CarbonWarningAlt,
+  "arrow-outward": MaterialSymbolsArrowOutward,
   "arrows-out": PhArrowsOutCardinal,
   backspace: MaterialSymbolsBackspaceOutline,
   beaker: Beaker,
