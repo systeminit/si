@@ -185,8 +185,8 @@ pub async fn update_attributes(
     component_id: ComponentId,
     updates: AttributeSources,
 ) -> Result<AttributeUpdateCounts> {
-    let updates_to_process = updates.validate_user_can_set_directly();
-    update_attributes_inner(ctx, component_id, updates_to_process).await
+    // let updates_to_process = updates.validate_user_can_set_directly();
+    update_attributes_inner(ctx, component_id, updates).await
 }
 
 /// Simimlar to [`update_attributes`], only skips the validation entirely so we can expose functionality to management operations
