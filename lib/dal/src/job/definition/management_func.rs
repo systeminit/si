@@ -281,13 +281,19 @@ impl ManagementFuncJob {
             .await?;
 
         Self::success_state(ctx, execution_state_id).await?;
-        // if the management prototype is for a Import func and we're not on head, let's dispatch it!
         let kind = ManagementPrototype::kind_by_id(ctx, self.prototype_id).await?;
+
+        // if the management prototype is for an Import func and we're not on head, and the component doesn't already have a resource, let's dispatch it!
+        // note: this is to future proof for when our import functions set the resource directly
+        // as if the resource has already been set, we don't need to run the refresh func in this change set
         if kind == ManagementFuncKind::Import
             && ctx.get_workspace_default_change_set_id().await? != ctx.change_set_id()
             && Component::exists_on_head_by_ids(ctx, &[self.component_id])
                 .await?
                 .is_empty()
+            && Component::resource_by_id(ctx, self.component_id)
+                .await?
+                .is_none()
         {
             let actions = Action::find_for_kind_and_component_id(
                 ctx,
@@ -315,7 +321,7 @@ impl ManagementFuncJob {
         ctx: &DalContext,
         execution_state_id: ManagementFuncJobStateId,
         mut execution_result: ManagementPrototypeExecution,
-    ) -> ManagementFuncJobResult<()> {
+    ) -> ManagementFuncJobResult<Option<Vec<ComponentId>>> {
         let result = execution_result
             .result
             .take()
@@ -356,7 +362,7 @@ impl ManagementFuncJob {
             func.name.clone(),
             result.message.clone(),
             result.status,
-            created_component_ids,
+            created_component_ids.clone(),
         )
         .await?
         .publish_on_commit(ctx)
@@ -379,7 +385,7 @@ impl ManagementFuncJob {
         )
         .await?;
 
-        Ok(())
+        Ok(created_component_ids)
     }
 
     async fn run_prototype(

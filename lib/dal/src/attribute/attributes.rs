@@ -25,6 +25,7 @@ use crate::{
     Func,
     PropKind,
     WsEvent,
+    component::resource::ResourceData,
     func::intrinsics::IntrinsicFunc,
     workspace_snapshot::node_weight::{
         NodeWeight,
@@ -192,10 +193,21 @@ pub async fn update_attributes(
                 counts.set_count += 1;
 
                 // Create the attribute at the given path if it does not exist
-                let target_av_id = av_to_set.vivify(ctx, component_id).await?;
+                let path = av_to_set.path();
+                let target_av_id = av_to_set.clone().vivify(ctx, component_id).await?;
 
                 match value {
                     Source::Value(value) => {
+                        // need to special case resource
+                        if path == "/resource" {
+                            let resource_data = ResourceData::new(
+                                veritech_client::ResourceStatus::Ok,
+                                Some(value.to_owned()),
+                            );
+                            let component = Component::get_by_id(ctx, component_id).await?;
+                            component.set_resource(ctx, resource_data).await?;
+                            continue;
+                        }
                         let before_value = AttributeValue::get_by_id(ctx, target_av_id)
                             .await?
                             .value(ctx)

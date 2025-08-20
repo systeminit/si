@@ -8,6 +8,7 @@ use dal::{
     Component,
     ComponentId,
     DalContext,
+    Func,
     SchemaId,
     SchemaVariantId,
     Ulid,
@@ -118,6 +119,113 @@ async fn exec_mgmt_func_and_operate(
     .await?
     .operate()
     .await?;
+    Ok(())
+}
+
+#[test]
+async fn set_resource(ctx: &mut DalContext) -> Result<()> {
+    // Create a schema that has mirrored resource_value + domain props
+    let _test_variant_id = variant::create(
+        ctx,
+        "test::resource",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        {
+                            name: "name",
+                            kind: "string"
+                        },
+                        {
+                            name: "value",
+                            kind: "string"
+                        }
+                    ],
+                    resourceProps: [
+                        {
+                            name: "name", 
+                            kind: "string"
+                        },
+                        {
+                            name: "value",
+                            kind: "string"
+                        }
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Write a management function that sets both domain and resource
+    let _func_id = variant::create_management_func(
+        ctx,
+        "test::resource",
+        "Set Resource",
+        r##"
+            async function main({ thisComponent }: Input): Promise<Output> {
+            const result = {
+                "name": "test-resource",
+                "value": "resource-value",
+                };
+                return {
+                    status: "ok",
+                    ops: {
+                        update: {
+                            self: {
+                                attributes: {
+                                   "/domain" : result,
+                                    "/resource": result,
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
+
+    // Create a component for the new schema variant
+    let test_component = component::create(ctx, "test::resource", "test-component").await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Find and enqueue the management job
+    let management_prototype =
+        find_management_prototype(ctx, test_component, "Set Resource").await?;
+
+    ChangeSetTestHelpers::enqueue_management_func_job(
+        ctx,
+        management_prototype.id(),
+        test_component,
+        None,
+    )
+    .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    ChangeSetTestHelpers::wait_for_mgmt_job_to_run(ctx, management_prototype.id(), test_component)
+        .await?;
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Ensure that resource_value gets propagated
+    // Check domain values were set
+    let domain_name = value::get(ctx, (test_component, "/domain/name")).await?;
+    let domain_value = value::get(ctx, (test_component, "/domain/value")).await?;
+    let diff = Component::get_diff(ctx, test_component).await?;
+    dbg!(&diff.diff);
+    assert_eq!(serde_json::json!("test-resource"), domain_name);
+    assert_eq!(serde_json::json!("resource-value"), domain_value);
+
+    // Check resource_value props were set
+    let resource_name = value::get(ctx, (test_component, "/resource_value/name")).await?;
+    let resource_value = value::get(ctx, (test_component, "/resource_value/value")).await?;
+
+    assert_eq!(serde_json::json!("test-resource"), resource_name);
+    assert_eq!(serde_json::json!("resource-value"), resource_value);
+
     Ok(())
 }
 
@@ -2410,6 +2518,338 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> 
         .expect("pending should exist");
 
     assert_eq!(new_pending, pending);
+
+    Ok(())
+}
+
+#[test]
+async fn management_func_autosubscribe(ctx: &mut DalContext) -> Result<()> {
+    // Create fake::region schema
+    let _output = variant::create(
+        ctx,
+        "output",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "region", kind: "string", 
+                            suggestAsSourceFor: [
+                                    { schema: "fake::vpc", prop: "/domain/region" },
+                                ]},
+                    ],
+                };
+            }
+        "#,
+    )
+    .await?;
+    let _region_variant_id = variant::create(
+        ctx,
+        "fake::region",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "region", kind: "string", 
+                            suggestAsSourceFor: [
+                                    { schema: "fake::vpc", prop: "/domain/region" },
+                                ]},
+                    ],
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Create fake::vpc schema
+    let _vpc_variant_id = variant::create(
+        ctx,
+        "fake::vpc",
+        r#"
+            function main() {
+                return {
+                    props: [{
+                                name: "region",
+                                kind: "string",
+                            },
+                    ],
+                    resourceProps: [
+                         { 
+                                name: "vpcId",
+                                kind: "string",
+                        
+                            },
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Create fake::subnet schema
+    let _subnet_variant_id = variant::create(
+        ctx,
+        "fake::subnet",
+        r#"
+            function main() {
+                return {
+                    props: [
+                      {
+                                name: "region",
+                                kind: "string",
+                                suggestSources: [
+                                    { schema: "fake::region", prop: "/domain/region" }
+                                ]
+                            },
+                            { 
+                                name: "vpcId",
+                                kind: "string",
+                                suggestSources: [
+                                    { schema: "fake::vpc", prop: "/resource_value/vpcId" }
+                                ]
+                            }
+                     
+                    ],
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Create discovery management function for VPC
+    let func_id = variant::create_management_func(
+        ctx,
+        "fake::vpc",
+        "Discover VPC",
+        r##"
+            async function main({ thisComponent }: Input): Promise<Output> {
+                return {
+                    status: "ok",
+                    ops: {
+                        create: {
+                            vpc1: {
+                                kind: "fake::vpc",
+                                attributes: {
+                                    "/domain/region": "us-west-2",
+                                    "/resource_value/vpcId": "vpc-12345"
+                                }
+                            },
+                            vpc2: {
+                                kind: "fake::vpc", 
+                                attributes: {
+                                    "/domain/region": "us-west-2",
+                                    "/resource_value/vpcId": "vpc-67890"
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
+    let mgmt = Func::get_by_id(ctx, func_id).await?;
+    mgmt.modify(ctx, |func| {
+        func.display_name = Some("Discover on AWS".to_owned());
+
+        Ok(())
+    })
+    .await?;
+    // Create discovery management function for Subnet
+    let func_id = variant::create_management_func(
+        ctx,
+        "fake::subnet",
+        "Discover Subnet",
+        r##"
+            async function main({ thisComponent }: Input): Promise<Output> {
+                return {
+                    status: "ok",
+                    ops: {
+                        create: {
+                            subnet1: {
+                                kind: "fake::subnet",
+                                attributes: {
+                                    "/domain/region": "us-west-2",
+                                    "/domain/vpcId": "vpc-12345"
+                                }
+                            },
+                            subnet2: {
+                                kind: "fake::subnet",
+                                attributes: {
+                                    "/domain/region": "us-west-2",
+                                    "/domain/vpcId": "vpc-67890"
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
+    let mgmt = Func::get_by_id(ctx, func_id).await?;
+    mgmt.modify(ctx, |func| {
+        func.display_name = Some("Discover on AWS".to_owned());
+
+        Ok(())
+    })
+    .await?;
+    // Create region component
+    let region = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "fake::region",
+        "us-west-2-region",
+    )
+    .await?;
+
+    let region_av_id =
+        Component::attribute_value_for_prop(ctx, region.id(), &["root", "domain", "region"])
+            .await?;
+    AttributeValue::update(ctx, region_av_id, Some(serde_json::json!("us-west-2"))).await?;
+
+    // Create VPC discovery manager
+    let vpc_manager =
+        create_component_for_default_schema_name_in_default_view(ctx, "fake::vpc", "vpc-manager")
+            .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Find and run VPC discovery management function
+    let vpc_management_prototype =
+        find_management_prototype(ctx, vpc_manager.id(), "Discover VPC").await?;
+    assert!(
+        ManagementPrototype::kind_by_id(ctx, vpc_management_prototype.id()).await?
+            == ManagementFuncKind::Discover
+    );
+
+    ChangeSetTestHelpers::enqueue_management_func_job(
+        ctx,
+        vpc_management_prototype.id(),
+        vpc_manager.id(),
+        None,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Verify VPC components were created and autosubscribed to region
+    let components = Component::list(ctx).await?;
+    let mut vpc1 = None;
+    for c in &components {
+        if c.name(ctx).await.unwrap() == "vpc1" {
+            vpc1 = Some(c);
+            break;
+        }
+    }
+    let vpc1 = vpc1.expect("vpc1 component should exist");
+
+    let vpc1_region_av_id =
+        Component::attribute_value_for_prop(ctx, vpc1.id(), &["root", "domain", "region"]).await?;
+
+    let vpc1_subscriptions = dal::AttributeValue::subscriptions(ctx, vpc1_region_av_id)
+        .await?
+        .expect("has subscriptions");
+    assert_eq!(
+        1,
+        vpc1_subscriptions.len(),
+        "vpc1 should have one subscription for region"
+    );
+
+    // Verify the subscription points to the region component
+    let region_root_av_id = Component::root_attribute_value_id(ctx, region.id()).await?;
+    assert_eq!(region_root_av_id, vpc1_subscriptions[0].attribute_value_id);
+    assert_eq!("/domain/region", vpc1_subscriptions[0].path.to_string());
+
+    // Create and run subnet discovery
+    let subnet_manager = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "fake::subnet",
+        "subnet-manager",
+    )
+    .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let subnet_management_prototype =
+        find_management_prototype(ctx, subnet_manager.id(), "Discover Subnet").await?;
+    assert!(
+        ManagementPrototype::kind_by_id(ctx, subnet_management_prototype.id()).await?
+            == ManagementFuncKind::Discover
+    );
+
+    ChangeSetTestHelpers::enqueue_management_func_job(
+        ctx,
+        subnet_management_prototype.id(),
+        subnet_manager.id(),
+        None,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Verify subnet components were created and autosubscribed to both region and vpc
+    let components = Component::list(ctx).await?;
+    let mut subnet1 = None;
+    for c in &components {
+        if c.name(ctx).await.unwrap() == "subnet1" {
+            subnet1 = Some(c);
+            break;
+        }
+    }
+    let subnet1 = subnet1.expect("subnet1 component should exist");
+
+    // Check region subscription
+    let subnet1_region_av_id =
+        Component::attribute_value_for_prop(ctx, subnet1.id(), &["root", "domain", "region"])
+            .await?;
+
+    let subnet1_region_subscriptions =
+        dal::AttributeValue::subscriptions(ctx, subnet1_region_av_id)
+            .await?
+            .expect("has subscriptions");
+    assert_eq!(
+        1,
+        subnet1_region_subscriptions.len(),
+        "subnet1 should have one subscription for region"
+    );
+    assert_eq!(
+        region_root_av_id,
+        subnet1_region_subscriptions[0].attribute_value_id
+    );
+
+    // Check VPC subscription
+    let subnet1_vpc_av_id =
+        Component::attribute_value_for_prop(ctx, subnet1.id(), &["root", "domain", "vpcId"])
+            .await?;
+
+    let subnet1_vpc_subscriptions = dal::AttributeValue::subscriptions(ctx, subnet1_vpc_av_id)
+        .await?
+        .expect("has subscriptions");
+    assert_eq!(
+        1,
+        subnet1_vpc_subscriptions.len(),
+        "subnet1 should have one subscription for vpcId"
+    );
+
+    let vpc1_root_av_id = Component::root_attribute_value_id(ctx, vpc1.id()).await?;
+    assert_eq!(
+        vpc1_root_av_id,
+        subnet1_vpc_subscriptions[0].attribute_value_id
+    );
+    assert_eq!(
+        "/resource_value/vpcId",
+        subnet1_vpc_subscriptions[0].path.to_string()
+    );
+
+    // Verify values flow through subscriptions
+    let subnet1_region_value = AttributeValue::get_by_id(ctx, subnet1_region_av_id)
+        .await?
+        .value(ctx)
+        .await?;
+    let subnet1_vpc_value = AttributeValue::get_by_id(ctx, subnet1_vpc_av_id)
+        .await?
+        .value(ctx)
+        .await?;
+
+    assert_eq!(Some(serde_json::json!("us-west-2")), subnet1_region_value);
+    assert_eq!(Some(serde_json::json!("vpc-12345")), subnet1_vpc_value);
 
     Ok(())
 }

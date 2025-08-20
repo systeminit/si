@@ -77,6 +77,7 @@ use crate::{
             FrameError,
             InferredEdgeChanges,
         },
+        resource::ResourceData,
     },
     dependency_graph::DependencyGraph,
     diagram::{
@@ -1766,16 +1767,16 @@ async fn add_action(
 }
 
 // Update operations should not be able to set these props or their children
-const IGNORE_PATHS: [&[&str]; 6] = [
+const IGNORE_PATHS: [&[&str]; 5] = [
     &["root", "code"],
     &["root", "deleted_at"],
     &["root", "qualification"],
-    &["root", "resource"],
     &["root", "resource_value"],
     &["root", "secrets"],
 ];
 
 const ROOT_SI_TYPE_PATH: &[&str] = &["root", "si", "type"];
+const RESOURCE_PATH: &[&str] = &["root", "resource"];
 
 async fn update_component(
     ctx: &DalContext,
@@ -1827,6 +1828,16 @@ async fn update_component(
             };
             Component::set_type_by_id(ctx, component_id, new_type).await?;
 
+            continue;
+        }
+        // handle resource special as well
+        if path_as_refs.as_slice() == RESOURCE_PATH {
+            let resource_data = ResourceData::new(
+                veritech_client::ResourceStatus::Ok,
+                Some(current_val.to_owned()),
+            );
+            let component = Component::get_by_id(ctx, component_id).await?;
+            component.set_resource(ctx, resource_data).await?;
             continue;
         }
 
