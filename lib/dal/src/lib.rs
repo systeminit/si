@@ -70,7 +70,10 @@ pub mod ws_event;
 
 pub use action::ActionPrototypeId;
 pub use attribute::{
-    attributes::update_attributes,
+    attributes::{
+        update_attributes,
+        update_attributes_without_validation,
+    },
     prototype::{
         AttributePrototype,
         AttributePrototypeId,
