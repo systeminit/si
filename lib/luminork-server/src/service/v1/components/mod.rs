@@ -73,6 +73,7 @@ pub mod connections;
 pub mod create_component;
 pub mod delete_component;
 pub mod duplicate_components;
+pub mod erase_component;
 pub mod execute_management_function;
 pub mod find_component;
 pub mod generate_template;
@@ -804,6 +805,7 @@ pub fn routes() -> Router<AppState> {
                 )
                 .route("/action", post(add_action::add_action))
                 .route("/manage", post(manage_component::manage_component))
-                .route("/upgrade", post(upgrade_component::upgrade_component)),
+                .route("/upgrade", post(upgrade_component::upgrade_component))
+                .route("/erase", post(erase_component::erase_component)),
         )
 }

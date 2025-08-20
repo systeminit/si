@@ -230,6 +230,12 @@ pub enum AuditLogKindV1 {
         component_id: Option<ComponentId>,
         subject_name: String,
     },
+    EraseComponent {
+        name: String,
+        component_id: ComponentId,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_name: String,
+    },
     ExecuteFunc {
         func_id: FuncId,
         func_display_name: Option<String>,
@@ -679,6 +685,13 @@ pub enum AuditLogMetadataV1 {
         subject_name: String,
     },
     #[serde(rename_all = "camelCase")]
+    EraseComponent {
+        name: String,
+        component_id: ComponentId,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
     ExecuteFunc {
         func_id: FuncId,
         func_display_name: Option<String>,
@@ -986,6 +999,7 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::DeleteSecret => ("Deleted", Some("Secret")),
             MetadataDiscrim::DeleteView => ("Deleted", Some("View")),
             MetadataDiscrim::DetachFunc => ("Detached", Some("Function")),
+            MetadataDiscrim::EraseComponent => ("Erased", Some("Component")),
             MetadataDiscrim::ExecuteFunc => ("Executed", Some("Function")),
             MetadataDiscrim::ExportWorkspace => ("Exported", Some("Workspace")),
             MetadataDiscrim::InstallWorkspace => ("Installed", Some("Workspace")),
@@ -1334,6 +1348,17 @@ impl From<Kind> for Metadata {
                 schema_variant_id,
                 component_id,
                 subject_name,
+            },
+            Kind::EraseComponent {
+                name,
+                component_id,
+                schema_variant_id,
+                schema_variant_name,
+            } => Self::EraseComponent {
+                name,
+                component_id,
+                schema_variant_id,
+                schema_variant_name,
             },
             Kind::ExecuteFunc {
                 func_id,
