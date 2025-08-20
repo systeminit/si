@@ -2535,6 +2535,12 @@
       "Terminate"
     ]
   },
+  "Specifies whether application data is encrypted using service key: AWS_OWNED_KEY or customer key: CUSTOMER_MANAGED_KEY": {
+    "enum": [
+      "AWS_OWNED_KEY",
+      "CUSTOMER_MANAGED_KEY"
+    ]
+  },
   "The source of the key material for the KMS key. You cannot change the origin after you create the KMS key. The default is ``AWS_KMS``, which means that KMS creates the key material.\n To [create a KMS key with no key material](https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys-create-cmk.html) (for imported key material), set this value to ``EXTERNAL``. For more information about importing key material into KMS, see [Importing Key Material](https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys.html) in the *Developer Guide*.\n You can ignore ``ENABLED`` when Origin is ``EXTERNAL``. When a KMS key with Origin ``EXTERNAL`` is created, the key state is ``PENDING_IMPORT`` and ``ENABLED`` is ``false``. After you import the key material, ``ENABLED`` updated to ``true``. The KMS key can then be used for Cryptographic Operations. \n   +  CFN doesn't support creating an ``Origin`` parameter of the ``AWS_CLOUDHSM`` or ``EXTERNAL_KEY_STORE`` values.\n  +  ``EXTERNAL`` is not supported for ML-DSA keys.": {
     "enum": [
       "AWS_KMS",
@@ -5961,6 +5967,9 @@
     "enum": null
   },
   "KMS Key Arn used to encrypt the group policy": {
+    "enum": null
+  },
+  "KMS KeyId. Can be either key uuid or full key arn or key alias arn or short key alias": {
     "enum": null
   },
   "KMS key ARN to encrypt the logs stored in given CloudWatch log-group.": {
