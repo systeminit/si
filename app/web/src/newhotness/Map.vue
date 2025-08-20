@@ -822,14 +822,21 @@ const mapData = computed(() => {
     return { nodes, edges, components };
   }
 
-  connections.data.value.forEach((c) => {
-    if (!componentsById.value[c.id]) return;
+  // Check if we should filter to only show connected components
+  const shouldHideUnconnected =
+    router.currentRoute.value.query.hideSubscriptions === "1";
+  const hasSelectedComponents = selectedComponents.value.size > 0;
 
-    nodes.add(c.id);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    components[c.id] = componentsById.value[c.id]!;
+  // First pass: collect all components and their connections
+  const allComponents = new Map<string, ComponentInList>();
+  const allConnections = new Set<string>();
+
+  connections.data.value.forEach((c) => {
+    const component = componentsById.value[c.id];
+    if (!component) return;
+    allComponents.set(c.id, component);
+
     c.connections.forEach((e) => {
-      // incoming, so "to" is me, always start with "me"
       if (
         !componentsById.value[e.toComponentId] ||
         !componentsById.value[e.fromComponentId]
@@ -837,9 +844,68 @@ const mapData = computed(() => {
         return;
 
       const edge = `${e.toComponentId}-${e.fromComponentId}`;
-      edges.add(edge);
+      allConnections.add(edge);
     });
   });
+
+  // If we're in hideSubscriptions mode and have selected components, filter the data
+  if (shouldHideUnconnected && hasSelectedComponents) {
+    // Get the connected component IDs (including selected ones)
+    const connectedIds = new Set<string>();
+
+    // Always include selected components
+    selectedComponents.value.forEach((comp) => {
+      connectedIds.add(comp.id);
+    });
+
+    // Add directly connected components
+    selectedComponents.value.forEach((selectedComp) => {
+      const selectedId = selectedComp.id;
+
+      connections.data.value?.forEach((component) => {
+        component.connections.forEach((connection) => {
+          if (connection.toComponentId === selectedId) {
+            connectedIds.add(connection.fromComponentId);
+          }
+          if (connection.fromComponentId === selectedId) {
+            connectedIds.add(connection.toComponentId);
+          }
+        });
+      });
+    });
+
+    // Only include connected components in the final data
+    connectedIds.forEach((componentId) => {
+      const component = allComponents.get(componentId);
+      if (component) {
+        nodes.add(componentId);
+        components[componentId] = component;
+      }
+    });
+
+    // Only include edges between visible components
+    allConnections.forEach((edgeId) => {
+      const [targetId, sourceId] = edgeId.split("-");
+      if (
+        targetId &&
+        sourceId &&
+        connectedIds.has(targetId) &&
+        connectedIds.has(sourceId)
+      ) {
+        edges.add(edgeId);
+      }
+    });
+  } else {
+    // Normal mode: include all components
+    allComponents.forEach((component, componentId) => {
+      nodes.add(componentId);
+      components[componentId] = component;
+    });
+
+    allConnections.forEach((edge) => {
+      edges.add(edge);
+    });
+  }
 
   return { nodes, edges, components };
 });
@@ -1056,19 +1122,12 @@ watch(
       n.classList.remove("selected");
       n.classList.remove("greyed-out");
       n.classList.remove("failed-actions");
-      // Restore display for hidden elements
-      (n as HTMLElement).style.display = "";
     });
 
-    // Remove greyed-out classes from text elements and restore display
+    // Remove greyed-out classes from text elements
     document
       .querySelectorAll("#map > svg text")
       .forEach((n) => n.classList.remove("greyed-out"));
-
-    // Restore display for all groups that might have been hidden
-    document.querySelectorAll("#map > svg g").forEach((group) => {
-      (group as SVGGElement).style.display = "";
-    });
 
     // Reset opacity for all icons and color bars
     document.querySelectorAll("#map > svg path").forEach((path) => {
@@ -1077,11 +1136,6 @@ watch(
       } else {
         (path as HTMLElement).style.opacity = "1";
       }
-    });
-
-    // Restore display for all edges that might have been hidden
-    document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
-      (edge as SVGPathElement).style.display = "";
     });
 
     const routeQuery = router.currentRoute.value?.query || {};
@@ -1112,14 +1166,13 @@ watch(
     });
 
     if (selectedComponents.value.size > 0) {
-      // Only apply special connection filtering (hiding) when hideSubscriptions=1
+      // In hideSubscriptions mode, the mapData computed already filters the components
+      // so we don't need to do DOM manipulation here. Just handle styling for normal mode.
       const shouldHideUnconnected =
         router.currentRoute.value.query.hideSubscriptions === "1";
-      if (shouldHideUnconnected) {
-        // Apply connection filtering (hide unconnected components)
-        applyConnectionFiltering();
-      } else {
-        // Normal behavior: just grey out unconnected components
+
+      if (!shouldHideUnconnected) {
+        // Normal behavior: just grey out unconnected components (since all are rendered)
         document.querySelectorAll("#map > svg rect.node").forEach((element) => {
           const componentId = Array.from(element.classList)
             .find((cls) => cls.startsWith("id-"))
@@ -1161,43 +1214,43 @@ watch(
             });
           }
         });
-
-        // Handle normal edge styling (not hiding)
-        document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
-          const edgeElement = edge as SVGPathElement;
-          const edgeId = edgeElement.getAttribute("data-edge-id");
-
-          if (edgeId) {
-            const [targetId, sourceId] = edgeId.split("-");
-            const isConnectedToSelected = Array.from(
-              selectedComponents.value,
-            ).some(
-              (component) =>
-                targetId === component.id || sourceId === component.id,
-            );
-
-            // Update stroke color - theme aware
-            const isDark = document.body.classList.contains("dark");
-            const connectedColor = isDark ? "#93c5fd" : "#3b82f6"; // action-300 : action-500
-            const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
-
-            edgeElement.style.stroke = isConnectedToSelected
-              ? connectedColor
-              : greyedColor;
-            // Update opacity
-            edgeElement.style.opacity = isConnectedToSelected ? "1" : "0.3";
-            // Update stroke width
-            edgeElement.style.strokeWidth = isConnectedToSelected ? "2" : "1";
-            // Update arrow marker
-            edgeElement.setAttribute(
-              "marker-end",
-              isConnectedToSelected
-                ? "url(#arrowhead-highlighted)"
-                : "url(#arrowhead-greyed)",
-            );
-          }
-        });
       }
+
+      // Handle edge styling for both modes
+      document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
+        const edgeElement = edge as SVGPathElement;
+        const edgeId = edgeElement.getAttribute("data-edge-id");
+
+        if (edgeId) {
+          const [targetId, sourceId] = edgeId.split("-");
+          const isConnectedToSelected = Array.from(
+            selectedComponents.value,
+          ).some(
+            (component) =>
+              targetId === component.id || sourceId === component.id,
+          );
+
+          // Update stroke color - theme aware
+          const isDark = document.body.classList.contains("dark");
+          const connectedColor = isDark ? "#93c5fd" : "#3b82f6"; // action-300 : action-500
+          const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
+
+          edgeElement.style.stroke = isConnectedToSelected
+            ? connectedColor
+            : greyedColor;
+          // Update opacity
+          edgeElement.style.opacity = isConnectedToSelected ? "1" : "0.3";
+          // Update stroke width
+          edgeElement.style.strokeWidth = isConnectedToSelected ? "2" : "1";
+          // Update arrow marker
+          edgeElement.setAttribute(
+            "marker-end",
+            isConnectedToSelected
+              ? "url(#arrowhead-highlighted)"
+              : "url(#arrowhead-greyed)",
+          );
+        }
+      });
     } else {
       // Reset edges to default when no component is selected
       document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
@@ -1302,204 +1355,8 @@ const connectedComponentIds = computed(() => {
   return connectedIds;
 });
 
-// Watch for components data to become available and reapply filtering
-watch(
-  () => props.components,
-  (newComponents) => {
-    if (
-      newComponents &&
-      newComponents.length > 0 &&
-      router.currentRoute.value.query.hideSubscriptions === "1"
-    ) {
-      // Small delay to ensure DOM is updated
-      setTimeout(() => {
-        applyConnectionFiltering();
-      }, 100);
-    }
-  },
-  { immediate: true },
-);
-
-// Function to apply connection filtering (hide vs grey out)
-const applyConnectionFiltering = () => {
-  const shouldHideUnconnected =
-    router.currentRoute.value.query.hideSubscriptions === "1";
-
-  if (selectedComponents.value.size === 0) return;
-
-  // Get URL component IDs for additional protection
-  const urlComponentIds = new Set<string>();
-  if (shouldHideUnconnected && router.currentRoute.value.query.c) {
-    const ids = router.currentRoute.value.query.c.toString().split(",");
-    ids.forEach((id) => {
-      if (id.trim()) {
-        urlComponentIds.add(id.trim());
-      }
-    });
-  }
-
-  // Hide/grey out unconnected component nodes
-  document.querySelectorAll("#map > svg rect.node").forEach((element) => {
-    const componentId = Array.from(element.classList)
-      .find((cls) => cls.startsWith("id-"))
-      ?.substring(3);
-
-    if (componentId) {
-      const isInConnectedIds = connectedComponentIds.value.has(componentId);
-      const hasSelectedClass = element.classList.contains("selected");
-      const isCurrentlySelected = Array.from(selectedComponents.value).some(
-        (comp) => comp.id === componentId,
-      );
-      const isInUrlParams = urlComponentIds.has(componentId);
-
-      // Special protection for URL components when data might not be fully loaded
-      const isProtectedUrlComponent =
-        shouldHideUnconnected &&
-        router.currentRoute.value.query.c &&
-        router.currentRoute.value.query.c.toString().includes(componentId);
-
-      // Don't hide components that are in connectedIds, have selected class, are currently selected, in URL, or protected URL components
-      if (
-        !isInConnectedIds &&
-        !hasSelectedClass &&
-        !isCurrentlySelected &&
-        !isInUrlParams &&
-        !isProtectedUrlComponent
-      ) {
-        if (shouldHideUnconnected) {
-          (element as HTMLElement).style.display = "none";
-        } else {
-          element.classList.add("greyed-out");
-        }
-      }
-    }
-  });
-
-  // Hide/grey out unconnected component text and icons
-  document.querySelectorAll("#map > svg g").forEach((group) => {
-    const rect = group.querySelector("rect.node");
-    const componentId = Array.from(rect?.classList || [])
-      .find((cls) => cls.startsWith("id-"))
-      ?.substring(3);
-
-    if (componentId) {
-      const isInConnectedIds = connectedComponentIds.value.has(componentId);
-      const hasSelectedClass = rect?.classList.contains("selected");
-      const isCurrentlySelected = Array.from(selectedComponents.value).some(
-        (comp) => comp.id === componentId,
-      );
-      const isInUrlParams = urlComponentIds.has(componentId);
-
-      // Special protection for URL components when data might not be fully loaded
-      const isProtectedUrlComponent =
-        shouldHideUnconnected &&
-        router.currentRoute.value.query.c &&
-        router.currentRoute.value.query.c.toString().includes(componentId);
-
-      // Don't hide components that are in connectedIds, have selected class, are currently selected, in URL, or protected URL components
-      if (
-        !isInConnectedIds &&
-        !hasSelectedClass &&
-        !isCurrentlySelected &&
-        !isInUrlParams &&
-        !isProtectedUrlComponent
-      ) {
-        if (shouldHideUnconnected) {
-          (group as SVGGElement).style.display = "none";
-        } else {
-          // Grey out text and icons
-          group.querySelectorAll("text").forEach((text) => {
-            text.classList.add("greyed-out");
-          });
-          group.querySelectorAll("path").forEach((path) => {
-            if (path.getAttribute("stroke")) {
-              path.setAttribute("stroke-opacity", "0.3");
-            } else {
-              path.style.opacity = "0.3";
-            }
-          });
-        }
-      }
-    }
-  });
-
-  // Handle edge styling (hide vs grey out vs highlight)
-  document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
-    const edgeElement = edge as SVGPathElement;
-    const edgeId = edgeElement.getAttribute("data-edge-id");
-
-    if (edgeId) {
-      const [targetId, sourceId] = edgeId.split("-");
-      const isConnectedToSelected = Array.from(selectedComponents.value).some(
-        (component) => targetId === component.id || sourceId === component.id,
-      );
-
-      if (shouldHideUnconnected && !isConnectedToSelected) {
-        edgeElement.style.display = "none";
-      } else {
-        // Update stroke color - theme aware
-        const isDark = document.body.classList.contains("dark");
-        const connectedColor = isDark ? "#93c5fd" : "#3b82f6"; // action-300 : action-500
-        const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
-
-        edgeElement.style.stroke = isConnectedToSelected
-          ? connectedColor
-          : greyedColor;
-        // Update opacity
-        edgeElement.style.opacity = isConnectedToSelected ? "1" : "0.3";
-        // Update stroke width
-        edgeElement.style.strokeWidth = isConnectedToSelected ? "2" : "1";
-        // Update arrow marker
-        edgeElement.setAttribute(
-          "marker-end",
-          isConnectedToSelected
-            ? "url(#arrowhead-highlighted)"
-            : "url(#arrowhead-greyed)",
-        );
-      }
-    }
-  });
-
-  // Final protection: Ensure URL components are always visible after all other filtering
-  if (shouldHideUnconnected && router.currentRoute.value.query.c) {
-    const urlComponentIds = router.currentRoute.value.query.c
-      .toString()
-      .split(",");
-    urlComponentIds.forEach((componentId) => {
-      if (componentId.trim()) {
-        const id = componentId.trim();
-
-        // Force rect to be visible
-        const rect = document.querySelector(`#map > svg rect.node.id-${id}`);
-        if (rect) {
-          (rect as HTMLElement).style.display = "";
-          (rect as HTMLElement).style.visibility = "visible";
-          (rect as HTMLElement).style.opacity = "1";
-        }
-
-        // Force group to be visible
-        const group = document.querySelector(
-          `#map > svg g:has(rect.node.id-${id})`,
-        );
-        if (group) {
-          (group as SVGGElement).style.display = "";
-          (group as SVGGElement).style.visibility = "visible";
-
-          // Make sure text and icons are visible
-          group.querySelectorAll("text").forEach((text) => {
-            text.classList.remove("greyed-out");
-            (text as SVGTextElement).style.opacity = "1";
-          });
-
-          group.querySelectorAll("path").forEach((path) => {
-            path.setAttribute("stroke-opacity", "1");
-            (path as SVGPathElement).style.opacity = "1";
-          });
-        }
-      }
-    });
-  }
-};
+// Note: Connection filtering is now handled in the mapData computed,
+// so we no longer need separate DOM manipulation for hiding/showing components
 
 const fillDefault = ref<string[]>();
 const isLoadingFromURL = ref<boolean>(false);
@@ -1555,20 +1412,8 @@ watch(
             pendingPanComponent.value = selectedComps[0].id;
           }
           fillDefault.value = undefined;
-
-          // Force filtering to run after component selection when hideSubscriptions is active
-          const shouldHideUnconnected =
-            router.currentRoute.value.query.hideSubscriptions === "1";
-          if (shouldHideUnconnected) {
-            setTimeout(() => {
-              applyConnectionFiltering();
-              // Clear the loading flag after filtering is applied
-              isLoadingFromURL.value = false;
-            }, 500);
-          } else {
-            // Clear the loading flag even if no filtering needed
-            isLoadingFromURL.value = false;
-          }
+          // Clear the loading flag since selection is complete
+          isLoadingFromURL.value = false;
         }
       });
     }
