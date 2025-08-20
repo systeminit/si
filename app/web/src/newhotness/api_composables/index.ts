@@ -432,7 +432,9 @@ export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
     const mustCompress = COMPRESSED_ROUTES.includes(key);
     const argList = args ? Object.entries(args).flatMap((m) => m) : [];
-    const desc = `${key} ${argList.join(": ")} by ${
+    const desc = `${
+      key === routes.DeleteComponents ? "Remove Component" : key
+    } ${argList.join(": ")} by ${
       ctx.user?.name
     } on ${new Date().toLocaleDateString()}`;
     labeledObs = setLabel(obs, `${key}.${argList.join(".")}`);
