@@ -1966,6 +1966,19 @@ export interface RequestApprovalChangeSetV1Response {
 /**
  * 
  * @export
+ * @interface RestoreComponentV1Response
+ */
+export interface RestoreComponentV1Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof RestoreComponentV1Response
+     */
+    'status': boolean;
+}
+/**
+ * 
+ * @export
  * @interface RetryActionV1Response
  */
 export interface RetryActionV1Response {
@@ -4313,6 +4326,48 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Restore a component that is marked for deletion
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        restoreComponent: async (workspaceId: string, changeSetId: string, componentId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('restoreComponent', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('restoreComponent', 'changeSetId', changeSetId)
+            // verify required parameter 'componentId' is not null or undefined
+            assertParamExists('restoreComponent', 'componentId', componentId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/restore`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"component_id"}}`, encodeURIComponent(String(componentId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Complex search for components
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -4627,6 +4682,21 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Restore a component that is marked for deletion
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async restoreComponent(workspaceId: string, changeSetId: string, componentId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RestoreComponentV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.restoreComponent(workspaceId, changeSetId, componentId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ComponentsApi.restoreComponent']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Complex search for components
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -4793,6 +4863,16 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Restore a component that is marked for deletion
+         * @param {ComponentsApiRestoreComponentRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        restoreComponent(requestParameters: ComponentsApiRestoreComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<RestoreComponentV1Response> {
+            return localVarFp.restoreComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Complex search for components
          * @param {ComponentsApiSearchComponentsRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -4939,6 +5019,16 @@ export interface ComponentsApiInterface {
      * @memberof ComponentsApiInterface
      */
     manageComponent(requestParameters: ComponentsApiManageComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<ManageComponentV1Response>;
+
+    /**
+     * 
+     * @summary Restore a component that is marked for deletion
+     * @param {ComponentsApiRestoreComponentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApiInterface
+     */
+    restoreComponent(requestParameters: ComponentsApiRestoreComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<RestoreComponentV1Response>;
 
     /**
      * 
@@ -5316,6 +5406,34 @@ export interface ComponentsApiManageComponentRequest {
 }
 
 /**
+ * Request parameters for restoreComponent operation in ComponentsApi.
+ * @export
+ * @interface ComponentsApiRestoreComponentRequest
+ */
+export interface ComponentsApiRestoreComponentRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ComponentsApiRestoreComponent
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ComponentsApiRestoreComponent
+     */
+    readonly changeSetId: string
+
+    /**
+     * Component identifier
+     * @type {string}
+     * @memberof ComponentsApiRestoreComponent
+     */
+    readonly componentId: string
+}
+
+/**
  * Request parameters for searchComponents operation in ComponentsApi.
  * @export
  * @interface ComponentsApiSearchComponentsRequest
@@ -5543,6 +5661,18 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      */
     public manageComponent(requestParameters: ComponentsApiManageComponentRequest, options?: RawAxiosRequestConfig) {
         return ComponentsApiFp(this.configuration).manageComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, requestParameters.manageComponentV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Restore a component that is marked for deletion
+     * @param {ComponentsApiRestoreComponentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApi
+     */
+    public restoreComponent(requestParameters: ComponentsApiRestoreComponentRequest, options?: RawAxiosRequestConfig) {
+        return ComponentsApiFp(this.configuration).restoreComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
