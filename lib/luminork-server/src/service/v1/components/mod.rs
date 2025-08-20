@@ -80,6 +80,7 @@ pub mod generate_template;
 pub mod get_component;
 pub mod list_components;
 pub mod manage_component;
+pub mod restore_component;
 pub mod search_components;
 pub mod subscriptions;
 pub mod update_component;
@@ -108,6 +109,8 @@ pub enum ComponentsError {
     Component(#[from] dal::ComponentError),
     #[error("component not found: {0}")]
     ComponentNotFound(String),
+    #[error("component not marked for deletion: {0}")]
+    ComponentNotRestorable(ComponentId),
     #[error("dal change set error: {0}")]
     DalChangeSet(#[from] dal::ChangeSetError),
     #[error("diagram error: {0}")]
@@ -254,6 +257,9 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
             ComponentsError::ComponentNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentsError::ComponentNotRestorable(_) => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
             ComponentsError::SchemaNameNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentsError::ActionFunctionNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentsError::ManagementFunctionNotFound(_) => {
@@ -806,6 +812,7 @@ pub fn routes() -> Router<AppState> {
                 .route("/action", post(add_action::add_action))
                 .route("/manage", post(manage_component::manage_component))
                 .route("/upgrade", post(upgrade_component::upgrade_component))
-                .route("/erase", post(erase_component::erase_component)),
+                .route("/erase", post(erase_component::erase_component))
+                .route("/restore", post(restore_component::restore_component)),
         )
 }

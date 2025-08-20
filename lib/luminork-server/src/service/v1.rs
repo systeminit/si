@@ -90,6 +90,7 @@ pub use components::{
         ManageComponentV1Request,
         ManageComponentV1Response,
     },
+    restore_component::RestoreComponentV1Response,
     search_components::{
         SearchComponentsV1Request,
         SearchComponentsV1Response,
@@ -168,6 +169,7 @@ pub use crate::api_types::func_run::v1::{
         components::upgrade_component::upgrade_component,
         components::generate_template::generate_template,
         components::erase_component::erase_component,
+        components::restore_component::restore_component,
         schemas::list_schemas::list_schemas,
         schemas::find_schema::find_schema,
         schemas::get_schema::get_schema,
@@ -219,6 +221,7 @@ pub use crate::api_types::func_run::v1::{
             UpdateComponentV1Response,
             DeleteComponentV1Response,
             EraseComponentV1Response,
+            RestoreComponentV1Response,
             DuplicateComponentsV1Request,
             DuplicateComponentsV1Response,
             GenerateTemplateV1Request,
