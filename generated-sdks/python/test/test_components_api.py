@@ -54,6 +54,13 @@ class TestComponentsApi(unittest.TestCase):
         """
         pass
 
+    def test_erase_component(self) -> None:
+        """Test case for erase_component
+
+        Erase a component without queuing a delete action
+        """
+        pass
+
     def test_execute_management_function(self) -> None:
         """Test case for execute_management_function
 
