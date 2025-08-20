@@ -4,6 +4,7 @@ use std::collections::{
 };
 
 use axum::{
+    Json,
     Router,
     extract::rejection::JsonRejection,
     http::StatusCode,
@@ -431,7 +432,7 @@ pub struct GetSchemaVariantV1Response {
         ]
       }
     ]}))]
-    pub domain_props: PropSchemaV1,
+    pub domain_props: Option<PropSchemaV1>,
 }
 
 #[derive(Serialize, Debug, ToSchema)]
@@ -538,4 +539,55 @@ pub struct GetSchemaV1Response {
     pub default_variant_id: SchemaVariantId,
     #[schema(value_type = Vec<String>, example = json!(["01H9ZQD35JPMBGHH69BT0Q79VZ", "01H9ZQD35JPMBGHH69BT0Q79VY"]))]
     pub variant_ids: Vec<SchemaVariantId>,
+}
+
+#[derive(Serialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildingResponseV1 {
+    #[schema(value_type = String, example = "building")]
+    pub status: String,
+    #[schema(value_type = String, example = "Schema data is being generated, please retry shortly")]
+    pub message: String,
+    #[schema(value_type = u64, example = 2)]
+    pub retry_after_seconds: u64,
+    #[schema(value_type = u64, example = 10)]
+    pub estimated_completion_seconds: u64,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum SchemaVariantResponseV1 {
+    Success(Box<GetSchemaVariantV1Response>),
+    Building(BuildingResponseV1),
+}
+
+impl IntoResponse for SchemaVariantResponseV1 {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            SchemaVariantResponseV1::Success(response) => {
+                (StatusCode::OK, Json(response)).into_response()
+            }
+            SchemaVariantResponseV1::Building(response) => {
+                (StatusCode::ACCEPTED, Json(response)).into_response()
+            }
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum SchemaResponseV1 {
+    Success(GetSchemaV1Response),
+    Building(Box<BuildingResponseV1>),
+}
+
+impl IntoResponse for SchemaResponseV1 {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            SchemaResponseV1::Success(response) => (StatusCode::OK, Json(response)).into_response(),
+            SchemaResponseV1::Building(response) => {
+                (StatusCode::ACCEPTED, Json(response)).into_response()
+            }
+        }
+    }
 }

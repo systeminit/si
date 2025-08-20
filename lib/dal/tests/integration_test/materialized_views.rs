@@ -7,6 +7,7 @@ use dal::{
     Func,
     Prop,
     SchemaVariant,
+    SchemaVariantId,
     action::{
         Action,
         prototype::ActionPrototype,
@@ -157,6 +158,22 @@ async fn schema_variant(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
+#[test]
+async fn cached_schema_variant_not_found(ctx: &DalContext) -> Result<()> {
+    // Use a non-existent SchemaVariantId
+    let non_existent_id = SchemaVariantId::new();
+
+    // Should return an error for non-existent variant
+    let result =
+        dal_materialized_views::cached::schema::variant::assemble(ctx.clone(), non_existent_id)
+            .await;
+    assert!(
+        result.is_err(),
+        "Should return error for non-existent schema variant"
+    );
+
+    Ok(())
+}
 #[test]
 async fn component(ctx: &DalContext) -> Result<()> {
     let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;

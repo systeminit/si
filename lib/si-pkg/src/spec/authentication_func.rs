@@ -4,7 +4,10 @@ use serde::{
     Serialize,
 };
 
-use super::SpecError;
+use super::{
+    HasUniqueId,
+    SpecError,
+};
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,6 +26,12 @@ pub struct AuthenticationFuncSpec {
     #[builder(setter(into), default)]
     #[serde(default)]
     pub deleted: bool,
+}
+
+impl HasUniqueId for AuthenticationFuncSpec {
+    fn unique_id(&self) -> Option<&str> {
+        self.unique_id.as_deref()
+    }
 }
 
 impl AuthenticationFuncSpec {

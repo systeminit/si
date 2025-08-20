@@ -11,6 +11,7 @@ use super::{
 };
 use crate::{
     AttrFuncInputSpec,
+    HasUniqueId,
     SiPkgAttrFuncInput,
     SiPropFuncSpec,
     SiPropFuncSpecKind,
@@ -91,6 +92,12 @@ impl<'a> SiPkgSiPropFunc<'a> {
 
     pub fn source(&self) -> &Source<'a> {
         &self.source
+    }
+}
+
+impl<'a> HasUniqueId for SiPkgSiPropFunc<'a> {
+    fn unique_id(&self) -> Option<&str> {
+        self.unique_id()
     }
 }
 

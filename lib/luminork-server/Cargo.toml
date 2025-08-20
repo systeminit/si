@@ -54,6 +54,7 @@ si-data-pg = { path = "../../lib/si-data-pg" }
 si-data-spicedb = { path = "../../lib/si-data-spicedb" }
 si-db = { path = "../../lib/si-db" }
 si-events = { path = "../../lib/si-events-rs" }
+si-frontend-mv-types = { path = "../../lib/si-frontend-mv-types-rs" }
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
 si-id = { path = "../../lib/si-id" }
 si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }

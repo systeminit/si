@@ -23,6 +23,9 @@
 )]
 
 pub mod action;
+pub mod cached_default_variant;
+pub mod cached_schema;
+pub mod cached_schema_variant;
 pub mod cached_schemas;
 mod change_set;
 pub mod checksum;
@@ -40,6 +43,8 @@ pub mod temporary_conversion_impls;
 pub mod view;
 
 pub use crate::{
+    cached_schema::CachedSchema,
+    cached_schema_variant::CachedSchemaVariant,
     materialized_view::MaterializedView,
     schema_variant::{
         SchemaVariant,

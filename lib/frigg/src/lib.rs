@@ -150,8 +150,7 @@ impl FriggStore {
         )
     )]
     pub async fn insert_deployment_object(&self, object: &FrontendObject) -> Result<Subject> {
-        let key =
-            Self::deployment_object_key(&object.kind.to_string(), &object.id, &object.checksum);
+        let key = Self::deployment_object_key(&object.kind, &object.id, &object.checksum);
         let value = serde_json::to_vec(&object).map_err(Error::Serialize)?;
         if let Err(err) = self.store.create(key.as_str(), value.into()).await {
             if !matches!(err.kind(), CreateErrorKind::AlreadyExists) {
@@ -173,12 +172,16 @@ impl FriggStore {
     ))]
     pub async fn get_deployment_object(
         &self,
-        kind: &str,
+        kind: ReferenceKind,
         id: &str,
         checksum: &str,
     ) -> Result<Option<FrontendObject>> {
         match self
-            .get_object_raw_bytes(&Self::deployment_object_key(kind, id, checksum))
+            .get_object_raw_bytes(&Self::deployment_object_key(
+                &kind.to_string(),
+                id,
+                checksum,
+            ))
             .await?
         {
             Some((bytes, _)) => Ok(Some(
@@ -198,9 +201,10 @@ impl FriggStore {
     ))]
     pub async fn get_current_deployment_object(
         &self,
-        kind: &str,
+        kind: ReferenceKind,
         id: &str,
     ) -> Result<Option<FrontendObject>> {
+        let kind_str = kind.to_string();
         let Some((current_index, _)) = self.get_deployment_index().await? else {
             return Ok(None);
         };
@@ -208,7 +212,7 @@ impl FriggStore {
             serde_json::from_value(current_index.data).map_err(FriggError::Deserialize)?;
 
         for index_entry in mv_index.mv_list {
-            if index_entry.kind == kind && index_entry.id == id {
+            if index_entry.kind == kind_str && index_entry.id == id {
                 return Ok(Some(
                     self.get_deployment_object(kind, id, &index_entry.checksum)
                         .await?
@@ -221,6 +225,39 @@ impl FriggStore {
         }
 
         Ok(None)
+    }
+
+    #[instrument(
+        name = "frigg.get_current_deployment_objects_by_kind",
+        level = "debug",
+        skip_all,
+        fields(
+            si.frontend_object.kind = %kind,
+    ))]
+    pub async fn get_current_deployment_objects_by_kind(
+        &self,
+        kind: ReferenceKind,
+    ) -> Result<Vec<FrontendObject>> {
+        let kind_str = kind.to_string();
+        let Some((current_index, _)) = self.get_deployment_index().await? else {
+            return Ok(Vec::new());
+        };
+        let mv_index: DeploymentMvIndex =
+            serde_json::from_value(current_index.data).map_err(FriggError::Deserialize)?;
+
+        let mut objects = Vec::new();
+        for index_entry in mv_index.mv_list {
+            if index_entry.kind == kind_str {
+                if let Ok(Some(obj)) = self
+                    .get_deployment_object(kind, &index_entry.id, &index_entry.checksum)
+                    .await
+                {
+                    objects.push(obj);
+                }
+            }
+        }
+
+        Ok(objects)
     }
 
     #[instrument(

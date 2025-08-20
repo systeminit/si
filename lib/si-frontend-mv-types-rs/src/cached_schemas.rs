@@ -35,6 +35,7 @@ lazy_static! {
 #[mv(
     trigger_entity = EntityKind::OutOfGraph,
     reference_kind = ReferenceKind::CachedSchemas,
+    build_priority = "List",
 )]
 pub struct CachedSchemas {
     pub id: Ulid,
