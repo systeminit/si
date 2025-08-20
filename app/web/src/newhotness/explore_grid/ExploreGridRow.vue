@@ -3,7 +3,7 @@
     v-if="row.type === 'header'"
     :class="
       clsx(
-        'flex flex-row items-center gap-xs px-xs',
+        'flex flex-row items-center justify-center gap-xs px-xs',
         themeClasses('bg-neutral-200', 'bg-neutral-800'),
       )
     "
@@ -24,7 +24,7 @@
     v-else-if="row.type === 'defaultSubHeader'"
     :class="
       clsx(
-        'flex flex-row items-center gap-xs px-xs',
+        'flex flex-row items-center gap-sm px-xs',
         themeClasses('bg-neutral-200', 'bg-neutral-800'),
       )
     "
@@ -32,17 +32,50 @@
   >
     <Icon :name="row.collapsed ? 'chevron--right' : 'chevron--down'" />
     <Icon :name="getAssetIcon(row.schemaCategory)" size="md" />
-    <span
-      class="cursor-pointer select-none"
+    <div
+      class="cursor-pointer select-none flex flex-row items-center gap-xs"
       @click="
         () =>
           row.type === 'defaultSubHeader' &&
           emit('componentNavigate', row.componentId)
       "
     >
-      {{ row.schemaName }} ({{ row.componentName }})
-      <TextPill>{{ renderLastPath(row.path) }}</TextPill>
-    </span>
+      <span>{{ row.schemaName }}</span>
+      <span :class="themeClasses('text-neutral-600', 'text-neutral-400')"
+        >({{ row.componentName }})</span
+      >
+
+      <span
+        v-if="defaultSubSourceValuesQuery.data.value"
+        :class="
+          clsx(
+            'border rounded-sm p-2xs font-normal flex items-center',
+            themeClasses(
+              'border-neutral-400 bg-neutral-100 text-action-600',
+              'border-neutral-500 bg-neutral-800 text-action-300',
+            ),
+          )
+        "
+        >{{ defaultSubSourceValuesQuery.data.value.prop }}</span
+      >
+
+      <span
+        v-if="defaultSubSourceValuesQuery.data.value"
+        :class="
+          clsx(
+            'border border-dashed rounded-sm font-normal flex flex-row items-center gap-2xs p-2xs',
+            themeClasses(
+              'border-neutral-400 bg-neutral-100',
+              'border-neutral-500 bg-neutral-800',
+            ),
+          )
+        "
+        ><Icon name="arrow-outward" size="xs" />
+        <TruncateWithTooltip>{{
+          defaultSubSourceValuesQuery.data.value.value
+        }}</TruncateWithTooltip></span
+      >
+    </div>
     <PillCounter :count="row.count" class="text-xs" />
   </div>
   <div
@@ -259,15 +292,22 @@ import {
   PillCounter,
   IconNames,
   Tones,
-  TextPill,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { tw } from "@si/vue-lib";
-import { ComponentInList } from "@/workers/types/entity_kind_types";
+import { useQuery } from "@tanstack/vue-query";
+import {
+  AttributeTree,
+  ComponentInList,
+  EntityKind,
+} from "@/workers/types/entity_kind_types";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import ComponentCard from "../ComponentCard.vue";
 import ExploreGridTile from "./ExploreGridTile.vue";
 import { assertIsDefined, ExploreContext } from "../types";
 import { getAssetIcon } from "../util";
+import { useContext } from "../logic_composables/context";
 
 const props = defineProps<{
   row: ExploreGridRowData;
@@ -276,10 +316,58 @@ const props = defineProps<{
 const exploreContext = inject<ExploreContext>("EXPLORE_CONTEXT");
 assertIsDefined<ExploreContext>(exploreContext);
 
-const renderLastPath = (path: string) => {
-  const last = path.split("/").at(-1) ?? "unknown";
-  return last.charAt(0).toLocaleUpperCase() + last.slice(1);
-};
+const ctx = useContext();
+
+const key = useMakeKey();
+const args = useMakeArgs();
+
+const enableDefaultSubSourceValuesQuery = computed(
+  () => ctx.queriesEnabled && props.row.type === "defaultSubHeader",
+);
+const defaultSubSourceValuesQuery = useQuery<
+  { prop: string; value: string } | undefined
+>({
+  enabled: enableDefaultSubSourceValuesQuery,
+  queryKey: key(
+    EntityKind.AttributeTree,
+    props.row.type === "defaultSubHeader" ? props.row.componentId : "",
+    "DefaultSubHeader",
+  ),
+  queryFn: async () => {
+    // This is just a type assertion, the query should only be enabled if this
+    // is already true, so we'll never hit this return
+    if (props.row.type !== "defaultSubHeader") {
+      return;
+    }
+    const attributeTree = await bifrost<AttributeTree>(
+      args(EntityKind.AttributeTree, props.row.componentId),
+    );
+    const value =
+      attributeTree &&
+      Object.values(attributeTree.attributeValues).find(
+        (av) =>
+          props.row.type === "defaultSubHeader" && av.path === props.row.path,
+      );
+
+    const prop = value?.propId
+      ? attributeTree?.props[value.propId]?.name
+      : undefined;
+    if (!prop) {
+      return;
+    }
+    const sourceValue = value?.secret
+      ? value.secret.name
+      : value?.value?.toString();
+    if (!sourceValue) {
+      return;
+    }
+
+    return {
+      prop,
+      value: sourceValue,
+    };
+  },
+});
 
 interface TitleIcon {
   iconName: IconNames;

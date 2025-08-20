@@ -806,8 +806,10 @@ export const changeSetExists = async (
   changeSetId: ChangeSetId,
 ) => await db.changeSetExists(workspaceId, changeSetId);
 
-/// Make a reactive query key that includes the workspace, changeSet, EntityKind and entity ID
-/// (if any).
+/// Make a reactive query key that includes the workspace, changeSet, EntityKind
+/// and entity ID (if any). You can also add an extension, if you want to
+/// respond to invalidations of EntityKind + entity ID but for a different
+/// query.
 ///
 /// @returns A computed reactive key suitable for use with tanstack useQuery() or useQueryClient().
 ///
@@ -822,12 +824,14 @@ export const useMakeKey = () => {
   return <K = Gettable>(
     kind: MaybeRefOrGetter<K>,
     id?: MaybeRefOrGetter<string>,
+    extension?: MaybeRefOrGetter<string>,
   ) =>
-    computed<[string, string, ComputedRef<K> | K, string]>(() => [
+    computed<[string, string, ComputedRef<K> | K, string, string]>(() => [
       ctx.workspacePk.value,
       ctx.changeSetId.value,
       toValue(kind),
       toValue(id ?? ctx.workspacePk),
+      toValue(extension ?? ""),
     ]);
 };
 
