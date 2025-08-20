@@ -233,7 +233,7 @@
                       label="Initialize your Workspace"
                       tone="action"
                       size="sm"
-                      @click="openOnboardModal"
+                      @click="ctx.reopenOnboarding"
                     />
                   </div>
                 </template>
@@ -487,7 +487,6 @@
       @pin="(c) => (gridMode = { mode: 'pinned', label: '', componentId: c })"
       @bulk="startBulkEdit"
     />
-    <OnboardModal ref="onboardModalRef" />
   </section>
 </template>
 
@@ -543,7 +542,6 @@ import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue"
 import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import OnboardModal from "@/newhotness/OnboardModal.vue";
 import MapComponent from "./Map.vue";
 import {
   collapsingGridStyles,
@@ -2420,12 +2418,6 @@ const addViewModalRef = ref<InstanceType<typeof AddViewModal>>();
 
 const openAddViewModal = () => {
   addViewModalRef.value?.open();
-};
-
-const onboardModalRef = ref<InstanceType<typeof AddViewModal>>();
-
-const openOnboardModal = () => {
-  onboardModalRef.value?.open();
 };
 
 const editViewModalRef = ref<InstanceType<typeof EditViewModal>>();

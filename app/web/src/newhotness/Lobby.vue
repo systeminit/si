@@ -27,10 +27,11 @@
             )
           "
         >
-          <LobbyTerminalOutputLine
+          <ScrollingOutputLine
             v-for="(data, index) in visibleSentences"
             :key="index"
             :message="unref(data.sentence)"
+            prependSiLogo
             :isActive="index === visibleSentences.length - 1"
             :isLoader="data.isLoader"
             :isLastElement="index === visibleSentences.length - 1"
@@ -45,7 +46,7 @@
 import { computed, onMounted, ref, unref, watch } from "vue";
 import clsx from "clsx";
 import { sleep } from "@si/ts-lib/src/async-sleep";
-import LobbyTerminalOutputLine from "@/newhotness/LobbyTerminalOutputLine.vue";
+import ScrollingOutputLine from "@/newhotness/ScrollingOutputLine.vue";
 
 const props = defineProps({
   /// The number of loading steps that exist and whether they are complete
@@ -98,7 +99,7 @@ const visibleSentences = computed(() =>
 );
 
 // Delay before opening, so we don't blink the screen
-const BLINK_DELAY_MS = 500;
+const BLINK_DELAY_MS = 2000;
 // Delay so we complete the fade in before starting to show log lines
 const TRANSITION_DELAY_MS = 200;
 

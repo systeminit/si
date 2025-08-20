@@ -66,6 +66,9 @@ export enum routes {
   Workspaces = "Workspaces",
   ChangeSets = "ChangeSets",
   WorkspaceListUsers = "WorkspaceListUsers",
+  GenerateApiToken = "GenerateApiToken",
+  CheckDismissedOnboarding = "CheckDismissedOnboarding",
+  DismissOnboarding = "DismissOnboarding",
 }
 
 /**
@@ -82,6 +85,9 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
   routes.EnqueueAttributeValue,
   routes.RefreshAction,
   routes.ChangeSetInitializeAndApply,
+  routes.GenerateApiToken,
+  routes.DismissOnboarding,
+  routes.CheckDismissedOnboarding,
 ] as const;
 
 const COMPRESSED_ROUTES: readonly routes[] = [
@@ -134,12 +140,23 @@ const _routes: Record<routes, string> = {
   // THESE ARE SPECIAL CASED & NOT V2
   CreateChangeSet: "/change_set/create_change_set",
   AbandonChangeSet: "/change_set/abandon_change_set",
-  Workspaces: "/workspaces", // not a v2 url
   // URLs without the default `change-set/:id` section
   ChangeSets: "/change-sets",
   ChangeSetInitializeAndApply: "/change-sets/create_initialize_apply",
   WorkspaceListUsers: "/users",
+  // Auth Api Endpoints
+  Workspaces: "/workspaces",
+  GenerateApiToken: "/authTokens",
+  CheckDismissedOnboarding: "users/<userPk>/firstTimeModal",
+  DismissOnboarding: "users/<userPk>/dismissFirstTimeModal",
 } as const;
+
+const AUTH_API_ROUTES = [
+  _routes.Workspaces,
+  _routes.GenerateApiToken,
+  _routes.CheckDismissedOnboarding,
+  _routes.DismissOnboarding,
+];
 
 // the mechanics
 type Obs = {
@@ -220,15 +237,30 @@ export class APICall<Response, Args> {
     this.endpointArgs = endpointArgs;
   }
 
+  pathWithArgs(): string {
+    let path = this.path.slice(); // slice() acts like a clone
+    if (this.endpointArgs)
+      Object.entries(this.endpointArgs).forEach(([k, v]) => {
+        // tsc gets a little confused in that `k` could be a symbol?
+        path = path.replace(`<${k.toString()}>`, v as string);
+      });
+    return path;
+  }
+
   url(): string {
     if (
       [
         _routes.Workspaces,
         _routes.AbandonChangeSet,
         _routes.CreateChangeSet,
+        _routes.CheckDismissedOnboarding,
+        _routes.DismissOnboarding,
       ].includes(this.path)
     ) {
-      return this.path;
+      return this.pathWithArgs();
+    }
+    if ([_routes.GenerateApiToken].includes(this.path)) {
+      return `workspaces/${this.workspaceId}${this.pathWithArgs()}`;
     }
     if (
       [
@@ -237,16 +269,17 @@ export class APICall<Response, Args> {
         _routes.WorkspaceListUsers,
       ].includes(this.path)
     ) {
-      return `v2/workspaces/${this.workspaceId}${this.path}`;
+      return `v2/workspaces/${this.workspaceId}${this.pathWithArgs()}`;
     }
 
     const API_PREFIX = `v2/workspaces/${this.workspaceId}/change-sets/${this.changeSetId}`;
-    return `${API_PREFIX}${this.path}`;
+    return `${API_PREFIX}${this.pathWithArgs()}`;
   }
 
   api(): AxiosInstance {
-    if ([_routes.Workspaces].includes(this.path)) return auth;
-    else return sdf;
+    if (AUTH_API_ROUTES.includes(this.path)) {
+      return auth;
+    } else return sdf;
   }
 
   async do<D = Record<string, unknown>>(
@@ -422,17 +455,12 @@ export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   let apiCall: APICall<any, SpecificArgs>;
   const endpoint = <Response>(key: routes, args?: SpecificArgs) => {
-    let path = _routes[key];
+    const path = _routes[key];
     const needsArgs = path.includes("<") && path.includes(">");
     if (!args && needsArgs)
       throw new Error(`Endpoint ${key}, ${path} requires arguments`);
     assertIsDefined(ctx);
 
-    if (args)
-      Object.entries(args).forEach(([k, v]) => {
-        // tsc gets a little confused in that `k` could be a symbol?
-        path = path.replace(`<${k.toString()}>`, v);
-      });
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
     const mustCompress = COMPRESSED_ROUTES.includes(key);
     const argList = args ? Object.entries(args).flatMap((m) => m) : [];

@@ -62,19 +62,8 @@
       />
     </nav>
 
-    <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
-     min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
-    <main v-if="!lobby" class="grow min-h-0">
-      <div v-if="tokenFail">Bad Token</div>
-      <ComponentPage v-else-if="componentId" :componentId="componentId" />
-      <FuncRunDetails v-else-if="funcRunId" :funcRunId="funcRunId" />
-      <LatestFuncRunDetails
-        v-else-if="actionId"
-        :functionKind="FunctionKind.Action"
-        :actionId="actionId"
-      />
-      <Review v-else-if="onReviewPage" />
-      <Explore v-else @openChangesetModal="openChangesetModal" />
+    <main v-if="lobby && tokenFail" class="grow min-h-0">
+      <div>Bad Token</div>
     </main>
 
     <!-- Since lobby hides away the navbar, it's more of an overlay and stays apart from all else -->
@@ -91,10 +80,26 @@
         :loadingSteps="_.values(muspelheimStatuses)"
       />
     </Transition>
-
-    <main v-if="lobby && tokenFail" class="grow min-h-0">
-      <div>Bad Token</div>
-    </main>
+    <template v-if="!lobby">
+      <Onboarding
+        v-if="showOnboarding"
+        @completed="onboardingCompleted = true"
+      />
+      <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
+           min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
+      <main v-else class="grow min-h-0">
+        <div v-if="tokenFail">Bad Token</div>
+        <ComponentPage v-else-if="componentId" :componentId="componentId" />
+        <FuncRunDetails v-else-if="funcRunId" :funcRunId="funcRunId" />
+        <LatestFuncRunDetails
+          v-else-if="actionId"
+          :functionKind="FunctionKind.Action"
+          :actionId="actionId"
+        />
+        <Review v-else-if="onReviewPage" />
+        <Explore v-else @openChangesetModal="openChangesetModal" />
+      </main>
+    </template>
   </div>
 </template>
 
@@ -131,6 +136,7 @@ import {
 import { SchemaId } from "@/api/sdf/dal/schema";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { muspelheimStatuses } from "@/store/realtime/heimdall";
+import Onboarding from "@/newhotness/Onboarding.vue";
 import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
@@ -152,6 +158,7 @@ import Review from "./Review.vue";
 
 const tracer = trace.getTracer("si-vue");
 const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
+const span = ref<Span | undefined>();
 
 const route = useRoute();
 const router = useRouter();
@@ -167,41 +174,17 @@ const props = defineProps<{
 }>();
 
 const authStore = useAuthStore();
-
-const span = ref<Span | undefined>();
-
-const lobby = computed(() => heimdall.muspelheimInProgress.value);
-
-watch(
-  lobby,
-  () => {
-    if (!span.value && lobby.value) {
-      span.value = tracer.startSpan("lobby");
-      span.value.setAttributes({
-        ...props,
-        user: authStore.user?.pk,
-        "si.workspace.id": props.workspacePk,
-        "si.changeset.id": props.changeSetId,
-      });
-    }
-
-    if (span.value && !lobby.value) {
-      span.value.end();
-      span.value = undefined;
-    }
-  },
-  { immediate: true },
-);
-
 const featureFlagsStore = useFeatureFlagsStore();
 const realtimeStore = useRealtimeStore();
 
 const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
 
+const coldStartInProgress = computed(() => heimdall.muspelheimInProgress.value);
+
 // no tan stack queries hitting sqlite until after the cold start has finished
 const queriesEnabled = computed(
-  () => heimdall.initCompleted.value && !lobby.value,
+  () => heimdall.initCompleted.value && !coldStartInProgress.value,
 );
 
 const countsQueryKey = computed(() => {
@@ -274,6 +257,11 @@ const schemaMembers = computed(() => {
 const changeSet = ref<ChangeSet | undefined>();
 const _headChangeSetId = ref<string>("");
 const approvers = ref<string[]>([]);
+const onboardingCompleted = ref(false);
+const reopenOnboarding = () => {
+  onboardingCompleted.value = false;
+};
+
 const ctx = computed<Context>(() => {
   return {
     workspacePk,
@@ -289,6 +277,7 @@ const ctx = computed<Context>(() => {
     componentDetails,
     schemaMembers,
     queriesEnabled,
+    reopenOnboarding,
   };
 });
 
@@ -387,6 +376,63 @@ startWindowResizeEmitter(window);
 
 provide("CONTEXT", ctx.value);
 
+// LOBBY AND ONBOARDING FLAGS
+const userPk = computed(() => authStore.user?.pk);
+const checkOnboardingCompleteApi = useApi(ctx.value);
+const loadedOnboardingStateFromApi = ref(false);
+const checkOnboardingCompleteData = async () => {
+  if (!userPk.value) return;
+
+  const call = checkOnboardingCompleteApi.endpoint<{ firstTimeModal: boolean }>(
+    routes.CheckDismissedOnboarding,
+    { userPk: userPk.value },
+  );
+  const { data, status } = await call.get();
+
+  if (status !== 200) {
+    tokenFail.value = true;
+    return;
+  }
+
+  loadedOnboardingStateFromApi.value = true;
+  // firstTimeModal === true means that we should SHOW it, so we need to invert it to see if it's been dismissed.
+  onboardingCompleted.value = !data.firstTimeModal;
+};
+
+const lobby = computed(
+  () =>
+    coldStartInProgress.value ||
+    featureFlagsStore.INITIALIZER_ONBOARD === undefined || // Make sure twe don't show anything before the feature flags load
+    loadedOnboardingStateFromApi.value === false, // Don't continue before we got the response from the auth API
+);
+
+const showOnboarding = computed(() => {
+  if (!featureFlagsStore.INITIALIZER_ONBOARD) return false;
+
+  return !onboardingCompleted.value;
+});
+
+watch(
+  lobby,
+  () => {
+    if (!span.value && lobby.value) {
+      span.value = tracer.startSpan("lobby");
+      span.value.setAttributes({
+        ...props,
+        user: authStore.user?.pk,
+        "si.workspace.id": props.workspacePk,
+        "si.changeset.id": props.changeSetId,
+      });
+    }
+
+    if (span.value && !lobby.value) {
+      span.value.end();
+      span.value = undefined;
+    }
+  },
+  { immediate: true },
+);
+
 export type SelectionsInQueryString = Partial<{
   map: string;
   grid: string;
@@ -435,6 +481,9 @@ onBeforeMount(async () => {
   if (container) {
     container.loadingGuard.value = true;
   }
+
+  await checkOnboardingCompleteData();
+
   // NOTE(nick,wendy): if you do not have the flag enabled, you will be re-directed. This will be
   // true for all of the new hotness routes, provided that they are all children of the parent
   // route that uses this component. We wait until we know the feature flag is false before

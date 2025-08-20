@@ -1,6 +1,7 @@
 <template>
   <div class="flex flex-row items-center">
     <Icon
+      v-if="props.prependSiLogo"
       name="logo-si"
       size="sm"
       :class="clsx('mr-xs self-start', !isActive && 'opacity-0')"
@@ -35,9 +36,11 @@ import { sleep } from "@si/ts-lib/src/async-sleep";
 
 const props = defineProps({
   message: { type: String, required: true },
-  /// Shows SI logo on the left side of the line and in active colors, if false color will be greyer
+  // On active lines, show SI logo before it. If not active, reserve some space for it for alignment.
+  prependSiLogo: { type: Boolean },
+  // Shows SI logo to the left of the line (if enabled) and draws text in active colors. If false, color will be greyer
   isActive: { type: Boolean },
-  /// When loader, will be shown in secondary greyer color, and without the initial delay
+  // When loader, will be shown in secondary greyer color, and without the initial delay
   isLoader: { type: Boolean },
   // When the user goes out of the tab then comes back, we have an issue where multiple lines will be animating at the same time.
   // this is because this component is mounted only at that time. This flag prevents that by forcing animate only on the last line.
