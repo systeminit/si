@@ -107,16 +107,10 @@ export const MANAGEMENT_FUNCS = {
   FuncSpecInfo & { handlers: CfHandlerKind[] }
 >;
 
-export const QUALIFICATION_FUNC_SPECS = {
-  awsIamPermissionsCheck: {
-    id: "62a0b8b43761ea04669d7d799a90f168cfd5a4307c27e2367e9762342984fd2c",
-    backendKind: "jsAttribute",
-    responseType: "qualification",
-    displayName: "Qualification for checking Cloud Formation permissions",
-    path:
-      "./src/cloud-control-funcs/qualifications/awsPermissionsSimulation.ts",
-  },
-} as const satisfies Record<string, FuncSpecInfo>;
+export const QUALIFICATION_FUNC_SPECS = {} as const satisfies Record<
+  string,
+  FuncSpecInfo
+>;
 
 export function createFunc(
   name: string,
@@ -188,7 +182,7 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
         uniqueId: domain_id,
         deleted: false,
       },
-    ])
+    ]),
   );
 }
 
@@ -206,17 +200,15 @@ export function createDefaultQualificationFuncs(domain_id: string): FuncSpec[] {
         uniqueId: domain_id,
         deleted: false,
       },
-    ])
+    ]),
   );
 }
 
 export function createDefaultManagementFuncs() {
-  return Object.entries(MANAGEMENT_FUNCS).map(
-    ([func, spec]) => ({
-      func: createDefaultFuncSpec(func, spec, []),
-      handlers: spec.handlers,
-    }),
-  );
+  return Object.entries(MANAGEMENT_FUNCS).map(([func, spec]) => ({
+    func: createDefaultFuncSpec(func, spec, []),
+    handlers: spec.handlers,
+  }));
 }
 
 export function createActionFuncSpec(
@@ -270,7 +262,9 @@ export function modifyFunc(
     variant.actionFuncs,
     variant.leafFunctions,
     variant.managementFuncs,
-  ].flat().find((item) => item.funcUniqueId === targetId);
+  ]
+    .flat()
+    .find((item) => item.funcUniqueId === targetId);
 
   const code = Deno.readTextFileSync(path);
   const codeBase64: string = strippedBase64(code);
