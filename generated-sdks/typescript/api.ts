@@ -809,6 +809,19 @@ export interface DuplicateComponentsV1Response {
 /**
  * 
  * @export
+ * @interface EraseComponentV1Response
+ */
+export interface EraseComponentV1Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EraseComponentV1Response
+     */
+    'status': boolean;
+}
+/**
+ * 
+ * @export
  * @interface ErrorDetail
  */
 export interface ErrorDetail {
@@ -3980,6 +3993,48 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Erase a component without queuing a delete action
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        eraseComponent: async (workspaceId: string, changeSetId: string, componentId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('eraseComponent', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('eraseComponent', 'changeSetId', changeSetId)
+            // verify required parameter 'componentId' is not null or undefined
+            assertParamExists('eraseComponent', 'componentId', componentId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/erase`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"component_id"}}`, encodeURIComponent(String(componentId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Execute a component\'s management function
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -4463,6 +4518,21 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Erase a component without queuing a delete action
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async eraseComponent(workspaceId: string, changeSetId: string, componentId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<EraseComponentV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.eraseComponent(workspaceId, changeSetId, componentId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ComponentsApi.eraseComponent']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Execute a component\'s management function
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -4653,6 +4723,16 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Erase a component without queuing a delete action
+         * @param {ComponentsApiEraseComponentRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        eraseComponent(requestParameters: ComponentsApiEraseComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<EraseComponentV1Response> {
+            return localVarFp.eraseComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Execute a component\'s management function
          * @param {ComponentsApiExecuteManagementFunctionRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -4789,6 +4869,16 @@ export interface ComponentsApiInterface {
      * @memberof ComponentsApiInterface
      */
     duplicateComponents(requestParameters: ComponentsApiDuplicateComponentsRequest, options?: RawAxiosRequestConfig): AxiosPromise<DuplicateComponentsV1Response>;
+
+    /**
+     * 
+     * @summary Erase a component without queuing a delete action
+     * @param {ComponentsApiEraseComponentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApiInterface
+     */
+    eraseComponent(requestParameters: ComponentsApiEraseComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<EraseComponentV1Response>;
 
     /**
      * 
@@ -4999,6 +5089,34 @@ export interface ComponentsApiDuplicateComponentsRequest {
      * @memberof ComponentsApiDuplicateComponents
      */
     readonly duplicateComponentsV1Request: DuplicateComponentsV1Request
+}
+
+/**
+ * Request parameters for eraseComponent operation in ComponentsApi.
+ * @export
+ * @interface ComponentsApiEraseComponentRequest
+ */
+export interface ComponentsApiEraseComponentRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ComponentsApiEraseComponent
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ComponentsApiEraseComponent
+     */
+    readonly changeSetId: string
+
+    /**
+     * Component identifier
+     * @type {string}
+     * @memberof ComponentsApiEraseComponent
+     */
+    readonly componentId: string
 }
 
 /**
@@ -5341,6 +5459,18 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      */
     public duplicateComponents(requestParameters: ComponentsApiDuplicateComponentsRequest, options?: RawAxiosRequestConfig) {
         return ComponentsApiFp(this.configuration).duplicateComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.duplicateComponentsV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Erase a component without queuing a delete action
+     * @param {ComponentsApiEraseComponentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApi
+     */
+    public eraseComponent(requestParameters: ComponentsApiEraseComponentRequest, options?: RawAxiosRequestConfig) {
+        return ComponentsApiFp(this.configuration).eraseComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

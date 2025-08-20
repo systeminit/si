@@ -1147,6 +1147,41 @@ Components management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Erase a component without queuing a delete action
+
+<a id="opIderase_component"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/erase`
+
+<h3 id="erase-a-component-without-queuing-a-delete-action-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|component_id|path|string|true|Component identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "status": "true"
+}
+```
+
+<h3 id="erase-a-component-without-queuing-a-delete-action-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Component erased successfully|[EraseComponentV1Response](#schemaerasecomponentv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Execute a component's management function
 
 <a id="opIdexecute_management_function"></a>
@@ -3220,6 +3255,26 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |components|[array]|true|none|none|
+
+## [EraseComponentV1Response](#tocS_EraseComponentV1Response)
+
+<a id="schemaerasecomponentv1response"></a>
+<a id="schema_EraseComponentV1Response"></a>
+<a id="tocSerasecomponentv1response"></a>
+<a id="tocserasecomponentv1response"></a>
+
+```json
+{
+  "status": "true"
+}
+
+```
+
+### [Properties](#erasecomponentv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|status|boolean|true|none|none|
 
 ## [ErrorDetail](#tocS_ErrorDetail)
 
