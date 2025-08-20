@@ -19,6 +19,7 @@ import { importPrompt } from "./prompts/import.ts";
 import { componentDiscoverTool } from "./tools/componentDiscover.ts";
 import { discoverPrompt } from "./prompts/discover.ts";
 import { componentDeleteTool } from "./tools/componentDelete.ts";
+import { componentEraseTool } from "./tools/componentErase.ts";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -43,6 +44,7 @@ export function createServer(): McpServer {
   componentImportTool(server);
   componentDiscoverTool(server);
   componentDeleteTool(server);
+  componentEraseTool(server);
   importPrompt(server);
   discoverPrompt(server);
 
