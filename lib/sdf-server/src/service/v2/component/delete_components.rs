@@ -16,6 +16,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_events::audit_log::AuditLogKind;
 
 use super::Result;
 
@@ -37,18 +38,30 @@ pub async fn delete_components(
 
     let mut track_payloads = vec![];
     for &component_id in &request.component_ids {
-        let component_schema_name = Component::schema_for_component_id(ctx, component_id)
-            .await?
-            .name()
-            .to_string();
+        let comp = Component::get_by_id(ctx, component_id).await?;
+        let name = comp.name(ctx).await?;
+        let variant = comp.schema_variant(ctx).await?;
 
         track_payloads.push(serde_json::json!({
             "how": "/diagram/delete_component",
             "erase": request.force_erase,
             "component_id": component_id,
-            "component_schema_name": component_schema_name,
+            "component_schema_name":  variant.display_name().to_string(),
             "change_set_id": ctx.change_set_id(),
         }));
+
+        if request.force_erase {
+            ctx.write_audit_log(
+                AuditLogKind::EraseComponent {
+                    name: name.to_owned(),
+                    component_id,
+                    schema_variant_id: variant.id(),
+                    schema_variant_name: variant.display_name().to_string(),
+                },
+                name,
+            )
+            .await?;
+        }
     }
 
     for (component_id, status) in

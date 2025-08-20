@@ -190,13 +190,24 @@ pub async fn delete_component(
     let component_id = component.id();
     let component_name = component.name(ctx).await?;
     let component_schema_variant = component.schema_variant(ctx).await?;
-
     let still_exists_on_head = head_components.contains(&component_id);
 
     let mut status = if force_erase {
         Component::remove(ctx, component_id).await?;
+
         ComponentDeletionStatus::Deleted
     } else {
+        ctx.write_audit_log(
+            AuditLogKind::DeleteComponent {
+                component_id,
+                name: component_name.to_owned(),
+                schema_variant_id: component_schema_variant.id(),
+                schema_variant_name: component_schema_variant.display_name().to_string(),
+            },
+            component_name,
+        )
+        .await?;
+
         // the move semantics here feel strange
         match component.clone().delete(ctx).await? {
             Some(_) => ComponentDeletionStatus::MarkedForDeletion,
@@ -207,17 +218,6 @@ pub async fn delete_component(
     if matches!(status, ComponentDeletionStatus::Deleted) && still_exists_on_head {
         status = ComponentDeletionStatus::StillExistsOnHead;
     }
-
-    ctx.write_audit_log(
-        AuditLogKind::DeleteComponent {
-            component_id,
-            name: component_name.to_owned(),
-            schema_variant_id: component_schema_variant.id(),
-            schema_variant_name: component_schema_variant.display_name().to_string(),
-        },
-        component_name,
-    )
-    .await?;
 
     ctx.workspace_snapshot()?.cleanup().await?;
 
