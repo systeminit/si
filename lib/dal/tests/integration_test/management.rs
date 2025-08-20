@@ -5,6 +5,7 @@ use std::{
 
 use dal::{
     AttributeValue,
+    ChangeSet,
     Component,
     ComponentId,
     DalContext,
@@ -118,6 +119,113 @@ async fn exec_mgmt_func_and_operate(
     .await?
     .operate()
     .await?;
+    Ok(())
+}
+
+#[test]
+async fn set_resource(ctx: &mut DalContext) -> Result<()> {
+    // Create a schema that has mirrored resource_value + domain props
+    let _test_variant_id = variant::create(
+        ctx,
+        "test::resource",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        {
+                            name: "name",
+                            kind: "string"
+                        },
+                        {
+                            name: "value",
+                            kind: "string"
+                        }
+                    ],
+                    resourceProps: [
+                        {
+                            name: "name", 
+                            kind: "string"
+                        },
+                        {
+                            name: "value",
+                            kind: "string"
+                        }
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Write a management function that sets both domain and resource
+    let _func_id = variant::create_management_func(
+        ctx,
+        "test::resource",
+        "Set Resource",
+        r##"
+            async function main({ thisComponent }: Input): Promise<Output> {
+            const result = {
+                "name": "test-resource",
+                "value": "resource-value",
+                };
+                return {
+                    status: "ok",
+                    ops: {
+                        update: {
+                            self: {
+                                attributes: {
+                                   "/domain" : result,
+                                    "/resource": result,
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
+
+    // Create a component for the new schema variant
+    let test_component = component::create(ctx, "test::resource", "test-component").await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Find and enqueue the management job
+    let management_prototype =
+        find_management_prototype(ctx, test_component, "Set Resource").await?;
+
+    ChangeSetTestHelpers::enqueue_management_func_job(
+        ctx,
+        management_prototype.id(),
+        test_component,
+        None,
+    )
+    .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    ChangeSetTestHelpers::wait_for_mgmt_job_to_run(ctx, management_prototype.id(), test_component)
+        .await?;
+    ChangeSet::wait_for_dvu(ctx, false).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Ensure that resource_value gets propagated
+    // Check domain values were set
+    let domain_name = value::get(ctx, (test_component, "/domain/name")).await?;
+    let domain_value = value::get(ctx, (test_component, "/domain/value")).await?;
+    let diff = Component::get_diff(ctx, test_component).await?;
+    dbg!(&diff.diff);
+    assert_eq!(serde_json::json!("test-resource"), domain_name);
+    assert_eq!(serde_json::json!("resource-value"), domain_value);
+
+    // Check resource_value props were set
+    let resource_name = value::get(ctx, (test_component, "/resource_value/name")).await?;
+    let resource_value = value::get(ctx, (test_component, "/resource_value/value")).await?;
+
+    assert_eq!(serde_json::json!("test-resource"), resource_name);
+    assert_eq!(serde_json::json!("resource-value"), resource_value);
+
     Ok(())
 }
 

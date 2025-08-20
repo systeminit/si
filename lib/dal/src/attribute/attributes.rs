@@ -12,6 +12,7 @@ use si_id::{
     ComponentId,
     FuncId,
 };
+use telemetry::prelude::*;
 extern crate tuple_vec_map;
 
 use super::{
@@ -25,6 +26,7 @@ use crate::{
     Func,
     PropKind,
     WsEvent,
+    component::resource::ResourceData,
     func::intrinsics::IntrinsicFunc,
     workspace_snapshot::node_weight::{
         NodeWeight,
@@ -67,6 +69,8 @@ pub struct AttributeUpdateCounts {
 }
 
 /// A set of attributes you want to set, with the values you want to set them to.
+///
+/// Ensures that users cannot manually update restricted prop trees (secrets, resource_value, quals, etc.)
 ///
 /// - SET constant attribute values by putting the path to the attribute you want to set as the key,
 ///   and the value you want to set it to on the right.
@@ -181,6 +185,25 @@ pub async fn update_attributes(
     component_id: ComponentId,
     updates: AttributeSources,
 ) -> Result<AttributeUpdateCounts> {
+    let updates_to_process = updates.validate_user_can_set_directly();
+    update_attributes_inner(ctx, component_id, updates_to_process).await
+}
+
+/// Simimlar to [`update_attributes`], only skips the validation entirely so we can expose functionality to management operations
+/// but not our APIs/users
+pub async fn update_attributes_without_validation(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    updates: AttributeSources,
+) -> Result<AttributeUpdateCounts> {
+    update_attributes_inner(ctx, component_id, updates).await
+}
+
+async fn update_attributes_inner(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    updates: AttributeSources,
+) -> Result<AttributeUpdateCounts> {
     let mut counts = AttributeUpdateCounts {
         set_count: 0,
         unset_count: 0,
@@ -192,10 +215,21 @@ pub async fn update_attributes(
                 counts.set_count += 1;
 
                 // Create the attribute at the given path if it does not exist
-                let target_av_id = av_to_set.vivify(ctx, component_id).await?;
+                let path = av_to_set.path();
+                let target_av_id = av_to_set.clone().vivify(ctx, component_id).await?;
 
                 match value {
                     Source::Value(value) => {
+                        // need to special case resource
+                        if path == "/resource" {
+                            let resource_data = ResourceData::new(
+                                veritech_client::ResourceStatus::Ok,
+                                Some(value.to_owned()),
+                            );
+                            let component = Component::get_by_id(ctx, component_id).await?;
+                            component.set_resource(ctx, resource_data).await?;
+                            continue;
+                        }
                         let before_value = AttributeValue::get_by_id(ctx, target_av_id)
                             .await?
                             .value(ctx)
@@ -319,6 +353,36 @@ pub struct AttributeSources(
 impl AttributeSources {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+    // We allow management functions to operate on the resource tree, but we don't want to expose this to users
+    pub fn validate_user_can_set_directly(&self) -> Self {
+        const IGNORE_PATHS: [&str; 6] = [
+            "/code",
+            "/deleted_at",
+            "/qualification",
+            "/resource_value",
+            "/resource",
+            "/secrets",
+        ];
+        let mut filtered = Vec::new();
+
+        for (av_ident, value_or_source) in &self.0 {
+            let path = av_ident.path();
+            let should_ignore = IGNORE_PATHS
+                .iter()
+                .any(|ignore_path| path.starts_with(ignore_path));
+
+            if should_ignore {
+                warn!(
+                    "Ignoring attempt to set value for restricted path: {}",
+                    path
+                );
+            } else {
+                filtered.push((av_ident.clone(), value_or_source.clone()));
+            }
+        }
+
+        Self(filtered)
     }
 }
 

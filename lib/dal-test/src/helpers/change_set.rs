@@ -22,7 +22,10 @@ use dal::{
     diagram::view::View,
     workspace_snapshot::selector::WorkspaceSnapshotSelectorDiscriminants,
 };
-use si_db::ManagementFuncJobState;
+use si_db::{
+    ManagementFuncJobState,
+    ManagementState,
+};
 use si_id::{
     ManagementPrototypeId,
     ViewId,
@@ -141,6 +144,42 @@ impl ChangeSetTestHelpers {
         ctx.enqueue_management_func(prototype_id, component_id, view_id, request_ulid.into())
             .await?;
         Ok(())
+    }
+    /// Wait for the management job for a given component to finish. Will wait for up to 30 seconds, checking every
+    /// 100ms.
+    pub async fn wait_for_mgmt_job_to_run(
+        ctx: &mut DalContext,
+        management_prototype_id: ManagementPrototypeId,
+        component_id: ComponentId,
+    ) -> Result<()> {
+        let total_count = 300;
+        let mut count = 0;
+
+        while count < total_count {
+            let state = ManagementFuncJobState::get_latest_by_keys(
+                ctx,
+                component_id,
+                management_prototype_id,
+            )
+            .await?;
+            if let Some(state) = state {
+                match state.state() {
+                    ManagementState::Pending
+                    | ManagementState::Executing
+                    | ManagementState::Operating => {
+                        count += 1;
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                    }
+                    ManagementState::Success => return Ok(()),
+                    ManagementState::Failure => {
+                        return Err(eyre!("management function failed!"));
+                    }
+                }
+            }
+        }
+        Err(eyre!(
+            "timeout waiting for management job to clear from test workspace"
+        ))
     }
 
     /// Force Apply Changeset To base Approvals
