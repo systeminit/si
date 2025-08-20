@@ -103,6 +103,13 @@ class TestComponentsApi(unittest.TestCase):
         """
         pass
 
+    def test_restore_component(self) -> None:
+        """Test case for restore_component
+
+        Restore a component that is marked for deletion
+        """
+        pass
+
     def test_search_components(self) -> None:
         """Test case for search_components
 
