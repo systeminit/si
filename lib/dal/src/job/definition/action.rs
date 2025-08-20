@@ -152,35 +152,15 @@ async fn inner_run(
         ActionPrototype::run(ctx, prototype_id, component_id).await?;
 
     // process the result
-    process_execution(ctx, maybe_resource.as_ref(), action_id, func_run_id).await?;
+    process_execution_result(ctx, maybe_resource.as_ref(), action_id, func_run_id).await?;
 
-    // if the action kind was a delete, let's see if any components are ready to be removed that weren't already
-    let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-    if ActionKind::Destroy == prototype.kind {
-        // after we commit check for removable components if we just successfully deleted a component
-        let to_delete_components = Component::list_to_be_deleted(ctx).await?;
-        let mut work_queue = VecDeque::from(to_delete_components);
-        while let Some(component_to_delete) = work_queue.pop_front() {
-            let component = Component::try_get_by_id(ctx, component_to_delete).await?;
-            if let Some(component) = component {
-                if component.allowed_to_be_removed(ctx).await? {
-                    Component::remove(ctx, component.id()).await?;
-                    WsEvent::component_deleted(ctx, component.id())
-                        .await?
-                        .publish_on_commit(ctx)
-                        .await?;
-                    // refetch to see if new potential candidates can be removed
-                    work_queue.extend(Component::list_to_be_deleted(ctx).await?);
-                }
-            }
-        }
-    }
-
-    ctx.commit().await?;
+    // conditionally perform any graph cleanups
+    perform_graph_cleanups(ctx, prototype_id).await?;
 
     Ok(maybe_resource)
 }
 
+// Compute inputs for the action prototype run and backfill span attributes.
 async fn prepare_for_execution(
     ctx: &mut DalContext,
     action_id: ActionId,
@@ -195,11 +175,6 @@ async fn prepare_for_execution(
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
     span.record("si.action.kind", tracing::field::debug(&prototype.kind));
     span.record("si.component.id", tracing::field::debug(&component_id));
-    Action::set_state(ctx, action_id, ActionState::Running).await?;
-
-    // Updates the action's state
-    ctx.commit().await?;
-    ctx.update_snapshot_to_visibility().await?;
 
     let component_id = Action::component_id(ctx, action_id)
         .await?
@@ -216,7 +191,7 @@ async fn prepare_for_execution(
         si.action.id = ?action_id
     ),
 )]
-async fn process_execution(
+async fn process_execution_result(
     ctx: &mut DalContext,
     action_run_result: Option<&ActionRunResultSuccess>,
     action_id: ActionId,
@@ -332,6 +307,46 @@ async fn process_execution(
     // Send the rebase request with the resource updated (if applicable)
     ctx.commit().await?;
     ctx.update_snapshot_to_visibility().await?;
+    Ok(())
+}
+
+#[instrument(
+    name = "action_job.perform_graph_cleanups",
+    level = "info",
+    skip_all,
+    fields()
+)]
+async fn perform_graph_cleanups(
+    ctx: &DalContext,
+    prototype_id: ActionPrototypeId,
+) -> JobConsumerResult<()> {
+    // if the action kind was a delete, let's see if any components are ready to be removed that
+    // weren't already
+    let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
+
+    if ActionKind::Destroy == prototype.kind {
+        // after we commit check for removable components if we just successfully deleted a
+        // component
+        let to_delete_components = Component::list_to_be_deleted(ctx).await?;
+        let mut work_queue = VecDeque::from(to_delete_components);
+        while let Some(component_to_delete) = work_queue.pop_front() {
+            let component = Component::try_get_by_id(ctx, component_to_delete).await?;
+            if let Some(component) = component {
+                if component.allowed_to_be_removed(ctx).await? {
+                    Component::remove(ctx, component.id()).await?;
+                    WsEvent::component_deleted(ctx, component.id())
+                        .await?
+                        .publish_on_commit(ctx)
+                        .await?;
+                    // refetch to see if new potential candidates can be removed
+                    work_queue.extend(Component::list_to_be_deleted(ctx).await?);
+                }
+            }
+        }
+
+        ctx.commit().await?;
+    }
+
     Ok(())
 }
 
