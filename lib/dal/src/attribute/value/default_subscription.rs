@@ -70,7 +70,7 @@ async fn get_or_create_default_subscription_category(
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Hash)]
 pub struct PropSuggestion {
     pub schema: String,
     pub prop: String,

@@ -21,6 +21,7 @@ clap = { workspace = true }
 concurrent-extensions = { path = "../../lib/concurrent-extensions" }
 convert_case = { workspace = true }
 dal-macros = { path = "../../lib/dal-macros" }
+dashmap = { workspace = true }
 derive_more = { workspace = true }
 diff = { workspace = true }
 dyn-clone = { workspace = true }

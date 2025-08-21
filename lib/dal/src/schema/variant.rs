@@ -656,6 +656,10 @@ impl SchemaVariant {
         let _func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
 
         let schema_variant = Self::assemble(ctx, id.into(), is_locked, content).await?;
+        ctx.workspace_snapshot()?
+            .clear_prop_suggestions_cache()
+            .await;
+
         Ok((schema_variant, root_prop))
     }
 
@@ -749,6 +753,9 @@ impl SchemaVariant {
         workspace_snapshot
             .remove_node_by_id(schema_variant.id)
             .await?;
+        ctx.workspace_snapshot()?
+            .clear_prop_suggestions_cache()
+            .await;
 
         Ok(())
     }

@@ -277,12 +277,26 @@ impl ManagementFuncJob {
             .publish_immediately(ctx)
             .await?;
 
-        self.operate(ctx, execution_state_id, execution_result)
+        let maybe_created_ids = self
+            .operate(ctx, execution_state_id, execution_result)
             .await?;
 
         Self::success_state(ctx, execution_state_id).await?;
         let kind = ManagementPrototype::kind_by_id(ctx, self.prototype_id).await?;
 
+        if kind == ManagementFuncKind::Import {
+            // if this is an import, let's auto subscribe!
+            // todo: write this (and other operations errors) down somewhere
+            Component::autosubscribe(ctx, self.component_id).await?;
+        } else if kind == ManagementFuncKind::Discover {
+            // if we discovered, let's auto subscribe what was just discovered
+            if let Some(created_component_ids) = maybe_created_ids {
+                for component_id in created_component_ids {
+                    // todo: write this (and other operations errors) down somewhere
+                    Component::autosubscribe(ctx, component_id).await?;
+                }
+            }
+        }
         // if the management prototype is for an Import func and we're not on head, and the component doesn't already have a resource, let's dispatch it!
         // note: this is to future proof for when our import functions set the resource directly
         // as if the resource has already been set, we don't need to run the refresh func in this change set
@@ -321,7 +335,7 @@ impl ManagementFuncJob {
         ctx: &DalContext,
         execution_state_id: ManagementFuncJobStateId,
         mut execution_result: ManagementPrototypeExecution,
-    ) -> ManagementFuncJobResult<()> {
+    ) -> ManagementFuncJobResult<Option<Vec<ComponentId>>> {
         let result = execution_result
             .result
             .take()
@@ -362,7 +376,7 @@ impl ManagementFuncJob {
             func.name.clone(),
             result.message.clone(),
             result.status,
-            created_component_ids,
+            created_component_ids.clone(),
         )
         .await?
         .publish_on_commit(ctx)
@@ -385,7 +399,7 @@ impl ManagementFuncJob {
         )
         .await?;
 
-        Ok(())
+        Ok(created_component_ids)
     }
 
     async fn run_prototype(

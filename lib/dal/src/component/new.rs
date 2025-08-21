@@ -343,6 +343,9 @@ impl Component {
         {
             Action::new(ctx, prototype_id, Some(component.id)).await?;
         }
+        ctx.workspace_snapshot()?
+            .clear_prop_suggestions_cache()
+            .await;
 
         Ok(component)
     }

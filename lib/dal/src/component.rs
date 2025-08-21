@@ -201,6 +201,7 @@ pub mod properties;
 pub mod qualification;
 pub mod resource;
 pub mod socket;
+pub mod suggestion;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -319,6 +320,8 @@ pub enum ComponentError {
     Prop(#[from] Box<PropError>),
     #[error("found prop id ({0}) that is not a prop")]
     PropIdNotAProp(PropId),
+    #[error("expected to find schema variant suggestions for component {0}")]
+    PropSuggestionCacheEmpty(ComponentId),
     #[error("qualification error: {0}")]
     Qualification(#[from] Box<QualificationError>),
     #[error("ordering node not found for qualifications map {0} and component {1}")]
@@ -4035,7 +4038,9 @@ impl Component {
             )
             .await?;
         }
-
+        ctx.workspace_snapshot()?
+            .clear_prop_suggestions_cache()
+            .await;
         Ok(upgraded_component)
     }
 

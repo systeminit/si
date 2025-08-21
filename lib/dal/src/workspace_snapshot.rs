@@ -78,6 +78,10 @@ use crate::{
             InferredConnectionGraph,
             InferredConnectionGraphError,
         },
+        suggestion::{
+            PropSuggestionCacheError,
+            PropSuggestionsCache,
+        },
     },
     slow_rt::{
         self,
@@ -202,6 +206,8 @@ pub enum WorkspaceSnapshotError {
     Pg(#[from] PgError),
     #[error("postcard error: {0}")]
     Postcard(#[from] postcard::Error),
+    #[error("PropSuggestionCache error: {0}")]
+    PropSuggestionCache(#[from] PropSuggestionCacheError),
     #[error("recently seen clocks missing for change set id {0}")]
     RecentlySeenClocksMissing(ChangeSetId),
     #[error("SchemaVariant error: {0}")]
@@ -307,6 +313,9 @@ pub struct WorkspaceSnapshot {
 
     /// A cached version of the inferred connection graph for this snapshot
     inferred_connection_graph: Arc<RwLock<Option<InferredConnectionGraph>>>,
+
+    /// A cached version of prop suggestions for autosubscribe optimization
+    prop_suggestions: Arc<PropSuggestionsCache>,
 }
 
 /// A pretty dumb attempt to make enabling the cycle check more ergonomic. This
@@ -450,6 +459,7 @@ impl WorkspaceSnapshot {
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
             inferred_connection_graph: Arc::new(RwLock::new(None)),
+            prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         };
 
         initial.write(ctx).await?;
@@ -691,6 +701,7 @@ impl WorkspaceSnapshot {
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
             inferred_connection_graph: Arc::new(RwLock::new(None)),
+            prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         })
     }
 
@@ -1010,6 +1021,7 @@ impl WorkspaceSnapshot {
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
             inferred_connection_graph: Arc::new(RwLock::new(None)),
+            prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         })
     }
 
@@ -1437,6 +1449,25 @@ impl WorkspaceSnapshot {
     pub async fn clear_inferred_connection_graph(&self) {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         *inferred_connection_write_guard = None;
+    }
+
+    /// Get the prop suggestions cache for autosubscribe optimization
+    pub async fn prop_suggestions_cache(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<&PropSuggestionsCache> {
+        if self.prop_suggestions.schema_suggestions.is_empty()
+            || self.prop_suggestions.schema_to_components.is_empty()
+        {
+            self.prop_suggestions.populate(ctx).await?;
+        }
+        Ok(&self.prop_suggestions)
+    }
+
+    /// Clear the prop suggestions cache (useful when schema variants change)
+    pub fn clear_prop_suggestions_cache(&self) {
+        self.prop_suggestions.schema_suggestions.clear();
+        self.prop_suggestions.schema_to_components.clear();
     }
 
     /// Validate the snapshot in the given DalContext

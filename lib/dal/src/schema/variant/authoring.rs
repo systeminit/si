@@ -55,6 +55,7 @@ use crate::{
     SchemaVariant,
     SchemaVariantError,
     SchemaVariantId,
+    WorkspaceSnapshotError,
     action::prototype::ActionPrototypeError,
     attribute::prototype::{
         AttributePrototypeError,
@@ -68,8 +69,8 @@ use crate::{
             FuncRunnerError,
         },
     },
-    pkg,
     pkg::{
+        self,
         ImportOptions,
         PkgError,
         export::PkgExporter,
@@ -155,6 +156,8 @@ pub enum VariantAuthoringError {
     SiPkg(#[from] SiPkgError),
     #[error("spec error: {0}")]
     Spec(#[from] SpecError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 impl From<ActionPrototypeError> for VariantAuthoringError {
@@ -327,6 +330,9 @@ impl VariantAuthoringClient {
             .first()
             .copied()
             .ok_or(VariantAuthoringError::NoAssetCreated)?;
+        ctx.workspace_snapshot()?
+            .clear_prop_suggestions_cache()
+            .await;
 
         Ok(SchemaVariant::get_by_id(ctx, schema_variant_id).await?)
     }
@@ -418,6 +424,9 @@ impl VariantAuthoringClient {
                 .first()
                 .copied()
                 .ok_or(VariantAuthoringError::NoAssetCreated)?;
+            ctx.workspace_snapshot()?
+                .clear_prop_suggestions_cache()
+                .await;
 
             Ok((
                 SchemaVariant::get_by_id(ctx, new_schema_variant_id).await?,
@@ -492,6 +501,9 @@ impl VariantAuthoringClient {
             // since it's been created on the changeset (otherwise it would not be unlocked)
             // So we should clean it up
             SchemaVariant::cleanup_unlocked_variant(ctx, schema_variant_id).await?;
+            ctx.workspace_snapshot()?
+                .clear_prop_suggestions_cache()
+                .await;
 
             Ok(new_variant.id)
         }

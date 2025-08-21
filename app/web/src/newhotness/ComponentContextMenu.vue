@@ -43,6 +43,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import CreateTemplateModal from "@/newhotness/CreateTemplateModal.vue";
 import { ViewId } from "@/api/sdf/dal/views";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import { useApi, routes } from "./api_composables";
@@ -52,6 +53,8 @@ import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 import { useComponentActions } from "./logic_composables/component_actions";
 import DuplicateComponentsModal from "./DuplicateComponentsModal.vue";
 import { useComponentsAndViews } from "./logic_composables/view";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps<{
   onGrid?: boolean;
@@ -419,6 +422,16 @@ const rightClickMenuItems = computed(() => {
         submenuVariant: "contextmenu",
       });
     }
+
+    if (featureFlagsStore.AUTOCONNECT) {
+      // Add autosubscribe menu item
+      items.push({
+        labelAsTooltip: false,
+        label: "Discover relationships",
+        icon: "plug",
+        onSelect: () => runAutosubscribe(singleComponent.value?.id),
+      });
+    }
   }
 
   // multiple components, nothing `toDelete`
@@ -461,6 +474,47 @@ const runMgmtFunc = async (funcId: string) => {
       newChangeSetId,
     );
   }
+};
+
+const autosubscribeApi = useApi();
+const runAutosubscribe = async (componentId: string | undefined) => {
+  if (!componentId) return;
+
+  const call = autosubscribeApi.endpoint<{
+    createdSubscriptions: Array<{
+      targetPath: { JsonPointer: string };
+      subscriptionSource: { Subscription: { component: string; path: string } };
+      matchedValue: string;
+    }>;
+    conflicts: Array<{
+      targetPath: { JsonPointer: string };
+      matches: Array<{
+        componentId: string;
+        sourcePath: { JsonPointer: string };
+        value: string;
+      }>;
+    }>;
+  }>(routes.AutosubscribeComponent);
+
+  const { req, newChangeSetId } = await call.post({
+    componentId,
+  });
+
+  if (autosubscribeApi.ok(req) && newChangeSetId) {
+    // todo: handle the response and let the user know what the conflicts are
+    autosubscribeApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
+
+  close(); // Close the context menu
 };
 
 const componentsRestore = async (componentIds: ComponentId[]) => {
