@@ -298,6 +298,11 @@ pub enum AuditLogKindV1 {
         entity_id: EntityId,
         user_id: UserPk,
     },
+    RemoveDefaultSubscriptionSource {
+        component_id: ComponentId,
+        av_id: AttributeValueId,
+        av_identifier: String,
+    },
     RenameComponent {
         component_id: ComponentId,
         old_name: String,
@@ -332,6 +337,11 @@ pub enum AuditLogKindV1 {
         func_display_name: Option<String>,
         func_name: String,
         run_status: bool,
+    },
+    SetDefaultSubscriptionSource {
+        component_id: ComponentId,
+        av_id: AttributeValueId,
+        av_identifier: String,
     },
     TestFunction {
         func_id: FuncId,
@@ -761,6 +771,12 @@ pub enum AuditLogMetadataV1 {
         user_id: UserPk,
     },
     #[serde(rename_all = "camelCase")]
+    RemoveDefaultSubscriptionSource {
+        component_id: ComponentId,
+        av_id: AttributeValueId,
+        av_identifier: String,
+    },
+    #[serde(rename_all = "camelCase")]
     RenameComponent {
         component_id: ComponentId,
         old_name: String,
@@ -796,6 +812,12 @@ pub enum AuditLogMetadataV1 {
         func_display_name: Option<String>,
         func_name: String,
         run_status: bool,
+    },
+    #[serde(rename_all = "camelCase")]
+    SetDefaultSubscriptionSource {
+        component_id: ComponentId,
+        av_id: AttributeValueId,
+        av_identifier: String,
     },
     #[serde(rename_all = "camelCase")]
     TestFunction {
@@ -1018,12 +1040,18 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::RemoveApprover => {
                 ("User removed", Some("Approval Requirement Definition"))
             }
+            MetadataDiscrim::RemoveDefaultSubscriptionSource => {
+                ("Removed Default", Some("Subscription Source"))
+            }
             MetadataDiscrim::RenameComponent => ("Renamed", Some("Component")),
             MetadataDiscrim::ReopenChangeSet => ("Reopened", Some("Change Set")),
             MetadataDiscrim::RequestChangeSetApproval => ("Requested to Apply", Some("Change Set")),
             MetadataDiscrim::RestoreComponent => ("Restored", Some("Component")),
             MetadataDiscrim::RetryAction => ("Retried", Some("Action")),
             MetadataDiscrim::RunAction => ("Ran", Some("Action")),
+            MetadataDiscrim::SetDefaultSubscriptionSource => {
+                ("Set Default", Some("Subscription Source"))
+            }
             MetadataDiscrim::TestFunction => ("Tested", Some("Function")),
             MetadataDiscrim::UnlockFunc => ("Unlocked", Some("Function")),
             MetadataDiscrim::UnlockSchemaVariant => ("Unlocked", Some("Schema Variant")),
@@ -1455,6 +1483,15 @@ impl From<Kind> for Metadata {
                 entity_id,
                 user_id,
             },
+            Kind::RemoveDefaultSubscriptionSource {
+                component_id,
+                av_id,
+                av_identifier,
+            } => Self::RemoveDefaultSubscriptionSource {
+                component_id,
+                av_id,
+                av_identifier,
+            },
             Kind::ReopenChangeSet { from_status } => Self::ReopenChangeSet { from_status },
             Kind::RestoreComponent {
                 name,
@@ -1503,6 +1540,15 @@ impl From<Kind> for Metadata {
                 func_display_name,
                 func_name,
                 run_status,
+            },
+            Kind::SetDefaultSubscriptionSource {
+                component_id,
+                av_id,
+                av_identifier,
+            } => Self::SetDefaultSubscriptionSource {
+                component_id,
+                av_id,
+                av_identifier,
             },
             Kind::TestFunction {
                 func_id,
