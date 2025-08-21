@@ -983,8 +983,7 @@ impl Component {
         let mut new_value_sources = vec![];
 
         for &apa_id in &apa_ids {
-            let func_arg_id =
-                AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
+            let func_arg_id = AttributePrototypeArgument::func_argument_id(ctx, apa_id).await?;
 
             if let Some(source) = AttributePrototypeArgument::value_source_opt(ctx, apa_id).await? {
                 match source {
@@ -2379,7 +2378,7 @@ impl Component {
             .workspace_snapshot()?
             .get_node_weight(base_change_set_connection.attribute_prototype_argument_id)
             .await?;
-        let base_func_arg_id = AttributePrototypeArgument::func_argument_id_by_id(
+        let base_func_arg_id = AttributePrototypeArgument::func_argument_id(
             base_change_set_ctx,
             base_change_set_connection.attribute_prototype_argument_id,
         )

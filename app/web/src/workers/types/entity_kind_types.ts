@@ -20,6 +20,7 @@ export enum EntityKind {
   AttributeTree = "AttributeTree",
   CachedSchemas = "CachedSchemas",
   Component = "Component",
+  ComponentDiff = "ComponentDiff",
   ComponentDetails = "ComponentDetails",
   ComponentInList = "ComponentInList",
   ComponentList = "ComponentList",
@@ -288,7 +289,118 @@ export interface BifrostComponent {
   toDelete: boolean;
 }
 
-export type ComponentDiffStatus = "Added" | "None" | "Modified";
+export type ComponentDiffStatus = "Added" | "None" | "Modified" | "Removed";
+
+export interface ComponentDiff {
+  id: ComponentId;
+  diffStatus: ComponentDiffStatus;
+  attributeDiffs: Record<AttributePath, AttributeDiff>;
+}
+
+/**
+ * The diff of the attribute.
+ *
+ * - If it is Modified, both "old" and "new" values will exist.
+ * - If it is Added, only the "new" value will exist.
+ * - If it is Removed, only the "old" value will exist.
+ */
+export type AttributeDiff =
+  | {
+      // Modified
+      /** The current value of the attribute */
+      new: AttributeSourceAndValue;
+      /** The previous value of the attribute */
+      old: AttributeSourceAndValue;
+    }
+  | {
+      // Added
+      new: AttributeSourceAndValue;
+      old?: undefined;
+    }
+  | {
+      // Removed
+      new?: undefined;
+      old: AttributeSourceAndValue;
+    };
+
+/**
+ * An attribute's source, as well as its current value.
+ *
+ * - Subscription:
+ *
+ *       {
+ *            $value: "us-east-1",
+ *            $source: {
+ *                component: "My Region",
+ *                path: "/domain/region"
+ *            }
+ *       }
+ *
+ * - Value:
+ *
+ *       {
+ *           $value: "us-east-1",
+ *           $source: {
+ *               component: "My Region",
+ *               path: "/domain/region"
+ *           }
+ *       }
+ *
+ * - Value:
+ *
+ *       {
+ *           $value: "us-east-1",
+ *           $source: {
+ *               value: "us-east-1"
+ *           }
+ *       }
+ * - Set by a parent subscription:
+ *
+ *       {
+ *          $value: "127.0.0.1"
+ *          $source: {
+ *              fromAncestor: "/domain/SecurityGroupIngress/3",
+ *              component: "My Security Group Ingress Rule",
+ *              path: "/domain",
+ *          }
+ *       }
+ *
+ * - Set by schema (e.g. attribute function):
+ *
+ *       {
+ *           $value: "ami-1234567890EXAMPLE",
+ *           $source: {
+ *               fromSchema: true,
+ *               prototype: "AWS_EC2_AMI:getImageIdFromAws()"
+ *           }
+ *       }
+ *
+ *       {
+ *           $value: "Region is us-east-2",
+ *           $source: {
+ *               fromSchema: true,
+ *               fromAncestor: "/domain/Rendered",
+ *               prototype: "String_Template:renderValue()"
+ *           }
+ *       }
+ */
+export interface AttributeSourceAndValue {
+  $source: AttributeSourceLocation & SimplifiedAttributeSource;
+  $value?: unknown;
+}
+
+/** The place in the tree this came from */
+export interface AttributeSourceLocation {
+  /** true if the value came from a "default" or attribute function on the schema */
+  fromSchema?: true;
+  /** If this came from a dynamic function on a *parent* attribute, this is the path to that attribute */
+  fromAncestor?: AttributePath;
+}
+
+export type SimplifiedAttributeSource =
+  | { component: ComponentId; path: AttributePath }
+  | { value: unknown }
+  | { prototype: string };
 
 // NOTE: when using `getMany` you don't end up with a BifrostComponent (b/c it doesnt have SchemaVariant)
 // You end up with a ComponentInList

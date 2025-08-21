@@ -881,8 +881,7 @@ impl PkgExporter {
         let mut inputs = vec![];
 
         for &apa_id in &apas {
-            let func_arg_id =
-                AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
+            let func_arg_id = AttributePrototypeArgument::func_argument_id(ctx, apa_id).await?;
             let func_arg = FuncArgument::get_by_id(ctx, func_arg_id).await?;
             let arg_name = func_arg.name;
 

@@ -356,13 +356,6 @@ const emit = defineEmits<{
 <script lang="ts">
 // Grid tiles need to have a fixed height - make sure this number matches its total height!
 export const GRID_TILE_HEIGHT = 269;
-
-export function getQualificationStatus(component: ComponentInList) {
-  if (component.qualificationTotals.failed > 0) return "failure";
-  if (component.qualificationTotals.warned > 0) return "warning";
-  if (component.qualificationTotals.succeeded > 0) return "success";
-  return "unknown";
-}
 </script>
 
 <style scoped>

@@ -20,140 +20,316 @@
       :class="
         clsx(
           'left',
-          'flex flex-col border-r',
-          themeClasses('border-neutral-400', 'border-neutral-600'),
+          'flex flex-col gap-xs m-xs p-xs border',
+          themeClasses(
+            'border-neutral-400 bg-white',
+            'border-neutral-600 bg-neutral-800',
+          ),
         )
       "
     >
-      <div
-        :class="
-          clsx(
-            'h-xl flex-none w-full border-b flex flex-row items-center justify-center gap-xs [&>*]:font-bold',
-            themeClasses('border-neutral-400', 'border-neutral-600'),
-          )
-        "
-      >
-        <PillCounter :count="changedComponents.length" size="lg" hideIfZero />
-        <div class="text-xl text-center">Changed Components</div>
-      </div>
-      <div class="scrollable">
-        <div
-          v-for="component in changedComponents"
-          :key="component.id"
-          :class="
-            clsx(
-              'cursor-pointer border border-transparent',
-              themeClasses(
-                'hover:border-action-500',
-                'hover:border-action-300',
-              ),
-            )
-          "
-          @click="scrollToDiff(component.id)"
-        >
-          <ComponentCard :component="component" />
-        </div>
+      <div class="text-sm flex-none">Components Changed</div>
+      <SiSearch
+        ref="searchRef"
+        v-model="searchString"
+        class="flex-none"
+        variant="new"
+        placeholder="Find a component"
+        :borderBottom="false"
+        @focus="() => (selectedComponentId = undefined)"
+        @keydown.tab="onSearchTab"
+      />
+      <div class="flex flex-col gap-xs flex-grow">
+        <CollapsingFlexItem headerTextSize="sm" open>
+          <template #header>Created</template>
+          <template #headerIcons>
+            <PillCounter :count="addedComponentListFiltered.length" size="sm" />
+          </template>
+          <div class="flex flex-col gap-xs p-xs w-full h-full">
+            <EmptyState
+              v-if="addedComponentList.length === 0"
+              icon="component"
+              text="No components added"
+              class="p-sm"
+            />
+            <EmptyState
+              v-else-if="addedComponentListFiltered.length === 0"
+              icon="component"
+              text="No added components match your search"
+              class="p-sm"
+            />
+            <ComponentListItem
+              v-for="component in addedComponentListFiltered"
+              :key="component.id"
+              :component="component"
+              :selected="component.id === selectedComponentId"
+              @click="selectComponent(component.id)"
+            />
+          </div>
+        </CollapsingFlexItem>
+        <CollapsingFlexItem headerTextSize="sm" open>
+          <template #header>Changed</template>
+          <template #headerIcons>
+            <PillCounter
+              :count="modifiedComponentListFiltered.length"
+              size="sm"
+            />
+          </template>
+          <div class="flex flex-col gap-xs p-xs w-full h-full">
+            <EmptyState
+              v-if="modifiedComponentList.length === 0"
+              icon="diff"
+              text="No components changed"
+              class="p-sm"
+            />
+            <EmptyState
+              v-else-if="modifiedComponentListFiltered.length === 0"
+              icon="diff"
+              text="No changed components match your search"
+              class="p-sm"
+            />
+            <ComponentListItem
+              v-for="component in modifiedComponentListFiltered"
+              :key="component.id"
+              :component="component"
+              :selected="component.id === selectedComponentId"
+              @click="selectComponent(component.id)"
+            />
+          </div>
+        </CollapsingFlexItem>
+        <CollapsingFlexItem headerTextSize="sm" open>
+          <template #header>Removed</template>
+          <template #headerIcons>
+            <PillCounter
+              :count="removedComponentListFiltered.length"
+              size="sm"
+            />
+          </template>
+          <div class="flex flex-col gap-xs p-xs w-full h-full">
+            <EmptyState
+              v-if="removedComponentList.length === 0"
+              icon="trash"
+              text="No components deleted"
+              class="p-sm"
+            />
+            <EmptyState
+              v-else-if="removedComponentListFiltered.length === 0"
+              icon="trash"
+              text="No deleted components match your search"
+              class="p-sm"
+            />
+            <ComponentListItem
+              v-for="component in removedComponentListFiltered"
+              :key="component.id"
+              :component="component"
+              :selected="component.id === selectedComponentId"
+              @click="selectComponent(component.id)"
+            />
+          </div>
+        </CollapsingFlexItem>
       </div>
     </div>
-    <div class="main flex flex-col">
+    <div class="main flex flex-col gap-xs m-xs">
+      <CollapsingFlexItem v-if="selectedComponent" disableCollapse>
+        <template #header>
+          <div>{{ selectedComponent.schemaName }}</div>
+          <div>"{{ selectedComponent.name }}"</div>
+        </template>
+
+        <div v-if="selectedComponent.diff" class="flex flex-col gap-xs p-xs">
+          <ReviewAttributeItem
+            v-for="(diff, path) in selectedComponent.diff.attributeDiffs"
+            :key="path"
+            :path="path"
+            :diff="diff"
+          />
+        </div>
+      </CollapsingFlexItem>
       <div
+        v-else
         :class="
           clsx(
-            'flex flex-row flex-none items-center w-full p-xs border-b h-xl',
-            themeClasses('border-neutral-400', 'border-neutral-600'),
+            'border grow flex flex-col items-center justify-center',
+            themeClasses(
+              'border-neutral-400 bg-white',
+              'border-neutral-600 bg-neutral-800',
+            ),
           )
         "
       >
-        <VButton
-          label="Exit"
-          tone="neutral"
-          icon="chevron--left"
-          class="flex-none"
-          @click="exitReview"
+        <EmptyState
+          icon="component"
+          text="No component selected"
+          secondaryText="Select a component to see information about it"
         />
-        <div class="flex-1 flex flex-col gap-xs p-xs text-center items-center">
-          <div>
-            Summary of changes for change set
-            <span
-              v-if="changeSetName"
-              class="font-bold font-mono basis-0 flex-grow text-xs"
-              >"{{ changeSetName }}"</span
-            >
-          </div>
-          <div class="flex flex-row gap-xs">
-            <div>{{ addedCount }} added</div>
-            <div>{{ updatedCount }} updated</div>
-            <div>{{ removedCount }} removed</div>
-          </div>
-        </div>
       </div>
-      <div ref="mainScrollDivRef" class="scrollable flex flex-col gap-xs px-xs">
-        <div
-          v-for="component in changedComponents"
-          :key="component.id"
-          ref="componentDiffRefs"
-          :data-component-id="component.id"
-        >
-          <CodeViewer
-            :title="`${component.name}: ${component.schemaName}`"
-            :code="changedComponentData[component.id]?.resourceDiff.diff"
-            showTitle
-            codeLanguage="diff"
-            copyTooltip="Copy diff to clipboard"
+      <CollapsingFlexItem>
+        <template #header> Actions </template>
+      </CollapsingFlexItem>
+    </div>
+    <div class="right flex flex-col p-xs">
+      <CollapsingFlexItem open>
+        <template #header>Component History</template>
+        <template v-if="selectedComponent">
+          <EmptyState
+            class="p-lg"
+            icon="component"
+            text="No History"
+            secondaryText="This section is not done yet"
           />
-        </div>
-      </div>
+        </template>
+        <EmptyState
+          v-else
+          class="p-lg"
+          icon="component"
+          text="No component selected"
+          secondaryText="Select a component to see its history"
+        />
+      </CollapsingFlexItem>
+      <CollapsingFlexItem open>
+        <template #header>Diff</template>
+        <CodeViewer
+          v-if="selectedComponent"
+          :title="`${selectedComponent.name}: ${selectedComponent.schemaName}`"
+          :code="changedComponentData[selectedComponent.id]?.resourceDiff.diff"
+          codeLanguage="diff"
+          copyTooltip="Copy diff to clipboard"
+        />
+        <EmptyState
+          v-else
+          class="p-lg"
+          icon="component"
+          text="No component selected"
+          secondaryText="Select a component to see the diff for it"
+        />
+      </CollapsingFlexItem>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { useQueries, useQuery } from "@tanstack/vue-query";
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import clsx from "clsx";
-import { PillCounter, themeClasses, VButton } from "@si/vue-lib/design-system";
+import {
+  PillCounter,
+  SiSearch,
+  themeClasses,
+  VButton,
+} from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import {
   bifrost,
   bifrostList,
   useMakeArgs,
+  useMakeArgsForHead,
   useMakeKey,
+  useMakeKeyForHead,
 } from "@/store/realtime/heimdall";
 import {
   BifrostComponent,
+  ComponentDiff,
   ComponentInList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
-import ComponentCard from "./ComponentCard.vue";
+import ComponentListItem from "./ComponentListItem.vue";
 import { useContext } from "./logic_composables/context";
 import EmptyState from "./EmptyState.vue";
+import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
+import ReviewAttributeItem from "./ReviewAttributeItem.vue";
+import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
+import { useComponentSearch } from "./logic_composables/search";
 
 const router = useRouter();
 const ctx = useContext();
 
-const changeSetName = computed(() => ctx.changeSet.value?.name);
+// const changeSetName = computed(() => ctx.changeSet.value?.name);
+const selectedComponentId = ref<ComponentId>();
 
 const key = useMakeKey();
 const args = useMakeArgs();
 
 // All components on this change set
-const componentListQuery = useQuery({
+const changeSetComponentListQuery = useQuery({
   queryKey: key(EntityKind.ComponentList),
   enabled: ctx.queriesEnabled,
   queryFn: async () =>
     await bifrostList<ComponentInList[]>(args(EntityKind.ComponentList)),
 });
-const componentList = computed(() => componentListQuery.data.value ?? []);
-
-const changedComponents = computed(() =>
-  componentList.value.filter((component) => component.diffStatus !== "None"),
+const changeSetComponentList = computed(
+  () => changeSetComponentListQuery.data.value ?? [],
 );
 
+// Get component list from head so we can tell what components have been removed
+const headKey = useMakeKeyForHead();
+const headArgs = useMakeArgsForHead();
+
+const headComponentListQuery = useQuery({
+  queryKey: headKey(EntityKind.ComponentList),
+  queryFn: async () =>
+    await bifrostList<ComponentInList[]>(headArgs(EntityKind.ComponentList)),
+});
+const headComponentList = computed(
+  () => headComponentListQuery.data.value ?? [],
+);
+
+const componentList = computed(() => {
+  return changeSetComponentList.value.concat(
+    headComponentList.value
+      .filter(
+        (component) =>
+          !changeSetComponentList.value.some((c) => c.id === component.id),
+      )
+      .map((component) => ({ ...component, diffStatus: "Removed" as const })),
+  );
+});
+
+/** Complete attribute-by-attribute diff of every component */
+const componentDiffQueries = useQueries({
+  queries: computed(() =>
+    componentList.value.map((component) => ({
+      queryKey: key(EntityKind.ComponentDiff, component.id),
+      queryFn: async () =>
+        await bifrost<ComponentDiff>(
+          args(EntityKind.ComponentDiff, component.id),
+        ),
+    })),
+  ),
+});
+/** Complete attribute-by-attribute diff of every component */
+const componentDiffs = computed<Record<ComponentId, ComponentDiff>>(() =>
+  Object.fromEntries(
+    componentDiffQueries.value
+      .map((query) => [query.data?.id, query.data] as const)
+      .filter(([id, diff]) => id && diff),
+  ),
+);
+
+/**
+ * Component list, for *changed* components.
+ *
+ * NOTE: this merges in the diffStatus from the ComponentDiff MV, which is more accurate. At some
+ * point we will want to modify the ComponentList MV to use the more accurate diff, so we don't have
+ * to pull every single ComponentDiff MV to figure it out.
+ */
+const changedComponentList = computed(() =>
+  componentList.value
+    .map((component) => ({
+      ...component,
+      diffStatus:
+        componentDiffs.value[component.id]?.diffStatus ?? component.diffStatus,
+    }))
+    .filter((component) => component.diffStatus !== "None"),
+);
+
+// Grab the Component MV for any changed components (for the text diff)
+// NOTE we should probably just dump this data into the ComponentDiff instead, but that'll be
+// a factoring turn.
 const changedComponentDataQueries = useQueries({
   queries: computed(() =>
-    changedComponents.value.map((component) => ({
+    changedComponentList.value.map((component) => ({
       queryKey: key(EntityKind.Component, component.id),
       queryFn: async () =>
         await bifrost<BifrostComponent>(
@@ -165,48 +341,141 @@ const changedComponentDataQueries = useQueries({
 const changedComponentData = computed<Record<ComponentId, BifrostComponent>>(
   () =>
     Object.fromEntries(
-      changedComponentDataQueries.value.map((component) => [
-        component.data?.id,
-        component.data,
-      ]),
+      changedComponentDataQueries.value
+        .map((component) => [component.data?.id, component.data] as const)
+        .filter(([id, diff]) => id && diff),
     ),
 );
-const addedCount = computed(
-  () =>
-    changedComponents.value.filter(
-      (component) => component.diffStatus === "Added",
-    ).length,
-);
-const updatedCount = computed(
-  () =>
-    changedComponents.value.filter(
-      (component) => component.diffStatus === "Modified",
-    ).length,
-);
-const removedCount = computed(() => 0);
 
-const mainScrollDivRef = ref<HTMLDivElement>();
-const componentDiffRefs = ref<HTMLDivElement[]>();
+/** ComponentList of added components only */
+const addedComponentList = computed(() =>
+  changedComponentList.value.filter(
+    (component) => component.diffStatus === "Added",
+  ),
+);
 
-const scrollToDiff = (componentId: ComponentId) => {
-  const divEl = componentDiffRefs.value?.find(
-    (divEl) => divEl.dataset.componentId === componentId,
-  );
-  divEl?.scrollIntoView({ behavior: "smooth" });
+/** ComponentList of modified components only */
+const modifiedComponentList = computed(() =>
+  changedComponentList.value.filter(
+    (component) => component.diffStatus === "Modified",
+  ),
+);
+
+/** ComponentList of modified components only */
+const removedComponentList = computed(() =>
+  changedComponentList.value.filter(
+    (component) => component.diffStatus === "Removed",
+  ),
+);
+
+const selectComponent = (componentId: ComponentId) => {
+  selectedComponentId.value = componentId;
 };
+
+/** The currently-selected component data, including diffs */
+const selectedComponent = computed(() => {
+  if (!selectedComponentId.value) {
+    return undefined;
+  }
+  return {
+    id: selectedComponentId.value,
+    ...changedComponentList.value.find(
+      (component) => component.id === selectedComponentId.value,
+    ),
+    details: componentDiffs.value[selectedComponentId.value],
+    diff: componentDiffs.value[selectedComponentId.value],
+  };
+});
+
+const searchRef = ref<InstanceType<typeof SiSearch>>();
+const searchString = ref("");
+const addedComponentListFiltered = useComponentSearch(
+  searchString,
+  addedComponentList,
+);
+const modifiedComponentListFiltered = useComponentSearch(
+  searchString,
+  modifiedComponentList,
+);
+const removedComponentListFiltered = useComponentSearch(
+  searchString,
+  removedComponentList,
+);
 
 const exitReview = () => {
   router.push({
     name: "new-hotness",
   });
 };
+
+const onEscape = () => {
+  if (selectedComponentId.value) {
+    selectedComponentId.value = undefined;
+  } else {
+    exitReview();
+  }
+};
+const onTab = (e: KeyDetails["Tab"]) => {
+  e.preventDefault();
+  const focusable = Array.from(
+    document.querySelectorAll('[tabindex="0"]'),
+  ) as HTMLElement[];
+  if (selectedComponentId.value) {
+    const index = focusable.findIndex(
+      (element) =>
+        element.dataset.listItemComponentId === selectedComponentId.value,
+    );
+    if (e.shiftKey && index - 1 > -1) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const el = focusable[index - 1]!;
+      el.focus();
+      selectedComponentId.value = el.dataset.listItemComponentId;
+    } else if (!e.shiftKey && index + 1 < focusable.length) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const el = focusable[index + 1]!;
+      el.focus();
+      selectedComponentId.value = el.dataset.listItemComponentId;
+    } else {
+      selectedComponentId.value = undefined;
+      searchRef.value?.focusSearch();
+    }
+  } else {
+    searchRef.value?.focusSearch();
+  }
+};
+const onSearchTab = (e: KeyboardEvent) => {
+  e.preventDefault();
+  const focusable = Array.from(
+    document.querySelectorAll('[tabindex="0"]'),
+  ) as HTMLElement[];
+  if (e.shiftKey) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const el = focusable[focusable.length - 1]!;
+    el.focus();
+    selectedComponentId.value = el.dataset.listItemComponentId;
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const el = focusable[0]!;
+    el.focus();
+    selectedComponentId.value = el.dataset.listItemComponentId;
+  }
+};
+
+onMounted(() => {
+  keyEmitter.on("Escape", onEscape);
+  keyEmitter.on("Tab", onTab);
+});
+onBeforeUnmount(() => {
+  keyEmitter.off("Escape", onEscape);
+  keyEmitter.on("Tab", onTab);
+});
 </script>
 
 <style lang="css" scoped>
 section.grid.review {
-  grid-template-columns: minmax(0, 20%) minmax(0, 80%);
+  grid-template-columns: minmax(0, 25%) minmax(0, 50%) minmax(0, 25%);
   grid-template-rows: 100%;
-  grid-template-areas: "left main";
+  grid-template-areas: "left main right";
 }
 
 div.main {
@@ -214,5 +483,8 @@ div.main {
 }
 div.left {
   grid-area: "left";
+}
+div.right {
+  grid-area: "right";
 }
 </style>

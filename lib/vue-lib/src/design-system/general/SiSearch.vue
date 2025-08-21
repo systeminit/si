@@ -52,6 +52,7 @@
         :tabindex="tabIndex"
         @input="onChange"
         @keydown="onKeyDown"
+        @focus="onFocus"
         @blur="onBlur"
       />
       <Icon
@@ -169,6 +170,7 @@ const emit = defineEmits<{
   (e: "update:modelValue", newValue: string): void;
   (e: "enterPressed"): void;
   (e: "blur", event: FocusEvent): void;
+  (e: "focus", event: FocusEvent): void;
   (e: "input", event: Event): void;
 }>();
 
@@ -268,6 +270,10 @@ const blurSearch = () => {
 
 const onBlur = (e: FocusEvent) => {
   emit("blur", e);
+};
+
+const onFocus = (e: FocusEvent) => {
+  emit("focus", e);
 };
 
 const onChange = (e: Event) => {

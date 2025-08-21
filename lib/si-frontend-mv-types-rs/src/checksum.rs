@@ -288,6 +288,15 @@ where
     }
 }
 
+impl<T1: FrontendChecksum, T2: FrontendChecksum> FrontendChecksum for (T1, T2) {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(self.0.checksum().as_bytes());
+        hasher.update(self.1.checksum().as_bytes());
+        hasher.finalize()
+    }
+}
+
 impl FrontendChecksum for DateTime<Utc> {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_rfc3339())

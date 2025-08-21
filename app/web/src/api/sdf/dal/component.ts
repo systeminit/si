@@ -25,7 +25,7 @@ export interface ComponentIdentificationTimestamp {
   timestamp: string;
 }
 
-export interface ComponentDiff {
+export interface ComponentTextDiff {
   componentId: string;
   current: CodeView;
   diff?: CodeView;

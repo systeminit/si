@@ -19,6 +19,7 @@ rust_library(
         "//third-party/rust:lazy_static",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
+        "//third-party/rust:serde-tuple-vec-map",
         "//third-party/rust:serde_json",
         "//third-party/rust:strum",
     ],

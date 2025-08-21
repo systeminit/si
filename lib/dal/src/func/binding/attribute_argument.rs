@@ -115,8 +115,7 @@ impl AttributeArgumentBinding {
                 }
             };
 
-        let func_argument_id =
-            AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
+        let func_argument_id = AttributePrototypeArgument::func_argument_id(ctx, apa_id).await?;
 
         Ok(Self {
             func_argument_id,

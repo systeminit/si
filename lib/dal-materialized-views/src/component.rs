@@ -13,14 +13,15 @@ use dal::{
 };
 use si_frontend_mv_types::component::{
     Component as ComponentMv,
-    ComponentDiff,
     ComponentDiffStatus,
     ComponentInList as ComponentInListMv,
+    ComponentTextDiff,
     SchemaMembers,
 };
 use telemetry::prelude::*;
 
 pub mod attribute_tree;
+pub mod component_diff;
 
 #[instrument(
     name = "dal_materialized_views.component_in_list",
@@ -132,7 +133,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             Some(code_view) => code_view.code,
             None => None,
         };
-        ComponentDiff {
+        ComponentTextDiff {
             current: dal_component_diff.current.code,
             diff,
         }
