@@ -38,6 +38,8 @@
         :borderBottom="false"
         @focus="() => (selectedComponentId = undefined)"
         @keydown.tab="onSearchTab"
+        @keydown.up="() => searchControl(true)"
+        @keydown.down="() => searchControl(false)"
       />
       <div class="flex flex-col gap-xs flex-grow">
         <CollapsingFlexItem headerTextSize="sm" open>
@@ -138,7 +140,7 @@
 
         <div v-if="selectedComponent.diff" class="flex flex-col gap-xs p-xs">
           <ReviewAttributeItem
-            v-for="(diff, path) in selectedComponent.diff.attributeDiffs"
+            v-for="(diff, path) in selectedComponentDisplayDiffs"
             :key="path"
             :path="path"
             :diff="diff"
@@ -227,13 +229,14 @@ import {
   useMakeKeyForHead,
 } from "@/store/realtime/heimdall";
 import {
+  AttributeDiff,
   BifrostComponent,
   ComponentDiff,
   ComponentInList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
-import { ComponentId } from "@/api/sdf/dal/component";
+import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import ComponentListItem from "./ComponentListItem.vue";
 import { useContext } from "./logic_composables/context";
 import EmptyState from "./EmptyState.vue";
@@ -387,6 +390,24 @@ const selectedComponent = computed(() => {
   };
 });
 
+const selectedComponentDisplayDiffs = computed(() => {
+  if (selectedComponent.value?.diff?.attributeDiffs) {
+    const entries = Object.entries(selectedComponent.value.diff.attributeDiffs);
+    const output: [AttributePath, AttributeDiff][] = [];
+
+    entries.forEach((entry) => {
+      const path = entry[0];
+      if (path.startsWith("/domain") || path === "/si/name") {
+        output.push(entry);
+      }
+    });
+
+    return Object.fromEntries(output) as Record<AttributePath, AttributeDiff>;
+  } else {
+    return {};
+  }
+});
+
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const searchString = ref("");
 const addedComponentListFiltered = useComponentSearch(
@@ -408,6 +429,55 @@ const exitReview = () => {
   });
 };
 
+const controlUp = () => {
+  const focusable = Array.from(
+    document.querySelectorAll('[tabindex="0"]'),
+  ) as HTMLElement[];
+  if (!selectedComponentId.value) {
+    searchRef.value?.focusSearch();
+    return;
+  }
+
+  const index = focusable.findIndex(
+    (element) =>
+      element.dataset.listItemComponentId === selectedComponentId.value,
+  );
+
+  if (index - 1 > -1) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const el = focusable[index - 1]!;
+    el.focus();
+    selectedComponentId.value = el.dataset.listItemComponentId;
+  } else {
+    selectedComponentId.value = undefined;
+    searchRef.value?.focusSearch();
+  }
+};
+const controlDown = () => {
+  const focusable = Array.from(
+    document.querySelectorAll('[tabindex="0"]'),
+  ) as HTMLElement[];
+  if (!selectedComponentId.value) {
+    searchRef.value?.focusSearch();
+    return;
+  }
+
+  const index = focusable.findIndex(
+    (element) =>
+      element.dataset.listItemComponentId === selectedComponentId.value,
+  );
+
+  if (index + 1 < focusable.length) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const el = focusable[index + 1]!;
+    el.focus();
+    selectedComponentId.value = el.dataset.listItemComponentId;
+  } else {
+    selectedComponentId.value = undefined;
+    searchRef.value?.focusSearch();
+  }
+};
+
 const onEscape = () => {
   if (selectedComponentId.value) {
     selectedComponentId.value = undefined;
@@ -417,38 +487,25 @@ const onEscape = () => {
 };
 const onTab = (e: KeyDetails["Tab"]) => {
   e.preventDefault();
-  const focusable = Array.from(
-    document.querySelectorAll('[tabindex="0"]'),
-  ) as HTMLElement[];
-  if (selectedComponentId.value) {
-    const index = focusable.findIndex(
-      (element) =>
-        element.dataset.listItemComponentId === selectedComponentId.value,
-    );
-    if (e.shiftKey && index - 1 > -1) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const el = focusable[index - 1]!;
-      el.focus();
-      selectedComponentId.value = el.dataset.listItemComponentId;
-    } else if (!e.shiftKey && index + 1 < focusable.length) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const el = focusable[index + 1]!;
-      el.focus();
-      selectedComponentId.value = el.dataset.listItemComponentId;
-    } else {
-      selectedComponentId.value = undefined;
-      searchRef.value?.focusSearch();
-    }
+  if (e.shiftKey) {
+    controlUp();
   } else {
-    searchRef.value?.focusSearch();
+    controlDown();
   }
 };
 const onSearchTab = (e: KeyboardEvent) => {
   e.preventDefault();
+  if (e.shiftKey) {
+    searchControl(true);
+  } else {
+    searchControl(false);
+  }
+};
+const searchControl = (up: boolean) => {
   const focusable = Array.from(
     document.querySelectorAll('[tabindex="0"]'),
   ) as HTMLElement[];
-  if (e.shiftKey) {
+  if (up) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const el = focusable[focusable.length - 1]!;
     el.focus();
@@ -464,10 +521,14 @@ const onSearchTab = (e: KeyboardEvent) => {
 onMounted(() => {
   keyEmitter.on("Escape", onEscape);
   keyEmitter.on("Tab", onTab);
+  keyEmitter.on("ArrowUp", controlUp);
+  keyEmitter.on("ArrowDown", controlDown);
 });
 onBeforeUnmount(() => {
   keyEmitter.off("Escape", onEscape);
   keyEmitter.on("Tab", onTab);
+  keyEmitter.on("ArrowUp", controlUp);
+  keyEmitter.on("ArrowDown", controlDown);
 });
 </script>
 
