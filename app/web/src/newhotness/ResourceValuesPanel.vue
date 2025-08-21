@@ -84,6 +84,12 @@ const props = defineProps<{
 }>();
 
 provide<AttributeInputContext>("ATTRIBUTEINPUT", { blankInput: false });
+provide(
+  "ATTRIBUTE_ERRORS",
+  computed(() => {
+    return { saveErrors: {} };
+  }),
+);
 
 // TODO(nick): move the root computation to a shared location since this is a copy from "AttributePanel".
 const root = computed<AttrTree>(() => {
