@@ -344,6 +344,14 @@ impl Component {
             Action::new(ctx, prototype_id, Some(component.id)).await?;
         }
 
+        // Clear the prop suggestion cache's mapping
+        // TODO: we should just *add* the new component to the mapping and then
+        // determine if we need to process the schema variant (if it's a new
+        // one)
+        ctx.workspace_snapshot()?
+            .clear_prop_suggestions_cache()
+            .await;
+
         Ok(component)
     }
 

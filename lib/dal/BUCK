@@ -47,6 +47,7 @@ rust_library(
         "//third-party/rust:ciborium",
         "//third-party/rust:clap",
         "//third-party/rust:convert_case",
+        "//third-party/rust:dashmap",
         "//third-party/rust:derive_more",
         "//third-party/rust:diff",
         "//third-party/rust:dyn-clone",
