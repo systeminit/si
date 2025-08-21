@@ -2907,7 +2907,7 @@ impl Component {
         Ok(modified)
     }
 
-    /// If the attribute value is somewhere in 'root/domain', the component has a resource, and a single update function,
+    /// If the attribute value is somewhere in 'root/domain', the component has a resource AND exists on head, and a single update function,
     /// and there isn't any action already enqueued for this component, enqueue it!
     pub async fn enqueue_update_action_if_applicable(
         ctx: &DalContext,
@@ -2921,7 +2921,7 @@ impl Component {
                 let component_id = AttributeValue::component_id(ctx, modified_av_id).await?;
                 if Component::resource_by_id(ctx, component_id)
                     .await?
-                    .is_some()
+                    .is_some() && Self::exists_on_head_by_id(ctx, component_id).await?
                 {
                     // then if the current component has an update action, enqueue it
                     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
