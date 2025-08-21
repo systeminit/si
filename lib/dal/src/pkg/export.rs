@@ -715,6 +715,15 @@ impl PkgExporter {
                 builder.widget_options(serde_json::to_value(widget_options)?);
             }
 
+            if !child_prop.ui_optionals.is_empty() {
+                let ui_optionals_map: HashMap<_, _> = child_prop
+                    .ui_optionals
+                    .into_iter()
+                    .map(|(k, v)| (k, v.into()))
+                    .collect();
+                builder.ui_optionals(ui_optionals_map);
+            }
+
             if let Some(doc_link) = child_prop.doc_link {
                 builder.try_doc_link(doc_link.as_str())?;
             }
