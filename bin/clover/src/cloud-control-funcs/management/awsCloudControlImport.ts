@@ -1,8 +1,6 @@
-async function main({
-  thisComponent,
-}: Input): Promise<Output> {
+async function main({ thisComponent }: Input): Promise<Output> {
   const component = thisComponent.properties;
-
+  const resourcePayload = _.get(component, ["resource", "payload"], "");
   let resourceId = _.get(component, ["si", "resourceId"]);
 
   if (!resourceId) {
@@ -13,11 +11,11 @@ async function main({
   }
 
   const region = _.get(component, ["domain", "extra", "Region"], "");
-  const awsResourceType = _.get(component, [
-    "domain",
-    "extra",
-    "AwsResourceType",
-  ], "");
+  const awsResourceType = _.get(
+    component,
+    ["domain", "extra", "AwsResourceType"],
+    "",
+  );
 
   const child = await siExec.waitUntilEnd("aws", [
     "cloudcontrol",
@@ -34,18 +32,9 @@ async function main({
     console.log("Failed to import cloud control resource");
     console.log(child.stdout);
     console.error(child.stderr);
-    // FIXME: should track down what happens when the resource doesnt exist
-    //if (child.stderr.includes("ResourceNotFoundException")) {
-    //    console.log("EKS Cluster not found  upstream (ResourceNotFoundException) so removing the resource")
-    //    return {
-    //        status: "ok",
-    //        payload: null,
-    //    };
-    //}
     return {
       status: "error",
-      message:
-        `Import error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+      message: `Import error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
     };
   }
 
@@ -58,26 +47,43 @@ async function main({
   const properties = {
     ...component,
     domain: {
+      extra: {
+        Region: region,
+      },
       ...component.domain,
       ...resourceProperties,
     },
   };
 
+  let needsRefresh = true;
+  if (!resourcePayload) {
+    properties.resource = resourceProperties;
+    needsRefresh = false;
+  }
+
+  const ops = {
+    update: {
+      self: {
+        properties,
+      },
+    },
+    actions: {
+      self: {
+        remove: ["create"],
+        add: [] as string[],
+      },
+    },
+  };
+
+  if (needsRefresh) {
+    ops.actions.self.add.push("refresh");
+  } else {
+    ops.actions.self.remove.push("refresh");
+  }
+
   return {
     status: "ok",
     message: "Imported Resource",
-    ops: {
-      update: {
-        self: {
-          properties,
-        },
-      },
-      actions: {
-        self: {
-          remove: ["create"],
-          add: ["refresh"],
-        },
-      },
-    },
+    ops,
   };
 }
