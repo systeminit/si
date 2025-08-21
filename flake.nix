@@ -83,7 +83,7 @@
           # breakpointHook
         ]
         ++ lib.optionals pkgs.stdenv.isDarwin [
-          darwin.sigtool
+          pkgs.darwin.sigtool
         ];
 
       buck2BuildInputs = with pkgs;
@@ -96,9 +96,6 @@
         ]
         ++ lib.optionals pkgs.stdenv.isDarwin [
           libiconv
-          darwin.apple_sdk.frameworks.Security
-          darwin.apple_sdk.frameworks.SystemConfiguration
-          darwin.apple_sdk.frameworks.CoreFoundation
         ];
 
       # The file name of the program interpreter/dynamic linker. We're primarily
