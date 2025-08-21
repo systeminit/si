@@ -25,6 +25,10 @@ use si_events::audit_log::{
     AuditLog,
     AuditLogKind,
 };
+use si_id::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio_util::task::TaskTracker;
@@ -271,13 +275,55 @@ pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[instrument(name = "audit_logging.list", level = "debug", skip_all, fields(size))]
+#[instrument(
+    name = "audit_logging.list",
+    level = "debug",
+    skip_all,
+    fields(size, sort_ascending)
+)]
 pub async fn list(
     ctx: &DalContext,
     audit_database_context: &AuditDatabaseContext,
     size: usize,
     sort_ascending: bool,
 ) -> Result<(Vec<AuditLogRow>, bool)> {
+    let (workspace_id, change_set_ids) = prepare_accessor_query(ctx).await?;
+    Ok(AuditLogRow::list(
+        audit_database_context,
+        workspace_id,
+        change_set_ids,
+        size,
+        sort_ascending,
+    )
+    .await?)
+}
+
+#[instrument(
+    name = "audit_logging.list_for_component",
+    level = "debug",
+    skip_all,
+    fields(size, sort_ascending, component_id)
+)]
+pub async fn list_for_component(
+    ctx: &DalContext,
+    audit_database_context: &AuditDatabaseContext,
+    component_id: crate::ComponentId,
+    size: usize,
+    sort_ascending: bool,
+) -> Result<(Vec<AuditLogRow>, bool)> {
+    let (workspace_id, change_set_ids) = prepare_accessor_query(ctx).await?;
+    Ok(AuditLogRow::list_for_component(
+        audit_database_context,
+        workspace_id,
+        change_set_ids,
+        component_id,
+        size,
+        sort_ascending,
+    )
+    .await?)
+}
+
+async fn prepare_accessor_query(ctx: &DalContext) -> Result<(WorkspacePk, Vec<ChangeSetId>)> {
     let workspace_id = ctx.workspace_pk().map_err(Box::new)?;
     let change_set_id = ctx.change_set_id();
 
@@ -303,14 +349,7 @@ pub async fn list(
         change_set_ids
     };
 
-    Ok(AuditLogRow::list(
-        audit_database_context,
-        workspace_id,
-        change_set_ids,
-        size,
-        sort_ascending,
-    )
-    .await?)
+    Ok((workspace_id, change_set_ids))
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

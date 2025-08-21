@@ -6,6 +6,7 @@ use dal::{
     Prop,
     Schema,
     SchemaVariant,
+    audit_logging,
     prop::PropPath,
 };
 use dal_test::{
@@ -53,10 +54,11 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
     )
     .await
     .expect("could not create component");
+    let component_id = component.id();
     ctx.write_audit_log(
         AuditLogKind::CreateComponent {
             name: component_name.to_string(),
-            component_id: component.id(),
+            component_id,
             schema_variant_id,
             schema_variant_name: schema_variant.display_name().to_string(),
         },
@@ -107,6 +109,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
             expected_total,                   // expected
             destination_stream_message_count  // actual
         );
+
         list_audit_logs_until_expected_number_of_rows(
             ctx,
             &context,
@@ -117,6 +120,11 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
         )
         .await
         .expect("could not list audit logs");
+
+        // No timeouts or sleeps needed since the previous query will have passed.
+        audit_logging::list_for_component(ctx, &context, component_id, SIZE, true)
+            .await
+            .expect("could not list component-specific audit logs");
     }
 
     // Update a property editor value and commit. Mimic sdf by audit logging here.
@@ -144,7 +152,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
         .expect("could not update attribute value");
     ctx.write_audit_log(
         AuditLogKind::UpdatePropertyEditorValue {
-            component_id: component.id(),
+            component_id,
             component_name: component_name.to_string(),
             schema_variant_id,
             schema_variant_display_name: schema_variant.display_name().to_string(),
@@ -192,13 +200,18 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
         )
         .await
         .expect("could not list audit logs");
+
+        // No timeouts or sleeps needed since the previous query will have passed.
+        audit_logging::list_for_component(ctx, &context, component_id, SIZE, true)
+            .await
+            .expect("could not list component-specific audit logs");
     }
 
     // Delete a component and commit. Mimic sdf by audit logging here.
     ctx.write_audit_log(
         AuditLogKind::DeleteComponent {
             name: component_name.to_string(),
-            component_id: component.id(),
+            component_id,
             schema_variant_id,
             schema_variant_name: schema_variant.display_name().to_string(),
         },
@@ -247,5 +260,10 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
         )
         .await
         .expect("could not list audit logs");
+
+        // No timeouts or sleeps needed since the previous query will have passed.
+        audit_logging::list_for_component(ctx, &context, component_id, SIZE, true)
+            .await
+            .expect("could not list component-specific audit logs");
     }
 }
