@@ -407,6 +407,12 @@ const showHistory = reactive<Record<AttributePath, boolean>>(
 );
 
 provide<AttributeInputContext>("ATTRIBUTEINPUT", { blankInput: true });
+provide(
+  "ATTRIBUTE_ERRORS",
+  computed(() => {
+    return { saveErrors: ref({}) };
+  }),
+);
 
 const setHistory = (path: AttributePath) => {
   showHistory[path] = true;
