@@ -67,6 +67,13 @@ noop_test_toolchain(
 hermetic_clang_toolchain(
     name = "cxx",
     distribution = ":clang",
+    binary_linker_flags = [
+        "-lclang_rt.builtins",
+        "-nostdlib++",
+    ],
+    linker_flags = [
+        "--rtlib=compiler-rt",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -98,6 +105,10 @@ hermetic_rust_toolchain(
         "-Coverflow-checks=false",
         "-Clto=false",
         "-Ccodegen-units=16",
+        # Use hermetic toolchain for linking
+        "-Clink-arg=-fuse-ld=lld",
+        # Override GCC runtime with LLVM runtime at link time
+        "-Clink-arg=-Wl,--allow-shlib-undefined",
     ],
 )
 
@@ -113,6 +124,10 @@ hermetic_rust_toolchain(
         "-Ccodegen-units=256",
         "-Cdebug-assertions=true",
         "-Coverflow-checks=true",
+        # Use hermetic toolchain for linking
+        "-Clink-arg=-fuse-ld=lld",
+        # Override GCC runtime with LLVM runtime at link time
+        "-Clink-arg=-Wl,--allow-shlib-undefined",
     ],
 )
 
