@@ -45,23 +45,23 @@
         <CollapsingFlexItem headerTextSize="sm" open>
           <template #header>Created</template>
           <template #headerIcons>
-            <PillCounter :count="addedComponentListFiltered.length" size="sm" />
+            <PillCounter :count="addedComponentList.length" size="sm" />
           </template>
           <div class="flex flex-col gap-xs p-xs w-full h-full">
             <EmptyState
-              v-if="addedComponentList.length === 0"
+              v-if="componentCounts.Added === 0"
               icon="component"
               text="No components added"
               class="p-sm"
             />
             <EmptyState
-              v-else-if="addedComponentListFiltered.length === 0"
+              v-else-if="addedComponentList.length === 0"
               icon="component"
               text="No added components match your search"
               class="p-sm"
             />
             <ComponentListItem
-              v-for="component in addedComponentListFiltered"
+              v-for="component in addedComponentList"
               :key="component.id"
               :component="component"
               :selected="component.id === selectedComponentId"
@@ -72,26 +72,23 @@
         <CollapsingFlexItem headerTextSize="sm" open>
           <template #header>Changed</template>
           <template #headerIcons>
-            <PillCounter
-              :count="modifiedComponentListFiltered.length"
-              size="sm"
-            />
+            <PillCounter :count="modifiedComponentList.length" size="sm" />
           </template>
           <div class="flex flex-col gap-xs p-xs w-full h-full">
             <EmptyState
-              v-if="modifiedComponentList.length === 0"
+              v-if="componentCounts.Modified === 0"
               icon="diff"
               text="No components changed"
               class="p-sm"
             />
             <EmptyState
-              v-else-if="modifiedComponentListFiltered.length === 0"
+              v-else-if="modifiedComponentList.length === 0"
               icon="diff"
               text="No changed components match your search"
               class="p-sm"
             />
             <ComponentListItem
-              v-for="component in modifiedComponentListFiltered"
+              v-for="component in modifiedComponentList"
               :key="component.id"
               :component="component"
               :selected="component.id === selectedComponentId"
@@ -102,26 +99,23 @@
         <CollapsingFlexItem headerTextSize="sm" open>
           <template #header>Removed</template>
           <template #headerIcons>
-            <PillCounter
-              :count="removedComponentListFiltered.length"
-              size="sm"
-            />
+            <PillCounter :count="removedComponentList.length" size="sm" />
           </template>
           <div class="flex flex-col gap-xs p-xs w-full h-full">
             <EmptyState
-              v-if="removedComponentList.length === 0"
+              v-if="componentCounts.Removed === 0"
               icon="trash"
               text="No components deleted"
               class="p-sm"
             />
             <EmptyState
-              v-else-if="removedComponentListFiltered.length === 0"
+              v-else-if="removedComponentList.length === 0"
               icon="trash"
               text="No deleted components match your search"
               class="p-sm"
             />
             <ComponentListItem
-              v-for="component in removedComponentListFiltered"
+              v-for="component in removedComponentList"
               :key="component.id"
               :component="component"
               :selected="component.id === selectedComponentId"
@@ -278,21 +272,10 @@ const headComponentList = computed(
   () => headComponentListQuery.data.value ?? [],
 );
 
-const componentList = computed(() => {
-  return changeSetComponentList.value.concat(
-    headComponentList.value
-      .filter(
-        (component) =>
-          !changeSetComponentList.value.some((c) => c.id === component.id),
-      )
-      .map((component) => ({ ...component, diffStatus: "Removed" as const })),
-  );
-});
-
-/** Complete attribute-by-attribute diff of every component */
+/** Queries for complete attribute-by-attribute diff of every component */
 const componentDiffQueries = useQueries({
   queries: computed(() =>
-    componentList.value.map((component) => ({
+    changeSetComponentList.value.map((component) => ({
       queryKey: key(EntityKind.ComponentDiff, component.id),
       queryFn: async () =>
         await bifrost<ComponentDiff>(
@@ -301,79 +284,89 @@ const componentDiffQueries = useQueries({
     })),
   ),
 });
-/** Complete attribute-by-attribute diff of every component */
-const componentDiffs = computed<Record<ComponentId, ComponentDiff>>(() =>
-  Object.fromEntries(
-    componentDiffQueries.value
-      .map((query) => [query.data?.id, query.data] as const)
-      .filter(([id, diff]) => id && diff),
-  ),
-);
 
 /**
- * Component list, for *changed* components.
+ * Complete component list, including:
+ * - Added and modified components from the changeset
+ * - Removed components from HEAD
+ * - `diff` set to the ComponentDiff MV for the component (if found)
+ * - `diffStatus` reflecting the status from the ComponentDiff MV
  *
- * NOTE: this merges in the diffStatus from the ComponentDiff MV, which is more accurate. At some
- * point we will want to modify the ComponentList MV to use the more accurate diff, so we don't have
- * to pull every single ComponentDiff MV to figure it out.
+ * TODO we will want to make the diffStatus correct in the ComponentList MV in the first place,
+ * so we don't have to "fix" it here
  */
-const changedComponentList = computed(() =>
-  componentList.value
-    .map((component) => ({
+const componentList = computed(() => {
+  // Add diffs to each component in the change set, and include "removed"
+  const componentDiffs: { [id in ComponentId]?: ComponentDiff } =
+    Object.fromEntries(
+      componentDiffQueries.value.map(
+        (query) => [query.data?.id, query.data] as const,
+      ),
+    );
+  const result = changeSetComponentList.value.map((component) => {
+    const diff = componentDiffs[component.id];
+    return {
       ...component,
-      diffStatus:
-        componentDiffs.value[component.id]?.diffStatus ?? component.diffStatus,
-    }))
-    .filter((component) => component.diffStatus !== "None"),
-);
+      diff,
+      diffStatus: diff?.diffStatus ?? component.diffStatus,
+    };
+  });
+
+  // Add any head components that aren't in the list as "removed"
+  for (const headComponent of headComponentList.value) {
+    if (!result.find((c) => c.id === headComponent.id)) {
+      result.push({
+        ...headComponent,
+        diff: undefined,
+        diffStatus: "Removed" as const,
+      });
+    }
+  }
+
+  return result;
+});
+
+/** Overall (non-filtered) component counts for each diff status */
+const componentCounts = computed(() => {
+  const result = {
+    Added: 0,
+    Modified: 0,
+    None: 0,
+    Removed: 0,
+  };
+  for (const component of componentList.value) {
+    result[component.diffStatus] += 1;
+  }
+  return result;
+});
 
 // Grab the Component MV for any changed components (for the text diff)
 // NOTE we should probably just dump this data into the ComponentDiff instead, but that'll be
 // a factoring turn.
 const changedComponentDataQueries = useQueries({
-  queries: computed(() =>
-    changedComponentList.value.map((component) => ({
-      queryKey: key(EntityKind.Component, component.id),
-      queryFn: async () =>
-        await bifrost<BifrostComponent>(
-          args(EntityKind.Component, component.id),
-        ),
-    })),
-  ),
+  queries: computed(() => {
+    return componentList.value
+      .filter((component) => component.diffStatus !== "None")
+      .map((component) => ({
+        queryKey: key(EntityKind.Component, component.id),
+        queryFn: async () =>
+          await bifrost<BifrostComponent>(
+            args(EntityKind.Component, component.id),
+          ),
+      }));
+  }),
 });
-const changedComponentData = computed<Record<ComponentId, BifrostComponent>>(
-  () =>
-    Object.fromEntries(
-      changedComponentDataQueries.value
-        .map((component) => [component.data?.id, component.data] as const)
-        .filter(([id, diff]) => id && diff),
+
+/** Component MV for any changed components */
+const changedComponentData = computed<{
+  [id in ComponentId]?: BifrostComponent;
+}>(() =>
+  Object.fromEntries(
+    changedComponentDataQueries.value.map(
+      (component) => [component.data?.id, component.data] as const,
     ),
-);
-
-/** ComponentList of added components only */
-const addedComponentList = computed(() =>
-  changedComponentList.value.filter(
-    (component) => component.diffStatus === "Added",
   ),
 );
-
-/** ComponentList of modified components only */
-const modifiedComponentList = computed(() =>
-  changedComponentList.value.filter(
-    (component) => component.diffStatus === "Modified",
-  ),
-);
-
-/** ComponentList of modified components only */
-const removedComponentList = computed(() =>
-  changedComponentList.value.filter(
-    (component) => component.diffStatus === "Removed",
-  ),
-);
-
-const selectComponent = (componentId: ComponentId) => {
-  selectedComponentId.value = componentId;
-};
 
 /** The currently-selected component data, including diffs */
 const selectedComponent = computed(() => {
@@ -382,26 +375,25 @@ const selectedComponent = computed(() => {
   }
   return {
     id: selectedComponentId.value,
-    ...changedComponentList.value.find(
+    ...componentList.value.find(
       (component) => component.id === selectedComponentId.value,
     ),
-    details: componentDiffs.value[selectedComponentId.value],
-    diff: componentDiffs.value[selectedComponentId.value],
+    details: changedComponentData.value[selectedComponentId.value],
   };
 });
 
+const selectComponent = (componentId: ComponentId) => {
+  selectedComponentId.value = componentId;
+};
+
 const selectedComponentDisplayDiffs = computed(() => {
   if (selectedComponent.value?.diff?.attributeDiffs) {
-    const entries = Object.entries(selectedComponent.value.diff.attributeDiffs);
-    const output: [AttributePath, AttributeDiff][] = [];
-
-    entries.forEach((entry) => {
-      const path = entry[0];
-      if (path.startsWith("/domain") || path === "/si/name") {
-        output.push(entry);
-      }
-    });
-
+    const entries = Object.entries(
+      selectedComponent.value?.diff?.attributeDiffs ?? {},
+    );
+    const output = entries.filter(
+      ([path, _]) => path.startsWith("/domain") || path === "/si/name",
+    );
     return Object.fromEntries(output) as Record<AttributePath, AttributeDiff>;
   } else {
     return {};
@@ -410,17 +402,20 @@ const selectedComponentDisplayDiffs = computed(() => {
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const searchString = ref("");
-const addedComponentListFiltered = useComponentSearch(
-  searchString,
-  addedComponentList,
+
+/** Components, filtered by the search string */
+const filteredComponentList = useComponentSearch(searchString, componentList);
+/** Added components, filtered by the search string */
+const addedComponentList = computed(() =>
+  filteredComponentList.value.filter((c) => c.diffStatus === "Added"),
 );
-const modifiedComponentListFiltered = useComponentSearch(
-  searchString,
-  modifiedComponentList,
+/** Modified components, filtered by the search string */
+const modifiedComponentList = computed(() =>
+  filteredComponentList.value.filter((c) => c.diffStatus === "Modified"),
 );
-const removedComponentListFiltered = useComponentSearch(
-  searchString,
-  removedComponentList,
+/** Removed components, filtered by the search string */
+const removedComponentList = computed(() =>
+  filteredComponentList.value.filter((c) => c.diffStatus === "Removed"),
 );
 
 const exitReview = () => {
