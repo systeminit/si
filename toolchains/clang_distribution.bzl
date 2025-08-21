@@ -27,6 +27,17 @@ _CLANG_RELEASES = {
     },
 }
 
+# GCC runtime library for compatibility with rustc
+# Using Debian package which comes as .deb (ar archive with tar.xz data)
+_LIBGCC_RELEASES = {
+    "12": {
+        "x86_64-unknown-linux-gnu": {
+            "url": "http://ftp.us.debian.org/debian/pool/main/g/gcc-12/libgcc-s1_12.2.0-14+deb12u1_amd64.deb",
+            "sha256": "3016e62cb4b7cd8038822870601f5ed131befe942774d0f745622cc77d8a88f7",
+        },
+    },
+}
+
 def _get_clang_release(version: str, target: str):
     if version not in _CLANG_RELEASES:
         fail("Unknown Clang version '{}'. Available versions: {}".format(
@@ -43,6 +54,23 @@ def _get_clang_release(version: str, target: str):
         ))
 
     return clang_version[target]
+
+def _get_libgcc_release(version: str, target: str):
+    if version not in _LIBGCC_RELEASES:
+        fail("Unknown libgcc version '{}'. Available versions: {}".format(
+            version,
+            ", ".join(_LIBGCC_RELEASES.keys()),
+        ))
+
+    libgcc_version = _LIBGCC_RELEASES[version]
+    if target not in libgcc_version:
+        fail("Unsupported target '{}' for libgcc {}. Supported targets: {}".format(
+            target,
+            version,
+            ", ".join(libgcc_version.keys()),
+        ))
+
+    return libgcc_version[target]
 
 # Simple HTTP archive implementation
 def _simple_http_archive_impl(ctx: AnalysisContext) -> list[Provider]:
@@ -79,11 +107,49 @@ _simple_http_archive = rule(
     },
 )
 
+def _libgcc_archive_impl(ctx: AnalysisContext) -> list[Provider]:
+    """Download and extract a .deb package for libgcc."""
+    url = ctx.attrs.urls[0]
+
+    # Download archive
+    archive = ctx.actions.declare_output("libgcc.deb")
+    if ctx.attrs.sha256:
+        ctx.actions.download_file(archive.as_output(), url, sha256 = ctx.attrs.sha256)
+    else:
+        fail("Must provide sha256 checksum for libgcc archive")
+
+    # Extract .deb package using ar and tar (available in buildpack-deps)
+    output = ctx.actions.declare_output(ctx.label.name, dir = True)
+    script = [
+        "set -x",
+        "mkdir -p $1",
+        "ARCHIVE_PATH=$(readlink -f $2)",
+        "cd $1",
+        "ar x $ARCHIVE_PATH",
+        "tar xf data.tar.*",
+        "rm -f control.tar.* data.tar.* debian-binary 2>/dev/null || true",
+        "test -f lib/x86_64-linux-gnu/libgcc_s.so.1 && cd lib/x86_64-linux-gnu && cp libgcc_s.so.1 libgcc_s.so || true"
+    ]
+    ctx.actions.run([
+        "sh", "-c", "; ".join(script), "--", output.as_output(), archive
+    ], category = "extract_libgcc")
+
+    return [DefaultInfo(default_output = output)]
+
+_libgcc_archive = rule(
+    impl = _libgcc_archive_impl,
+    attrs = {
+        "urls": attrs.list(attrs.string()),
+        "sha256": attrs.string(default = ""),
+    },
+)
+
 SimpleClangDistributionInfo = provider(
     fields = {
         "version": provider_field(typing.Any, default = None),
         "target": provider_field(typing.Any, default = None),
         "directory": provider_field(typing.Any, default = None),
+        "libgcc_directory": provider_field(typing.Any, default = None),
     },
 )
 
@@ -126,12 +192,18 @@ def _hermetic_clang_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
         identifier = "setup",
     )
 
+    # Include libgcc directory if available
+    libgcc_dir = None
+    if ctx.attrs.libgcc_archive:
+        libgcc_dir = ctx.attrs.libgcc_archive[DefaultInfo].default_outputs[0]
+
     return [
         DefaultInfo(default_output = output_dir),
         SimpleClangDistributionInfo(
             version = ctx.attrs.version,
             target = ctx.attrs.target,
             directory = output_dir,
+            libgcc_directory = libgcc_dir,
         ),
     ]
 
@@ -141,6 +213,7 @@ hermetic_clang_distribution = rule(
         "version": attrs.string(),
         "target": attrs.string(),
         "archive": attrs.dep(providers = [DefaultInfo]),
+        "libgcc_archive": attrs.option(attrs.dep(providers = [DefaultInfo]), default = None),
     },
 )
 
@@ -167,17 +240,22 @@ def download_clang_distribution(
     name: str,
     version: str,
     target: [None, str] = None,
-    visibility: [None, list] = None):
-    """Download a simple Clang/LLVM distribution.
+    visibility: [None, list] = None,
+    libgcc_version: [None, str] = None):
+    """Download a simple Clang/LLVM distribution with libgcc support.
 
     Args:
         name: Name of the target
         version: Clang version (e.g., "20.1.0")
         target: Target triple (defaults to host)
         visibility: Target visibility
+        libgcc_version: libgcc version for runtime support (defaults to "13")
     """
     if target == None:
         target = _host_target()
+
+    if libgcc_version == None:
+        libgcc_version = "12"
 
     release = _get_clang_release(version, target)
     archive_name = name + "-archive"
@@ -189,11 +267,24 @@ def download_clang_distribution(
         sha256 = release.get("sha256", ""),
     )
 
+    # Download libgcc for x86_64 Linux targets only
+    libgcc_archive_name = None
+    if "x86_64-unknown-linux-gnu" == target:
+        libgcc_release = _get_libgcc_release(libgcc_version, target)
+        libgcc_archive_name = name + "-libgcc-archive"
+
+        _libgcc_archive(
+            name = libgcc_archive_name,
+            urls = [libgcc_release["url"]],
+            sha256 = libgcc_release.get("sha256", ""),
+        )
+
     hermetic_clang_distribution(
         name = name,
         version = version,
         target = target,
         archive = ":" + archive_name,
+        libgcc_archive = (":" + libgcc_archive_name) if libgcc_archive_name else None,
         visibility = visibility,
     )
 
@@ -289,6 +380,10 @@ def _hermetic_clang_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             archiver_supports_argfiles = True,
             archive_objects_locally = False,
             binary_extension = "",
+            binary_linker_flags = cmd_args(
+                ctx.attrs.binary_linker_flags,
+                cmd_args(dist.libgcc_directory, format = "-L{}/lib/x86_64-linux-gnu") if dist.libgcc_directory else [],
+            ),
             generate_linker_maps = False,
             link_binaries_locally = False,
             link_libraries_locally = False,
@@ -330,6 +425,7 @@ hermetic_clang_toolchain = rule(
     impl = _hermetic_clang_toolchain_impl,
     attrs = {
         "distribution": attrs.exec_dep(providers = [SimpleClangDistributionInfo]),
+        "binary_linker_flags": attrs.list(attrs.arg(), default = []),
         "c_compiler_flags": attrs.list(attrs.arg(), default = []),
         "c_preprocessor_flags": attrs.list(attrs.arg(), default = []),
         "cxx_compiler_flags": attrs.list(attrs.arg(), default = []),

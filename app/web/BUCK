@@ -22,6 +22,12 @@ export_file(
     name = "package.json",
 )
 
+export_file(
+    name = "editor_typescript.txt",
+    src = "src/assets/static/editor_typescript.txt",
+    visibility = ["PUBLIC"],
+)
+
 package_node_modules(
     name = "node_modules",
 )
