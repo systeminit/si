@@ -826,13 +826,25 @@ export const useMakeKey = () => {
     id?: MaybeRefOrGetter<string>,
     extension?: MaybeRefOrGetter<string>,
   ) =>
-    computed<[string, string, ComputedRef<K> | K, string, string]>(() => [
-      ctx.workspacePk.value,
-      ctx.changeSetId.value,
-      toValue(kind),
-      toValue(id ?? ctx.workspacePk),
-      toValue(extension ?? ""),
-    ]);
+    computed<
+      | [string, string, ComputedRef<K> | K, string, string]
+      | [string, string, ComputedRef<K> | K, string]
+    >(() =>
+      extension
+        ? [
+            ctx.workspacePk.value,
+            ctx.changeSetId.value,
+            toValue(kind),
+            toValue(id ?? ctx.workspacePk),
+            toValue(extension),
+          ]
+        : [
+            ctx.workspacePk.value,
+            ctx.changeSetId.value,
+            toValue(kind),
+            toValue(id ?? ctx.workspacePk),
+          ],
+    );
 };
 
 export const useMakeKeyForHead = () => {
