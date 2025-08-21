@@ -86,10 +86,10 @@ rust_library(
         "//third-party/rust:url",
         "//third-party/rust:y-sync",
     ],
-    srcs = glob([
-        "src/**/*.rs",
-        "src/service/v2/fs/editor_typescript.txt"
-    ]),
+    srcs = glob(["src/**/*.rs"]) + ["//app/web:editor_typescript.txt"],
+    env = {
+        "CARGO_MANIFEST_DIR": ".",
+    },
     extra_test_targets = [":test-integration"],
 )
 
