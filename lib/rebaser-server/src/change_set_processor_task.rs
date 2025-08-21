@@ -396,6 +396,7 @@ mod handlers {
     use dal::{
         ChangeSet,
         Workspace,
+        WorkspaceSnapshot,
         WsEvent,
         action::{
             Action,
@@ -405,8 +406,11 @@ mod handlers {
         workspace_snapshot::{
             DependentValueRoot,
             dependent_value_root::DependentValueRootError,
+            selector::WorkspaceSnapshotSelectorDiscriminants,
+            split_snapshot::SplitSnapshot,
         },
     };
+    use edda_client::EddaClient;
     use naxum::{
         extract::State,
         response::{
@@ -443,6 +447,8 @@ mod handlers {
         rebase::{
             RebaseError,
             perform_rebase,
+            send_updates_to_edda_legacy_snapshot,
+            send_updates_to_edda_split_snapshot,
         },
     };
 
@@ -533,7 +539,16 @@ mod handlers {
 
         let maybe_post_rebase_activities_result =
             if matches!(rebase_status, RebaseStatus::Success { .. }) {
-                Some(post_rebase_activities(workspace_id, run_notify, &ctx).await)
+                Some(
+                    post_rebase_activities(
+                        workspace_id,
+                        change_set_id,
+                        &edda,
+                        run_notify,
+                        &mut ctx,
+                    )
+                    .await,
+                )
             } else {
                 None
             };
@@ -590,8 +605,10 @@ mod handlers {
     ))]
     async fn post_rebase_activities(
         workspace_id: dal::WorkspacePk,
+        change_set_id: dal::ChangeSetId,
+        edda: &EddaClient,
         run_notify: std::sync::Arc<tokio::sync::Notify>,
-        ctx: &dal::DalContext,
+        ctx: &mut dal::DalContext,
     ) -> Result<()> {
         let start = Instant::now();
         let span = current_span_for_instrument_at!("info");
@@ -604,6 +621,8 @@ mod handlers {
         // Actions are **ONLY** ever dispatched from the default change set for a workspace.
         if let Some(workspace) = Workspace::get_by_pk_opt(ctx, workspace_id).await? {
             if workspace.default_change_set_id() == ctx.visibility().change_set_id {
+                let original_snapshot_address = ctx.workspace_snapshot()?.id().await;
+
                 let mut change_set =
                     ChangeSet::get_by_id(ctx, ctx.visibility().change_set_id).await?;
                 let did_actions_dispatch =
@@ -638,6 +657,41 @@ mod handlers {
 
                     // No need to send the request over to the rebaser as we are the rebaser.
                     ctx.commit_no_rebase().await?;
+                    // send to edda
+                    match workspace.snapshot_kind() {
+                        WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
+                            let og_legacy_snapshot =
+                                WorkspaceSnapshot::find(ctx, original_snapshot_address).await?;
+                            let new_legacy_snapshot =
+                                WorkspaceSnapshot::find(ctx, new_snapshot_id).await?;
+                            send_updates_to_edda_legacy_snapshot(
+                                ctx,
+                                &og_legacy_snapshot,
+                                &new_legacy_snapshot,
+                                edda,
+                                change_set_id,
+                                workspace_id,
+                                span,
+                            )
+                            .await?;
+                        }
+                        WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+                            let og_split_snapshot =
+                                SplitSnapshot::find(ctx, original_snapshot_address).await?;
+                            let new_split_snapshot =
+                                SplitSnapshot::find(ctx, new_snapshot_id).await?;
+                            send_updates_to_edda_split_snapshot(
+                                ctx,
+                                &og_split_snapshot,
+                                &new_split_snapshot,
+                                edda,
+                                change_set_id,
+                                workspace_id,
+                                span,
+                            )
+                            .await?;
+                        }
+                    }
                 }
             }
         }
