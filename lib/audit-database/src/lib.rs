@@ -213,8 +213,9 @@ impl AuditLogRow {
     ) -> Result<(Vec<Self>, bool)> {
         let size = size as i64;
         let change_set_ids: Vec<String> = change_set_ids.iter().map(|id| id.to_string()).collect();
-
         let client = context.pg_pool().get().await?;
+
+        // Determine if we can load more.
         let row = client
             .query_one(
                 "SELECT COUNT(*) from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2)",
@@ -224,21 +225,74 @@ impl AuditLogRow {
         let count: i64 = row.try_get("count")?;
         let can_load_more = count > size;
 
+        // Perform the main query.
         let query = if sort_ascending {
             "SELECT * from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) ORDER BY timestamp ASC LIMIT $3"
         } else {
             "SELECT * from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) ORDER BY timestamp DESC LIMIT $3"
         };
-
-        let mut result = Vec::new();
+        let mut logs = Vec::new();
         let rows = client
             .query(query, &[&workspace_id, &change_set_ids, &size])
             .await?;
         for row in rows {
-            result.push(Self::try_from(row)?);
+            logs.push(Self::try_from(row)?);
         }
 
-        Ok((result, can_load_more))
+        Ok((logs, can_load_more))
+    }
+
+    /// Lists rows of the audit logs table filtered by component ID in the audit database.
+    #[instrument(
+        name = "audit_log.database.list_for_component",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.component.id = %component_id
+        ),
+    )]
+    pub async fn list_for_component(
+        context: &AuditDatabaseContext,
+        workspace_id: WorkspacePk,
+        change_set_ids: Vec<ChangeSetId>,
+        component_id: si_events::ComponentId,
+        size: usize,
+        sort_ascending: bool,
+    ) -> Result<(Vec<Self>, bool)> {
+        let size = size as i64;
+        let change_set_ids: Vec<String> = change_set_ids.iter().map(|id| id.to_string()).collect();
+        let component_id_str = component_id.to_string();
+        let client = context.pg_pool().get().await?;
+
+        // Determine if we can load more.
+        let row = client
+            .query_one(
+                "SELECT COUNT(*) from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) AND (metadata->>'componentId' = $3 OR entity_name = $3)",
+                &[&workspace_id, &change_set_ids, &component_id_str],
+            )
+            .await?;
+        let count: i64 = row.try_get("count")?;
+        let can_load_more = count > size;
+
+        // Perform the main query.
+        let query = if sort_ascending {
+            "SELECT * from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) AND (metadata->>'componentId' = $3 OR entity_name = $3) ORDER BY timestamp ASC LIMIT $4"
+        } else {
+            "SELECT * from audit_logs WHERE workspace_id = $1 AND change_set_id = ANY($2) AND (metadata->>'componentId' = $3 OR entity_name = $3) ORDER BY timestamp DESC LIMIT $4"
+        };
+        let mut logs_for_component = Vec::new();
+        let rows = client
+            .query(
+                query,
+                &[&workspace_id, &change_set_ids, &component_id_str, &size],
+            )
+            .await?;
+        for row in rows {
+            logs_for_component.push(Self::try_from(row)?);
+        }
+
+        Ok((logs_for_component, can_load_more))
     }
 }
 
