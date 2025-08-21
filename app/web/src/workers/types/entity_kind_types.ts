@@ -602,3 +602,22 @@ export const emptyDefaultSubs: DefaultSubscriptions = {
   componentsForSubs: new DefaultMap(() => new Set()),
   subsForComponents: new DefaultMap(() => new Set()),
 };
+
+export interface AuditLog {
+  title: string;
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
+  kind: string;
+  entityName: string;
+  entityType: string;
+  timestamp: string;
+  changeSetId?: string;
+  changeSetName?: string;
+  metadata: Record<string, unknown>;
+  authenticationMethod: {
+    method: string;
+    role?: string;
+    tokenId?: string;
+  };
+}

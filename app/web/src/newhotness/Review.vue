@@ -167,13 +167,8 @@
       <CollapsingFlexItem open>
         <template #header>Component History</template>
         <template v-if="selectedComponent">
-          <EmptyState
-            class="p-lg"
-            icon="component"
-            text="No History"
-            secondaryText="This section is not done yet"
-          />
-        </template>
+          <ComponentHistory :componentId="selectedComponent.id"
+        /></template>
         <EmptyState
           v-else
           class="p-lg"
@@ -204,8 +199,8 @@
 </template>
 
 <script setup lang="ts">
-import { useQueries, useQuery } from "@tanstack/vue-query";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/vue-query";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import clsx from "clsx";
 import {
   PillCounter,
@@ -234,6 +229,7 @@ import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import ComponentListItem from "./ComponentListItem.vue";
 import { useContext } from "./logic_composables/context";
 import EmptyState from "./EmptyState.vue";
+import ComponentHistory from "./ComponentHistory.vue";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import ReviewAttributeItem from "./ReviewAttributeItem.vue";
 import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
@@ -241,6 +237,8 @@ import { useComponentSearch } from "./logic_composables/search";
 
 const router = useRouter();
 const ctx = useContext();
+const queryClient = useQueryClient();
+queryClient.setDefaultOptions({ queries: { staleTime: Infinity } });
 
 // const changeSetName = computed(() => ctx.changeSet.value?.name);
 const selectedComponentId = ref<ComponentId>();
@@ -381,6 +379,20 @@ const selectedComponent = computed(() => {
     details: changedComponentData.value[selectedComponentId.value],
   };
 });
+
+// When absolutely anything in the selected component changes, or the selection itself changes,
+// invalidate the audit logs query for that component.
+watch(
+  selectedComponent,
+  (newSelectedComponent) => {
+    if (newSelectedComponent) {
+      queryClient.invalidateQueries({
+        queryKey: ["auditlogs", ctx.changeSetId.value, newSelectedComponent.id],
+      });
+    }
+  },
+  { deep: true },
+);
 
 const selectComponent = (componentId: ComponentId) => {
   selectedComponentId.value = componentId;

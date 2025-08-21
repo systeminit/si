@@ -18,6 +18,7 @@ export function dateString(
   date: string | Date,
   size: TimestampSize,
   relative = false,
+  relativeShorthand = false,
   showTimeIfToday = false,
   dateClasses = "",
   timeClasses = "",
@@ -35,6 +36,7 @@ export function dateString(
 
   if (
     !relative &&
+    !relativeShorthand &&
     showTimeIfToday &&
     d.toDateString() === new Date().toDateString()
   ) {
@@ -75,9 +77,13 @@ export function dateString(
       "h:mm:ss a",
     )}${timeClassesCloseSpan}`;
   }
+
   if (relative) {
     return timeAgo.format(d);
+  } else if (relativeShorthand) {
+    return timeAgo.format(d, "twitter-first-minute");
   }
+
   return `${dateClassesSpan}${format(d, "MMMM d, y")}${dateClassesCloseSpan}`;
 }
 
