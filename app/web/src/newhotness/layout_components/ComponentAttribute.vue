@@ -96,6 +96,7 @@
                 attributeTree.isBuildable &&
                 !component.toDelete &&
                 !parentHasExternalSources &&
+                !props.forceReadOnly &&
                 attributeTree.prop?.kind === 'object' &&
                 !attributeTree.attributeValue.externalSources?.length
               "
@@ -117,6 +118,7 @@
                 attributeTree.isBuildable &&
                 !component.toDelete &&
                 !parentHasExternalSources &&
+                !props.forceReadOnly &&
                 !attributeTree.attributeValue.externalSources?.length
               "
               ref="deleteButtonRef"
@@ -168,7 +170,9 @@
           v-if="isBuildable"
           class="grid grid-cols-2 items-center gap-xs relative"
         >
-          <template v-if="attributeTree.prop?.kind === 'map'">
+          <template
+            v-if="attributeTree.prop?.kind === 'map' && !props.forceReadOnly"
+          >
             <keyForm.Field name="key">
               <template #default="{ field }">
                 <input
@@ -200,6 +204,7 @@
             <VButton
               v-if="
                 !attributeTree.attributeValue.externalSources?.length &&
+                !props.forceReadOnly &&
                 props.attributeTree.prop?.kind !== 'map'
               "
               ref="addButtonRef"
@@ -240,7 +245,8 @@
         :canDelete="
           attributeTree.isBuildable &&
           !component.toDelete &&
-          !parentHasExternalSources
+          !parentHasExternalSources &&
+          !props.forceReadOnly
         "
         :externalSources="attributeTree.attributeValue.externalSources"
         :isArray="attributeTree.prop?.kind === 'array'"
