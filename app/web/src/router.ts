@@ -99,11 +99,6 @@ const routes: RouteRecordRaw[] = [
     props: true,
     component: () => import("@/newhotness/Workspace.vue"),
     children: [
-      // {
-      //   name: "new-hotness-lobby",
-      //   path: "lobby",
-      //   component: () => import("@/newhotness/Workspace.vue"),
-      // },
       {
         name: "new-hotness-view",
         path: ":viewId/v/edit",
@@ -164,20 +159,6 @@ const routes: RouteRecordRaw[] = [
             params: to.params,
           };
         },
-      },
-      {
-        path: ":changeSetId/c",
-        name: "workspace-compose",
-        component: () =>
-          import("@/components/Workspace/WorkspaceModelAndView.vue"),
-        children: [
-          {
-            path: ":viewId/v/",
-            name: "workspace-compose-view",
-            component: () =>
-              import("@/components/Workspace/WorkspaceModelAndView.vue"),
-          },
-        ],
       },
       {
         path: ":changeSetId/l",

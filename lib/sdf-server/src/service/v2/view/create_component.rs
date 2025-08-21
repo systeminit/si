@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{
     Json,
     extract::{
@@ -20,12 +18,7 @@ use dal::{
     SchemaVariantId,
     WorkspacePk,
     WsEvent,
-    change_status::ChangeStatus,
-    component::frame::Frame,
-    diagram::{
-        geometry::Geometry,
-        view::ViewId,
-    },
+    diagram::view::ViewId,
     generate_name,
 };
 use serde::{
@@ -156,86 +149,31 @@ pub async fn create_component(
     )
     .await?;
 
-    let maybe_x = request.x.clone().parse::<isize>();
-    let maybe_y = request.y.clone().parse::<isize>();
-    let maybe_width = request
-        .width
-        .map(|w| w.clone().parse::<isize>())
-        .transpose();
-    let maybe_height = request
-        .height
-        .map(|h| h.clone().parse::<isize>())
-        .transpose();
-
-    let geometry: Geometry;
-    if let (Ok(x), Ok(y), Ok(width), Ok(height)) = (maybe_x, maybe_y, maybe_width, maybe_height) {
-        geometry = component
-            .set_geometry(
-                &ctx,
-                view_id,
-                x,
-                y,
-                width.or_else(|| initial_geometry.width()),
-                height.or_else(|| initial_geometry.height()),
-            )
-            .await?;
-    } else {
-        ctx.rollback().await?;
-        return Err(ViewError::InvalidRequest(
-            "geometry unable to be parsed from create component request".into(),
-        ));
-    }
-
-    let mut maybe_inferred_edges = None;
-    if let Some(frame_id) = request.parent_id {
-        maybe_inferred_edges = Frame::upsert_parent(&ctx, component.id(), frame_id)
-            .await?
-            .map(|edges| edges.upserted_edges);
-
-        track(
-            &posthog_client,
+    component
+        .set_geometry(
             &ctx,
-            &original_uri,
-            &host_name,
-            "component_attached_to_frame",
-            serde_json::json!({
-                "how": "/diagram/create_component",
-                "component_id": component.id(),
-                "parent_id": frame_id.clone(),
-                "change_set_id": ctx.change_set_id(),
-                "installed_on_demand": matches!(request.schema_type, CreateComponentSchemaType::Uninstalled),
-            }),
-        );
-    } else {
-        track(
-            &posthog_client,
-            &ctx,
-            &original_uri,
-            &host_name,
-            "component_created",
-            serde_json::json!({
-                "how": "/diagram/create_component",
-                "component_id": component.id(),
-                "component_name": name.clone(),
-                "change_set_id": ctx.change_set_id(),
-                "installed_on_demand": matches!(request.schema_type, CreateComponentSchemaType::Uninstalled),
-            }),
-        );
-    }
-
-    let mut diagram_sockets = HashMap::new();
-    let payload = component
-        .into_frontend_type(
-            &ctx,
-            Some(&geometry),
-            ChangeStatus::Added,
-            &mut diagram_sockets,
+            view_id,
+            0,
+            0,
+            initial_geometry.width(),
+            initial_geometry.height(),
         )
         .await?;
-    WsEvent::component_created_with_inferred_edges(&ctx, payload, maybe_inferred_edges)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+
+    track(
+        &posthog_client,
+        &ctx,
+        &original_uri,
+        &host_name,
+        "component_created",
+        serde_json::json!({
+            "how": "/diagram/create_component",
+            "component_id": component.id(),
+            "component_name": name.clone(),
+            "change_set_id": ctx.change_set_id(),
+            "installed_on_demand": matches!(request.schema_type, CreateComponentSchemaType::Uninstalled),
+        }),
+    );
 
     ctx.commit().await?;
 

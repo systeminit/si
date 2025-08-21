@@ -1,11 +1,11 @@
 import { IRect } from "konva/lib/types";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { UserId } from "@/store/auth.store";
 import {
   DiagramElementUniqueKey,
   DiagramViewData,
   SocketLocationInfo,
 } from "@/components/ModelingDiagram/diagram_types";
-import { UserId } from "@/store/auth.store";
 import { ComponentType } from "./schema";
 
 export type ViewId = string;

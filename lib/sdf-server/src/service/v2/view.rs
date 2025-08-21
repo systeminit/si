@@ -45,14 +45,10 @@ use tokio::task::JoinError;
 use crate::app_state::AppState;
 
 mod add_components;
-pub mod convert_to_view;
 pub mod create_component;
 pub mod create_view;
-pub mod create_view_and_move;
-mod create_view_object;
 mod duplicate_components;
 mod erase_components;
-mod erase_view_object;
 pub mod get_diagram;
 pub mod list_views;
 mod paste_component;
@@ -162,11 +158,6 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/", get(list_views::list_views))
         .route("/", post(create_view::create_view))
         .route(
-            "/create_and_move",
-            post(create_view_and_move::create_view_and_move),
-        )
-        .route("/convert_to_view", post(convert_to_view::convert_to_view))
-        .route(
             "/:view_id",
             put(update_view::update_view).delete(remove_view::remove_view),
         )
@@ -203,14 +194,6 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/:view_id/component/set_parent",
             put(set_component_parent::set_component_parent),
-        )
-        .route(
-            "/:view_id/view_object",
-            post(create_view_object::create_view_object),
-        )
-        .route(
-            "/:view_id/view_object",
-            delete(erase_view_object::erase_view_object),
         )
         .route(
             "/:view_id/view_object/set_geometry",

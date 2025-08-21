@@ -70,8 +70,6 @@ type PendingComponent = {
 
 type RequestUlid = string;
 
-type VectorWithRadius = Vector2d & { radius: number };
-
 class UniqueStack<T> {
   items: T[];
 
@@ -753,11 +751,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async FETCH_COMPLETE_DATA() {
-          await componentsStore.FETCH_ALL_COMPONENTS();
-          const ids = this.viewList.map((v) => v.id);
-          await Promise.all([...ids.map((id) => this.FETCH_VIEW_GEOMETRY(id))]);
-        },
         SORT_LIST_VIEWS() {
           this.viewList = this.viewList.sort((a, b) => {
             if (a.isDefault) return -1;
@@ -848,12 +841,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             if (componentIds.length > 0) {
               this.REMOVE_FROM(this.selectedViewId, componentIds);
             }
-            const viewIds = this.selectedComponents
-              .filter((c) => c.def.componentType === ComponentType.View)
-              .map((c) => c.def.id);
-            if (viewIds.length > 0) {
-              this.REMOVE_VIEW_FROM(this.selectedViewId, viewIds);
-            }
           }
         },
         async CREATE_VIEW(name: string) {
@@ -904,10 +891,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               }
             },
             onSuccess: (response) => {
-              componentsStore.SET_COMPONENTS_FROM_VIEW(response.diagram, {
-                representsAllComponents: false,
-              });
-
               // remove invalid component IDs from the selection
               const validComponentIds = _.intersection(
                 this.selectedComponentIds,
@@ -1390,14 +1373,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 else {
                   component.parentId = undefined;
                 }
-                componentsStore.processAndStoreRawComponent(componentId, {});
               });
-              // if we change to no parent, we have to follow up and re-process
-              Object.values(oldParentIds)
-                .filter(nonNullable)
-                .forEach((parentId) => {
-                  componentsStore.processAndStoreRawComponent(parentId, {});
-                });
             },
             onFail: () => {
               componentIds.forEach((componentId) => {
@@ -1405,13 +1381,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   componentsStore.rawComponentsById[componentId];
                 if (!component) return;
                 component.parentId = oldParentIds[componentId];
-                componentsStore.processAndStoreRawComponent(componentId, {});
-                if (component.parentId) {
-                  componentsStore.processAndStoreRawComponent(
-                    component.parentId,
-                    {},
-                  );
-                }
               });
             },
           });
@@ -1589,152 +1558,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-
-        async ADD_TO(
-          sourceViewId: ViewId,
-          components: Record<ComponentId, IRect>,
-          destinationViewId: ViewId,
-          removeFromOriginalView = false,
-        ) {
-          const stringGeometries: Record<ComponentId, StringGeometry> = {};
-          Object.entries(components).forEach(([componentId, geo]) => {
-            stringGeometries[componentId] = {
-              x: Math.round(geo.x).toString(),
-              y: Math.round(geo.y).toString(),
-              width: Math.round(geo.width).toString(),
-              height: Math.round(geo.height).toString(),
-            };
-          });
-          return new ApiRequest({
-            method: "post",
-            url: "diagram/add_components_to_view",
-            params: {
-              clientUlid,
-              sourceViewId,
-              destinationViewId,
-              geometriesByComponentId: stringGeometries,
-              removeFromOriginalView,
-              ...visibilityParams,
-            },
-            onFail: (err) => {
-              if (err.response.status === 422) {
-                toast(
-                  "Error: One or more of the selected components already exists in this view",
-                );
-              }
-            },
-          });
-        },
-        async ADD_VIEW_TO(
-          viewId: ViewId,
-          viewIdToHexagon: ViewId,
-          geo: VectorWithRadius,
-        ) {
-          const sGeo = {
-            x: Math.round(geo.x).toString(),
-            y: Math.round(geo.y).toString(),
-            radius: Math.round(geo.radius).toString(),
-          };
-          return new ApiRequest({
-            method: "post",
-            url: API_PREFIX.concat([{ viewId }, "view_object"]),
-            params: {
-              viewObjectId: viewIdToHexagon,
-              ...sGeo,
-            },
-          });
-        },
-        async REMOVE_VIEW_FROM(viewId: ViewId, viewIdsToHexagon: ViewId[]) {
-          return new ApiRequest({
-            method: "delete",
-            url: API_PREFIX.concat([{ viewId }, "view_object"]),
-            params: {
-              viewIds: viewIdsToHexagon,
-            },
-          });
-        },
         async DELETE_VIEW(viewId: ViewId) {
           return new ApiRequest({
             method: "delete",
             url: API_PREFIX.concat([{ viewId }]),
             params: {
               viewId,
-            },
-          });
-        },
-        async CONVERT_TO_VIEW(
-          sourceViewId: ViewId,
-          componentId: ComponentId,
-          containedComponentIds: ComponentId[],
-        ) {
-          const placeViewAt = this.groups[componentId];
-          const viewToHexagonGeo = {
-            x: placeViewAt?.x.toString(),
-            y: placeViewAt?.y.toString(),
-            radius: "250",
-          };
-          const stringGeometries: Record<ComponentId, StringGeometry> = {};
-          containedComponentIds.forEach((c) => {
-            const geo = this.components[c];
-            stringGeometries[c] = {
-              x: Math.round(geo?.x || 0).toString(),
-              y: Math.round(geo?.y || 0).toString(),
-              width: Math.round(geo?.width || 0).toString(),
-              height: Math.round(geo?.height || 0).toString(),
-            };
-          });
-          return new ApiRequest({
-            method: "post",
-            url: API_PREFIX.concat(["convert_to_view"]),
-            params: {
-              componentId,
-              sourceViewId,
-              containedComponentIds: stringGeometries,
-              placeViewAt: viewToHexagonGeo,
-            },
-            optimistic: () => {
-              this.setSelectedComponentId(null);
-              this.syncSelectionIntoUrl();
-            },
-          });
-        },
-        async CREATE_VIEW_AND_MOVE(
-          name: string,
-          sourceViewId: ViewId,
-          components: Record<ComponentId, IRect>,
-        ) {
-          let sumX = 0;
-          let sumY = 0;
-          const stringGeometries: Record<ComponentId, StringGeometry> = {};
-          Object.entries(components).forEach(([componentId, geo]) => {
-            // sum the center coordinates separately
-            sumX += geo.x;
-            sumY += geo.y + geo.height / 2;
-            stringGeometries[componentId] = {
-              x: Math.round(geo.x).toString(),
-              y: Math.round(geo.y).toString(),
-              width: Math.round(geo.width).toString(),
-              height: Math.round(geo.height).toString(),
-            };
-          });
-          const viewToHexagonGeo = {
-            x: Math.round(
-              sumX / Object.keys(stringGeometries).length,
-            ).toString(),
-            y: Math.round(
-              sumY / Object.keys(stringGeometries).length,
-            ).toString(),
-            radius: "250",
-          };
-          return new ApiRequest({
-            method: "post",
-            url: API_PREFIX.concat(["create_and_move"]),
-            params: {
-              name,
-              sourceViewId,
-              geometriesByComponentId: stringGeometries,
-              removeFromOriginalView: true,
-              placeViewAt: viewToHexagonGeo,
             },
           });
         },
@@ -1825,469 +1654,13 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         realtimeStore.subscribe(
           `${this.$id}-changeset`,
           `changeset/${changeSetId}`,
-          [
-            {
-              eventType: "ComponentCreated",
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-                const { viewId, geometry } = { ...data.component.viewData };
-                if (!viewId || !geometry) {
-                  throw new Error("Expected view geometry on new component");
-                }
-                const view = this.viewsById[viewId];
-                if (!view) return; // FIXME later when we have full WsEvents
-                if (data.component.componentType === ComponentType.Component) {
-                  const node = processRawComponent(
-                    data.component,
-                    componentsStore.rawComponentsById,
-                  ) as DiagramNodeData;
-                  geometry.height = node.height;
-                  geometry.width = node.width;
-                  view.components[data.component.id] = geometry as IRect;
-                  for (const [key, loc] of Object.entries(
-                    setSockets(node, geometry),
-                  )) {
-                    view.sockets[key] = loc;
-                  }
-                } else {
-                  if (!geometry.width) geometry.width = 500;
-                  if (!geometry.height) geometry.height = 500;
-                  view.groups[data.component.id] = {
-                    ...(geometry as IRect),
-                    size: geometry.width * geometry.height,
-                    zIndex: 0,
-                  };
-                  this.setGroupZIndex();
-                  const node = processRawComponent(
-                    data.component,
-                    componentsStore.rawComponentsById,
-                  ) as DiagramGroupData;
-                  for (const [key, loc] of Object.entries(
-                    setSockets(node, geometry),
-                  )) {
-                    view.sockets[key] = loc;
-                  }
-                }
-              },
-            },
-            {
-              eventType: "ResourceRefreshed",
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-                if (this.selectedComponentId === data.component.id) {
-                  componentsStore.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
-                }
-              },
-            },
-            {
-              eventType: "ComponentUpgraded",
-              callback: (data, metadata) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-
-                const oldId = data.originalComponentId;
-                delete componentsStore.rawComponentsById[oldId];
-                delete componentsStore.allComponentsById[oldId];
-                delete componentsStore.nodesById[oldId];
-                delete componentsStore.groupsById[oldId];
-                componentsStore.rawComponentsById[data.component.id] =
-                  data.component;
-                componentsStore.processAndStoreRawComponent(
-                  data.component.id,
-                  {},
-                ); // now the component exists in the component store
-
-                const node =
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  componentsStore.allComponentsById[data.component.id]!;
-
-                // upgrades can change the sockets on a component
-                // so we need to go through all the views this component is on
-                // and re-set their socket data
-                const viewIds = Object.keys(this.viewsById);
-                viewIds.forEach((viewId) => {
-                  const view = this.viewsById[viewId];
-                  if (!view) return;
-                  let geo = view.components[data.component.id];
-                  if (!geo) geo = view.groups[data.component.id];
-                  if (geo) {
-                    if ("height" in node) {
-                      // this covers components
-                      geo.height = node.height;
-                      geo.width = node.width;
-                      // note: if a person added a hundred sockets to a component
-                      // and that component was a frame, it would not resize itself
-                      // and the sockets would appear outside the frame
-                    }
-                    for (const [key, loc] of Object.entries(
-                      setSockets(node, geo),
-                    )) {
-                      view.sockets[key] = loc;
-                    }
-                  }
-                });
-
-                if (
-                  metadata.actor !== "System" &&
-                  metadata.actor.User === authStore.userPk
-                ) {
-                  this.setSelectedComponentId(data.component.id);
-                }
-              },
-            },
-            {
-              eventType: "ComponentUpdated",
-              callback: (data, metadata) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (metadata.change_set_id !== changeSetId) return;
-                const { viewId, geometry } = { ...data.component.viewData };
-
-                // changed component type means book-keeping for all views
-                // PSA: currently SDF does not change any geometry when you change component types
-                // if it starts to change geometry, it must return new geometry for every view
-                // the structure doesn't currently support that
-                Object.values(this.viewsById).forEach((view) => {
-                  const groupGeo = view.groups[data.component.id];
-                  const componentGeo = view.components[data.component.id];
-                  const thisGeo = groupGeo ?? componentGeo;
-                  // I don't exist in this view, and I am not being added to this view, return
-                  if (viewId && viewId !== view.id) {
-                    return;
-                  }
-                  const finalGeo = geometry ?? thisGeo;
-                  if (!finalGeo) return;
-
-                  delete view.components[data.component.id];
-                  delete view.groups[data.component.id];
-                  if (
-                    data.component.componentType === ComponentType.Component
-                  ) {
-                    const node = processRawComponent(
-                      data.component,
-                      componentsStore.rawComponentsById,
-                    ) as DiagramNodeData;
-                    finalGeo.height = node.height;
-                    finalGeo.width = node.width;
-                    view.components[data.component.id] = finalGeo as IRect;
-                    for (const [key, loc] of Object.entries(
-                      setSockets(node, finalGeo),
-                    )) {
-                      view.sockets[key] = loc;
-                    }
-                  } else {
-                    if (!finalGeo.width) finalGeo.width = 500;
-                    if (!finalGeo.height) finalGeo.height = 500;
-                    view.groups[data.component.id] = {
-                      ...(finalGeo as IRect),
-                      size: finalGeo.width * finalGeo.height,
-                      zIndex: 0,
-                    };
-                    const node = processRawComponent(
-                      data.component,
-                      componentsStore.rawComponentsById,
-                    ) as DiagramGroupData;
-                    for (const [key, loc] of Object.entries(
-                      setSockets(node, finalGeo),
-                    )) {
-                      view.sockets[key] = loc;
-                    }
-                  }
-                });
-                this.setGroupZIndex();
-
-                if (this.selectedComponentId === data.component.id) {
-                  if (data.component.changeStatus !== "deleted") {
-                    componentsStore.FETCH_COMPONENT_DEBUG_VIEW(
-                      data.component.id,
-                    );
-                  } else {
-                    const idx = this.selectedComponentIds.findIndex(
-                      (cId) => cId === data.component.id,
-                    );
-                    if (idx !== -1) this.selectedComponentIds.slice(idx, 1);
-                  }
-                }
-              },
-            },
-
-            {
-              eventType: "ComponentDeleted",
-              callback: (data) => {
-                if (data.changeSetId !== changeSetId) return;
-                // TODO "detach component from view"
-                // this is "delete from all views"
-                const viewIds = Object.keys(this.viewsById);
-                viewIds.forEach((viewId) => {
-                  const view = this.viewsById[viewId];
-                  delete view?.components[data.componentId];
-                  delete view?.groups[data.componentId];
-                });
-                this.setGroupZIndex();
-
-                // remove invalid component IDs from the selection
-                const validComponentIds = _.intersection(
-                  this.selectedComponentIds,
-                  _.keys(componentsStore.rawComponentsById),
-                );
-                this.setSelectedComponentId(validComponentIds);
-              },
-            },
-
-            {
-              eventType: "SetComponentPosition",
-              callback: ({
-                changeSetId,
-                clientUlid: _clientUlid,
-                viewId,
-                positions,
-              }) => {
-                if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
-                if (clientUlid === _clientUlid) return;
-                const _view = this.viewsById[viewId];
-                if (!_view) return;
-                // TODO: make sure to update the correct view based on ID
-
-                for (const geo of positions) {
-                  const component =
-                    componentsStore.allComponentsById[geo.componentId];
-                  if (component) {
-                    let viewComponent;
-                    if (component.def.isGroup) {
-                      viewComponent = _view.groups[geo.componentId];
-                      if (viewComponent && geo.height && geo.width) {
-                        viewComponent.height = geo.height;
-                        viewComponent.width = geo.width;
-                      }
-                    } else {
-                      viewComponent = _view.components[geo.componentId];
-                    }
-                    if (viewComponent) {
-                      viewComponent.x = geo.x;
-                      viewComponent.y = geo.y;
-                    }
-
-                    for (const [key, loc] of Object.entries(
-                      setSockets(component, geo),
-                    )) {
-                      _view.sockets[key] = loc;
-                    }
-                  } else {
-                    const node = _view.viewNodes[geo.componentId];
-                    if (node) {
-                      node.def.width = geo.width;
-                      node.def.height = geo.height;
-                      node.def.x = geo.x;
-                      node.def.y = geo.y;
-                    }
-                  }
-                }
-              },
-            },
-
-            {
-              eventType: "ViewDeleted",
-              callback: ({ viewId }, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const idx = this.viewList.findIndex((v) => v.id === viewId);
-                if (idx !== -1) this.viewList.splice(idx, 1);
-                delete this.viewsById[viewId];
-                this.SORT_LIST_VIEWS();
-                Object.values(this.viewsById).forEach((view) => {
-                  delete view.viewNodes[viewId];
-                });
-                const route = router.currentRoute;
-                if (route.value.params.viewId === viewId) {
-                  const defaultView = this.viewList.find((v) => v.isDefault);
-                  if (defaultView) this.selectView(defaultView.id);
-                  else {
-                    const v = this.viewList[0];
-                    if (v) this.selectView(v.id);
-                    else {
-                      router.push({
-                        name: "workspace-single",
-                        params: { workspacePk: workspaceId },
-                      });
-                    }
-                  }
-                }
-              },
-            },
-
-            {
-              eventType: "ViewUpdated",
-              callback: ({ view }, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const idx = this.viewList.findIndex((v) => v.id === view.id);
-                if (idx !== -1) this.viewList.splice(idx, 1, view);
-                else {
-                  this.viewList.push(view);
-                }
-                // right now the name is the only thing you can update
-                const v = this.viewsById[view.id];
-                if (v) v.name = view.name;
-                const _v = this.viewNodes[view.id];
-                if (_v) _v.def.name = view.name;
-
-                this.SORT_LIST_VIEWS();
-              },
-            },
-
-            {
-              eventType: "ViewCreated",
-              callback: async ({ view }, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const idx = this.viewList.findIndex((v) => v.id === view.id);
-                if (idx !== -1) this.viewList.splice(idx, 1, view);
-                else {
-                  this.viewList.push(view);
-                }
-                this.SORT_LIST_VIEWS();
-                await this.FETCH_VIEW_GEOMETRY(view.id);
-                const actionWhichCreatedView =
-                  realtimeStore.inflightRequests.get(metadata.request_ulid);
-                if (
-                  metadata.actor !== "System" &&
-                  metadata.actor.User === authStore.userPk &&
-                  actionWhichCreatedView !== "RUN_MGMT_PROTOTYPE"
-                ) {
-                  this.selectView(view.id);
-                }
-              },
-            },
-            {
-              eventType: "ViewObjectCreated",
-              callback: (payload, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const view = this.viewsById[payload.viewId];
-                const v = this.viewList.find(
-                  (_v) => _v.id === payload.viewObjectId,
-                );
-                if (v) {
-                  const node = new DiagramViewData({
-                    ...v,
-                    ...payload.geometry,
-                    ...VIEW_DEFAULTS,
-                    componentType: ComponentType.View,
-                  });
-                  if (view) view.viewNodes[payload.viewObjectId] = node;
-                }
-              },
-            },
-            {
-              eventType: "ViewObjectRemoved",
-              callback: (payload, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const view = this.viewsById[payload.viewId];
-                if (view) delete view.viewNodes[payload.viewObjectId];
-              },
-            },
-
-            {
-              eventType: "ViewComponentsUpdate",
-              callback: (payload, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-
-                Object.entries(payload.updatesByView).forEach(
-                  ([viewId, { added, removed }]) => {
-                    const view = this.viewsById[viewId];
-                    if (!view) return;
-                    Object.entries(added).forEach(([componentId, geo]) => {
-                      const c = componentsStore.allComponentsById[componentId];
-                      if (!c) return;
-                      if (c.def.isGroup) {
-                        view.groups[componentId] = {
-                          ...geo,
-                          size: geo.height * geo.width,
-                          zIndex: 0,
-                        };
-                      } else view.components[componentId] = geo;
-                      if (geo) {
-                        for (const [key, loc] of Object.entries(
-                          setSockets(c, geo),
-                        )) {
-                          view.sockets[key] = loc;
-                        }
-                      }
-                    });
-                    removed.forEach((r) => {
-                      delete view.components[r];
-                      delete view.groups[r];
-                    });
-                  },
-                );
-
-                this.setGroupZIndex();
-              },
-            },
-
-            // events for approval requirements
-            {
-              eventType: "ApprovalRequirementAddIndividualApprover",
-              callback: (payload) => {
-                const viewId =
-                  this.requirementDefinitionsById[
-                    payload.approvalRequirementDefinitionId
-                  ]?.entityId;
-                if (viewId) {
-                  this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
-                }
-              },
-            },
-            {
-              eventType: "ApprovalRequirementDefinitionCreated",
-              callback: (payload) => {
-                const viewId = payload.entityId;
-                this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
-              },
-            },
-            {
-              eventType: "ApprovalRequirementDefinitionRemoved",
-              callback: (payload) => {
-                const viewId =
-                  this.requirementDefinitionsById[
-                    payload.approvalRequirementDefinitionId
-                  ]?.entityId;
-                if (viewId) {
-                  this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
-                }
-              },
-            },
-            {
-              eventType: "ApprovalRequirementRemoveIndividualApprover",
-              callback: (payload) => {
-                const viewId =
-                  this.requirementDefinitionsById[
-                    payload.approvalRequirementDefinitionId
-                  ]?.entityId;
-                if (viewId) {
-                  this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
-                }
-              },
-            },
-          ],
+          [],
         );
 
         realtimeStore.subscribe(
           `${this.$id}-workspace`,
           `workspace/${workspaceId}`,
-          [
-            {
-              eventType: "ChangeSetApplied",
-              callback: async (data) => {
-                // If the applied change set has rebased into this change set,
-                // then refetch (i.e. there might be updates!)
-                if (data.toRebaseChangeSetId === changeSetId) {
-                  this.FETCH_COMPLETE_DATA();
-                }
-              },
-            },
-          ],
+          [],
         );
 
         const actionUnsub = this.$onAction(handleStoreError);

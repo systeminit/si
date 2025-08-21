@@ -299,19 +299,6 @@ impl View {
         .await
     }
 
-    pub async fn add_to_another_view(
-        ctx: &DalContext,
-        object_view_id: ViewId,
-        container_view_id: ViewId,
-        raw_geometry: RawGeometry,
-    ) -> DiagramResult<()> {
-        let mut geometry = Geometry::new_for_view(ctx, object_view_id, container_view_id).await?;
-
-        geometry.update(ctx, raw_geometry).await?;
-
-        Ok(())
-    }
-
     pub async fn set_name(&mut self, ctx: &DalContext, name: impl AsRef<str>) -> DiagramResult<()> {
         let (hash, _) = ctx.layer_db().cas().write(
             Arc::new(
@@ -503,21 +490,6 @@ pub struct ViewDeletedPayload {
     view_id: ViewId,
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewObjectRemovedPayload {
-    view_id: ViewId,
-    view_object_id: ViewId,
-}
-
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewObjectCreatedPayload {
-    view_id: ViewId,
-    view_object_id: ViewId,
-    geometry: RawGeometry,
-}
-
 impl WsEvent {
     pub async fn view_created(ctx: &DalContext, view: ViewView) -> WsEventResult<Self> {
         WsEvent::new(
@@ -561,38 +533,6 @@ impl WsEvent {
             WsPayload::ViewComponentsUpdate(ViewComponentsUpdatePayload {
                 change_set_id: ctx.change_set_id(),
                 updates_by_view,
-            }),
-        )
-        .await
-    }
-
-    pub async fn view_object_erased(
-        ctx: &DalContext,
-        view_id: ViewId,
-        view_object_id: ViewId,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ViewObjectRemoved(ViewObjectRemovedPayload {
-                view_id,
-                view_object_id,
-            }),
-        )
-        .await
-    }
-
-    pub async fn view_object_created(
-        ctx: &DalContext,
-        view_id: ViewId,
-        view_object_id: ViewId,
-        geometry: RawGeometry,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ViewObjectCreated(ViewObjectCreatedPayload {
-                view_id,
-                view_object_id,
-                geometry,
             }),
         )
         .await

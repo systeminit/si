@@ -152,30 +152,6 @@ impl Geometry {
         ))
     }
 
-    pub async fn new_for_view(
-        ctx: &DalContext,
-        object_view_id: ViewId,
-        container_view_id: ViewId,
-    ) -> DiagramResult<Self> {
-        let (node_weight, content) = Self::new_inner(ctx, container_view_id).await?;
-        let geometry_id = node_weight.id();
-
-        let d_object_id = DiagramObject::get_for_view(ctx, object_view_id).await?.id();
-
-        Self::add_edge_to_diagram_object(
-            ctx,
-            geometry_id.into(),
-            d_object_id,
-            EdgeWeightKind::Represents,
-        )
-        .await?;
-
-        Ok(Self::assemble(
-            node_weight.get_geometry_node_weight()?,
-            content,
-        ))
-    }
-
     async fn new_inner(
         ctx: &DalContext,
         container_view_id: ViewId,

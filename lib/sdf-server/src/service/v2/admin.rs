@@ -98,8 +98,6 @@ pub enum AdminAPIError {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] dal::component::ComponentError),
-    #[error("diagram error: {0}")]
-    Diagram(#[from] sdf_v1_routes_diagram::DiagramError),
     #[error("func runner error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
     #[error("inferred connection graph error: {0}")]
