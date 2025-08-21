@@ -204,7 +204,7 @@ const actionFailed = computed(() => {
 });
 
 const actionRunning = computed(() => {
-  return props.action.state === ActionState.Running;
+  return props.action.state === ActionState.Dispatched;
 });
 
 const shouldAllowClick = computed(() => {
