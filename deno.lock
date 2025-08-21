@@ -29,7 +29,7 @@
     "jsr:@std/path@0.223": "0.223.0",
     "jsr:@std/path@^1.0.6": "1.1.1",
     "jsr:@std/text@~1.0.7": "1.0.16",
-    "jsr:@systeminit/api-client@^1.0.6": "1.0.6",
+    "jsr:@systeminit/api-client@^1.0.8": "1.0.8",
     "jsr:@systeminit/cf-db@~0.1.4": "0.1.4",
     "jsr:@systeminit/remove-empty@0.1.3": "0.1.3",
     "npm:@apidevtools/json-schema-ref-parser@11.9.3": "11.9.3",
@@ -199,8 +199,8 @@
     "@std/text@1.0.16": {
       "integrity": "ddb9853b75119a2473857d691cf1ec02ad90793a2e8b4a4ac49d7354281a0cf8"
     },
-    "@systeminit/api-client@1.0.6": {
-      "integrity": "2b036cc6731c67b6f6e61f59f94527b880d6a119e9a563d822655c2e4493f224",
+    "@systeminit/api-client@1.0.8": {
+      "integrity": "b0bff1aef4b8a6930104553a4b3423ea3b1352bf0df14f2a49e3c8d9114b3b1b",
       "dependencies": [
         "npm:axios"
       ]
@@ -1642,7 +1642,7 @@
           "jsr:@onjara/optic@^2.0.3",
           "jsr:@std/assert@1",
           "jsr:@std/encoding@^1.0.10",
-          "jsr:@systeminit/api-client@^1.0.6",
+          "jsr:@systeminit/api-client@^1.0.8",
           "jsr:@systeminit/cf-db@~0.1.4",
           "npm:@modelcontextprotocol/sdk@^1.16.0",
           "npm:axios@^1.6.1",

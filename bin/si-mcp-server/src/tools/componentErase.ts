@@ -9,24 +9,24 @@ import {
   successResponse,
 } from "./commonBehavior.ts";
 
-const name = "component-delete";
-const title = "Delete a component";
-const description = `<description>Delete a component and the resource for a given componentId. Returns the deletion status on successful deletion. On failure, returns error details.</description><usage>Use this tool to delete a component and its resource in a change set. The component and resource will be marked for deletion and the component removed from the workspace.</usage>`;
+const name = "component-erase";
+const title = "Erase a component";
+const description = `<description>Erase a component, removing it completely from System Initiative without enqueuing a delete action or ensuring that downstream components aren't impacted by the removal. This can leave upstream provider resources orphaned (no longer managed by System Initiative) and can negatively impact downstream components if not used carefully. Returns true when successfully erased. On failure, returns error details. This cannot be undone within the change set!</description><usage>Use this tool to remove a component from System Initiative in a change set. You can use this tool to immediately cleanup any components from the model without needing to enqueue a delete action. The component will be immediately removed from the change set and the real world resource will be left intact. If you erase a component that has subscriptions to downstream components, the subscriptions will be removed and the values will no longer be propagated. Only use this tool if it's acceptable to sever the connection with the real world resource, or you no longer need data to propagate to downstream components, otherwise you should prefer to use Delete. This cannot be undone within this change set!</usage>`;
 
-const DeleteComponentInputSchemaRaw = {
+const EraseComponentInputSchemaRaw = {
   changeSetId: z
     .string()
     .describe(
-      "The change set to delete the component from; components cannot be deleted from the HEAD change set",
+      "The change set to erase the component from; components cannot be erased from the HEAD change set",
     ),
-  componentId: z.string().describe("the component id to delete"),
+  componentId: z.string().describe("the component id to erase"),
 };
 
-const DeleteComponentOutputSchemaRaw = {
+const EraseComponentOutputSchemaRaw = {
   status: z
     .enum(["success", "failure"])
     .describe(
-      "success when component is successfully marked for deletion, failure when an error occurs during deletion",
+      "success when component is successfully erased, failure when an error occurs during erase",
     ),
   errorMessage: z
     .string()
@@ -35,37 +35,35 @@ const DeleteComponentOutputSchemaRaw = {
       "If the status is failure, the error message will contain information about what went wrong",
     ),
   data: z.object({
-    success: z.boolean().describe("a successful deletion"),
+    success: z.boolean().describe("a successful erase"),
   }),
 };
-const DeleteComponentOutputSchema = z.object(DeleteComponentOutputSchemaRaw);
+const EraseComponentOutputSchema = z.object(EraseComponentOutputSchemaRaw);
 
-type DeleteComponentResult = z.infer<
-  typeof DeleteComponentOutputSchema
->["data"];
+type EraseComponentResult = z.infer<typeof EraseComponentOutputSchema>["data"];
 
-export function componentDeleteTool(server: McpServer) {
+export function componentEraseTool(server: McpServer) {
   server.registerTool(
     name,
     {
       title,
       description: generateDescription(
         description,
-        "componentDeleteResponse",
-        DeleteComponentOutputSchema,
+        "componentEraseResponse",
+        EraseComponentOutputSchema,
       ),
-      inputSchema: DeleteComponentInputSchemaRaw,
-      outputSchema: DeleteComponentOutputSchemaRaw,
+      inputSchema: EraseComponentInputSchemaRaw,
+      outputSchema: EraseComponentOutputSchemaRaw,
     },
     async ({ changeSetId, componentId }): Promise<CallToolResult> => {
       const siApi = new ComponentsApi(apiConfig);
       try {
-        await siApi.deleteComponent({
+        await siApi.eraseComponent({
           workspaceId: WORKSPACE_ID,
           changeSetId: changeSetId,
           componentId,
         });
-        const result: DeleteComponentResult = {
+        const result: EraseComponentResult = {
           success: true,
         };
 
