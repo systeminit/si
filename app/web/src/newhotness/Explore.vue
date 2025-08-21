@@ -1082,7 +1082,7 @@ const componentsHaveActionsWithState = computed(() => {
     if (!action.componentId) continue;
     if (action.state === ActionState.Failed) {
       results.failed.add(action.componentId);
-    } else if (action.state === ActionState.Running) {
+    } else if (action.state === ActionState.Dispatched) {
       results.running.add(action.componentId);
     }
   }
