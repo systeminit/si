@@ -1341,9 +1341,11 @@ impl SplitSnapshot {
     pub async fn prop_suggestions_cache(
         &self,
         ctx: &DalContext,
+        populate: bool,
     ) -> WorkspaceSnapshotResult<&PropSuggestionsCache> {
-        if self.prop_suggestions.schema_suggestions.is_empty()
-            || self.prop_suggestions.schema_to_components.is_empty()
+        if populate
+            && (self.prop_suggestions.schema_suggestions.is_empty()
+                || self.prop_suggestions.schema_to_components.is_empty())
         {
             self.prop_suggestions.populate(ctx).await?;
         }

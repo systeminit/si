@@ -661,8 +661,19 @@ impl WorkspaceSnapshotSelector {
         ctx: &DalContext,
     ) -> WorkspaceSnapshotResult<&crate::workspace_snapshot::PropSuggestionsCache> {
         match self {
-            Self::LegacySnapshot(snap) => snap.prop_suggestions_cache(ctx).await,
-            Self::SplitSnapshot(snap) => snap.prop_suggestions_cache(ctx).await,
+            Self::LegacySnapshot(snap) => snap.prop_suggestions_cache(ctx, true).await,
+            Self::SplitSnapshot(snap) => snap.prop_suggestions_cache(ctx, true).await,
+        }
+    }
+
+    // Get the existing prop suggestions cache but don't populate it
+    pub async fn prop_suggestions_cache_no_populate(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<&crate::workspace_snapshot::PropSuggestionsCache> {
+        match self {
+            Self::LegacySnapshot(snap) => snap.prop_suggestions_cache(ctx, false).await,
+            Self::SplitSnapshot(snap) => snap.prop_suggestions_cache(ctx, false).await,
         }
     }
 

@@ -343,9 +343,14 @@ impl Component {
         {
             Action::new(ctx, prototype_id, Some(component.id)).await?;
         }
+
+        // Update the prop suggestion cache's mapping between schemas and
+        // components without recalculating the whole cache
         ctx.workspace_snapshot()?
-            .clear_prop_suggestions_cache()
-            .await;
+            .prop_suggestions_cache_no_populate(ctx)
+            .await?
+            .add_component(ctx, component.id)
+            .await?;
 
         Ok(component)
     }

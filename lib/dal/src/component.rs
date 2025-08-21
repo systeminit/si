@@ -55,7 +55,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
-use self::inferred_connection_graph::InferredConnectionGraphError;
+use self::{
+    inferred_connection_graph::InferredConnectionGraphError,
+    suggestion::PropSuggestionCacheError,
+};
 use crate::{
     AttributePrototype,
     AttributePrototypeId,
@@ -320,6 +323,8 @@ pub enum ComponentError {
     Prop(#[from] Box<PropError>),
     #[error("found prop id ({0}) that is not a prop")]
     PropIdNotAProp(PropId),
+    #[error("prop suggestion cache error: {0}")]
+    PropSuggestionCache(#[from] PropSuggestionCacheError),
     #[error("expected to find schema variant suggestions for component {0}")]
     PropSuggestionCacheEmpty(ComponentId),
     #[error("qualification error: {0}")]

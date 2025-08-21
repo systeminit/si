@@ -1,5 +1,6 @@
 use std::{
     collections::{
+        BTreeSet,
         HashMap,
         HashSet,
         VecDeque,
@@ -87,7 +88,7 @@ pub struct PropSuggestionsCache {
     /// Map of schema variant ID to its suggestion patterns
     pub schema_suggestions: DashMap<SchemaVariantId, SchemaSuggestionMap>,
     /// Map of schema name to components for efficient lookup
-    pub schema_to_components: DashMap<String, Vec<ComponentId>>,
+    pub schema_to_components: DashMap<String, BTreeSet<ComponentId>>,
 }
 
 /// Cache of prop suggestion patterns for a specific schema variant
@@ -102,7 +103,7 @@ pub struct SchemaSuggestionMap {
 impl PropSuggestionsCache {
     /// Populate this cache instance with data from the database
     /// Not sure how noisy this will be but I'd like to get the timings in the short term
-    #[instrument(level = "info", name = "dal.prop_suggestion_cache.populate", skip_all, 
+    #[instrument(level = "info", name = "dal.prop_suggestion_cache.populate", skip_all,
     fields(
             si.change_set.id = Empty,
             si.workspace.id = Empty,
@@ -117,7 +118,11 @@ impl PropSuggestionsCache {
                 .unwrap_or(WorkspacePk::NONE)
                 .to_string(),
         );
-        // Build schema_to_components map
+
+        let mut processed_schema_variants = HashSet::new();
+
+        // Build schema suggestions map for each unique schema variant and
+        // schema_to_components map
         for component_id in Component::list_ids(ctx).await? {
             let comp_schema = Component::schema_for_component_id(ctx, component_id).await?;
             let schema_name = comp_schema.name().to_string();
@@ -126,13 +131,8 @@ impl PropSuggestionsCache {
             self.schema_to_components
                 .entry(schema_name)
                 .or_default()
-                .push(component_id);
-        }
+                .insert(component_id);
 
-        // Build schema suggestions map for each unique schema variant
-        let mut processed_schema_variants = HashSet::new();
-
-        for component_id in Component::list_ids(ctx).await? {
             let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
             if processed_schema_variants.contains(&schema_variant_id) {
@@ -173,6 +173,29 @@ impl PropSuggestionsCache {
             self.schema_suggestions
                 .insert(schema_variant_id, suggestion_map);
         }
+        Ok(())
+    }
+
+    pub fn remove_component(&self, component_id: ComponentId) -> PropSuggestionCacheResult<()> {
+        for mut component_set in self.schema_to_components.iter_mut() {
+            component_set.value_mut().remove(&component_id);
+        }
+        Ok(())
+    }
+
+    pub async fn add_component(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> PropSuggestionCacheResult<()> {
+        let comp_schema = Component::schema_for_component_id(ctx, component_id).await?;
+        let schema_name = comp_schema.name().to_string();
+
+        self.schema_to_components
+            .entry(schema_name)
+            .or_default()
+            .insert(component_id);
+
         Ok(())
     }
 }
@@ -338,48 +361,52 @@ impl AutosubscribeContext {
             let target_path = AttributePath::JsonPointer(prop_path);
 
             // Check for explicit suggestions from the cache
-            if let Some(suggestions) = component_suggestion_map
+            let Some(suggestions) = component_suggestion_map
                 .suggest_sources_map
                 .get(&prop_suggestion.prop)
-            {
-                // This prop has explicit suggested sources, check them
-                for suggestion in suggestions {
-                    if let Some(source_components) =
-                        cache.schema_to_components.get(&suggestion.schema)
-                    {
-                        for &source_component_id in source_components.iter() {
-                            if source_component_id == self.component_id {
-                                continue; // Skip self
-                            }
+            else {
+                continue;
+            };
 
-                            // Find the attribute value at the suggested prop path
-                            if let Some(source_av_id) = AttributeValueIdent::new(&suggestion.prop)
-                                .resolve(ctx, source_component_id)
-                                .await?
-                            {
-                                let source_value = AttributeValue::view(ctx, source_av_id).await?;
-                                // If values match, this is a potential subscription
-                                if source_value == Some(current_value.clone()) {
-                                    let source = PotentialSource {
-                                        component_id: source_component_id,
-                                        attribute_value_id: source_av_id,
-                                        path: AttributePath::JsonPointer(suggestion.prop.clone()),
-                                    };
-                                    potential_matches
-                                        .entry(attribute_value_id)
-                                        .or_default()
-                                        .insert(source);
-                                    potential_match_values.insert(
-                                        attribute_value_id,
-                                        (target_path.clone(), current_value.clone()),
-                                    );
-                                }
-                            }
+            // This prop has explicit suggested sources, check them
+            for suggestion in suggestions {
+                let Some(source_components) = cache.schema_to_components.get(&suggestion.schema)
+                else {
+                    continue;
+                };
+
+                for &source_component_id in source_components.iter() {
+                    if source_component_id == self.component_id {
+                        continue; // Skip self
+                    }
+
+                    // Find the attribute value at the suggested prop path
+                    if let Some(source_av_id) = AttributeValueIdent::new(&suggestion.prop)
+                        .resolve(ctx, source_component_id)
+                        .await?
+                    {
+                        let source_value = AttributeValue::view(ctx, source_av_id).await?;
+                        // If values match, this is a potential subscription
+                        if source_value.as_ref() == Some(&current_value) {
+                            let source = PotentialSource {
+                                component_id: source_component_id,
+                                attribute_value_id: source_av_id,
+                                path: AttributePath::JsonPointer(suggestion.prop.clone()),
+                            };
+                            potential_matches
+                                .entry(attribute_value_id)
+                                .or_default()
+                                .insert(source);
+                            potential_match_values.insert(
+                                attribute_value_id,
+                                (target_path.clone(), current_value.clone()),
+                            );
                         }
                     }
                 }
             }
         }
+
         Ok(())
     }
 
@@ -593,7 +620,7 @@ impl Component {
     /// 2. Find components with prop suggestions (suggest_source_as) that go the other way, and see if those match.
     /// 3. If there's a single match, replace the manually set value with a subscription
     ///    but if there are multiple eligible matches, return them as ambiguous for user decision.
-    #[instrument(level = "info", name = "dal.component.autosubscribe_1", skip_all, 
+    #[instrument(level = "info", name = "dal.component.autosubscribe_1", skip_all,
     fields(
             si.change_set.id = Empty,
             si.workspace.id = Empty,
