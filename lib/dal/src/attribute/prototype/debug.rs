@@ -154,11 +154,9 @@ impl AttributePrototypeDebugView {
                 )
                 .await?;
 
-                let func_arg_id = AttributePrototypeArgument::func_argument_id_by_id(
-                    ctx,
-                    attribute_prototype_arg_id,
-                )
-                .await?;
+                let func_arg_id =
+                    AttributePrototypeArgument::func_argument_id(ctx, attribute_prototype_arg_id)
+                        .await?;
 
                 let func_arg_name = FuncArgument::get_name_by_id(ctx, func_arg_id).await?;
                 let value_source =

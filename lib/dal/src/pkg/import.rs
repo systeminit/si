@@ -2022,9 +2022,7 @@ pub async fn attach_resource_payload_to_value(
 
     let mut rv_input_apa_id = None;
     for apa_id in AttributePrototypeArgument::list_ids_for_prototype(ctx, target_id).await? {
-        if func_argument_id
-            == AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?
-        {
+        if func_argument_id == AttributePrototypeArgument::func_argument_id(ctx, apa_id).await? {
             rv_input_apa_id = Some(apa_id);
             break;
         }

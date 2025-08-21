@@ -7,10 +7,10 @@
         'flex flex-col items-stretch',
         'border overflow-hidden basis-0 mb-[-1px]', // basis-0 makes items take equal size when multiple are open
         themeClasses(
-          'border-neutral-300 bg-white',
+          'border-neutral-400 bg-white',
           'border-neutral-600 bg-neutral-800',
         ),
-        openState.open.value ? 'grow' : 'shrink',
+        showOpen ? 'grow' : 'shrink',
       )
     "
     :style="`min-height: ${headerHeight}px`"
@@ -21,25 +21,31 @@
         clsx(
           h3class,
           'group/header',
-          'cursor-pointer text-lg flex-none h-lg flex items-center px-xs m-0',
-          openState.open.value && 'border-b',
+          'flex-none flex items-center px-xs m-0',
+          !disableCollapse && [
+            'cursor-pointer',
+            themeClasses('hover:bg-neutral-100', 'hover:bg-neutral-700'),
+          ],
+          `text-${headerTextSize}`,
+          showOpen && 'border-b',
           themeClasses(
-            'bg-white border-neutral-300 hover:bg-neutral-100',
-            'bg-neutral-800 border-neutral-600 hover:bg-neutral-700',
+            'bg-white border-neutral-400',
+            'bg-neutral-800 border-neutral-600',
           ),
         )
       "
       @click="toggleOpen"
     >
       <Icon
-        :name="openState.open.value ? 'chevron-down' : 'chevron-right'"
+        v-if="!disableCollapse"
+        :name="showOpen ? 'chevron-down' : 'chevron-right'"
         size="sm"
       />
       <slot name="header" />
       <div class="ml-auto" />
       <slot name="headerIcons" />
       <IconButton
-        v-if="expandable && openState.open.value"
+        v-if="expandable && showOpen && !disableCollapse"
         tooltip="Expand"
         tooltipPlacement="top"
         size="xs"
@@ -48,7 +54,7 @@
         @click.prevent.stop="expand"
       />
     </h3>
-    <div v-if="openState.open.value" :class="clsx('scrollable min-h-0 flex-1')">
+    <div v-if="showOpen" :class="clsx('scrollable min-h-0 flex-1')">
       <slot />
     </div>
     <Modal ref="modalRef" size="4xl">
@@ -70,6 +76,7 @@ import {
   IconButton,
   Modal,
   Icon,
+  SpacingSizes,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, onMounted, ref } from "vue";
@@ -89,15 +96,21 @@ const props = withDefaults(
     open?: boolean;
     h3class?: string;
     expandable?: boolean;
+    headerTextSize?: SpacingSizes;
+    disableCollapse?: boolean;
   }>(),
   {
     h3class: tw`flex flex-row items-center gap-xs p-2xs z-30`,
     expandable: true,
+    disableCollapse: false,
+    headerTextSize: "lg",
   },
 );
 
 const headerRef = ref<HTMLDivElement>();
 const headerHeight = computed(() => headerRef.value?.offsetHeight ?? 0);
+
+const showOpen = computed(() => openState.open.value || props.disableCollapse);
 
 onMounted(() => {
   openState.open.value = props.open;

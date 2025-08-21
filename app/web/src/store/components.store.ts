@@ -31,7 +31,7 @@ import {
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
   AttributePath,
-  ComponentDiff,
+  ComponentTextDiff,
   ComponentId,
   Edge,
   EdgeId,
@@ -773,7 +773,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           componentCodeViewsById: {} as Record<ComponentId, CodeView[]>,
           componentResourceById: {} as Record<ComponentId, Resource>,
-          componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
+          componentDiffsById: {} as Record<ComponentId, ComponentTextDiff>,
 
           rawComponentsById: {} as Record<ComponentId, RawComponent>,
           nodesById: {} as Record<ComponentId, DiagramNodeData>,
@@ -1486,7 +1486,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async FETCH_COMPONENT_DIFF(componentId: ComponentId) {
-            return new ApiRequest<{ componentDiff: ComponentDiff }>({
+            return new ApiRequest<{ componentDiff: ComponentTextDiff }>({
               url: "component/get_diff",
               keyRequestStatusBy: componentId,
               params: {

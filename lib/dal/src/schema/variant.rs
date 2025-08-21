@@ -1710,7 +1710,7 @@ impl SchemaVariant {
             let mut exisiting_func_arg = None;
             for apa_id in &apas {
                 let func_arg_id =
-                    AttributePrototypeArgument::func_argument_id_by_id(ctx, *apa_id).await?;
+                    AttributePrototypeArgument::func_argument_id(ctx, *apa_id).await?;
                 apa_func_arg_ids.insert(apa_id, func_arg_id);
 
                 if func_arg_id == input.func_argument_id {

@@ -29,8 +29,14 @@ use dal_test::{
     Result,
     helpers::{
         attribute::value,
+        change_set,
+        component::{
+            self,
+            ComponentKey,
+        },
         connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
+        schema::variant,
     },
     prelude::{
         ChangeSetTestHelpers,
@@ -48,9 +54,10 @@ use si_frontend_mv_types::{
     action::ActionView,
     component::{
         Component as ComponentMv,
-        ComponentDiff,
+        ComponentDiffStatus,
         ComponentInList as ComponentInListMv,
         ComponentList,
+        ComponentTextDiff,
     },
     incoming_connections::Connection,
     reference::ReferenceKind,
@@ -174,6 +181,306 @@ async fn cached_schema_variant_not_found(ctx: &DalContext) -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+async fn component_diff(ctx: &mut DalContext) -> Result<()> {
+    variant::create(
+        ctx,
+        "test",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "Value", kind: "string" },
+                        { name: "Values", kind: "array",
+                            entry: { name: "ValuesItem", kind: "string" },
+                        },
+                        { name: "ValueMap", kind: "map",
+                            entry: { name: "ValueMapItem", kind: "string" },
+                        },
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // First, put components "modified" and "unchanged" into HEAD; then create a new changeset.
+    component::create_and_set(
+        ctx,
+        "test",
+        "modified",
+        serde_json::from_str(
+            r#"{
+                "/domain/Value": "value",
+                "/domain/Values/0": "value1",
+                "/domain/Values/1": "value2",
+                "/domain/ValueMap/foo": "fooValue",
+                "/domain/ValueMap/bar": "barValue"
+            }"#,
+        )?,
+    )
+    .await?;
+    component::create_and_set(
+        ctx,
+        "test",
+        "unchanged",
+        serde_json::from_str(
+            r#"{
+            "/domain/Value": "value",
+            "/domain/Values/0": "value1",
+            "/domain/Values/1": "value2",
+            "/domain/ValueMap/foo": "fooValue",
+            "/domain/ValueMap/bar": "barValue"
+        }"#,
+        )?,
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    change_set::apply_and_refork(ctx).await?;
+
+    // First, empty diff should show nothing
+    assert_component_diff_mv(ctx, "modified", "None", r#"{}"#).await;
+    assert_component_diff_mv(ctx, "unchanged", "None", r#"{}"#).await;
+
+    // Now remove, add and modify components
+    component::create_and_set(
+        ctx,
+        "test",
+        "added",
+        serde_json::from_str(
+            r#"{
+                "/domain/Value": "value",
+                "/domain/Values/0": "value1",
+                "/domain/Values/1": "value2",
+                "/domain/ValueMap/foo": "fooValue",
+                "/domain/ValueMap/bar": "barValue"
+            }"#,
+        )?,
+    )
+    .await?;
+    component::update(
+        ctx,
+        "modified",
+        serde_json::from_str(
+            r#"{
+                "/domain/Value": "new_value",
+                "/domain/Values/0": "new_value1",
+                "/domain/Values/1": "new_value2",
+                "/domain/ValueMap/foo": "new_fooValue",
+                "/domain/ValueMap/bar": "new_barValue"
+            }"#,
+        )?,
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+
+    serde_json::from_str::<si_frontend_mv_types::component::component_diff::AttributeSource>(
+        r#"{ "value": "new_value" }"#,
+    )?;
+    serde_json::from_str::<si_frontend_mv_types::component::component_diff::AttributeSourceAndValue>(
+        r#"{
+            "$source": { "value": "new_value" },
+            "$value": "new_value"
+        }"#,
+    )?;
+    serde_json::from_str::<si_frontend_mv_types::component::component_diff::AttributeDiff>(
+        r#"{
+            "new": {
+                "$source": { "value": "new_value" },
+                "$value": "new_value"
+            }
+        }"#,
+    )?;
+    serde_json::from_str::<si_frontend_mv_types::component::component_diff::AttributeDiff>(
+        r#"{
+            "old": {
+                "$source": { "value": "value" },
+                "$value": "value"
+            }
+        }"#,
+    )?;
+    serde_json::from_str::<si_frontend_mv_types::component::component_diff::AttributeDiff>(
+        r#"{
+            "new": {
+                "$source": { "value": "new_value" },
+                "$value": "new_value"
+            },
+            "old": {
+                "$source": { "value": "value" },
+                "$value": "value"
+            }
+        }"#,
+    )?;
+    // Check the diffs for modified, unchanged and added components!
+    assert_component_diff_mv(
+        ctx,
+        "modified",
+        "Modified",
+        r#"{
+            "/domain/Value": {
+                "new": {
+                    "$source": { "value": "new_value" },
+                    "$value": "new_value"
+                },
+                "old": {
+                    "$source": { "value": "value" },
+                    "$value": "value"
+                }
+            },
+            "/domain/Values/0": {
+                "new": {
+                    "$source": { "value": "new_value1" },
+                    "$value": "new_value1"
+                },
+                "old": {
+                    "$source": { "value": "value1" },
+                    "$value": "value1"
+                }
+            },
+            "/domain/Values/1": {
+                "new": {
+                    "$source": { "value": "new_value2" },
+                    "$value": "new_value2"
+                },
+                "old": {
+                    "$source": { "value": "value2" },
+                    "$value": "value2"
+                }
+            },
+            "/domain/ValueMap/foo": {
+                "new": {
+                    "$source": { "value": "new_fooValue" },
+                    "$value": "new_fooValue"
+                },
+                "old": {
+                    "$source": { "value": "fooValue" },
+                    "$value": "fooValue"
+                }
+            },
+            "/domain/ValueMap/bar": {
+                "new": {
+                    "$source": { "value": "new_barValue" },
+                    "$value": "new_barValue"
+                },
+                "old": {
+                    "$source": { "value": "barValue" },
+                    "$value": "barValue"
+                }
+            }
+        }"#,
+    )
+    .await;
+
+    assert_component_diff_mv(ctx, "unchanged", "None", r#"{}"#).await;
+
+    // NOTE added components show way too much right now; we're just going to check the paths
+    // and status for now
+    let added_mv = component_diff_mv(ctx, "added").await?;
+    assert_eq!(added_mv.id, component::id(ctx, "added").await?);
+    assert_eq!(added_mv.diff_status, ComponentDiffStatus::Added);
+    assert_eq!(
+        vec![
+            "",
+            "/si",
+            "/si/name",
+            "/si/protected",
+            "/si/type",
+            "/si/color",
+            "/si/resourceId",
+            "/si/tags",
+            "/domain",
+            "/domain/Value",
+            "/domain/Values",
+            "/domain/Values/0",
+            "/domain/Values/1",
+            "/domain/ValueMap",
+            "/domain/ValueMap/foo",
+            "/domain/ValueMap/bar",
+            "/secrets",
+            "/resource",
+            "/resource/status",
+            "/resource/message",
+            "/resource/payload",
+            "/resource/last_synced",
+            "/resource_value",
+            "/code",
+            "/qualification",
+            "/deleted_at",
+        ],
+        added_mv
+            .attribute_diffs
+            .iter()
+            .map(|(path, _)| path.as_str())
+            .collect_vec()
+    );
+    // Check one of the values to make sure it's filled in right at least
+    assert_eq!(
+        Some(serde_json::from_str(
+            r#"{
+                "new": {
+                    "$source": { "value": "value" },
+                    "$value": "value"
+                }
+            }"#
+        )?),
+        added_mv
+            .attribute_diffs
+            .into_iter()
+            .filter(|(path, _)| path == "/domain/Value")
+            .map(|(_, diff)| diff)
+            .next(),
+    );
+
+    Ok(())
+}
+
+async fn assert_component_diff_mv(
+    ctx: &DalContext,
+    component: impl ComponentKey,
+    diff_status: &str,
+    attribute_diffs: &str,
+) {
+    let component = component::id(ctx, component).await.unwrap();
+    let expected = expected_component_diff_mv(ctx, component, diff_status, attribute_diffs)
+        .await
+        .unwrap();
+    let actual = component_diff_mv(ctx, component).await.unwrap();
+    assert_eq!(expected, actual);
+}
+
+// Generate the component diff MV, and return it as JSON
+async fn component_diff_mv(
+    ctx: &DalContext,
+    component: impl ComponentKey,
+) -> Result<si_frontend_mv_types::component::component_diff::ComponentDiff> {
+    let component_id = component::id(ctx, component).await?;
+    let mv = dal_materialized_views::component::component_diff::assemble(ctx.clone(), component_id)
+        .await?;
+    Ok(mv)
+}
+
+async fn expected_component_diff_mv(
+    ctx: &DalContext,
+    component: impl ComponentKey,
+    diff_status: &str,
+    attribute_diffs: &str,
+) -> Result<si_frontend_mv_types::component::component_diff::ComponentDiff> {
+    let id = component::id(ctx, component).await?;
+    let json = format!(
+        r#"{{
+            "id": {},
+            "diffStatus": {},
+            "attributeDiffs": {}
+        }}"#,
+        serde_json::to_string(&id)?,
+        serde_json::to_string(diff_status)?,
+        attribute_diffs
+    );
+    println!("JSON {}", &json);
+    Ok(serde_json::from_str(&json)?)
+}
+
 #[test]
 async fn component(ctx: &DalContext) -> Result<()> {
     let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
@@ -216,7 +523,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
         .await?
         .into();
 
-    let resource_diff = ComponentDiff {
+    let resource_diff = ComponentTextDiff {
         current: Some(String::from(
             "{\n  \"si\": {\n    \"name\": \"starfield\",\n    \"type\": \"component\",\n    \"color\": \"#ffffff\"\n  }\n}",
         )),

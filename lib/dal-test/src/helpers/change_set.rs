@@ -54,9 +54,10 @@ pub async fn apply_and_refork(ctx: &mut DalContext) -> Result<()> {
 }
 
 /// Applies a forked context to head, consuming it.
-pub async fn apply(mut ctx: DalContext) -> Result<()> {
+/// Returns a new changeset representing head.
+pub async fn apply(mut ctx: DalContext) -> Result<DalContext> {
     ChangeSetTestHelpers::apply_change_set_to_base(&mut ctx).await?;
-    Ok(())
+    Ok(ctx)
 }
 
 /// This unit struct provides helper functions for working with [`ChangeSets`](ChangeSet). It is

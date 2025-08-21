@@ -823,8 +823,7 @@ impl AttributeValue {
                     continue;
                 }
 
-                let func_arg_id =
-                    AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
+                let func_arg_id = AttributePrototypeArgument::func_argument_id(ctx, apa_id).await?;
                 let func_arg_name = ctx
                     .workspace_snapshot()?
                     .get_node_weight(func_arg_id)
@@ -2056,7 +2055,7 @@ impl AttributeValue {
                 AttributePrototypeArgument::list_ids_for_prototype(ctx, from_prototype_id).await?
             {
                 let from_func_arg_id =
-                    AttributePrototypeArgument::func_argument_id_by_id(ctx, from_apa_id).await?;
+                    AttributePrototypeArgument::func_argument_id(ctx, from_apa_id).await?;
                 let from_value_source =
                     AttributePrototypeArgument::value_source(ctx, from_apa_id).await?;
 
@@ -2511,6 +2510,21 @@ impl AttributeValue {
             id = parent_id;
         }
         Ok(())
+    }
+
+    // If this AV is controlled by a dynamic function, return the controlling AV ID.
+    // None means
+    pub async fn controlling_av_id(
+        ctx: &DalContext,
+        mut id: AttributeValueId,
+    ) -> AttributeValueResult<Option<AttributeValueId>> {
+        while let Some(parent_id) = Self::parent_id(ctx, id).await? {
+            id = parent_id;
+            if Self::is_set_by_dependent_function(ctx, id).await? {
+                return Ok(Some(id));
+            }
+        }
+        Ok(None)
     }
 
     /// Remove this AV.

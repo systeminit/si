@@ -396,11 +396,11 @@ impl AttributePrototypeArgument {
         &self,
         ctx: &DalContext,
     ) -> AttributePrototypeArgumentResult<FuncArgument> {
-        let func_arg_id = Self::func_argument_id_by_id(ctx, self.id).await?;
+        let func_arg_id = Self::func_argument_id(ctx, self.id).await?;
         Ok(FuncArgument::get_by_id(ctx, func_arg_id).await?)
     }
 
-    pub async fn func_argument_id_by_id(
+    pub async fn func_argument_id(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<FuncArgumentId> {
@@ -434,7 +434,7 @@ impl AttributePrototypeArgument {
         // AP --> APA --> Func Arg
 
         for apa_id in AttributePrototype::list_arguments(ctx, ap_id).await? {
-            let this_func_arg_id = Self::func_argument_id_by_id(ctx, apa_id).await?;
+            let this_func_arg_id = Self::func_argument_id(ctx, apa_id).await?;
 
             if this_func_arg_id == func_argument_id {
                 return Ok(Some(apa_id));

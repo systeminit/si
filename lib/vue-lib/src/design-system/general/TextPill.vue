@@ -16,6 +16,11 @@
             'border-neutral-600 bg-neutral-100',
             'border-neutral-400 bg-neutral-800',
           ),
+        variant === 'component' &&
+          themeClasses(
+            'border-neutral-400 bg-neutral-100',
+            'border-neutral-600 bg-neutral-900',
+          ),
       )
     "
   >
@@ -28,7 +33,7 @@ import { PropType } from "vue";
 import clsx from "clsx";
 import { themeClasses } from "../utils/theme_tools";
 
-export type TextPillVariant = "simple" | "key" | "key2";
+export type TextPillVariant = "simple" | "key" | "key2" | "component";
 
 defineProps({
   tighter: { type: Boolean },

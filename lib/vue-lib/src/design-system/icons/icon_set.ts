@@ -178,6 +178,7 @@ import CarbonCheckmarkOutline from "~icons/carbon/checkmark-outline";
 import CarbonChevronDown from "~icons/carbon/chevron-down";
 import CarbonChevronRight from "~icons/carbon/chevron-right";
 import CarbonRepeat from "~icons/carbon/repeat";
+import CarbonUndo from "~icons/carbon/undo";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -417,6 +418,7 @@ export const ICONS = Object.freeze({
   "trash-restore": TrashRestore,
   "tree-parents": TreeParents,
   triangle: MdiTriangle,
+  undo: CarbonUndo,
   unlink: TdesignLinkUnlink,
   "user-circle": UserCircle,
   x: X,
