@@ -14675,6 +14675,9 @@
   "The number of IP addresses in the Anycast static IP list.": {
     "enum": null
   },
+  "The number of IPv4 addresses to allocate per ENI for the resource gateway": {
+    "enum": null
+  },
   "The number of IPv4 prefixes to assign to a network interface. When you specify a number of IPv4 prefixes, Amazon EC2 selects these prefixes from your existing subnet CIDR reservations, if available, or from free spaces in the subnet. By default, these will be /28 prefixes. You can't specify a count of IPv4 prefixes if you've specified one of the following: specific IPv4 prefixes, specific private IPv4 addresses, or a count of private IPv4 addresses.": {
     "enum": null
   },
