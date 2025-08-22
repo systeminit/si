@@ -248,8 +248,8 @@
               "
             >
               <span class="font-bold">Explore other ways to get started</span>
-              <span
-                >Prefer a different starting point? Here are a few other ways to
+              <span>
+                Prefer a different starting point? Here are a few other ways to
                 jump in and explore:
               </span>
               <div
@@ -294,6 +294,9 @@
             "
             :style="!bulkEditing && 'overflow-anchor: none;'"
           >
+            <WelcomeBanner
+              v-if="featureFlagsStore.INITIALIZER_ONBOARD && ctx.onHead.value"
+            />
             <ExploreGrid
               ref="exploreGridRef"
               :components="sortedAndGroupedComponents"
@@ -542,6 +545,7 @@ import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue"
 import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import WelcomeBanner from "@/newhotness/WelcomeBanner.vue";
 import MapComponent from "./Map.vue";
 import {
   collapsingGridStyles,
