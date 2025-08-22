@@ -17,8 +17,7 @@ const timeAgo = new TimeAgo("en-US");
 export function dateString(
   date: string | Date,
   size: TimestampSize,
-  relative = false,
-  relativeShorthand = false,
+  relative: "standard" | "shorthand" | "disabled" = "disabled",
   showTimeIfToday = false,
   dateClasses = "",
   timeClasses = "",
@@ -35,8 +34,7 @@ export function dateString(
   }
 
   if (
-    !relative &&
-    !relativeShorthand &&
+    relative === "disabled" &&
     showTimeIfToday &&
     d.toDateString() === new Date().toDateString()
   ) {
@@ -50,12 +48,12 @@ export function dateString(
   }
 
   if (size === "mini") {
-    if (relative) {
+    if (relative === "standard") {
       return timeAgo.format(d, "mini-minute-now");
     }
     return format(d, "M/d/y");
   } else if (size === "extended") {
-    if (relative) {
+    if (relative === "standard") {
       return `${formatDistanceToNow(d)} ago`;
     }
     return `${dateClassesSpan}${format(
@@ -66,7 +64,7 @@ export function dateString(
       "h:mm:ss a",
     )}${timeClassesCloseSpan}`;
   } else if (size === "long") {
-    if (relative) {
+    if (relative === "standard") {
       return `${formatDistanceToNow(d)} ago`;
     }
     return `${dateClassesSpan}${format(
@@ -78,9 +76,9 @@ export function dateString(
     )}${timeClassesCloseSpan}`;
   }
 
-  if (relative) {
+  if (relative === "standard") {
     return timeAgo.format(d);
-  } else if (relativeShorthand) {
+  } else if (relative === "shorthand") {
     return timeAgo.format(d, "twitter-first-minute");
   }
 

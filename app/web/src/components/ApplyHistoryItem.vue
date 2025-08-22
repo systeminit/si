@@ -46,7 +46,7 @@
               v-tooltip="timestampTooltip"
               class="dark:hover:text-action-300 hover:text-action-500"
               size="normal"
-              relative
+              relative="standard"
               showTimeIfToday
               :date="new Date(actionBatch.startedAt)"
             />
