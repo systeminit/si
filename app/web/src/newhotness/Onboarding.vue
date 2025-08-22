@@ -102,11 +102,10 @@
                 <!-- Secret Values -->
                 <div class="flex flex-col border border-neutral-600 pb-sm">
                   <div
-                    class="flex flex-row justify-between px-sm py-xs border-b border-neutral-600"
+                    class="flex flex-row justify-end px-sm py-xs border-b border-neutral-600"
                   >
-                    <span> Add the secrets </span>
                     <span class="text-neutral-400 text-sm">
-                      All data informed in this section will be encrypted
+                      All data in this section will be encrypted
                     </span>
                   </div>
                   <ErrorMessage
@@ -275,7 +274,7 @@
               </div>
               <div class="flex flex-col gap-xs">
                 <span>Run the setup script</span>
-                <CopiableTextBlock text="npm install -g ai-agent./setup.sh" />
+                <CopiableTextBlock text="./setup.sh" />
               </div>
             </template>
             <template #footer>
