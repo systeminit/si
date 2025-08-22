@@ -162,6 +162,7 @@ import CarbonEdit from "~icons/carbon/edit";
 import Hourglass from "~icons/carbon/hourglass";
 import CarbonCompare from "~icons/carbon/compare";
 import CarbonMaximize from "~icons/carbon/maximize";
+import Copy from "~icons/carbon/copy";
 // TODO(Wendy) - for some reason this one specific icon fails to import? Not sure why.
 // import CarbonTransformCode from '~icons/carbon/transform-code';
 import CarbonTransformCode from "~icons/carbon/code"; // using this one as a placeholder for now
@@ -297,6 +298,7 @@ export const ICONS = Object.freeze({
   component: Cube,
   "component-plus": CubePlus,
   connection: MaterialSymbolsLink,
+  copy: Copy,
   create: Create,
   "credit-card": CreditCard,
   cursor: PhCursorTextBold,
