@@ -864,6 +864,21 @@ impl TryFrom<PropSpecBuilder> for PropSpec {
     }
 }
 
+impl HasUniqueId for PropSpec {
+    fn unique_id(&self) -> Option<&str> {
+        match self {
+            Self::Array { unique_id, .. }
+            | Self::Boolean { unique_id, .. }
+            | Self::Float { unique_id, .. }
+            | Self::Json { unique_id, .. }
+            | Self::Map { unique_id, .. }
+            | Self::Number { unique_id, .. }
+            | Self::Object { unique_id, .. }
+            | Self::String { unique_id, .. } => unique_id.as_deref(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1038,20 +1053,5 @@ mod tests {
             prop_b_after_merge.inputs(),
             "attribute function for prop b copied over in merge"
         );
-    }
-}
-
-impl HasUniqueId for PropSpec {
-    fn unique_id(&self) -> Option<&str> {
-        match self {
-            Self::Array { unique_id, .. }
-            | Self::Boolean { unique_id, .. }
-            | Self::Float { unique_id, .. }
-            | Self::Json { unique_id, .. }
-            | Self::Map { unique_id, .. }
-            | Self::Number { unique_id, .. }
-            | Self::Object { unique_id, .. }
-            | Self::String { unique_id, .. } => unique_id.as_deref(),
-        }
     }
 }

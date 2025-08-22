@@ -55,7 +55,7 @@ use crate::extract::{
 pub async fn get_variant(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     frigg: FriggStore,
-    edda_client: EddaClient,
+    _edda_client: EddaClient,
     tracker: PosthogEventTracker,
     Path(SchemaVariantV1RequestPath {
         schema_id,
@@ -166,9 +166,13 @@ pub async fn get_variant(
             match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
                 Ok(Some(_)) => {
                     // Schema exists in cached_modules but CachedSchemaVariant MV not built yet - trigger rebuild and return 202
-                    if let Err(e) = edda_client.rebuild_for_deployment().await {
-                        warn!("Failed to trigger MV rebuild: {}", e);
-                    }
+                    //
+                    // Until the performance issues in building the deployment-level MVs are fixed,
+                    // this is only going to be deployed through the manual module sync process.
+                    //
+                    // if let Err(e) = edda_client.rebuild_for_deployment().await {
+                    //     warn!("Failed to trigger MV rebuild: {}", e);
+                    // }
 
                     return Ok(SchemaVariantResponseV1::Building(BuildingResponseV1 {
                         status: "building".to_string(),
@@ -195,9 +199,13 @@ pub async fn get_variant(
             match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
                 Ok(Some(_)) => {
                     // Schema exists but MV lookup failed - trigger rebuild and return building response
-                    if let Err(e) = edda_client.rebuild_for_deployment().await {
-                        warn!("Failed to trigger MV rebuild: {}", e);
-                    }
+                    //
+                    // Until the performance issues in building the deployment-level MVs are fixed,
+                    // this is only going to be deployed through the manual module sync process.
+                    //
+                    // if let Err(e) = edda_client.rebuild_for_deployment().await {
+                    //     warn!("Failed to trigger MV rebuild: {}", e);
+                    // }
 
                     return Ok(SchemaVariantResponseV1::Building(BuildingResponseV1 {
                         status: "building".to_string(),
