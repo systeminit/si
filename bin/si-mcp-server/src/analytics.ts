@@ -70,11 +70,11 @@ export class Analytics {
   }
 
   async trackServerStart() {
-    await this.trackEvent("mcp_server_started");
+    await this.trackEvent("server_started");
   }
 
   async trackServerEnd() {
-    await this.trackEvent("mcp_server_ended");
+    await this.trackEvent("server_ended");
     if (this.posthog) {
       await this.posthog.shutdown();
     }
