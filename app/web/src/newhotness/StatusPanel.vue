@@ -19,6 +19,7 @@ import {
   reactive,
 } from "vue";
 import { useQuery } from "@tanstack/vue-query";
+import { debounce } from "lodash-es";
 import StatusPanelIcon from "@/newhotness/StatusPanelIcon.vue";
 import { useMakeKey, bifrost, useMakeArgs } from "@/store/realtime/heimdall";
 import {
@@ -183,10 +184,14 @@ watch([trigger, changeSetId], () => {
   }
 });
 
-// This watcher updates the status based on the state of the bucket.
-watch(bucketIsEmpty, (newBucketIsEmpty) => {
+// The watcher below updates the status based on the state of the bucket. It is conditionally debounced to prevent "flashing".
+const updateStatusToSyncedDebounced = debounce(() => {
+  status[changeSetId.value] = "synced";
+}, 3000);
+watch(bucketIsEmpty, async (newBucketIsEmpty) => {
+  // Only if we are going to a "synced" state should we debounce.
   if (newBucketIsEmpty) {
-    status[changeSetId.value] = "synced";
+    updateStatusToSyncedDebounced();
   } else {
     status[changeSetId.value] = "syncing";
   }
