@@ -107,6 +107,18 @@ impl<T> Response<T> {
         }
     }
 
+    pub fn default_bad_gateway() -> Self
+    where
+        T: Default,
+    {
+        Self {
+            head: Parts {
+                status: StatusCode::from_u16(502).expect("status code is in valid range"),
+            },
+            body: T::default(),
+        }
+    }
+
     pub fn default_service_unavailable() -> Self
     where
         T: Default,

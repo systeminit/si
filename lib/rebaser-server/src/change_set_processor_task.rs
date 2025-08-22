@@ -81,6 +81,9 @@ pub(crate) enum ChangeSetProcessorTaskError {
     /// When a naxum-based service encounters an I/O error
     #[error("naxum error: {0}")]
     Naxum(#[source] std::io::Error),
+    /// When the app encounters an error that should be retried by restarting the task again
+    #[error("task app aborted processing")]
+    TaskAborted,
 }
 
 type Error = ChangeSetProcessorTaskError;
@@ -91,6 +94,7 @@ pub(crate) struct ChangeSetProcessorTask {
     _metadata: Arc<ServerMetadata>,
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,
+    internal_token: CancellationToken,
     inner: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
 }
 
@@ -120,6 +124,9 @@ impl ChangeSetProcessorTask {
 
         let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
 
+        // Cancellation token used to internally trigger a graceful shutdown of this naxum app
+        let internal_token = CancellationToken::new();
+
         let state = AppState::new(
             workspace_id,
             change_set_id,
@@ -128,6 +135,7 @@ impl ChangeSetProcessorTask {
             ctx_builder,
             run_dvu_notify,
             server_tracker,
+            internal_token.clone(),
             features,
         );
 
@@ -185,7 +193,11 @@ impl ChangeSetProcessorTask {
 
         let inner =
             naxum::serve_with_incoming_limit(inactive_aware_incoming, app.into_make_service(), 1)
-                .with_graceful_shutdown(graceful_shutdown_signal(task_token, quiesced_token));
+                .with_graceful_shutdown(graceful_shutdown_signal(
+                    task_token,
+                    quiesced_token,
+                    internal_token.clone(),
+                ));
 
         let inner_fut = inner.into_future();
 
@@ -193,6 +205,7 @@ impl ChangeSetProcessorTask {
             _metadata: metadata,
             workspace_id,
             change_set_id,
+            internal_token,
             inner: Box::new(inner_fut),
         }
     }
@@ -207,7 +220,15 @@ impl ChangeSetProcessorTask {
             si.change_set.id = %self.change_set_id,
             "shutdown complete",
         );
-        Ok(())
+
+        if self.internal_token.is_cancelled() {
+            // If the app internalled cancelled itself, it's due to a message processing error that
+            // should be retried--and importantly not skipped over
+            Err(Error::TaskAborted)
+        } else {
+            // Otherwise, this is a clean task shutdown
+            Ok(())
+        }
     }
 }
 
@@ -379,14 +400,24 @@ where
     }
 }
 
-// Await either a graceful shutdown signal from the task or an inactive request stream trigger.
+// Await conditions that would signal an app's graceful shutdown.
+//
+// There are 3 conditions that should result in a graceful shutdown:
+//
+// 1. The "task token" is cancelled, which represents a shutdown signal from the overall serivce
+// 2. The "quiescence token" is cancelled, which represents a quiet period of not receiving a
+//    message over a certain period
+// 3. The "internal token" is cancelled, which represents an internally sourced request to shut
+//    down the app
 async fn graceful_shutdown_signal(
     task_token: CancellationToken,
     quiescence_token: CancellationToken,
+    internal_token: CancellationToken,
 ) {
     tokio::select! {
         _ = task_token.cancelled() => {}
         _ = quiescence_token.cancelled() => {}
+        _ = internal_token.cancelled() => {}
     }
 }
 
@@ -516,6 +547,7 @@ mod handlers {
             ctx_builder,
             run_notify,
             server_tracker,
+            internal_token,
             features,
         } = state;
         let span = Span::current();
@@ -719,7 +751,10 @@ mod app_state {
         WorkspacePk,
     };
     use tokio::sync::Notify;
-    use tokio_util::task::TaskTracker;
+    use tokio_util::{
+        sync::CancellationToken,
+        task::TaskTracker,
+    };
 
     use crate::Features;
 
@@ -741,6 +776,8 @@ mod app_state {
         /// A task tracker for server-level tasks that can outlive the lifetime of a change set
         /// processor task
         pub(crate) server_tracker: TaskTracker,
+        /// A internal cancellation token used to trigger the app's graceful shutdown
+        pub(crate) internal_token: CancellationToken,
         /// Static feature gate on new mv behavior
         pub(crate) features: Features,
     }
@@ -756,6 +793,7 @@ mod app_state {
             ctx_builder: DalContextBuilder,
             run_notify: Arc<Notify>,
             server_tracker: TaskTracker,
+            internal_token: CancellationToken,
             features: Features,
         ) -> Self {
             Self {
@@ -766,6 +804,7 @@ mod app_state {
                 ctx_builder,
                 run_notify,
                 server_tracker,
+                internal_token,
                 features,
             }
         }
