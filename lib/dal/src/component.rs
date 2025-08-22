@@ -55,7 +55,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
-use self::inferred_connection_graph::InferredConnectionGraphError;
+use self::{
+    inferred_connection_graph::InferredConnectionGraphError,
+    suggestion::PropSuggestionCacheError,
+};
 use crate::{
     AttributePrototype,
     AttributePrototypeId,
@@ -201,6 +204,7 @@ pub mod properties;
 pub mod qualification;
 pub mod resource;
 pub mod socket;
+pub mod suggestion;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -319,6 +323,8 @@ pub enum ComponentError {
     Prop(#[from] Box<PropError>),
     #[error("found prop id ({0}) that is not a prop")]
     PropIdNotAProp(PropId),
+    #[error("prop suggestion cache error: {0}")]
+    PropSuggestionCache(#[from] PropSuggestionCacheError),
     #[error("qualification error: {0}")]
     Qualification(#[from] Box<QualificationError>),
     #[error("ordering node not found for qualifications map {0} and component {1}")]
@@ -2834,6 +2840,11 @@ impl Component {
     }
 
     pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Option<Self>> {
+        ctx.workspace_snapshot()?
+            .prop_suggestions_cache_no_populate()
+            .await?
+            .remove_component(self.id())?;
+
         if self.allowed_to_be_removed(ctx).await? {
             Self::remove(ctx, self.id).await?;
             Ok(None)
@@ -4035,6 +4046,10 @@ impl Component {
             )
             .await?;
         }
+
+        ctx.workspace_snapshot()?
+            .clear_prop_suggestions_cache()
+            .await;
 
         Ok(upgraded_component)
     }

@@ -125,6 +125,7 @@ use crate::{
     slow_rt,
     socket::input::InputSocketError,
     workspace_snapshot::{
+        PropSuggestionsCache,
         graph::traits::component::ComponentExt as _,
         traits::component::ComponentExt,
     },
@@ -272,6 +273,7 @@ pub struct SplitSnapshot {
     cycle_check: Arc<AtomicBool>,
     dvu_roots: Arc<Mutex<HashSet<DependentValueRoot>>>,
     inferred_connection_graph: Arc<RwLock<Option<InferredConnectionGraph>>>,
+    prop_suggestions: Arc<PropSuggestionsCache>,
 }
 
 impl SplitSnapshot {
@@ -287,6 +289,7 @@ impl SplitSnapshot {
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
             inferred_connection_graph: Arc::new(RwLock::new(None)),
+            prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         }
     }
 
@@ -370,6 +373,7 @@ impl SplitSnapshot {
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
             inferred_connection_graph: Arc::new(RwLock::new(None)),
+            prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         };
 
         initial.write(ctx).await?;
@@ -483,6 +487,7 @@ impl SplitSnapshot {
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
             inferred_connection_graph: Arc::new(RwLock::new(None)),
+            prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         })
     }
 
@@ -1330,6 +1335,30 @@ impl SplitSnapshot {
     pub async fn clear_inferred_connection_graph(&self) {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         *inferred_connection_write_guard = None;
+    }
+
+    /// Get the prop suggestions cache for autosubscribe optimization
+    pub async fn prop_suggestions_cache(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<&PropSuggestionsCache> {
+        if !self.prop_suggestions.populated() {
+            self.prop_suggestions.populate(ctx).await?;
+        }
+
+        Ok(&self.prop_suggestions)
+    }
+
+    /// Get the prop suggestions cache for autosubscribe optimization without populating it
+    pub async fn prop_suggestions_cache_no_populate(
+        &self,
+    ) -> WorkspaceSnapshotResult<&PropSuggestionsCache> {
+        Ok(&self.prop_suggestions)
+    }
+
+    /// Clear the prop suggestions cache (useful when schema variants change)
+    pub fn clear_prop_suggestions_cache(&self) {
+        self.prop_suggestions.clear();
     }
 
     pub async fn revert(&self) {

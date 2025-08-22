@@ -4,8 +4,17 @@ use dal::{
     Schema,
     SchemaVariant,
     SchemaVariantId,
-    func::authoring::FuncAuthoringClient,
-    schema::variant::authoring::VariantAuthoringClient,
+    func::{
+        authoring::FuncAuthoringClient,
+        binding::EventualParent,
+    },
+    schema::variant::{
+        authoring::VariantAuthoringClient,
+        leaves::{
+            LeafInputLocation,
+            LeafKind,
+        },
+    },
 };
 
 use crate::{
@@ -71,6 +80,27 @@ pub async fn update_asset_func(
     .await?;
     VariantAuthoringClient::regenerate_variant(ctx, variant.id).await?;
     Ok(())
+}
+
+/// Create a qualification function for the given schema variant
+pub async fn create_qualification_func(
+    ctx: &DalContext,
+    variant: impl SchemaVariantKey,
+    name: impl Into<String>,
+    code: impl Into<String>,
+    inputs: &[LeafInputLocation],
+) -> Result<FuncId> {
+    let variant_id = id(ctx, variant).await?;
+    let func = FuncAuthoringClient::create_new_leaf_func(
+        ctx,
+        Some(name.into()),
+        LeafKind::Qualification,
+        EventualParent::SchemaVariant(variant_id),
+        inputs,
+    )
+    .await?;
+    FuncAuthoringClient::save_code(ctx, func.id, code.into()).await?;
+    Ok(func.id)
 }
 
 ///

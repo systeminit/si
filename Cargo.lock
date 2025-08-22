@@ -2255,6 +2255,7 @@ dependencies = [
  "dal-macros",
  "dal-materialized-views",
  "dal-test",
+ "dashmap",
  "derive_more",
  "diff",
  "dyn-clone",

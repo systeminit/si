@@ -656,6 +656,32 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
+    pub async fn prop_suggestions_cache(
+        &self,
+        ctx: &DalContext,
+    ) -> WorkspaceSnapshotResult<&crate::workspace_snapshot::PropSuggestionsCache> {
+        match self {
+            Self::LegacySnapshot(snap) => snap.prop_suggestions_cache(ctx).await,
+            Self::SplitSnapshot(snap) => snap.prop_suggestions_cache(ctx).await,
+        }
+    }
+
+    pub async fn prop_suggestions_cache_no_populate(
+        &self,
+    ) -> WorkspaceSnapshotResult<&crate::workspace_snapshot::PropSuggestionsCache> {
+        match self {
+            Self::LegacySnapshot(snap) => snap.prop_suggestions_cache_no_populate().await,
+            Self::SplitSnapshot(snap) => snap.prop_suggestions_cache_no_populate().await,
+        }
+    }
+
+    pub async fn clear_prop_suggestions_cache(&self) {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.clear_prop_suggestions_cache(),
+            Self::SplitSnapshot(snapshot) => snapshot.clear_prop_suggestions_cache(),
+        }
+    }
+
     pub async fn revert(&self) {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.revert().await,

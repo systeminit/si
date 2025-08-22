@@ -39,6 +39,7 @@ impl ReasonNodeWeight {
 pub enum Reason {
     DefaultSubscription,
     UserAdded(Option<UserPk>),
+    Autosubscription,
 }
 
 impl Reason {
