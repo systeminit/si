@@ -3,7 +3,7 @@
     v-if="row.type === 'header'"
     :class="
       clsx(
-        'flex flex-row items-center justify-center gap-xs px-xs',
+        'flex flex-row items-center gap-xs px-xs',
         themeClasses('bg-neutral-200', 'bg-neutral-800'),
       )
     "
