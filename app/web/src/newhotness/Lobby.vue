@@ -15,7 +15,7 @@
       "
     >
       <!-- Holds spinning border (we can't use the internal one because of margins -->
-      <div class="spinning-border h-full w-full flex flex-row rounded">
+      <div class="spinning-border h-full w-full flex flex-row rounded-sm">
         <!-- Inner section of panel -->
         <div
           :class="

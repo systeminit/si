@@ -12,6 +12,7 @@ import {
 import { ViewId } from "@/api/sdf/dal/views";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { DefaultMap } from "@/utils/defaultmap";
+import { ComponentName } from "@/store/components.store";
 import { ComponentInfo } from "./dbinterface";
 
 export enum EntityKind {
@@ -398,9 +399,27 @@ export interface AttributeSourceLocation {
 }
 
 export type SimplifiedAttributeSource =
-  | { component: ComponentId; path: AttributePath }
-  | { value: unknown }
-  | { prototype: string };
+  | {
+      component: ComponentId;
+      componentName: ComponentName;
+      path: AttributePath;
+      value?: undefined;
+      prototype?: undefined;
+    }
+  | {
+      value: unknown;
+      component?: undefined;
+      componentName?: undefined;
+      path?: undefined;
+      prototype?: undefined;
+    }
+  | {
+      prototype: string;
+      component?: undefined;
+      componentName?: undefined;
+      path?: undefined;
+      value?: undefined;
+    };
 
 // NOTE: when using `getMany` you don't end up with a BifrostComponent (b/c it doesnt have SchemaVariant)
 // You end up with a ComponentInList
