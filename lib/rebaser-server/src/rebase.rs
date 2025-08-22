@@ -299,7 +299,8 @@ async fn rebase_split(
         &original_workspace_snapshot,
         &to_rebase_workspace_snapshot,
         edda,
-        request,
+        request.change_set_id,
+        request.workspace_id,
         span,
     )
     .await?;
@@ -410,7 +411,8 @@ async fn rebase_legacy(
         &original_workspace_snapshot,
         &to_rebase_workspace_snapshot,
         edda,
-        request,
+        request.change_set_id,
+        request.workspace_id,
         span,
     )
     .await?;
@@ -418,12 +420,13 @@ async fn rebase_legacy(
     Ok(())
 }
 
-async fn send_updates_to_edda_split_snapshot(
+pub(crate) async fn send_updates_to_edda_split_snapshot(
     ctx: &DalContext,
     original_workspace_snapshot: &SplitSnapshot,
     to_rebase_workspace_snapshot: &SplitSnapshot,
     edda: &edda_client::Client,
-    request: &EnqueueUpdatesRequest,
+    change_set_id: ChangeSetId,
+    workspace_id: WorkspacePk,
     span: Span,
 ) -> Result<(), RebaseError> {
     let changes = original_workspace_snapshot
@@ -435,8 +438,8 @@ async fn send_updates_to_edda_split_snapshot(
     let change_batch_address = ctx.write_change_batch(changes).await?;
     let edda_update_request_id = edda
         .update_from_workspace_snapshot(
-            request.workspace_id,
-            request.change_set_id,
+            workspace_id,
+            change_set_id,
             original_workspace_snapshot.id().await,
             to_rebase_workspace_snapshot.id().await,
             change_batch_address,
@@ -446,12 +449,13 @@ async fn send_updates_to_edda_split_snapshot(
     Ok(())
 }
 
-async fn send_updates_to_edda_legacy_snapshot(
+pub(crate) async fn send_updates_to_edda_legacy_snapshot(
     ctx: &mut DalContext,
     original_workspace_snapshot: &WorkspaceSnapshot,
     to_rebase_workspace_snapshot: &WorkspaceSnapshot,
     edda: &edda_client::Client,
-    request: &EnqueueUpdatesRequest,
+    change_set_id: ChangeSetId,
+    workspace_id: WorkspacePk,
     span: Span,
 ) -> Result<(), RebaseError> {
     let changes = original_workspace_snapshot
@@ -463,8 +467,8 @@ async fn send_updates_to_edda_legacy_snapshot(
     let change_batch_address = ctx.write_change_batch(changes).await?;
     let edda_update_request_id = edda
         .update_from_workspace_snapshot(
-            request.workspace_id,
-            request.change_set_id,
+            workspace_id,
+            change_set_id,
             original_workspace_snapshot.id().await,
             to_rebase_workspace_snapshot.id().await,
             change_batch_address,
