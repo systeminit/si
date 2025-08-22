@@ -56,7 +56,7 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = ResponseFuture<S>;
+    type Future = ResponseFuture<S, OnSuccessT, OnFailureT>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
@@ -91,14 +91,11 @@ where
 
         let response = self.inner.call(message);
 
-        let on_success_fut = self.on_success.call(head.clone(), info.clone());
-        let on_failure_fut = self.on_failure.call(head.clone(), info.clone());
-
         ResponseFuture {
             inner: response,
-            on_success_fut,
-            on_failure_fut,
-            state: super::future::State::default(),
+            on_success: self.on_success.clone(),
+            on_failure: self.on_failure.clone(),
+            state: super::future::State::Initial(Some((head, info))),
         }
     }
 }
