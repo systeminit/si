@@ -667,9 +667,7 @@ impl DalContext {
             None => {
                 // Since we are not rebasing, we need to write the final message and flush all
                 // pending audit logs.
-                self.write_audit_log_final_message().await?;
-                self.publish_pending_audit_logs(None, None).await?;
-
+                self.bless_audit_logs_infallible_wrapper().await;
                 DelayedRebaseWithReply::NoUpdates
             }
         };
@@ -930,8 +928,7 @@ impl DalContext {
             None => {
                 // Since we are not rebasing, we need to write the final message and flush all
                 // pending audit logs.
-                self.write_audit_log_final_message().await?;
-                self.publish_pending_audit_logs(None, None).await?;
+                self.bless_audit_logs_infallible_wrapper().await;
                 DelayedRebaseWithReply::NoUpdates
             }
         };
@@ -1334,7 +1331,7 @@ impl DalContext {
         level = "debug",
         skip_all
     )]
-    pub async fn write_audit_log_final_message(&self) -> TransactionsResult<()> {
+    async fn write_audit_log_final_message(&self) -> TransactionsResult<()> {
         Ok(audit_logging::write_final_message(self).await?)
     }
 
@@ -1350,6 +1347,21 @@ impl DalContext {
         override_event_session_id: Option<si_events::EventSessionId>,
     ) -> TransactionsResult<()> {
         Ok(audit_logging::publish_pending(self, tracker, override_event_session_id).await?)
+    }
+
+    #[instrument(
+        name = "dal_context.blest_audit_logs_infallible_wrapper",
+        level = "debug",
+        skip_all
+    )]
+    async fn bless_audit_logs_infallible_wrapper(&self) {
+        match self.write_audit_log_final_message().await {
+            Ok(()) => match self.publish_pending_audit_logs(None, None).await {
+                Ok(()) => {}
+                Err(err) => error!(si.error.message = ?err, "unable to publish pending audit logs"),
+            },
+            Err(err) => error!(si.error.message = ?err, "unable to write final audit log"),
+        }
     }
 
     pub fn request_ulid(&self) -> Option<ulid::Ulid> {
