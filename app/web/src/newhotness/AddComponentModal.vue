@@ -120,7 +120,7 @@
                     )
                   "
                   :color="asset.variant.color"
-                  @click="() => selectAsset(asset)"
+                  @click="() => selectAsset(asset, true)"
                 >
                   <template #label>
                     <!-- TODO(Wendy) - style this text based on the fuzzy search! -->
@@ -259,14 +259,8 @@ assertIsDefined(ctx);
 const bannerClosed = ref(false);
 
 const selectedAsset = ref<UIAsset | undefined>(undefined);
-const selectAsset = (asset: UIAsset) => {
-  if (compareKeys(selectedAsset.value?.key, asset.key)) onEnter();
-  else selectedAsset.value = asset;
-  selectionIndex.value = filteredAssetsFlat.value.findIndex((a) =>
-    compareKeys(a.key, asset.key),
-  );
 
-  // scroll selected item into view
+const scrollToSelected = () => {
   nextTick(() => {
     const el = document.getElementsByClassName(
       "add-component-selected-item",
@@ -275,6 +269,22 @@ const selectAsset = (asset: UIAsset) => {
       el.scrollIntoView({ block: "center" });
     }
   });
+};
+
+const selectAsset = (asset: UIAsset, noScroll?: boolean) => {
+  if (compareKeys(selectedAsset.value?.key, asset.key)) onEnter();
+  else {
+    selectedAsset.value = asset;
+  }
+  selectionIndex.value = filteredAssetsFlat.value.findIndex((a) =>
+    compareKeys(a.key, asset.key),
+  );
+
+  // If we came here from a mouse click, do not scroll! it can make the double
+  // click "miss"
+  if (!noScroll) {
+    scrollToSelected();
+  }
 };
 const clearSelection = () => {
   selectedAsset.value = undefined;
