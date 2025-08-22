@@ -71,10 +71,16 @@ const THIRTY_DAYS_IN_SECONDS: u64 = 30 * 24 * 60 * 60;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum PendingEventsError {
+    #[error("ack publish final message error: {0}")]
+    AckPublishFinalMessage(#[source] PublishError),
+    #[error("ack publish message error: {0}")]
+    AckPublishMessage(#[source] PublishError),
     #[error("create stream error: {0}")]
     CreateStream(#[from] CreateStreamError),
-    #[error("publish error: {0}")]
-    Publish(#[from] PublishError),
+    #[error("publish final message error: {0}")]
+    PublishFinalMessage(#[source] PublishError),
+    #[error("publish message error: {0}")]
+    PublishMessage(#[source] PublishError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] Error),
 }
@@ -139,6 +145,7 @@ impl PendingEventsStream {
             ),
             Some(headers),
             audit_log,
+            false,
         )
         .await
     }
@@ -166,6 +173,7 @@ impl PendingEventsStream {
             ),
             Some(headers),
             &serde_json::json!({}),
+            true,
         )
         .await
     }
@@ -201,17 +209,31 @@ impl PendingEventsStream {
         parameters: &str,
         headers: Option<HeaderMap>,
         message: &impl Serialize,
+        final_message: bool,
     ) -> Result<()> {
         let subject = self.prefixed_subject(subject, parameters);
-        let ack = self
+        let publish_result = self
             .context
             .publish_with_headers(
                 subject,
                 headers.unwrap_or(propagation::empty_injected_headers()),
                 serde_json::to_vec(message)?.into(),
             )
-            .await?;
-        ack.await?;
+            .await;
+
+        let ack = if final_message {
+            publish_result.map_err(PendingEventsError::PublishFinalMessage)?
+        } else {
+            publish_result.map_err(PendingEventsError::PublishMessage)?
+        };
+
+        if final_message {
+            ack.await
+                .map_err(PendingEventsError::AckPublishFinalMessage)?;
+        } else {
+            ack.await.map_err(PendingEventsError::AckPublishMessage)?;
+        }
+
         Ok(())
     }
 
