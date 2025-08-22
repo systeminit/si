@@ -60,5 +60,10 @@ impl IntoResponse for AuditLogError {
 }
 
 pub fn v2_routes() -> Router<AppState> {
-    Router::new().route("/", get(list_audit_logs::list_audit_logs))
+    Router::new()
+        .route("/", get(list_audit_logs::list_audit_logs))
+        .route(
+            "/:componentId",
+            get(list_audit_logs::list_audit_logs_for_component),
+        )
 }

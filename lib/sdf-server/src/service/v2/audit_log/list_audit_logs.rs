@@ -77,6 +77,42 @@ pub async fn list_audit_logs(
     }))
 }
 
+pub async fn list_audit_logs_for_component(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(access_builder): AccessBuilder,
+    Path((_workspace_pk, change_set_id, component_id)): Path<(
+        dal::WorkspacePk,
+        dal::ChangeSetId,
+        dal::ComponentId,
+    )>,
+    Query(request): Query<ListAuditLogsRequest>,
+    State(state): State<AppState>,
+) -> AuditLogResult<Json<ListAuditLogsResponse>> {
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
+
+    let (database_logs, can_load_more) = audit_logging::list_for_component(
+        &ctx,
+        state.audit_database_context(),
+        component_id,
+        request.size.unwrap_or(0),
+        request.sort_ascending.unwrap_or(false),
+    )
+    .await?;
+
+    let mut assembler = Assembler::new();
+    let mut logs = Vec::with_capacity(database_logs.len());
+    for database_log in database_logs {
+        logs.push(assembler.assemble(&ctx, database_log).await?);
+    }
+
+    Ok(Json(ListAuditLogsResponse {
+        logs,
+        can_load_more,
+    }))
+}
+
 #[derive(Debug)]
 struct Assembler {
     change_set_cache: HashMap<ChangeSetId, ChangeSet>,

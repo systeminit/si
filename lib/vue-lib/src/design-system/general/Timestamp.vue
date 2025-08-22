@@ -21,6 +21,7 @@ const props = defineProps({
     default: new Date(),
   },
   relative: { type: Boolean, default: false },
+  relativeShorthand: { type: Boolean, default: false },
   showTimeIfToday: { type: Boolean, default: false },
   size: {
     type: String as PropType<TimestampSize>,
@@ -44,6 +45,7 @@ const dateStr = computed(() => {
       props.date,
       props.size,
       props.relative,
+      props.relativeShorthand,
       props.showTimeIfToday,
       props.dateClasses,
       props.timeClasses,
@@ -53,6 +55,7 @@ const dateStr = computed(() => {
     props.date,
     props.size,
     props.relative,
+    props.relativeShorthand,
     props.showTimeIfToday,
     props.dateClasses,
     props.timeClasses,
