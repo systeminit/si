@@ -243,7 +243,7 @@
             <template #header>
               <div class="flex flex-row items-center justify-between">
                 <span :class="setupAiDone && 'text-success-200'">
-                  2. Setup the AI
+                  2. Setup your AI Agent
                 </span>
                 <Icon
                   :name="'check-circle'"
@@ -253,11 +253,9 @@
             </template>
             <template #body>
               <div class="flex flex-col gap-xs">
-                <span>Here's your token</span>
-                <span
-                  >[Placeholder Copy this token to your clipboard and use to
-                  setup up your AI agent]</span
-                >
+                <span>
+                  Copy this API token to use as part of the AI Agent setup
+                </span>
                 <ErrorMessage
                   class="rounded-md text-md px-xs py-xs bg-action-900 my-xs"
                   icon="alert-circle"
@@ -270,16 +268,14 @@
                 <CopiableTextBlock :text="apiToken" />
               </div>
               <div class="flex flex-col gap-xs">
-                <span>[Clone a repo]</span>
-                <CopiableTextBlock text="npm install -g ai-agent" />
+                <span>Clone the AI Agent</span>
+                <CopiableTextBlock
+                  text="git clone https://github.com/systeminit/si-ai-agent.git"
+                />
               </div>
               <div class="flex flex-col gap-xs">
-                <span>[Run repo]</span>
-                <CopiableTextBlock text="npm install -g ai-agent" />
-              </div>
-              <div class="flex flex-col gap-xs">
-                <span>[Run set up...]</span>
-                <CopiableTextBlock text="ai-agent --start" />
+                <span>Run the setup script</span>
+                <CopiableTextBlock text="npm install -g ai-agent./setup.sh" />
               </div>
             </template>
             <template #footer>
@@ -296,10 +292,7 @@
                 size="xs"
                 :disabled="!initializeRequestSentAndSuccessful"
                 class="!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC] rounded-sm"
-                @click="
-                  aiTutorialAreaRef?.close();
-                  setupAiDone = true;
-                "
+                @click="handleDoneClick()"
               />
             </template>
           </OnboardingCollapsingArea>
@@ -336,9 +329,12 @@ const aiTutorialAreaRef = ref<InstanceType<typeof OnboardingCollapsingArea>>();
 const sentences = [
   {
     sentence:
-      "Join forces with AI agents to build infrastructure that's incredibly easy to maintain",
+      "Welcome to your System Initiative workspace where you get work done",
   },
-  { sentence: "Just two quick steps, and you’ll see how" },
+  {
+    sentence:
+      "Follow these 2 quick and easy steps to discover your existing (or build new) infrastructure",
+  },
 ];
 
 const showPanel = ref(false);
@@ -458,49 +454,41 @@ const toggleVisibility = (field: SecretFormField) => {
 // REGION
 const awsRegion = ref("us-east-1");
 const awsRegions = [
-  {
-    title: "US East (N. Virginia)",
-    value: "us-east-1",
-    onPicker: true,
-  },
-  {
-    title: "US West (Oregon)",
-    value: "us-west-2",
-    onPicker: true,
-  },
-  {
-    title: "US West (N. California)",
-    value: "us-west-1",
-    onPicker: true,
-  },
-  {
-    title: "Europe (Ireland)",
-    value: "eu-west-1",
-  },
-  {
-    title: "Europe (Frankfurt)",
-    value: "eu-central-1",
-  },
-  {
-    title: "Asia Pacific (Singapore)",
-    value: "ap-southeast-1",
-  },
-  {
-    title: "Asia Pacific (Tokyo)",
-    value: "ap-northeast-1",
-  },
-  {
-    title: "Asia Pacific (Sydney)",
-    value: "ap-southeast-2",
-  },
-  {
-    title: "US East (Ohio)",
-    value: "us-east-2",
-  },
-  {
-    title: "Europe (London)",
-    value: "eu-west-2",
-  },
+  { title: "US East (N. Virginia)", value: "us-east-1", onPicker: true },
+  { title: "US West (Oregon)", value: "us-west-2", onPicker: true },
+  { title: "US West (N. California)", value: "us-west-1", onPicker: true },
+  { title: "Europe (Ireland)", value: "eu-west-1" },
+  { title: "Europe (Frankfurt)", value: "eu-central-1" },
+  { title: "Asia Pacific (Singapore)", value: "ap-southeast-1" },
+  { title: "Asia Pacific (Tokyo)", value: "ap-northeast-1" },
+  { title: "Asia Pacific (Sydney)", value: "ap-southeast-2" },
+  { title: "US East (Ohio)", value: "us-east-2" },
+  { title: "Europe (London)", value: "eu-west-2" },
+  { title: "Africa (Cape Town)", value: "af-south-1" },
+  { title: "Asia Pacific (Hong Kong)", value: "ap-east-1" },
+  { title: "Asia Pacific (Taipei)", value: "ap-east-2" },
+  { title: "Asia Pacific (Jakarta)", value: "ap-southeast-3" },
+  { title: "Asia Pacific (Melbourne)", value: "ap-southeast-4" },
+  { title: "Asia Pacific (Malaysia)", value: "ap-southeast-5" },
+  { title: "Asia Pacific (Thailand)", value: "ap-southeast-7" },
+  { title: "Asia Pacific (Mumbai)", value: "ap-south-1" },
+  { title: "Asia Pacific (Hyderabad)", value: "ap-south-2" },
+  { title: "Asia Pacific (Seoul)", value: "ap-northeast-2" },
+  { title: "Asia Pacific (Osaka)", value: "ap-northeast-3" },
+  { title: "Canada (Central)", value: "ca-central-1" },
+  { title: "Canada West (Calgary)", value: "ca-west-1" },
+  { title: "Europe (Zurich)", value: "eu-central-2" },
+  { title: "Europe (Paris)", value: "eu-west-3" },
+  { title: "Europe (Milan)", value: "eu-south-1" },
+  { title: "Europe (Spain)", value: "eu-south-2" },
+  { title: "Europe (Stockholm)", value: "eu-north-1" },
+  { title: "Israel (Tel Aviv)", value: "il-central-1" },
+  { title: "Middle East (Bahrain)", value: "me-south-1" },
+  { title: "Middle East (UAE)", value: "me-central-1" },
+  { title: "Mexico (Central)", value: "mx-central-1" },
+  { title: "South America (Sao Paulo)", value: "sa-east-1" },
+  { title: "AWS GovCloud (US-East)", value: "us-gov-east-1" },
+  { title: "AWS GovCloud (US-West)", value: "us-gov-west-1" },
 ];
 const pickerRegions = awsRegions.filter((r) => r.onPicker);
 
@@ -618,6 +606,12 @@ const closeOnboarding = async (fast = false) => {
   }
 
   emit("completed");
+};
+
+const handleDoneClick = () => {
+  aiTutorialAreaRef.value?.close();
+  window.open("https://docs.systeminit.com", "_blank");
+  setupAiDone.value = true;
 };
 
 watch(setupAiDone, closeOnboarding);
