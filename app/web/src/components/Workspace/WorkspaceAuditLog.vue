@@ -297,7 +297,7 @@ const columns = [
     cell: (info) =>
       h(Timestamp, {
         date: info.getValue(),
-        relative: true,
+        relative: "standard",
         enableDetailTooltip: true,
         refresh: true,
       }),

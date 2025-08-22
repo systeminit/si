@@ -20,7 +20,7 @@
             <Timestamp
               class="text-neutral-400"
               :date="auditLog.timestamp"
-              relativeShorthand
+              relative="shorthand"
               enableDetailTooltip
               refresh
             />

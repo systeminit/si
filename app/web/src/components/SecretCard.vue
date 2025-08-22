@@ -84,7 +84,7 @@
         <span class="italic">
           <Timestamp
             :date="new Date(secret.updatedInfo.timestamp)"
-            relative
+            relative="standard"
             size="normal"
           />
           by
@@ -96,7 +96,7 @@
         <span class="italic">
           <Timestamp
             :date="new Date(secret.createdInfo.timestamp)"
-            relative
+            relative="standard"
             size="normal"
           />
           by
