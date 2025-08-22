@@ -1,7 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { ComponentsApi, ManagementFuncsApi } from "@systeminit/api-client";
+import {
+  ActionsApi,
+  ComponentsApi,
+  ManagementFuncsApi,
+} from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
@@ -14,16 +18,17 @@ import { AttributesSchema } from "../data/components.ts";
 const name = "component-discover";
 const title =
   "Discover all the resources for a given schema, creating components for them all.";
-const description =
-  `<description>Discover all the resources for a given schema name, and create components for them in a change set.</description><usage>Use this tool to bring an all the existing resources for a given Schema into System Initiative. For example, if the user asks to discover AWS::EC2::VPC's, then this tool will find all of the AWS::EC2::VPC's in the given region and account. After discovering components, you should ask the user if they want you to update the attributes of the discovered components to use subscriptions to any existing components attributes - for example, a discovered AWS::EC2::Subnet would be updated to have a subscription to the /resource_value/VpcId of the AWS::EC2::VPC that matches the imported VpcId attribute of the subnet.</usage>`;
+const description = `<description>Discover all the resources for a given schema name, and create components for them in a change set. This tool will delete any components it uses to be able to refine the requirements of the discover process.</description><usage>Use this tool to bring an all the existing resources for a given Schema into System Initiative. For example, if the user asks to discover AWS::EC2::VPC's, then this tool will find all of the AWS::EC2::VPC's in the given region and account. After discovering components, you should ask the user if they want you to update the attributes of the discovered components to use subscriptions to any existing components attributes - for example, a discovered AWS::EC2::Subnet would be updated to have a subscription to the /resource_value/VpcId of the AWS::EC2::VPC that matches the imported VpcId attribute of the subnet.</usage>`;
 
 const DiscoverComponentInputSchemaRaw = {
-  changeSetId: z.string().describe(
-    "The change set to discover the resources in; resources cannot be discovered on the HEAD change set",
-  ),
-  schemaName: z.string().describe(
-    "the schema name of the resources to discover",
-  ),
+  changeSetId: z
+    .string()
+    .describe(
+      "The change set to discover the resources in; resources cannot be discovered on the HEAD change set",
+    ),
+  schemaName: z
+    .string()
+    .describe("the schema name of the resources to discover"),
   attributes: AttributesSchema.describe(
     "attributes of the schema that is being discovered can be used to filter what is discovered - for example, setting the /domain/VpcId attribute of an AWS::EC2::Subnet would discover all subnets whose /domain/VpcId matches that attributes value. *Always* set a /domain/extra/Region subscription and /secrets/AWS Credential subscription - these are required!",
   ),
@@ -31,17 +36,26 @@ const DiscoverComponentInputSchemaRaw = {
 
 const DiscoverComponentOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
-  data: z.object({
-    componentId: z.string().describe("the component id"),
-    componentName: z.string().describe("the components name"),
-    schemaName: z.string().describe("the schema for the component"),
-    funcRunId: z.string().nullable().optional().describe(
-      "the function run id for this management function; useful for debugging failure",
+  errorMessage: z
+    .string()
+    .optional()
+    .describe(
+      "If the status is failure, the error message will contain information about what went wrong",
     ),
-  }).describe("the template component created to discover resources"),
+  data: z
+    .object({
+      componentId: z.string().describe("the component id"),
+      componentName: z.string().describe("the components name"),
+      schemaName: z.string().describe("the schema for the component"),
+      funcRunId: z
+        .string()
+        .nullable()
+        .optional()
+        .describe(
+          "the function run id for this management function; useful for debugging failure",
+        ),
+    })
+    .describe("the template component created to discover resources"),
 };
 const DiscoverComponentOutputSchema = z.object(
   DiscoverComponentOutputSchemaRaw,
@@ -64,9 +78,11 @@ export function componentDiscoverTool(server: McpServer) {
       inputSchema: DiscoverComponentInputSchemaRaw,
       outputSchema: DiscoverComponentOutputSchemaRaw,
     },
-    async (
-      { changeSetId, schemaName, attributes },
-    ): Promise<CallToolResult> => {
+    async ({
+      changeSetId,
+      schemaName,
+      attributes,
+    }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
       if (schemaName.startsWith("AWS")) {
         let hasCredential = false;
@@ -82,8 +98,7 @@ export function componentDiscoverTool(server: McpServer) {
         if (!hasCredential || !hasRegion) {
           return errorResponse({
             response: { status: "bad prereq", data: {} },
-            message:
-              `This is an AWS resource, and to import it we must have /domain/extra/Region set to a valid value or subscription, and /secrets/AWS Credential set to a subscription.`,
+            message: `This is an AWS resource, and to import it we must have /domain/extra/Region set to a valid value or subscription, and /secrets/AWS Credential set to a subscription.`,
           });
         }
       }
@@ -104,6 +119,20 @@ export function componentDiscoverTool(server: McpServer) {
           schemaName: schemaName,
         };
 
+        // Lets dequeue any actions created for this component
+        const actionsApi = new ActionsApi(apiConfig);
+        const queuedDiscoveryComponentActions = await actionsApi.getActions({
+          workspaceId: WORKSPACE_ID,
+          changeSetId: changeSetId,
+        });
+        for (const action of queuedDiscoveryComponentActions.data.actions) {
+          await actionsApi.cancelAction({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            actionId: action.id,
+          });
+        }
+
         try {
           const discoverResponse = await siApi.executeManagementFunction({
             workspaceId: WORKSPACE_ID,
@@ -121,8 +150,10 @@ export function componentDiscoverTool(server: McpServer) {
 
           const mgmtApi = new ManagementFuncsApi(apiConfig);
           while (
-            (discoverState == "Pending" || discoverState == "Executing" ||
-              discoverState == "Operating") && currentCount <= retryMaxCount
+            (discoverState == "Pending" ||
+              discoverState == "Executing" ||
+              discoverState == "Operating") &&
+            currentCount <= retryMaxCount
           ) {
             if (currentCount != 0) {
               sleep(retrySleepInMs);
@@ -139,9 +170,11 @@ export function componentDiscoverTool(server: McpServer) {
               currentCount += 1;
             } catch (error) {
               return errorResponse({
-                message: `error fetching management function state: ${
-                  JSON.stringify(error, null, 2)
-                }`,
+                message: `error fetching management function state: ${JSON.stringify(
+                  error,
+                  null,
+                  2,
+                )}`,
               });
             }
           }
@@ -156,12 +189,18 @@ export function componentDiscoverTool(server: McpServer) {
                 status: "failed",
                 data: discoverTemplateResult,
               },
-              message:
-                `failed to discover ${schemaName} resources; see funcRunId ${
-                  discoverTemplateResult["funcRunId"]
-                } with the func-run-get tool for more information`,
+              message: `failed to discover ${schemaName} resources; see funcRunId ${
+                discoverTemplateResult["funcRunId"]
+              } with the func-run-get tool for more information`,
             });
           } else {
+            // Let's cleanup the discovery component now that the management function is successful
+            await siApi.deleteComponent({
+              workspaceId: WORKSPACE_ID,
+              changeSetId: changeSetId,
+              componentId: discoverTemplateResult["componentId"],
+            });
+
             return successResponse(discoverTemplateResult);
           }
         } catch (error) {
