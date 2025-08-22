@@ -126,19 +126,43 @@
       </div>
     </div>
     <div class="main flex flex-col gap-xs m-xs">
-      <CollapsingFlexItem v-if="selectedComponent" disableCollapse>
+      <CollapsingFlexItem
+        v-if="selectedComponentId && selectedComponent"
+        disableCollapse
+      >
         <template #header>
           <div>{{ selectedComponent.schemaName }}</div>
           <div>"{{ selectedComponent.name }}"</div>
         </template>
 
-        <div v-if="selectedComponent.diff" class="flex flex-col gap-xs p-xs">
+        <div class="flex flex-col gap-xs p-xs">
+          <!-- Show /si/name-->
           <ReviewAttributeItem
-            v-for="(diff, path) in selectedComponentDisplayDiffs"
-            :key="path"
-            :path="path"
-            :diff="diff"
+            v-if="
+              selectedComponent.attributeDiffTree?.children?.si?.children?.name
+            "
+            :selectedComponentId="selectedComponentId"
+            name="name"
+            :item="
+              selectedComponent.attributeDiffTree.children.si.children.name
+            "
           />
+          <!-- Show children of /si/domain -->
+          <template
+            v-if="
+              selectedComponent.attributeDiffTree?.children?.domain?.children
+            "
+          >
+            <ReviewAttributeItem
+              v-for="(item, name) in selectedComponent.attributeDiffTree
+                .children.domain.children"
+              :key="name"
+              :selectedComponentId="selectedComponentId"
+              :name="name"
+              :item="item"
+            />
+          </template>
+          <!-- TODO(Wendy) - show children of /secret -->
         </div>
       </CollapsingFlexItem>
       <div
@@ -209,6 +233,7 @@ import {
   VButton,
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
+import * as _ from "lodash-es";
 import {
   bifrost,
   bifrostList,
@@ -219,6 +244,7 @@ import {
 } from "@/store/realtime/heimdall";
 import {
   AttributeDiff,
+  AttributeSourceAndValue,
   BifrostComponent,
   ComponentDiff,
   ComponentInList,
@@ -284,6 +310,37 @@ const componentDiffQueries = useQueries({
 });
 
 /**
+ * The complete component list without diff information added yet
+ * We need this computed so that we can get info about the components
+ * inside of the computed "componentList"
+ */
+const rawComponentList = computed(() => {
+  const result = changeSetComponentList.value.map((component) => {
+    // TEMPORARY: "fix" issues in the MV so we can do better testing / display in the short term.
+    // Ultimately, we will fix the MV instead.
+    // const diff = fixComponentDiff(componentDiffs[component.id]);
+    return {
+      ...component,
+      // diff,
+      // diffStatus: diff?.diffStatus ?? component.diffStatus,
+    };
+  });
+
+  // Add any head components that aren't in the list as "removed"
+  for (const headComponent of headComponentList.value) {
+    if (!result.find((c) => c.id === headComponent.id)) {
+      result.push({
+        ...headComponent,
+        // diff: undefined,
+        diffStatus: "Removed" as const,
+      });
+    }
+  }
+
+  return result;
+});
+
+/**
  * Complete component list, including:
  * - Added and modified components from the changeset
  * - Removed components from HEAD
@@ -301,28 +358,133 @@ const componentList = computed(() => {
         (query) => [query.data?.id, query.data] as const,
       ),
     );
-  const result = changeSetComponentList.value.map((component) => {
-    const diff = componentDiffs[component.id];
+  return rawComponentList.value.map((component) => {
+    // TEMPORARY: "fix" issues in the MV so we can do better testing / display in the short term.
+    // Ultimately, we will fix the MV instead.
+    const componentDiff = componentDiffs[component.id];
+    const attributeDiffTree = toAttributeDiffTree(componentDiff);
     return {
       ...component,
-      diff,
-      diffStatus: diff?.diffStatus ?? component.diffStatus,
+      diffStatus: componentDiff?.diffStatus ?? component.diffStatus,
+      componentDiff,
+      attributeDiffTree,
     };
   });
+});
 
-  // Add any head components that aren't in the list as "removed"
-  for (const headComponent of headComponentList.value) {
-    if (!result.find((c) => c.id === headComponent.id)) {
-      result.push({
-        ...headComponent,
-        diff: undefined,
-        diffStatus: "Removed" as const,
-      });
+/** A tree version of AttributeDiff:
+ * {
+ *   children: {
+ *     domain: {
+ *       children: {
+ *         SubnetIds: {
+ *           children: {
+ *             0: { diff: ... }
+ *           }
+ *           // parents may or may not have a diff! Especially if they have a *source* difference
+ *           diff: {...},
+ *         },
+ *         extra: {
+ *           children: {
+ *             Region: { diff: {} }
+ *           }
+ *         }
+ *       }
+ *     }
+ *   }
+ * }
+ */
+export interface AttributeDiffTree {
+  path: AttributePath;
+  diff?: AttributeDiff;
+  children?: Record<string, AttributeDiffTree>;
+}
+
+// TEMPORARY: post-process the ComponentDiff MV:
+// - add nesting when there are both child and parent values in the diff
+// - correct for a bug where subscriptions weren't showing right for some reason
+function toAttributeDiffTree(componentDiff?: ComponentDiff): AttributeDiffTree {
+  const tree: AttributeDiffTree = { path: "" as AttributePath };
+
+  const attributeDiffs = componentDiff?.attributeDiffs;
+  if (!attributeDiffs) return tree;
+
+  for (const [attributePath, attributeDiff] of Object.entries(attributeDiffs)) {
+    // Do any fixups we want to the diff!
+    // TODO fix this in the backend MV instead, and don't do this
+    const diff = {
+      new: fixAttributeSourceAndValue(attributeDiff.new),
+      old: fixAttributeSourceAndValue(attributeDiff.old),
+    } as AttributeDiff;
+
+    if (!shouldIncludeDiff(diff)) continue;
+
+    // Recursively create (or get) the element in the tree we want; then set the diff on it
+    let child = tree;
+    if (attributePath.length > 1) {
+      for (const segment of attributePath.slice(1).split("/")) {
+        const path = `${child.path}/${segment}` as AttributePath;
+        child.children ??= {};
+        child.children[segment] ??= { path };
+        child = child.children[segment] as AttributeDiffTree;
+      }
+    }
+    child.diff = diff;
+  }
+  // Set the top level path correctly to / (kind of a special case)
+  tree.path = "/";
+  return tree;
+}
+
+function shouldIncludeDiff(diff: AttributeDiff) {
+  // If the values and sources are equal (which could happen in some cases on component
+  // upgrade), don't add this to the tree
+  if (_.isEqual(diff.new, diff.old)) return false;
+
+  // If this is an empty default (schema unset/empty container) on an added/removed thing, don't
+  // include it in the diff
+  if (!diff.new || !diff.old) {
+    const singleDiff = diff.new ?? diff.old;
+    if (singleDiff.$value === undefined && singleDiff.$source.fromSchema)
+      return false;
+    if (singleDiff.$source.fromSchema) {
+      if (singleDiff.$value === undefined) return false;
+      if (Array.isArray(singleDiff.$value) && singleDiff.$value.length === 0)
+        return false;
+      // TODO empty object
     }
   }
 
-  return result;
-});
+  return true;
+}
+
+function fixAttributeSourceAndValue(sourceAndValue?: AttributeSourceAndValue) {
+  if (!sourceAndValue) return undefined;
+  const { $source } = sourceAndValue;
+  if ($source.prototype !== undefined) {
+    // subscription to /domain/region on Region changed (01K2N2CFSAE0PPHNJ31SKP97HH)
+    const { prototype, ...otherFields } = $source;
+    const match = prototype.match(/^subscription to (\/.+) on .+ \((\w+)\)/);
+    if (match) {
+      const [, path, component] = match;
+      if (path && component) {
+        const componentName = rawComponentList.value.find(
+          (c) => c.id === component,
+        )?.name;
+        return {
+          ...sourceAndValue,
+          $source: {
+            component,
+            componentName,
+            path,
+            ...otherFields,
+          },
+        } as AttributeSourceAndValue;
+      }
+    }
+  }
+  return sourceAndValue;
+}
 
 /** Overall (non-filtered) component counts for each diff status */
 const componentCounts = computed(() => {
@@ -398,36 +560,27 @@ const selectComponent = (componentId: ComponentId) => {
   selectedComponentId.value = componentId;
 };
 
-const selectedComponentDisplayDiffs = computed(() => {
-  if (selectedComponent.value?.diff?.attributeDiffs) {
-    const entries = Object.entries(
-      selectedComponent.value?.diff?.attributeDiffs ?? {},
-    );
-    const output = entries.filter(
-      ([path, _]) => path.startsWith("/domain") || path === "/si/name",
-    );
-    return Object.fromEntries(output) as Record<AttributePath, AttributeDiff>;
-  } else {
-    return {};
-  }
-});
-
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const searchString = ref("");
 
 /** Components, filtered by the search string */
 const filteredComponentList = useComponentSearch(searchString, componentList);
 /** Added components, filtered by the search string */
-const addedComponentList = computed(() =>
-  filteredComponentList.value.filter((c) => c.diffStatus === "Added"),
+const addedComponentList = computed(
+  () =>
+    filteredComponentList.value?.filter((c) => c.diffStatus === "Added") ?? [],
 );
 /** Modified components, filtered by the search string */
-const modifiedComponentList = computed(() =>
-  filteredComponentList.value.filter((c) => c.diffStatus === "Modified"),
+const modifiedComponentList = computed(
+  () =>
+    filteredComponentList.value?.filter((c) => c.diffStatus === "Modified") ??
+    [],
 );
 /** Removed components, filtered by the search string */
-const removedComponentList = computed(() =>
-  filteredComponentList.value.filter((c) => c.diffStatus === "Removed"),
+const removedComponentList = computed(
+  () =>
+    filteredComponentList.value?.filter((c) => c.diffStatus === "Removed") ??
+    [],
 );
 
 const exitReview = () => {

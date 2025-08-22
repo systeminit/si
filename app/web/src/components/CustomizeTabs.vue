@@ -8,8 +8,10 @@
   >
     <TabGroupItem slug="assets">
       <template #label>
-        Assets Installed
-        <PillCounter :count="assetList.length" />
+        <div class="flex flex-row items-center gap-xs">
+          <div>Assets Installed</div>
+          <PillCounter :count="assetList.length" />
+        </div>
       </template>
       <slot name="assets" />
     </TabGroupItem>
