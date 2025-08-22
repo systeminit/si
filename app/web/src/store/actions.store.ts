@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { addStoreHooks } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
 import { Resource } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
@@ -271,121 +271,6 @@ export const useActionsStore = () => {
           },
         },
         actions: {
-          async ADD_ACTION(
-            componentId: ComponentId,
-            actionPrototypeId: ActionPrototypeId,
-          ) {
-            return new ApiRequest({
-              method: "post",
-              url: "change_set/add_action",
-              keyRequestStatusBy: [componentId, actionPrototypeId],
-              params: {
-                prototypeId: actionPrototypeId,
-                componentId,
-                visibility_change_set_pk: changeSetId,
-              },
-            });
-          },
-          // This is proposed/queued actions
-          async LOAD_ACTIONS() {
-            return new ApiRequest<Array<ActionProposedView>>({
-              url: "/action/list",
-              headers: { accept: "application/json" },
-              params: {
-                visibility_change_set_pk: changeSetId,
-              },
-              onSuccess: (response) => {
-                this.actions = response;
-              },
-            });
-          },
-          async LOAD_ACTION_HISTORY() {
-            return new ApiRequest<Array<ActionHistoryView>>({
-              url: "/action/history",
-              headers: { accept: "application/json" },
-              params: {
-                visibility_change_set_pk: changeSetId,
-              },
-              onSuccess: (response) => {
-                this.actionHistory = response;
-              },
-            });
-          },
-          async PUT_ACTION_ON_HOLD(ids: ActionId[]) {
-            return new ApiRequest<null>({
-              method: "post",
-              url: "action/put_on_hold",
-              keyRequestStatusBy: ids,
-              params: {
-                ids,
-                visibility_change_set_pk: changeSetId,
-              },
-              optimistic: () => {
-                const held = {} as Record<string, string>;
-                this.actions.forEach((a) => {
-                  if (ids.includes(a.id)) {
-                    held[a.id] = a.state;
-                    a.state = ActionState.OnHold;
-                  }
-                });
-
-                return () => {
-                  for (const id of Object.keys(held)) {
-                    const a = this.actions.filter((a) => a.id === id).pop();
-                    const state = held[id] as ActionState;
-                    if (a && state) a.state = state;
-                  }
-                };
-              },
-            });
-          },
-          async CANCEL(ids: ActionId[]) {
-            return new ApiRequest<null>({
-              method: "post",
-              url: "action/cancel",
-              keyRequestStatusBy: ids,
-              params: {
-                ids,
-                visibility_change_set_pk: changeSetId,
-              },
-              optimistic: () => {
-                const removed = [] as ActionProposedView[];
-                this.actions.forEach((a, idx) => {
-                  if (a && ids.includes(a.id)) {
-                    removed[idx] = a;
-                    delete this.actions[idx];
-                  }
-                });
-
-                return () => {
-                  removed.forEach((a, idx) => {
-                    this.actions.splice(idx, 0, a);
-                  });
-                };
-              },
-            });
-          },
-          async RETRY(ids: ActionId[]) {
-            return new ApiRequest<null>({
-              method: "post",
-              url: "action/retry",
-              keyRequestStatusBy: ids,
-              params: {
-                ids,
-                visibility_change_set_pk: changeSetId,
-              },
-              optimistic: () => {
-                for (const a of this.actions) {
-                  if (ids.includes(a.id)) {
-                    // its either moving from failed or hold to queued
-                    // if its failed it will go queued and start running
-                    a.state = ActionState.Queued;
-                  }
-                }
-              },
-            });
-          },
-
           registerRequestsBegin(requestUlid: string, actionName: string) {
             realtimeStore.inflightRequests.set(requestUlid, actionName);
           },
@@ -394,32 +279,7 @@ export const useActionsStore = () => {
           },
         },
         onActivated() {
-          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            {
-              eventType: "ActionsListUpdated",
-              callback: () => {
-                this.LOAD_ACTIONS();
-                this.LOAD_ACTION_HISTORY();
-              },
-            },
-            {
-              eventType: "ChangeSetWritten",
-              callback: () => {
-                this.LOAD_ACTIONS();
-              },
-            },
-            {
-              eventType: "ChangeSetApplied",
-              callback: (_update) => {
-                this.LOAD_ACTIONS();
-                // Short term fix for reactivity issue on apply, since the
-                // first load won't have the actions since the rebaser isnt done
-                // Updated: We may not need this TIMEOUT if new WsEvents fix it!
-                // setTimeout(() => this.LOAD_ACTIONS(), 500);
-                // WsEvents in place ought to resolve this
-              },
-            },
-          ]);
+          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, []);
 
           return () => {
             realtimeStore.unsubscribe(this.$id);

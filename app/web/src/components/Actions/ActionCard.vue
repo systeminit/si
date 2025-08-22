@@ -267,17 +267,12 @@ const hold = () => {
 };
 
 const finishHold = () => {
-  actionStore.PUT_ACTION_ON_HOLD([props.action.id]);
   confirmRef.value?.close();
 };
 
-const remove = () => {
-  actionStore.CANCEL([props.action.id]);
-};
+const remove = () => {};
 
-const retry = () => {
-  actionStore.RETRY([props.action.id]);
-};
+const retry = () => {};
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 

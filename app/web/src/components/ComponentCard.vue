@@ -162,9 +162,5 @@ function navigateToSchemaDocs(docsLink: string): void {
 
 const upgradeComponent = async () => {
   viewStore.setSelectedComponentId(null);
-  await componentsStore.UPGRADE_COMPONENT(
-    props.component.def.id,
-    displayName.value,
-  );
 };
 </script>

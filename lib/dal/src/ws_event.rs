@@ -48,8 +48,6 @@ use crate::{
     diagram::view::{
         ViewComponentsUpdatePayload,
         ViewDeletedPayload,
-        ViewObjectCreatedPayload,
-        ViewObjectRemovedPayload,
         ViewWsPayload,
     },
     func::{
@@ -195,8 +193,6 @@ pub enum WsPayload {
     ViewComponentsUpdate(ViewComponentsUpdatePayload),
     ViewCreated(ViewWsPayload),
     ViewDeleted(ViewDeletedPayload),
-    ViewObjectCreated(ViewObjectCreatedPayload),
-    ViewObjectRemoved(ViewObjectRemovedPayload),
     ViewUpdated(ViewWsPayload),
     WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
     WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),

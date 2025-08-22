@@ -1,17 +1,13 @@
-import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { addStoreHooks } from "@si/vue-lib/pinia";
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 
-import { POSITION, useToast } from "vue-toastification";
-import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { encryptMessage } from "@/utils/messageEncryption";
 import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
 import { ActorAndTimestamp } from "@/api/sdf/dal/component";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import handleStoreError from "./errors";
-import SecretUpdate from "../components/toasts/SecretUpdate.vue";
 
 /**
  * A public key with metadata, used to encrypt secrets
@@ -108,7 +104,6 @@ export type SecretsDefinitionHashMap = Record<
 export function useSecretsStore() {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
-  const toast = useToast();
   const changeSetsStore = useChangeSetsStore();
 
   const realtimeStore = useRealtimeStore();
@@ -116,13 +111,6 @@ export function useSecretsStore() {
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
   const changeSetId = changeSetsStore.selectedChangeSetId;
-
-  // TODO: probably these should be passed in automatically
-  // and need to make sure it's done consistently (right now some endpoints vary slightly)
-  const visibilityParams = {
-    visibility_change_set_pk: changeSetId,
-    workspaceId,
-  };
 
   return addStoreHooks(
     workspaceId,
@@ -207,324 +195,6 @@ export function useSecretsStore() {
           },
         },
         actions: {
-          async LOAD_SECRETS() {
-            return new ApiRequest<SecretsDefinitionHashMap>({
-              url: "secret",
-              params: {
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.secretDefinitionByDefinitionId = response;
-              },
-            });
-          },
-          async UPDATE_SECRET(secret: Secret, value?: Record<string, string>) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            if (_.isEmpty(secret.name)) {
-              throw new Error("All secrets must have a name.");
-            }
-
-            if (this.secretsByDefinitionId[secret.definition] === undefined) {
-              throw new Error(
-                "All secrets must be created based on a definition.",
-              );
-            }
-
-            const user = useAuthStore().user;
-
-            if (_.isNil(user)) {
-              throw new Error(
-                "All secrets must be created by a specific user.",
-              );
-            }
-
-            const { id, name, definition, description, createdInfo } = secret;
-            const params = {
-              ...visibilityParams,
-              id,
-              name,
-              description,
-              newSecretData: null,
-            } as {
-              visibility_change_set_pk: string | null;
-              workspaceId: string | null;
-              name: string;
-              description: string;
-              newSecretData: {
-                crypted: number[];
-                keyPairPk: string;
-                version: SecretVersion;
-                algorithm: SecretAlgorithm;
-              } | null;
-            };
-
-            if (value) {
-              // Encrypt Value
-              if (_.isNil(this.publicKey)) {
-                throw new Error("Couldn't fetch publicKey.");
-              }
-
-              const algorithm = SecretAlgorithm.Sealedbox;
-              const version = SecretVersion.V1;
-
-              const keyPairPk = this.publicKey.pk;
-
-              const crypted = await encryptMessage(value, this.publicKey);
-
-              params.newSecretData = {
-                algorithm,
-                version,
-                keyPairPk,
-                crypted,
-              };
-            }
-
-            let toastID: number | string;
-            return new ApiRequest<Secret>({
-              method: "patch",
-              url: "secret",
-              params,
-              optimistic: () => {
-                const { pk: userId, name: userName } = user;
-
-                this.secretDefinitionByDefinitionId[
-                  secret.definition
-                ]?.secrets?.filter((s) => {
-                  return s.id !== secret.id;
-                });
-                this.secretDefinitionByDefinitionId[
-                  secret.definition
-                ]?.secrets?.push({
-                  id,
-                  name,
-                  definition,
-                  description,
-                  createdInfo,
-                  isUsable: true,
-                  updatedInfo: {
-                    actor: { kind: "user", label: userName, id: userId },
-                    timestamp: Date(),
-                  },
-                  connectedComponents: [],
-                });
-                this.secretIsTransitioning[id] = true;
-
-                toastID = toast(
-                  {
-                    component: SecretUpdate,
-                    props: { secretName: name },
-                  },
-                  {
-                    position: POSITION.TOP_CENTER,
-                    toastClassName: "si-toast-no-defaults",
-                  },
-                );
-
-                return () => {
-                  const definition = this.secretDefinitionByDefinitionId[id];
-
-                  if (definition === undefined) return;
-
-                  definition.secrets = definition.secrets.filter(
-                    (s) => s.id !== id,
-                  );
-                  this.secretIsTransitioning[id] = false;
-                };
-              },
-              onSuccess: (response) => {
-                const definition = this.secretDefinitionByDefinitionId[id];
-
-                toast.update(toastID, {
-                  content: {
-                    props: { secretName: name, success: true },
-                    component: SecretUpdate,
-                  },
-                  options: {
-                    position: POSITION.TOP_CENTER,
-                    toastClassName: "si-toast-no-defaults",
-                    timeout: 500,
-                  },
-                });
-
-                if (definition === undefined) return;
-
-                definition.secrets = definition.secrets.map((s) =>
-                  s.id === id ? response : s,
-                );
-                this.secretIsTransitioning[id] = false;
-              },
-              onFail: () => {
-                changeSetsStore.creatingChangeSet = false;
-              },
-            });
-          },
-          async SAVE_SECRET(
-            definitionId: SecretDefinitionId,
-            name: string,
-            value: Record<string, string>,
-            description?: string,
-          ) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            if (_.isEmpty(name)) {
-              throw new Error("All secrets must have a name.");
-            }
-
-            if (this.secretsByDefinitionId[definitionId] === undefined) {
-              throw new Error(
-                "All secrets must be created based on a definition.",
-              );
-            }
-
-            const user = useAuthStore().user;
-
-            if (_.isNil(user)) {
-              throw new Error(
-                "All secrets must be created by a specific user.",
-              );
-            }
-
-            const tempId = `-${Math.floor(
-              Math.random() * 899999 + 100000,
-            ).toString()}`;
-
-            // Encrypt Value
-            if (_.isNil(this.publicKey)) {
-              throw new Error("Couldn't fetch publicKey.");
-            }
-
-            const algorithm = SecretAlgorithm.Sealedbox;
-            const version = SecretVersion.V1;
-
-            const keyPairPk = this.publicKey.pk;
-
-            const crypted = await encryptMessage(value, this.publicKey);
-
-            let toastID: number | string;
-            return new ApiRequest<Secret>({
-              method: "post",
-              url: "secret",
-              params: {
-                ...visibilityParams,
-                name,
-                description,
-                definition: definitionId,
-                crypted,
-                keyPairPk,
-                version,
-                algorithm,
-              },
-              optimistic: () => {
-                const { pk: userId, name: userName } = user;
-
-                this.secretDefinitionByDefinitionId[
-                  definitionId
-                ]?.secrets?.push({
-                  id: tempId,
-                  definition: definitionId,
-                  name,
-                  description,
-                  isUsable: true,
-                  createdInfo: {
-                    actor: { kind: "user", label: userName, id: userId },
-                    timestamp: Date(),
-                  },
-                  connectedComponents: [],
-                });
-                this.secretIsTransitioning[tempId] = true;
-
-                toastID = toast(
-                  {
-                    component: SecretUpdate,
-                    props: { secretName: name, newSecret: true },
-                  },
-                  {
-                    position: POSITION.TOP_CENTER,
-                    toastClassName: "si-toast-no-defaults",
-                  },
-                );
-
-                return () => {
-                  const definition =
-                    this.secretDefinitionByDefinitionId[definitionId];
-
-                  if (definition === undefined) return;
-
-                  definition.secrets = definition.secrets.filter(
-                    (s) => s.id !== tempId,
-                  );
-                  this.secretIsTransitioning[tempId] = false;
-                };
-              },
-              onSuccess: (response) => {
-                const definition =
-                  this.secretDefinitionByDefinitionId[definitionId];
-
-                toast.update(toastID, {
-                  content: {
-                    props: { secretName: name, success: true, newSecret: true },
-                    component: SecretUpdate,
-                  },
-                  options: {
-                    position: POSITION.TOP_CENTER,
-                    toastClassName: "si-toast-no-defaults",
-                    timeout: 500,
-                  },
-                });
-
-                if (definition === undefined) return;
-
-                definition.secrets = definition.secrets.map((s) =>
-                  s.id === tempId ? response : s,
-                );
-                this.secretIsTransitioning[tempId] = false;
-              },
-              onFail: () => {
-                changeSetsStore.creatingChangeSet = false;
-              },
-            });
-          },
-          async DELETE_SECRET(id: SecretId) {
-            if (changeSetsStore.creatingChangeSet)
-              throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
-              changeSetsStore.creatingChangeSet = true;
-
-            const secret = this.secretsById[id];
-
-            if (_.isNil(secret)) return;
-
-            return new ApiRequest<Secret>({
-              method: "delete",
-              url: "secret",
-              params: {
-                ...visibilityParams,
-                id,
-              },
-              onSuccess: () => {
-                // WsEvents will sort this out
-              },
-            });
-          },
-          async GET_PUBLIC_KEY() {
-            return new ApiRequest<PublicKey>({
-              url: "secret/get_public_key",
-              params: {
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.publicKey = response;
-              },
-            });
-          },
-
           registerRequestsBegin(requestUlid: string, actionName: string) {
             realtimeStore.inflightRequests.set(requestUlid, actionName);
           },
@@ -533,45 +203,7 @@ export function useSecretsStore() {
           },
         },
         onActivated() {
-          this.LOAD_SECRETS();
-          this.GET_PUBLIC_KEY();
-
-          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            {
-              eventType: "ChangeSetApplied",
-              callback: () => {
-                this.LOAD_SECRETS();
-              },
-            },
-            {
-              eventType: "SecretCreated",
-              callback: (data) => {
-                if (data.changeSetId !== changeSetId) return;
-                this.LOAD_SECRETS();
-              },
-            },
-            {
-              eventType: "SecretUpdated",
-              callback: (data) => {
-                if (data.changeSetId !== changeSetId) return;
-                this.LOAD_SECRETS();
-              },
-            },
-            {
-              eventType: "ModuleImported",
-              callback: (schemaVariants, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                this.LOAD_SECRETS();
-              },
-            },
-            {
-              eventType: "SecretDeleted",
-              callback: (data) => {
-                if (data.changeSetId !== changeSetId) return;
-                this.LOAD_SECRETS();
-              },
-            },
-          ]);
+          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, []);
           const actionUnsub = this.$onAction(handleStoreError);
 
           return () => {

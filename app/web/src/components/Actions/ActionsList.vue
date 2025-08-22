@@ -86,7 +86,6 @@
         :slim="props.slim"
         @click="props.clickAction && props.clickAction(action, $event)"
         @history="openHistory"
-        @remove="actionsStore.CANCEL([action.id])"
       />
     </div>
   </TreeNode>

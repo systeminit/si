@@ -48,14 +48,10 @@ remain = { workspace = true }
 reqwest = { workspace = true }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-extract = { path = "../../lib/sdf-extract" }
-sdf-v1-routes-actions = { path = "../../lib/sdf-v1-routes-actions" }
 sdf-v1-routes-attribute = { path = "../../lib/sdf-v1-routes-attribute" }
 sdf-v1-routes-change-sets = { path = "../../lib/sdf-v1-routes-change-sets" }
 sdf-v1-routes-component = { path = "../../lib/sdf-v1-routes-component" }
-sdf-v1-routes-diagram = { path = "../../lib/sdf-v1-routes-diagram" }
 sdf-v1-routes-module = { path = "../../lib/sdf-v1-routes-module" }
-sdf-v1-routes-qualification = { path = "../../lib/sdf-v1-routes-qualification" }
-sdf-v1-routes-secret = { path = "../../lib/sdf-v1-routes-secret" }
 sdf-v1-routes-session = { path = "../../lib/sdf-v1-routes-session" }
 sdf-v1-routes-variant = { path = "../../lib/sdf-v1-routes-variant" }
 sdf-v1-routes-ws = { path = "../../lib/sdf-v1-routes-ws" }
