@@ -190,8 +190,14 @@
       <template v-if="showGrid">
         <ExploreGridSkeleton v-if="showSkeleton" />
         <template v-else>
-          <div
+          <DefaultSubscriptionsEmptyState
             v-if="
+              gridMode.mode === 'defaultSubscriptions' &&
+              defaultSubscriptions.defaultSubscriptions.size === 0
+            "
+          />
+          <div
+            v-else-if="
               componentList.length === 0 && componentListQuery.isSuccess.value
             "
             class="flex-1 gap-sm overflow-hidden flex flex-col items-center justify-center"
@@ -560,6 +566,7 @@ import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import AddComponentModal from "./AddComponentModal.vue";
 import DefaultSubscriptionsButton from "./DefaultSubscriptionsButton.vue";
+import DefaultSubscriptionsEmptyState from "./layout_components/DefaultSubscriptionsEmptyState.vue";
 import AddViewModal from "./AddViewModal.vue";
 import EditViewModal from "./EditViewModal.vue";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
@@ -1344,6 +1351,11 @@ const calculateDefaultSubscriptionGroups = (
   defaultSubs: DefaultSubscriptions,
 ): Record<string, ComponentInList[]> => {
   const groups: Record<string, ComponentInList[]> = {};
+
+  // If there are no default subscriptions, return an empty groups object
+  if (defaultSubs.defaultSubscriptions.size === 0) {
+    return groups;
+  }
 
   const defaultSubComponentIds = [];
   const defaultSubsInverted: Record<ComponentId, string[]> = {};
