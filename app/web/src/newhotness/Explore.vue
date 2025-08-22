@@ -1720,16 +1720,6 @@ watch(searchString, () => {
   });
 });
 
-// Clear the selection when the filter or search string changes
-// TODO leave the selection as long as it is still one of the filtered components?
-watch(filteredComponents, () => {
-  if (mapRef.value && typeof mapRef.value.deselect === "function") {
-    mapRef.value.deselect();
-  }
-  // TODO: when the underlying componentList changes, the indexes will change
-  // which means the selected indexes could have moved in either direction
-});
-
 // this is so that when on the map view, if you have a component selected
 // and start searching, we clear the selected component
 // on grid view, this has no impact, because you can't focus on the search box if you've got component(s) selected
