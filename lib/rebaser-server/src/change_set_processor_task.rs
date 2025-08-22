@@ -20,6 +20,7 @@ use naxum::{
     MessageHead,
     ServiceBuilder,
     ServiceExt as _,
+    StatusCode,
     TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
@@ -233,6 +234,7 @@ impl jetstream_post_process::OnSuccess for DeleteMessageOnSuccess {
         &mut self,
         head: Arc<naxum::Head>,
         info: Arc<jetstream_post_process::Info>,
+        _status: StatusCode,
     ) -> BoxFuture<'static, ()> {
         let stream = self.stream.clone();
 
@@ -269,6 +271,7 @@ impl jetstream_post_process::OnFailure for MoveMessageOnFailure {
         &mut self,
         head: Arc<naxum::Head>,
         info: Arc<jetstream_post_process::Info>,
+        _status: Option<StatusCode>,
     ) -> BoxFuture<'static, ()> {
         let stream = self.stream.clone();
         let dead_letter_queue = self.dead_letter_queue.clone();
