@@ -31,6 +31,16 @@ impl Ulid {
             Err(err) => Err(err),
         }
     }
+
+    /// Returns the timestamp portion of the ULID in milliseconds.
+    pub fn timestamp_ms(&self) -> u64 {
+        self.0.timestamp_ms()
+    }
+
+    /// Creates a ULID from timestamp and randomness parts.
+    pub fn from_parts(timestamp_ms: u64, randomness: u128) -> Self {
+        Self(CoreUlid::from_parts(timestamp_ms, randomness))
+    }
 }
 
 struct UlidVisitor;

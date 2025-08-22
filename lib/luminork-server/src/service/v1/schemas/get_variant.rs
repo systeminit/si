@@ -5,6 +5,7 @@ use dal::{
     SchemaVariant,
     cached_module::CachedModule,
     schema::variant::root_prop::RootPropChild,
+    workspace_snapshot::traits::prop::PropExt,
 };
 use sdf_extract::{
     EddaClient,
@@ -24,7 +25,6 @@ use super::{
     SchemaResult,
     SchemaVariantResponseV1,
     SchemaVariantV1RequestPath,
-    build_prop_schema_tree,
 };
 use crate::extract::{
     PosthogEventTracker,
@@ -55,7 +55,7 @@ use crate::extract::{
 pub async fn get_variant(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     frigg: FriggStore,
-    edda_client: EddaClient,
+    _edda_client: EddaClient,
     tracker: PosthogEventTracker,
     Path(SchemaVariantV1RequestPath {
         schema_id,
@@ -78,7 +78,11 @@ pub async fn get_variant(
                 )
                 .await
                 .map_err(Box::new)?;
-                let domain_prop_schema = build_prop_schema_tree(ctx, domain.id).await?;
+                let domain_prop_schema = ctx
+                    .workspace_snapshot()?
+                    .build_prop_schema_tree(ctx, domain.id)
+                    .await?
+                    .into();
 
                 tracker.track(
                     ctx,
@@ -138,7 +142,7 @@ pub async fn get_variant(
                     asset_func_id: cached_variant.asset_func_id,
                     variant_func_ids: cached_variant.variant_func_ids,
                     is_default_variant: cached_variant.is_default_variant,
-                    domain_props: None,
+                    domain_props: cached_variant.domain_props.map(Into::into),
                 };
 
                 tracker.track(
@@ -162,9 +166,13 @@ pub async fn get_variant(
             match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
                 Ok(Some(_)) => {
                     // Schema exists in cached_modules but CachedSchemaVariant MV not built yet - trigger rebuild and return 202
-                    if let Err(e) = edda_client.rebuild_for_deployment().await {
-                        warn!("Failed to trigger MV rebuild: {}", e);
-                    }
+                    //
+                    // Until the performance issues in building the deployment-level MVs are fixed,
+                    // this is only going to be deployed through the manual module sync process.
+                    //
+                    // if let Err(e) = edda_client.rebuild_for_deployment().await {
+                    //     warn!("Failed to trigger MV rebuild: {}", e);
+                    // }
 
                     return Ok(SchemaVariantResponseV1::Building(BuildingResponseV1 {
                         status: "building".to_string(),
@@ -191,9 +199,13 @@ pub async fn get_variant(
             match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
                 Ok(Some(_)) => {
                     // Schema exists but MV lookup failed - trigger rebuild and return building response
-                    if let Err(e) = edda_client.rebuild_for_deployment().await {
-                        warn!("Failed to trigger MV rebuild: {}", e);
-                    }
+                    //
+                    // Until the performance issues in building the deployment-level MVs are fixed,
+                    // this is only going to be deployed through the manual module sync process.
+                    //
+                    // if let Err(e) = edda_client.rebuild_for_deployment().await {
+                    //     warn!("Failed to trigger MV rebuild: {}", e);
+                    // }
 
                     return Ok(SchemaVariantResponseV1::Building(BuildingResponseV1 {
                         status: "building".to_string(),

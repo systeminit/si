@@ -68,5 +68,6 @@ pub async fn assemble(ctx: DalContext, id: SchemaId) -> crate::Result<CachedDefa
         assembled_data.link,
         assembled_data.asset_func_id,
         assembled_data.variant_func_ids,
+        assembled_data.domain_props,
     ))
 }

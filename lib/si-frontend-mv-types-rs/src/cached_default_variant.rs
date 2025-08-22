@@ -9,7 +9,10 @@ use si_events::{
     workspace_snapshot::EntityKind,
 };
 
-use crate::reference::ReferenceKind;
+use crate::{
+    prop_schema::PropSchemaV1,
+    reference::ReferenceKind,
+};
 
 #[derive(
     Debug,
@@ -39,7 +42,7 @@ pub struct CachedDefaultVariant {
     pub link: Option<String>,
     pub asset_func_id: FuncId,
     pub variant_func_ids: Vec<FuncId>,
-    // Note: domain_props excluded for Phase 1 as specified in the brief
+    pub domain_props: Option<PropSchemaV1>,
     // is_default_variant always true for this MV, so not stored
 }
 
@@ -56,6 +59,7 @@ impl CachedDefaultVariant {
         link: Option<String>,
         asset_func_id: FuncId,
         variant_func_ids: Vec<FuncId>,
+        domain_props: Option<PropSchemaV1>,
     ) -> Self {
         Self {
             id: schema_id, // Use schema_id as the MV object ID
@@ -68,6 +72,7 @@ impl CachedDefaultVariant {
             link,
             asset_func_id,
             variant_func_ids,
+            domain_props,
         }
     }
 }

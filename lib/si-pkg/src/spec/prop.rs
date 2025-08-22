@@ -19,6 +19,7 @@ use url::Url;
 
 use super::{
     AttrFuncInputSpec,
+    HasUniqueId,
     MapKeyFuncSpec,
     SpecError,
 };
@@ -860,6 +861,21 @@ impl TryFrom<PropSpecBuilder> for PropSpec {
 
     fn try_from(value: PropSpecBuilder) -> Result<Self, Self::Error> {
         value.build()
+    }
+}
+
+impl HasUniqueId for PropSpec {
+    fn unique_id(&self) -> Option<&str> {
+        match self {
+            Self::Array { unique_id, .. }
+            | Self::Boolean { unique_id, .. }
+            | Self::Float { unique_id, .. }
+            | Self::Json { unique_id, .. }
+            | Self::Map { unique_id, .. }
+            | Self::Number { unique_id, .. }
+            | Self::Object { unique_id, .. }
+            | Self::String { unique_id, .. } => unique_id.as_deref(),
+        }
     }
 }
 

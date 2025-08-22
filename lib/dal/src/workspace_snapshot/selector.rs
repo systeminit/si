@@ -1040,6 +1040,21 @@ impl PropExt for WorkspaceSnapshotSelector {
             Self::SplitSnapshot(snapshot) => snapshot.ts_type(prop_id).await,
         }
     }
+
+    async fn build_prop_schema_tree(
+        &self,
+        ctx: &DalContext,
+        root_prop_id: PropId,
+    ) -> PropResult<si_frontend_mv_types::prop_schema::PropSchemaV1> {
+        match self {
+            Self::LegacySnapshot(snapshot) => {
+                snapshot.build_prop_schema_tree(ctx, root_prop_id).await
+            }
+            Self::SplitSnapshot(snapshot) => {
+                snapshot.build_prop_schema_tree(ctx, root_prop_id).await
+            }
+        }
+    }
 }
 
 #[async_trait]

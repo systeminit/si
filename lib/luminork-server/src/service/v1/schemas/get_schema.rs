@@ -50,7 +50,7 @@ use crate::extract::{
 pub async fn get_schema(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     FriggStore(frigg): FriggStore,
-    edda_client: EddaClient,
+    _edda_client: EddaClient,
     tracker: PosthogEventTracker,
     Path(SchemaV1RequestPath { schema_id }): Path<SchemaV1RequestPath>,
 ) -> SchemaResult<SchemaResponseV1> {
@@ -107,9 +107,13 @@ pub async fn get_schema(
             match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
                 Ok(Some(_)) => {
                     // Schema exists in cached_modules but CachedSchema MV not built yet - trigger rebuild and return 202
-                    if let Err(e) = edda_client.rebuild_for_deployment().await {
-                        warn!("Failed to trigger MV rebuild: {}", e);
-                    }
+                    //
+                    // Until the performance issues in building the deployment-level MVs are fixed,
+                    // this is only going to be deployed through the manual module sync process.
+                    //
+                    // if let Err(e) = edda_client.rebuild_for_deployment().await {
+                    //     warn!("Failed to trigger MV rebuild: {}", e);
+                    // }
 
                     return Ok(SchemaResponseV1::Building(Box::new(BuildingResponseV1 {
                         status: "building".to_string(),
@@ -136,9 +140,13 @@ pub async fn get_schema(
             match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
                 Ok(Some(_)) => {
                     // Schema exists but MV lookup failed - trigger rebuild and return building response
-                    if let Err(e) = edda_client.rebuild_for_deployment().await {
-                        warn!("Failed to trigger MV rebuild: {}", e);
-                    }
+                    //
+                    // Until the performance issues in building the deployment-level MVs are fixed,
+                    // this is only going to be deployed through the manual module sync process.
+                    //
+                    // if let Err(e) = edda_client.rebuild_for_deployment().await {
+                    //     warn!("Failed to trigger MV rebuild: {}", e);
+                    // }
 
                     return Ok(SchemaResponseV1::Building(Box::new(BuildingResponseV1 {
                         status: "building".to_string(),
