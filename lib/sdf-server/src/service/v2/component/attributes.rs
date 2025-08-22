@@ -35,6 +35,7 @@ use sdf_extract::{
     change_set::ChangeSetDalContext,
 };
 use serde_json::json;
+use si_events::audit_log::AuditLogKind;
 use tower::ServiceBuilder;
 use tower_http::decompression::RequestDecompressionLayer;
 
@@ -88,6 +89,16 @@ async fn set_as_default_source(
             ))?;
     AttributeValue::set_as_default_subscription_source(ctx, attribute_value_id).await?;
 
+    ctx.write_audit_log(
+        AuditLogKind::SetDefaultSubscriptionSource {
+            component_id,
+            av_id: attribute_value_id,
+            av_identifier: av_ident_string.clone(),
+        },
+        av_ident_string.clone(),
+    )
+    .await?;
+
     ctx.commit().await?;
 
     tracker.track(
@@ -124,6 +135,16 @@ async fn delete_default_source(
             ))?;
 
     AttributeValue::remove_default_subscription_source(ctx, attribute_value_id).await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::RemoveDefaultSubscriptionSource {
+            component_id,
+            av_id: attribute_value_id,
+            av_identifier: av_ident_string.clone(),
+        },
+        av_ident_string.clone(),
+    )
+    .await?;
 
     ctx.commit().await?;
 
