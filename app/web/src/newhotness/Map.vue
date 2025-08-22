@@ -209,6 +209,7 @@
       ref="componentContextMenuRef"
       onGrid
       hidePin
+      hideBulk
       @edit="navigateToSelectedComponent"
     />
   </section>

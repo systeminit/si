@@ -58,6 +58,7 @@ const props = defineProps<{
   enableKeyboardControls?: boolean;
   viewListOptions?: { label: string; value: string }[];
   hidePin?: boolean;
+  hideBulk?: boolean;
 }>();
 
 const route = useRoute();
@@ -422,7 +423,11 @@ const rightClickMenuItems = computed(() => {
   }
 
   // multiple components, nothing `toDelete`
-  if (components.value.length > 1 && !atLeastOneGhostedComponent.value) {
+  if (
+    components.value.length > 1 &&
+    !atLeastOneGhostedComponent.value &&
+    !props.hideBulk
+  ) {
     items.push({
       label: "Bulk",
       shortcut: "B",
