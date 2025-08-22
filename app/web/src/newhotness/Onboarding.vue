@@ -1,0 +1,628 @@
+<template>
+  <div
+    data-testid="lobby"
+    class="absolute w-screen h-screen bg-neutral-900 z-[1000] flex flex-col items-center"
+  >
+    <div class="flex flex-row items-center justify-between w-full px-sm py-xs">
+      <SiLogo class="block h-md w-md flex-none" />
+      <VButton
+        class="text-neutral-400 hover:text-white font-normal"
+        label="Skip"
+        tone="empty"
+        @click="closeOnboarding(true)"
+      />
+    </div>
+    <div class="flex flex-col w-[856px]">
+      <div
+        :class="
+          clsx(
+            'rounded font-mono text-sm',
+            'flex flex-col justify-end gap-xs mb-md',
+          )
+        "
+      >
+        <ScrollingOutputLine
+          v-for="(data, index) in visibleSentences"
+          :key="index"
+          :message="data.sentence"
+          :isActive="index === visibleItemsCount - 1"
+          :isLastElement="index === visibleItemsCount - 1"
+        />
+      </div>
+      <Transition
+        enterActiveClass="duration-300 ease-out"
+        enterFromClass="transform opacity-0"
+        enterToClass="opacity-100"
+        leaveActiveClass="delay-1000 duration-200 ease-in"
+        leaveFromClass="opacity-100"
+        leaveToClass="transform opacity-0"
+        :onAfterEnter="() => userInputAreaRef?.open()"
+      >
+        <div v-if="showFormItems" class="flex flex-col gap-sm">
+          <ErrorMessage
+            v-if="initializeApiError"
+            class="rounded text-md p-xs"
+            icon="x-circle"
+            variant="block"
+          >
+            Something went wrong. Please retry to validate your credential and
+            region.
+          </ErrorMessage>
+          <!-- Step 1: User Input -->
+          <OnboardingCollapsingArea
+            ref="userInputAreaRef"
+            @opened="aiTutorialAreaRef?.close()"
+          >
+            <template #header>
+              <div class="flex flex-row items-center justify-between">
+                <span
+                  :class="
+                    initializeRequestSentAndSuccessful && 'text-success-200'
+                  "
+                >
+                  1. Enter an AWS credential and select a region
+                </span>
+                <Icon
+                  :name="
+                    initializeRequestSentAndSuccessful
+                      ? 'check-circle'
+                      : 'loader'
+                  "
+                  :class="
+                    clsx(
+                      !submittedOnboardRequest && 'hidden',
+                      initializeRequestSentAndSuccessful && 'text-success-400',
+                    )
+                  "
+                />
+              </div>
+            </template>
+            <template #body>
+              <!-- Credential -->
+              <div class="flex flex-col border border-neutral-600 p-sm gap-sm">
+                <div class="flex flex-row justify-between items-center">
+                  <label for="aws-credential-name" class="basis-0 grow">
+                    Name your credential*
+                  </label>
+                  <input
+                    id="aws-credential-name"
+                    v-model="credentialName"
+                    :class="
+                      clsx(
+                        'h-lg p-xs text-sm border font-mono cursor-text basis-0 grow',
+                        'focus:outline-none focus:ring-0 focus:z-10',
+                        themeClasses(
+                          'text-shade-100 bg-white border-neutral-400 focus:border-action-500',
+                          'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
+                        ),
+                      )
+                    "
+                  />
+                </div>
+                <!-- Secret Values -->
+                <div class="flex flex-col border border-neutral-600 pb-sm">
+                  <div
+                    class="flex flex-row justify-between px-sm py-xs border-b border-neutral-600"
+                  >
+                    <span> Add the secrets </span>
+                    <span class="text-neutral-400 text-sm">
+                      All data informed in this section will be encrypted
+                    </span>
+                  </div>
+                  <ErrorMessage
+                    class="rounded-md text-md px-xs py-xs bg-action-900 my-xs mx-sm"
+                    tone="action"
+                    variant="block"
+                    noIcon
+                  >
+                    Pro tip: Paste the full Bash environment block into the
+                    first field — we’ll auto-fill the rest.
+                  </ErrorMessage>
+
+                  <div
+                    v-for="(field, title) in secretFormFields"
+                    :key="title"
+                    :class="'flex flex-row justify-between items-center text-sm px-sm'"
+                  >
+                    <label
+                      class="basis-0 grow flex flex-row items-center gap-2xs"
+                    >
+                      {{ title }}
+                      <a
+                        v-if="'help' in field"
+                        :href="field.help"
+                        target="_blank"
+                      >
+                        <Icon name="question-circle" size="xs" />
+                      </a>
+                    </label>
+                    <div class="flex flex-row basis-0 grow">
+                      <input
+                        v-model="field.ref"
+                        :type="field.type"
+                        :class="
+                          clsx(
+                            'h-lg p-xs text-sm border font-mono cursor-text grow',
+                            'focus:outline-none focus:ring-0 focus:z-10',
+                            themeClasses(
+                              'text-shade-100 bg-white border-neutral-400 focus:border-action-500',
+                              'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
+                            ),
+                          )
+                        "
+                        placeholder="***"
+                        @paste="(ev: ClipboardEvent) => tryMatchOnPaste(ev)"
+                      />
+                      <VButton
+                        icon="eye"
+                        variant="ghost"
+                        size="xs"
+                        class="hidden"
+                        @click="toggleVisibility(field)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Region -->
+              <div class="border border-neutral-600 flex flex-col p-sm gap-sm">
+                <div>Pick a region*</div>
+                <div class="flex flex-row items-center gap-sm">
+                  <div
+                    v-for="region in pickerRegions"
+                    :key="region.value"
+                    :class="
+                      clsx(
+                        'flex flex-row grow items-center border px-sm py-sm gap-sm hover:border-neutral-300 cursor-pointer',
+                        region.value === awsRegion
+                          ? 'border-neutral-300'
+                          : 'border-neutral-600',
+                      )
+                    "
+                    @click="awsRegion = region.value"
+                  >
+                    <Icon
+                      :name="
+                        region.value === awsRegion
+                          ? 'check-circle'
+                          : 'circle-empty'
+                      "
+                    />
+                    <div class="flex flex-col justify-center align-middle">
+                      <span>{{ region.title }}</span>
+                      <span class="text-sm text-neutral-400">{{
+                        region.value
+                      }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-row items-center">
+                  <label for="aws-region" class="basis-0 grow">
+                    Or select any region
+                  </label>
+                  <select
+                    id="aws-region"
+                    v-model="awsRegion"
+                    :class="
+                      clsx(
+                        'h-lg basis-0 grow p-xs text-sm border font-mono cursor-pointer',
+                        'focus:outline-none focus:ring-0 focus:z-10',
+                        themeClasses(
+                          'text-shade-100 bg-white border-neutral-400 focus:border-action-500',
+                          'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
+                        ),
+                      )
+                    "
+                  >
+                    <option v-for="region in awsRegions" :key="region.value">
+                      {{ region.value }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </template>
+            <template #footer>
+              <VButton
+                :label="initializeApiError ? 'Retry' : 'Next'"
+                size="xs"
+                class="!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC] rounded-sm"
+                :disabled="!formHasValues"
+                @click="
+                  aiTutorialAreaRef?.open();
+                  submitOnboardRequest();
+                "
+              />
+            </template>
+          </OnboardingCollapsingArea>
+          <!-- Step 2: Agent Tutorial + token -->
+          <OnboardingCollapsingArea
+            ref="aiTutorialAreaRef"
+            :blockOpening="!submittedOnboardRequest"
+            @opened="userInputAreaRef?.close()"
+          >
+            <template #header>
+              <div class="flex flex-row items-center justify-between">
+                <span :class="setupAiDone && 'text-success-200'">
+                  2. Setup the AI
+                </span>
+                <Icon
+                  :name="'check-circle'"
+                  :class="clsx('text-success-400', !setupAiDone && 'hidden')"
+                />
+              </div>
+            </template>
+            <template #body>
+              <div class="flex flex-col gap-xs">
+                <span>Here's your token</span>
+                <span
+                  >[Placeholder Copy this token to your clipboard and use to
+                  setup up your AI agent]</span
+                >
+                <ErrorMessage
+                  class="rounded-md text-md px-xs py-xs bg-action-900 my-xs"
+                  icon="alert-circle"
+                  tone="action"
+                  variant="block"
+                >
+                  We're only showing you the vale of this token once. Please,
+                  store it somewhere safe.
+                </ErrorMessage>
+                <CopiableTextBlock :text="apiToken" />
+              </div>
+              <div class="flex flex-col gap-xs">
+                <span>[Clone a repo]</span>
+                <CopiableTextBlock text="npm install -g ai-agent" />
+              </div>
+              <div class="flex flex-col gap-xs">
+                <span>[Run repo]</span>
+                <CopiableTextBlock text="npm install -g ai-agent" />
+              </div>
+              <div class="flex flex-col gap-xs">
+                <span>[Run set up...]</span>
+                <CopiableTextBlock text="ai-agent --start" />
+              </div>
+            </template>
+            <template #footer>
+              <VButton
+                label="Previous"
+                tone="neutral"
+                size="xs"
+                class="!text-neutral-100 !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 rounded-sm"
+                @click="userInputAreaRef?.open()"
+              />
+              <VButton
+                label="Done"
+                tone="action"
+                size="xs"
+                :disabled="!initializeRequestSentAndSuccessful"
+                class="!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC] rounded-sm"
+                @click="
+                  aiTutorialAreaRef?.close();
+                  setupAiDone = true;
+                "
+              />
+            </template>
+          </OnboardingCollapsingArea>
+        </div>
+      </Transition>
+    </div>
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import clsx from "clsx";
+import { sleep } from "@si/ts-lib/src/async-sleep";
+import {
+  ErrorMessage,
+  Icon,
+  themeClasses,
+  VButton,
+} from "@si/vue-lib/design-system";
+import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
+import * as _ from "lodash-es";
+import OnboardingCollapsingArea from "@/newhotness/OnboardingCollapsingArea.vue";
+import ScrollingOutputLine from "@/newhotness/ScrollingOutputLine.vue";
+import { encryptMessage } from "@/utils/messageEncryption";
+import { componentTypes, routes, useApi } from "@/newhotness/api_composables";
+import { useContext } from "@/newhotness/logic_composables/context";
+import CopiableTextBlock from "@/newhotness/CopiableTextBlock.vue";
+
+const ctx = useContext();
+
+const userInputAreaRef = ref<InstanceType<typeof OnboardingCollapsingArea>>();
+const aiTutorialAreaRef = ref<InstanceType<typeof OnboardingCollapsingArea>>();
+
+const sentences = [
+  {
+    sentence:
+      "Join forces with AI agents to build infrastructure that's incredibly easy to maintain",
+  },
+  { sentence: "Just two quick steps, and you’ll see how" },
+];
+
+const showPanel = ref(false);
+const visibleItemsCount = ref<number>(0);
+const visibleSentences = computed(() =>
+  sentences.slice(0, visibleItemsCount.value),
+);
+
+/// STARTUP LOGIC
+// Delay before opening, so we don't blink the screen
+const BLINK_DELAY_MS = 500;
+// Delay so we complete the fade in before starting to show log lines
+const TRANSITION_DELAY_MS = 200;
+
+const kickOffTerminalLogs = async () => {
+  await sleep(BLINK_DELAY_MS);
+  showPanel.value = true;
+  await sleep(TRANSITION_DELAY_MS);
+  visibleItemsCount.value = 1;
+};
+
+onMounted(kickOffTerminalLogs);
+
+// Every time we show a sentence, enqueue showing the next sentence after a delay
+const LOADING_STEP_DELAY_MS = [4500, 3000];
+
+watch([visibleItemsCount], async () => {
+  if (!showPanel.value) return;
+
+  if (visibleItemsCount.value > sentences.length) return;
+
+  const delay = LOADING_STEP_DELAY_MS[visibleItemsCount.value - 1];
+
+  if (delay === undefined) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `No delay found for onboarding step ${visibleItemsCount.value} of ${sentences.length}`,
+    );
+    return;
+  }
+
+  await sleep(delay);
+
+  visibleItemsCount.value += 1;
+});
+
+/// FORM LOGIC
+const showFormItems = computed(() => {
+  return visibleItemsCount.value > sentences.length;
+});
+
+// CREDENTIAL
+const credentialName = ref("My AWS Credential");
+
+const secretFormFields = reactive({
+  "AWS access key ID": {
+    ref: "",
+    type: "password",
+  },
+  "AWS secret access key": {
+    ref: "",
+    type: "password",
+  },
+  "AWS session token": {
+    ref: "",
+    type: "password",
+  },
+  "Assume Role": {
+    ref: "",
+    type: "password",
+    help: "https://docs.systeminit.com/explanation/aws-authentication#assuming-a-role",
+  },
+});
+
+const formHasValues = computed(() =>
+  Object.values(secretFormFields).some((f) => !!f.ref),
+);
+
+type SecretFormFields = typeof secretFormFields;
+type SecretFormField = SecretFormFields[keyof SecretFormFields];
+
+/// Match env var block to form fields
+const tryMatchOnPaste = (ev: ClipboardEvent) => {
+  const text = ev.clipboardData?.getData("text/plain");
+
+  if (!text) return;
+
+  const valuesFromInput = text.split("\n").reduce((acc, e) => {
+    const [_, key, value] = e.match(/export\s+(.*)="(.*)"/) ?? [];
+    if (!key || !value) return acc;
+    acc[key] = value;
+    return acc;
+  }, {} as Record<string, string>);
+
+  let matchedAValue = false;
+  // Loop through form fields and try to match the value keys to the titles
+  for (const [formKey, formValue] of Object.entries(secretFormFields)) {
+    const formattedKey = formKey.replaceAll(" ", "_").toUpperCase();
+    const matchedField = valuesFromInput[formattedKey];
+
+    if (!matchedField) continue;
+    matchedAValue = true;
+
+    formValue.ref = matchedField;
+  }
+
+  // If we didn't match a value, just proceed with the paste
+  if (!matchedAValue) return;
+
+  ev.preventDefault();
+};
+
+const toggleVisibility = (field: SecretFormField) => {
+  field.type = field.type === "password" ? "text" : "password";
+};
+
+// REGION
+const awsRegion = ref("us-east-1");
+const awsRegions = [
+  {
+    title: "US East (N. Virginia)",
+    value: "us-east-1",
+    onPicker: true,
+  },
+  {
+    title: "US West (Oregon)",
+    value: "us-west-2",
+    onPicker: true,
+  },
+  {
+    title: "US West (N. California)",
+    value: "us-west-1",
+    onPicker: true,
+  },
+  {
+    title: "Europe (Ireland)",
+    value: "eu-west-1",
+  },
+  {
+    title: "Europe (Frankfurt)",
+    value: "eu-central-1",
+  },
+  {
+    title: "Asia Pacific (Singapore)",
+    value: "ap-southeast-1",
+  },
+  {
+    title: "Asia Pacific (Tokyo)",
+    value: "ap-northeast-1",
+  },
+  {
+    title: "Asia Pacific (Sydney)",
+    value: "ap-southeast-2",
+  },
+  {
+    title: "US East (Ohio)",
+    value: "us-east-2",
+  },
+  {
+    title: "Europe (London)",
+    value: "eu-west-2",
+  },
+];
+const pickerRegions = awsRegions.filter((r) => r.onPicker);
+
+const initializeApi = useApi();
+const initializeApiError = ref<string | null>(null);
+const submittedOnboardRequest = ref(false);
+const keyApi = useApi();
+
+const initializeRequestSentAndSuccessful = computed(() => {
+  return (
+    submittedOnboardRequest.value &&
+    !initializeApi.inFlight.value &&
+    !initializeApiError.value
+  );
+});
+
+const submitOnboardRequest = async () => {
+  // Encrypt secret
+  const callApi = keyApi.endpoint<componentTypes.PublicKey>(
+    routes.GetPublicKey,
+    { id: "00000000000000000000000000" }, // TODO Remove component id from this endpoint's path, it's not needed
+  );
+  const resp = await callApi.get();
+  const publicKey = resp.data;
+
+  // Format cred values for encryption
+  const credValue = (
+    [
+      ["SessionToken", secretFormFields["AWS session token"].ref],
+      ["AccessKeyId", secretFormFields["AWS access key ID"].ref],
+      ["SecretAccessKey", secretFormFields["AWS secret access key"].ref],
+      ["AssumeRole", secretFormFields["Assume Role"].ref],
+    ].filter(([_, value]) => value !== "") as [string, string][]
+  ) // Remove empty values
+    .reduce<{ [key: string]: string }>((acc, [key, value]) => {
+      // make the pairs array into an object
+      acc[key] = value;
+      return acc;
+    }, {});
+
+  const crypted = await encryptMessage(credValue, publicKey);
+
+  submittedOnboardRequest.value = true;
+  const call = initializeApi.endpoint(routes.ChangeSetInitializeAndApply);
+  const { errorMessage } = await call.post({
+    awsRegion: awsRegion.value,
+    credential: {
+      name: credentialName.value,
+      crypted,
+      keyPairPk: publicKey.pk,
+      version: componentTypes.SecretVersion.V1,
+      algorithm: componentTypes.SecretAlgorithm.Sealedbox,
+    },
+  });
+
+  if (errorMessage) {
+    initializeApiError.value = errorMessage;
+  }
+};
+
+// AI CONFIGURATION
+const setupAiDone = ref(false);
+const generateTokenApi = useApi();
+const apiToken = ref();
+const generateToken = async () => {
+  const workspacePk = ctx.workspacePk.value;
+  const userPk = ctx.user?.pk;
+
+  const apiTokenSessionStorageKey = `si-api-token-${workspacePk}-${userPk}`;
+
+  const storedToken = sessionStorage.getItem(apiTokenSessionStorageKey);
+  if (storedToken) {
+    apiToken.value = storedToken;
+    return;
+  }
+
+  const callApi = generateTokenApi.endpoint<{ token: string }>(
+    routes.GenerateApiToken,
+  );
+  const {
+    req: { data },
+  } = await callApi.post({
+    name: "Onboarding Key",
+    expiration: "1y",
+  });
+
+  const token = data.token;
+
+  if (!token) {
+    // TODO deal with errors on API Token generation
+    // eslint-disable-next-line no-console
+    console.error("No token generated");
+    return;
+  }
+
+  sessionStorage.setItem(apiTokenSessionStorageKey, token);
+  apiToken.value = token;
+};
+
+onMounted(generateToken);
+
+const dismissOnboardingApi = useApi();
+const closeOnboarding = async (fast = false) => {
+  const userPk = ctx.user?.pk;
+  if (!userPk) return;
+
+  const call = dismissOnboardingApi.endpoint(routes.DismissOnboarding, {
+    userPk,
+  });
+
+  if (fast) {
+    call.post({});
+  } else {
+    await call.post({});
+  }
+
+  emit("completed");
+};
+
+watch(setupAiDone, closeOnboarding);
+
+const emit = defineEmits<{
+  (e: "completed"): void;
+}>();
+</script>

@@ -27,7 +27,7 @@
       )
     "
   >
-    <Icon :name="props.icon" class="mr-xs flex-none" />
+    <Icon v-if="!noIcon" :name="props.icon" class="mr-xs flex-none" />
     <div class="flex-grow">
       <slot>{{ computedMessage }}</slot>
     </div>
@@ -53,6 +53,7 @@ const props = withDefaults(
     noPadding?: boolean;
     variant?: ErrorMessageVariant;
     icon?: IconNames;
+    noIcon?: boolean;
   }>(),
   {
     tone: "destructive",

@@ -57,6 +57,7 @@ export interface Context {
   componentDetails: ComputedRef<ComponentDetails>;
   schemaMembers: ComputedRef<Record<SchemaId, SchemaMembers>>;
   queriesEnabled: Ref<boolean>;
+  reopenOnboarding: () => void;
 }
 
 export function assertIsDefined<T>(value: T | undefined): asserts value is T {
