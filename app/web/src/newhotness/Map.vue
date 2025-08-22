@@ -35,13 +35,13 @@
       >
         <ExploreGridTile
           ref="selectedGridTileRef"
-          :component="selectedComponent"
+          :component="selectedComponent!"
           hideConnections
           @click="navigateToSelectedComponent"
         />
       </div>
       <div class="scrollable grow">
-        <ConnectionsPanel :component="selectedComponent" noEmptyState />
+        <ConnectionsPanel :component="selectedComponent!" noEmptyState />
       </div>
     </div>
 
@@ -1007,9 +1007,11 @@ const rightClickedNode = (e: MouseEvent, n: layoutNode) => {
   e.preventDefault();
   e.stopPropagation();
 
-  // If the right-clicked component is not in the current selection, select it
+  // If the right-clicked component is not in the current selection, add it to selection
   if (!selectedComponents.value.has(n.component)) {
-    selectedComponents.value = new Set([n.component]);
+    const newSelectedComponents = new Set(selectedComponents.value);
+    newSelectedComponents.add(n.component);
+    selectedComponents.value = newSelectedComponents;
   }
 
   // Show context menu for all selected components
@@ -1533,7 +1535,7 @@ watch(
         .attr("class", (d) => {
           const classes = [`node`, `id-${d.component.id}`];
 
-          if (selectedComponent.value?.id === d.component.id) {
+          if (selectedComponents.value.has(d.component)) {
             classes.push("selected");
           }
           if (props.componentsWithFailedActions.has(d.component.id)) {
@@ -1663,12 +1665,14 @@ watch(
         })
         .attr("marker-end", (d) => {
           const [targetId, sourceId] = d.id.split("-");
-          const isConnectedToSelected =
-            selectedComponent.value &&
-            (targetId === selectedComponent.value.id ||
-              sourceId === selectedComponent.value.id);
+          const isConnectedToSelected = Array.from(
+            selectedComponents.value,
+          ).some(
+            (component) =>
+              targetId === component.id || sourceId === component.id,
+          );
 
-          if (selectedComponent.value) {
+          if (selectedComponents.value.size > 0) {
             return isConnectedToSelected
               ? "url(#arrowhead-highlighted)"
               : "url(#arrowhead-greyed)";
@@ -1679,10 +1683,12 @@ watch(
         .style("fill", "none")
         .style("stroke", (d) => {
           const [targetId, sourceId] = d.id.split("-");
-          const isConnectedToSelected =
-            selectedComponent.value &&
-            (targetId === selectedComponent.value.id ||
-              sourceId === selectedComponent.value.id);
+          const isConnectedToSelected = Array.from(
+            selectedComponents.value,
+          ).some(
+            (component) =>
+              targetId === component.id || sourceId === component.id,
+          );
 
           // Theme-aware colors
           const isDark = document.body.classList.contains("dark");
@@ -1690,7 +1696,7 @@ watch(
           const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
           const defaultColor = isDark ? "#9ca3af" : "#6b7280"; // neutral-400 : neutral-500
 
-          if (selectedComponent.value) {
+          if (selectedComponents.value.size > 0) {
             return isConnectedToSelected ? connectedColor : greyedColor;
           } else {
             return defaultColor;
@@ -1698,20 +1704,24 @@ watch(
         })
         .style("stroke-width", (d) => {
           const [targetId, sourceId] = d.id.split("-");
-          const isConnectedToSelected =
-            selectedComponent.value &&
-            (targetId === selectedComponent.value.id ||
-              sourceId === selectedComponent.value.id);
+          const isConnectedToSelected = Array.from(
+            selectedComponents.value,
+          ).some(
+            (component) =>
+              targetId === component.id || sourceId === component.id,
+          );
           return isConnectedToSelected ? "2" : "1";
         })
         .style("opacity", (d) => {
           const [targetId, sourceId] = d.id.split("-");
-          const isConnectedToSelected =
-            selectedComponent.value &&
-            (targetId === selectedComponent.value.id ||
-              sourceId === selectedComponent.value.id);
+          const isConnectedToSelected = Array.from(
+            selectedComponents.value,
+          ).some(
+            (component) =>
+              targetId === component.id || sourceId === component.id,
+          );
 
-          if (selectedComponent.value) {
+          if (selectedComponents.value.size > 0) {
             return isConnectedToSelected ? "1" : "0.3"; // Reduce opacity for unconnected lines
           } else {
             return "1"; // Full opacity when no component is selected

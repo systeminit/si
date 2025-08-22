@@ -304,8 +304,8 @@
               @resetFilter="resetFilter"
               @bulkDone="bulkDone"
               @childClicked="componentClicked"
-              @childSelect="selectComponent"
-              @childDeselect="deselectComponent"
+              @childSelect="(idx) => selectComponent(idx)"
+              @childDeselect="(idx) => deselectComponent(idx)"
               @childHover="
                 (componentId) => {
                   if (componentsHaveActionsWithState.failed.has(componentId)) {
@@ -1637,11 +1637,6 @@ const selectedComponents = computed(() => {
   return Object.values(selectedComponentsMap.value);
 });
 
-const getGridComponentRefByIndex = (idx: number) => {
-  const el = document.querySelector(`.component.tile[data-index="${idx}"]`);
-  return (el as HTMLElement) || undefined;
-};
-
 const focusedComponentRef = ref<HTMLElement | undefined>();
 
 // ================================================================================================
@@ -1868,27 +1863,23 @@ const clearSelection = () => {
 
 const selectComponent = (componentIdx: number) => {
   selectedComponentIndexes.add(componentIdx);
-  setFocusedComponentIdx(componentIdx);
-  fixContextMenu();
+  // Checkbox selections don't change focus - this prevents automatic context menu
 };
 const deselectComponent = (componentIdx: number | string) => {
   // PSA: componentIdx coming through emits is typed as number, but at execution is a string
   if (typeof componentIdx === "string") componentIdx = parseInt(componentIdx);
   selectedComponentIndexes.delete(componentIdx);
-  if (componentIdx === focusedComponentIdx.value) {
-    if (selectedComponentIndexes.size === 0) {
-      clearSelection();
-    } else {
-      setFocusedComponentIdx([...selectedComponentIndexes].pop());
-    }
+  // Clear selection entirely if no more selections remain
+  if (selectedComponentIndexes.size === 0) {
+    clearSelection();
   }
-  fixContextMenu();
 };
 const toggleComponentSelection = (componentIdx: number) => {
   if (isComponentSelected(componentIdx)) {
     deselectComponent(componentIdx);
   } else {
     selectComponent(componentIdx);
+    setFocusedComponentIdx(componentIdx); // Set focus for shift-click
   }
 };
 const isComponentSelected = (componentIdx: number) =>
@@ -1909,8 +1900,14 @@ const componentClicked = (
   }
 
   if (e.button === 0) {
+    // Left-click: just navigate, don't affect selections
     componentNavigate(componentId);
   } else if (e.button === 2) {
+    // Right-click: if component isn't already selected, select it first
+    if (!isComponentSelected(componentIdx)) {
+      clearSelection();
+      selectedComponentIndexes.add(componentIdx);
+    }
     setFocusedComponentIdx(componentIdx);
   }
 };
@@ -1925,7 +1922,6 @@ const componentNavigate = (componentId: ComponentId) => {
 
 watch([focusedComponent], () => {
   if (!focusedComponent.value) return;
-
   fixContextMenu();
 });
 
@@ -2006,6 +2002,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
         const component = componentList.value[index];
         if (component) {
           selectComponent(index);
+          setFocusedComponentIdx(index); // Set focus for programmatic selection
         }
       });
     }
@@ -2231,21 +2228,7 @@ const fixContextMenuAfterScroll = async () => {
     fixContextMenu();
   } else {
     unfocus();
-    if (selectedComponentIndexes.size > 0) {
-      // we are in a situation where the menu is not showing for a multi select!
-      // try to find the best component to put it on
-      const selectedIndexesArray = [...selectedComponentIndexes];
-      for (const selectedIndex of selectedIndexesArray) {
-        const el = getGridComponentRefByIndex(selectedIndex);
-        if (el && elementIsScrolledIntoView(el)) {
-          setFocusedComponentIdx(selectedIndex);
-          break;
-        }
-      }
-      if (focusedComponentIdx.value === undefined) {
-        setFocusedComponentIdx(selectedIndexesArray.pop());
-      }
-    }
+    // Don't automatically set focus for selections - context menu should only show on right-click
   }
 };
 const onResize = () => {
@@ -2367,12 +2350,18 @@ const setSelectionsFromQuery = async () => {
       selectedComponentIndexes.add(idx);
     });
     const idx = [...indexes].pop();
-    // NOTE: `focusedComponentIdx.value === undefined` is only possible when loading from URL
-    if (idx !== undefined && focusedComponentIdx.value === undefined) {
+    // NOTE: Only set focus when actually loading from URL on mount, not during checkbox interactions
+    // Don't set focus if we already have selections (indicating this is a checkbox interaction, not URL load)
+    if (
+      idx !== undefined &&
+      focusedComponentIdx.value === undefined &&
+      selectedComponentIndexes.size === 0
+    ) {
       // when we're on mount, we need to wait until the next tick for the ref
       // yes, there are 2 on purpose
       await nextTick();
       selectComponent(idx);
+      setFocusedComponentIdx(idx); // Set focus for URL-based selection
     }
   } else delete query.s;
 
