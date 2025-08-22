@@ -1,6 +1,7 @@
 import { Command } from "@cliffy/command";
 import { start_stdio } from "./stdio_transport.ts";
 import { createServer } from "./server.ts";
+import { analytics } from "./analytics.ts";
 
 export async function run() {
   const command = new Command()
@@ -28,6 +29,7 @@ export async function run() {
       "Start the SI MCP Server over the stdio transport",
     )
     .action(async () => {
+      await analytics.trackServerStart();
       const server = createServer();
       await start_stdio(server);
     });

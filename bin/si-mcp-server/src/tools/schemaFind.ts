@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import { isValid } from "ulid";
 import { getDocumentationForService } from "../data/cfDb.ts";
@@ -69,6 +70,7 @@ export function schemaFindTool(server: McpServer) {
       outputSchema: FindSchemaOutputSchemaRaw,
     },
     async ({ changeSetId, schemaNameOrId }): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       if (!changeSetId) {
         const changeSetsApi = new ChangeSetsApi(apiConfig);
         try {
@@ -283,6 +285,7 @@ Alternatively, you can authenticate by assuming an IAM role, which provides long
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

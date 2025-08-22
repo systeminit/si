@@ -12,6 +12,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import { ActionList, ActionSchema } from "../data/actions.ts";
 import { ChangeSet } from "../data/changeSets.ts";
@@ -55,6 +56,7 @@ export function actionListTool(server: McpServer) {
       outputSchema: ListActionsOutputSchemaRaw,
     },
     async ({ changeSetId }): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       if (!changeSetId) {
         const changeSetsApi = new ChangeSetsApi(apiConfig);
         try {
@@ -135,6 +137,7 @@ export function actionListTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

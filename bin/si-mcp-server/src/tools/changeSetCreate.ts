@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import { ChangeSetSchema } from "../data/changeSets.ts";
 
@@ -46,6 +47,7 @@ export function changeSetCreateTool(server: McpServer) {
       outputSchema: CreateChangeSetOutputSchemaRaw,
     },
     async ({ changeSetName }): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       if (!changeSetName) {
         return errorResponse({
           message:
@@ -64,6 +66,7 @@ export function changeSetCreateTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

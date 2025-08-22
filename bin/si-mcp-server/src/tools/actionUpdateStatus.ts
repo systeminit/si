@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 
 const name = "action-update-status";
@@ -53,6 +54,7 @@ export function actionUpdateTool(server: McpServer) {
       outputSchema: UpdateActionOutputSchemaRaw,
     },
     async ({ changeSetId, newStatus, actionId }): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       if (!changeSetId) {
         return errorResponse({
           message:
@@ -105,6 +107,7 @@ export function actionUpdateTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

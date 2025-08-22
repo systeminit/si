@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { generateDescription, successResponse } from "./commonBehavior.ts";
+import { generateDescription, successResponse, withAnalytics } from "./commonBehavior.ts";
 import { getSchemaAttributeDocumentation } from "../data/cfDb.ts";
 
 const name = "schema-attributes-documentation";
@@ -55,7 +55,8 @@ export function schemaAttributesDocumentationTool(server: McpServer) {
       inputSchema: DocumentSchemaAttributesInputSchemaRaw,
       outputSchema: DocumentSchemaAttributesOutputSchemaRaw,
     },
-    ({ documentationToRetrive }): CallToolResult => {
+    async ({ documentationToRetrive }): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const docs = [];
       for (const docSpec of documentationToRetrive) {
         const documentation = getSchemaAttributeDocumentation(
@@ -73,6 +74,7 @@ export function schemaAttributesDocumentationTool(server: McpServer) {
       return successResponse(
         docs,
       );
+      });
     },
   );
 }

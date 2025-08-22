@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import { AttributesSchema } from "../data/components.ts";
 
@@ -56,6 +57,7 @@ export function componentUpdateTool(server: McpServer) {
     async (
       { changeSetId, attributes, componentId },
     ): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const siApi = new ComponentsApi(apiConfig);
       try {
         await siApi.updateComponent({
@@ -76,6 +78,7 @@ export function componentUpdateTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }
