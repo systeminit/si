@@ -70,4 +70,5 @@ pub async fn assemble(ctx: DalContext, id: SchemaId) -> crate::Result<CachedSche
     ))
 }
 
+pub mod prop_conversion;
 pub mod variant;

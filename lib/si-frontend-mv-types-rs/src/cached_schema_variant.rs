@@ -8,7 +8,10 @@ use si_events::{
     workspace_snapshot::EntityKind,
 };
 
-use crate::reference::ReferenceKind;
+use crate::{
+    prop_schema::PropSchemaV1,
+    reference::ReferenceKind,
+};
 
 #[derive(
     Debug,
@@ -39,7 +42,7 @@ pub struct CachedSchemaVariant {
     pub asset_func_id: FuncId,
     pub variant_func_ids: Vec<FuncId>,
     pub is_default_variant: bool,
-    // Note: domain_props excluded for Phase 1 as specified in the brief
+    pub domain_props: Option<PropSchemaV1>,
 }
 
 impl CachedSchemaVariant {
@@ -55,6 +58,7 @@ impl CachedSchemaVariant {
         asset_func_id: FuncId,
         variant_func_ids: Vec<FuncId>,
         is_default_variant: bool,
+        domain_props: Option<PropSchemaV1>,
     ) -> Self {
         Self {
             id: variant_id, // Use variant_id as the MV object ID
@@ -68,6 +72,7 @@ impl CachedSchemaVariant {
             asset_func_id,
             variant_func_ids,
             is_default_variant,
+            domain_props,
         }
     }
 }

@@ -1,8 +1,3 @@
-use std::collections::{
-    HashMap,
-    VecDeque,
-};
-
 use axum::{
     Json,
     Router,
@@ -12,11 +7,8 @@ use axum::{
     routing::get,
 };
 use dal::{
-    DalContext,
     FuncId,
-    Prop,
     PropId,
-    PropKind,
     SchemaId,
     SchemaVariantId,
     prop::PropError,
@@ -25,6 +17,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_frontend_mv_types::prop_schema::PropSchemaV1 as CachedPropSchemaV1;
 use thiserror::Error;
 use utoipa::ToSchema;
 
@@ -59,6 +52,8 @@ pub enum SchemaError {
     SchemaVariantNotMemberOfSchema(SchemaId, SchemaVariantId),
     #[error("validation error: {0}")]
     Validation(String),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -96,6 +91,12 @@ impl crate::service::v1::common::ErrorIntoResponse for SchemaError {
             SchemaError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
+    }
+}
+
+impl From<PropError> for SchemaError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
     }
 }
 
@@ -448,88 +449,35 @@ pub struct PropSchemaV1 {
     pub description: Option<String>,
     #[schema(value_type = Vec<PropSchemaV1>, no_recursion)]
     pub children: Option<Vec<PropSchemaV1>>,
+    // New fields from PropSpecData (excluding func/widget/ui fields)
+    #[schema(value_type = String)]
+    pub validation_format: Option<String>,
+    #[schema(value_type = serde_json::Value)]
+    pub default_value: Option<serde_json::Value>,
+    #[schema(value_type = bool)]
+    pub hidden: Option<bool>,
+    #[schema(value_type = String)]
+    pub doc_link: Option<String>,
 }
 
-pub async fn build_prop_schema_tree(
-    ctx: &DalContext,
-    root_prop_id: PropId,
-) -> SchemaResult<PropSchemaV1> {
-    // First, we'll collect all props in the tree with a BFS approach
-    let mut props_map = HashMap::new();
-    let mut child_map = HashMap::new();
-    let mut queue = VecDeque::new();
-    queue.push_back(root_prop_id);
-
-    // BFS to collect all props and their relationships
-    while let Some(prop_id) = queue.pop_front() {
-        if props_map.contains_key(&prop_id) {
-            continue; // Skip if we've already processed this prop
-        }
-
-        let prop = Prop::get_by_id(ctx, prop_id).await.map_err(Box::new)?;
-        props_map.insert(prop_id, prop.clone());
-
-        if matches!(
-            prop.kind,
-            PropKind::Object | PropKind::Array | PropKind::Map
-        ) {
-            let child_ids = Prop::direct_child_prop_ids_ordered(ctx, prop_id)
-                .await
-                .map_err(Box::new)?;
-            child_map.insert(prop_id, child_ids.clone());
-
-            // Add children to the queue
-            for child_id in child_ids {
-                queue.push_back(child_id);
-            }
+impl From<CachedPropSchemaV1> for PropSchemaV1 {
+    fn from(cached: CachedPropSchemaV1) -> Self {
+        Self {
+            prop_id: cached.prop_id,
+            name: cached.name,
+            prop_type: cached.prop_type,
+            description: cached.description,
+            children: cached
+                .children
+                .map(|children| children.into_iter().map(PropSchemaV1::from).collect()),
+            validation_format: cached.validation_format,
+            default_value: cached.default_value,
+            hidden: cached.hidden,
+            doc_link: cached.doc_link,
         }
     }
-
-    // Now build the tree bottom-up
-    build_prop_schema_from_maps(root_prop_id, &props_map, &child_map)
 }
 
-fn build_prop_schema_from_maps(
-    prop_id: PropId,
-    props_map: &HashMap<PropId, Prop>,
-    child_map: &HashMap<PropId, Vec<PropId>>,
-) -> SchemaResult<PropSchemaV1> {
-    let prop = props_map
-        .get(&prop_id)
-        .ok_or_else(|| SchemaError::Validation(format!("Prop {prop_id} not found in map")))?;
-
-    let prop_type = match prop.kind {
-        PropKind::String => "string",
-        PropKind::Boolean => "boolean",
-        PropKind::Object => "object",
-        PropKind::Array => "array",
-        PropKind::Map => "map",
-        PropKind::Integer => "number",
-        PropKind::Json => "json",
-        PropKind::Float => "float",
-    };
-
-    let mut children = Vec::new();
-
-    if let Some(child_ids) = child_map.get(&prop_id) {
-        for &child_id in child_ids {
-            let child_schema = build_prop_schema_from_maps(child_id, props_map, child_map)?;
-            children.push(child_schema);
-        }
-    }
-
-    Ok(PropSchemaV1 {
-        prop_id,
-        name: prop.name.to_string(),
-        prop_type: prop_type.to_string(),
-        description: prop.documentation.clone(),
-        children: if children.is_empty() {
-            None
-        } else {
-            Some(children)
-        },
-    })
-}
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSchemaV1Response {

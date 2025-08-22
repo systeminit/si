@@ -130,6 +130,8 @@ pub enum PropError {
     NodeWeight(#[from] NodeWeightError),
     #[error("prop {0} is orphaned")]
     PropIsOrphan(PropId),
+    #[error("prop not found: {0}")]
+    PropNotFound(PropId),
     #[error("prop {0} has a non prop or schema variant parent")]
     PropParentInvalid(PropId),
     #[error("schema error: {0}")]
@@ -160,6 +162,7 @@ pub type PropResult<T> = Result<T, PropError>;
 
 pub const SECRET_KIND_WIDGET_OPTION_LABEL: &str = "secretKind";
 
+pub use si_frontend_mv_types::prop_schema::PropSchemaV1;
 pub use si_id::PropId;
 
 // TODO: currently we only have string values in all widget_options but we should extend this to

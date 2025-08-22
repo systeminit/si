@@ -36,6 +36,7 @@ pub mod index;
 pub mod management;
 pub mod materialized_view;
 pub mod object;
+pub mod prop_schema;
 pub mod reference;
 pub mod schema_variant;
 pub mod secret;
@@ -46,6 +47,7 @@ pub use crate::{
     cached_schema::CachedSchema,
     cached_schema_variant::CachedSchemaVariant,
     materialized_view::MaterializedView,
+    prop_schema::PropSchemaV1,
     schema_variant::{
         SchemaVariant,
         UninstalledVariant,

@@ -4,7 +4,10 @@ use dal::{
     cached_module::CachedModule,
     schema::variant::DEFAULT_SCHEMA_VARIANT_COLOR,
 };
-use si_frontend_mv_types::cached_schema_variant::CachedSchemaVariant as CachedSchemaVariantMv;
+use si_frontend_mv_types::{
+    cached_schema_variant::CachedSchemaVariant as CachedSchemaVariantMv,
+    prop_schema::PropSchemaV1,
+};
 use si_id::FuncId;
 use si_pkg::{
     SiPkgSchema,
@@ -12,7 +15,10 @@ use si_pkg::{
 };
 use telemetry::prelude::*;
 
-use crate::cached::collect_function_ids;
+use crate::cached::{
+    collect_function_ids,
+    schema::prop_conversion::convert_prop_spec_to_schema_v1,
+};
 
 /// Data structure for assembled variant information
 pub(crate) struct AssembledVariantData {
@@ -24,6 +30,7 @@ pub(crate) struct AssembledVariantData {
     pub link: Option<String>,
     pub asset_func_id: FuncId,
     pub variant_func_ids: Vec<FuncId>,
+    pub domain_props: Option<PropSchemaV1>,
 }
 
 /// Assembles variant data from schema and variant components
@@ -113,6 +120,9 @@ pub(crate) async fn assemble_variant_data(
     variant_func_ids.sort_unstable();
     variant_func_ids.dedup();
 
+    // Extract domain props from variant spec
+    let domain_props = extract_domain_props_from_variant(schema, variant, variant_id).await;
+
     Ok(AssembledVariantData {
         variant_id,
         display_name,
@@ -125,7 +135,51 @@ pub(crate) async fn assemble_variant_data(
         link: variant_data.link().map(|l| l.to_string()),
         asset_func_id,
         variant_func_ids,
+        domain_props,
     })
+}
+
+/// Extract domain props from a schema variant using PropSpec conversion
+async fn extract_domain_props_from_variant(
+    schema: &SiPkgSchema<'_>,
+    variant: &SiPkgSchemaVariant<'_>,
+    variant_id: SchemaVariantId,
+) -> Option<PropSchemaV1> {
+    // Get the variant spec which contains the domain PropSpec
+    let variant_spec = match variant.to_spec().await {
+        Ok(spec) => spec,
+        Err(e) => {
+            error!(
+                "Failed to get variant spec for variant {} in schema '{}': {}. MV will have no prop info.",
+                variant_id,
+                schema.name(),
+                e
+            );
+            return None;
+        }
+    };
+
+    // Convert domain PropSpec to PropSchemaV1 using our conversion function
+    match convert_prop_spec_to_schema_v1(&variant_spec.domain, schema.name(), variant_id, "domain")
+    {
+        Ok(domain_schema) => {
+            debug!(
+                "Successfully extracted domain props for variant {} in schema '{}'",
+                variant_id,
+                schema.name()
+            );
+            Some(domain_schema)
+        }
+        Err(e) => {
+            error!(
+                "Failed to convert domain props for variant {} in schema '{}': {}. MV will have no prop info.",
+                variant_id,
+                schema.name(),
+                e
+            );
+            None
+        }
+    }
 }
 
 #[instrument(
@@ -137,6 +191,7 @@ pub async fn assemble(
     ctx: DalContext,
     id: SchemaVariantId,
 ) -> crate::Result<CachedSchemaVariantMv> {
+    info!("Assembling CachedSchemaVariantMv: {id}");
     // Find the cached module containing this variant by storing the module info
     for mut module in CachedModule::latest_modules(&ctx).await? {
         let si_pkg = module.si_pkg(&ctx).await?;
@@ -183,6 +238,7 @@ pub async fn assemble(
                                 assembled_data.asset_func_id,
                                 assembled_data.variant_func_ids,
                                 is_default_variant,
+                                assembled_data.domain_props,
                             ));
                         }
                     }

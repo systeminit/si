@@ -5,6 +5,7 @@ use dal::{
     SchemaVariant,
     cached_module::CachedModule,
     schema::variant::root_prop::RootPropChild,
+    workspace_snapshot::traits::prop::PropExt,
 };
 use sdf_extract::{
     EddaClient,
@@ -24,7 +25,6 @@ use super::{
     SchemaResult,
     SchemaVariantResponseV1,
     SchemaVariantV1RequestPath,
-    build_prop_schema_tree,
 };
 use crate::extract::{
     PosthogEventTracker,
@@ -78,7 +78,11 @@ pub async fn get_variant(
                 )
                 .await
                 .map_err(Box::new)?;
-                let domain_prop_schema = build_prop_schema_tree(ctx, domain.id).await?;
+                let domain_prop_schema = ctx
+                    .workspace_snapshot()?
+                    .build_prop_schema_tree(ctx, domain.id)
+                    .await?
+                    .into();
 
                 tracker.track(
                     ctx,
@@ -138,7 +142,7 @@ pub async fn get_variant(
                     asset_func_id: cached_variant.asset_func_id,
                     variant_func_ids: cached_variant.variant_func_ids,
                     is_default_variant: cached_variant.is_default_variant,
-                    domain_props: None,
+                    domain_props: cached_variant.domain_props.map(Into::into),
                 };
 
                 tracker.track(
