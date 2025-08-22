@@ -424,38 +424,42 @@
         <div
           :class="
             clsx(
-              'flex-none h-12 border-t flex flex-row items-center gap-xs p-xs',
+              'flex-none border-t flex flex-col gap-xs p-xs min-h-[48px]',
               themeClasses('border-neutral-400', 'border-neutral-600'),
             )
           "
         >
-          <TextPill
-            v-tooltip="componentCountTooltip"
-            class="flex-none rounded p-xs text-sm"
-            variant="key2"
-          >
-            Total: {{ componentList.length }}
-          </TextPill>
-          <TextPill
-            v-if="resourceCount > 0"
-            v-tooltip="resourceCountTooltip"
-            :class="
-              clsx(
-                'flex-none flex flex-row items-center gap-2xs rounded p-xs text-sm',
-                themeClasses(
-                  'border-success-400 bg-success-100 text-black',
-                  'border-success-800 bg-success-900 text-white',
-                ),
-              )
-            "
-          >
-            <Icon
-              :class="themeClasses('text-success-600', 'text-success-400')"
-              name="check-hex-outline"
-              size="xs"
-            />
-            {{ resourceCount }}
-          </TextPill>
+          <!-- Top row with counts -->
+          <div class="flex flex-row items-center gap-xs">
+            <TextPill
+              v-tooltip="componentCountTooltip"
+              class="flex-none rounded p-xs text-sm"
+              variant="key2"
+            >
+              Total: {{ componentList.length }}
+            </TextPill>
+            <TextPill
+              v-if="resourceCount > 0"
+              v-tooltip="resourceCountTooltip"
+              :class="
+                clsx(
+                  'flex-none flex flex-row items-center gap-2xs rounded p-xs text-sm',
+                  themeClasses(
+                    'border-success-400 bg-success-100 text-black',
+                    'border-success-800 bg-success-900 text-white',
+                  ),
+                )
+              "
+            >
+              <Icon
+                :class="themeClasses('text-success-600', 'text-success-400')"
+                name="check-hex-outline"
+                size="xs"
+              />
+              {{ resourceCount }}
+            </TextPill>
+          </div>
+          <!-- Status message row (appears below when needed) -->
           <RealtimeStatusPageState />
         </div>
       </template>
