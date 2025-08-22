@@ -473,6 +473,10 @@ const getTokenForWorkspace = (workspaceId: string) => {
   return tokensByWorkspacePk[workspaceId];
 };
 
+onMounted(async () => {
+  await checkOnboardingCompleteData();
+});
+
 onBeforeMount(async () => {
   if (container && container.loadingGuard.value) {
     return;
@@ -481,8 +485,6 @@ onBeforeMount(async () => {
   if (container) {
     container.loadingGuard.value = true;
   }
-
-  await checkOnboardingCompleteData();
 
   // NOTE(nick,wendy): if you do not have the flag enabled, you will be re-directed. This will be
   // true for all of the new hotness routes, provided that they are all children of the parent
