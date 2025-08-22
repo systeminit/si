@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import { AttributesSchema } from "../data/components.ts";
 
@@ -59,6 +60,7 @@ export function componentCreateTool(server: McpServer) {
     async (
       { changeSetId, componentName, schemaName, attributes },
     ): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const siApi = new ComponentsApi(apiConfig);
       try {
         const response = await siApi.createComponent({
@@ -82,6 +84,7 @@ export function componentCreateTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

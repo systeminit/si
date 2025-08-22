@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import { ChangeSetSchema } from "../data/changeSets.ts";
 
@@ -44,6 +45,7 @@ export function changeSetListTool(server: McpServer) {
       outputSchema: ListChangeSetsOutputSchemaRaw,
     },
     async (): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const siApi = new ChangeSetsApi(apiConfig);
       try {
         const response = await siApi.listChangeSets({
@@ -56,6 +58,7 @@ export function changeSetListTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

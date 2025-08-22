@@ -1,6 +1,24 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ZodTypeAny } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { analytics } from "../analytics.ts";
+
+export async function withAnalytics<T extends { isError?: boolean }>(
+  toolName: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  const startTime = Date.now();
+  const result = await operation();
+  const executionTime = Date.now() - startTime;
+  if (result.isError) {
+    // todo: track more interesting info
+    await analytics.trackError(toolName);
+  } else { 
+    // todo: consider otel for error tracking
+    await analytics.trackToolUsage(toolName, executionTime); 
+  }
+  return result;
+}
 
 export function generateDescription(
   desc: string,
@@ -27,7 +45,6 @@ export function successResponse(
   if (hints) {
     textResponse += `\n<hints>${hints}</hints>`;
   }
-
   return {
     content: [
       {

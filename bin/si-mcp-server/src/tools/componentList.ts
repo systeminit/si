@@ -12,6 +12,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import { ChangeSet } from "../data/changeSets.ts";
 
@@ -85,7 +86,8 @@ export function componentListTool(server: McpServer) {
       outputSchema: ListComponentsOutputSchemaRaw,
     },
     async ({ changeSetId, filters }): Promise<CallToolResult> => {
-      if (!changeSetId) {
+      return await withAnalytics(name, async () => {
+        if (!changeSetId) {
         const changeSetsApi = new ChangeSetsApi(apiConfig);
         try {
           const changeSetList = await changeSetsApi.listChangeSets({
@@ -117,6 +119,7 @@ export function componentListTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

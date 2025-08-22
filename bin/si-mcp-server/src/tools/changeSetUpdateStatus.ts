@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 
 const name = "change-set-update-status";
@@ -55,6 +56,7 @@ export function changeSetUpdateTool(server: McpServer) {
       outputSchema: UpdateChangeSetOutputSchemaRaw,
     },
     async ({ changeSetId, newStatus }): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       if (!changeSetId) {
         return errorResponse({
           message:
@@ -127,6 +129,7 @@ export function changeSetUpdateTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

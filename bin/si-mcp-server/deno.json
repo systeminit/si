@@ -2,6 +2,7 @@
   "tasks": {
     "dev": "deno run -A --watch main.ts stdio",
     "inspector": "npx @modelcontextprotocol/inspector deno run -A ./main.ts stdio",
+    "build": "deno compile --allow-env --allow-net main.ts",
     "docker:build": "docker build -t si-mcp-server .",
     "docker:run": "docker run --rm -i si-mcp-server"
   },
@@ -16,6 +17,7 @@
     "axios": "npm:axios@^1.6.1",
     "jwt-decode": "npm:jwt-decode@^4.0.0",
     "lodash": "npm:lodash@^4.17.21",
+    "posthog-node": "npm:posthog-node@^4.2.1",
     "ulid": "npm:ulid@^3.0.1",
     "zod": "npm:zod@^3.21.4",
     "zod-to-json-schema": "npm:zod-to-json-schema@^3.24.6"

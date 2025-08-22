@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import _ from "lodash";
 
@@ -56,6 +57,7 @@ export function componentEnqueueActionTool(server: McpServer) {
     async (
       { changeSetId, componentId, actionName },
     ): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const siApi = new ComponentsApi(apiConfig);
       try {
         const response = await siApi.addAction({
@@ -74,6 +76,7 @@ export function componentEnqueueActionTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

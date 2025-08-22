@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import _ from "lodash";
 import { AttributesSchema } from "../data/components.ts";
@@ -109,6 +110,7 @@ export function componentGetTool(server: McpServer) {
     async (
       { changeSetId, componentId, code, qualifications },
     ): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const siApi = new ComponentsApi(apiConfig);
       try {
         const response = await siApi.getComponent({
@@ -216,6 +218,7 @@ export function componentGetTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

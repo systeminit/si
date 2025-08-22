@@ -7,8 +7,10 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 
+const name = "validate-credentials";
 const description =
   `<description>Validates System Initiative API credentials and workspace access. Returns information about the user, workspace, and token on success. On failure, returns error details.</description><usage>Use this tool to confirm a working credential, or after an API failure due to authentication, to confirm the credentials are working.</usage>`;
 
@@ -47,7 +49,7 @@ const ValidateCredentialOutputSchema = z.object(
 
 export function validateCredentialsTool(server: McpServer) {
   server.registerTool(
-    "validate-credentials",
+    name,
     {
       title: "Validate credentials with System Initiative",
       description: generateDescription(
@@ -61,6 +63,7 @@ export function validateCredentialsTool(server: McpServer) {
       outputSchema: ValidateCredentialOutputSchemaRaw,
     },
     async (): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const siApi = new WhoamiApi(apiConfig);
       try {
         const response = await siApi.whoami();
@@ -70,6 +73,7 @@ export function validateCredentialsTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

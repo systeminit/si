@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 
 const name = "component-erase";
@@ -56,6 +57,7 @@ export function componentEraseTool(server: McpServer) {
       outputSchema: EraseComponentOutputSchemaRaw,
     },
     async ({ changeSetId, componentId }): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const siApi = new ComponentsApi(apiConfig);
       try {
         await siApi.eraseComponent({
@@ -71,6 +73,7 @@ export function componentEraseTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

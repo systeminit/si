@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { generateDescription, successResponse } from "./commonBehavior.ts";
+import { generateDescription, successResponse, withAnalytics } from "./commonBehavior.ts";
 import { getAttributesForService } from "../data/cfDb.ts";
 
 const name = "schema-attributes-list";
@@ -56,7 +56,8 @@ export function schemaAttributesListTool(server: McpServer) {
       inputSchema: ListSchemaAttributesInputSchemaRaw,
       outputSchema: ListSchemaAttributesOutputSchemaRaw,
     },
-    ({ schemaName }): CallToolResult => {
+    async ({ schemaName }): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       let responseData: ListSchemaAttributesOutput["data"];
 
       if (schemaName == "AWS::IAM::User") {
@@ -403,6 +404,7 @@ export function schemaAttributesListTool(server: McpServer) {
         responseData,
         "If this is an AWS resource, the attributes map 1:1 to to the Cloudformation resource, where the path is calculated by looking at the Cloudformation resources nesting. You should look up the documentation for any attribute by its schemaName and path with the schema-attributes-documentation tool before setting any values.",
       );
+      });
     },
   );
 }

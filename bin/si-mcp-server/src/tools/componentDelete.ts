@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 
 const name = "component-delete";
@@ -58,6 +59,7 @@ export function componentDeleteTool(server: McpServer) {
       outputSchema: DeleteComponentOutputSchemaRaw,
     },
     async ({ changeSetId, componentId }): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const siApi = new ComponentsApi(apiConfig);
       try {
         await siApi.deleteComponent({
@@ -73,6 +75,7 @@ export function componentDeleteTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

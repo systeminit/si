@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import { AttributesSchema } from "../data/components.ts";
 
@@ -66,6 +67,7 @@ export function componentImportTool(server: McpServer) {
     async (
       { changeSetId, schemaName, resourceId, attributes },
     ): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       if (schemaName.startsWith("AWS")) {
         let hasCredential = false;
         let hasRegion = false;
@@ -168,6 +170,7 @@ export function componentImportTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }

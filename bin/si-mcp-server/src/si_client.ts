@@ -1,6 +1,7 @@
 import { Configuration } from "@systeminit/api-client";
 import { logger } from "./logger.ts";
 import { jwtDecode } from "jwt-decode";
+import { analytics } from "./analytics.ts";
 
 interface SIJwtPayload {
   workspaceId: string;
@@ -27,10 +28,14 @@ export const apiConfig = new Configuration({
 });
 const decoded = jwtDecode<SIJwtPayload>(apiToken);
 export const WORKSPACE_ID = decoded.workspaceId;
+export const USER_ID = decoded.userId;
 if (!WORKSPACE_ID) {
   logger.error(
     `Tried to extract workspace ID from API Token, but failed. Your token is likely malformed! The decoded token follows:\n\n${
       JSON.stringify(decoded, null, 2)
     }`,
   );
+}
+if (USER_ID) {
+  await analytics.identifyUser();
 }

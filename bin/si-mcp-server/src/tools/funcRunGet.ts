@@ -7,6 +7,7 @@ import {
   errorResponse,
   generateDescription,
   successResponse,
+  withAnalytics,
 } from "./commonBehavior.ts";
 import { decodeBase64 } from "@std/encoding/base64";
 
@@ -121,6 +122,7 @@ export function funcRunGetTool(server: McpServer) {
         result: showResult,
       },
     ): Promise<CallToolResult> => {
+      return await withAnalytics(name, async () => {
       const siApi = new FuncsApi(apiConfig);
       try {
         const response = await siApi.getFuncRun({
@@ -170,6 +172,7 @@ export function funcRunGetTool(server: McpServer) {
       } catch (error) {
         return errorResponse(error);
       }
+      });
     },
   );
 }
