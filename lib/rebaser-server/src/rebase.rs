@@ -22,10 +22,7 @@ use dal::{
 };
 use edda_client::EddaClient;
 use pending_events::PendingEventsError;
-use rebaser_core::api_types::{
-    enqueue_updates_request::EnqueueUpdatesRequest,
-    enqueue_updates_response::RebaseStatus,
-};
+use rebaser_core::api_types::enqueue_updates_request::EnqueueUpdatesRequest;
 use shuttle_server::ShuttleError;
 use si_events::{
     RebaseBatchAddressKind,
@@ -42,18 +39,22 @@ use crate::Features;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub(crate) enum RebaseError {
+    #[error("attempted to rebase for an abandoned change set: {0}")]
+    AbandonedChangeSet(ChangeSetId),
     #[error("audit logs stream error: {0}")]
     AuditLogsStream(#[from] AuditLogsStreamError),
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("edda client error: {0}")]
-    EddaClient(#[from] edda_client::ClientError),
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("missing rebase batch {0}")]
     MissingRebaseBatch(RebaseBatchAddressKind),
     #[error("pending events error: {0}")]
     PendingEvents(#[from] PendingEventsError),
+    #[error("perform updates error: {0}")]
+    PerformUpdates(#[source] WorkspaceSnapshotError),
+    #[error("send updates to edda error: {0}")]
+    SendEddaUpdates(#[from] SendEddaUpdatesError),
     #[error("serde_json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("shuttle error: {0}")]
@@ -93,13 +94,13 @@ type RebaseResult<T> = Result<T, RebaseError>;
         si.rebase.snapshot_fetch_parse_time = Empty,
         si.rebase.pointer_updated = Empty
     ))]
-pub async fn perform_rebase(
+pub(crate) async fn perform_rebase(
     ctx: &mut DalContext,
     edda: &EddaClient,
     request: &EnqueueUpdatesRequest,
     server_tracker: &TaskTracker,
     features: Features,
-) -> RebaseResult<RebaseStatus> {
+) -> RebaseResult<RebaseBatchAddressKind> {
     let start = Instant::now();
     let workspace = get_workspace(ctx).await?;
     let updating_head = request.change_set_id == workspace.default_change_set_id();
@@ -110,9 +111,7 @@ pub async fn perform_rebase(
     // if the change set isn't active, do not do this work
     if !to_rebase_change_set.status.is_active() {
         debug!("Attempted to rebase for abandoned change set. Early returning");
-        return Ok(RebaseStatus::Error {
-            message: "Attempted to rebase for an abandoned change set.".to_string(),
-        });
+        return Err(RebaseError::AbandonedChangeSet(to_rebase_change_set.id));
     }
 
     let to_rebase_workspace_snapshot_address = to_rebase_change_set.workspace_snapshot_address;
@@ -225,9 +224,7 @@ pub async fn perform_rebase(
 
     debug!("rebase elapsed: {:?}", start.elapsed());
 
-    Ok(RebaseStatus::Success {
-        updates_performed: request.updates_address,
-    })
+    Ok(request.updates_address)
 }
 
 async fn rebase_split(
@@ -274,7 +271,8 @@ async fn rebase_split(
 
     to_rebase_workspace_snapshot
         .perform_updates(corrected_transforms.as_slice())
-        .await?;
+        .await
+        .map_err(RebaseError::PerformUpdates)?;
 
     let new_snapshot_address = to_rebase_workspace_snapshot.write(ctx).await?;
     debug!("Workspace snapshot updated to {}", new_snapshot_address);
@@ -293,6 +291,13 @@ async fn rebase_split(
 
     // Before replying to the requester or sending the Edda request, we must commit.
     ctx.commit_no_rebase().await?;
+
+    // ---
+    // The rebase operation has comitted to the changes:
+    // - a snapshot is written to layer db
+    // - db pointer has been updated
+    // - the dal ctx has successfully committed
+    // ---
 
     send_updates_to_edda_split_snapshot(
         ctx,
@@ -367,7 +372,8 @@ async fn rebase_legacy(
 
     to_rebase_workspace_snapshot
         .perform_updates(&corrected_updates)
-        .await?;
+        .await
+        .map_err(RebaseError::PerformUpdates)?;
 
     debug!("updates complete: {:?}", start.elapsed());
     span.record(
@@ -378,6 +384,7 @@ async fn rebase_legacy(
         // Once all updates have been performed, we can write out, and update the pointer.
         to_rebase_workspace_snapshot.write(ctx).await?;
         debug!("snapshot written: {:?}", start.elapsed());
+        // Pointer change enqueued as part of db txn
         to_rebase_change_set
             .update_pointer(ctx, to_rebase_workspace_snapshot.id().await)
             .await?;
@@ -406,6 +413,13 @@ async fn rebase_legacy(
     // Before replying to the requester or sending the Edda request, we must commit.
     ctx.commit_no_rebase().await?;
 
+    // ---
+    // The rebase operation has comitted to the changes:
+    // - a snapshot is written to layer db
+    // - db pointer has been updated
+    // - the dal ctx has successfully committed
+    // ---
+
     send_updates_to_edda_legacy_snapshot(
         ctx,
         &original_workspace_snapshot,
@@ -420,6 +434,16 @@ async fn rebase_legacy(
     Ok(())
 }
 
+#[derive(Debug, Error)]
+pub(crate) enum SendEddaUpdatesError {
+    #[error("edda client error: {0}")]
+    EddaClient(#[from] edda_client::ClientError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
 pub(crate) async fn send_updates_to_edda_split_snapshot(
     ctx: &DalContext,
     original_workspace_snapshot: &SplitSnapshot,
@@ -428,7 +452,7 @@ pub(crate) async fn send_updates_to_edda_split_snapshot(
     change_set_id: ChangeSetId,
     workspace_id: WorkspacePk,
     span: Span,
-) -> Result<(), RebaseError> {
+) -> Result<(), SendEddaUpdatesError> {
     let changes = original_workspace_snapshot
         .detect_changes(to_rebase_workspace_snapshot)
         .instrument(tracing::info_span!(
@@ -457,7 +481,7 @@ pub(crate) async fn send_updates_to_edda_legacy_snapshot(
     change_set_id: ChangeSetId,
     workspace_id: WorkspacePk,
     span: Span,
-) -> Result<(), RebaseError> {
+) -> Result<(), SendEddaUpdatesError> {
     let changes = original_workspace_snapshot
         .detect_changes(to_rebase_workspace_snapshot)
         .instrument(tracing::info_span!(

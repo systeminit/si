@@ -135,7 +135,6 @@ impl ChangeSetProcessorTask {
             ctx_builder,
             run_dvu_notify,
             server_tracker,
-            internal_token.clone(),
             features,
         );
 
@@ -185,8 +184,12 @@ impl ChangeSetProcessorTask {
             )
             .layer(
                 JetstreamPostProcessLayer::new()
-                    .on_success(DeleteMessageOnSuccess::new(stream.clone()))
-                    .on_failure(MoveMessageOnFailure::new(stream, dead_letter_queue)),
+                    .on_success(OnSuccessRemoveMessage::new(stream.clone()))
+                    .on_failure(OnFailureHandleMessage::new(
+                        stream,
+                        internal_token.clone(),
+                        dead_letter_queue,
+                    )),
             )
             .service(handlers::default.with_state(state))
             .map_response(Response::into_response);
@@ -240,17 +243,17 @@ struct QuiescedCaptured {
 }
 
 #[derive(Clone, Debug)]
-struct DeleteMessageOnSuccess {
+struct OnSuccessRemoveMessage {
     stream: jetstream::stream::Stream,
 }
 
-impl DeleteMessageOnSuccess {
+impl OnSuccessRemoveMessage {
     fn new(stream: jetstream::stream::Stream) -> Self {
         Self { stream }
     }
 }
 
-impl jetstream_post_process::OnSuccess for DeleteMessageOnSuccess {
+impl jetstream_post_process::OnSuccess for OnSuccessRemoveMessage {
     fn call(
         &mut self,
         head: Arc<naxum::Head>,
@@ -273,73 +276,180 @@ impl jetstream_post_process::OnSuccess for DeleteMessageOnSuccess {
 }
 
 #[derive(Clone, Debug)]
-struct MoveMessageOnFailure {
+struct OnFailureHandleMessage {
     stream: jetstream::stream::Stream,
+    internal_token: CancellationToken,
     dead_letter_queue: DeadLetterQueue,
 }
 
-impl MoveMessageOnFailure {
-    fn new(stream: jetstream::stream::Stream, dead_letter_queue: DeadLetterQueue) -> Self {
+impl OnFailureHandleMessage {
+    fn new(
+        stream: jetstream::stream::Stream,
+        internal_token: CancellationToken,
+        dead_letter_queue: DeadLetterQueue,
+    ) -> Self {
         Self {
             stream,
+            internal_token,
             dead_letter_queue,
+        }
+    }
+
+    async fn shutdown_to_retry_message(internal_token: CancellationToken) {
+        internal_token.cancel();
+    }
+
+    async fn move_to_dlq(
+        head: Arc<naxum::Head>,
+        info: Arc<jetstream_post_process::Info>,
+        stream: jetstream::stream::Stream,
+        dead_letter_queue: DeadLetterQueue,
+    ) {
+        // Fetch the message associated with the error
+        let msg = match stream.get_raw_message(info.stream_sequence).await {
+            Ok(msg) => msg,
+            Err(err) => {
+                error!(
+                    si.error.message = ?err,
+                    subject = head.subject.as_str(),
+                    "failed to read errored message from stream",
+                );
+                return;
+            }
+        };
+
+        // Publish copy of errored message to the dead letter queues stream
+        if let Err(err) = dead_letter_queue
+            .publish_with_headers(msg.subject, msg.headers, msg.payload)
+            .await
+        {
+            error!(
+                si.error.message = ?err,
+                src_subject = head.subject.as_str(),
+                "failed to re-publish errored message to dead letter queue",
+            );
+            return;
+        }
+
+        // Delete errored message from original stream location
+        if let Err(err) = stream.delete_message(info.stream_sequence).await {
+            error!(
+                si.error.message = ?err,
+                subject = head.subject.as_str(),
+                "failed to delete the message",
+            );
         }
     }
 }
 
-impl jetstream_post_process::OnFailure for MoveMessageOnFailure {
+impl jetstream_post_process::OnFailure for OnFailureHandleMessage {
     fn call(
         &mut self,
         head: Arc<naxum::Head>,
         info: Arc<jetstream_post_process::Info>,
-        _status: Option<StatusCode>,
+        maybe_status: Option<StatusCode>,
     ) -> BoxFuture<'static, ()> {
-        let stream = self.stream.clone();
-        let dead_letter_queue = self.dead_letter_queue.clone();
-
-        Box::pin(async move {
-            error!(
-                subject = head.subject.as_str(),
-                stream_sequence = info.stream_sequence,
-                subject = head.subject.as_str(),
-                "error encoutered when processing message; moving to errored messages subject",
-            );
-
-            // Fetch the message associated with the error
-            let msg = match stream.get_raw_message(info.stream_sequence).await {
-                Ok(msg) => msg,
-                Err(err) => {
-                    error!(
-                        si.error.message = ?err,
-                        subject = head.subject.as_str(),
-                        "failed to read errored message from stream",
-                    );
-                    return;
-                }
-            };
-
-            // Publish copy of errored message to the dead letter queues stream
-            if let Err(err) = dead_letter_queue
-                .publish_with_headers(msg.subject, msg.headers, msg.payload)
-                .await
-            {
-                error!(
-                    si.error.message = ?err,
-                    src_subject = head.subject.as_str(),
-                    "failed to re-publish errored message to dead letter queue",
-                );
-                return;
-            }
-
-            // Delete errored message from original stream location
-            if let Err(err) = stream.delete_message(info.stream_sequence).await {
-                error!(
-                    si.error.message = ?err,
+        match maybe_status.map(|sc| sc.as_u16()) {
+            // - 406 "Not Acceptable" (**retry**)
+            //   - api type negotiation
+            //       - unsupported message type
+            //       - unsupported message version
+            //
+            // - 415 "Unsuppported Media Type" (**retry**)
+            //   - api type negotiation
+            //       - unsupported content type
+            //
+            // - 502 "Bad Gateway" (**retry**)
+            //   - `PreCommit`
+            //     - failed to completely process message before commiting to change
+            //
+            // - 503 "Service Unavailable" (**retry**)
+            //   - `TransientService`
+            //     - failed to process message due to transient service error
+            Some(code @ (406 | 415 | 502 | 503)) => {
+                warn!(
                     subject = head.subject.as_str(),
-                    "failed to delete the message",
+                    stream_sequence = info.stream_sequence,
+                    subject = head.subject.as_str(),
+                    status_code = code,
+                    concat!(
+                        "error encoutered when processing message; ",
+                        "message will be retried, shutting down processor task",
+                    ),
                 );
+
+                Box::pin(Self::shutdown_to_retry_message(self.internal_token.clone()))
             }
-        })
+            // - 400 "Bad Request" (**no retry**)
+            //   - api type negotiation
+            //     - required headers are missing
+            //     - failed to parse content info from headers
+            //     - failed to deserialize message payload (after checking type/version compat)
+            //     - failed to upgrade message to current (after checking type/version compat)
+            //   - `PreCommit`
+            //     - change set was abandoned
+            //
+            // -500 "Internal Server Error" (**no retry**)
+            //   - `PostCommit`
+            //     - failed to completely process message after commiting to change
+            Some(code @ (400 | 500)) => {
+                warn!(
+                    subject = head.subject.as_str(),
+                    stream_sequence = info.stream_sequence,
+                    subject = head.subject.as_str(),
+                    status_code = code,
+                    "error encoutered when processing message; moving to errored messages subject",
+                );
+
+                Box::pin(Self::move_to_dlq(
+                    head,
+                    info,
+                    self.stream.clone(),
+                    self.dead_letter_queue.clone(),
+                ))
+            }
+            // Unexpected code
+            Some(unexpected_code) => {
+                // TODO(fnichol): unlcear if this is `error` or `warn`
+                error!(
+                    subject = head.subject.as_str(),
+                    stream_sequence = info.stream_sequence,
+                    subject = head.subject.as_str(),
+                    status_code = unexpected_code,
+                    concat!(
+                        "error encoutered when processing message (unexpected status code); ",
+                        "moving to errored messages subject",
+                    ),
+                );
+
+                Box::pin(Self::move_to_dlq(
+                    head,
+                    info,
+                    self.stream.clone(),
+                    self.dead_letter_queue.clone(),
+                ))
+            }
+            // No code could be determined
+            None => {
+                // TODO(fnichol): unlcear if this is `error` or `warn`
+                error!(
+                    subject = head.subject.as_str(),
+                    stream_sequence = info.stream_sequence,
+                    subject = head.subject.as_str(),
+                    concat!(
+                        "error encoutered when processing message (no status code provided); ",
+                        "moving to errored messages subject",
+                    ),
+                );
+
+                Box::pin(Self::move_to_dlq(
+                    head,
+                    info,
+                    self.stream.clone(),
+                    self.dead_letter_queue.clone(),
+                ))
+            }
+        }
     }
 }
 
@@ -415,9 +525,15 @@ async fn graceful_shutdown_signal(
     internal_token: CancellationToken,
 ) {
     tokio::select! {
-        _ = task_token.cancelled() => {}
-        _ = quiescence_token.cancelled() => {}
-        _ = internal_token.cancelled() => {}
+        _ = task_token.cancelled() => {
+            trace!("task token has received cancellation");
+        }
+        _ = quiescence_token.cancelled() => {
+            trace!("quiescence token has received cancellation");
+        }
+        _ = internal_token.cancelled() => {
+            trace!("internal token has received cancellation");
+        }
     }
 }
 
@@ -489,7 +605,7 @@ mod handlers {
 
     #[remain::sorted]
     #[derive(Debug, Error)]
-    pub(crate) enum HandlerError {
+    pub(crate) enum HandlerErrorSource {
         /// Failures related to Actions
         #[error("action error: {0}")]
         Action(#[from] ActionError),
@@ -521,16 +637,76 @@ mod handlers {
         WsEvent(#[from] dal::WsEventError),
     }
 
+    #[remain::sorted]
+    #[derive(Debug, Error)]
+    pub(crate) enum HandlerError {
+        #[error("message processing error after commiting to change (delete message): {0}")]
+        PostCommit(#[source] HandlerErrorSource),
+        #[error("message processing error before commiting to change (retry message): {0}")]
+        PreCommit(#[source] HandlerErrorSource),
+        #[error("message processing error due to transient service (retry message): {0}")]
+        TransientService(#[source] HandlerErrorSource),
+        #[error("unprocessable message error (delete message): {0}")]
+        Unprocessable(#[source] HandlerErrorSource),
+    }
+
+    impl HandlerError {
+        pub(crate) fn pre_commit(err: impl Into<HandlerErrorSource>) -> Self {
+            Self::PreCommit(err.into())
+        }
+
+        pub(crate) fn post_commit(err: impl Into<HandlerErrorSource>) -> Self {
+            Self::PostCommit(err.into())
+        }
+
+        pub(crate) fn transient_service(err: impl Into<HandlerErrorSource>) -> Self {
+            Self::TransientService(err.into())
+        }
+
+        pub(crate) fn unprocessable(err: impl Into<HandlerErrorSource>) -> Self {
+            Self::Unprocessable(err.into())
+        }
+    }
+
     type Error = HandlerError;
+    type ErrorSource = HandlerErrorSource;
 
     type Result<T> = result::Result<T, HandlerError>;
 
     impl IntoResponse for HandlerError {
         fn into_response(self) -> Response {
             metric!(counter.change_set_processor_task.failed_rebase = 1);
-            // TODO(fnichol): there are different responses, esp. for expected interrupted
-            error!(si.error.message = ?self, "failed to process message");
-            Response::default_internal_server_error()
+
+            match self {
+                Self::PreCommit(err) => {
+                    error!(
+                        si.error.message = ?err,
+                        "failed to completely process message before commiting to change",
+                    );
+                    Response::default_bad_gateway()
+                }
+                Self::PostCommit(err) => {
+                    error!(
+                        si.error.message = ?err,
+                        "failed to completely process message after commiting to change",
+                    );
+                    Response::default_internal_server_error()
+                }
+                Self::TransientService(err) => {
+                    error!(
+                        si.error.message = ?err,
+                        "failed to process message due to transient service error",
+                    );
+                    Response::default_service_unavailable()
+                }
+                Self::Unprocessable(err) => {
+                    error!(
+                        si.error.message = ?err,
+                        "failed to process message which appears to be unprocessable",
+                    );
+                    Response::default_bad_request()
+                }
+            }
         }
     }
 
@@ -547,7 +723,6 @@ mod handlers {
             ctx_builder,
             run_notify,
             server_tracker,
-            internal_token,
             features,
         } = state;
         let span = Span::current();
@@ -556,38 +731,67 @@ mod handlers {
         let metric_label = format!("{workspace_id}:{change_set_id}");
 
         metric!(counter.rebaser.rebase_processing = 1, label = metric_label);
+
         let mut ctx = ctx_builder
             .build_for_change_set_as_system(workspace_id, change_set_id, None)
-            .await?;
-
-        let rebase_status = perform_rebase(&mut ctx, &edda, &request, &server_tracker, features)
             .await
-            .unwrap_or_else(|err| {
-                error!(
-                    si.error.message = ?err,
-                    ?request,
-                    "performing rebase failed, attempting to reply",
-                );
-                RebaseStatus::Error {
-                    message: err.to_string(),
+            .map_err(|err| match &err {
+                // - Failed to get connection from pool or other pg pool issue
+                dal::TransactionsError::PgPool(_)
+                // - Failed to determine change set via db query
+                | dal::TransactionsError::ChangeSet(_)
+                // - Failed to determine workspace via db query
+                // - Failed to determine snapshot address via db query
+                // - Failed to load snapshot from layer db
+                //
+                | dal::TransactionsError::Workspace(_)
+                => {
+                    HandlerError::transient_service(err)
                 }
-            });
+                _ => HandlerError::pre_commit(err)
+            })?;
 
-        let maybe_post_rebase_activities_result =
-            if matches!(rebase_status, RebaseStatus::Success { .. }) {
-                Some(
-                    post_rebase_activities(
-                        workspace_id,
-                        change_set_id,
-                        &edda,
-                        run_notify,
-                        &mut ctx,
+        let rebase_batch_address_kind_result =
+            match perform_rebase(&mut ctx, &edda, &request, &server_tracker, features).await {
+                Ok(rebase_batch_address_kind) => Ok(rebase_batch_address_kind),
+                Err(rebase_error) => match &rebase_error {
+                    // - Failed to compute correct transforms. Failures here are related to the
+                    //   structure of a graph snapshot and so would reliably and reproducibly fail
+                    //   on additional retries.
+                    RebaseError::WorkspaceSnapshot(
+                        dal::WorkspaceSnapshotError::CorrectTransforms(_)
+                        | dal::WorkspaceSnapshotError::CorrectTransformsSplit(_),
                     )
-                    .await,
-                )
-            } else {
-                None
+                    // - Failed to perform updates from correct transforms. For similar reasons as
+                    //   above, these error are a result of unexpected graph snapshot structures
+                    //   and would reliably and reproducibly failed on additional retries.
+                    | RebaseError::PerformUpdates(_)
+                    // - Change set was abandoned and will not be "un-abandoned"
+                    | RebaseError::AbandonedChangeSet(_) => {
+                        Err(HandlerError::unprocessable(rebase_error))
+                    }
+                    // - Failed to send updates to edda, but this is after commit so should *not*
+                    //   retry
+                    RebaseError::SendEddaUpdates(_) => {
+                        Err(HandlerError::post_commit(rebase_error))
+                    }
+                    // - Failed to successfully commit the changes--all these errors are pre-commit
+                    //   and so message should be retried
+                    _ => {
+                        Err(HandlerError::pre_commit(rebase_error))
+                    }
+                },
             };
+
+        let maybe_post_rebase_activities_result = if rebase_batch_address_kind_result.is_ok() {
+            Some(
+                post_rebase_activities(workspace_id, change_set_id, &edda, run_notify, &mut ctx)
+                    .await
+                    .map_err(HandlerError::post_commit),
+            )
+        } else {
+            None
+        };
 
         // If a reply was requested, send it
         if let Some(reply) = maybe_reply {
@@ -595,11 +799,18 @@ mod handlers {
                 id: request.id,
                 workspace_id: request.workspace_id,
                 change_set_id: request.change_set_id,
-                status: rebase_status,
+                status: match &rebase_batch_address_kind_result {
+                    Ok(rebase_batch_address_kind) => RebaseStatus::Success {
+                        updates_performed: *rebase_batch_address_kind,
+                    },
+                    Err(handler_error) => RebaseStatus::Error {
+                        message: handler_error.to_string(),
+                    },
+                },
             });
 
             let mut info = ContentInfo::from(&response);
-            let (content_type, payload) = response.to_vec()?;
+            let (content_type, payload) = response.to_vec().map_err(Error::post_commit)?;
             info.content_type = content_type.into();
 
             let mut headers = HeaderMap::new();
@@ -608,22 +819,33 @@ mod handlers {
 
             nats.publish_with_headers(reply, headers, payload.into())
                 .await
-                .map_err(Error::PublishReply)?;
+                .map_err(|err| Error::post_commit(ErrorSource::PublishReply(err)))?;
         }
 
         // TODO(fnichol): hrm, is this *really* true that we've written to the change set. I mean,
         // yes but until a dvu has finished this is an incomplete view?
-        let mut event = WsEvent::change_set_written(&ctx, change_set_id).await?;
+        let mut event = WsEvent::change_set_written(&ctx, change_set_id)
+            .await
+            .map_err(Error::post_commit)?;
         event.set_workspace_pk(workspace_id);
         event.set_change_set_id(Some(change_set_id));
-        event.publish_immediately(&ctx).await?;
+        event
+            .publish_immediately(&ctx)
+            .await
+            .map_err(Error::post_commit)?;
+
         metric!(counter.rebaser.rebase_processing = -1, label = metric_label);
 
-        match maybe_post_rebase_activities_result {
-            // If no error is returned in post-rebase activities, return ok
-            Some(Ok(_)) | None => Ok(()),
-            // Otherwise, if error is returned in post-rebase activities, return it
-            Some(Err(post_rebase_activities_err)) => Err(post_rebase_activities_err),
+        match (
+            rebase_batch_address_kind_result,
+            maybe_post_rebase_activities_result,
+        ) {
+            // If error occurred in perform rebase, return it as it's dominant error
+            (Err(handler_error), _) => Err(handler_error),
+            // If error occurred in post-rebase activities, return it
+            (Ok(_), Some(Err(handler_error))) => Err(handler_error),
+            // If no error is returned in perform rebase or post-rebase activities, return ok
+            (Ok(_), None) | (Ok(_), Some(Ok(_))) => Ok(()),
         }
     }
 
@@ -647,7 +869,7 @@ mod handlers {
         edda: &EddaClient,
         run_notify: std::sync::Arc<tokio::sync::Notify>,
         ctx: &mut dal::DalContext,
-    ) -> Result<()> {
+    ) -> result::Result<(), HandlerErrorSource> {
         let start = Instant::now();
         let span = current_span_for_instrument_at!("info");
 
@@ -711,7 +933,8 @@ mod handlers {
                                 workspace_id,
                                 span,
                             )
-                            .await?;
+                            .await
+                            .map_err(RebaseError::SendEddaUpdates)?;
                         }
                         WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
                             let og_split_snapshot =
@@ -727,7 +950,8 @@ mod handlers {
                                 workspace_id,
                                 span,
                             )
-                            .await?;
+                            .await
+                            .map_err(RebaseError::SendEddaUpdates)?;
                         }
                     }
                 }
@@ -751,10 +975,7 @@ mod app_state {
         WorkspacePk,
     };
     use tokio::sync::Notify;
-    use tokio_util::{
-        sync::CancellationToken,
-        task::TaskTracker,
-    };
+    use tokio_util::task::TaskTracker;
 
     use crate::Features;
 
@@ -776,8 +997,6 @@ mod app_state {
         /// A task tracker for server-level tasks that can outlive the lifetime of a change set
         /// processor task
         pub(crate) server_tracker: TaskTracker,
-        /// A internal cancellation token used to trigger the app's graceful shutdown
-        pub(crate) internal_token: CancellationToken,
         /// Static feature gate on new mv behavior
         pub(crate) features: Features,
     }
@@ -793,7 +1012,6 @@ mod app_state {
             ctx_builder: DalContextBuilder,
             run_notify: Arc<Notify>,
             server_tracker: TaskTracker,
-            internal_token: CancellationToken,
             features: Features,
         ) -> Self {
             Self {
@@ -804,7 +1022,6 @@ mod app_state {
                 ctx_builder,
                 run_notify,
                 server_tracker,
-                internal_token,
                 features,
             }
         }
