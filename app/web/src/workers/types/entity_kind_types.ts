@@ -44,6 +44,9 @@ export enum EntityKind {
   View = "View",
   ViewComponentList = "ViewComponentList",
   ViewList = "ViewList",
+  // IGNORING THESE
+  LuminorkDefaultVariant = "LuminorkDefaultVariant",
+  LuminorkSchemaVariant = "LuminorkSchemaVariant",
 }
 
 /**
