@@ -17,6 +17,8 @@ use crate::{
 
 mod v1;
 
+pub use v1::PropValueSource;
+
 pub type AuditLogKind = AuditLogKindV1;
 pub type AuditLogMetadata = AuditLogMetadataV1;
 
