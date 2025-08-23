@@ -4,6 +4,7 @@ use dal::{
     Component,
     DalContext,
     Func,
+    Prop,
     attribute::{
         prototype::argument::{
             AttributePrototypeArgument,
@@ -88,6 +89,15 @@ async fn diff_attributes(
     let mut attribute_diffs = vec![];
     let mut work_queue = Vec::from([(old_av_id, new_av_id)]);
     while let Some((old_av_id, new_av_id)) = work_queue.pop() {
+        if let Some(maybe_hidden) = new_av_id {
+            let new_prop_id = AttributeValue::prop_id(new_ctx, maybe_hidden).await?;
+            let new_prop = Prop::get_by_id(new_ctx, new_prop_id).await?;
+            if new_prop.hidden {
+                // This is a hidden prop, exclude it!
+                continue;
+            }
+        }
+
         match (old_av_id, new_av_id) {
             // Modified or Unchanged
             (Some(old_av_id), Some(new_av_id)) => {
