@@ -7,6 +7,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_events::audit_log::{
+    AuditLogKind,
+    PropValueSource,
+};
 use si_id::{
     AttributeValueId,
     ComponentId,
@@ -17,9 +21,14 @@ extern crate tuple_vec_map;
 
 use super::{
     path::AttributePath,
+    prototype::argument::{
+        AttributePrototypeArgument,
+        static_value::StaticArgumentValue,
+    },
     value::subscription::ValueSubscription,
 };
 use crate::{
+    AttributePrototype,
     AttributeValue,
     Component,
     DalContext,
@@ -39,6 +48,10 @@ pub type Result<T> = result::Result<T, AttributesError>;
 #[remain::sorted]
 #[derive(thiserror::Error, Debug)]
 pub enum AttributesError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] super::prototype::AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] super::prototype::argument::AttributePrototypeArgumentError),
     #[error("attribute $source: {0} has extra fields: {1}")]
     AttributeSourceHasExtraFields(serde_json::Value, serde_json::Value),
     #[error("invalid attribute $source: {0}")]
@@ -51,6 +64,8 @@ pub enum AttributesError {
     Component(#[from] crate::ComponentError),
     #[error("func error: {0}")]
     Func(#[from] crate::FuncError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("source component not found: {0}")]
     SourceComponentNotFound(String),
     #[error("transactions error: {0}")]
@@ -199,6 +214,54 @@ pub async fn update_attributes_without_validation(
     update_attributes_inner(ctx, component_id, updates).await
 }
 
+async fn get_before_prop_value_source(
+    ctx: &DalContext,
+    av_id: AttributeValueId,
+) -> Result<Option<PropValueSource>> {
+    let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
+    let args = AttributePrototype::list_arguments(ctx, prototype_id).await?;
+    let mut prop_value_sources = Vec::with_capacity(args.len());
+    for arg_id in args {
+        let source = AttributePrototypeArgument::value_source(ctx, arg_id).await?;
+        let prop_source = match source {
+            super::prototype::argument::value_source::ValueSource::StaticArgumentValue(
+                static_argument_value_id,
+            ) => {
+                let static_argument = StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
+                    .await?
+                    .value;
+                PropValueSource::Value(serde_json::to_value(static_argument)?)
+            }
+            super::prototype::argument::value_source::ValueSource::ValueSubscription(
+                value_subscription,
+            ) => match value_subscription.resolve(ctx).await? {
+                Some(resolved_av_id) => {
+                    let resolved_av = AttributeValue::get_by_id(ctx, resolved_av_id).await?;
+                    let source_component_id =
+                        AttributeValue::component_id(ctx, resolved_av_id).await?;
+                    let value = resolved_av.value(ctx).await?;
+                    PropValueSource::Subscription {
+                        value,
+                        source_component_id,
+                        source_path: value_subscription.path.to_string(),
+                    }
+                }
+                _ => PropValueSource::None,
+            },
+            _ => PropValueSource::None,
+        };
+        prop_value_sources.push(prop_source);
+    }
+
+    if prop_value_sources.len() > 1 || prop_value_sources.is_empty() {
+        // TODO: We need to handle what happens if there's no source or multiple sources
+        return Ok(None);
+    }
+
+    let source = prop_value_sources.into_iter().next();
+    Ok(source)
+}
+
 async fn update_attributes_inner(
     ctx: &DalContext,
     component_id: ComponentId,
@@ -213,10 +276,11 @@ async fn update_attributes_inner(
         match value.try_into()? {
             Some(value) => {
                 counts.set_count += 1;
-
-                // Create the attribute at the given path if it does not exist
+                // Create the attribute at the given pa th if it does not exist
                 let path = av_to_set.path();
                 let target_av_id = av_to_set.clone().vivify(ctx, component_id).await?;
+                let before_value_source = get_before_prop_value_source(ctx, target_av_id).await?;
+                let mut after_value_source: Option<PropValueSource> = None;
 
                 match value {
                     Source::Value(value) => {
@@ -235,7 +299,11 @@ async fn update_attributes_inner(
                             .value(ctx)
                             .await?;
                         AttributeValue::update(ctx, target_av_id, value.to_owned().into()).await?;
-                        if before_value != value.into() {
+                        if before_value != value.clone().into() {
+                            // Build the Audit Log entry!
+                            after_value_source =
+                                Some(PropValueSource::Value(serde_json::to_value(value)?));
+
                             // If the values have changed then we should enqueue an update action
                             // if the values haven't changed then we can skip this update action as it is usually a no-op
                             Component::enqueue_update_action_if_applicable(ctx, target_av_id)
@@ -275,19 +343,52 @@ async fn update_attributes_inner(
                         AttributeValue::set_to_subscription(
                             ctx,
                             target_av_id,
-                            subscription,
+                            subscription.clone(),
                             maybe_func_id,
                             Reason::new_user_added(ctx),
                         )
                         .await?;
+
+                        // Build the after value for the audit log!
+                        after_value_source = match subscription.resolve(ctx).await? {
+                            Some(resolved_av_id) => {
+                                let resolved_av =
+                                    AttributeValue::get_by_id(ctx, resolved_av_id).await?;
+                                let source_component_id =
+                                    AttributeValue::component_id(ctx, resolved_av_id).await?;
+                                let value = resolved_av.value(ctx).await?;
+                                Some(PropValueSource::Subscription {
+                                    value,
+                                    source_component_id,
+                                    source_path: subscription.path.to_string(),
+                                })
+                            }
+                            _ => Some(PropValueSource::None),
+                        };
                     }
                 }
+                ctx.write_audit_log(
+                    AuditLogKind::SetAttribute {
+                        component_id,
+                        attribute_value_id: target_av_id,
+                        path: path.to_string(),
+                        before_value: before_value_source,
+                        after_value: after_value_source,
+                    },
+                    path.to_string(),
+                )
+                .await?;
             }
             None => {
                 counts.unset_count += 1;
 
                 // Unset or remove the value if it exists
-                if let Some(target_av_id) = av_to_set.resolve(ctx, component_id).await? {
+                if let Some(target_av_id) = av_to_set.clone().resolve(ctx, component_id).await? {
+                    let before_value_source =
+                        get_before_prop_value_source(ctx, target_av_id).await?;
+
+                    let path = av_to_set.path();
+
                     AttributeValue::ensure_updateable(ctx, target_av_id).await?;
                     if parent_prop_is_map_or_array(ctx, target_av_id).await? {
                         // If the parent is a map or array, remove the value
@@ -301,6 +402,17 @@ async fn update_attributes_inner(
                             AttributeValue::use_default_prototype(ctx, target_av_id).await?;
                         }
                     }
+
+                    ctx.write_audit_log(
+                        AuditLogKind::UnsetAttribute {
+                            component_id,
+                            attribute_value_id: target_av_id,
+                            path: path.to_string(),
+                            before_value: before_value_source,
+                        },
+                        path.to_string(),
+                    )
+                    .await?;
                 }
             }
         }

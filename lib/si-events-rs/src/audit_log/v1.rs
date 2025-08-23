@@ -338,6 +338,13 @@ pub enum AuditLogKindV1 {
         func_name: String,
         run_status: bool,
     },
+    SetAttribute {
+        component_id: ComponentId,
+        attribute_value_id: AttributeValueId,
+        path: String,
+        before_value: Option<PropValueSource>,
+        after_value: Option<PropValueSource>,
+    },
     SetDefaultSubscriptionSource {
         component_id: ComponentId,
         av_id: AttributeValueId,
@@ -358,6 +365,12 @@ pub enum AuditLogKindV1 {
     UnlockSchemaVariant {
         schema_variant_id: SchemaVariantId,
         schema_variant_display_name: String,
+    },
+    UnsetAttribute {
+        component_id: ComponentId,
+        attribute_value_id: AttributeValueId,
+        path: String,
+        before_value: Option<PropValueSource>,
     },
     UpdateComponent {
         component_id: ComponentId,
@@ -814,6 +827,14 @@ pub enum AuditLogMetadataV1 {
         run_status: bool,
     },
     #[serde(rename_all = "camelCase")]
+    SetAttribute {
+        component_id: ComponentId,
+        attribute_value_id: AttributeValueId,
+        path: String,
+        before_value: Option<PropValueSource>,
+        after_value: Option<PropValueSource>,
+    },
+    #[serde(rename_all = "camelCase")]
     SetDefaultSubscriptionSource {
         component_id: ComponentId,
         av_id: AttributeValueId,
@@ -837,6 +858,13 @@ pub enum AuditLogMetadataV1 {
     UnlockSchemaVariant {
         schema_variant_id: SchemaVariantId,
         schema_variant_display_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    UnsetAttribute {
+        component_id: ComponentId,
+        attribute_value_id: AttributeValueId,
+        path: String,
+        before_value: Option<PropValueSource>,
     },
     #[serde(rename_all = "camelCase")]
     UpdateComponent {
@@ -1049,12 +1077,14 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::RestoreComponent => ("Restored", Some("Component")),
             MetadataDiscrim::RetryAction => ("Retried", Some("Action")),
             MetadataDiscrim::RunAction => ("Ran", Some("Action")),
+            MetadataDiscrim::SetAttribute => ("Set", Some("Attribute")),
             MetadataDiscrim::SetDefaultSubscriptionSource => {
                 ("Set Default", Some("Subscription Source"))
             }
             MetadataDiscrim::TestFunction => ("Tested", Some("Function")),
             MetadataDiscrim::UnlockFunc => ("Unlocked", Some("Function")),
             MetadataDiscrim::UnlockSchemaVariant => ("Unlocked", Some("Schema Variant")),
+            MetadataDiscrim::UnsetAttribute => ("Unset", Some("Attribute")),
             MetadataDiscrim::UpdateComponent => ("Updated", Some("Component")),
             MetadataDiscrim::UpdateComponentParent => ("Updated Parent", Some("Component")),
             MetadataDiscrim::UpdateDependentInputSocket => ("Set Dependent", Some("Input Socket")),
@@ -1541,6 +1571,19 @@ impl From<Kind> for Metadata {
                 func_name,
                 run_status,
             },
+            Kind::SetAttribute {
+                component_id,
+                attribute_value_id,
+                path,
+                before_value,
+                after_value,
+            } => Self::SetAttribute {
+                component_id,
+                attribute_value_id,
+                path,
+                before_value,
+                after_value,
+            },
             Kind::SetDefaultSubscriptionSource {
                 component_id,
                 av_id,
@@ -1578,6 +1621,17 @@ impl From<Kind> for Metadata {
             } => Self::UnlockSchemaVariant {
                 schema_variant_id,
                 schema_variant_display_name,
+            },
+            Kind::UnsetAttribute {
+                component_id,
+                attribute_value_id,
+                path,
+                before_value,
+            } => Self::UnsetAttribute {
+                component_id,
+                attribute_value_id,
+                path,
+                before_value,
             },
             Kind::UpdateComponent {
                 component_id,
@@ -1813,4 +1867,16 @@ impl From<Kind> for Metadata {
             },
         }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[allow(dead_code)]
+pub enum PropValueSource {
+    Value(serde_json::Value),
+    Subscription {
+        value: Option<serde_json::Value>,
+        source_component_id: ComponentId,
+        source_path: String,
+    },
+    None,
 }
