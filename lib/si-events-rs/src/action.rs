@@ -30,7 +30,17 @@ pub enum ActionKind {
 }
 
 #[derive(
-    Debug, Copy, Clone, Deserialize, Serialize, EnumDiscriminants, PartialEq, Eq, Display, Hash,
+    Debug,
+    Copy,
+    Clone,
+    Deserialize,
+    Serialize,
+    EnumDiscriminants,
+    PartialEq,
+    Eq,
+    Display,
+    Hash,
+    Default,
 )]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 pub enum ActionState {
@@ -44,6 +54,7 @@ pub enum ActionState {
     OnHold,
     /// Action is available to be dispatched once all of its prerequisites have succeeded, and been
     /// removed from the graph.
+    #[default]
     Queued,
     /// Action has been dispatched, and started execution in the job system. See the job history
     /// for details.

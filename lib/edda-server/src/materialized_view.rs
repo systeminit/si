@@ -37,6 +37,7 @@ use si_frontend_mv_types::{
     action::{
         ActionPrototypeViewList as ActionPrototypeViewListMv,
         ActionViewList as ActionViewListMv,
+        action_diff_list::ActionDiffList as ActionDiffListMv,
     },
     checksum::FrontendChecksum,
     component::{
@@ -46,6 +47,7 @@ use si_frontend_mv_types::{
         SchemaMembers,
         attribute_tree::AttributeTree as AttributeTreeMv,
         component_diff::ComponentDiff as ComponentDiffMv,
+        erased_components::ErasedComponents as ErasedComponentsMv,
     },
     dependent_values::DependentValueComponentList as DependentValueComponentListMv,
     incoming_connections::{
@@ -1264,6 +1266,18 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
     workspace_pk: si_id::WorkspacePk,
 ) -> Result<(), MaterializedViewError> {
     match mv_kind {
+        ReferenceKind::ActionDiffList => {
+            let workspace_mv_id = workspace_pk.to_string();
+            spawn_build_mv_task!(
+                build_tasks,
+                ctx,
+                frigg,
+                change,
+                workspace_mv_id,
+                ActionDiffListMv,
+                dal_materialized_views::action::action_diff_list::assemble(ctx.clone()),
+            );
+        }
         ReferenceKind::ActionPrototypeViewList => {
             let entity_mv_id = change.entity_id.to_string();
 
@@ -1274,7 +1288,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 change,
                 entity_mv_id,
                 ActionPrototypeViewListMv,
-                dal_materialized_views::action_prototype_view_list::assemble(
+                dal_materialized_views::action::action_prototype_view_list::assemble(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into()
                 ),
@@ -1290,7 +1304,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 change,
                 workspace_mv_id,
                 ActionViewListMv,
-                dal_materialized_views::action_view_list::assemble(ctx.clone()),
+                dal_materialized_views::action::action_view_list::assemble(ctx.clone()),
             );
         }
         ReferenceKind::AttributeTree => {
@@ -1368,6 +1382,18 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 ComponentListMv,
                 dal_materialized_views::component_list::assemble(ctx.clone()),
+            );
+        }
+        ReferenceKind::ErasedComponents => {
+            let workspace_mv_id = workspace_pk.to_string();
+            spawn_build_mv_task!(
+                build_tasks,
+                ctx,
+                frigg,
+                change,
+                workspace_mv_id,
+                ErasedComponentsMv,
+                dal_materialized_views::component::erased_components::assemble(ctx.clone()),
             );
         }
         ReferenceKind::DependentValueComponentList => {

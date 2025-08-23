@@ -11,6 +11,7 @@ use tuple_vec_map;
 use crate::{
     component::ComponentDiffStatus,
     reference::ReferenceKind,
+    secret::Secret,
 };
 
 /// Differences between a component in a changeset vs. head
@@ -56,6 +57,7 @@ pub struct ComponentDiff {
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(untagged, rename_all = "camelCase", deny_unknown_fields)]
+#[allow(clippy::large_enum_variant)]
 pub enum AttributeDiff {
     /// This value was added in the current changeset.
     Added { new: AttributeSourceAndValue },
@@ -218,6 +220,21 @@ pub enum SimplifiedAttributeSource {
     /// it.
     ///
     Prototype { prototype: String },
+    /// This attribute is set to a subscription to a secret Prop
+    ///
+    ///     { component: "My Region", path: "/secrets/AWS Credential", secret_name: "Production Creds" }
+    ///
+    SecretSubscription {
+        component: ComponentId,
+        path: String,
+        secret: Secret,
+    },
+
+    /// This attribute is set to a Secret Value
+    SecretValue {
+        value: serde_json::Value,
+        secret: Secret,
+    },
 }
 
 #[allow(clippy::panic_in_result_fn)]

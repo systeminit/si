@@ -5,6 +5,7 @@ use dal::{
     DalContext,
     Func,
     Prop,
+    Secret,
     attribute::{
         prototype::argument::{
             AttributePrototypeArgument,
@@ -31,6 +32,7 @@ use si_id::{
     AttributeValueId,
     ComponentId,
 };
+use telemetry::prelude::*;
 
 /// Generates a [`ComponentDiff`] MV.
 pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<ComponentDiff> {
@@ -382,6 +384,22 @@ async fn assemble_simplified_source(
     {
         let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
         if let Some(intrinsic) = Func::intrinsic_kind(ctx, func_id).await? {
+            // Secret value (value will be the EncryptedSecretKey but we need to get the actual Secret)
+            if let Some(ValueSource::Secret(secret_id)) =
+                AttributePrototypeArgument::value_source_opt(ctx, arg_id).await?
+            {
+                let value = match AttributeValue::get_by_id(ctx, av_id)
+                    .await?
+                    .value(ctx)
+                    .await?
+                {
+                    Some(value) => value,
+                    None => serde_json::Value::Null,
+                };
+                // if the value source is a secret - construct the correct response
+                let secret = crate::secret::assemble(ctx, secret_id).await?;
+                return Ok(SimplifiedAttributeSource::SecretValue { value, secret });
+            }
             // Static value (si:setString(), si:setObject(), etc.)
             if let Some(static_value) =
                 AttributePrototypeArgument::static_value_by_id(ctx, arg_id).await?
@@ -397,6 +415,41 @@ async fn assemble_simplified_source(
                 AttributePrototypeArgument::value_source(ctx, arg_id).await?
                 && IntrinsicFunc::Identity == intrinsic
             {
+                // Special case secrets
+                // if it's a subscription to /secrets/* - get the secret
+                if subscription
+                    .path
+                    .is_under(&dal::attribute::path::AttributePath::JsonPointer(
+                        "/secrets".to_string(),
+                    ))
+                {
+                    if let Some(secret_av_id) = subscription.resolve(ctx).await? {
+                        let component =
+                            AttributeValue::component_id(ctx, subscription.attribute_value_id)
+                                .await?;
+                        if let Some(value) = AttributeValue::get_by_id(ctx, secret_av_id)
+                            .await?
+                            .value(ctx)
+                            .await?
+                        {
+                            let secret_key = Secret::key_from_value_in_attribute_value(value)?;
+                            if let Ok(secret_id) =
+                                Secret::get_id_by_key_or_error(ctx, secret_key).await
+                            {
+                                let secret = crate::secret::assemble(ctx, secret_id).await?;
+                                return Ok(SimplifiedAttributeSource::SecretSubscription {
+                                    component,
+                                    path: subscription.path.to_string(),
+                                    secret,
+                                });
+                            } else {
+                                // Fall back to complex prototype if we can't find the secret?
+                                warn!(si.error.message="Could not find secret for secret key", si.secret_key=%secret_key);
+                            }
+                        }
+                    }
+                }
+
                 // Don't bother if the path isn't /; if it's a subscription whose root is
                 // deeply nested, we'll call it a complex prototype and let fmt_title handle it.
                 let (root_id, root_path) =
@@ -439,7 +492,7 @@ async fn child_av_pairs(
         // not detect whether two fields are the same.
         let old_av_id = match old_children.peek() {
             Some(&old_av_id) => {
-                let old_key = AttributeValue::key_for_id(new_ctx, old_av_id).await?;
+                let old_key = AttributeValue::key_for_id(old_ctx, old_av_id).await?;
                 let new_key = AttributeValue::key_for_id(new_ctx, new_av_id).await?;
                 match (old_key, new_key) {
                     (Some(old_key), Some(new_key)) if old_key == new_key => old_children.next(),

@@ -18,7 +18,7 @@ use telemetry::prelude::*;
 pub async fn assemble(
     ctx: DalContext,
     schema_variant_id: SchemaVariantId,
-) -> super::Result<ActionPrototypeViewListMv> {
+) -> crate::Result<ActionPrototypeViewListMv> {
     let ctx = &ctx;
 
     let action_prototypes_for_variant =

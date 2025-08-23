@@ -24,6 +24,7 @@ use crate::reference::{
 
 pub mod attribute_tree;
 pub mod component_diff;
+pub mod erased_components;
 
 #[derive(
     Debug,

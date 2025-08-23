@@ -35,6 +35,7 @@ pub use weak::WeakReference;
 )]
 #[serde(rename_all = "PascalCase")]
 pub enum ReferenceKind {
+    ActionDiffList,
     ActionPrototypeViewList,
     ActionViewList,
     AttributeTree,
@@ -51,6 +52,7 @@ pub enum ReferenceKind {
     ComponentList,
     DependentValueComponentList,
     DeploymentMvIndex,
+    ErasedComponents,
     IncomingConnections,
     IncomingConnectionsList,
     LuminorkDefaultVariant,

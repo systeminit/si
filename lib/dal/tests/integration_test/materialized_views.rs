@@ -88,7 +88,7 @@ async fn actions(ctx: &DalContext) -> Result<()> {
     let create_action = Action::get_by_id(ctx, create_action_id).await?;
 
     // Check the frontend payload for actions.
-    let mut mv = dal_materialized_views::action_view_list::assemble(ctx.clone()).await?;
+    let mut mv = dal_materialized_views::action::action_view_list::assemble(ctx.clone()).await?;
     let action_view = mv.actions.pop().ok_or_eyre("empty actions")?;
     assert!(mv.actions.is_empty(), "only one action should exist");
     assert_eq!(
@@ -111,7 +111,7 @@ async fn actions(ctx: &DalContext) -> Result<()> {
     );
 
     // Check the frontend payload for action prototypes.
-    let mv = dal_materialized_views::action_prototype_view_list::assemble(
+    let mv = dal_materialized_views::action::action_prototype_view_list::assemble(
         ctx.clone(),
         schema_variant_id,
     )
