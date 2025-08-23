@@ -1043,6 +1043,7 @@ const handleWorkspacePatchMessage = async (
        */
 
       const atoms = data.patches
+        .filter((rawAtom) => !IGNORE_LIST.has(rawAtom.kind))
         .map((rawAtom) => {
           const atom: WorkspaceAtom = {
             ...rawAtom,
@@ -1581,6 +1582,8 @@ const mjolnir = (
   id: Id,
   checksum?: Checksum,
 ) => {
+  if (IGNORE_LIST.has(kind)) return;
+
   const atomKey = `${kind}.${id}`;
   debug("🔨 MJOLNIR REQUESTED:", atomKey, "checksum:", checksum);
 
@@ -2005,7 +2008,9 @@ const niflheim = async (
 
     // Use index checksum for validation - this is more reliable than snapshot addresses
     const indexChecksum = req.data.indexChecksum;
-    const atoms = req.data.frontEndObject.data.mvList;
+    const atoms = req.data.frontEndObject.data.mvList.filter(
+      (atom) => !IGNORE_LIST.has(atom.kind),
+    );
     const meta = {
       changeSetId,
       workspaceId,
@@ -3036,6 +3041,11 @@ const getReferences = (
   }
 };
 
+const IGNORE_LIST = new Set<EntityKind>([
+  EntityKind.LuminorkDefaultVariant,
+  EntityKind.LuminorkSchemaVariant,
+]);
+
 const LISTABLE_ITEMS = [
   EntityKind.ComponentInList,
   EntityKind.IncomingConnections,
@@ -3774,6 +3784,8 @@ const dbInterface: TabDBInterface = {
   },
 
   get(workspaceId, changeSetId, kind, id) {
+    if (IGNORE_LIST.has(kind)) return -1;
+
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
@@ -3782,6 +3794,8 @@ const dbInterface: TabDBInterface = {
     );
   },
   getList(workspaceId, changeSetId, kind, id) {
+    if (IGNORE_LIST.has(kind)) return "";
+
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
@@ -3845,6 +3859,8 @@ const dbInterface: TabDBInterface = {
     );
   },
   mjolnir(workspaceId, changeSetId, kind, id, checksum) {
+    if (IGNORE_LIST.has(kind)) return;
+
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
