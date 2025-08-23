@@ -33,6 +33,8 @@ pub mod component;
 pub mod dependent_values;
 pub mod incoming_connections;
 pub mod index;
+pub mod luminork_default_variant;
+pub mod luminork_schema_variant;
 pub mod management;
 pub mod materialized_view;
 pub mod object;

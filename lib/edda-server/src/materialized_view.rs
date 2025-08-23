@@ -1428,6 +1428,39 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 dal_materialized_views::incoming_connections_list::assemble(ctx.clone()),
             );
         }
+        ReferenceKind::LuminorkSchemaVariant => {
+            let entity_mv_id = change.entity_id.to_string();
+
+            spawn_build_mv_task!(
+                build_tasks,
+                ctx,
+                frigg,
+                change,
+                entity_mv_id,
+                si_frontend_mv_types::luminork_schema_variant::LuminorkSchemaVariant,
+                dal_materialized_views::luminork::schema::variant::assemble(
+                    ctx.clone(),
+                    si_events::ulid::Ulid::from(change.entity_id).into()
+                ),
+            );
+        }
+        ReferenceKind::LuminorkDefaultVariant => {
+            let schema_id = si_events::ulid::Ulid::from(change.entity_id);
+            let entity_mv_id = change.entity_id.to_string();
+
+            spawn_build_mv_task!(
+                build_tasks,
+                ctx,
+                frigg,
+                change,
+                entity_mv_id,
+                si_frontend_mv_types::luminork_default_variant::LuminorkDefaultVariant,
+                dal_materialized_views::luminork::schema::variant::default::assemble(
+                    ctx.clone(),
+                    schema_id.into()
+                ),
+            );
+        }
         ReferenceKind::SchemaMembers => {
             let entity_mv_id = change.entity_id.to_string();
 

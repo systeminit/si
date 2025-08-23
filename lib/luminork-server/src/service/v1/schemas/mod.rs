@@ -11,8 +11,10 @@ use dal::{
     PropId,
     SchemaId,
     SchemaVariantId,
+    TransactionsError,
     prop::PropError,
 };
+use frigg::FriggError;
 use serde::{
     Deserialize,
     Serialize,
@@ -36,6 +38,8 @@ pub enum SchemaError {
     CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("decode error: {0}")]
     Decode(#[from] ulid::DecodeError),
+    #[error("frigg error: {0}")]
+    Frigg(#[from] FriggError),
     #[error("prop error: {0}")]
     Prop(#[from] Box<PropError>),
     #[error("schema error: {0}")]
@@ -50,6 +54,8 @@ pub enum SchemaError {
     SchemaVariantNotFound(SchemaVariantId),
     #[error("schema variant {0} not a variant for the schema {1} error")]
     SchemaVariantNotMemberOfSchema(SchemaId, SchemaVariantId),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("validation error: {0}")]
     Validation(String),
     #[error("workspace snapshot error: {0}")]
