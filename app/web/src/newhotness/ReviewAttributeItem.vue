@@ -1,5 +1,6 @@
 <template>
   <div
+    v-if="display"
     :class="
       clsx(
         'flex flex-col gap-xs p-xs border',
@@ -11,26 +12,29 @@
     "
   >
     <h1 class="h-10 py-xs">{{ name }}</h1>
-    <!-- TODO maybe you want to see container values (i.e. when there are children) when the source is not a value -->
-    <ReviewAttributeItemSourceAndValue
-      v-if="diff?.new"
-      :sourceAndValue="diff.new"
-    />
-    <!-- TODO use revertibleSource to determine revertibility (but right now revertibleSource seems not right!) -->
-    <ReviewAttributeItemSourceAndValue
-      v-if="diff?.old"
-      :sourceAndValue="diff.old"
-      old
-      revertible
-      @revert="revert"
-    />
-
+    <template v-if="!children || parentSourceChange">
+      <ReviewAttributeItemSourceAndValue
+        v-if="diff?.new"
+        :sourceAndValue="diff.new"
+        :secret="secret"
+      />
+      <!-- TODO use revertibleSource to determine revertibility (but right now revertibleSource seems not right!) -->
+      <ReviewAttributeItemSourceAndValue
+        v-if="diff?.old"
+        :sourceAndValue="diff.old"
+        old
+        :revertible="!disableRevert"
+        :secret="secret"
+        @revert="revert"
+      />
+    </template>
     <div v-if="children" class="flex flex-col gap-xs">
       <template v-for="(childItem, childName) in children" :key="childName">
         <ReviewAttributeItem
           :selectedComponentId="selectedComponentId"
           :name="childName"
           :item="childItem"
+          :disableRevert="disableRevertChildren"
         />
       </template>
     </div>
@@ -46,6 +50,10 @@ import { AttributeSource } from "@/store/components.store";
 import ReviewAttributeItemSourceAndValue from "./ReviewAttributeItemSourceAndValue.vue";
 import { useApi, routes, componentTypes } from "./api_composables";
 import { AttributeDiffTree } from "./Review.vue";
+import {
+  AttributeSourceLocation,
+  SimplifiedAttributeSource,
+} from "../workers/types/entity_kind_types";
 
 const saveApi = useApi();
 
@@ -56,6 +64,8 @@ const props = defineProps({
   },
   name: { type: String, required: true },
   item: { type: Object as PropType<AttributeDiffTree>, required: true },
+  secret: { type: Boolean },
+  disableRevert: { type: Boolean },
 });
 
 const path = computed(() => props.item.path);
@@ -85,6 +95,66 @@ const revert = async () => {
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 };
+
+const parentSourceChange = computed(() => {
+  if (!props.item.children || Object.keys(props.item.children).length === 0) {
+    return false;
+  }
+
+  if (props.item.diff?.new?.$source) {
+    if (!props.item.diff.old?.$source) return true;
+
+    const oldSource = props.item.diff.old.$source;
+    const newSource = props.item.diff.new.$source;
+
+    if (
+      oldSource.component !== newSource.component ||
+      oldSource.path !== newSource.path
+    )
+      return true;
+  }
+
+  return false;
+});
+
+const disableRevertChildren = computed(
+  () =>
+    !!(
+      props.disableRevert ||
+      (props.item.diff?.new &&
+        sourceAndValueDisplayKind(props.item.diff.new.$source, props.secret) ===
+          "subscription")
+    ),
+);
+
+const display = computed(() => {
+  if (!props.item.children) {
+    if (
+      props.item.diff?.new?.$source.value ===
+      props.item.diff?.old?.$source.value
+    ) {
+      // same manual or default value from the source
+      return false;
+    } else if (
+      props.item.diff?.new?.$value === props.item.diff?.old?.$value &&
+      props.item.diff?.new?.$source.component ===
+        props.item.diff?.old?.$source.component &&
+      props.item.diff?.new?.$source.path === props.item.diff?.old?.$source.path
+    ) {
+      // same subscription source and same value
+      return false;
+    } else if (
+      typeof props.item.diff?.new?.$source.value === "object" &&
+      Object.keys(props.item.diff?.new?.$source.value as object).length === 0 &&
+      (!props.item.children || Object.keys(props.item.children).length === 0)
+    ) {
+      // parent with only hidden children
+      return false;
+    }
+  }
+
+  return true;
+});
 </script>
 
 <script lang="ts">
@@ -98,5 +168,15 @@ export const trimPath = (rawPath: string) => {
   } else {
     return rawPath;
   }
+};
+export const sourceAndValueDisplayKind = (
+  source: AttributeSourceLocation & SimplifiedAttributeSource,
+  secret = false,
+) => {
+  if ("component" in source) return "subscription";
+  else if (secret) return "secret";
+  else if ("value" in source) return "value";
+  // TODO(Wendy) - complex AV diffs?
+  return "hidden";
 };
 </script>

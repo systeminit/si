@@ -20,20 +20,8 @@
     >
       {{ old ? "-" : "+" }}
     </div>
-    <!-- <div class="text-2xs">
-      {{ rawValue }} / {{ rawSource }}
-    </div> -->
-    <TruncateWithTooltip
-      v-if="displayKind === 'value' || displayKind === 'complex'"
-      :class="clsx('py-2xs', old && 'line-through')"
-    >
-      {{ rawValue }}
-      <span v-if="displayKind === 'complex'">
-        <span v-if="rawSource.fromSchema">(default)</span>
-        <span v-else>(complex source data: {{ rawSource }})</span>
-      </span>
-    </TruncateWithTooltip>
-    <AttributeValueBox v-else-if="displayKind === 'subscription'">
+
+    <AttributeValueBox v-if="displayKind === 'subscription'" class="min-w-0">
       <div
         :class="
           clsx(
@@ -49,15 +37,32 @@
         <TruncateWithTooltip
           :class="themeClasses('text-neutral-600', 'text-neutral-400')"
         >
-          {{ rawValue }}
+          <template v-if="secret">
+            <!-- TODO(Wendy) - Ideally we would put the secret's name here -->
+            secret
+          </template>
+          <template v-else>
+            {{ rawValue }}
+          </template>
         </TruncateWithTooltip>
       </div>
     </AttributeValueBox>
+    <TruncateWithTooltip
+      v-else
+      :class="clsx('py-2xs min-w-0', old && 'line-through')"
+    >
+      <template v-if="displayKind === 'secret'">
+        <!-- TODO(Wendy) - Ideally we would put the secret's name here -->
+        Secret {{ old ? "Removed" : "Added" }}
+      </template>
+      <template v-else>
+        {{ rawValue }}
+      </template>
+    </TruncateWithTooltip>
 
-    <div v-if="revertible" class="mr-auto" />
     <IconButton
       v-if="revertible"
-      class="flex-none"
+      class="flex-none ml-auto"
       icon="undo"
       iconTone="shade"
       iconIdleTone="shade"
@@ -77,24 +82,23 @@ import clsx from "clsx";
 import { computed } from "vue";
 import { AttributeSourceAndValue } from "@/workers/types/entity_kind_types";
 import AttributeValueBox from "./layout_components/AttributeValueBox.vue";
+import { sourceAndValueDisplayKind } from "./ReviewAttributeItem.vue";
 
-type DisplayKind = "hidden" | "value" | "subscription" | "complex";
+type DisplayKind = "hidden" | "value" | "subscription" | "secret" | "complex";
 
 const props = defineProps<{
   sourceAndValue: AttributeSourceAndValue;
   old?: boolean;
+  secret?: boolean;
   revertible?: boolean;
 }>();
 
 const rawValue = computed(() => props.sourceAndValue.$value);
 const rawSource = computed(() => props.sourceAndValue.$source);
 
-const displayKind = computed<DisplayKind>(() => {
-  if ("component" in rawSource.value) return "subscription";
-  else if ("value" in rawSource.value) return "value";
-  // TODO(Wendy) - complex AV diffs?
-  return "hidden";
-});
+const displayKind = computed<DisplayKind>(() =>
+  sourceAndValueDisplayKind(rawSource.value, props.secret),
+);
 
 const emit = defineEmits<{
   (e: "revert"): void;

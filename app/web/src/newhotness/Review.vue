@@ -162,7 +162,22 @@
               :item="item"
             />
           </template>
-          <!-- TODO(Wendy) - show children of /secret -->
+          <!-- Show children of /si/secrets -->
+          <template
+            v-if="
+              selectedComponent.attributeDiffTree?.children?.secrets?.children
+            "
+          >
+            <ReviewAttributeItem
+              v-for="(item, name) in selectedComponent.attributeDiffTree
+                .children.secrets.children"
+              :key="name"
+              :selectedComponentId="selectedComponentId"
+              :name="name"
+              :item="item"
+              secret
+            />
+          </template>
         </div>
       </CollapsingFlexItem>
       <div
@@ -316,13 +331,8 @@ const componentDiffQueries = useQueries({
  */
 const rawComponentList = computed(() => {
   const result = changeSetComponentList.value.map((component) => {
-    // TEMPORARY: "fix" issues in the MV so we can do better testing / display in the short term.
-    // Ultimately, we will fix the MV instead.
-    // const diff = fixComponentDiff(componentDiffs[component.id]);
     return {
       ...component,
-      // diff,
-      // diffStatus: diff?.diffStatus ?? component.diffStatus,
     };
   });
 
@@ -331,7 +341,6 @@ const rawComponentList = computed(() => {
     if (!result.find((c) => c.id === headComponent.id)) {
       result.push({
         ...headComponent,
-        // diff: undefined,
         diffStatus: "Removed" as const,
       });
     }
@@ -358,18 +367,24 @@ const componentList = computed(() => {
         (query) => [query.data?.id, query.data] as const,
       ),
     );
-  return rawComponentList.value.map((component) => {
-    // TEMPORARY: "fix" issues in the MV so we can do better testing / display in the short term.
-    // Ultimately, we will fix the MV instead.
-    const componentDiff = componentDiffs[component.id];
-    const attributeDiffTree = toAttributeDiffTree(componentDiff);
-    return {
-      ...component,
-      diffStatus: componentDiff?.diffStatus ?? component.diffStatus,
-      componentDiff,
-      attributeDiffTree,
-    };
-  });
+  return rawComponentList.value
+    .map((component) => {
+      // TEMPORARY: "fix" issues in the MV so we can do better testing / display in the short term.
+      // Ultimately, we will fix the MV instead.
+      const componentDiff = componentDiffs[component.id];
+      const attributeDiffTree = toAttributeDiffTree(componentDiff);
+      return {
+        ...component,
+        diffStatus: componentDiff?.diffStatus ?? component.diffStatus,
+        componentDiff,
+        attributeDiffTree,
+      };
+    })
+    .filter(
+      (component) =>
+        component.attributeDiffTree.children &&
+        Object.keys(component.attributeDiffTree.children).length > 0,
+    );
 });
 
 /** A tree version of AttributeDiff:

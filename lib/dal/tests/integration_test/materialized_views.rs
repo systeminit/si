@@ -398,15 +398,6 @@ async fn component_diff(ctx: &mut DalContext) -> Result<()> {
             "/domain/ValueMap/foo",
             "/domain/ValueMap/bar",
             "/secrets",
-            "/resource",
-            "/resource/status",
-            "/resource/message",
-            "/resource/payload",
-            "/resource/last_synced",
-            "/resource_value",
-            "/code",
-            "/qualification",
-            "/deleted_at",
         ],
         added_mv
             .attribute_diffs
