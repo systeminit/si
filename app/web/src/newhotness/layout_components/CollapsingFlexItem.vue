@@ -21,7 +21,7 @@
         clsx(
           h3class,
           'group/header',
-          'flex-none flex items-center px-xs m-0',
+          'flex-none flex items-center px-xs m-0 min-h-[2.5rem]',
           !disableCollapse && [
             'cursor-pointer',
             themeClasses('hover:bg-neutral-100', 'hover:bg-neutral-700'),

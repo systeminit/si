@@ -393,22 +393,20 @@
             ><span class="text-sm">Subscriptions</span></template
           >
           <template #headerIcons>
-            <div class="ml-auto my-sm">
-              <VButton
-                label="Visualize Subscriptions"
-                size="xs"
-                :class="
-                  clsx(
-                    '!text-sm !border !cursor-pointer !px-xs',
-                    themeClasses(
-                      '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
-                      '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
-                    ),
-                  )
-                "
-                @click="navigateToMap"
-              />
-            </div>
+            <VButton
+              label="Visualize Subscriptions"
+              size="xs"
+              :class="
+                clsx(
+                  '!text-sm !border !cursor-pointer !px-xs',
+                  themeClasses(
+                    '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
+                    '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
+                  ),
+                )
+              "
+              @click="navigateToMap"
+            />
           </template>
           <ConnectionsPanel
             v-if="componentConnections && component"
