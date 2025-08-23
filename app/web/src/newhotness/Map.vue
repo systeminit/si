@@ -284,6 +284,25 @@ const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
 
 const selectedComponents = ref<Set<ComponentInList>>(new Set());
+// Store selected component IDs to maintain selection across component updates
+const selectedComponentIds = computed(
+  () => new Set(Array.from(selectedComponents.value).map((c) => c.id)),
+);
+
+// Watch for componentsById changes and update selectedComponents with new object references
+watch(componentsById, (newComponentsById) => {
+  if (selectedComponentIds.value.size > 0) {
+    const newSelectedComponents = new Set<ComponentInList>();
+    selectedComponentIds.value.forEach((componentId) => {
+      const component = newComponentsById[componentId];
+      if (component) {
+        newSelectedComponents.add(component);
+      }
+    });
+    selectedComponents.value = newSelectedComponents;
+  }
+});
+
 const showMinimap = ref((props.components?.length ?? 0) > 0);
 
 watch(
@@ -456,6 +475,251 @@ const smoothPan = (totalDx: number, totalDy: number, duration = 400) => {
   };
 
   requestAnimationFrame(animate);
+};
+
+// Viewport preservation functions
+const preserveViewportCenter = () => {
+  const scale = transformMatrix[0] ?? 1;
+  const translateX = transformMatrix[4] ?? 0;
+  const translateY = transformMatrix[5] ?? 0;
+
+  return {
+    worldCenterX: (windowDimensions.value.width / 2 - translateX) / scale,
+    worldCenterY: (windowDimensions.value.height / 2 - translateY) / scale,
+    scale,
+  };
+};
+
+const restoreViewportCenter = (
+  snapshot: ReturnType<typeof preserveViewportCenter>,
+  layoutData: GraphData | null,
+) => {
+  if (!layoutData?.children) return;
+
+  const scale = transformMatrix[0] ?? 1;
+  const newTranslateX =
+    windowDimensions.value.width / 2 - snapshot.worldCenterX * scale;
+  const newTranslateY =
+    windowDimensions.value.height / 2 - snapshot.worldCenterY * scale;
+
+  transformMatrix.splice(4, 1, newTranslateX);
+  transformMatrix.splice(5, 1, newTranslateY);
+};
+
+// Helper functions for creating node elements and edges
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const addNodeElements = (group: any, d: layoutNode) => {
+  group
+    .append("rect")
+    .attr("width", d.width)
+    .attr("height", d.height)
+    .attr("class", () => {
+      const classes = [`node`, `id-${d.component.id}`];
+
+      // Check if this component is in the current selection
+      const isSelected = Array.from(selectedComponents.value).some(
+        (c) => c.id === d.component.id,
+      );
+      if (isSelected) {
+        classes.push("selected");
+      }
+      if (props.componentsWithFailedActions.has(d.component.id)) {
+        classes.push("failed-actions");
+      }
+
+      return classes.join(" ");
+    })
+    .on("click", (e: MouseEvent) => {
+      clickedNode(e, d);
+    })
+    .on("contextmenu", (e: MouseEvent) => {
+      rightClickedNode(e, d);
+    })
+    .on("dblclick", (_e: Event) => {
+      componentNavigate(d.component.id);
+    });
+
+  group
+    .append("path")
+    .attr("d", () => {
+      const lineGenerator = d3.line();
+      return lineGenerator([
+        [0, 0],
+        [0, HEIGHT],
+      ]);
+    })
+    .attr("stroke", d.component.color ?? "#111111")
+    .attr("stroke-width", 3)
+    .attr("pointer-events", "none");
+
+  // logos
+  group
+    .append("path")
+    .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
+    .attr("transform", "translate(23, 35)")
+    .attr("pointer-events", "none")
+    .style("fill", () => {
+      const icon = getAssetIcon(d.component.schemaCategory);
+      return `url(#${icon})`;
+    });
+
+  group
+    .append("text")
+    .text(truncateString(d.component.name, MAX_STRING_LENGTH))
+    .attr("dx", "45")
+    .attr("dy", "25")
+    .attr("class", "name")
+    .attr("alignment-baseline", "middle")
+    .attr("pointer-events", "none");
+
+  group
+    .append("text")
+    .text(truncateString(d.component.schemaVariantName, MAX_STRING_LENGTH))
+    .attr("dx", "45")
+    .attr("dy", "45")
+    .attr("class", "")
+    .attr("alignment-baseline", "middle")
+    .attr("color", "white")
+    .attr("pointer-events", "none");
+
+  // qual & resource icons
+  d.icons.forEach((icon: string | null, idx: number) => {
+    group
+      .append("path")
+      .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
+      .attr("transform", `translate(${WIDTH - 13 - 23 * idx}, ${HEIGHT - 9})`)
+      .attr("pointer-events", "none")
+      .style("fill", icon ? `url(#${icon})` : "none");
+  });
+
+  // Socket connections alert icon
+  if (d.component.hasSocketConnections) {
+    group
+      .append("path")
+      .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
+      .attr("transform", () => {
+        const iconOffset = d.icons.length * 23;
+        return `translate(${WIDTH - 13 - iconOffset - 23}, ${HEIGHT - 9})`;
+      })
+      .attr("pointer-events", "none")
+      .style("fill", "url(#alert-triangle-filled-warning)");
+  }
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const renderEdges = (svg: any, edges: layoutLine[]) => {
+  svg
+    .selectAll(".edge")
+    .data(edges)
+    .enter()
+    .append("path")
+    .attr("class", (d: layoutLine) => {
+      const [targetId, sourceId] = d.id.split("-");
+      const isConnectedToSelected = Array.from(selectedComponents.value).some(
+        (component) => targetId === component.id || sourceId === component.id,
+      );
+      return `edge ${isConnectedToSelected ? "connected" : ""}`;
+    })
+    .attr("data-edge-id", (d: layoutLine) => d.id)
+    .attr("d", (d: layoutLine) => {
+      const lineGenerator = d3.line();
+
+      const points: xy[] = [];
+      d.sections.forEach((section) => {
+        points.push({ x: section.startPoint.x, y: section.startPoint.y });
+        if (section.bendPoints) points.push(...section.bendPoints);
+        points.push({ x: section.endPoint.x, y: section.endPoint.y });
+      });
+      const pairs: Array<[number, number]> = points.map((p) => [p.x, p.y]);
+      return lineGenerator(pairs);
+    })
+    .attr("marker-end", (d: layoutLine) => {
+      const [targetId, sourceId] = d.id.split("-");
+      const isConnectedToSelected = Array.from(selectedComponents.value).some(
+        (component) => targetId === component.id || sourceId === component.id,
+      );
+
+      if (selectedComponents.value.size > 0) {
+        return isConnectedToSelected
+          ? "url(#arrowhead-highlighted)"
+          : "url(#arrowhead-greyed)";
+      } else {
+        return "url(#arrowhead)";
+      }
+    })
+    .style("fill", "none")
+    .style("stroke", (d: layoutLine) => {
+      const [targetId, sourceId] = d.id.split("-");
+      const isConnectedToSelected = Array.from(selectedComponents.value).some(
+        (component) => targetId === component.id || sourceId === component.id,
+      );
+
+      const isDark = document.body.classList.contains("dark");
+      const connectedColor = isDark ? "#93c5fd" : "#3b82f6";
+      const greyedColor = isDark ? "#4b5563" : "#d1d5db";
+      const defaultColor = isDark ? "#9ca3af" : "#6b7280";
+
+      if (selectedComponents.value.size > 0) {
+        return isConnectedToSelected ? connectedColor : greyedColor;
+      } else {
+        return defaultColor;
+      }
+    })
+    .style("stroke-width", (d: layoutLine) => {
+      const [targetId, sourceId] = d.id.split("-");
+      const isConnectedToSelected = Array.from(selectedComponents.value).some(
+        (component) => targetId === component.id || sourceId === component.id,
+      );
+      return isConnectedToSelected ? "2" : "1";
+    })
+    .style("opacity", (d: layoutLine) => {
+      const [targetId, sourceId] = d.id.split("-");
+      const isConnectedToSelected = Array.from(selectedComponents.value).some(
+        (component) => targetId === component.id || sourceId === component.id,
+      );
+
+      if (selectedComponents.value.size > 0) {
+        return isConnectedToSelected ? "1" : "0.3";
+      } else {
+        return "1";
+      }
+    });
+};
+
+// Function to ensure selection state is properly applied to DOM elements
+const applySelectionState = () => {
+  // Clear all selection classes first
+  const allNodes = document.querySelectorAll("#map > svg rect.node");
+  allNodes.forEach((element) => {
+    element.classList.remove("selected");
+  });
+
+  // Apply selection to currently selected components
+  selectedComponents.value.forEach((component) => {
+    const element = document.querySelector(
+      `#map > svg rect.node.id-${component.id}`,
+    );
+    if (element) {
+      element.classList.add("selected");
+    }
+  });
+
+  // Update failed action classes
+  document.querySelectorAll("#map > svg rect.node").forEach((element) => {
+    const componentId = Array.from(element.classList)
+      .find((cls) => cls.startsWith("id-"))
+      ?.substring(3);
+
+    if (componentId) {
+      const hasFailedActions =
+        props.componentsWithFailedActions.has(componentId);
+      if (hasFailedActions) {
+        element.classList.add("failed-actions");
+      } else {
+        element.classList.remove("failed-actions");
+      }
+    }
+  });
 };
 
 const panToComponent = (componentId: string) => {
@@ -957,6 +1221,7 @@ export type GraphData = {
 };
 
 const dataAsGraph = ref<GraphData | null>(null);
+const previousLayout = ref<GraphData | null>(null);
 
 const WIDTH = 270;
 const HEIGHT = 75;
@@ -980,6 +1245,7 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
     }
 
     selectedComponents.value = newSelectedComponents;
+    // Update selectedComponentIds to maintain stable selection
 
     // Close context menu during multi-select
     if (componentContextMenuRef.value?.isOpen) {
@@ -1242,7 +1508,10 @@ watch(
             ? connectedColor
             : greyedColor;
           // Update opacity
-          edgeElement.style.opacity = isConnectedToSelected ? "1" : "0.3";
+          edgeElement.style.opacity =
+            selectedComponents.value.size === 0 || isConnectedToSelected
+              ? "1"
+              : "0.3";
           // Update stroke width
           edgeElement.style.strokeWidth = isConnectedToSelected ? "2" : "1";
           // Update arrow marker
@@ -1453,285 +1722,196 @@ watch(
   { immediate: true },
 );
 
+// when the change set changes, we dont want to animate, we want to re-draw entirely.
+watch(ctx.changeSetId, () => {
+  previousLayout.value = null;
+});
+
 // debouncing since the fzf and svg is actually a bit of a grind for every key press
 watch(
   mapData,
-  _.debounce(async () => {
-    // if we filtered away our selection remove it
-    if (
-      selectedComponent.value?.id &&
-      !mapData.value.components[selectedComponent.value.id]
-    )
-      deselect();
+  _.debounce(
+    async () => {
+      // if we filtered away our selection remove it
+      if (
+        selectedComponent.value?.id &&
+        !mapData.value.components[selectedComponent.value.id]
+      )
+        deselect();
 
-    const children: node[] = [...mapData.value.nodes].map((nId) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const component = mapData.value.components[nId]!;
-      const icons: [string | null] = [
-        component.hasResource ? "check-hex-success" : null,
-      ];
-      if (component.qualificationTotals.failed > 0)
-        icons.push("x-hex-outline-destructive");
-      else icons.push("check-hex-outline-success");
-      return { id: nId, width: WIDTH, height: HEIGHT, component, icons };
-    });
-
-    const validNodeIds = new Set(mapData.value.nodes);
-    const edges: edge[] = [...mapData.value.edges]
-      .map((eId) => {
-        const [target, source] = eId.split("-");
-        return { id: eId, sources: [source ?? ""], targets: [target ?? ""] };
-      })
-      .filter((edge) => {
-        // Only include edges where both source and target exist in the nodes
-        const source = edge.sources[0];
-        const target = edge.targets[0];
-        const sourceExists = source && validNodeIds.has(source);
-        const targetExists = target && validNodeIds.has(target);
-        return sourceExists && targetExists;
-      });
-    if (!children || !edges) return null;
-    const graph = {
-      id: "root",
-      layoutOptions: {
-        "elk.algorithm": "layered",
-        direction: "DOWN",
-        spacing: "80",
-        "layered.spacing.nodeNodeBetweenLayers": "150",
-        "spacing.nodeNode": "80",
-        padding: "50",
-      },
-      children,
-      edges,
-    };
-    const elk = new ELK();
-    const layoutedData = await elk.layout(graph);
-    // typescript gods help me
-    dataAsGraph.value = layoutedData as unknown as GraphData;
-
-    nextTick(() => {
-      const svg = d3.select("#map > svg g");
-      // the viewbox should be based on "how much of the coordinate space is in use"
-
-      // the types generated aren't exactly matching the actual data!
-      // this is what I see
-      const children = layoutedData.children as layoutNode[];
-      const edges = layoutedData.edges as layoutLine[];
-
-      // clear out for a redraw
-      svg.selectAll("*").remove();
-
-      const groups = svg
-        .selectAll(".node")
-        .data(children)
-        .enter()
-        .append("g")
-        .attr("transform", (d) => `translate(${d.x}, ${d.y})`);
-
-      groups
-        .append("rect")
-        .attr("width", (d) => d.width)
-        .attr("height", (d) => d.height)
-        // note this only handles the selected class on load
-        .attr("class", (d) => {
-          const classes = [`node`, `id-${d.component.id}`];
-
-          if (selectedComponents.value.has(d.component)) {
-            classes.push("selected");
-          }
-          if (props.componentsWithFailedActions.has(d.component.id)) {
-            classes.push("failed-actions");
-          }
-
-          return classes.join(" ");
-        })
-        .on("click", (e: MouseEvent, d: layoutNode) => {
-          clickedNode(e, d);
-        })
-        .on("contextmenu", (e: MouseEvent, d: layoutNode) => {
-          rightClickedNode(e, d);
-        })
-        .on("dblclick", (_e: Event, d: layoutNode) => {
-          componentNavigate(d.component.id);
-        });
-
-      groups
-        .append("path")
-        .attr("d", () => {
-          const lineGenerator = d3.line();
-          return lineGenerator([
-            [0, 0],
-            [0, HEIGHT],
-          ]);
-        })
-        .attr("stroke", (d) => d.component.color ?? "#111111")
-        .attr("stroke-width", 3)
-        .attr("pointer-events", "none"); // prevents this from being clickable
-
-      // logos
-      groups
-        .append("path")
-        .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
-        .attr("transform", () => {
-          return "translate(23, 35)";
-        })
-        .attr("pointer-events", "none") // prevents this from being clickable
-        .style("fill", (d) => {
-          const icon = getAssetIcon(d.component.schemaCategory);
-          return `url(#${icon})`;
-        });
-
-      groups
-        .append("text")
-        .text((d) => truncateString(d.component.name, MAX_STRING_LENGTH))
-        .attr("dx", "45")
-        .attr("dy", "25")
-        .attr("class", "name")
-        .attr("alignment-baseline", "middle")
-        .attr("pointer-events", "none"); // prevents this from being clickable
-
-      groups
-        .append("text")
-        .text((d) =>
-          truncateString(d.component.schemaVariantName, MAX_STRING_LENGTH),
-        )
-        .attr("dx", "45")
-        .attr("dy", "45")
-        .attr("class", "")
-        .attr("alignment-baseline", "middle")
-        .attr("color", "white")
-        .attr("pointer-events", "none"); // prevents this from being clickable
-
-      // qual & resource icons
-      groups.each(function doTheIcons(d) {
-        d.icons.forEach((icon, idx) => {
-          d3.select(this)
-            .append("path")
-            // i have zero idea what this size param does
-            // smaller value the SVG gets bigger and blurry
-            // 1000 value its "correct" & sharp
-            // even larger and it starts moving on
-            .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
-            .attr("transform", () => {
-              return `translate(${WIDTH - 13 - 23 * idx}, ${HEIGHT - 9})`;
-            })
-            .attr("pointer-events", "none")
-            .style("fill", () => {
-              return icon ? `url(#${icon})` : "none";
-            });
-        });
-
-        // Socket connections alert icon
-        if (d.component.hasSocketConnections) {
-          d3.select(this)
-            .append("path")
-            .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
-            .attr("transform", () => {
-              // Position to the right of existing icons
-              const iconOffset = d.icons.length * 23;
-              return `translate(${WIDTH - 13 - iconOffset - 23}, ${
-                HEIGHT - 9
-              })`;
-            })
-            .attr("pointer-events", "none")
-            .style("fill", "url(#alert-triangle-filled-warning)");
-        }
+      const children: node[] = [...mapData.value.nodes].map((nId) => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const component = mapData.value.components[nId]!;
+        const icons: [string | null] = [
+          component.hasResource ? "check-hex-success" : null,
+        ];
+        if (component.qualificationTotals.failed > 0)
+          icons.push("x-hex-outline-destructive");
+        else icons.push("check-hex-outline-success");
+        return { id: nId, width: WIDTH, height: HEIGHT, component, icons };
       });
 
-      svg
-        .selectAll(".edge")
-        .data(edges)
-        .enter()
-        .append("path")
-        .attr("class", (d) => {
-          const [targetId, sourceId] = d.id.split("-");
-          const isConnectedToSelected =
-            selectedComponent.value &&
-            (targetId === selectedComponent.value.id ||
-              sourceId === selectedComponent.value.id);
-          return `edge ${isConnectedToSelected ? "connected" : ""}`;
+      const validNodeIds = new Set(mapData.value.nodes);
+      const edges: edge[] = [...mapData.value.edges]
+        .map((eId) => {
+          const [target, source] = eId.split("-");
+          return { id: eId, sources: [source ?? ""], targets: [target ?? ""] };
         })
-        .attr("data-edge-id", (d) => d.id)
-        .attr("d", (d) => {
-          const lineGenerator = d3.line();
+        .filter((edge) => {
+          // Only include edges where both source and target exist in the nodes
+          const source = edge.sources[0];
+          const target = edge.targets[0];
+          const sourceExists = source && validNodeIds.has(source);
+          const targetExists = target && validNodeIds.has(target);
+          return sourceExists && targetExists;
+        });
+      if (!children || !edges) return null;
+      const graph = {
+        id: "root",
+        layoutOptions: {
+          "elk.algorithm": "layered",
+          direction: "DOWN",
+          spacing: "80",
+          "layered.spacing.nodeNodeBetweenLayers": "150",
+          "spacing.nodeNode": "80",
+          padding: "50",
+        },
+        children,
+        edges,
+      };
+      // Preserve current viewport center before layout change
+      const viewportSnapshot = preserveViewportCenter();
 
-          const points: xy[] = [];
-          d.sections.forEach((section) => {
-            points.push({ x: section.startPoint.x, y: section.startPoint.y });
-            if (section.bendPoints) points.push(...section.bendPoints);
-            points.push({ x: section.endPoint.x, y: section.endPoint.y });
+      const elk = new ELK();
+      const layoutedData = await elk.layout(graph);
+      // typescript gods help me
+      dataAsGraph.value = layoutedData as unknown as GraphData;
+
+      // Restore viewport to maintain visual continuity
+      if (previousLayout.value && dataAsGraph.value) {
+        restoreViewportCenter(viewportSnapshot, dataAsGraph.value);
+      }
+
+      nextTick(() => {
+        const svg = d3.select("#map > svg g");
+        // the viewbox should be based on "how much of the coordinate space is in use"
+
+        // the types generated aren't exactly matching the actual data!
+        // this is what I see
+        const children = layoutedData.children as layoutNode[];
+        const edges = layoutedData.edges as layoutLine[];
+
+        // Check if we should animate or do immediate update
+        const shouldAnimate =
+          previousLayout.value && previousLayout.value.children;
+
+        if (shouldAnimate && previousLayout.value) {
+          // Animate existing nodes to new positions
+          const oldNodes = previousLayout.value.children as layoutNode[];
+          const newNodeIds = new Set(children.map((n) => n.id));
+
+          // Remove deleted nodes with fade out
+          oldNodes.forEach((oldNode) => {
+            if (!newNodeIds.has(oldNode.id)) {
+              svg
+                .select(`g:has(rect.node.id-${oldNode.id})`)
+                .transition()
+                .duration(300)
+                .style("opacity", 0)
+                .remove();
+            }
           });
-          const pairs: Array<[number, number]> = points.map((p) => [p.x, p.y]);
-          return lineGenerator(pairs);
-        })
-        .attr("marker-end", (d) => {
-          const [targetId, sourceId] = d.id.split("-");
-          const isConnectedToSelected = Array.from(
-            selectedComponents.value,
-          ).some(
-            (component) =>
-              targetId === component.id || sourceId === component.id,
-          );
 
-          if (selectedComponents.value.size > 0) {
-            return isConnectedToSelected
-              ? "url(#arrowhead-highlighted)"
-              : "url(#arrowhead-greyed)";
-          } else {
-            return "url(#arrowhead)";
-          }
-        })
-        .style("fill", "none")
-        .style("stroke", (d) => {
-          const [targetId, sourceId] = d.id.split("-");
-          const isConnectedToSelected = Array.from(
-            selectedComponents.value,
-          ).some(
-            (component) =>
-              targetId === component.id || sourceId === component.id,
-          );
+          // Animate existing nodes to new positions
+          /**
+           * PSA for this FN and interaction with the filter box
+           * (or anything that will repeatedly change `componentsById`)
+           *
+           * Once a component gets added (in the `else`) it will be animating
+           * The next time through this fn it will run the `if` because it will exist.
+           *
+           * All animation "end states" in the adding (`else`) need to be defined in
+           * the "update" (`if`) too.
+           *
+           * For example, if a node gets added, and its opacity has not finished animating
+           * when it runs through the update, the new transition will be applied leaving its
+           * opacity "halfway through" animating. You need to have (opacity, 1) in the transition
+           * definition (even if its redundant for everything already at opacity = 1)
+           * */
+          children.forEach(async (newNode) => {
+            const existingGroup = svg.select(
+              `g:has(rect.node.id-${newNode.id})`,
+            );
+            if (!existingGroup.empty()) {
+              // Animate to new position
+              existingGroup
+                .transition()
+                .duration(600)
+                .ease(d3.easeCubicOut)
+                .style("opacity", 1)
+                .attr("transform", `translate(${newNode.x}, ${newNode.y})`);
 
-          // Theme-aware colors
-          const isDark = document.body.classList.contains("dark");
-          const connectedColor = isDark ? "#93c5fd" : "#3b82f6"; // action-300 : action-500
-          const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
-          const defaultColor = isDark ? "#9ca3af" : "#6b7280"; // neutral-400 : neutral-500
+              // Update selection state on existing nodes
+              const rect = existingGroup.select("rect.node");
+              const isSelected = selectedComponentIds.value.has(newNode.id);
+              const hasFailedActions = props.componentsWithFailedActions.has(
+                newNode.id,
+              );
 
-          if (selectedComponents.value.size > 0) {
-            return isConnectedToSelected ? connectedColor : greyedColor;
-          } else {
-            return defaultColor;
-          }
-        })
-        .style("stroke-width", (d) => {
-          const [targetId, sourceId] = d.id.split("-");
-          const isConnectedToSelected = Array.from(
-            selectedComponents.value,
-          ).some(
-            (component) =>
-              targetId === component.id || sourceId === component.id,
-          );
-          return isConnectedToSelected ? "2" : "1";
-        })
-        .style("opacity", (d) => {
-          const [targetId, sourceId] = d.id.split("-");
-          const isConnectedToSelected = Array.from(
-            selectedComponents.value,
-          ).some(
-            (component) =>
-              targetId === component.id || sourceId === component.id,
-          );
+              rect.attr("class", () => {
+                const classes = [`node`, `id-${newNode.id}`];
+                if (isSelected) classes.push("selected");
+                if (hasFailedActions) classes.push("failed-actions");
+                return classes.join(" ");
+              });
+            } else {
+              // Add new node with fade in
+              const group = svg
+                .append("g")
+                .attr("transform", `translate(${newNode.x}, ${newNode.y})`)
+                .style("opacity", 0);
 
-          if (selectedComponents.value.size > 0) {
-            return isConnectedToSelected ? "1" : "0.3"; // Reduce opacity for unconnected lines
-          } else {
-            return "1"; // Full opacity when no component is selected
-          }
-        });
-    });
-    // Don't show context menu when component is selected via URL parameter
-    // Context menu should only show on user interaction (right-click)
-  }, 100),
+              addNodeElements(group, newNode);
+              group.transition().duration(400).style("opacity", 1);
+            }
+          });
+
+          svg.selectAll(".edge").remove();
+
+          renderEdges(svg, edges);
+
+          if (selectedComponent.value)
+            panToComponent(selectedComponent.value.id);
+
+          // Selection state is already handled during animation above
+        } else {
+          // First render - clear and redraw immediately
+          svg.selectAll("*").remove();
+
+          children.forEach((node) => {
+            const group = svg
+              .append("g")
+              .attr("transform", `translate(${node.x}, ${node.y})`);
+            addNodeElements(group, node);
+          });
+
+          renderEdges(svg, edges);
+
+          // Ensure selection state is applied after first render
+          nextTick(() => {
+            applySelectionState();
+          });
+        }
+
+        // Store current layout for next animation
+        previousLayout.value = layoutedData as unknown as GraphData;
+      });
+      // Don't show context menu when component is selected via URL parameter
+      // Context menu should only show on user interaction (right-click)
+    },
+    100,
+    { trailing: true },
+  ),
   { immediate: true },
 );
 
@@ -1772,6 +1952,7 @@ const emit = defineEmits<{
 }>();
 
 defineExpose({
+  selectedComponents,
   deselect,
   navigateToSelectedComponent,
   onArrowUp,
