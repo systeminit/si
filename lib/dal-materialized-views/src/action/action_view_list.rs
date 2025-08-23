@@ -19,7 +19,7 @@ use telemetry::prelude::*;
     level = "debug",
     skip_all
 )]
-pub async fn assemble(ctx: DalContext) -> super::Result<ActionViewListMv> {
+pub async fn assemble(ctx: DalContext) -> crate::Result<ActionViewListMv> {
     let ctx = &ctx;
     let action_ids = Action::list_topologically(ctx).await?;
 

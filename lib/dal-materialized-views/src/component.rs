@@ -22,6 +22,7 @@ use telemetry::prelude::*;
 
 pub mod attribute_tree;
 pub mod component_diff;
+pub mod erased_components;
 
 #[instrument(
     name = "dal_materialized_views.component_in_list",

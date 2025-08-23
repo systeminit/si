@@ -17,6 +17,7 @@ use si_id::{
 
 use crate::reference::ReferenceKind;
 
+pub mod action_diff_list;
 pub mod prototype;
 
 pub use prototype::{
