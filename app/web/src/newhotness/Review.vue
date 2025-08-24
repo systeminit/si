@@ -1,145 +1,101 @@
 <template>
-  <section
-    v-if="ctx.onHead.value"
-    class="p-lg flex flex-col items-center gap-sm"
-  >
-    <EmptyState
-      icon="x"
-      text="You are on HEAD"
-      secondaryText="There are no changes to review"
-    />
-    <VButton
-      label="Exit"
-      tone="neutral"
-      icon="chevron--left"
-      @click="exitReview"
-    />
-  </section>
-  <section v-else class="grid review w-full h-full">
+  <div class="w-full h-full flex flex-col">
     <div
       :class="
         clsx(
-          'left',
-          'flex flex-col gap-xs m-xs p-xs border',
-          themeClasses(
-            'border-neutral-400 bg-white',
-            'border-neutral-600 bg-neutral-800',
-          ),
+          'header flex flex-row items-center gap-xs px-sm py-xs mb-xs',
+          themeClasses('bg-white', 'bg-neutral-800'),
         )
       "
     >
-      <div class="text-sm flex-none">Components Changed</div>
-      <SiSearch
-        ref="searchRef"
-        v-model="searchString"
-        class="flex-none"
-        variant="new"
-        placeholder="Find a component"
-        :borderBottom="false"
-        @focus="() => (selectedComponentId = undefined)"
-        @keydown.tab="onSearchTab"
-        @keydown.up="() => searchControl(true)"
-        @keydown.down="() => searchControl(false)"
+      <IconButton
+        tooltip="Close (Esc)"
+        tooltipPlacement="top"
+        class="border-0 mr-2em"
+        icon="x"
+        size="sm"
+        iconIdleTone="shade"
+        iconTone="shade"
+        @click="exitReview"
       />
-      <div class="flex flex-col gap-xs flex-grow scrollable">
-        <EmptyState
-          v-if="componentList.length === 0"
-          icon="diff"
-          text="No components changed"
-          class="p-sm"
-        />
-        <EmptyState
-          v-else-if="filteredComponentList.length === 0"
-          icon="diff"
-          text="No changed components match your search"
-          class="p-sm"
-        />
-        <ComponentListItem
-          v-for="component in addedComponentList"
-          :key="component.id"
-          :component="component"
-          status="Added"
-          :selected="component.id === selectedComponentId"
-          @click="selectComponent(component.id)"
-        />
-        <ComponentListItem
-          v-for="component in modifiedComponentList"
-          :key="component.id"
-          :component="component"
-          status="Modified"
-          :selected="component.id === selectedComponentId"
-          @click="selectComponent(component.id)"
-        />
-        <ComponentListItem
-          v-for="component in removedComponentList"
-          :key="component.id"
-          :component="component"
-          status="Removed"
-          :selected="component.id === selectedComponentId"
-          @click="selectComponent(component.id)"
-        />
+      <div class="flex-1 text-sm font-medium">Review Changes</div>
+      <div v-if="!ctx.onHead.value" class="flex gap-xs items-center">
+        <div
+          v-if="filteredComponentList?.length > 0"
+          :class="
+            clsx(
+              'text-sm px-xs py-2xs rounded',
+              themeClasses(
+                'text-neutral-600 bg-neutral-100',
+                'text-neutral-400 bg-neutral-700',
+              ),
+            )
+          "
+        >
+          {{
+            selectedComponentId
+              ? `${currentComponentIndex + 1} / ${filteredComponentList.length}`
+              : filteredComponentList.length
+          }}
+        </div>
+        <VButton
+          label="Previous"
+          size="sm"
+          tone="neutral"
+          :disabled="!canGoBack"
+          @click.stop.prevent="goToPreviousComponent"
+        >
+          <template #icon>
+            <div class="border border-neutral-400 rounded px-2xs py-2xs mr-2xs">
+              <Icon name="arrow--left" size="xs" />
+            </div>
+          </template>
+        </VButton>
+        <VButton
+          label="Next"
+          size="sm"
+          :class="
+            clsx(
+              '!text-sm !border !cursor-pointer !px-xs',
+              themeClasses(
+                '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+              ),
+            )
+          "
+          :disabled="!canGoForward"
+          @click.stop.prevent="goToNextComponent"
+        >
+          <template #iconRight>
+            <div class="border border-action-200 rounded px-2xs py-2xs ml-2xs">
+              <Icon name="arrow--right" size="xs" />
+            </div>
+          </template>
+        </VButton>
       </div>
     </div>
-    <div class="main flex flex-col gap-xs m-xs">
-      <CollapsingFlexItem
-        v-if="selectedComponentId && selectedComponent"
-        disableCollapse
-      >
-        <template #header>
-          <div>{{ selectedComponent.schemaName }}</div>
-          <div>"{{ selectedComponent.name }}"</div>
-        </template>
-
-        <div class="flex flex-col gap-xs p-xs">
-          <!-- Show /si/name-->
-          <ReviewAttributeItem
-            v-if="
-              selectedComponent.attributeDiffTree?.children?.si?.children?.name
-            "
-            :selectedComponentId="selectedComponentId"
-            name="name"
-            :item="
-              selectedComponent.attributeDiffTree.children.si.children.name
-            "
-          />
-          <!-- Show children of /si/domain -->
-          <template
-            v-if="
-              selectedComponent.attributeDiffTree?.children?.domain?.children
-            "
-          >
-            <ReviewAttributeItem
-              v-for="(item, name) in selectedComponent.attributeDiffTree
-                .children.domain.children"
-              :key="name"
-              :selectedComponentId="selectedComponentId"
-              :name="name"
-              :item="item"
-            />
-          </template>
-          <!-- Show children of /si/secrets -->
-          <template
-            v-if="
-              selectedComponent.attributeDiffTree?.children?.secrets?.children
-            "
-          >
-            <ReviewAttributeItem
-              v-for="(item, name) in selectedComponent.attributeDiffTree
-                .children.secrets.children"
-              :key="name"
-              :selectedComponentId="selectedComponentId"
-              :name="name"
-              :item="item"
-              secret
-            />
-          </template>
-        </div>
-      </CollapsingFlexItem>
+    <section
+      v-if="ctx.onHead.value"
+      class="p-lg flex flex-col items-center gap-sm"
+    >
+      <EmptyState
+        icon="x"
+        text="You are on HEAD"
+        secondaryText="There are no changes to review"
+      />
+      <VButton
+        label="Exit"
+        tone="neutral"
+        icon="chevron--left"
+        @click="exitReview"
+      />
+    </section>
+    <section v-else class="grid review w-full h-full flex-1">
       <div
-        v-else
         :class="
           clsx(
-            'border grow flex flex-col items-center justify-center',
+            'left',
+            'flex flex-col gap-xs m-xs p-xs border',
             themeClasses(
               'border-neutral-400 bg-white',
               'border-neutral-600 bg-neutral-800',
@@ -147,77 +103,229 @@
           )
         "
       >
-        <EmptyState
-          icon="component"
-          text="No component selected"
-          secondaryText="Select a component to see information about it"
+        <div class="text-sm flex-none">Components Changed</div>
+        <SiSearch
+          ref="searchRef"
+          v-model="searchString"
+          class="flex-none"
+          variant="new"
+          placeholder="Find a component"
+          :borderBottom="false"
+          @focus="() => (selectedComponentId = undefined)"
+          @keydown.tab="onSearchTab"
+          @keydown.up="() => searchControl(true)"
+          @keydown.down="() => searchControl(false)"
         />
+        <div
+          ref="componentListRef"
+          class="flex flex-col gap-xs flex-grow scrollable"
+        >
+          <EmptyState
+            v-if="componentList.length === 0"
+            icon="diff"
+            text="No components changed"
+            class="p-sm"
+          />
+          <EmptyState
+            v-else-if="filteredComponentList.length === 0"
+            icon="diff"
+            text="No changed components match your search"
+            class="p-sm"
+          />
+          <ComponentListItem
+            v-for="component in addedComponentList"
+            :key="component.id"
+            :component="component"
+            status="Added"
+            :selected="component.id === selectedComponentId"
+            :data-component-id="component.id"
+            @click="selectComponent(component.id)"
+          />
+          <ComponentListItem
+            v-for="component in modifiedComponentList"
+            :key="component.id"
+            :component="component"
+            status="Modified"
+            :selected="component.id === selectedComponentId"
+            :data-component-id="component.id"
+            @click="selectComponent(component.id)"
+          />
+          <ComponentListItem
+            v-for="component in removedComponentList"
+            :key="component.id"
+            :component="component"
+            status="Removed"
+            :selected="component.id === selectedComponentId"
+            :data-component-id="component.id"
+            @click="selectComponent(component.id)"
+          />
+        </div>
       </div>
-      <CollapsingFlexItem>
-        <template #header> Actions </template>
-        <!--
+      <div class="main flex flex-col gap-xs m-xs">
+        <CollapsingFlexItem
+          v-if="selectedComponentId && selectedComponent"
+          disableCollapse
+        >
+          <template #header>
+            <div
+              :class="
+                clsx(themeClasses('text-neutral-800', 'text-neutral-100'))
+              "
+            >
+              {{ selectedComponent.schemaName }}
+            </div>
+            <div
+              :class="
+                clsx(themeClasses('text-neutral-600', 'text-neutral-400'))
+              "
+            >
+              ({{ selectedComponent.name }})
+            </div>
+          </template>
+
+          <div class="flex flex-col gap-xs p-xs">
+            <!-- Show /si/name-->
+            <ReviewAttributeItem
+              v-if="
+                selectedComponent.attributeDiffTree?.children?.si?.children
+                  ?.name
+              "
+              :selectedComponentId="selectedComponentId"
+              name="name"
+              :item="
+                selectedComponent.attributeDiffTree.children.si.children.name
+              "
+            />
+            <!-- Show children of /si/domain -->
+            <template
+              v-if="
+                selectedComponent.attributeDiffTree?.children?.domain?.children
+              "
+            >
+              <ReviewAttributeItem
+                v-for="(item, name) in selectedComponent.attributeDiffTree
+                  .children.domain.children"
+                :key="name"
+                :selectedComponentId="selectedComponentId"
+                :name="name"
+                :item="item"
+              />
+            </template>
+            <!-- Show children of /si/secrets -->
+            <template
+              v-if="
+                selectedComponent.attributeDiffTree?.children?.secrets?.children
+              "
+            >
+              <ReviewAttributeItem
+                v-for="(item, name) in selectedComponent.attributeDiffTree
+                  .children.secrets.children"
+                :key="name"
+                :selectedComponentId="selectedComponentId"
+                :name="name"
+                :item="item"
+                secret
+              />
+            </template>
+          </div>
+        </CollapsingFlexItem>
+        <div
+          v-else
+          :class="
+            clsx(
+              'border grow flex flex-col items-center justify-center',
+              themeClasses(
+                'border-neutral-400 bg-white',
+                'border-neutral-600 bg-neutral-800',
+              ),
+            )
+          "
+        >
+          <EmptyState
+            icon="component"
+            text="No component selected"
+            secondaryText="Select a component to see information about it"
+          />
+        </div>
+        <CollapsingFlexItem>
+          <template #header> Actions </template>
+          <!--
         For anything related to actions, check if we have both the "selectedComponentId" and the
         "details" to make sure the data comes in atomically and with reactivity.
         -->
-        <template v-if="selectedComponent" #headerIcons>
-          <ActionPills :actionCounts="actionCounts" mode="row" />
-        </template>
-        <template v-if="selectedComponent">
-          <ActionsPanel :component="selectedComponent" />
-        </template>
-        <EmptyState
-          v-else
-          class="p-lg"
-          icon="component"
-          text="No component selected"
-          secondaryText="Select a component to see and configure actions"
-        />
-      </CollapsingFlexItem>
-    </div>
-    <div class="right flex flex-col p-xs">
-      <CollapsingFlexItem open>
-        <template #header>Component History</template>
-        <template v-if="selectedComponentId">
-          <ComponentHistory :componentId="selectedComponentId" />
-        </template>
-        <EmptyState
-          v-else
-          class="p-lg"
-          icon="component"
-          text="No component selected"
-          secondaryText="Select a component to see its history"
-        />
-      </CollapsingFlexItem>
-      <CollapsingFlexItem open>
-        <template #header>Diff</template>
-        <CodeViewer
-          v-if="selectedComponent"
-          :title="`${selectedComponent.name}: ${selectedComponent.schemaName}`"
-          :code="
-            selectedComponent.componentDiff?.resourceDiff?.diff ||
-            selectedComponent.componentDiff?.resourceDiff?.current
-          "
-          codeLanguage="diff"
-          copyTooltip="Copy diff to clipboard"
-        />
-        <EmptyState
-          v-else
-          class="p-lg"
-          icon="component"
-          text="No component selected"
-          secondaryText="Select a component to see the diff for it"
-        />
-      </CollapsingFlexItem>
-    </div>
-  </section>
+          <template v-if="selectedComponent" #headerIcons>
+            <ActionPills :actionCounts="actionCounts" mode="row" />
+          </template>
+          <template v-if="selectedComponent">
+            <ActionsPanel :component="selectedComponent" />
+          </template>
+          <EmptyState
+            v-else
+            class="p-lg"
+            icon="component"
+            text="No component selected"
+            secondaryText="Select a component to see and configure actions"
+          />
+        </CollapsingFlexItem>
+      </div>
+      <div class="right flex flex-col p-xs">
+        <CollapsingFlexItem open>
+          <template #header>Component History</template>
+          <template v-if="selectedComponentId">
+            <ComponentHistory :componentId="selectedComponentId" />
+          </template>
+          <EmptyState
+            v-else
+            class="p-lg"
+            icon="component"
+            text="No component selected"
+            secondaryText="Select a component to see its history"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem open>
+          <template #header>Diff</template>
+          <CodeViewer
+            v-if="selectedComponent"
+            :title="`${selectedComponent.name}: ${selectedComponent.schemaName}`"
+            :code="
+              selectedComponent.componentDiff?.resourceDiff?.diff ||
+              selectedComponent.componentDiff?.resourceDiff?.current
+            "
+            codeLanguage="diff"
+            copyTooltip="Copy diff to clipboard"
+          />
+          <EmptyState
+            v-else
+            class="p-lg"
+            icon="component"
+            text="No component selected"
+            secondaryText="Select a component to see the diff for it"
+          />
+        </CollapsingFlexItem>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { useQueries, useQuery, useQueryClient } from "@tanstack/vue-query";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
 import clsx from "clsx";
-import { SiSearch, themeClasses, VButton } from "@si/vue-lib/design-system";
-import { useRouter } from "vue-router";
+import {
+  Icon,
+  SiSearch,
+  themeClasses,
+  VButton,
+  IconButton,
+} from "@si/vue-lib/design-system";
+import { useRouter, useRoute } from "vue-router";
 import * as _ from "lodash-es";
 import {
   bifrost,
@@ -251,10 +359,19 @@ import { useComponentActions } from "./logic_composables/component_actions";
 const ctx = useContext();
 
 const router = useRouter();
+const route = useRoute();
 const queryClient = useQueryClient();
 
 // const changeSetName = computed(() => ctx.changeSet.value?.name);
 const selectedComponentId = ref<ComponentId>();
+
+// Initialize selected component from URL query parameter
+const initializeFromUrl = () => {
+  const componentIdFromUrl = route.query.component as ComponentId;
+  if (componentIdFromUrl) {
+    selectedComponentId.value = componentIdFromUrl;
+  }
+};
 
 const key = useMakeKey();
 const args = useMakeArgs();
@@ -526,15 +643,74 @@ watch(
   },
 );
 
+// Watch for selected component changes and scroll it into view
+watch(selectedComponentId, (newSelectedId) => {
+  if (newSelectedId) {
+    scrollSelectedComponentIntoView();
+  }
+});
+
 const selectComponent = (componentId: ComponentId) => {
   selectedComponentId.value = componentId;
+  // Push component ID to URL for deep linking
+  router.push({
+    name: route.name,
+    params: route.params,
+    query: {
+      ...route.query,
+      component: componentId,
+    },
+  });
+};
+
+const deselectComponent = () => {
+  selectedComponentId.value = undefined;
+  // Remove component from URL
+  const { ...queryWithoutComponent } = route.query;
+  router.push({
+    name: route.name,
+    params: route.params,
+    query: queryWithoutComponent,
+  });
+};
+
+const scrollSelectedComponentIntoView = async () => {
+  if (!selectedComponentId.value || !componentListRef.value) return;
+
+  await nextTick();
+
+  // Find the selected component element
+  const selectedElement = componentListRef.value.querySelector(
+    `[data-component-id="${selectedComponentId.value}"]`,
+  );
+
+  if (selectedElement) {
+    selectedElement.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest",
+    });
+  }
 };
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
+const componentListRef = ref<HTMLDivElement>();
 const searchString = ref("");
 
 /** Components, filtered by the search string */
 const filteredComponentList = useComponentSearch(searchString, componentList);
+
+// Watch for componentList changes and reinitialize from URL if needed
+watch(
+  filteredComponentList,
+  (newList) => {
+    if (newList && newList.length > 0 && !selectedComponentId.value) {
+      initializeFromUrl();
+    }
+  },
+  { immediate: true },
+);
+
 /** Added components, filtered by the search string */
 const addedComponentList = computed(
   () =>
@@ -606,6 +782,92 @@ const exitReview = () => {
   });
 };
 
+// Navigation logic for back/forward buttons
+const currentComponentIndex = computed(() => {
+  if (!selectedComponentId.value) return -1;
+  return (
+    filteredComponentList.value?.findIndex(
+      (component) => component.id === selectedComponentId.value,
+    ) ?? -1
+  );
+});
+
+const canGoBack = computed(() => {
+  // Always enabled if there are components (will select first if none selected, or go back if one is selected)
+  return filteredComponentList.value?.length > 0;
+});
+
+const canGoForward = computed(() => {
+  // Always enabled if there are components (will select first if none selected, or go forward if one is selected)
+  return filteredComponentList.value?.length > 0;
+});
+
+const goToPreviousComponent = (e?: Event) => {
+  e?.preventDefault();
+  e?.stopPropagation();
+
+  // Clear any text selection
+  if (window.getSelection) {
+    window.getSelection()?.removeAllRanges();
+  }
+
+  if (!selectedComponentId.value) {
+    // No component selected - select the first one
+    const firstComponent = filteredComponentList.value?.[0];
+    if (firstComponent) {
+      selectComponent(firstComponent.id);
+    }
+  } else if (currentComponentIndex.value > 0) {
+    // Go to previous component
+    const prevComponent =
+      filteredComponentList.value?.[currentComponentIndex.value - 1];
+    if (prevComponent) {
+      selectComponent(prevComponent.id);
+    }
+  } else {
+    // At first component, wrap around to last component
+    const lastComponent =
+      filteredComponentList.value?.[filteredComponentList.value.length - 1];
+    if (lastComponent) {
+      selectComponent(lastComponent.id);
+    }
+  }
+};
+
+const goToNextComponent = (e?: Event) => {
+  e?.preventDefault();
+  e?.stopPropagation();
+
+  // Clear any text selection
+  if (window.getSelection) {
+    window.getSelection()?.removeAllRanges();
+  }
+
+  if (!selectedComponentId.value) {
+    // No component selected - select the first one
+    const firstComponent = filteredComponentList.value?.[0];
+    if (firstComponent) {
+      selectComponent(firstComponent.id);
+    }
+  } else if (
+    currentComponentIndex.value <
+    (filteredComponentList.value?.length ?? 0) - 1
+  ) {
+    // Go to next component
+    const nextComponent =
+      filteredComponentList.value?.[currentComponentIndex.value + 1];
+    if (nextComponent) {
+      selectComponent(nextComponent.id);
+    }
+  } else {
+    // At last component, wrap around to first component
+    const firstComponent = filteredComponentList.value?.[0];
+    if (firstComponent) {
+      selectComponent(firstComponent.id);
+    }
+  }
+};
+
 const controlUp = () => {
   const focusable = Array.from(
     document.querySelectorAll('[tabindex="0"]'),
@@ -626,7 +888,7 @@ const controlUp = () => {
     el.focus();
     selectedComponentId.value = el.dataset.listItemComponentId;
   } else {
-    selectedComponentId.value = undefined;
+    deselectComponent();
     searchRef.value?.focusSearch();
   }
 };
@@ -650,14 +912,14 @@ const controlDown = () => {
     el.focus();
     selectedComponentId.value = el.dataset.listItemComponentId;
   } else {
-    selectedComponentId.value = undefined;
+    deselectComponent();
     searchRef.value?.focusSearch();
   }
 };
 
 const onEscape = () => {
   if (selectedComponentId.value) {
-    selectedComponentId.value = undefined;
+    deselectComponent();
   } else {
     exitReview();
   }
@@ -677,6 +939,16 @@ const onSearchTab = (e: KeyboardEvent) => {
   } else {
     searchControl(false);
   }
+};
+
+const onArrowLeft = (e: KeyDetails["ArrowLeft"]) => {
+  e.preventDefault();
+  goToPreviousComponent();
+};
+
+const onArrowRight = (e: KeyDetails["ArrowRight"]) => {
+  e.preventDefault();
+  goToNextComponent();
 };
 const searchControl = (up: boolean) => {
   const focusable = Array.from(
@@ -700,12 +972,19 @@ onMounted(() => {
   keyEmitter.on("Tab", onTab);
   keyEmitter.on("ArrowUp", controlUp);
   keyEmitter.on("ArrowDown", controlDown);
+  keyEmitter.on("ArrowLeft", onArrowLeft);
+  keyEmitter.on("ArrowRight", onArrowRight);
+
+  // Initialize component selection from URL
+  initializeFromUrl();
 });
 onBeforeUnmount(() => {
   keyEmitter.off("Escape", onEscape);
-  keyEmitter.on("Tab", onTab);
-  keyEmitter.on("ArrowUp", controlUp);
-  keyEmitter.on("ArrowDown", controlDown);
+  keyEmitter.off("Tab", onTab);
+  keyEmitter.off("ArrowUp", controlUp);
+  keyEmitter.off("ArrowDown", controlDown);
+  keyEmitter.off("ArrowLeft", onArrowLeft);
+  keyEmitter.off("ArrowRight", onArrowRight);
 });
 </script>
 
@@ -715,7 +994,6 @@ section.grid.review {
   grid-template-rows: 100%;
   grid-template-areas: "left main right";
 }
-
 div.main {
   grid-area: "main";
 }
