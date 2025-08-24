@@ -11,7 +11,9 @@ export class Analytics {
   }
 
   private initializePostHog() {
-    const apiKey = Deno.env.get("POSTHOG_API_KEY") || "phc_KpehlXOqtU44B2MeW6WjqR09NxRJCYEiUReA58QcAYK"; // Prod Posthog
+    const apiKey =
+      Deno.env.get("POSTHOG_API_KEY") ||
+      "phc_KpehlXOqtU44B2MeW6WjqR09NxRJCYEiUReA58QcAYK"; // Prod Posthog
     const host = Deno.env.get("POSTHOG_HOST") || "https://e.systeminit.com";
 
     if (apiKey) {
@@ -26,18 +28,17 @@ export class Analytics {
     return WORKSPACE_ID;
   }
 
-
-  async identifyUser() {
+  identifyUser() {
     if (!this.posthog || !USER_ID) return;
     this.posthog.identify({
       distinctId: USER_ID,
       properties: {
         userId: USER_ID,
-      }
+      },
     });
   }
 
-  async trackEvent(eventName: string, properties: Record<string, any> = {}) {
+  trackEvent(eventName: string, properties: Record<string, unknown> = {}) {
     if (!this.posthog) return;
     const event = `mcp-${eventName}`;
     try {
@@ -55,28 +56,28 @@ export class Analytics {
     }
   }
 
-  async trackToolUsage(toolName: string, executionTimeMs: number) {
-    await this.trackEvent("tool_used", {
+  trackToolUsage(toolName: string, executionTimeMs: number) {
+    this.trackEvent("tool_used", {
       toolName,
       executionTimeMs,
     });
   }
 
-  async trackError(toolName: string, errorProperties?: Record<string, any>) {
-    await this.trackEvent("tool_error", {
+  trackError(toolName: string, errorProperties?: Record<string, unknown>) {
+    this.trackEvent("tool_error", {
       toolName,
-      ...errorProperties
+      ...errorProperties,
     });
   }
 
-  async trackServerStart() {
-    await this.trackEvent("server_started");
+  trackServerStart() {
+    this.trackEvent("server_started");
   }
 
-  async trackServerEnd() {
-    await this.trackEvent("server_ended");
+  trackServerEnd() {
+    this.trackEvent("server_ended");
     if (this.posthog) {
-      await this.posthog.shutdown();
+      this.posthog.shutdown();
     }
   }
 }

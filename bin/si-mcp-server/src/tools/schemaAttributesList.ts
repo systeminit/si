@@ -1,37 +1,56 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { generateDescription, successResponse, withAnalytics } from "./commonBehavior.ts";
-import { getAttributesForService } from "../data/cfDb.ts";
+import {
+  errorResponse,
+  generateDescription,
+  successResponse,
+  withAnalytics,
+} from "./commonBehavior.ts";
+import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
+import { ChangeSetItem } from "../data/changeSets.ts";
+import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
+import { buildAttributesStructure } from "../data/schemaAttributes.ts";
 
 const name = "schema-attributes-list";
 const title = "List all the attributes of a schema";
-const description =
-  `<description>Lists all the attributes of a schema. Returns the schema name and an array of attribute objects that contain the Attribute Name, Path, and if it is Required. On failure, returns error details. Only supports AWS schemas.</description><usage>Use this tool to discover what attributes (sometimes called properties) are available for a schema.</usage>`;
+const description = `<description>Lists all the attributes of a schema. Returns the schema name and an array of attribute objects that contain the Attribute Name, Path, and if it is Required. On failure, returns error details. Only supports AWS schemas.</description><usage>Use this tool to discover what attributes (sometimes called properties) are available for a schema.</usage>`;
 
 const ListSchemaAttributesInputSchemaRaw = {
-  schemaName: z.string().describe(
-    "The Schema Name to retrieve the attributes for",
-  ),
+  schemaName: z
+    .string()
+    .describe("The Schema Name to retrieve the attributes for"),
 };
 
 const ListSchemaAttributesOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
-  data: z.object({
-    schemaName: z.string().describe("the schema name"),
-    attributes: z.array(
-      z.object({
-        name: z.string().describe("the attributes name"),
-        path: z.string().describe(
-          "the absolute path of the attribute, which you can use to look up its documentation",
-        ),
-        required: z.boolean().describe("if this attribute is required"),
-      }).describe("an attribute"),
-    ).describe("array of attributes"),
-  }).optional().describe("the schema information"),
+  errorMessage: z
+    .string()
+    .optional()
+    .describe(
+      "If the status is failure, the error message will contain information about what went wrong",
+    ),
+  data: z
+    .object({
+      schemaName: z.string().describe("the schema name"),
+      attributes: z
+        .array(
+          z
+            .object({
+              name: z.string().describe("the attributes name"),
+              path: z
+                .string()
+                .describe(
+                  "the absolute path of the attribute, which you can use to look up its documentation",
+                ),
+              required: z.boolean().describe("if this attribute is required"),
+            })
+            .describe("an attribute"),
+        )
+        .describe("array of attributes"),
+    })
+    .optional()
+    .describe("the schema information"),
 };
 const ListSchemaAttributesOutputSchema = z.object(
   ListSchemaAttributesOutputSchemaRaw,
@@ -58,352 +77,94 @@ export function schemaAttributesListTool(server: McpServer) {
     },
     async ({ schemaName }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      let responseData: ListSchemaAttributesOutput["data"];
+        let responseData: ListSchemaAttributesOutput["data"];
 
-      if (schemaName == "AWS::IAM::User") {
-        responseData = {
-          schemaName: "AWS::IAM::User",
-          "attributes": [
-            {
-              "name": "UserName",
-              "path": "/domain/UserName",
-              "required": true,
-            },
-            {
-              "name": "Path",
-              "path": "/domain/Path",
-              "required": false,
-            },
-            {
-              "name": "PermissionsBoundary",
-              "path": "/domain/PermissionsBoundary",
-              "required": false,
-            },
-            {
-              "name": "Key",
-              "path": "/domain/Tags/[array]/Key",
-              "required": true,
-            },
-            {
-              "name": "Value",
-              "path": "/domain/Tags/[array]/Value",
-              "required": true,
-            },
-            {
-              "name": "IdentityType",
-              "path": "/domain/IdentityType",
-              "required": false,
-            },
-          ],
-        };
-      } else if (schemaName == "AWS::IAM::Role") {
-        responseData = {
-          schemaName: "AWS::IAM::Role",
-          "attributes": [
-            {
-              "name": "RoleName",
-              "path": "/domain/RoleName",
-              "required": true,
-            },
-            {
-              "name": "AssumeRolePolicyDocument",
-              "path": "/domain/AssumeRolePolicyDocument",
-              "required": true,
-            },
-            {
-              "name": "Description",
-              "path": "/domain/Description",
-              "required": false,
-            },
-            {
-              "name": "MaxSessionDuration",
-              "path": "/domain/MaxSessionDuration",
-              "required": false,
-            },
-            {
-              "name": "Path",
-              "path": "/domain/Path",
-              "required": false,
-            },
-            {
-              "name": "PermissionsBoundary",
-              "path": "/domain/PermissionsBoundary",
-              "required": false,
-            },
-            {
-              "name": "IdentityType",
-              "path": "/domain/IdentityType",
-              "required": false,
-            },
-            {
-              "name": "Key",
-              "path": "/domain/Tags/[array]/Key",
-              "required": true,
-            },
-            {
-              "name": "Value",
-              "path": "/domain/Tags/[array]/Value",
-              "required": true,
-            },
-            {
-              "name": "Region",
-              "path": "/domain/extra/Region",
-              "required": false,
-            },
-          ],
-        };
-      } else if (schemaName == "AWS::IAM::Group") {
-        responseData = {
-          schemaName: "AWS::IAM::Group",
-          "attributes": [
-            {
-              "name": "GroupName",
-              "path": "/domain/GroupName",
-              "required": true,
-            },
-            {
-              "name": "Path",
-              "path": "/domain/Path",
-              "required": false,
-            },
-            {
-              "name": "UserName",
-              "path": "/domain/Users/[array]",
-              "required": false,
-            },
-            {
-              "name": "IdentityType",
-              "path": "/domain/IdentityType",
-              "required": false,
-            },
-          ],
-        };
-      } else if (schemaName == "AWS::IAM::ManagedPolicy") {
-        responseData = {
-          schemaName: "AWS::IAM::ManagedPolicy",
-          "attributes": [
-            {
-              "name": "PolicyName",
-              "path": "/domain/PolicyName",
-              "required": true,
-            },
-            {
-              "name": "PolicyDocument",
-              "path": "/domain/PolicyDocument",
-              "required": true,
-            },
-            {
-              "name": "Path",
-              "path": "/domain/Path",
-              "required": false,
-            },
-            {
-              "name": "Description",
-              "path": "/domain/Description",
-              "required": false,
-            },
-            {
-              "name": "Key",
-              "path": "/domain/Tags/[array]/Key",
-              "required": true,
-            },
-            {
-              "name": "Value",
-              "path": "/domain/Tags/[array]/Value",
-              "required": true,
-            },
-            {
-              "name": "Region",
-              "path": "/domain/extra/Region",
-              "required": false,
-            },
-          ],
-        };
-      } else if (schemaName == "AWS::IAM::UserPolicy") {
-        responseData = {
-          schemaName: "AWS::IAM::UserPolicy",
-          "attributes": [
-            {
-              "name": "UserName",
-              "path": "/domain/UserName",
-              "required": true,
-            },
-            {
-              "name": "PolicyArn",
-              "path": "/domain/PolicyArn",
-              "required": true,
-            },
-            {
-              "name": "PolicyType",
-              "path": "/domain/PolicyType",
-              "required": false,
-            },
-          ],
-        };
-      } else if (schemaName == "AWS::IAM::RolePolicy") {
-        responseData = {
-          schemaName: "AWS::IAM::RolePolicy",
-          "attributes": [
-            {
-              "name": "RoleName",
-              "path": "/domain/RoleName",
-              "required": true,
-            },
-            {
-              "name": "PolicyArn",
-              "path": "/domain/PolicyArn",
-              "required": true,
-            },
-            {
-              "name": "PolicyType",
-              "path": "/domain/PolicyType",
-              "required": false,
-            },
-            {
-              "name": "IdentityType",
-              "path": "/domain/IdentityType",
-              "required": false,
-            },
-          ],
-        };
-      } else if (schemaName == "AWS::IAM::InstanceProfile") {
-        responseData = {
-          schemaName: "AWS::IAM::InstanceProfile",
-          "attributes": [
-            {
-              "name": "InstanceProfileName",
-              "path": "/domain/InstanceProfileName",
-              "required": true,
-            },
-            {
-              "name": "Path",
-              "path": "/domain/Path",
-              "required": false,
-            },
-            {
-              "name": "RoleName",
-              "path": "/domain/RoleName",
-              "required": false,
-            },
-            {
-              "name": "Key",
-              "path": "/domain/Tags/[array]/Key",
-              "required": true,
-            },
-            {
-              "name": "Value",
-              "path": "/domain/Tags/[array]/Value",
-              "required": true,
-            },
-            {
-              "name": "Region",
-              "path": "/domain/extra/Region",
-              "required": false,
-            },
-          ],
-        };
-      } else if (schemaName == "String Template") {
-        responseData = {
-          schemaName: "String Template",
-          "attributes": [
-            {
-              "name": "Template",
-              "path": "/domain/Template",
-              "required": false,
-            },
-            {
-              "name": "Value",
-              "path": "/domain/Variables/[map]",
-              "required": false,
-            },
-            {
-              "name": "Value",
-              "path": "/domain/Rendered/Value",
-              "required": false,
-            },
-            {
-              "name": "Error",
-              "path": "/domain/Rendered/Error",
-              "required": false,
-            },
-          ],
-        };
-      } else if (schemaName == "Region") {
-        responseData = {
-          schemaName: "Region",
-          "attributes": [
-            {
-              "name": "region",
-              "path": "/domain/region",
-              "required": true,
-            },
-          ],
-        };
-      } else if (schemaName == "AWS Credential") {
-        responseData = {
-          schemaName: "AWS Credential",
-          "attributes": [
-            {
-              "name": "SessionToken",
-              "path": "/secrets/AWS Credential/SessionToken",
-              "required": false,
-            },
-            {
-              "name": "AccessKeyId",
-              "path": "/secrets/AWS Credential/AccessKeyId",
-              "required": false,
-            },
-            {
-              "name": "SecretAccessKey",
-              "path": "/secrets/AWS Credential/SecretAccessKey",
-              "required": false,
-            },
-            {
-              "name": "AssumeRole",
-              "path": "/secrets/AWS Credential/AssumeRole",
-              "required": false,
-            },
-            {
-              "name": "Endpoint",
-              "path": "/secrets/AWS Credential/Endpoint",
-              "required": false,
-            },
-          ],
-        };
-      } else if (schemaName == "AWS Account") {
-        responseData = {
-          schemaName: "AWS Account",
-          "attributes": [
-            {
-              "name": "Account",
-              "path": "/domain/AccountData/Account",
-              "required": false,
-            },
-            {
-              "name": "Arn",
-              "path": "/domain/AccountData/Arn",
-              "required": false,
-            },
-            {
-              "name": "UserId",
-              "path": "/domain/AccountData/UserId",
-              "required": false,
-            },
-            {
-              "name": "CanonicalUserId",
-              "path": "/domain/CanonicalUserId",
-              "required": false,
-            },
-          ],
-        };
-      } else {
-        const attributes = getAttributesForService(schemaName);
-        responseData = { schemaName, attributes };
-      }
-      return successResponse(
-        responseData,
-        "If this is an AWS resource, the attributes map 1:1 to to the Cloudformation resource, where the path is calculated by looking at the Cloudformation resources nesting. You should look up the documentation for any attribute by its schemaName and path with the schema-attributes-documentation tool before setting any values.",
-      );
+        let changeSetId = "";
+        const changeSetsApi = new ChangeSetsApi(apiConfig);
+        try {
+          const changeSetList = await changeSetsApi.listChangeSets({
+            workspaceId: WORKSPACE_ID,
+          });
+          const head = (changeSetList.data.changeSets as ChangeSetItem[]).find(
+            (cs) => cs.isHead,
+          );
+          if (!head) {
+            return errorResponse({
+              message:
+                "No HEAD change set found; this is a bug! Tell the user we are sorry.",
+            });
+          }
+          changeSetId = head.id;
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          return errorResponse({
+            message: `We could not find the HEAD change set; this is a bug! Tell the user we are sorry: ${errorMessage}`,
+          });
+        }
+
+        const siApi = new SchemasApi(apiConfig);
+        try {
+          if (schemaName.startsWith("AWS::IAM")) {
+            switch (schemaName) {
+              case "AWS::IAM::User":
+              case "AWS::IAM::Role":
+              case "AWS::IAM::Group":
+              case "AWS::IAM::ManagedPolicy":
+              case "AWS::IAM::UserPolicy":
+              case "AWS::IAM::RolePolicy":
+              case "AWS::IAM::InstanceProfile":
+                break;
+              default:
+                return errorResponse({
+                  message:
+                    "AWS::IAM schema not found. Use one of AWS::IAM::User, AWS::IAM::Role, AWS::IAM::RolePolicy, AWS::IAM::UserPolicy, AWS::IAM::ManagedPolicy, AWS::IAM::InstanceProfile, or AWS::IAM::Group.",
+                });
+            }
+          }
+
+          let schemaId = "";
+          try {
+            const response = await siApi.findSchema({
+              workspaceId: WORKSPACE_ID,
+              changeSetId: changeSetId!,
+              schema: schemaName,
+            });
+            schemaId = response.data.schemaId;
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            return errorResponse({
+              message: `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
+            });
+          }
+
+          const response = await siApi.getDefaultVariant({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId!,
+            schemaId: schemaId,
+          });
+
+          if (response.status === 202) {
+            return errorResponse({
+              message:
+                "The data is not yet available for this request. Try again in a few seconds",
+            });
+          }
+
+          const attributeDetails = buildAttributesStructure(response.data);
+          responseData = {
+            schemaName: attributeDetails.schemaName,
+            attributes: attributeDetails.attributes,
+          };
+
+          return successResponse(
+            responseData,
+            "You can use a web search to find the cloudformation schema",
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );
