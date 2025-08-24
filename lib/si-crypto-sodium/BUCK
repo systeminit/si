@@ -1,12 +1,10 @@
-load("//prelude-si:rust.bzl", "rust_library")
+load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
     name = "si-crypto-sodium",
     srcs = glob([
         "src/**/*.rs",
     ]),
-    crate_root = "src/lib.rs",
-    proc_macro_deps = [],
     deps = [
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:base64",
@@ -15,7 +13,7 @@ rust_library(
         "//third-party/rust:sodiumoxide",
         "//third-party/rust:thiserror",
     ],
-    test_deps = [
+    test_unit_deps = [
         "//third-party/rust:serde_json",
         "//third-party/rust:tempfile",
     ],

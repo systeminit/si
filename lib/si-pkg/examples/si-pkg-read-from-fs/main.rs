@@ -8,7 +8,7 @@ use si_pkg::SiPkg;
 use tokio::fs;
 
 #[tokio::main]
-async fn main() -> Result<(), si_crypto_sodium::SodiumCryptoError> {
+async fn main() -> Result<(), si_pkg::SiPkgError> {
     let mut args = args();
     let path = args.nth(1).expect("usage: program <DIR>");
 

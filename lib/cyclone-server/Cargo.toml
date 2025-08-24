@@ -24,6 +24,7 @@ remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
+si-crypto-sodium = { path = "../../lib/si-crypto-sodium" }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-http = { path = "../../lib/telemetry-http-rs" }

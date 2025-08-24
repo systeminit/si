@@ -19,6 +19,7 @@ petgraph = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-crypto-sodium = { path = "../../lib/si-crypto-sodium" }
 strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

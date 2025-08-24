@@ -3,11 +3,12 @@ use std::env::args;
 use si_pkg::{
     PkgSpec,
     SiPkg,
+    SiPkgError,
 };
 use tokio::fs;
 
 #[tokio::main]
-async fn main() -> Result<(), si_crypto_sodium::SodiumCryptoError> {
+async fn main() -> Result<(), SiPkgError> {
     let mut args = args();
     let input = args.nth(1).expect("usage: program <JSON_FILE> <TARBALL>");
     let tar_file = args.next().expect("usage: program <JSON_FILE> <TARBALL>");
