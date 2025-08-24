@@ -250,18 +250,18 @@ pub async fn pkg_open(builder: &DalContextBuilder, file_name: &str) -> ModuleRes
 
 pub fn routes() -> Router<sdf_core::app_state::AppState> {
     Router::new()
-        .route("/install_module", post(install_module::install_module))
-        .route("/upgrade_modules", post(upgrade_modules::upgrade_modules))
+        .route("/install_module", post(install_module::install_module)) // USED IN CUSTOMIZE SCREEN
+        .route("/upgrade_modules", post(upgrade_modules::upgrade_modules)) // USED IN CUSTOMIZE SCREEN
         .route(
-            "/begin_approval_process",
+            "/begin_approval_process", // USED IN CUSTOMIZE SCREEN
             post(approval_process::begin_approval_process),
         )
         .route(
-            "/cancel_approval_process",
+            "/cancel_approval_process", // USED IN CUSTOMIZE SCREEN
             post(approval_process::cancel_approval_process),
         )
         .route(
-            "/import_workspace_vote",
+            "/import_workspace_vote", // USED IN CUSTOMIZE SCREEN
             post(import_workspace_vote::import_workspace_vote),
         )
 }

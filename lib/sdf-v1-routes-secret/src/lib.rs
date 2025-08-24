@@ -71,9 +71,9 @@ impl_default_error_into_response!(SecretError);
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/get_public_key", get(get_public_key::get_public_key))
-        .route("/", post(create_secret::create_secret))
-        .route("/", get(list_secrets::list_secrets))
-        .route("/", patch(update_secret::update_secret))
-        .route("/", delete(delete_secret::delete_secret))
+        .route("/get_public_key", get(get_public_key::get_public_key)) // USED IN OLD UI IN SECRETS STORE
+        .route("/", post(create_secret::create_secret)) // USED IN OLD UI IN SECRETS STORE
+        .route("/", get(list_secrets::list_secrets)) // USED IN OLD UI IN SECRETS STORE
+        .route("/", patch(update_secret::update_secret)) // USED IN OLD UI IN SECRETS STORE
+        .route("/", delete(delete_secret::delete_secret)) // USED IN OLD UI IN SECRETS STORE
 }

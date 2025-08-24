@@ -30,7 +30,6 @@ use si_events::ulid;
 use thiserror::Error;
 
 pub mod auth_connect;
-pub mod load_workspaces;
 mod refresh_workspace_members;
 pub mod restore_authentication;
 
@@ -97,15 +96,14 @@ impl IntoResponse for SessionError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/connect", post(auth_connect::auth_connect))
-        .route("/reconnect", get(auth_connect::auth_reconnect))
+        .route("/connect", post(auth_connect::auth_connect)) // MIGHT BE USED IN NEWHOTNESS
+        .route("/reconnect", get(auth_connect::auth_reconnect)) // MIGHT BE USED IN NEWHOTNESS
         .route(
-            "/restore_authentication",
+            "/restore_authentication", // MIGHT BE USED IN NEWHOTNESS
             get(restore_authentication::restore_authentication),
         )
-        .route("/load_workspaces", get(load_workspaces::load_workspaces))
         .route(
-            "/refresh_workspace_members",
+            "/refresh_workspace_members", // MIGHT BE USED IN NEWHOTNESS (THOUGH MORE DOUBTFUL)
             post(refresh_workspace_members::refresh_workspace_members),
         )
 }

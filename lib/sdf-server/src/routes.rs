@@ -62,8 +62,8 @@ async fn app_state_middeware<B>(
 #[allow(clippy::too_many_arguments)]
 pub fn routes(state: AppState) -> Router {
     Router::new()
-        .nest("/api", v1_routes())
-        .nest("/api/public", crate::service::public::routes(state.clone()))
+        .nest("/api", v1_routes()) // INVESTIGATED!
+        .nest("/api/public", crate::service::public::routes(state.clone())) // INVESTIGATING NEXT...
         .nest("/api/v2", crate::service::v2::routes(state.clone()))
         .nest("/api/whoami", crate::service::whoami::routes())
         .layer(CompressionLayer::new())
@@ -117,12 +117,12 @@ fn v1_routes() -> Router<AppState> {
         .nest("/change_set", sdf_v1_routes_change_sets::routes()) // SOME USED IN NEW UI
         .nest("/component", sdf_v1_routes_component::routes()) // MOST USED IN OLD UI (ONE IN FUNC EDITOR)
         .nest("/diagram", sdf_v1_routes_diagram::routes()) // ALL USED IN OLD UI
-        .nest("/qualification", sdf_v1_routes_qualification::routes()) // INVESTIGATING NEXT
-        .nest("/secret", sdf_v1_routes_secret::routes())
-        .nest("/session", sdf_v1_routes_session::routes())
-        .nest("/ws", sdf_v1_routes_ws::routes())
-        .nest("/module", sdf_v1_routes_module::routes())
-        .nest("/variant", sdf_v1_routes_variant::routes())
+        .nest("/qualification", sdf_v1_routes_qualification::routes()) // ALL USED IN OLD UI (AND ONE IN API TESTS)
+        .nest("/secret", sdf_v1_routes_secret::routes()) // ALL USED IN OLD UI IN SECRETS STORE
+        .nest("/session", sdf_v1_routes_session::routes()) // ALL MIGHT BE USED IN NEWHOTNESS
+        .nest("/ws", sdf_v1_routes_ws::routes()) // ALL USED IN NEWHOTNESS, BUT CRDT IS ONLY USED IN THE CODEVIEWER AND WORKSPACES UPDATES MIGHT BE ABLE TO BE TRIMMED (E.G. COMPONENT POSITION)
+        .nest("/module", sdf_v1_routes_module::routes()) // ALL USED IN CUSTOMIZE SCREEN
+        .nest("/variant", sdf_v1_routes_variant::routes()) // ALL USED IN CUSTOMIZE UI
 }
 
 async fn system_status_route() -> Json<Value> {
