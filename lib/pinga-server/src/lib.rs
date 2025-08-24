@@ -8,7 +8,6 @@ use std::io;
 
 use dal::{
     DedicatedExecutorInitializeError,
-    InitializationError,
     TransactionsError,
 };
 use si_data_nats::{
@@ -45,7 +44,7 @@ pub enum ServerError {
     #[error("compute executor initialization error: {0}")]
     DedicatedExecutorInitialize(#[from] DedicatedExecutorInitializeError),
     #[error("initialization error: {0}")]
-    Initialization(#[from] InitializationError),
+    Initialization(#[from] si_crypto_sodium::SodiumCryptoError),
     #[error("stream consumer error: {0}")]
     JsConsumer(#[from] async_nats::jetstream::stream::ConsumerError),
     #[error("consumer stream error: {0}")]

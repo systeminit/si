@@ -8,7 +8,7 @@ use serde::{
     Deserializer,
     Serializer,
 };
-use sodiumoxide::crypto::box_::PublicKey as BoxPublicKey;
+use si_crypto_sodium::PublicKey as BoxPublicKey;
 
 use super::base64_encode_bytes;
 
@@ -29,6 +29,6 @@ where
         .decode(s)
         .map_err(serde::de::Error::custom)?;
 
-    BoxPublicKey::from_slice(&box_buffer)
-        .ok_or_else(|| serde::de::Error::custom("cannot deserialize public key"))
+    si_crypto_sodium::key_pair::public_key_from_slice(&box_buffer)
+        .map_err(|_| serde::de::Error::custom("cannot deserialize public key"))
 }

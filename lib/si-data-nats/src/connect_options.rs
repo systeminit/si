@@ -632,7 +632,7 @@ impl ConnectOptions {
     ///
     /// ```no_run
     /// # #[tokio::main]
-    /// # async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    /// # async fn main() -> std::result::Result<(), si_crypto_sodium::SodiumCryptoError> {
     /// let (tx, mut _rx) = tokio::sync::mpsc::channel(1);
     /// si_data_nats::ConnectOptions::new()
     ///     .event_callback(move |event| {
@@ -686,7 +686,7 @@ impl ConnectOptions {
     ///
     /// ```no_run
     /// # #[tokio::main]
-    /// # async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    /// # async fn main() -> std::result::Result<(), si_crypto_sodium::SodiumCryptoError> {
     /// si_data_nats::ConnectOptions::new()
     ///     .client_capacity(256)
     ///     .connect("demo.nats.io", None)
@@ -819,7 +819,7 @@ impl ConnectOptions {
     ///
     /// ```no_run
     /// # #[tokio::main]
-    /// # async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    /// # async fn main() -> std::result::Result<(), si_crypto_sodium::SodiumCryptoError> {
     /// si_data_nats::ConnectOptions::new()
     ///     .read_buffer_capacity(65535)
     ///     .connect("demo.nats.io", None)

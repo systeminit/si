@@ -106,7 +106,7 @@ async fn save_and_regenerate(
     code: impl Into<String>,
     schema_name: impl AsRef<str>,
     schema_variant_id: SchemaVariantId,
-) -> Result<SchemaVariantId, Box<dyn std::error::Error>> {
+) -> Result<SchemaVariantId, si_crypto_sodium::SodiumCryptoError> {
     let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
     let schema_name = schema_name.as_ref();
 

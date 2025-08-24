@@ -320,7 +320,7 @@ async fn fail_to_process<Success: Serialize>(
     mut socket: WebSocket,
     message: impl Into<String>,
     _success_marker: PhantomData<Success>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), si_crypto_sodium::SodiumCryptoError> {
     let msg = Message::<Success>::fail(message).serialize_to_string()?;
     socket.send(ws::Message::Text(msg)).await?;
     socket.close().await?;

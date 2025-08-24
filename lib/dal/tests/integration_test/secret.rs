@@ -83,7 +83,7 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
 
     // Create an encrypted message.
     let message = serde_json::json!({"song": "Bar Round Here"});
-    let crypted = sodiumoxide::crypto::sealedbox::seal(
+    let crypted = si_crypto_sodium::sealed_box::seal(
         &serde_json::to_vec(&message).expect("failed to serialize message"),
         pkey,
     );
@@ -136,7 +136,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
 
     // Create a message to encrypt and use for the secret.
     let message = serde_json::json!({"song": "Smile", "artist": "midwxst"});
-    let crypted = sodiumoxide::crypto::sealedbox::seal(
+    let crypted = si_crypto_sodium::sealed_box::seal(
         &serde_json::to_vec(&message).expect("failed to serialize message"),
         pkey,
     );
@@ -181,7 +181,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
     // Update the encrypted contents and the secret.
     let updated_message =
         serde_json::json!({"song": "Smile", "artist": "midwxst", "featuredArtists": ["glaive"]});
-    let updated_crypted = sodiumoxide::crypto::sealedbox::seal(
+    let updated_crypted = si_crypto_sodium::sealed_box::seal(
         &serde_json::to_vec(&updated_message).expect("failed to serialize message"),
         pkey,
     );

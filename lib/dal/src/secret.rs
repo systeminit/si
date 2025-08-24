@@ -57,12 +57,10 @@ use si_id::{
     SchemaVariantId,
 };
 use si_layer_cache::LayerDbError;
-use sodiumoxide::crypto::{
-    box_::{
-        PublicKey,
-        SecretKey,
-    },
-    sealedbox,
+use si_crypto_sodium::{
+    PublicKey,
+    SecretKey,
+    sealed_box,
 };
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -965,7 +963,7 @@ impl EncryptedSecret {
                     symmetric_crypto_service.decrypt(&self.crypted, &self.nonce, &self.key_hash)?;
 
                 let message = serde_json::from_slice(
-                    &sealedbox::open(&symmetric_decrypted, pkey, skey)
+                    &sealed_box::open(&symmetric_decrypted, pkey, skey)
                         .map_err(|_| SecretError::DecryptionFailed)?,
                 )
                 .map_err(SecretError::DeserializeMessage)?;
@@ -1055,7 +1053,6 @@ impl From<PropError> for SecretError {
 
 #[cfg(test)]
 mod tests {
-    use sodiumoxide::crypto::box_;
 
     use super::*;
 
@@ -1081,7 +1078,7 @@ mod tests {
     where
         T: ?Sized + Serialize,
     {
-        sealedbox::seal(
+        sealed_box::seal(
             &serde_json::to_vec(value).expect("failed to serialize value"),
             pkey,
         )
@@ -1089,8 +1086,8 @@ mod tests {
 
     #[test]
     fn into_decrypted() {
-        sodiumoxide::init().expect("crypto failed to init");
-        let (pkey, skey) = box_::gen_keypair();
+        si_crypto_sodium::init().expect("crypto failed to init");
+        let (pkey, skey) = si_crypto_sodium::key_pair::generate_keypair();
 
         let message =
             serde_json::json!({"username": "The Cadillac Three", "password": "Slow Rollin"});

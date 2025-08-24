@@ -22,8 +22,7 @@ use si_db::{
 };
 use si_events::Timestamp;
 use si_hash::Hash;
-use sodiumoxide::crypto::box_::{
-    self,
+use si_crypto_sodium::{
     PublicKey as BoxPublicKey,
     SecretKey as BoxSecretKey,
 };
@@ -165,7 +164,7 @@ impl KeyPair {
     fn gen_keys(
         symmetric_crypto_service: &SymmetricCryptoService,
     ) -> (BoxPublicKey, Vec<u8>, SymmetricNonce, &Hash) {
-        let (public_key, secret_key) = box_::gen_keypair();
+        let (public_key, secret_key) = si_crypto_sodium::key_pair::generate_keypair();
 
         let (secret_key_crypted, secret_key_nonce, secret_key_key_hash) =
             symmetric_crypto_service.encrypt(secret_key.as_ref());
@@ -251,8 +250,8 @@ impl KeyPairRow {
             &self.secret_key_nonce,
             &self.secret_key_key_hash,
         )?;
-        let secret_key = BoxSecretKey::from_slice(secret_key_bytes.as_slice())
-            .ok_or(KeyPairError::InvalidSecretKeyBytes)?;
+        let secret_key = si_crypto_sodium::key_pair::secret_key_from_slice(secret_key_bytes.as_slice())
+            .map_err(|_| KeyPairError::InvalidSecretKeyBytes)?;
 
         Ok(KeyPair {
             pk: self.pk,
@@ -268,7 +267,7 @@ impl KeyPairRow {
 
 #[cfg(test)]
 mod tests {
-    use sodiumoxide::crypto::sealedbox;
+    use si_crypto_sodium::sealed_box;
 
     use super::*;
 
@@ -299,7 +298,7 @@ mod tests {
 
     #[test]
     fn key_pair_row_decrypt_into() {
-        sodiumoxide::init().expect("crypto failed to init");
+        si_crypto_sodium::init().expect("crypto failed to init");
         let symmetric_crypto_service = symmetric_crypto_service();
 
         let key_pair_row = key_pair_row("the-temperance-movement", &symmetric_crypto_service);
@@ -311,8 +310,8 @@ mod tests {
         assert_eq!("the-temperance-movement", key_pair.name);
 
         // Use the fully decrypted key pair to make sure we can round trip a message
-        let crypted = sealedbox::seal(b"it's a secret", key_pair.public_key());
-        let message = sealedbox::open(&crypted, key_pair.public_key(), key_pair.secret_key())
+        let crypted = sealed_box::seal(b"it's a secret", key_pair.public_key());
+        let message = sealed_box::open(&crypted, key_pair.public_key(), key_pair.secret_key())
             .expect("failed to decrypt test message with keys");
         assert_eq!("it's a secret".as_bytes(), message.as_slice());
     }

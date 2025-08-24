@@ -73,7 +73,7 @@ pub enum ServerError {
     CycloneEncryptionKey(#[source] si_crypto::VeritechEncryptionKeyError),
     /// When the DAL library fails to be initialized
     #[error("dal initialization error: {0}")]
-    DalInitialization(#[from] dal::InitializationError),
+    DalInitialization(#[from] si_crypto_sodium::SodiumCryptoError),
     /// When we fail to get or create inner NATS Jetstream streams
     #[error("dal jetstream streams error: {0}")]
     DalJetstreamStreams(#[from] dal::JetstreamStreamsError),

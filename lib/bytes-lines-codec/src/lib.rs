@@ -37,7 +37,7 @@
 //! use futures::SinkExt;
 //! use bytes::Bytes;
 //!
-//! async fn write_frame<T>(io: T) -> Result<(), Box<dyn std::error::Error>>
+//! async fn write_frame<T>(io: T) -> Result<(), si_crypto_sodium::SodiumCryptoError>
 //! where
 //!     T: AsyncRead + AsyncWrite + Unpin,
 //! {

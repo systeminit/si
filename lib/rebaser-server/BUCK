@@ -17,6 +17,7 @@ rust_library(
         "//lib/shuttle-server:shuttle-server",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
+        "//lib/si-crypto-sodium:si-crypto-sodium",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-events-rs:si-events",
         "//lib/si-frontend-types-rs:si-frontend-types",

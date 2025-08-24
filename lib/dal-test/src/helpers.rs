@@ -394,7 +394,7 @@ pub async fn encrypt_message(
 ) -> Result<Vec<u8>> {
     let public_key = KeyPair::get_by_pk(ctx, key_pair_pk).await?;
 
-    let crypted = sodiumoxide::crypto::sealedbox::seal(
+    let crypted = si_crypto_sodium::sealed_box::seal(
         &serde_json::to_vec(message)?,
         public_key.public_key(),
     );

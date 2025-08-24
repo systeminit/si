@@ -21,6 +21,7 @@ rust_library(
         "//lib/sdf-extract:sdf-extract",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
+        "//lib/si-crypto-sodium:si-crypto-sodium",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-data-spicedb:si-data-spicedb",
         "//lib/si-events-rs:si-events",

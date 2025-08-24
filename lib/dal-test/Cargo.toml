@@ -31,6 +31,7 @@ remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
+si-crypto-sodium = { path = "../../lib/si-crypto-sodium" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-db = { path = "../../lib/si-db" }
@@ -43,7 +44,6 @@ si-runtime = { path = "../../lib/si-runtime-rs" }
 si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
 si-tls = { path = "../../lib/si-tls" }
-sodiumoxide = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 tempfile = { workspace = true }
 thiserror = { workspace = true }

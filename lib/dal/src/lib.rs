@@ -19,7 +19,6 @@ use strum::{
     VariantNames,
 };
 use telemetry::prelude::*;
-use thiserror::Error;
 
 pub mod action;
 pub mod approval_requirement;
@@ -225,18 +224,9 @@ pub use ws_event::{
     WsPayload,
 };
 
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum InitializationError {
-    #[error("failed to initialize sodium oxide")]
-    SodiumOxide,
-}
-
-pub type InitializationResult<T> = Result<T, InitializationError>;
-
 /// Perform base initializations before using the `dal`.
-pub fn init() -> InitializationResult<()> {
-    sodiumoxide::init().map_err(|()| InitializationError::SodiumOxide)?;
+pub fn init() -> Result<(), si_crypto_sodium::SodiumCryptoError> {
+    si_crypto_sodium::init()?;
     Ok(())
 }
 

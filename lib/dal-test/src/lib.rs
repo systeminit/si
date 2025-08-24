@@ -898,7 +898,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     .await?;
 
     debug!("initializing crypto");
-    sodiumoxide::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
+    si_crypto_sodium::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
 
     let token = CancellationToken::new();
     let tracker = TaskTracker::new();

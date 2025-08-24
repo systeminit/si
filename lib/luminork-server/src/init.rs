@@ -56,7 +56,7 @@ pub enum InitError {
     #[error("compute executor initialization error: {0}")]
     ComputeExecutor(#[from] dal::DedicatedExecutorInitializeError),
     #[error("initialization error: {0}")]
-    DalInitialization(#[from] dal::InitializationError),
+    DalInitialization(#[from] si_crypto_sodium::SodiumCryptoError),
     #[error("failed to initialize a dal jetstream streams: {0}")]
     DalJetstreamStreams(#[source] dal::JetstreamStreamsError),
     #[error("job queue processor error: {0}")]

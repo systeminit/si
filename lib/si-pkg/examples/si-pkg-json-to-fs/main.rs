@@ -13,7 +13,7 @@ use si_pkg::{
 use tokio::fs;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), si_crypto_sodium::SodiumCryptoError> {
     let mut args = args();
     let input = args.nth(1).expect("usage: program <JSON_FILE> <DEST_DIR>");
     let dst = args.next().expect("usage: program <JSON_FILE> <DEST_DIR>");

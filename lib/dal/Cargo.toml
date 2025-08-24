@@ -60,6 +60,7 @@ serde_json = { workspace = true }
 serde_with = { workspace = true }
 shuttle-server = { path = "../../lib/shuttle-server" }
 si-crypto = { path = "../../lib/si-crypto" }
+si-crypto-sodium = { path = "../../lib/si-crypto-sodium" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-db = { path = "../../lib/si-db" }
@@ -74,7 +75,6 @@ si-runtime = { path = "../../lib/si-runtime-rs" }
 si-settings = { path = "../../lib/si-settings" }
 si-split-graph = { path = "../../lib/si-split-graph" }
 si-std = { path = "../../lib/si-std" }
-sodiumoxide = { workspace = true }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
