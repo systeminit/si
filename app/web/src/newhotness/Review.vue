@@ -205,8 +205,8 @@
     <div class="right flex flex-col p-xs">
       <CollapsingFlexItem open>
         <template #header>Component History</template>
-        <template v-if="selectedComponent">
-          <ComponentHistory :componentId="selectedComponent.id"
+        <template v-if="selectedComponentId">
+          <ComponentHistory :componentId="selectedComponentId"
         /></template>
         <EmptyState
           v-else
@@ -564,7 +564,8 @@ watch(
   (newSelectedComponent) => {
     if (newSelectedComponent) {
       queryClient.invalidateQueries({
-        queryKey: ["auditlogs", ctx.changeSetId.value, newSelectedComponent.id],
+        queryKey: key(EntityKind.AuditLogsForComponent, newSelectedComponent.id)
+          .value,
       });
     }
   },

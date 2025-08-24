@@ -19,6 +19,7 @@ export enum EntityKind {
   ActionPrototypeViewList = "ActionPrototypeViewList",
   ActionViewList = "ActionViewList",
   AttributeTree = "AttributeTree",
+  AuditLogsForComponent = "AuditLogsForComponent",
   CachedSchemas = "CachedSchemas",
   Component = "Component",
   ComponentDiff = "ComponentDiff",
