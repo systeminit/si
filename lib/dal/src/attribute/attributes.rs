@@ -200,8 +200,8 @@ pub async fn update_attributes(
     component_id: ComponentId,
     updates: AttributeSources,
 ) -> Result<AttributeUpdateCounts> {
-    // let updates_to_process = updates.validate_user_can_set_directly();
-    update_attributes_inner(ctx, component_id, updates).await
+    let updates_to_process = updates.validate_user_can_set_directly();
+    update_attributes_inner(ctx, component_id, updates_to_process).await
 }
 
 /// Simimlar to [`update_attributes`], only skips the validation entirely so we can expose functionality to management operations
@@ -466,19 +466,18 @@ impl AttributeSources {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    // We allow management functions to operate on the resource tree, but we don't want to expose this to users
-    pub fn validate_user_can_set_directly(&self) -> Self {
-        const IGNORE_PATHS: [&str; 6] = [
-            "/code",
-            "/deleted_at",
-            "/qualification",
-            "/resource_value",
-            "/resource",
-            "/secrets",
-        ];
+
+    // We allow management functions to operate on the resource tree, but we
+    // don't want to expose this to users
+    pub fn validate_user_can_set_directly(self) -> Self {
+        const IGNORE_PATHS: [&str; 4] =
+            ["/code", "/deleted_at", "/qualification", "/resource_value"];
+
+        const ALLOW_WITH_SUBS_ONLY: [&str; 1] = ["/secrets"];
+
         let mut filtered = Vec::new();
 
-        for (av_ident, value_or_source) in &self.0 {
+        for (av_ident, value_or_source) in self.0 {
             let path = av_ident.path();
             let should_ignore = IGNORE_PATHS
                 .iter()
@@ -489,9 +488,18 @@ impl AttributeSources {
                     "Ignoring attempt to set value for restricted path: {}",
                     path
                 );
-            } else {
-                filtered.push((av_ident.clone(), value_or_source.clone()));
+                continue;
             }
+
+            let is_subs_only = ALLOW_WITH_SUBS_ONLY
+                .iter()
+                .any(|sub_only_path| path.starts_with(sub_only_path));
+            if is_subs_only && !matches!(value_or_source, ValueOrSourceSpec::SourceSpec(_)) {
+                warn!("Attempting to set a raw value for a secret: {path}");
+                continue;
+            }
+
+            filtered.push((av_ident, value_or_source));
         }
 
         Self(filtered)
