@@ -204,14 +204,11 @@
         For anything related to actions, check if we have both the "selectedComponentId" and the
         "details" to make sure the data comes in atomically and with reactivity.
         -->
-        <template
-          v-if="selectedComponentId && selectedComponent?.details"
-          #headerIcons
-        >
+        <template v-if="selectedComponent" #headerIcons>
           <ActionPills :actionCounts="actionCounts" mode="row" />
         </template>
-        <template v-if="selectedComponentId && selectedComponent?.details">
-          <ActionsPanel :component="selectedComponent.details" />
+        <template v-if="selectedComponent">
+          <ActionsPanel :component="selectedComponent" />
         </template>
         <EmptyState
           v-else
@@ -241,7 +238,10 @@
         <CodeViewer
           v-if="selectedComponent"
           :title="`${selectedComponent.name}: ${selectedComponent.schemaName}`"
-          :code="changedComponentData[selectedComponent.id]?.resourceDiff.diff"
+          :code="
+            selectedComponent.componentDiff?.resourceDiff?.diff ||
+            selectedComponent.componentDiff?.resourceDiff?.current
+          "
           codeLanguage="diff"
           copyTooltip="Copy diff to clipboard"
         />
@@ -273,17 +273,15 @@ import {
   bifrost,
   bifrostList,
   useMakeArgs,
-  useMakeArgsForHead,
   useMakeKey,
-  useMakeKeyForHead,
 } from "@/store/realtime/heimdall";
 import {
   AttributeDiff,
   AttributeSourceAndValue,
-  BifrostComponent,
   ComponentDiff,
   ComponentInList,
   EntityKind,
+  ErasedComponents,
 } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
@@ -322,19 +320,6 @@ const changeSetComponentList = computed(
   () => changeSetComponentListQuery.data.value ?? [],
 );
 
-// Get component list from head so we can tell what components have been removed
-const headKey = useMakeKeyForHead();
-const headArgs = useMakeArgsForHead();
-
-const headComponentListQuery = useQuery({
-  queryKey: headKey(EntityKind.ComponentList),
-  queryFn: async () =>
-    await bifrostList<ComponentInList[]>(headArgs(EntityKind.ComponentList)),
-});
-const headComponentList = computed(
-  () => headComponentListQuery.data.value ?? [],
-);
-
 /** Queries for complete attribute-by-attribute diff of every component */
 const componentDiffQueries = useQueries({
   queries: computed(() =>
@@ -348,6 +333,13 @@ const componentDiffQueries = useQueries({
   ),
 });
 
+const erasedComponents = useQuery({
+  queryKey: key(EntityKind.ErasedComponents),
+  enabled: ctx.queriesEnabled,
+  queryFn: async () =>
+    await bifrost<ErasedComponents>(args(EntityKind.ErasedComponents)),
+});
+
 /**
  * The complete component list without diff information added yet
  * We need this computed so that we can get info about the components
@@ -359,16 +351,6 @@ const rawComponentList = computed(() => {
       ...component,
     };
   });
-
-  // Add any head components that aren't in the list as "removed"
-  for (const headComponent of headComponentList.value) {
-    if (!result.find((c) => c.id === headComponent.id)) {
-      result.push({
-        ...headComponent,
-        diffStatus: "Removed" as const,
-      });
-    }
-  }
 
   return result;
 });
@@ -391,7 +373,7 @@ const componentList = computed(() => {
         (query) => [query.data?.id, query.data] as const,
       ),
     );
-  return rawComponentList.value
+  const mapped = rawComponentList.value
     .map((component) => {
       // TEMPORARY: "fix" issues in the MV so we can do better testing / display in the short term.
       // Ultimately, we will fix the MV instead.
@@ -409,6 +391,20 @@ const componentList = computed(() => {
         component.attributeDiffTree.children &&
         Object.keys(component.attributeDiffTree.children).length > 0,
     );
+  if (erasedComponents.data.value?.erased) {
+    for (const { diff, component } of Object.values(
+      erasedComponents.data.value?.erased,
+    )) {
+      const attributeDiffTree = toAttributeDiffTree(diff);
+      mapped.push({
+        ...component,
+        diffStatus: "Removed",
+        componentDiff: diff,
+        attributeDiffTree,
+      });
+    }
+  }
+  return mapped;
 });
 
 /** A tree version of AttributeDiff:
@@ -500,7 +496,7 @@ function shouldIncludeDiff(diff: AttributeDiff) {
 function fixAttributeSourceAndValue(sourceAndValue?: AttributeSourceAndValue) {
   if (!sourceAndValue) return undefined;
   const { $source } = sourceAndValue;
-  if ($source.prototype !== undefined) {
+  if ("prototype" in $source && $source.prototype !== undefined) {
     // subscription to /domain/region on Region changed (01K2N2CFSAE0PPHNJ31SKP97HH)
     const { prototype, ...otherFields } = $source;
     const match = prototype.match(/^subscription to (\/.+) on .+ \((\w+)\)/);
@@ -521,6 +517,18 @@ function fixAttributeSourceAndValue(sourceAndValue?: AttributeSourceAndValue) {
         } as AttributeSourceAndValue;
       }
     }
+  } else if ("component" in $source) {
+    const component = $source.component;
+    const componentName = rawComponentList.value.find(
+      (c) => c.id === component,
+    )?.name;
+    return {
+      ...sourceAndValue,
+      $source: {
+        ...$source,
+        componentName,
+      },
+    } as AttributeSourceAndValue;
   }
   return sourceAndValue;
 }
@@ -539,47 +547,10 @@ const componentCounts = computed(() => {
   return result;
 });
 
-// Grab the Component MV for any changed components (for the text diff)
-// NOTE we should probably just dump this data into the ComponentDiff instead, but that'll be
-// a factoring turn.
-const changedComponentDataQueries = useQueries({
-  queries: computed(() => {
-    return componentList.value
-      .filter((component) => component.diffStatus !== "None")
-      .map((component) => ({
-        queryKey: key(EntityKind.Component, component.id),
-        queryFn: async () =>
-          await bifrost<BifrostComponent>(
-            args(EntityKind.Component, component.id),
-          ),
-      }));
-  }),
-});
-
-/** Component MV for any changed components */
-const changedComponentData = computed<{
-  [id in ComponentId]?: BifrostComponent;
-}>(() =>
-  Object.fromEntries(
-    changedComponentDataQueries.value.map(
-      (component) => [component.data?.id, component.data] as const,
-    ),
-  ),
-);
-
 /** The currently-selected component data, including diffs */
-const selectedComponent = computed(() => {
-  if (!selectedComponentId.value) {
-    return undefined;
-  }
-  return {
-    id: selectedComponentId.value,
-    ...componentList.value.find(
-      (component) => component.id === selectedComponentId.value,
-    ),
-    details: changedComponentData.value[selectedComponentId.value],
-  };
-});
+const selectedComponent = computed(() =>
+  componentList.value.find((c) => c.id === selectedComponentId.value),
+);
 
 // When absolutely anything in the selected component changes, or the selection itself changes,
 // invalidate the audit logs query for that component.
@@ -626,9 +597,8 @@ const removedComponentList = computed(
 // Why not just do something similar to the "pendingActionCounts" in the Explore context? For one,
 // we are not within the Explore context. Second, we need to include actions with "zero" in the
 // count. The way the Explore one works is that it only shows when there is at least one action.
-const { actionPrototypeViews, actionByPrototype } = useComponentActions(
-  () => selectedComponent.value?.details,
-);
+const { actionPrototypeViews, actionByPrototype } =
+  useComponentActions(selectedComponent);
 const actionCounts = computed(() => {
   const results: Record<string, { count: number; hasFailed: boolean }> = {};
   if (!selectedComponentId.value) return results;

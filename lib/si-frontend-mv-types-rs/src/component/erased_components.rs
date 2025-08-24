@@ -8,7 +8,10 @@ use si_id::{
 };
 
 use crate::{
-    component::component_diff::ComponentDiff,
+    component::{
+        ComponentInList,
+        component_diff::ComponentDiff,
+    },
     reference::ReferenceKind,
 };
 
@@ -31,5 +34,11 @@ use crate::{
 )]
 pub struct ErasedComponents {
     pub id: WorkspacePk,
-    pub erased: HashMap<ComponentId, ComponentDiff>,
+    pub erased: HashMap<ComponentId, HeadComponent>,
+}
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, si_frontend_mv_types_macros::FrontendChecksum)]
+#[serde(rename_all = "camelCase")]
+pub struct HeadComponent {
+    pub diff: ComponentDiff,
+    pub component: ComponentInList,
 }

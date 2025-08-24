@@ -33,11 +33,12 @@ import { ActionId } from "@/api/sdf/dal/action";
 import {
   ActionPrototypeView,
   BifrostComponent,
+  ComponentInList,
 } from "@/workers/types/entity_kind_types";
 import { useComponentActions } from "./logic_composables/component_actions";
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: BifrostComponent | ComponentInList;
   actionPrototypeView: ActionPrototypeView;
   actionId?: ActionId;
 }>();

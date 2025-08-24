@@ -96,9 +96,14 @@ const props = defineProps<{
 const rawValue = computed(() => props.sourceAndValue.$value);
 const rawSource = computed(() => props.sourceAndValue.$source);
 
-const displayKind = computed<DisplayKind>(() =>
-  sourceAndValueDisplayKind(rawSource.value, props.secret),
-);
+const displayKind = computed<DisplayKind>(() => {
+  const kind = sourceAndValueDisplayKind(rawSource.value, props.secret);
+
+  if (props.secret && props.old && !rawValue.value) {
+    return "hidden";
+  }
+  return kind;
+});
 
 const emit = defineEmits<{
   (e: "revert"): void;

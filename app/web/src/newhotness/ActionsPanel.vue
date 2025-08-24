@@ -23,19 +23,22 @@
       :key="actionPrototypeView.id"
       :actionPrototypeView="actionPrototypeView"
       :actionId="actionByPrototype[actionPrototypeView.id]?.id"
-      :component="props.component"
+      :component="component"
     />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { BifrostComponent } from "@/workers/types/entity_kind_types";
+import {
+  BifrostComponent,
+  ComponentInList,
+} from "@/workers/types/entity_kind_types";
 import ActionWidget from "./ActionWidget.vue";
 import EmptyState from "./EmptyState.vue";
 import { useComponentActions } from "./logic_composables/component_actions";
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: BifrostComponent | ComponentInList;
 }>();
 
 const { actionPrototypeViews, actionByPrototype } = useComponentActions(

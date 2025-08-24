@@ -9,7 +9,10 @@ use si_events::{
 use tuple_vec_map;
 
 use crate::{
-    component::ComponentDiffStatus,
+    component::{
+        ComponentDiffStatus,
+        ComponentTextDiff,
+    },
     reference::ReferenceKind,
     secret::Secret,
 };
@@ -45,6 +48,8 @@ pub struct ComponentDiff {
     // (for more ergonomic APIs)
     #[serde(with = "tuple_vec_map")]
     pub attribute_diffs: Vec<(String, AttributeDiff)>,
+    // Also include the TextDiff as we always need it when we need this MV
+    pub resource_diff: ComponentTextDiff,
 }
 
 #[derive(
@@ -307,10 +312,14 @@ mod test {
                             }
                         }
                     ),
-                ]
+                ],
+                resource_diff: ComponentTextDiff {
+                    current: None,
+                    diff: None
+                }
             },
             serde_json::from_str(&format!(
-                r#"{{ "id": {}, "diffStatus": "Added", "attributeDiffs": {} }}"#,
+                r#"{{ "id": {}, "diffStatus": "Added", "resourceDiff": {{}}, "attributeDiffs": {} }}"#,
                 serde_json::to_string(&id)?,
                 r#"{
                         "/domain/Foo": {

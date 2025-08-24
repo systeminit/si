@@ -8,7 +8,10 @@ use dal::{
     ComponentId,
     DalContext,
 };
-use si_frontend_mv_types::component::erased_components::ErasedComponents;
+use si_frontend_mv_types::component::erased_components::{
+    ErasedComponents,
+    HeadComponent,
+};
 use telemetry::prelude::*;
 
 #[instrument(
@@ -36,7 +39,9 @@ pub async fn assemble(new_ctx: DalContext) -> crate::Result<ErasedComponents> {
     let mut erased = HashMap::new();
     for &component_id in only_in_old {
         let diff = super::component_diff::assemble(new_ctx.clone(), component_id).await?;
-        erased.insert(component_id, diff);
+        let component = crate::component::assemble_in_list(old_ctx.clone(), component_id).await?;
+
+        erased.insert(component_id, HeadComponent { diff, component });
     }
 
     let workspace_mv_id = new_ctx.workspace_pk()?;
