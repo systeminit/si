@@ -10,34 +10,29 @@ This is a monolithic repository containing the System Initiative software.
 
 System Initiative is the future of DevOps Automation. It is an Intuitive, Powerful, and Collaborative replacement for Infrastructure as Code.
 
-To learn more, read our ["System Initiative is the Future" blog post](https://www.systeminit.com/blog-system-initiative-is-the-future).
+To learn more, read our ["System Initiative is the Future" blog post](https://www.systeminit.com/blog-system-initiative-is-the-future) and the [System Initiative docs](https://docs.systeminit.com).
 
-## Quickstart
+## Local Development Quickstart
 
-Follow the [Local Development Setup](#local-development-setup) instructions below.
-We are working on and investigating more way(s) to try out System Initiative in the future.
+Running the System Initiative software locally can be done in a variety of ways, but this quickstart guide will focus on a single method for getting your environment ready to run the stack.
+For more information and options on running SI locally, see the [dev docs](DEV_DOCS.md).
 
-## Local Development Setup
+### Choose a Supported Platform (1/7)
 
-Running the System Initiative software locally can be done in a variety of ways, but this abbreviated section will focus on a single method for getting your environment ready to run the stack.
-For more information and options on running SI locally, see the [development environment section of the docs](DOCS.md).
+Let's start by choosing an officially supported platform:
 
-### (1) Choose a Supported Platform
+- Linux (GNU) `x86_64` (i.e. `amd64`, "Intel", "AMD")
+- Linux (GNU) `aarch64` (i.e. `arm64`)
+- macOS `aarch64` (i.e. `arm64`, "Apple Silicon", "M chip")
 
-Let's start by choosing an officially supported platform.
+> [!TIP]
+> - On macOS `aarch64` (`arm64`) systems, Rosetta 2 must be installed (install it with `softwareupdate --install-rosetta`)
+> - [NixOS](https://nixos.org/) requires [`docker`](https://nixos.wiki/wiki/Docker) to be installed and [Flakes](https://nixos.wiki/wiki/Flakes) to be enabled (see the [development environment section of the dev docs](DEV_DOCS.md) for more information)
+> - Linux with MUSL instead of GNU (e.g. [Alpine Linux](https://www.alpinelinux.org/)) is untested
+> - [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) on Windows should work, but you may need to enable `systemd` within your Linux distribution
+> - macOS `x86_64` (i.e. `amd64`, "Intel") has historically worked, but is currently untested
 
-| Architecture    | Operating System                                                                     |
-|-----------------|--------------------------------------------------------------------------------------|
-| x86_64 (amd64)  | macOS, Linux, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
-| aarch64 (arm64) | macOS, Linux, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) (Windows 10/11) |
-
-**Platform Notes:**
-* On Apple Silicon systems (i.e. macOS aarch64 (arm64)), Rosetta 2 must be installed (install it with `softwareupdate --install-rosetta`)
-* [NixOS](https://nixos.org/) requires [`docker`](https://nixos.wiki/wiki/Docker) to be installed and [Flakes](https://nixos.wiki/wiki/Flakes) to be enabled (see the [development environment section of the docs](DOCS.md) for more information)
-* Linux with MUSL instead of GNU (e.g. [Alpine Linux](https://www.alpinelinux.org/)) is untested
-* Systemd may need to be enabled on WSL2
-
-### (2) Install Dependencies
+### Install Dependencies (2/7)
 
 Install dependencies on your chosen platform.
 
@@ -46,7 +41,7 @@ Install dependencies on your chosen platform.
 - **3a)** [`direnv`](https://direnv.net) version `>= 2.30` installed
 - **3b)** [`direnv` hooked into your shell](https://direnv.net/docs/hook.html)
 
-For `nix`, we highly recommend using the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer).
+For `nix`, we recommend using the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer).
 
 For `docker`, the Docker Desktop version corresponding to your native architecture should be used.
 WSL2 users should be able to use either Docker Desktop for WSL2 or Docker Engine inside the WSL2 VM.
@@ -64,7 +59,7 @@ However, if you're unsure which installation method to use or your package manag
 > fi
 > ```
 
-### (3) Enter the Repository Directory
+### Enter the Repository Directory (3/7)
 
 All commands need to be run from the `nix` environment.
 Since `direnv` is installed _and_ hooked into your shell, you can `cd` into the repository and `nix` will bootstrap the environment for you using the flake.
@@ -72,7 +67,7 @@ Since `direnv` is installed _and_ hooked into your shell, you can `cd` into the 
 > [!WARNING]
 > You may notice a large download of dependencies when entering the repository for the first time.
 
-### (4) (Optional) Configure Docker
+### (Optional) Configure Docker (4/7)
 
 Docker Hub authentication is not strictly needed if you only access public docker images, but to avoid being rate-limited when qualifying images, we recommend authenticating with the `docker` CLI.
 
@@ -80,12 +75,13 @@ Docker Hub authentication is not strictly needed if you only access public docke
 docker login
 ```
 
-### (5) Running the Stack
+### Running the Stack (5/7)
 
 We use [`buck2`](https://github.com/facebook/buck2) to run the stack, run and build individual services and libraries, perform lints and tests, etc.
 
-_Before continuing, you should stop any locally running services to avoid conflicting ports with the stack.
-Some of the services that will run include, but are not limited to the following: PostgreSQL, NATS, Jaeger and OpenTelemetry._
+> [!WARNING]
+> Before continuing, you should stop any locally running services to avoid conflicting ports with the stack.
+> Some of the services that will run include, but are not limited to the following: PostgreSQL, NATS, Jaeger and OpenTelemetry._
 
 Check if you are ready to run the stack before continuing.
 
@@ -96,15 +92,17 @@ buck2 run dev:healthcheck
 You may notice some checks related to resource limits.
 On macOS and in WSL2 in particular, we recommend significantly increasing the file descriptor limit for `buck2` to work as intended (e.g. `ulimit -n 10240`).
 
-_Please note: the new file descriptor limit may not persist to future sessions._
+> [!TIP]
+> The new file descriptor limit may not persist to future sessions without additions to your shell or platform configuration.
 
 On Linux, it may be necessary to increase the `fs.inotify.max_user_watches` kernel setting. If this setting is to low, you will see
 errors that look similar to this: `Error: ENOSPC: System limit for number of file watchers reached`.
 
 Once ready, we can build relevant services and run the entire stack locally.
 
-_Please note: if you have used SI before, the following command will delete all contents of the database.
-Reach out to us [on Discord](https://discord.com/invite/system-init) if you have any questions._
+> [!WARNING]
+> If you have used SI before, the following command will delete all contents of the database.
+> Reach out to us [on Discord](https://discord.com/invite/system-init) if you have any questions.
 
 ```bash
 buck2 run dev:up
@@ -116,10 +114,10 @@ Every service should eventually have a green checkmark next to them, which ensur
 > [!WARNING]
 > _Database migrations may take some time to complete._
 
-If you would like to learn more on what's running, check out the [docs](DOCS.md).
+If you would like to learn more on what's running, check out the [dev docs](DEV_DOCS.md).
 In our documentation, you can also learn more about running the stack locally and a deeper dive into system requirements.
 
-### (6) Tearing Down the Stack
+### Tearing Down the Stack (6/7)
 
 The following command will stop all running services and containers.
 It will also remove the containers and, consequentially, the data held in them.
@@ -134,9 +132,9 @@ Alternatively, if you wish to keep your data for later use, you can stop the con
 buck2 run dev:stop
 ```
 
-### (7) Logging into the Stack
+### Logging into the Stack (7/7)
 
-To log into SI locally, you need to create a new Workspace of type `Local Dev Instance` and select it at `https://auth.systeminit.com/workspaces`.
+To log into SI locally, you need to create a new Workspace of type `Local Dev Instance` and select it at [https://auth.systeminit.com/workspaces](https://auth.systeminit.com/workspaces).
 
 > [!NOTE]
 > SI is developed in compliance with modern web standards, but the only officially supported browsers are Chrome and Firefox.
@@ -145,11 +143,11 @@ To log into SI locally, you need to create a new Workspace of type `Local Dev In
 ## Where Do I Learn More?
 
 For more information on how to use and develop the System Initiative software, talk to us on
-[our Discord](https://discord.com/invite/system-init) and see the [DOCS](DOCS.md).
+[our Discord](https://discord.com/invite/system-init) and check out the [System Initiative docs](https://docs.systeminit.com/).
 
 ## How Can I Contribute?
 
-To start, we recommend reading the [Open Source](#open-source) and [Contributing](#contributing) sources below.
+To start, we recommend reading the [dev docs](DEV_DOCS.md) as well as the [Open Source](#open-source) and [Contributing](#contributing) sources below.
 They provide information on licensing, contributor rights, and more.
 
 After that, navigate to the [contributing guide](CONTRIBUTING.md) to get started.
