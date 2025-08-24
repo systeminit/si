@@ -63,6 +63,9 @@
           <slot name="header" />
         </div>
       </template>
+      <template #titleIcons>
+        <slot name="headerIcons" />
+      </template>
       <div class="scrollable max-h-[70vh]">
         <slot />
       </div>
