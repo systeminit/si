@@ -8,6 +8,12 @@
 
 <script lang="ts">
 const CONFIG = {
+  diff: {
+    Added: { iconName: "plus", tone: "success" },
+    Removed: { iconName: "minus", tone: "destructive" },
+    Modified: { iconName: "tilde", tone: "warning" },
+    None: { iconName: "empty", tone: "empty" },
+  },
   change: {
     added: { iconName: "plus-square", tone: "success" },
     deleted: { iconName: "minus-square", tone: "destructive" },
