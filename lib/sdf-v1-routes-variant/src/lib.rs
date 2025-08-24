@@ -117,11 +117,11 @@ impl IntoResponse for SchemaVariantError {
 
 pub fn routes() -> Router<sdf_core::app_state::AppState> {
     Router::new()
-        .route("/create_variant", post(create_variant::create_variant))
+        .route("/create_variant", post(create_variant::create_variant)) // USED IN CUSTOMIZE UI AND API TESTS
         .route(
-            "/regenerate_variant",
+            "/regenerate_variant", // USED IN CUSTOMIZE UI
             post(regenerate_variant::regenerate_variant),
         )
-        .route("/clone_variant", post(clone_variant::clone_variant))
-        .route("/save_variant", post(save_variant::save_variant))
+        .route("/clone_variant", post(clone_variant::clone_variant)) // USED IN CUSTOMIZE UI
+        .route("/save_variant", post(save_variant::save_variant)) // USED IN CUSTOMIZE UI
 }
