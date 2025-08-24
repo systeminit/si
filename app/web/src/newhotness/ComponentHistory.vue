@@ -205,6 +205,7 @@ const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
       }
       return { logs: [], canLoadMore: false };
     },
+    staleTime: 60 * 2 * 1000,
     initialPageParam: pageSize,
     getNextPageParam: (lastPage: AuditLogsForComponentResponse) => {
       if (!lastPage.canLoadMore) return undefined;

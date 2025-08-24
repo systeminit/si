@@ -92,27 +92,31 @@ export function useFeatureFlagsStore() {
          */
         async fetchWorkspaceFlags(): Promise<string[]> {
           if (!workspacePk) return [];
-          const resp = await fetch(
-            `${import.meta.env.VITE_POSTHOG_API_HOST}/decide/?v=3`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
+          try {
+            const resp = await fetch(
+              `${import.meta.env.VITE_POSTHOG_API_HOST}/decide/?v=3`,
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  api_key: import.meta.env.VITE_POSTHOG_PUBLIC_KEY,
+                  distinct_id: workspacePk,
+                }),
               },
-              body: JSON.stringify({
-                api_key: import.meta.env.VITE_POSTHOG_PUBLIC_KEY,
-                distinct_id: workspacePk,
-              }),
-            },
-          );
-          if (!resp.ok) {
-            // TODO probably should just throw here
-            // eslint-disable-next-line no-console
-            console.error(`Error retrieving workspace-specific flags: ${resp}`);
+            );
+            if (!resp.ok) {
+              // TODO probably should just throw here
+              // eslint-disable-next-line no-console
+              console.error(
+                `Error retrieving workspace-specific flags: ${resp}`,
+              );
+              return [];
+            }
+            const json = await resp.json();
+            return Object.keys(json.featureFlags);
+          } catch (err) {
+            reportError(err);
             return [];
           }
-          const json = await resp.json();
-          return Object.keys(json.featureFlags);
         },
       },
       async onActivated() {
