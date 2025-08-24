@@ -829,7 +829,7 @@ onMounted(() => {
     }
   });
 
-  keyEmitter.on("KeyR", () => {
+  keyEmitter.on("KeyF", () => {
     if (component.value?.toDelete) {
       restoreComponent();
     }
@@ -860,7 +860,7 @@ onBeforeUnmount(() => {
   keyEmitter.off("Escape");
   keyEmitter.off("KeyE");
   keyEmitter.off("Backspace");
-  keyEmitter.off("KeyR");
+  keyEmitter.off("KeyF");
   keyEmitter.off("KeyU");
   realtimeStore.unsubscribe(MGMT_RUN_KEY);
 });

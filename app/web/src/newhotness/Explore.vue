@@ -2104,6 +2104,10 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
       return;
     }
 
+    if (ctx.onHead.value) {
+      return;
+    }
+
     if (featureFlagsStore.REVIEW_PAGE) {
       e.preventDefault();
       router.push({

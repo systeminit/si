@@ -567,6 +567,15 @@ watch(
   { deep: true },
 );
 
+watch(
+  () => ctx.onHead.value,
+  (onHead) => {
+    if (onHead) {
+      exitReview();
+    }
+  },
+);
+
 const selectComponent = (componentId: ComponentId) => {
   selectedComponentId.value = componentId;
 };
