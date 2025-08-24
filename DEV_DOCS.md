@@ -11,28 +11,13 @@ If you just want to get SI up and running, see the [README](README.md).
 
 Above all, for any and all questions related to either using or developing the software, _never_ hesitate to reach out to us [on our Discord server](https://discord.com/invite/system-init).
 
-# Table of Contents
-
-- [How to Read This Document](#how-to-read-this-document)
-- [Development Environment](#development-environment)
-- [Troubleshooting](#troubleshooting)
-- [Running the Stack Locally](#running-the-stack-locally)
-- [Using buck2](#using-buck2)
-- [Reading and Writing Rust-based Code Documentation](#reading-and-writing-rust-based-code-documentation)
-- [Learning About SI Concepts](#learning-about-si-concepts)
-- [Running Rust Tests](#running-rust-tests)
-- [Preparing Your Pull Request](#preparing-your-pull-request)
-- [Core Services](#core-services)
-- [Repository Structure](#repository-structure)
-- [Adding a New Rust Library](#adding-a-new-rust-library)
-
 # How to Read This Document
 
 This file is designed to be rendered on GitHub.
 As a result, some sections will not look as intended in all markdown readers.
 Here is how to do that:
 
-1. Navigate to [this file on GitHub](https://github.com/systeminit/si/blob/main/DOCS.md).
+1. Navigate to [this file on GitHub](https://github.com/systeminit/si/blob/main/DEV_DOCS.md).
 1. Find the section picker in the file header.
 1. Upon clicking it, a sidebar section will pop out with a generated, nested sections that you can click through. GitHub automatically generates these based on the headings for each section and sub-section in this file.
 
@@ -47,10 +32,13 @@ Developing SI locally can be done in a variety of ways, but the officially suppo
 Using the flake requires using one of the below platforms.
 It is possible that the System Initiative software can be developed on even more platforms, but these platforms have been validated to work with `nix` and the corresponding flake.
 
+- Linux (GNU) `x86_64` (i.e. `amd64`, "Intel", "AMD")
+- Linux (GNU) `aarch64` (i.e. `arm64`)
+- macOS `aarch64` (i.e. `arm64`, "Apple Silicon", "M chip")
+
 ### macOS
 
-macOS (Darwin) is officially supported on both x86_64 (amd64) (also known as "Intel") and aarch64 (arm64) (also known as "Apple Silicon") architectures.
-We do not specify the minimum version of macOS that must be used, so we recommend looking at the "Dependencies" section for more information.
+We do not specify the minimum version of macOS that must be used, so we recommend looking at the "Dependencies" section for more information. macOS `x86_64` (i.e. `amd64`, "Intel") has historically worked, but is currently untested.
 
 For aarch64 (arm64) users, [Rosetta 2](https://support.apple.com/en-us/HT211861) must be installed.
 You can either install it via directions from the official support page or by running `softwareupdate --install-rosetta`.
@@ -74,9 +62,7 @@ If not using `direnv`, you can use `nix develop` or [Nix command](https://wiki.n
 ### Windows
 
 Using native Windows is not supported at this time, but may be desired in the future.
-However, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) on Windows 10 and Windows 11 is officially supported on
-both x86_64 (amd64) and aarch64 (arm64) architectures.
-In order to work with `nix`, `systemd` may need to be enabled in your WSL2 distro of choice.
+However, [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) on Windows should work, but `systemd` may need to be enabled in your WSL2 distro of choice.
 
 On WSL2, you will likely hit the file descriptor limit, which requires user intervention.
 We have a section further down that describes how to intervene.
@@ -180,7 +166,7 @@ There are also plugins to integrate `direnv` with common editors.
 #### Editor Plugin Support
 
 - Emacs: [emacs-direnv](https://github.com/wbolster/emacs-direnv)
-- IntelliJ-based IDEs: [Direnv integration](https://plugins.jetbrains.com/plugin/15285-direnv-integration), [Better Direnv](https://plugins.jetbrains.com/plugin/19275-better-direnv)
+- JetBrains-based IDEs: [Direnv integration](https://plugins.jetbrains.com/plugin/15285-direnv-integration), [Better Direnv](https://plugins.jetbrains.com/plugin/19275-better-direnv)
 - Neovim and Vim: [direnv.vim](https://github.com/direnv/direnv.vim)
 - Visual Studio Code: [direnv](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv)
 
@@ -197,28 +183,16 @@ There are two primary options to do so:
 For backend services like `veritech` and `sdf`, there will usually be an `INFO`-level log indicating that the webserver has bound to a port and is ready to receive messages.
 This may be subject to change (e.g. underlying library is upgraded to a new major version and the startup sequence changes) and will vary from component to component.
 
+In the Tilt UI (accessible via [http://localhost:10350](http://localhost:10350)), each service will be marked as "ready" too.
+
 # Troubleshooting
 
 This section contains common troubleshooting scenarios when working on the System Initiative software.
 
-## Build Errors Related to Running Services Reliant on `node_modules`
+## Make Your Docker Images Are Up-To-Date!
 
-Since we switched to `buck2` for our build infrastructure in mid-2023, you may experience issues when running services reliant on `node_modules` within older cloned instances of the repository.
-To solve these build errors, run the following in the root of your repository:
-
-> [!WARNING]
-> *This command deletes files.*
-> Ensure your current working directory is the root of the repository and understand what the command does before executing.
-> Please reach out to us [on our Discord server](https://discord.com/invite/system-init) if you have any questions.
-
-```bash
-find app bin lib third-party/node -type d -name node_modules -exec rm -rf {} \;; rm -rf node_modules
-```
-
-## NATS Jetstream Not Enabled
-
-If you see an error related to [NATS Jetstream](https://docs.nats.io/nats-concepts/jetstream) not being enabled when running the stack or tests, your local [`systeminit/nats`](https://hub.docker.com/repository/docker/systeminit/nats/) image is likely out of date.
-To get the most up-to-date images, including the aforementioned image, run the following command:
+Failures to start or interact with dependent services may not be limited to port usage collisions, but also due to out-of-date images.
+Update them with the following command:
 
 ```bash
 buck2 run //dev:pull
@@ -238,6 +212,25 @@ Potentially conflicting services include, but are not limited to, the following:
 
 In the case of a port conflict, a good strategy is to temporarily disable the host service until SI is no longer being run.
 
+## Build Errors Related to Running Services Reliant on `node_modules`
+
+Since we switched to `buck2` for our build infrastructure in mid-2023, you may experience issues when running services reliant on `node_modules` within older cloned instances of the repository.
+To solve these build errors, run the following in the root of your repository:
+
+> [!WARNING]
+> *This command deletes files.*
+> Ensure your current working directory is the root of the repository and understand what the command does before executing.
+> Please reach out to us [on our Discord server](https://discord.com/invite/system-init) if you have any questions.
+
+```bash
+find app bin lib third-party/node -type d -name node_modules -exec rm -rf {} \;; rm -rf node_modules
+```
+
+## NATS Jetstream Not Enabled
+
+If you see an error related to [NATS Jetstream](https://docs.nats.io/nats-concepts/jetstream) not being enabled when running the stack or tests, your local [`systeminit/nats`](https://hub.docker.com/repository/docker/systeminit/nats/) image is likely out of date.
+Refer to the relevant section on how to update Docker images within the repostiory.
+
 ## Seeing Errors Related to Procedural Macros
 
 In your editor, you may find that you'll see errors like `"YourEnum does not implement Display"` if you are using [`Display` from the `strum` crate](https://docs.rs/strum/latest/strum/derive.Display.html).
@@ -248,22 +241,6 @@ Check out your editor or relevant plugin docs for more information.
 
 This section provides additional information on running the System Initiative software stack locally.
 Readers should first refer to the [README](README.md) and the development environment section higher up before reading this document.
-
-## Advanced Options
-
-While the [README](README.md) covers using `buck2 run dev:up`, there are two other ways to run the full stack locally:
-
-- `buck2 run dev:up-standard`: run with `rustc` default build optimizations
-- `buck2 run dev:up-debug`: run with `rustc` debug build optimizations for all services except for the `rebaser`
-- `buck2 run dev:up-debug-all`: run with `rustc` debug build optimizations for all services
-
-By default, the stack will run with `rustc` release build optimizations, which is what users and testers of the System Initiative software will want to use.
-It runs the software in its intended state.
-However, if you are a contributor seeking build times suitable for rapid iteration, you may want to use one of the aforementioned options.
-
-> [!WARNING]
-> _Contributors should test your changes with integration tests and with release optimizations when running the full stack._
-> _The aforementioned options are solely recommended for rapid iteration._
 
 ## What if I want to access my local instance remotely?
 
@@ -279,6 +256,16 @@ TILT_HOST=0.0.0.0 DEV_HOST=0.0.0.0 buck2 run dev:up
 > [!NOTE]
 > Unless you are using "localhost", your remote workspace must be accessible using SSL.
 > For example, if you are using [Tailscale](https://tailscale.com/) and running SI on a remote instance without SSL, you may want to port foward over SSH and use a local development workspace instead.
+
+### Tailscale Example
+
+You can access your local instance remotely with [Tailscale](https://tailscale.com/) by executing the following command:
+
+```bash
+sudo tailscale serve --bg --https=8081 localhost:8080
+```
+
+This will give you a URL that must correspond with your workspace URL in [https://auth.systeminit.com/workspaces](https://auth.systeminit.com/workspaces).
 
 # Using buck2
 
@@ -353,9 +340,12 @@ There are two directories where the rules come from:
 - **[prelude](prelude):** the vendored, [upstream standard library](https://github.com/facebook/buck2-prelude) with rules for common use cases and programming languages
   - **Common use case example:** `sh_binary` is provided as a way to run shell scripts
   - **Programming language example:** `rust_library` is a provided as a way to add buildable Rust library targets
-  - **Side note:** this must be kept up to date in conjunction with the `buck2` binary
 - **[prelude-si](prelude-si):** our custom library with custom rules and wrappers around existing rules
   - **Example:** `rust_library` provides more than the standard `rust_library` rule and includes additional targets
+
+> [!CAUTION]
+> The `prelude` must be kept up to date in conjunction with the `buck2` binary.
+> This is a big reason why using the `nix` flake is our official method of setting up your development environment.
 
 ## How do I view all targets available for a given directory?
 
@@ -436,6 +426,7 @@ This section contains all information related to developer documentation for thi
 Let's say you want to learn what a `Component` or an `AttributeValue` is.
 Where do you look?
 You can generate and open the docs in your browser to find out!
+Let's look at `lib/dal` since it is the primary layer for backend business logic.
 
 ```bash
 buck2 run //lib/dal:doc -- --document-private-items --open
@@ -443,10 +434,6 @@ buck2 run //lib/dal:doc -- --document-private-items --open
 
 Our Rust crates contain module and documentation comments that can be generated into static webpages by `rustdoc`.
 When in doubt, see if `doc` target for a Rust-based library has what you are looking for.
-
-## How Do We Generate Rust Documentation?
-
-As previously mentioned, for our Rust crates, we leverage `rustdoc` for seamless integration with [IntelliJ Rust](https://www.jetbrains.com/rust/), [rust-analyzer](https://rust-analyzer.github.io/), and more.
 
 ## Writing Rust Documentation
 
@@ -456,21 +443,8 @@ We encourage updating older documentation as whilst navigating through SI crates
 
 ### Additional Resources
 
-* [RFC-1574](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text): more API documentation conventions for `rust-lang`
-* ["Making Useful Documentation Comments" from "The Book"](https://doc.rust-lang.org/book/ch14-02-publishing-to-crates-io.html#making-useful-documentation-comments): a section of "The Book" covering useful documentation in the context of crate publishing
-
-# Learning About SI Concepts
-
-As referenced in our code documentation section, the `rustdoc` static webpages are an entrypoint into learning about the Rust modules and structs that back many SI concepts.
-
-Let's say you want to learn about what a `Component` is.
-You may want to open the docs for the [dal](lib/dal) as it is the center of many SI concepts.
-
-You can generate and open the Rust documentation locally via the following command:
-
-```bash
-buck2 run lib/dal:doc -- --document-private-items --open
-```
+- [RFC-1574](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text): more API documentation conventions for `rust-lang`
+- ["Making Useful Documentation Comments" from "The Book"](https://doc.rust-lang.org/book/ch14-02-publishing-to-crates-io.html#making-useful-documentation-comments): a section of "The Book" covering useful documentation in the context of crate publishing
 
 # Running Rust Tests
 
@@ -492,21 +466,21 @@ buck2 run dev:platform
 For a given crate, you can use `buck2 test`.
 
 ```bash
-buck2 test <crate>:test
+buck2 test <CRATE>:test
 ```
 
 > [!TIP]
-> The `<crate>` has the structure `//{directory}/{package}` (e.g. `//lib/sdf-server`).
+> The `<CRATE>` has the structure `//{directory}/{package}` (e.g. `//lib/sdf-server`).
 
 To see all options, use `buck2 targets` with a `:` character at the end.
 
 ```bash
-buck2 targets <crate>:
+buck2 targets <CRATE>:
 ```
 
 To list all targets run:
 
-```
+```bash
 buck2 targets //bin/...
 buck2 targets //lib/...
 ```
@@ -565,14 +539,14 @@ You can prefix your `buck2 run` executions with environment variables of choice.
 Here is an example for running one test within a crate and backtrace enabled:
 
 ```bash
-RUST_BACKTRACE=1 buck2 run <crate>:test-integration -- <pattern>
+RUST_BACKTRACE=1 buck2 run <CRATE>:test-integration -- <pattern>
 ```
 
 Let's say you wanted to run all tests, but set backtrace to full.
 You can do that too.
 
 ```bash
-RUST_BACKTRACE=full buck2 run <crate>:test-integration
+RUST_BACKTRACE=full buck2 run <CRATE>:test-integration
 ```
 
 ### Want To See The Live Log Stream?
@@ -581,13 +555,13 @@ If you'd like to see a live log stream during test execution, use the `SI_TEST_L
 the `--nocapture` flag.
 
 ```shell
-SI_TEST_LOG=info buck2 run <crate>:test-integration -- <pattern> -- --nocapture
+SI_TEST_LOG=info buck2 run <CRATE>:test-integration -- <PATTERN> -- --nocapture
 ```
 
 You can combine this with the `DEBUG` environment variable for `lang-js` for even more information.
 
 ```shell
-DEBUG=* SI_TEST_LOG=info buck2 run <crate>:test-integration -- <pattern> -- --nocapture
+DEBUG=* SI_TEST_LOG=info buck2 run <CRATE>:test-integration -- <PATTERN> -- --nocapture
 ```
 
 # Preparing Your Pull Request
@@ -728,11 +702,11 @@ While there are other directories in the project, these are primarily where most
 
 To add a new Rust library, there are a few steps:
 
-1. Create `lib/MY-LIBRARY` and put a `Cargo.toml` there like this:
+1. Create `lib/<CRATE>` and put a `Cargo.toml` there like this:
 
 ```toml
 [package]
-name = "MY-LIBRARY"
+name = "<CRATE>"
 edition = "2024"
 version.workspace = true
 authors.workspace = true
@@ -744,7 +718,7 @@ publish.workspace = true
 
 2. Put `src/lib.rs` with your code.
 3. Add your library to the top-level `Cargo.toml` inside `[workspace] members = ...`.
-4. Run `cargo check --all-targets --all-features` to get your library added to the top level `Cargo.lock`.
+4. Run `cargo check --all-targets --all-features --workspace` to get your library added to the top level `Cargo.lock`.
 
 > [!NOTE]
 > If your library adds, removes or modifies a third party crate, you may need to sync `buck2` deps.
