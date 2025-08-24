@@ -7,6 +7,7 @@ use axum::{
     },
     routing::{
         delete,
+        get,
         post,
         put,
     },
@@ -25,6 +26,7 @@ use crate::app_state::AppState;
 
 pub mod attributes;
 pub mod autosubscribe;
+pub mod debug_component;
 pub mod delete_components;
 pub mod manage;
 pub mod name;
@@ -47,6 +49,8 @@ pub enum Error {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("component debug error: {0}")]
+    ComponentDebug(#[from] dal::component::debug::ComponentDebugViewError),
     #[error("dal secret error: {0}")]
     DalSecret(#[from] dal::SecretError),
     #[error("dependent value root error: {0}")]
@@ -107,6 +111,7 @@ pub fn v2_routes() -> Router<AppState> {
         .nest(
             "/:componentId",
             Router::new()
+                .route("/debug", get(debug_component::debug_component))
                 .nest("/attributes", attributes::v2_routes())
                 .nest("/name", name::v2_routes())
                 .nest("/secret", secrets::v2_routes())
@@ -116,6 +121,6 @@ pub fn v2_routes() -> Router<AppState> {
 
 #[derive(Deserialize, Clone, Copy, Debug)]
 #[serde(rename_all = "camelCase")]
-struct ComponentIdFromPath {
+pub(crate) struct ComponentIdFromPath {
     component_id: ComponentId,
 }

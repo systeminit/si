@@ -460,6 +460,13 @@
             :attributeTree="attributeTree ?? undefined"
           />
         </CollapsingFlexItem>
+        <CollapsingFlexItem
+          v-if="useFeatureFlagsStore().SQLITE_TOOLS"
+          expandable
+        >
+          <template #header><span class="text-sm">Debug</span></template>
+          <ComponentDebugPanel :componentId="component.id" />
+        </CollapsingFlexItem>
         <DocumentationPanel
           v-if="!docsOpen"
           :component="component"
@@ -501,6 +508,7 @@ import {
 import { ExploreContext } from "@/newhotness/types";
 import { funcRunStatus, FuncRun } from "@/newhotness/api_composables/func_run";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AttributePanel from "./AttributePanel.vue";
 import ResourceValuesPanel from "./ResourceValuesPanel.vue";
 import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
@@ -512,6 +520,7 @@ import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
 import CodePanel from "./CodePanel.vue";
 import DiffPanel from "./DiffPanel.vue";
+import ComponentDebugPanel from "./ComponentDebugPanel.vue";
 import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import DocumentationPanel from "./DocumentationPanel.vue";
