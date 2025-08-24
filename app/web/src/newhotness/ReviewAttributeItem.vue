@@ -1,6 +1,9 @@
 <template>
+  <!--
+    NOTE: if you want to hide a diff, you almost certainly want to exclude it in
+    shouldIncludeDiff() in Review.vue (or don't send it in the ComponentDiff MV!).
+  -->
   <div
-    v-if="display"
     :class="
       clsx(
         'flex flex-col gap-xs p-xs border',
@@ -137,28 +140,6 @@ const disableRevertChildren = computed(
           "subscription")
     ),
 );
-
-const display = computed(() => {
-  if (!props.item.children) {
-    if (
-      props.item.diff?.new?.$source.value &&
-      props.item.diff.new.$source.value === props.item.diff?.old?.$source.value
-    ) {
-      // same manual or default value from the source
-      return false;
-    } else if (
-      props.item.diff?.new?.$value === props.item.diff?.old?.$value &&
-      props.item.diff?.new?.$source.component ===
-        props.item.diff?.old?.$source.component &&
-      props.item.diff?.new?.$source.path === props.item.diff?.old?.$source.path
-    ) {
-      // same subscription source and same value
-      return false;
-    }
-  }
-
-  return true;
-});
 </script>
 
 <script lang="ts">
