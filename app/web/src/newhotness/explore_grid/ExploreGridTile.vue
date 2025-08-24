@@ -136,31 +136,7 @@
           </TextPill>
         </template>
         <template v-else-if="rowContent === 'pending'">
-          <div class="grid grid-cols-5 gap-1 items-center">
-            <TextPill
-              v-for="(actionData, actionName) in pendingActionCounts"
-              :key="actionName"
-              v-tooltip="
-                getPendingActionTooltip(
-                  actionName,
-                  actionData.count,
-                  actionData.hasFailed,
-                )
-              "
-              variant="key2"
-              size="sm"
-              class="text-xs flex items-center gap-1"
-            >
-              <Icon
-                :name="getPendingActionIcon(actionName)"
-                :class="
-                  getPendingActionIconClass(actionName, actionData.hasFailed)
-                "
-                size="xs"
-              />
-              {{ actionData.count }}
-            </TextPill>
-          </div>
+          <ActionPills :actionCounts="pendingActionCounts" mode="grid" />
         </template>
       </li>
       <!-- NOTE: when coming from the Map page we don't have accurate outputCount, hiding this -->
@@ -216,7 +192,6 @@
 <script lang="ts" setup>
 import {
   Icon,
-  IconNames,
   PillCounter,
   TextPill,
   themeClasses,
@@ -229,6 +204,7 @@ import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
 import ComponentTileQualificationStatus from "../ComponentTileQualificationStatus.vue";
+import ActionPills from "../ActionPills.vue";
 
 const props = defineProps<{
   component: ComponentInList;
@@ -296,40 +272,6 @@ const toggleSelection = () => {
     emit("deselect");
   } else {
     emit("select");
-  }
-};
-
-const getPendingActionIcon = (actionName: string): IconNames => {
-  const iconMap: Record<string, IconNames> = {
-    Create: "plus",
-    Update: "tilde",
-    Refresh: "refresh",
-    Destroy: "trash",
-    Delete: "trash",
-    Manual: "play",
-  };
-  return iconMap[actionName] || "play";
-};
-
-const getPendingActionIconClass = (actionName: string, hasFailed: boolean) => {
-  // Red if failed, grey otherwise
-  return hasFailed ? "text-destructive-500" : "text-neutral-500";
-};
-
-const getPendingActionTooltip = (
-  actionName: string,
-  count: number,
-  hasFailed: boolean,
-) => {
-  const actionWord = actionName.toLowerCase();
-  const plural = count > 1 ? "s" : "";
-
-  if (hasFailed && count === 1) {
-    return `1 pending ${actionWord} action failed`;
-  } else if (hasFailed) {
-    return `${count} pending ${actionWord} action${plural} (including failed)`;
-  } else {
-    return `${count} pending ${actionWord} action${plural}`;
   }
 };
 

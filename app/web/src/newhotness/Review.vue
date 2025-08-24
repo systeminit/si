@@ -200,14 +200,34 @@
       </div>
       <CollapsingFlexItem>
         <template #header> Actions </template>
+        <!--
+        For anything related to actions, check if we have both the "selectedComponentId" and the
+        "details" to make sure the data comes in atomically and with reactivity.
+        -->
+        <template
+          v-if="selectedComponentId && selectedComponent?.details"
+          #headerIcons
+        >
+          <ActionPills :actionCounts="actionCounts" mode="row" />
+        </template>
+        <template v-if="selectedComponentId && selectedComponent?.details">
+          <ActionsPanel :component="selectedComponent.details" />
+        </template>
+        <EmptyState
+          v-else
+          class="p-lg"
+          icon="component"
+          text="No component selected"
+          secondaryText="Select a component to see and configure actions"
+        />
       </CollapsingFlexItem>
     </div>
     <div class="right flex flex-col p-xs">
       <CollapsingFlexItem open>
         <template #header>Component History</template>
         <template v-if="selectedComponentId">
-          <ComponentHistory :componentId="selectedComponentId"
-        /></template>
+          <ComponentHistory :componentId="selectedComponentId" />
+        </template>
         <EmptyState
           v-else
           class="p-lg"
@@ -267,7 +287,10 @@ import {
 } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
+import { ActionState } from "@/api/sdf/dal/action";
 import ComponentListItem from "./ComponentListItem.vue";
+import ActionsPanel from "./ActionsPanel.vue";
+import ActionPills from "./ActionPills.vue";
 import { useContext } from "./logic_composables/context";
 import EmptyState from "./EmptyState.vue";
 import ComponentHistory from "./ComponentHistory.vue";
@@ -275,9 +298,11 @@ import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import ReviewAttributeItem from "./ReviewAttributeItem.vue";
 import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
 import { useComponentSearch } from "./logic_composables/search";
+import { useComponentActions } from "./logic_composables/component_actions";
+
+const ctx = useContext();
 
 const router = useRouter();
-const ctx = useContext();
 const queryClient = useQueryClient();
 
 // const changeSetName = computed(() => ctx.changeSet.value?.name);
@@ -597,6 +622,54 @@ const removedComponentList = computed(
     filteredComponentList.value?.filter((c) => c.diffStatus === "Removed") ??
     [],
 );
+
+// Why not just do something similar to the "pendingActionCounts" in the Explore context? For one,
+// we are not within the Explore context. Second, we need to include actions with "zero" in the
+// count. The way the Explore one works is that it only shows when there is at least one action.
+const { actionPrototypeViews, actionByPrototype } = useComponentActions(
+  () => selectedComponent.value?.details,
+);
+const actionCounts = computed(() => {
+  const results: Record<string, { count: number; hasFailed: boolean }> = {};
+  if (!selectedComponentId.value) return results;
+
+  for (const actionPrototype of actionPrototypeViews.value) {
+    const action = actionByPrototype.value[actionPrototype.id];
+    if (action) {
+      if (!action.componentId) continue;
+
+      // Group Other actions with Manual
+      let actionName = action.name;
+      if (actionName.toLowerCase() === "other") {
+        actionName = "Manual";
+      }
+
+      if (!results[actionName]) {
+        results[actionName] = { count: 0, hasFailed: false };
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      results[actionName]!.count += 1;
+
+      // Track if any action in this group has failed
+      if (action.state === ActionState.Failed) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        results[actionName]!.hasFailed = true;
+      }
+    } else {
+      let actionName = actionPrototype.kind as string;
+      if (actionName.toLowerCase() === "other") {
+        actionName = "Manual";
+      }
+
+      results[actionName] = {
+        count: 0,
+        hasFailed: false,
+      };
+    }
+  }
+  return results;
+});
 
 const exitReview = () => {
   router.push({
