@@ -402,6 +402,9 @@ importers:
       vue:
         specifier: ^3.5.13
         version: 3.5.13(typescript@5.0.4)
+      vue-html-secure:
+        specifier: ^1.0.10
+        version: 1.0.10
       vue-konva:
         specifier: ^3.0.1
         version: 3.0.2(konva@8.3.13)
@@ -499,9 +502,6 @@ importers:
       vite-svg-loader:
         specifier: ^3.4.0
         version: 3.6.0
-      vue-html-secure:
-        specifier: link:/vue-html-secure
-        version: link:../../../../../../vue-html-secure
       vue-tsc:
         specifier: ^1.8.27
         version: 1.8.27(typescript@5.0.4)
@@ -11090,6 +11090,9 @@ packages:
     engines: {node: ^14.17.0 || >=16.0.0}
     peerDependencies:
       eslint: '>=6.0.0'
+
+  vue-html-secure@1.0.10:
+    resolution: {integrity: sha512-Cvlg0vYQiRxouXMFHQ87n5AIadl8SnrTNKbNENhJMlQIyrFkbXZ8yjn4c03BB0BeoPOf8vHKSx8f4yR3BIqYjQ==}
 
   vue-konva@3.0.2:
     resolution: {integrity: sha512-FNWKtPPVDihNuQcq7F4GzuVPkPaEfg8lnWezpRqgiC2VetdvONOiYOFD800jNL5kt/lEYnSOYvhqqdTPbv2c8w==}
@@ -23702,6 +23705,8 @@ snapshots:
       semver: 7.5.4
     transitivePeerDependencies:
       - supports-color
+
+  vue-html-secure@1.0.10: {}
 
   vue-konva@3.0.2(konva@8.3.13):
     dependencies:
