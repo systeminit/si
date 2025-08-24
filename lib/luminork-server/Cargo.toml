@@ -65,7 +65,6 @@ si-posthog = { path = "../../lib/si-posthog-rs" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
-sodiumoxide = { workspace = true }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-http = { path = "../../lib/telemetry-http-rs" }

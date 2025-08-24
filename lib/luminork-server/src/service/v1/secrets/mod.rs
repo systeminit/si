@@ -17,7 +17,7 @@ use dal::{
     SecretId,
 };
 use serde::Deserialize;
-use sodiumoxide::crypto::sealedbox;
+use si_crypto_sodium::sealed_box;
 use thiserror::Error;
 use utoipa::ToSchema;
 
@@ -116,12 +116,12 @@ pub fn routes() -> Router<AppState> {
 }
 
 pub async fn encrypt_message(message: HashMap<String, String>, public_key: &PublicKey) -> Vec<u8> {
-    sodiumoxide::init().expect("Failed to initialize sodiumoxide");
+    si_crypto_sodium::init().expect("Failed to initialize sodiumoxide");
 
     let box_public_key = public_key.public_key();
 
     let serialized = serialize_message(&message);
-    sealedbox::seal(&serialized, box_public_key)
+    sealed_box::seal(&serialized, box_public_key)
 }
 
 fn serialize_message(message: &HashMap<String, String>) -> Vec<u8> {
