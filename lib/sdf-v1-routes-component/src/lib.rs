@@ -53,8 +53,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-mod autoconnect;
-pub mod debug;
 pub mod delete_property_editor_value;
 pub mod get_code;
 pub mod get_diff;
@@ -224,8 +222,6 @@ pub fn routes() -> Router<AppState> {
         .route("/set_name", post(set_name::set_name)) // USED IN OLD UI
         .route("/set_resource_id", post(set_resource_id::set_resource_id)) // USED IN OLD UI
         .route("/refresh", post(refresh::refresh)) // USED IN OLD UI
-        .route("/debug", get(debug::debug_component)) // USED IN OLD UI
-        .route("/autoconnect", post(autoconnect::autoconnect)) // USED IN OLD UI
         .route(
             "/override_with_connection", // USED IN OLD UI
             post(override_with_connection::override_with_connection),

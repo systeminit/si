@@ -7,6 +7,7 @@ import { LongTaskInstrumentation } from "@opentelemetry/instrumentation-long-tas
 import opentelemetry, { Span } from "@opentelemetry/api";
 import { mapStackTrace } from "sourcemapped-stacktrace";
 import { VueQueryPlugin } from "@tanstack/vue-query";
+import VueSecureHTML from "vue-html-secure";
 
 import { ComponentPublicInstance, createApp } from "vue";
 import FloatingVue from "floating-vue";
@@ -61,6 +62,7 @@ app.use(createHead());
 app.use(router);
 app.use(store);
 app.use(VueQueryPlugin);
+app.use(VueSecureHTML);
 
 const observeError = (message: string, stack: string, components?: string) => {
   const span = opentelemetry.trace.getActiveSpan();

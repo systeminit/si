@@ -499,6 +499,9 @@ importers:
       vite-svg-loader:
         specifier: ^3.4.0
         version: 3.6.0
+      vue-html-secure:
+        specifier: link:/vue-html-secure
+        version: link:../../../../../../vue-html-secure
       vue-tsc:
         specifier: ^1.8.27
         version: 1.8.27(typescript@5.0.4)
