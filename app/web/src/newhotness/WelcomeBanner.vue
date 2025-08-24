@@ -1,7 +1,15 @@
 <template>
   <div
     v-if="!closed"
-    class="flex flex-col gap-md border rounded-sm border-neutral-600 p-sm mt-xs mb-md leading-snug"
+    :class="
+      clsx(
+        'flex flex-col gap-md border rounded-sm p-sm mt-xs mb-md leading-snug',
+        themeClasses(
+          'border-neutral-400 bg-neutral-200',
+          'bg-transparent border-neutral-600',
+        ),
+      )
+    "
   >
     <div class="flex flex-col gap-xs">
       <div class="flex flex-row justify-between">
@@ -26,7 +34,15 @@
       <div
         v-for="(prompt, index) in prompts"
         :key="index"
-        class="flex flex-row gap-sm items-center justify-between border rounded-sm border-neutral-600 p-sm cursor-pointer bg-neutral-800 hover:bg-neutral-600 active:bg-neutral-700 italic select-none basis-1/3"
+        :class="
+          clsx(
+            'flex flex-row gap-sm items-center justify-between border rounded-sm p-sm cursor-pointer active:bg-neutral-700 italic select-none basis-1/3',
+            themeClasses(
+              'border-neutral-400 bg-neutral-300 hover:bg-neutral-400 active:bg-neutral-500',
+              'bg-neutral-800 border border-neutral-600 hover:bg-neutral-600 active:bg-neutral-700',
+            ),
+          )
+        "
         @click="copyText(prompt)"
       >
         <span>{{ prompt }}</span>
@@ -34,14 +50,30 @@
       </div>
     </div>
     <div
-      class="flex flex-row justify-between bg-neutral-800 border border-neutral-600 rounded-sm px-sm py-xs items-center"
+      :class="
+        clsx(
+          'flex flex-row justify-between border rounded-sm px-sm py-xs items-center',
+          themeClasses(
+            'border-neutral-400 bg-neutral-300',
+            'bg-neutral-800 border-neutral-600',
+          ),
+        )
+      "
     >
       <span class="leading-snug">
         See how it works with your real data; reach out and have us help you to
         take the most out of System Initiative
       </span>
       <a
-        class="p-xs border border-neutral-600 rounded-sm bg-neutral-700 hover:bg-neutral-600 whitespace-nowrap font-medium"
+        :class="
+          clsx(
+            'p-xs border rounded-sm  whitespace-nowrap font-medium',
+            themeClasses(
+              'border-neutral-400 bg-neutral-200 hover:bg-neutral-400',
+              'bg-neutral-700 border-neutral-600 hover:bg-neutral-600',
+            ),
+          )
+        "
         href="https://www.systeminit.com/?modal=demo"
         target="_blank"
       >
@@ -52,7 +84,8 @@
 </template>
 
 <script lang="ts" setup>
-import { Icon } from "@si/vue-lib/design-system";
+import clsx from "clsx";
+import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { useLocalStorage } from "@vueuse/core";
 
 const HAS_DISMISSED_WELCOME_BANNER_KEY = "dismissed-welcome-banner";
