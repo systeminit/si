@@ -16,6 +16,7 @@ import { ComponentName } from "@/store/components.store";
 import { ComponentInfo } from "./dbinterface";
 
 export enum EntityKind {
+  ActionDiffList = "ActionDiffList",
   ActionPrototypeViewList = "ActionPrototypeViewList",
   ActionViewList = "ActionViewList",
   AttributeTree = "AttributeTree",
@@ -30,6 +31,7 @@ export enum EntityKind {
   ComponentsInViews = "ComponentsInViews",
   DefaultSubscriptions = "DefaultSubscriptions",
   DependentValueComponentList = "DependentValueComponentList",
+  ErasedComponents = "ErasedComponents",
   IncomingConnections = "IncomingConnections",
   IncomingConnectionsList = "IncomingConnectionsList",
   IncomingManagementConnections = "IncomingManagementConnections",
@@ -300,6 +302,10 @@ export interface ComponentDiff {
   id: ComponentId;
   diffStatus: ComponentDiffStatus;
   attributeDiffs: Record<AttributePath, AttributeDiff>;
+  resourceDiff: {
+    current?: string;
+    diff?: string;
+  };
 }
 
 /**
@@ -407,11 +413,15 @@ export type SimplifiedAttributeSource =
       component: ComponentId;
       componentName: ComponentName;
       path: AttributePath;
-      value?: undefined;
+      secret?: Secret;
+
       prototype?: undefined;
+      value?: undefined;
     }
   | {
       value: unknown;
+      secret?: Secret;
+
       component?: undefined;
       componentName?: undefined;
       path?: undefined;
@@ -419,11 +429,28 @@ export type SimplifiedAttributeSource =
     }
   | {
       prototype: string;
+
       component?: undefined;
       componentName?: undefined;
       path?: undefined;
+      secret?: undefined;
       value?: undefined;
     };
+
+export interface ErasedComponents {
+  id: string;
+  erased: Record<
+    ComponentId,
+    {
+      diff: ComponentDiff;
+      component: ComponentInList;
+      resourceDiff: {
+        current?: string;
+        diff?: string;
+      };
+    }
+  >;
+}
 
 // NOTE: when using `getMany` you don't end up with a BifrostComponent (b/c it doesnt have SchemaVariant)
 // You end up with a ComponentInList

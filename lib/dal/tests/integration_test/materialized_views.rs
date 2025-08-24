@@ -240,8 +240,48 @@ async fn component_diff(ctx: &mut DalContext) -> Result<()> {
     change_set::apply_and_refork(ctx).await?;
 
     // First, empty diff should show nothing
-    assert_component_diff_mv(ctx, "modified", "None", r#"{}"#).await;
-    assert_component_diff_mv(ctx, "unchanged", "None", r#"{}"#).await;
+    assert_component_diff_mv(
+        ctx,
+        "modified",
+        "None",
+        r#"{}"#,
+        ComponentTextDiff {
+            current: None,
+            diff: Some(
+                r#" {
+   "si": {
+     "name": "modified",
+     "type": "component",
+     "color": "FFFFFF"
+   },
+   "domain": {
+     "Value": "value",
+     "Values": [
+       "value1",
+       "value2"
+     ],
+     "ValueMap": {
+       "foo": "fooValue",
+       "bar": "barValue"
+     }
+   }
+ }"#
+                .to_string(),
+            ),
+        },
+    )
+    .await;
+    assert_component_diff_mv(
+        ctx,
+        "unchanged",
+        "None",
+        r#"{}"#,
+        ComponentTextDiff {
+            current: None,
+            diff: Some(" {\n   \"si\": {\n     \"name\": \"unchanged\",\n     \"type\": \"component\",\n     \"color\": \"FFFFFF\"\n   },\n   \"domain\": {\n     \"Value\": \"value\",\n     \"Values\": [\n       \"value1\",\n       \"value2\"\n     ],\n     \"ValueMap\": {\n       \"foo\": \"fooValue\",\n       \"bar\": \"barValue\"\n     }\n   }\n }".to_string()),
+        },
+    )
+    .await;
 
     // Now remove, add and modify components
     component::create_and_set(
@@ -369,10 +409,24 @@ async fn component_diff(ctx: &mut DalContext) -> Result<()> {
                 }
             }
         }"#,
+        ComponentTextDiff {
+            current: None,
+            diff: Some(" {\n   \"si\": {\n     \"name\": \"modified\",\n     \"type\": \"component\",\n     \"color\": \"FFFFFF\"\n   },\n   \"domain\": {\n-    \"Value\": \"value\",\n+    \"Value\": \"new_value\",\n     \"Values\": [\n-      \"value1\",\n-      \"value2\"\n+      \"new_value1\",\n+      \"new_value2\"\n     ],\n     \"ValueMap\": {\n-      \"foo\": \"fooValue\",\n-      \"bar\": \"barValue\"\n+      \"foo\": \"new_fooValue\",\n+      \"bar\": \"new_barValue\"\n     }\n   }\n }".to_string()),
+        },
     )
     .await;
 
-    assert_component_diff_mv(ctx, "unchanged", "None", r#"{}"#).await;
+    assert_component_diff_mv(
+        ctx,
+        "unchanged",
+        "None",
+        r#"{}"#,
+        ComponentTextDiff {
+            current: None,
+            diff: Some(" {\n   \"si\": {\n     \"name\": \"unchanged\",\n     \"type\": \"component\",\n     \"color\": \"FFFFFF\"\n   },\n   \"domain\": {\n     \"Value\": \"value\",\n     \"Values\": [\n       \"value1\",\n       \"value2\"\n     ],\n     \"ValueMap\": {\n       \"foo\": \"fooValue\",\n       \"bar\": \"barValue\"\n     }\n   }\n }".to_string()),
+        },
+    )
+    .await;
 
     // NOTE added components show way too much right now; we're just going to check the paths
     // and status for now
@@ -431,11 +485,13 @@ async fn assert_component_diff_mv(
     component: impl ComponentKey,
     diff_status: &str,
     attribute_diffs: &str,
+    text_diff: ComponentTextDiff,
 ) {
     let component = component::id(ctx, component).await.unwrap();
-    let expected = expected_component_diff_mv(ctx, component, diff_status, attribute_diffs)
-        .await
-        .unwrap();
+    let expected =
+        expected_component_diff_mv(ctx, component, diff_status, attribute_diffs, text_diff)
+            .await
+            .unwrap();
     let actual = component_diff_mv(ctx, component).await.unwrap();
     assert_eq!(expected, actual);
 }
@@ -456,17 +512,20 @@ async fn expected_component_diff_mv(
     component: impl ComponentKey,
     diff_status: &str,
     attribute_diffs: &str,
+    text_diff: ComponentTextDiff,
 ) -> Result<si_frontend_mv_types::component::component_diff::ComponentDiff> {
     let id = component::id(ctx, component).await?;
     let json = format!(
         r#"{{
             "id": {},
             "diffStatus": {},
-            "attributeDiffs": {}
+            "attributeDiffs": {},
+            "resourceDiff": {}
         }}"#,
         serde_json::to_string(&id)?,
         serde_json::to_string(diff_status)?,
-        attribute_diffs
+        attribute_diffs,
+        serde_json::to_string(&text_diff)?
     );
     println!("JSON {}", &json);
     Ok(serde_json::from_str(&json)?)

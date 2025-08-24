@@ -18,6 +18,7 @@ use dal::{
 };
 use si_frontend_mv_types::component::{
     ComponentDiffStatus,
+    ComponentTextDiff,
     component_diff::{
         AttributeDiff,
         AttributeSource,
@@ -41,10 +42,22 @@ pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<Com
     let old_ctx = new_ctx.clone_with_head().await?;
     let old_ctx = &old_ctx;
     if new_ctx.change_set_id() == old_ctx.change_set_id() {
+        let resource_diff = {
+            let dal_component_diff = Component::get_diff(old_ctx, id).await?;
+            let diff = match dal_component_diff.diff {
+                Some(code_view) => code_view.code,
+                None => None,
+            };
+            ComponentTextDiff {
+                current: dal_component_diff.current.code,
+                diff,
+            }
+        };
         return Ok(ComponentDiff {
             id,
             diff_status: ComponentDiffStatus::None,
             attribute_diffs: vec![],
+            resource_diff,
         });
     }
 
@@ -62,22 +75,46 @@ pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<Com
     let attribute_diffs = diff_attributes(old_ctx, old_root_av_id, new_ctx, new_root_av_id).await?;
 
     // Figure out diff status
-    let diff_status = if new_root_av_id.is_some() {
-        if old_root_av_id.is_none() {
+    let (diff_status, resource_diff) = if new_root_av_id.is_some() {
+        let resource_diff = {
+            let dal_component_diff = Component::get_diff(new_ctx, id).await?;
+            let diff = match dal_component_diff.diff {
+                Some(code_view) => code_view.code,
+                None => None,
+            };
+            ComponentTextDiff {
+                current: dal_component_diff.current.code,
+                diff,
+            }
+        };
+        let diff_status = if old_root_av_id.is_none() {
             ComponentDiffStatus::Added
         } else if !attribute_diffs.is_empty() {
             ComponentDiffStatus::Modified
         } else {
             ComponentDiffStatus::None
-        }
+        };
+        (diff_status, resource_diff)
     } else {
-        ComponentDiffStatus::Removed
+        let resource_diff = {
+            let dal_component_diff = Component::get_diff(old_ctx, id).await?;
+            let diff = match dal_component_diff.diff {
+                Some(code_view) => code_view.code,
+                None => None,
+            };
+            ComponentTextDiff {
+                current: dal_component_diff.current.code,
+                diff,
+            }
+        };
+        (ComponentDiffStatus::Removed, resource_diff)
     };
 
     Ok(ComponentDiff {
         id,
         diff_status,
         attribute_diffs,
+        resource_diff,
     })
 }
 

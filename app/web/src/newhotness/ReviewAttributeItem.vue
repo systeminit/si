@@ -12,7 +12,8 @@
     "
   >
     <h1 class="h-10 py-xs">{{ name }}</h1>
-    <template v-if="!children || parentSourceChange">
+
+    <template v-if="showDiffs">
       <ReviewAttributeItemSourceAndValue
         v-if="diff?.new"
         :sourceAndValue="diff.new"
@@ -28,7 +29,8 @@
         @revert="revert"
       />
     </template>
-    <div v-if="children" class="flex flex-col gap-xs">
+
+    <div v-if="isParent" class="flex flex-col gap-xs">
       <template v-for="(childItem, childName) in children" :key="childName">
         <ReviewAttributeItem
           :selectedComponentId="selectedComponentId"
@@ -92,17 +94,26 @@ const revert = async () => {
     [path.value]: revertibleSource.value,
   };
 
-  const { req, newChangeSetId } =
-    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 };
 
-const parentSourceChange = computed(() => {
-  if (!props.item.children || Object.keys(props.item.children).length === 0) {
-    return false;
+const isParent = computed(
+  () => props.item.children && Object.keys(props.item.children).length > 0,
+);
+
+const showDiffs = computed(() => {
+  if (!isParent.value) {
+    return true;
   }
 
   if (props.item.diff?.new?.$source) {
-    if (!props.item.diff.old?.$source) return true;
+    if (!props.item.diff.old?.$source) {
+      if ("value" in props.item.diff.new.$source) {
+        return false;
+      } else {
+        return true;
+      }
+    }
 
     const oldSource = props.item.diff.old.$source;
     const newSource = props.item.diff.new.$source;
@@ -130,8 +141,8 @@ const disableRevertChildren = computed(
 const display = computed(() => {
   if (!props.item.children) {
     if (
-      props.item.diff?.new?.$source.value ===
-      props.item.diff?.old?.$source.value
+      props.item.diff?.new?.$source.value &&
+      props.item.diff.new.$source.value === props.item.diff?.old?.$source.value
     ) {
       // same manual or default value from the source
       return false;
@@ -142,13 +153,6 @@ const display = computed(() => {
       props.item.diff?.new?.$source.path === props.item.diff?.old?.$source.path
     ) {
       // same subscription source and same value
-      return false;
-    } else if (
-      typeof props.item.diff?.new?.$source.value === "object" &&
-      Object.keys(props.item.diff?.new?.$source.value as object).length === 0 &&
-      (!props.item.children || Object.keys(props.item.children).length === 0)
-    ) {
-      // parent with only hidden children
       return false;
     }
   }
