@@ -2,7 +2,7 @@
   <div
     v-if="auditLogs.length > 0"
     ref="scrollContainerRef"
-    class="p-sm overflow-x-hidden max-h-full"
+    class="px-xs py-sm overflow-x-hidden max-h-full"
     @scrollend="handleScrollEnd"
   >
     <!--
@@ -28,28 +28,47 @@
       />
     </div>
     -->
-    <ul class="space-y-sm">
-      <li
+    <div ref="wrapperRef" class="grid gap-xs relative">
+      <!-- Single continuous timeline line behind all items -->
+      <div
+        v-if="auditLogs.length > 0"
+        :class="
+          clsx(
+            'absolute left-[5px] w-[2px] z-0 top-sm translate-x-[-50%]',
+            themeClasses('bg-neutral-400', 'bg-neutral-600'),
+          )
+        "
+        :style="timelineStyle"
+      />
+
+      <div
         v-for="auditLog in auditLogs"
+        ref="logRefs"
         :key="identifier(auditLog)"
         v-tooltip="
           shouldExpand(auditLog)
             ? 'Click to hide full audit log'
             : 'Click to see full audit log'
         "
-        class="flex cursor-pointer flex-row items-center gap-xs"
+        class="grid grid-cols-[10px_1fr] gap-2xs items-stretch cursor-pointer"
       >
-        <!--
-        TODO(nick): show the timeline-style view from our figma page.
-        <div class="w-2.5 h-2.5 rounded-full bg-neutral-500 flex-shrink-0" />
-        -->
         <div
-          class="flex-1 p-xs border rounded-sm border-neutral-600"
+          class="relative flex flex-row justify-center items-start h-full pt-sm self-stretch"
+        >
+          <div class="w-2.5 h-2.5 rounded-full bg-neutral-500 flex-shrink-0" />
+        </div>
+        <div
+          :class="
+            clsx(
+              'p-xs border rounded-sm min-h-[2.5rem] min-w-0 break-words',
+              themeClasses('border-neutral-400', 'border-neutral-600'),
+            )
+          "
           @click="toggleExpand(auditLog)"
         >
           <div class="flex flex-col">
             <div class="flex flex-row gap-xs items-center justify-between">
-              <TruncateWithTooltip>
+              <TruncateWithTooltip class="py-2xs">
                 {{ auditLog.title }}
               </TruncateWithTooltip>
 
@@ -74,10 +93,17 @@
               v-if="auditLog.beforeValue && auditLog.afterValue"
               class="flex flex-row gap-sm"
             >
-              <TruncateWithTooltip class="line-through text-neutral-500">
+              <TruncateWithTooltip class="line-through text-neutral-500 py-2xs">
                 {{ auditLog.beforeValue }}
               </TruncateWithTooltip>
-              <TruncateWithTooltip class="text-neutral-300">
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'py-2xs',
+                    themeClasses('text-neutral-600', 'text-neutral-300'),
+                  )
+                "
+              >
                 {{ auditLog.afterValue }}
               </TruncateWithTooltip>
             </div>
@@ -89,14 +115,18 @@
             leaveActiveClass="transition duration-100"
             leaveFromClass="opacity-100 scale-100"
             leaveToClass="opacity-0 scale-95"
+            @beforeEnter="startUpdateTimeline"
+            @beforeLeave="startUpdateTimeline"
+            @afterEnter="finishUpdateTimeline"
+            @afterLeave="finishUpdateTimeline"
           >
             <div v-if="shouldExpand(auditLog)" class="mt-xs transition-all">
               <CodeViewer :code="JSON.stringify(auditLog.inner, null, 2)" />
             </div>
           </Transition>
         </div>
-      </li>
-    </ul>
+      </div>
+    </div>
 
     <!-- Loading indicator and marker for when all entries are loaded. -->
     <div
@@ -124,7 +154,9 @@ import {
   TruncateWithTooltip,
   Timestamp,
   Icon,
+  themeClasses,
 } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { AuditLog, EntityKind } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
@@ -140,6 +172,8 @@ const props = defineProps<{
 const componentId = computed(() => props.componentId);
 
 const scrollContainerRef = ref<HTMLElement | null>(null);
+const wrapperRef = ref<HTMLDivElement>();
+const logRefs = ref<HTMLDivElement[]>();
 
 const ctx = useContext();
 const key = useMakeKey();
@@ -298,5 +332,27 @@ const handleScrollEnd = () => {
   if (hasNextPage.value && !isFetchingNextPage.value) {
     fetchNextPage();
   }
+};
+
+const timelineForceUpdate = ref(false);
+const timelineStyle = computed(() => {
+  if (!logRefs.value) return "";
+
+  const lastLog = logRefs.value[logRefs.value.length - 1];
+
+  if (!lastLog) return "";
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  timelineForceUpdate.value;
+
+  return `bottom: ${lastLog.clientHeight - 22}px`;
+});
+
+const startUpdateTimeline = () => {
+  timelineForceUpdate.value = true;
+};
+
+const finishUpdateTimeline = () => {
+  timelineForceUpdate.value = false;
 };
 </script>
