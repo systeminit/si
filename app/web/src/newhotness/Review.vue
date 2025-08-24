@@ -41,88 +41,43 @@
         @keydown.up="() => searchControl(true)"
         @keydown.down="() => searchControl(false)"
       />
-      <div class="flex flex-col gap-xs flex-grow">
-        <CollapsingFlexItem headerTextSize="sm" open>
-          <template #header>Created</template>
-          <template #headerIcons>
-            <PillCounter :count="addedComponentList.length" size="sm" />
-          </template>
-          <div class="flex flex-col gap-xs p-xs w-full h-full">
-            <EmptyState
-              v-if="componentCounts.Added === 0"
-              icon="component"
-              text="No components added"
-              class="p-sm"
-            />
-            <EmptyState
-              v-else-if="addedComponentList.length === 0"
-              icon="component"
-              text="No added components match your search"
-              class="p-sm"
-            />
-            <ComponentListItem
-              v-for="component in addedComponentList"
-              :key="component.id"
-              :component="component"
-              :selected="component.id === selectedComponentId"
-              @click="selectComponent(component.id)"
-            />
-          </div>
-        </CollapsingFlexItem>
-        <CollapsingFlexItem headerTextSize="sm" open>
-          <template #header>Changed</template>
-          <template #headerIcons>
-            <PillCounter :count="modifiedComponentList.length" size="sm" />
-          </template>
-          <div class="flex flex-col gap-xs p-xs w-full h-full">
-            <EmptyState
-              v-if="componentCounts.Modified === 0"
-              icon="diff"
-              text="No components changed"
-              class="p-sm"
-            />
-            <EmptyState
-              v-else-if="modifiedComponentList.length === 0"
-              icon="diff"
-              text="No changed components match your search"
-              class="p-sm"
-            />
-            <ComponentListItem
-              v-for="component in modifiedComponentList"
-              :key="component.id"
-              :component="component"
-              :selected="component.id === selectedComponentId"
-              @click="selectComponent(component.id)"
-            />
-          </div>
-        </CollapsingFlexItem>
-        <CollapsingFlexItem headerTextSize="sm" open>
-          <template #header>Removed</template>
-          <template #headerIcons>
-            <PillCounter :count="removedComponentList.length" size="sm" />
-          </template>
-          <div class="flex flex-col gap-xs p-xs w-full h-full">
-            <EmptyState
-              v-if="componentCounts.Removed === 0"
-              icon="trash"
-              text="No components deleted"
-              class="p-sm"
-            />
-            <EmptyState
-              v-else-if="removedComponentList.length === 0"
-              icon="trash"
-              text="No deleted components match your search"
-              class="p-sm"
-            />
-            <ComponentListItem
-              v-for="component in removedComponentList"
-              :key="component.id"
-              :component="component"
-              :selected="component.id === selectedComponentId"
-              @click="selectComponent(component.id)"
-            />
-          </div>
-        </CollapsingFlexItem>
+      <div class="flex flex-col gap-xs flex-grow scrollable">
+        <EmptyState
+          v-if="componentList.length === 0"
+          icon="diff"
+          text="No components changed"
+          class="p-sm"
+        />
+        <EmptyState
+          v-else-if="filteredComponentList.length === 0"
+          icon="diff"
+          text="No changed components match your search"
+          class="p-sm"
+        />
+        <ComponentListItem
+          v-for="component in addedComponentList"
+          :key="component.id"
+          :component="component"
+          status="Added"
+          :selected="component.id === selectedComponentId"
+          @click="selectComponent(component.id)"
+        />
+        <ComponentListItem
+          v-for="component in modifiedComponentList"
+          :key="component.id"
+          :component="component"
+          status="Modified"
+          :selected="component.id === selectedComponentId"
+          @click="selectComponent(component.id)"
+        />
+        <ComponentListItem
+          v-for="component in removedComponentList"
+          :key="component.id"
+          :component="component"
+          status="Removed"
+          :selected="component.id === selectedComponentId"
+          @click="selectComponent(component.id)"
+        />
       </div>
     </div>
     <div class="main flex flex-col gap-xs m-xs">
@@ -261,12 +216,7 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import clsx from "clsx";
-import {
-  PillCounter,
-  SiSearch,
-  themeClasses,
-  VButton,
-} from "@si/vue-lib/design-system";
+import { SiSearch, themeClasses, VButton } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import * as _ from "lodash-es";
 import {
@@ -534,18 +484,18 @@ function fixAttributeSourceAndValue(sourceAndValue?: AttributeSourceAndValue) {
 }
 
 /** Overall (non-filtered) component counts for each diff status */
-const componentCounts = computed(() => {
-  const result = {
-    Added: 0,
-    Modified: 0,
-    None: 0,
-    Removed: 0,
-  };
-  for (const component of componentList.value) {
-    result[component.diffStatus] += 1;
-  }
-  return result;
-});
+// const componentCounts = computed(() => {
+//   const result = {
+//     Added: 0,
+//     Modified: 0,
+//     None: 0,
+//     Removed: 0,
+//   };
+//   for (const component of componentList.value) {
+//     result[component.diffStatus] += 1;
+//   }
+//   return result;
+// });
 
 /** The currently-selected component data, including diffs */
 const selectedComponent = computed(() =>

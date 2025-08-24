@@ -12,7 +12,7 @@
       )
     "
   >
-    <StatusIndicatorIcon type="qualification" :status="qualificationStatus" />
+    <StatusIndicatorIcon class="flex-none" type="diff" :status="status" />
     <TextPill
       tighter
       variant="component"
@@ -23,6 +23,11 @@
     <TextPill tighter variant="component" class="text-purple">
       <TruncateWithTooltip>{{ component.name }}</TruncateWithTooltip>
     </TextPill>
+    <StatusIndicatorIcon
+      class="ml-auto flex-none"
+      type="qualification"
+      :status="qualificationStatus"
+    />
   </div>
 </template>
 
@@ -36,6 +41,7 @@ import clsx from "clsx";
 import { computed } from "vue";
 import {
   BifrostComponent,
+  ComponentDiffStatus,
   ComponentInList,
 } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
@@ -43,6 +49,7 @@ import { getQualificationStatus } from "./ComponentTileQualificationStatus.vue";
 
 const props = defineProps<{
   component: ComponentInList | BifrostComponent;
+  status: ComponentDiffStatus;
   selected?: boolean;
 }>();
 
