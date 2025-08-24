@@ -279,7 +279,6 @@ import { useComponentSearch } from "./logic_composables/search";
 const router = useRouter();
 const ctx = useContext();
 const queryClient = useQueryClient();
-queryClient.setDefaultOptions({ queries: { staleTime: Infinity } });
 
 // const changeSetName = computed(() => ctx.changeSet.value?.name);
 const selectedComponentId = ref<ComponentId>();

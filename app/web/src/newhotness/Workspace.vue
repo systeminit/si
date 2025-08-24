@@ -402,7 +402,7 @@ const checkOnboardingCompleteData = async () => {
 const lobby = computed(
   () =>
     coldStartInProgress.value ||
-    featureFlagsStore.INITIALIZER_ONBOARD === undefined || // Make sure twe don't show anything before the feature flags load
+    // not looking for feature flag values in here (if for any reason, network connectivity, posthog being down, we didn't get feature flags everyone would be stuck in the lobby)
     loadedOnboardingStateFromApi.value === false, // Don't continue before we got the response from the auth API
 );
 
