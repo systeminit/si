@@ -77,16 +77,6 @@ pub enum AttributeDiff {
 
 /// An attribute's source, as well as its current value.
 ///
-/// - Subscription:
-///
-///       {
-///            $value: "us-east-1",
-///            $source: {
-///                component: "My Region",
-///                path: "/domain/region"
-///            }
-///       }
-///
 /// - Value:
 ///
 ///       {
@@ -96,15 +86,14 @@ pub enum AttributeDiff {
 ///           }
 ///       }
 ///
-/// - Set by a parent subscription:
+/// - Subscription:
 ///
 ///       {
-///          $value: "127.0.0.1"
-///          $source: {
-///              fromAncestor: "/domain/SecurityGroupIngress/3",
-///              component: "My Security Group Ingress Rule",
-///              path: "/domain",
-///          }
+///            $value: "us-east-1",
+///            $source: {
+///                component: "My Region",
+///                path: "/domain/region"
+///            }
 ///       }
 ///
 /// - Set by schema (e.g. attribute function):
@@ -123,6 +112,31 @@ pub enum AttributeDiff {
 ///               fromSchema: true,
 ///               fromAncestor: "/domain/Rendered",
 ///               prototype: "String_Template:renderValue()"
+///           }
+///       }
+///
+/// - Set by a parent subscription:
+///
+///       {
+///          $value: "127.0.0.1"
+///          $source: {
+///              fromAncestor: "/domain/SecurityGroupIngress/3",
+///              component: "My Security Group Ingress Rule",
+///              path: "/domain",
+///          }
+///       }
+///
+/// - Secret subscription:
+///
+///       {
+///           $source: {
+///               component: "My Region",
+///               path: "/secrets/AWS Credential",
+///           },
+///           $value: "...",
+///           $secret: {
+///             name: "My Credential",
+///             ...
 ///           }
 ///       }
 ///
@@ -149,6 +163,10 @@ pub struct AttributeSourceAndValue {
     /// - Object, maps and array values will include the child value.
     #[serde(rename = "$value", skip_serializing_if = "Option::is_none")]
     pub value: Option<serde_json::Value>,
+
+    /// Information about the secret, if this points at one.
+    #[serde(rename = "$secret", skip_serializing_if = "Option::is_none")]
+    pub secret: Option<Secret>,
 }
 
 #[derive(
@@ -225,21 +243,6 @@ pub enum SimplifiedAttributeSource {
     /// it.
     ///
     Prototype { prototype: String },
-    /// This attribute is set to a subscription to a secret Prop
-    ///
-    ///     { component: "My Region", path: "/secrets/AWS Credential", secret_name: "Production Creds" }
-    ///
-    SecretSubscription {
-        component: ComponentId,
-        path: String,
-        secret: Secret,
-    },
-
-    /// This attribute is set to a Secret Value
-    SecretValue {
-        value: serde_json::Value,
-        secret: Secret,
-    },
 }
 
 #[allow(clippy::panic_in_result_fn)]
@@ -269,6 +272,7 @@ mod test {
                                     from_ancestor: None,
                                 },
                                 value: Some(json!("foo")),
+                                secret: None,
                             }
                         }
                     ),
@@ -284,6 +288,7 @@ mod test {
                                     from_ancestor: None,
                                 },
                                 value: Some(json!("bar")),
+                                secret: None,
                             }
                         }
                     ),
@@ -299,6 +304,7 @@ mod test {
                                     from_ancestor: None,
                                 },
                                 value: Some(json!("new_baz")),
+                                secret: None,
                             },
                             old: AttributeSourceAndValue {
                                 source: AttributeSource {
@@ -309,6 +315,7 @@ mod test {
                                     from_ancestor: None,
                                 },
                                 value: Some(json!("baz")),
+                                secret: None,
                             }
                         }
                     ),
@@ -363,6 +370,7 @@ mod test {
                     from_ancestor: None,
                 },
                 value: Some(json!("foo")),
+                secret: None,
             },
             serde_json::from_str(
                 r#"{

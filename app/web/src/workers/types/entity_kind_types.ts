@@ -396,8 +396,24 @@ export type AttributeDiff =
  *       }
  */
 export interface AttributeSourceAndValue {
+  /**
+   * Where the value comes from (the function, subscription, value, whether it comes from the
+   * schema, etc.).
+   */
   $source: AttributeSourceLocation & SimplifiedAttributeSource;
+
+  /**
+   * The current value.
+   *
+   * If it's a subscription or dynamic function, this will change when the value changes, even
+   * though the source does not.
+   */
   $value?: unknown;
+
+  /**
+   * If the source is pointed at a secret, this has name and other information about it.
+   */
+  $secret?: Secret;
 }
 
 /** The place in the tree this came from */
@@ -413,14 +429,12 @@ export type SimplifiedAttributeSource =
       component: ComponentId;
       componentName: ComponentName;
       path: AttributePath;
-      secret?: Secret;
 
       prototype?: undefined;
       value?: undefined;
     }
   | {
       value: unknown;
-      secret?: Secret;
 
       component?: undefined;
       componentName?: undefined;
@@ -433,7 +447,6 @@ export type SimplifiedAttributeSource =
       component?: undefined;
       componentName?: undefined;
       path?: undefined;
-      secret?: undefined;
       value?: undefined;
     };
 

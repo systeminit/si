@@ -14,7 +14,25 @@
       )
     "
   >
-    <h1 class="h-10 py-xs">{{ name }}</h1>
+    <!-- Title and revert button-->
+    <div class="flex flex-row items-center">
+      <h1 class="h-10 py-xs mr-auto">{{ name }}</h1>
+      <VButton
+        v-if="!!revertToSource"
+        size="xs"
+        label="Revert"
+        :class="
+          clsx(
+            '!text-sm !border !cursor-pointer !px-xs',
+            themeClasses(
+              '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
+              '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
+            ),
+          )
+        "
+        @click="revert"
+      />
+    </div>
 
     <template v-if="showDiffs">
       <ReviewAttributeItemSourceAndValue
@@ -27,9 +45,7 @@
         v-if="diff?.old"
         :sourceAndValue="diff.old"
         old
-        :revertible="!disableRevert"
         :secret="secret"
-        @revert="revert"
       />
     </template>
 
@@ -39,7 +55,6 @@
           :selectedComponentId="selectedComponentId"
           :name="childName"
           :item="childItem"
-          :disableRevert="disableRevertChildren"
         />
       </template>
     </div>
@@ -47,18 +62,14 @@
 </template>
 
 <script setup lang="ts">
-import { themeClasses } from "@si/vue-lib/design-system";
+import { themeClasses, VButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, PropType } from "vue";
+import * as _ from "lodash-es";
 import { ComponentId } from "@/api/sdf/dal/component";
-import { AttributeSource } from "@/store/components.store";
 import ReviewAttributeItemSourceAndValue from "./ReviewAttributeItemSourceAndValue.vue";
 import { useApi, routes, componentTypes } from "./api_composables";
 import { AttributeDiffTree } from "./Review.vue";
-import {
-  AttributeSourceLocation,
-  SimplifiedAttributeSource,
-} from "../workers/types/entity_kind_types";
 
 const saveApi = useApi();
 
@@ -70,23 +81,49 @@ const props = defineProps({
   name: { type: String, required: true },
   item: { type: Object as PropType<AttributeDiffTree>, required: true },
   secret: { type: Boolean },
-  disableRevert: { type: Boolean },
 });
 
 const path = computed(() => props.item.path);
 const children = computed(() => props.item.children);
 const diff = computed(() => props.item.diff);
 
-const revertibleSource = computed(() => {
-  if (!diff.value?.old) return undefined;
-  const { $source } = diff.value.old;
-  if ($source.fromSchema || $source.fromAncestor) return undefined;
-  if ($source.prototype) return undefined;
-  return { $source } as AttributeSource;
+/**
+ * This is the thing you would send to the attributes API to revert this value.
+ *
+ * @return The { $source: ... } you would pass to the attributes API.
+ *         - returns undefined if there is no way to reset the value (for example, the old value was set by an ancestor)
+ *         - returns undefined if the reset would not actually change anything (for example, a subscription has not changed, but the upstream value has caused us to show a diff)
+ */
+const revertToSource = computed(() => {
+  if (!diff.value) return undefined;
+
+  // If you wouldn't show a diff, then you shouldn't revert.
+  if (!showDiffs.value) return undefined;
+
+  // If the sources are the same, the revert would be a noop
+  const oldSource = diff.value.old?.$source;
+  const newSource = diff.value.new?.$source;
+  if (_.isEqual(oldSource, newSource)) return undefined;
+
+  // If the new source is from an ancestor (such as an object/array subscription), you can't
+  // directly revert it (you have to revert the parent).
+  if (newSource?.fromAncestor && !newSource?.fromSchema) return undefined;
+
+  // If the old source was explicitly set, return it as the source
+  if (oldSource && !oldSource.fromSchema && !oldSource.fromAncestor) {
+    return { $source: oldSource };
+  }
+
+  // The old source was explicitly set! But if the new one wasn't, this is a noop.
+  if (!(newSource && !newSource.fromSchema && !newSource.fromAncestor))
+    return undefined;
+
+  // Unset: The old source was *not* explicitly set by the user.
+  return { $source: null };
 });
 
 const revert = async () => {
-  if (!revertibleSource.value) return;
+  if (!revertToSource.value) return;
 
   const call = saveApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
@@ -94,7 +131,7 @@ const revert = async () => {
   );
 
   const payload = {
-    [path.value]: revertibleSource.value,
+    [path.value]: revertToSource.value,
   };
 
   await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
@@ -130,38 +167,4 @@ const showDiffs = computed(() => {
 
   return false;
 });
-
-const disableRevertChildren = computed(
-  () =>
-    !!(
-      props.disableRevert ||
-      (props.item.diff?.new &&
-        sourceAndValueDisplayKind(props.item.diff.new.$source, props.secret) ===
-          "subscription")
-    ),
-);
-</script>
-
-<script lang="ts">
-export const trimPath = (rawPath: string) => {
-  if (rawPath.startsWith("/domain/")) {
-    return rawPath.slice(8);
-  } else if (rawPath.startsWith("/si/")) {
-    return rawPath.slice(4);
-  } else if (rawPath.startsWith("/")) {
-    return rawPath.slice(1);
-  } else {
-    return rawPath;
-  }
-};
-export const sourceAndValueDisplayKind = (
-  source: AttributeSourceLocation & SimplifiedAttributeSource,
-  secret = false,
-) => {
-  if ("component" in source) return "subscription";
-  else if (secret) return "secret";
-  else if ("value" in source) return "value";
-  // TODO(Wendy) - complex AV diffs?
-  return "hidden";
-};
 </script>

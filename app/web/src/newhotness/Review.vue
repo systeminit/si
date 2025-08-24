@@ -446,28 +446,8 @@ function shouldIncludeDiff(diff: AttributeDiff) {
 function fixAttributeSourceAndValue(sourceAndValue?: AttributeSourceAndValue) {
   if (!sourceAndValue) return undefined;
   const { $source } = sourceAndValue;
-  if ("prototype" in $source && $source.prototype !== undefined) {
-    // subscription to /domain/region on Region changed (01K2N2CFSAE0PPHNJ31SKP97HH)
-    const { prototype, ...otherFields } = $source;
-    const match = prototype.match(/^subscription to (\/.+) on .+ \((\w+)\)/);
-    if (match) {
-      const [, path, component] = match;
-      if (path && component) {
-        const componentName = rawComponentList.value.find(
-          (c) => c.id === component,
-        )?.name;
-        return {
-          ...sourceAndValue,
-          $source: {
-            component,
-            componentName,
-            path,
-            ...otherFields,
-          },
-        } as AttributeSourceAndValue;
-      }
-    }
-  } else if ("component" in $source) {
+  // Add componentName to $source
+  if ("component" in $source) {
     const component = $source.component;
     const componentName = rawComponentList.value.find(
       (c) => c.id === component,

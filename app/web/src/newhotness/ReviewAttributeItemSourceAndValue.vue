@@ -41,9 +41,10 @@
             <!-- TODO(Wendy) - Ideally we would put the secret's name here -->
             secret
           </template>
-          <template v-else>
+          <template v-if="rawValue !== undefined">
             {{ rawValue }}
           </template>
+          <template v-else> &lt;{{ rawSource.path }}&gt; </template>
         </TruncateWithTooltip>
       </div>
     </AttributeValueBox>
@@ -59,30 +60,15 @@
         {{ rawValue }}
       </template>
     </TruncateWithTooltip>
-
-    <IconButton
-      v-if="revertible"
-      class="flex-none ml-auto"
-      icon="undo"
-      iconTone="shade"
-      iconIdleTone="shade"
-      tooltip="Revert to old value"
-      @click="emit('revert')"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  IconButton,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed } from "vue";
 import { AttributeSourceAndValue } from "@/workers/types/entity_kind_types";
 import AttributeValueBox from "./layout_components/AttributeValueBox.vue";
-import { sourceAndValueDisplayKind } from "./ReviewAttributeItem.vue";
 
 type DisplayKind = "hidden" | "value" | "subscription" | "secret" | "complex";
 
@@ -90,19 +76,17 @@ const props = defineProps<{
   sourceAndValue: AttributeSourceAndValue;
   old?: boolean;
   secret?: boolean;
-  revertible?: boolean;
 }>();
 
 const rawValue = computed(() => props.sourceAndValue.$value);
 const rawSource = computed(() => props.sourceAndValue.$source);
 
 const displayKind = computed<DisplayKind>(() => {
-  const kind = sourceAndValueDisplayKind(rawSource.value, props.secret);
-
-  if (props.secret && props.old && !rawValue.value) {
-    return "hidden";
-  }
-  return kind;
+  if ("component" in rawSource.value) return "subscription";
+  if (props.secret) return "secret";
+  if ("value" in rawSource.value) return "value";
+  // TODO(Wendy) - complex AV diffs?
+  return "hidden";
 });
 
 const emit = defineEmits<{
