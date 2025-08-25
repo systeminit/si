@@ -32,7 +32,6 @@ use thiserror::Error;
 mod app_state;
 mod change_set_processor_task;
 mod config;
-pub mod extract;
 mod handlers;
 mod rebase;
 mod serial_dvu_task;

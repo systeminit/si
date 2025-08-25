@@ -11,13 +11,13 @@ pub use pinga_core::{
 };
 use pinga_core::{
     api_types::{
-        ApiVersionsWrapper,
-        ApiWrapper,
+        Container,
         ContentInfo,
-        DeserializeError,
         HeaderMapParseMessageInfoError,
+        Negotiate,
+        NegotiateError,
+        SerializeContainer,
         SerializeError,
-        UpgradeError,
         job_execution_request::{
             JobArgsVCurrent,
             JobExecutionRequest,
@@ -62,22 +62,14 @@ pub enum ClientError {
     CreateStream(#[source] async_nats::jetstream::context::CreateStreamError),
     #[error("request publish error: {0}")]
     Publish(#[from] PublishError),
-    #[error("error deserializing reply: {0}")]
-    ReplyDeserialize(#[from] DeserializeError),
     #[error("error parsing reply headers: {0}")]
     ReplyHeadersParse(#[from] HeaderMapParseMessageInfoError),
     #[error("reply message is missing headers")]
     ReplyMissingHeaders,
+    #[error("negotiate error deserializing reply: {0}")]
+    ReplyNegotiate(#[from] NegotiateError),
     #[error("reply subscription closed before receiving reply message")]
     ReplySubscriptionClosed,
-    #[error("reply message has unsupported content type")]
-    ReplyUnsupportedContentType,
-    #[error("reply message has unsupported message type")]
-    ReplyUnsupportedMessageType,
-    #[error("reply message has unsupported message version")]
-    ReplyUnsupportedMessageVersion,
-    #[error("error upgrading reply message: {0}")]
-    ReplyUpgrade(#[from] UpgradeError),
     #[error("error serializing request: {0}")]
     Serialize(#[from] SerializeError),
     #[error("reply subscribe error: {0}")]
@@ -282,7 +274,7 @@ impl Client {
 
         let kind: &'static str = (&args).into();
 
-        let request = JobExecutionRequest::new_current(JobExecutionRequestVCurrent {
+        let request = JobExecutionRequest::new(JobExecutionRequestVCurrent {
             id,
             workspace_id,
             change_set_id,
@@ -301,7 +293,9 @@ impl Client {
             kind,
         );
 
-        let info = ContentInfo::from(&request);
+        let mut info = ContentInfo::from(&request);
+        let (content_type, payload) = request.to_vec()?;
+        info.content_type = content_type.into();
 
         let mut headers = HeaderMap::new();
         propagation::inject_headers(&mut headers);
@@ -310,7 +304,7 @@ impl Client {
         header::insert_maybe_reply_inbox(&mut headers, maybe_reply_inbox);
 
         self.context
-            .publish_with_headers(requests_subject, headers, request.to_vec()?.into())
+            .publish_with_headers(requests_subject, headers, payload.into())
             .await?
             .await?;
 
@@ -367,22 +361,10 @@ impl Client {
 
 fn response_from_reply<T>(message: Message) -> Result<T>
 where
-    T: ApiWrapper,
+    T: Negotiate,
 {
     let headers = message.headers().ok_or(Error::ReplyMissingHeaders)?;
-    let info = ContentInfo::try_from(headers)?;
-    if !T::is_content_type_supported(info.content_type.as_str()) {
-        return Err(Error::ReplyUnsupportedContentType);
-    }
-    if !T::is_message_type_supported(info.message_type.as_str()) {
-        return Err(Error::ReplyUnsupportedMessageType);
-    }
-    if !T::is_message_version_supported(info.message_version.as_u64()) {
-        return Err(Error::ReplyUnsupportedMessageVersion);
-    }
+    let content_info = ContentInfo::try_from(headers)?;
 
-    let deserialized_version = T::from_slice(info.content_type.as_str(), message.payload())?;
-    let current_version = deserialized_version.into_current_version()?;
-
-    Ok(current_version)
+    T::negotiate(&content_info, message.payload()).map_err(Into::into)
 }

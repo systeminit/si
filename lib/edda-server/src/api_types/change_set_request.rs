@@ -7,6 +7,16 @@ use dal::{
     ChangeSetId,
     WorkspaceSnapshotAddress,
 };
+use edda_core::api_types::{
+    Container,
+    ContentInfo,
+    Negotiate,
+    NegotiateError,
+    new_change_set_request::NewChangeSetRequest,
+    rebuild_request::RebuildRequest,
+    update_request::UpdateRequest,
+};
+use naxum::async_trait;
 use serde::{
     Deserialize,
     Serialize,
@@ -14,24 +24,49 @@ use serde::{
 use si_events::change_batch::ChangeBatchAddress;
 use strum::AsRefStr;
 use telemetry::prelude::*;
-use thiserror::Error;
 
-use crate::extract::EddaRequestKind;
+use super::{
+    CompressFromRequests,
+    Error,
+    Result,
+};
 
-#[remain::sorted]
-#[derive(Debug, Error)]
-pub enum CompressedRequestError {
-    #[error("requests list cannot be empty")]
-    NoRequests,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ChangeSetRequest {
+    NewChangeSet(NewChangeSetRequest),
+    Update(UpdateRequest),
+    Rebuild(RebuildRequest),
 }
 
-type Result<T> = result::Result<T, CompressedRequestError>;
-
-type Error = CompressedRequestError;
+impl Negotiate for ChangeSetRequest {
+    fn negotiate(
+        content_info: &ContentInfo<'_>,
+        bytes: &[u8],
+    ) -> result::Result<Self, NegotiateError>
+    where
+        Self: Sized,
+    {
+        match content_info.message_type.as_str() {
+            UpdateRequest::MESSAGE_TYPE => Ok(ChangeSetRequest::Update(UpdateRequest::negotiate(
+                content_info,
+                bytes,
+            )?)),
+            RebuildRequest::MESSAGE_TYPE => Ok(ChangeSetRequest::Rebuild(
+                RebuildRequest::negotiate(content_info, bytes)?,
+            )),
+            NewChangeSetRequest::MESSAGE_TYPE => Ok(ChangeSetRequest::NewChangeSet(
+                NewChangeSetRequest::negotiate(content_info, bytes)?,
+            )),
+            unsupported => Err(NegotiateError::UnsupportedContentType(
+                unsupported.to_string(),
+            )),
+        }
+    }
+}
 
 #[remain::sorted]
 #[derive(AsRefStr, Clone, Debug, Deserialize, Serialize)]
-pub enum CompressedRequest {
+pub enum CompressedChangeSetRequest {
     NewChangeSet {
         src_requests_count: usize,
         base_change_set_id: ChangeSetId,
@@ -51,7 +86,49 @@ pub enum CompressedRequest {
     },
 }
 
-impl CompressedRequest {
+#[async_trait]
+impl CompressFromRequests for CompressedChangeSetRequest {
+    type Request = ChangeSetRequest;
+
+    #[instrument(
+        name = "edda.compressed_change_set_request.compress_from_requests",
+        level = "debug",
+        skip_all,
+        fields(
+            si.edda.compressed_change_set_request.inputs = Empty,
+            si.edda.compressed_change_set_request.output = Empty,
+        ),
+    )]
+    async fn compress_from_requests(requests: Vec<Self::Request>) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let span = current_span_for_instrument_at!("debug");
+
+        if !span.is_disabled() {
+            span.record(
+                "si.edda.compressed_change_set_request.inputs",
+                tracing::field::debug(&requests.iter().collect::<Vec<_>>()),
+            );
+        }
+
+        match Self::inner_from_requests(requests).await {
+            Ok(compressed) => {
+                if !span.is_disabled() {
+                    span.record(
+                        "si.edda.compressed_change_set_request.output",
+                        tracing::field::debug(&compressed),
+                    );
+                    span.record_ok();
+                }
+                Ok(compressed)
+            }
+            Err(err) => Err(span.record_err(err)),
+        }
+    }
+}
+
+impl CompressedChangeSetRequest {
     pub fn src_requests_count(&self) -> usize {
         match self {
             Self::NewChangeSet {
@@ -64,46 +141,9 @@ impl CompressedRequest {
         }
     }
 
-    // NOTE(fnichol): this function is `async` but not currently required. Shortly, we'll likely be
-    // awaiting futures in this code and as it affects the `CompressingStream` we're going to leave
-    // it this way with future compat in mind.
-    #[instrument(
-        name = "edda.compressed_request.from_requests",
-        level = "debug",
-        skip_all,
-        fields(
-            si.edda.compressed_request.inputs = Empty,
-            si.edda.compressed_request.output = Empty,
-        ),
-    )]
-    pub async fn from_requests(requests: Vec<EddaRequestKind>) -> Result<Self> {
-        let span = current_span_for_instrument_at!("debug");
-
-        if !span.is_disabled() {
-            span.record(
-                "si.edda.compressed_request.inputs",
-                tracing::field::debug(&requests.iter().collect::<Vec<_>>()),
-            );
-        }
-
-        match Self::inner_from_requests(requests).await {
-            Ok(compressed) => {
-                if !span.is_disabled() {
-                    span.record(
-                        "si.edda.compressed_request.output",
-                        tracing::field::debug(&compressed),
-                    );
-                    span.record_ok();
-                }
-                Ok(compressed)
-            }
-            Err(err) => Err(span.record_err(err)),
-        }
-    }
-
     // Note: there's an inner to help with telemetry tracking of inputs and output
     #[inline]
-    async fn inner_from_requests(requests: Vec<EddaRequestKind>) -> Result<Self> {
+    async fn inner_from_requests(requests: Vec<ChangeSetRequest>) -> Result<Self> {
         let src_requests_count = requests.len();
         // Allow manipulation on front and tail of list
         let mut requests = VecDeque::from(requests);
@@ -116,10 +156,10 @@ impl CompressedRequest {
         // If all requests are new change sets, then return the first one
         else if requests
             .iter()
-            .all(|request| matches!(request, EddaRequestKind::NewChangeSet(_)))
+            .all(|request| matches!(request, ChangeSetRequest::NewChangeSet(_)))
         {
             let request = match requests.front() {
-                Some(EddaRequestKind::NewChangeSet(request)) => request,
+                Some(ChangeSetRequest::NewChangeSet(request)) => request,
                 _ => unreachable!("vec contains at least one new change set request"),
             };
 
@@ -136,7 +176,7 @@ impl CompressedRequest {
         // If all requests are rebuilds, then return a single one
         else if requests
             .iter()
-            .all(|request| matches!(request, EddaRequestKind::Rebuild(_)))
+            .all(|request| matches!(request, ChangeSetRequest::Rebuild(_)))
         {
             // `cr_tc04_`
             // `cr_tc05_`
@@ -146,7 +186,7 @@ impl CompressedRequest {
         // `from`, etc.)
         else if requests
             .iter()
-            .all(|request| matches!(request, EddaRequestKind::Update(_)))
+            .all(|request| matches!(request, ChangeSetRequest::Update(_)))
         {
             // `cr_tc06_`
             // `cr_tc07_`
@@ -159,7 +199,7 @@ impl CompressedRequest {
             let first = requests.pop_front().expect("vec is non-empty");
 
             match first {
-                EddaRequestKind::NewChangeSet(first) => {
+                ChangeSetRequest::NewChangeSet(first) => {
                     // If remaining list is empty, return new change set
                     if requests.is_empty() {
                         // no test as covered by above branches
@@ -175,7 +215,7 @@ impl CompressedRequest {
                     // last `to` is current `from`, etc.)
                     else if requests
                         .iter()
-                        .all(|request| matches!(request, EddaRequestKind::Update(_)))
+                        .all(|request| matches!(request, ChangeSetRequest::Update(_)))
                     {
                         match Self::all_updates(requests, src_requests_count)? {
                             // If result was new change set, return first one (note: this shouldn't
@@ -214,7 +254,7 @@ impl CompressedRequest {
                     // If all remainin requests are rebuilds
                     else if requests
                         .iter()
-                        .all(|request| matches!(request, EddaRequestKind::Rebuild(_)))
+                        .all(|request| matches!(request, ChangeSetRequest::Rebuild(_)))
                     {
                         // Return new change set and drop the rebuilds.
                         //
@@ -235,8 +275,10 @@ impl CompressedRequest {
                     else {
                         // Filter out new change sets & rebuild and look at updates
                         requests.retain(|request| match request {
-                            EddaRequestKind::Update(_) => true,
-                            EddaRequestKind::NewChangeSet(_) | EddaRequestKind::Rebuild(_) => false,
+                            ChangeSetRequest::Update(_) => true,
+                            ChangeSetRequest::NewChangeSet(_) | ChangeSetRequest::Rebuild(_) => {
+                                false
+                            }
                         });
 
                         if requests.is_empty() {
@@ -300,7 +342,7 @@ impl CompressedRequest {
                         }
                     }
                 }
-                EddaRequestKind::Rebuild(_first) => {
+                ChangeSetRequest::Rebuild(_first) => {
                     // If remaining list is empty, return rebuild
                     if requests.is_empty() {
                         // no test as covered by above branches
@@ -310,7 +352,7 @@ impl CompressedRequest {
                     // last `to` is current `from`, etc.)
                     else if requests
                         .iter()
-                        .all(|request| matches!(request, EddaRequestKind::Update(_)))
+                        .all(|request| matches!(request, ChangeSetRequest::Update(_)))
                     {
                         match Self::all_updates(requests, src_requests_count)? {
                             // If result was new change set, return the new change set (the
@@ -351,7 +393,7 @@ impl CompressedRequest {
                     // If all remaining requests are new change sets
                     else if requests
                         .iter()
-                        .all(|request| matches!(request, EddaRequestKind::NewChangeSet(_)))
+                        .all(|request| matches!(request, ChangeSetRequest::NewChangeSet(_)))
                     {
                         // Return first new change set.
                         //
@@ -359,8 +401,8 @@ impl CompressedRequest {
                         // the index copy fails
                         //
                         let first_ncsr = match requests.pop_front().expect("vec is non-empty") {
-                            EddaRequestKind::NewChangeSet(request) => request,
-                            EddaRequestKind::Update(_) | EddaRequestKind::Rebuild(_) => {
+                            ChangeSetRequest::NewChangeSet(request) => request,
+                            ChangeSetRequest::Update(_) | ChangeSetRequest::Rebuild(_) => {
                                 unreachable!("vec popluated only with new change set requests")
                             }
                         };
@@ -384,7 +426,7 @@ impl CompressedRequest {
                         Ok(Self::Rebuild { src_requests_count })
                     }
                 }
-                EddaRequestKind::Update(first) => {
+                ChangeSetRequest::Update(first) => {
                     // If remaining list is empty, return update
                     if requests.is_empty() {
                         // no test as covered by above branches
@@ -398,7 +440,7 @@ impl CompressedRequest {
                     // If all remaining requests are new change sets
                     else if requests
                         .iter()
-                        .all(|request| matches!(request, EddaRequestKind::NewChangeSet(_)))
+                        .all(|request| matches!(request, ChangeSetRequest::NewChangeSet(_)))
                     {
                         // Return first new change set.
                         //
@@ -406,8 +448,8 @@ impl CompressedRequest {
                         // the index copy fails
                         //
                         let first_ncsr = match requests.pop_front().expect("vec is non-empty") {
-                            EddaRequestKind::NewChangeSet(request) => request,
-                            EddaRequestKind::Update(_) | EddaRequestKind::Rebuild(_) => {
+                            ChangeSetRequest::NewChangeSet(request) => request,
+                            ChangeSetRequest::Update(_) | ChangeSetRequest::Rebuild(_) => {
                                 unreachable!("vec popluated only with new change set requests")
                             }
                         };
@@ -425,7 +467,7 @@ impl CompressedRequest {
                     // If all remainin requests are rebuilds
                     else if requests
                         .iter()
-                        .all(|request| matches!(request, EddaRequestKind::Rebuild(_)))
+                        .all(|request| matches!(request, ChangeSetRequest::Rebuild(_)))
                     {
                         // `cr_tc25_`
                         // `cr_tc26_`
@@ -448,9 +490,9 @@ impl CompressedRequest {
     }
 
     fn all_updates(
-        requests: VecDeque<EddaRequestKind>,
+        requests: VecDeque<ChangeSetRequest>,
         src_requests_count: usize,
-    ) -> Result<CompressedRequest> {
+    ) -> Result<CompressedChangeSetRequest> {
         let mut final_from_snapshot_address = None;
         let mut final_to_snapshot_address = None;
 
@@ -460,7 +502,7 @@ impl CompressedRequest {
 
         for request in requests {
             match request {
-                EddaRequestKind::Update(request) => {
+                ChangeSetRequest::Update(request) => {
                     if final_from_snapshot_address.is_none() {
                         // Set final `from` addr from first request
                         final_from_snapshot_address = Some(request.from_snapshot_address);
@@ -507,8 +549,8 @@ mod tests {
     async fn cr_tc01_no_requests() {
         let requests = vec![];
 
-        match CompressedRequest::from_requests(requests).await {
-            Err(CompressedRequestError::NoRequests) => {
+        match CompressedChangeSetRequest::compress_from_requests(requests).await {
+            Err(Error::NoRequests) => {
                 // this is the expected error
             }
             Ok(_) => panic!("operation should error"),
@@ -522,15 +564,15 @@ mod tests {
         let requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::NewChangeSet)
+            .map(ChangeSetRequest::NewChangeSet)
             .collect();
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -556,15 +598,15 @@ mod tests {
         let requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::NewChangeSet)
+            .map(ChangeSetRequest::NewChangeSet)
             .collect();
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -590,15 +632,15 @@ mod tests {
         let requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Rebuild)
+            .map(ChangeSetRequest::Rebuild)
             .collect();
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -612,15 +654,15 @@ mod tests {
         let requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Rebuild)
+            .map(ChangeSetRequest::Rebuild)
             .collect();
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -634,15 +676,15 @@ mod tests {
         let requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
-            CompressedRequest::Update {
+            CompressedChangeSetRequest::Update {
                 src_requests_count,
                 from_snapshot_address,
                 to_snapshot_address,
@@ -666,15 +708,15 @@ mod tests {
         let requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
-            CompressedRequest::Update {
+            CompressedChangeSetRequest::Update {
                 src_requests_count,
                 from_snapshot_address,
                 to_snapshot_address,
@@ -700,17 +742,17 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         requests.remove(2);
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // gaps in updates should lead to a rebuild
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -725,19 +767,19 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a new change set into the start of stream of updates
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
-        requests.insert(0, EddaRequestKind::NewChangeSet(ncsr.clone()));
+        requests.insert(0, ChangeSetRequest::NewChangeSet(ncsr.clone()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // gaps in updates should lead to a rebuild
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -751,19 +793,19 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a new change set into the start of stream of updates
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
-        requests.insert(0, EddaRequestKind::NewChangeSet(ncsr.clone()));
+        requests.insert(0, ChangeSetRequest::NewChangeSet(ncsr.clone()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // new change set with batch addresses from updates
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -788,11 +830,11 @@ mod tests {
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
-            EddaRequestKind::Rebuild(rr),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::Rebuild(rr),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
@@ -800,7 +842,7 @@ mod tests {
             // new change set
             // (drop rebuild. remember: the consumer of this request will fall back to a rebuild if
             // the index copy fails)
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -823,13 +865,13 @@ mod tests {
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
-            EddaRequestKind::Rebuild(rr),
-            EddaRequestKind::Rebuild(rebuild_request()),
-            EddaRequestKind::Rebuild(rebuild_request()),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::Rebuild(rr),
+            ChangeSetRequest::Rebuild(rebuild_request()),
+            ChangeSetRequest::Rebuild(rebuild_request()),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
@@ -837,7 +879,7 @@ mod tests {
             // new change set
             // (drop rebuild. remember: the consumer of this request will fall back to a rebuild if
             // the index copy fails)
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -862,21 +904,21 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a new change set into the start of stream of updates
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
-        requests.insert(0, EddaRequestKind::NewChangeSet(ncsr.clone()));
+        requests.insert(0, ChangeSetRequest::NewChangeSet(ncsr.clone()));
         // Insert a rebuild into the stream of updates
-        requests.insert(3, EddaRequestKind::Rebuild(rebuild_request()));
+        requests.insert(3, ChangeSetRequest::Rebuild(rebuild_request()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // new change set with no update addresses
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -902,21 +944,21 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a new change set into the start of stream of updates
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
-        requests.insert(0, EddaRequestKind::NewChangeSet(ncsr.clone()));
+        requests.insert(0, ChangeSetRequest::NewChangeSet(ncsr.clone()));
         // Insert a new change set into the stream of updates
-        requests.insert(3, EddaRequestKind::NewChangeSet(ncsr.clone()));
+        requests.insert(3, ChangeSetRequest::NewChangeSet(ncsr.clone()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // new change set with no update addresses
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -940,22 +982,22 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a new change set into the start of stream of updates
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
-        requests.insert(0, EddaRequestKind::NewChangeSet(ncsr.clone()));
+        requests.insert(0, ChangeSetRequest::NewChangeSet(ncsr.clone()));
         // Insert a rebuild into the stream of updates
-        requests.insert(3, EddaRequestKind::Rebuild(rebuild_request()));
+        requests.insert(3, ChangeSetRequest::Rebuild(rebuild_request()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // new change set with batch address from updates
             // (filter out the second identical new change set)
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -981,22 +1023,22 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a new change set into the start of stream of updates
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
-        requests.insert(0, EddaRequestKind::NewChangeSet(ncsr.clone()));
+        requests.insert(0, ChangeSetRequest::NewChangeSet(ncsr.clone()));
         // Insert a new change set into the stream of updates
-        requests.insert(3, EddaRequestKind::NewChangeSet(ncsr.clone()));
+        requests.insert(3, ChangeSetRequest::NewChangeSet(ncsr.clone()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // new change set with batch address from updates
             // (filter out the second identical new change set)
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -1023,18 +1065,18 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a rebuild into the start of stream of updates
-        requests.insert(0, EddaRequestKind::Rebuild(rebuild_request()));
+        requests.insert(0, ChangeSetRequest::Rebuild(rebuild_request()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // gaps in updates should lead to a rebuild
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1048,18 +1090,18 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a rebuild into the start of stream of updates
-        requests.insert(0, EddaRequestKind::Rebuild(rebuild_request()));
+        requests.insert(0, ChangeSetRequest::Rebuild(rebuild_request()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // rebuild even though we have contiguous updates
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1072,11 +1114,11 @@ mod tests {
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::Rebuild(rr),
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::Rebuild(rr),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
@@ -1084,7 +1126,7 @@ mod tests {
             // new change set
             // (drop rebuild. we'll assume this is a case with multiple clients with requests
             // coming in out of order)
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -1107,13 +1149,13 @@ mod tests {
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::Rebuild(rr),
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::Rebuild(rr),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
@@ -1121,7 +1163,7 @@ mod tests {
             // new change set
             // (drop rebuild. we'll assume this is a case with multiple clients with requests
             // coming in out of order)
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -1145,18 +1187,18 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::Rebuild(rr),
-            EddaRequestKind::NewChangeSet(ncsr),
-            EddaRequestKind::Update(ur),
+            ChangeSetRequest::Rebuild(rr),
+            ChangeSetRequest::NewChangeSet(ncsr),
+            ChangeSetRequest::Update(ur),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // this is a bit nonsense, so rebuild
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1170,18 +1212,18 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::Rebuild(rr),
-            EddaRequestKind::Update(ur),
-            EddaRequestKind::NewChangeSet(ncsr),
+            ChangeSetRequest::Rebuild(rr),
+            ChangeSetRequest::Update(ur),
+            ChangeSetRequest::NewChangeSet(ncsr),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // this is a bit nonsense, so rebuild
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1194,17 +1236,17 @@ mod tests {
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
         let ur = contiguous_update_requests(1).pop().unwrap();
         let requests = vec![
-            EddaRequestKind::Update(ur.clone()),
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::Update(ur.clone()),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // new change set with the update
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -1227,19 +1269,19 @@ mod tests {
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
         let ur = contiguous_update_requests(1).pop().unwrap();
         let requests = vec![
-            EddaRequestKind::Update(ur.clone()),
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::Update(ur.clone()),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // new change set with the update
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -1262,17 +1304,17 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::Update(ur.clone()),
-            EddaRequestKind::Rebuild(rr),
+            ChangeSetRequest::Update(ur.clone()),
+            ChangeSetRequest::Rebuild(rr),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // return rebuild
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1285,19 +1327,19 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::Update(ur.clone()),
-            EddaRequestKind::Rebuild(rr.clone()),
-            EddaRequestKind::Rebuild(rr.clone()),
-            EddaRequestKind::Rebuild(rr.clone()),
+            ChangeSetRequest::Update(ur.clone()),
+            ChangeSetRequest::Rebuild(rr.clone()),
+            ChangeSetRequest::Rebuild(rr.clone()),
+            ChangeSetRequest::Rebuild(rr.clone()),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // return rebuild
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1311,17 +1353,17 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a rebuild into the stream of updates, mid-list
-        requests.push(EddaRequestKind::Rebuild(rebuild_request()));
+        requests.push(ChangeSetRequest::Rebuild(rebuild_request()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1335,17 +1377,17 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert a rebuild into the stream of updates, mid-list
-        requests.insert(4, EddaRequestKind::Rebuild(rebuild_request()));
+        requests.insert(4, ChangeSetRequest::Rebuild(rebuild_request()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1359,19 +1401,19 @@ mod tests {
         let mut requests: Vec<_> = inputs
             .clone()
             .into_iter()
-            .map(EddaRequestKind::Update)
+            .map(ChangeSetRequest::Update)
             .collect();
         // Insert rebuilds into the stream of updates, mid-list
-        requests.insert(1, EddaRequestKind::Rebuild(rebuild_request()));
-        requests.insert(2, EddaRequestKind::Rebuild(rebuild_request()));
-        requests.insert(4, EddaRequestKind::Rebuild(rebuild_request()));
+        requests.insert(1, ChangeSetRequest::Rebuild(rebuild_request()));
+        requests.insert(2, ChangeSetRequest::Rebuild(rebuild_request()));
+        requests.insert(4, ChangeSetRequest::Rebuild(rebuild_request()));
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1385,18 +1427,18 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::Update(ur),
-            EddaRequestKind::NewChangeSet(ncsr),
-            EddaRequestKind::Rebuild(rr),
+            ChangeSetRequest::Update(ur),
+            ChangeSetRequest::NewChangeSet(ncsr),
+            ChangeSetRequest::Rebuild(rr),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // this is a bit nonsense, so rebuild
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1410,18 +1452,18 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::Update(ur),
-            EddaRequestKind::Rebuild(rr),
-            EddaRequestKind::NewChangeSet(ncsr),
+            ChangeSetRequest::Update(ur),
+            ChangeSetRequest::Rebuild(rr),
+            ChangeSetRequest::NewChangeSet(ncsr),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // this is a bit nonsense, so rebuild
-            CompressedRequest::Rebuild { src_requests_count } => {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
             _ => panic!("wrong variant for compressed request: {compressed:?}"),
@@ -1435,19 +1477,19 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
-            EddaRequestKind::Update(ur.clone()),
-            EddaRequestKind::Rebuild(rr),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::Update(ur.clone()),
+            ChangeSetRequest::Rebuild(rr),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // new change set with updates
             // (drop rebuild)
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -1473,19 +1515,19 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::NewChangeSet(ncsr.clone()),
-            EddaRequestKind::Rebuild(rr),
-            EddaRequestKind::Update(ur.clone()),
+            ChangeSetRequest::NewChangeSet(ncsr.clone()),
+            ChangeSetRequest::Rebuild(rr),
+            ChangeSetRequest::Update(ur.clone()),
         ];
 
-        let compressed = CompressedRequest::from_requests(requests.clone())
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
             .await
             .expect("failed to compress requests");
 
         match compressed {
             // new change set with updates
             // (drop rebuild)
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count,
                 base_change_set_id,
                 new_change_set_id,
@@ -1510,7 +1552,7 @@ mod tests {
             WorkspaceSnapshotAddress,
         };
         use edda_core::api_types::{
-            ApiWrapper as _,
+            Container,
             RequestId,
             new_change_set_request::{
                 NewChangeSetRequest,
@@ -1576,7 +1618,7 @@ mod tests {
             new_change_set_id: ChangeSetId,
             to_snapshot_address: WorkspaceSnapshotAddress,
         ) -> NewChangeSetRequest {
-            NewChangeSetRequest::new_current(NewChangeSetRequestVCurrent {
+            NewChangeSetRequest::new(NewChangeSetRequestVCurrent {
                 id: RequestId::new(),
                 base_change_set_id,
                 new_change_set_id,
@@ -1589,7 +1631,7 @@ mod tests {
             to_snapshot_address: WorkspaceSnapshotAddress,
             change_batch_address: ChangeBatchAddress,
         ) -> UpdateRequest {
-            UpdateRequest::new_current(UpdateRequestVCurrent {
+            UpdateRequest::new(UpdateRequestVCurrent {
                 id: RequestId::new(),
                 from_snapshot_address,
                 to_snapshot_address,
@@ -1598,7 +1640,7 @@ mod tests {
         }
 
         pub fn rebuild_request() -> RebuildRequest {
-            RebuildRequest::new_current(RebuildRequestVCurrent {
+            RebuildRequest::new(RebuildRequestVCurrent {
                 id: RequestId::new(),
             })
         }

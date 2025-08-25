@@ -1,17 +1,22 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
-    name = "naxum-api-types",
+    name = "acceptable",
+    features = [
+        "default",
+        "derive",
+        "deserialize",
+        "nats-headers",
+        "serialize",
+    ],
     deps = [
+        "//lib/acceptable-macros:acceptable-macros",
         "//lib/nats-std:nats-std",
-        "//lib/si-data-nats:si-data-nats",
-        "//lib/si-id:si-id",
+        "//third-party/rust:async-nats",
         "//third-party/rust:ciborium",
-        "//third-party/rust:derive_more",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
-        "//third-party/rust:strum",
         "//third-party/rust:thiserror",
         "//third-party/rust:ulid",
     ],
