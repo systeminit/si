@@ -186,19 +186,49 @@
 
           <div class="flex flex-col gap-sm px-sm py-sm">
             <div
-              v-if="selectedComponent.toDelete"
+              v-if="selectedComponent.diffStatus === 'Removed'"
               :class="
                 clsx(
-                  'flex flex-col gap-xs p-sm border text-sm',
+                  'flex flex-row items-center gap-xs p-xs text-sm',
                   themeClasses(
-                    'text-neutral-800 border-neutral-400 bg-neutral-100',
-                    'text-neutral-100 border-neutral-600 bg-neutral-900',
+                    'text-neutral-800 bg-neutral-300',
+                    'text-neutral-100 bg-neutral-600',
                   ),
                 )
               "
             >
-              This component is set to be deleted from HEAD once the change set
-              is applied, all values will be cleaned.
+              <template v-if="selectedComponent.toDelete">
+                <div class="mr-auto">
+                  This component will be removed from HEAD once the current
+                  change set is applied.
+                </div>
+                <VButton
+                  v-if="
+                    selectedComponent.toDelete &&
+                    restoreComponentStatus !== 'succeeded'
+                  "
+                  size="sm"
+                  label="Restore"
+                  :loading="restoreComponentStatus === 'inProgress'"
+                  loadingIcon="loader"
+                  loadingText="Restoring..."
+                  :class="
+                    clsx(
+                      '!text-sm !border !cursor-pointer !px-xs',
+                      themeClasses(
+                        '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
+                        '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
+                      ),
+                    )
+                  "
+                  @click="restoreComponent"
+                />
+              </template>
+              <div v-else>
+                This component will be removed from HEAD without queueing a
+                delete action once the current change set is applied. This
+                cannot be undone within this change set.
+              </div>
             </div>
 
             <!-- Show /si/name-->
@@ -352,6 +382,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import * as _ from "lodash-es";
+import { sleep } from "@si/ts-lib/src/async-sleep";
 import {
   bifrost,
   bifrostList,
@@ -380,6 +411,7 @@ import ReviewAttributeItem from "./ReviewAttributeItem.vue";
 import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
 import { useComponentSearch } from "./logic_composables/search";
 import { useComponentActions } from "./logic_composables/component_actions";
+import { useComponentDeletion } from "./composables/useComponentDeletion";
 
 const ctx = useContext();
 
@@ -469,9 +501,26 @@ const componentList = computed(() => {
     .map((component) => {
       const componentDiff = componentDiffs[component.id];
       const attributeDiffTree = toAttributeDiffTree(componentDiff);
-      const diffStatus = component.toDelete
-        ? "Removed"
-        : componentDiff?.diffStatus ?? component.diffStatus;
+
+      // Figure out diffStatus
+      let diffStatus = componentDiff?.diffStatus;
+      // If the diffStatus *was* Modified, but none of the diffs were worth showing, then we
+      // don't want to show it. (If it's Added or Removed, or has other things that are worth
+      // showing, we will bring the status back in the next few.)
+      if (
+        diffStatus === "Modified" &&
+        !attributeDiffTree.diff &&
+        !attributeDiffTree.children
+      ) {
+        diffStatus = "None";
+      }
+      // If it's toDelete, put it in the Removed category
+      if (component.toDelete) {
+        diffStatus = "Removed";
+      }
+      // If we don't have a ComponentDiff diffStatus, fall back to the ComponentInList's diffStatus
+      diffStatus ??= component.diffStatus;
+
       return {
         ...component,
         diffStatus,
@@ -496,27 +545,29 @@ const componentList = computed(() => {
   return mapped;
 });
 
-/** A tree version of AttributeDiff:
- * {
- *   children: {
- *     domain: {
+/**
+ * A tree version of AttributeDiff:
+ *
+ *     {
  *       children: {
- *         SubnetIds: {
+ *         domain: {
  *           children: {
- *             0: { diff: ... }
- *           }
- *           // parents may or may not have a diff! Especially if they have a *source* difference
- *           diff: {...},
- *         },
- *         extra: {
- *           children: {
- *             Region: { diff: {} }
+ *             SubnetIds: {
+ *               children: {
+ *                 0: { diff: ... }
+ *               }
+ *               // parents may or may not have a diff! Especially if they have a *source* difference
+ *               diff: {...},
+ *             },
+ *             extra: {
+ *               children: {
+ *                 Region: { diff: {} }
+ *               }
+ *             }
  *           }
  *         }
  *       }
  *     }
- *   }
- * }
  */
 export interface AttributeDiffTree {
   path: AttributePath;
@@ -957,6 +1008,34 @@ const searchControl = (up: boolean) => {
     const el = focusable[0]!;
     el.focus();
     selectedComponentId.value = el.dataset.listItemComponentId;
+  }
+};
+
+const { restoreComponents } = useComponentDeletion(undefined, true);
+/**
+ * Status of restoring the current component
+ *
+ * This is undefined if no restore is happening or has happened for the current component.
+ */
+const restoreComponentStatus = ref<"inProgress" | "succeeded">();
+// When you switch components, restoring gets set to `undefined` again so you can hit the button again.
+watch(
+  () => selectedComponent.value?.id,
+  () => {
+    restoreComponentStatus.value = undefined;
+  },
+);
+/** Restore the current component */
+const restoreComponent = async () => {
+  if (restoreComponentStatus.value) return;
+  restoreComponentStatus.value = "inProgress";
+  try {
+    if (!selectedComponent.value) return;
+    await sleep(1000);
+    const result = await restoreComponents([selectedComponent.value.id]);
+    restoreComponentStatus.value = result.success ? "succeeded" : undefined;
+  } catch (e) {
+    restoreComponentStatus.value = undefined;
   }
 };
 

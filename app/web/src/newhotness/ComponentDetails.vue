@@ -153,26 +153,26 @@
           >{{ component.name }}</TruncateWithTooltip
         >
         <div class="ml-auto flex gap-xs">
-          <template v-if="component.toDelete">
-            <VButton
-              v-tooltip="'Restore (R)'"
-              size="sm"
-              :label="restoreLoading ? 'Restoring...' : 'Restore'"
-              :loading="restoreLoading"
-              :disabled="restoreLoading"
-              loadingIcon="loader"
-              :class="
-                clsx(
-                  '!text-sm !border !cursor-pointer !px-xs',
-                  themeClasses(
-                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                  ),
-                )
-              "
-              @click="restoreComponent"
-            />
-          </template>
+          <VButton
+            v-if="component.toDelete"
+            v-tooltip="'Restore (R)'"
+            size="sm"
+            label="Restore"
+            :loading="restoreLoading"
+            loadingText="Restoring..."
+            loadingIcon="loader"
+            :disabled="restoreLoading"
+            :class="
+              clsx(
+                '!text-sm !border !cursor-pointer !px-xs',
+                themeClasses(
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                ),
+              )
+            "
+            @click="restoreComponent"
+          />
           <template v-else>
             <VButton
               v-tooltip="'Erase (E)'"
