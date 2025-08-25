@@ -4,6 +4,7 @@ import vitePreprocessor from 'cypress-vite'
 
 export default defineConfig({
   e2e: {
+    injectDocumentDomain: true,
     specPattern: "cypress/**/*.cy.{js,jsx,ts,tsx}",
     setupNodeEvents(on, config) {
       on('file:preprocessor',
