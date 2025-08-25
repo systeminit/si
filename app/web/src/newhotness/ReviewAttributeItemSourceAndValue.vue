@@ -48,14 +48,19 @@
     </AttributeValueBox>
     <TruncateWithTooltip
       v-else
-      :class="clsx('py-2xs min-w-0', old && 'line-through')"
+      :class="
+        clsx('py-2xs min-w-0', {
+          'line-through': !!($secret || $value),
+          italic: !($secret || $value),
+        })
+      "
     >
       <template v-if="$secret">
         <!-- TODO(Wendy) - Ideally we would put the secret's name here -->
         Secret {{ old ? "Removed" : "Added" }}
       </template>
       <template v-else>
-        {{ $value }}
+        {{ $value ?? "No value on HEAD" }}
       </template>
     </TruncateWithTooltip>
   </div>
