@@ -446,8 +446,9 @@ impl DependentValuesUpdate {
 
                         let before_value = AttributeValue::get_by_id(ctx, attribute_value_id)
                             .await?
-                            .value(ctx)
+                            .unprocessed_value(ctx)
                             .await?;
+
                         metric!(counter.dvu.function_execution = 1);
 
                         update_join_set.spawn(values_from_prototype_function_execution(
@@ -477,8 +478,17 @@ impl DependentValuesUpdate {
                             // Lock the graph for writing inside this job. The
                             // lock will be released when this guard is dropped
                             // at the end of the scope.
-                            let value_is_changed =
-                                before_value.as_ref() != execution_values.value();
+                            let value_is_changed = is_value_changed(
+                                before_value.as_ref(),
+                                execution_values.unprocessed_value(),
+                            );
+
+                            let after_value = if value_is_changed {
+                                execution_values.unprocessed_value().cloned()
+                            } else {
+                                None
+                            };
+
                             let write_guard = self.set_value_lock.write().await;
 
                             // Only set values if their functions are actually
@@ -509,26 +519,31 @@ impl DependentValuesUpdate {
                                         // Remove the value, so that any values that depend on it will
                                         // become independent values (once all other dependencies are removed)
                                         dependency_graph.remove_value(finished_value_id);
-                                        drop(write_guard);
-                                        // if we're not on head, and the value is different after processing,
-                                        // let's see if we should enqueue an update function
-                                        if !is_on_head && value_is_changed {
-                                            Component::enqueue_update_action_if_applicable(
+
+                                        if value_is_changed {
+                                            // if we're not on head, and the value is different after processing,
+                                            // let's see if we should enqueue an update function
+                                            if !is_on_head {
+                                                Component::enqueue_update_action_if_applicable(
+                                                    ctx,
+                                                    finished_value_id,
+                                                )
+                                                .await?;
+                                            }
+
+                                            // Publish the audit log for the updated dependent value.
+                                            audit_log::write(
                                                 ctx,
                                                 finished_value_id,
+                                                input_attribute_value_ids,
+                                                func,
+                                                before_value,
+                                                after_value,
                                             )
                                             .await?;
                                         }
 
-                                        // Publish the audit log for the updated dependent value.
-                                        audit_log::write(
-                                            ctx,
-                                            finished_value_id,
-                                            input_attribute_value_ids,
-                                            func,
-                                            before_value,
-                                        )
-                                        .await?;
+                                        drop(write_guard);
                                     }
                                     Err(err) => {
                                         execution_error(ctx, err.to_string(), finished_value_id)
@@ -726,6 +741,29 @@ async fn send_status_update(
     Ok(())
 }
 
+/// If the before_value is None (the value was never set), and the "after_value"
+/// is something empty: either the blank string, the empty object, or the empty
+/// array, then don't consider the value to have "changed". Otherwise compare
+/// the two values.
+fn is_value_changed(
+    before_value: Option<&serde_json::Value>,
+    unprocessed_execution_value: Option<&serde_json::Value>,
+) -> bool {
+    let empty_array: serde_json::Value = serde_json::json!([]);
+    let empty_object: serde_json::Value = serde_json::json!({});
+    let empty_string: serde_json::Value = serde_json::json!("");
+
+    if before_value.is_none() {
+        unprocessed_execution_value.is_some_and(|after_value| {
+            after_value != &empty_array
+                && after_value != &empty_object
+                && after_value != &empty_string
+        })
+    } else {
+        before_value != unprocessed_execution_value
+    }
+}
+
 pub mod audit_log {
     use si_events::audit_log::AuditLogKind;
     use telemetry::prelude::*;
@@ -817,6 +855,7 @@ pub mod audit_log {
         input_attribute_value_ids: Vec<AttributeValueId>,
         func: Func,
         before_value: Option<serde_json::Value>,
+        after_value: Option<serde_json::Value>,
     ) -> Result<(), DependentValueUpdateAuditLogError> {
         // Metadata for who "owns" the attribute value.
         let component_id = AttributeValue::component_id(ctx, finished_value_id).await?;
@@ -824,11 +863,6 @@ pub mod audit_log {
         let component_name = component.name(ctx).await?;
         let component_schema_variant = component.schema_variant(ctx).await?;
 
-        // Metadata for the attribute value.
-        let after_value = AttributeValue::get_by_id(ctx, finished_value_id)
-            .await?
-            .value(ctx)
-            .await?;
         let is_for = AttributeValue::is_for(ctx, finished_value_id).await?;
 
         // Write an audit log based on what the attribute value is for.
