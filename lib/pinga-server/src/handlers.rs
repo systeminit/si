@@ -26,9 +26,14 @@ use naxum::{
         Response,
     },
 };
+use naxum_extractor_acceptable::{
+    HeaderReply,
+    Negotiate,
+};
 use pinga_core::api_types::{
-    ApiWrapper,
+    Container,
     ContentInfo,
+    SerializeContainer,
     job_execution_request::{
         JobArgsVCurrent,
         JobExecutionRequest,
@@ -51,10 +56,6 @@ use thiserror::Error;
 
 use crate::{
     app_state::AppState,
-    extract::{
-        ApiTypesNegotiate,
-        HeaderReply,
-    },
     server::ServerMetadata,
 };
 
@@ -80,7 +81,7 @@ pub async fn process_request(
     State(state): State<AppState>,
     subject: Subject,
     HeaderReply(maybe_reply): HeaderReply,
-    ApiTypesNegotiate(request): ApiTypesNegotiate<JobExecutionRequest>,
+    Negotiate(request): Negotiate<JobExecutionRequest>,
 ) -> Result<()> {
     let AppState {
         metadata,
@@ -193,7 +194,7 @@ async fn execute_job(
 
     // If a reply was requested, send it
     if let Some(reply) = maybe_reply {
-        let response = JobExecutionResponse::new_current(JobExecutionResponseVCurrent {
+        let response = JobExecutionResponse::new(JobExecutionResponseVCurrent {
             id: request.id,
             workspace_id: request.workspace_id,
             change_set_id: request.change_set_id,

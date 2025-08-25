@@ -1,4 +1,7 @@
-use naxum_api_types::RequestId;
+use acceptable::{
+    RequestId,
+    Versioned,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -19,8 +22,9 @@ use strum::{
     IntoStaticStr,
 };
 
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq, Versioned)]
 #[serde(rename_all = "camelCase")]
+#[acceptable(version = 2)]
 // NOTE: **do not modify this datatype--it represents a historically stable, versioned request**
 pub struct JobExecutionRequestV2 {
     pub id: RequestId,
@@ -69,15 +73,11 @@ pub enum JobArgsV2 {
 #[cfg(test)]
 mod tests {
     use super::{
-        super::{
-            JobExecutionRequestVersionsDiscriminants,
-            JobExecutionRequestVersionsDiscriminants::*,
-            test::*,
-        },
+        super::test::*,
         *,
     };
 
-    const VERSION: JobExecutionRequestVersionsDiscriminants = V2;
+    const VERSION: u64 = 2;
 
     fn msg_action() -> JobExecutionRequestV2 {
         JobExecutionRequestV2 {

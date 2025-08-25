@@ -24,7 +24,7 @@ use edda_client::EddaClient;
 use pending_events::PendingEventsError;
 use rebaser_core::api_types::{
     enqueue_updates_request::EnqueueUpdatesRequest,
-    enqueue_updates_response::v1::RebaseStatus,
+    enqueue_updates_response::RebaseStatus,
 };
 use shuttle_server::ShuttleError;
 use si_events::{

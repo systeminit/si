@@ -1,0 +1,14 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "acceptable-macros",
+    deps = [
+        "//third-party/rust:darling",
+        "//third-party/rust:manyhow",
+        "//third-party/rust:proc-macro2",
+        "//third-party/rust:quote",
+        "//third-party/rust:syn",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    proc_macro = True,
+)

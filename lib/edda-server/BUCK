@@ -11,6 +11,7 @@ rust_library(
         "//lib/frigg:frigg",
         "//lib/nats-std:nats-std",
         "//lib/naxum:naxum",
+        "//lib/naxum-extractor-acceptable:naxum-extractor-acceptable",
         "//lib/rebaser-client:rebaser-client",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",

@@ -15,6 +15,7 @@ use std::{
     time::Instant,
 };
 
+use edda_core::api_types::Negotiate;
 use futures::{
     FutureExt,
     Stream,
@@ -22,8 +23,16 @@ use futures::{
     TryStreamExt,
     future::BoxFuture,
 };
-use naxum::extract::FromMessage;
+use naxum::{
+    MessageHead,
+    extract::FromMessageHead as _,
+};
+use naxum_extractor_acceptable::{
+    ContentInfo,
+    NegotiateRejection,
+};
 use pin_project_lite::pin_project;
+use serde::Serialize;
 use si_data_nats::{
     Subject,
     async_nats::jetstream::{
@@ -38,13 +47,8 @@ use tokio::sync::watch;
 
 use crate::{
     compressed_request::{
-        CompressedRequest,
+        CompressFromRequests,
         CompressedRequestError,
-    },
-    extract::{
-        ApiTypesNegotiate,
-        ApiTypesNegotiateRejection,
-        EddaRequestKind,
     },
     local_message::LocalMessage,
 };
@@ -77,11 +81,11 @@ pub enum CompressingStreamError {
     )]
     NextMessageInfoParse(Box<dyn error::Error + Send + Sync + 'static>),
     #[error("failed to parse api request from first message; deleting message: {0}")]
-    ParseFirstRequest(ApiTypesNegotiateRejection),
+    ParseFirstRequest(NegotiateRejection),
     #[error(
         "failed to parse api request from next message; skipping message & compressing remaining: {0}"
     )]
-    ParseNextRequestInWindow(ApiTypesNegotiateRejection),
+    ParseNextRequestInWindow(NegotiateRejection),
     #[error("error on subscription stream on first read; skipping message: {0}")]
     ReadFirstMessage(Box<dyn error::Error + Send + Sync + 'static>),
     #[error(
@@ -100,7 +104,7 @@ type Error = CompressingStreamError;
 
 /// Internal state machine of [`CompressingStream`].
 #[derive(AsRefStr, Default)]
-enum State {
+enum State<R, C> {
     #[default]
     /// 1. Reading the first message from the subscription
     ReadFirstMessage,
@@ -127,8 +131,7 @@ enum State {
         /// The stream sequence number of the first message
         message_stream_sequence: u64,
         /// A [`Future`] that parses a Jetstream message into an API request
-        parse_message_fut:
-            BoxFuture<'static, result::Result<ApiTypesNegotiate, ApiTypesNegotiateRejection>>,
+        parse_message_fut: BoxFuture<'static, result::Result<R, NegotiateRejection>>,
     },
     /// 4. Reading the next message from the subscription in the read window
     ReadNextMessageInWindow {
@@ -137,7 +140,7 @@ enum State {
         /// The number of messages to read
         read_window: usize,
         /// The accumulated list of read and parsed API requests
-        requests: Vec<EddaRequestKind>,
+        requests: Vec<R>,
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
     },
@@ -150,10 +153,9 @@ enum State {
         /// The stream sequence number of the initial message
         message_stream_sequence: u64,
         /// A [`Future`] that parses a Jetstream message into an API request
-        parse_message_fut:
-            BoxFuture<'static, result::Result<ApiTypesNegotiate, ApiTypesNegotiateRejection>>,
+        parse_message_fut: BoxFuture<'static, result::Result<R, NegotiateRejection>>,
         /// The accumulated list of read and parsed API requests
-        requests: Vec<EddaRequestKind>,
+        requests: Vec<R>,
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
     },
@@ -162,8 +164,7 @@ enum State {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
         /// A [`Future`] that compresses multiple API requests into a single "compressed" request
-        compress_messages_fut:
-            BoxFuture<'static, result::Result<CompressedRequest, CompressedRequestError>>,
+        compress_messages_fut: BoxFuture<'static, result::Result<C, CompressedRequestError>>,
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
     },
@@ -177,7 +178,7 @@ enum State {
         stream_sequence_numbers: VecDeque<u64>,
         /// The compressed request to later yield (outer [`Option`] for `mem::take()`, and inner is
         /// when there were no requests to be compressed)
-        compressed_request: Option<Option<CompressedRequest>>,
+        compressed_request: Option<Option<C>>,
         /// The number of successfully deleted messages
         deleted_count: usize,
     },
@@ -186,7 +187,7 @@ enum State {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
         /// The compressed request to later yield ([`Option`] for `mem::take()`)
-        compressed_request: Option<CompressedRequest>,
+        compressed_request: Option<C>,
     },
     /// 3.1 Deleting the first message after error
     DeleteFirstMessageAfterError {
@@ -200,8 +201,7 @@ enum State {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
         /// A [`Future`] that compresses multiple API requests into a single "compressed" request
-        compress_messages_fut:
-            BoxFuture<'static, result::Result<CompressedRequest, CompressedRequestError>>,
+        compress_messages_fut: BoxFuture<'static, result::Result<C, CompressedRequestError>>,
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
     },
@@ -213,7 +213,7 @@ enum State {
         delete_message_fut: BoxFuture<'static, result::Result<(), DeleteMessageError>>,
         /// The compressed request to later yield (outer [`Option`] for `mem::take()`, and inner is
         /// when there were no requests to be compressed)
-        compressed_request: Option<Option<CompressedRequest>>,
+        compressed_request: Option<Option<C>>,
         /// The remaining list of stream sequence numbers to delete
         stream_sequence_numbers: VecDeque<u64>,
         /// The number of successfully deleted messages
@@ -225,7 +225,7 @@ enum State {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
         /// The compressed request to later yield ([`Option`] for `mem::take()`)
-        compressed_request: Option<CompressedRequest>,
+        compressed_request: Option<C>,
     },
     /// 4.1.1 Closing the stream
     CloseStream,
@@ -251,17 +251,17 @@ enum State {
 }
 
 pin_project! {
-    pub struct CompressingStream<S> {
+    pub struct CompressingStream<S, R, C> {
         #[pin]
         subscription: S,
         stream: jetstream::stream::Stream,
-        state: State,
+        state: State<R, C>,
         last_compressing_heartbeat_tx: Option<watch::Sender<Instant>>,
         span: Option<Span>,
     }
 }
 
-impl<S> CompressingStream<S> {
+impl<S, R, C> CompressingStream<S, R, C> {
     /// Creates and return a new CompressingStream.
     pub fn new(
         subscription: S,
@@ -278,15 +278,17 @@ impl<S> CompressingStream<S> {
     }
 }
 
-impl<S> fmt::Debug for CompressingStream<S> {
+impl<S, R, C> fmt::Debug for CompressingStream<S, R, C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CompressingStream").finish_non_exhaustive()
     }
 }
 
-impl<S, E> Stream for CompressingStream<S>
+impl<S, R, C, E> Stream for CompressingStream<S, R, C>
 where
     S: Stream<Item = result::Result<jetstream::Message, E>>,
+    R: Negotiate + Send + 'static,
+    C: Serialize + CompressFromRequests<Request = R> + AsRef<str>,
     E: error::Error + Send + Sync + 'static,
 {
     type Item = Result<LocalMessage>;
@@ -449,7 +451,14 @@ where
                                 read_window,
                                 message_stream_sequence: *message_stream_sequence,
                                 parse_message_fut: Box::pin(async move {
-                                    ApiTypesNegotiate::from_message(message.into(), &()).await
+                                    let (mut head, payload) = message.into_head_and_payload();
+                                    let ContentInfo(content_info) =
+                                        ContentInfo::from_message_head(&mut head, &())
+                                            .await
+                                            .expect("FIXME: handle error");
+
+                                    Ok(R::negotiate(&content_info, &payload)
+                                        .expect("FIXME: handle error"))
                                 }),
                             };
                             continue;
@@ -480,7 +489,14 @@ where
                                 read_window,
                                 message_stream_sequence: *message_stream_sequence,
                                 parse_message_fut: Box::pin(async move {
-                                    ApiTypesNegotiate::from_message(message.into(), &()).await
+                                    let (mut head, payload) = message.into_head_and_payload();
+                                    let ContentInfo(content_info) =
+                                        ContentInfo::from_message_head(&mut head, &())
+                                            .await
+                                            .expect("FIXME: handle error");
+
+                                    Ok(R::negotiate(&content_info, &payload)
+                                        .expect("FIXME: handle error"))
                                 }),
                             };
                             continue;
@@ -499,7 +515,7 @@ where
                     // Parse API request from Jetstream message
                     match parse_message_fut.poll_unpin(cx) {
                         // API request parsed successfully
-                        Poll::Ready(Ok(ApiTypesNegotiate(request))) => {
+                        Poll::Ready(Ok(request)) => {
                             update_heartbeat(this.last_compressing_heartbeat_tx);
 
                             let mut requests = Vec::with_capacity(*read_window);
@@ -555,7 +571,7 @@ where
                                     *this.state = State::CompressRequests {
                                         subject: subject.take(),
                                         compress_messages_fut: Box::pin(async move {
-                                            CompressedRequest::from_requests(requests).await
+                                            C::compress_from_requests(requests).await
                                         }),
                                         stream_sequence_numbers,
                                     };
@@ -644,7 +660,7 @@ where
                                     *this.state = State::CompressRequests {
                                         subject: subject.take(),
                                         compress_messages_fut: Box::pin(async move {
-                                            CompressedRequest::from_requests(requests).await
+                                            C::compress_from_requests(requests).await
                                         }),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
                                     };
@@ -662,7 +678,14 @@ where
                                 read_window: *read_window,
                                 message_stream_sequence,
                                 parse_message_fut: Box::pin(async move {
-                                    ApiTypesNegotiate::from_message(message.into(), &()).await
+                                    let (mut head, payload) = message.into_head_and_payload();
+                                    let ContentInfo(content_info) =
+                                        ContentInfo::from_message_head(&mut head, &())
+                                            .await
+                                            .expect("FIXME: handle error");
+
+                                    Ok(R::negotiate(&content_info, &payload)
+                                        .expect("FIXME: handle error"))
                                 }),
                                 requests: mem::take(requests),
                                 stream_sequence_numbers: mem::take(stream_sequence_numbers),
@@ -690,7 +713,7 @@ where
                             *this.state = State::CompressRequests {
                                 subject: subject.take(),
                                 compress_messages_fut: Box::pin(async move {
-                                    CompressedRequest::from_requests(requests).await
+                                    C::compress_from_requests(requests).await
                                 }),
                                 stream_sequence_numbers: mem::take(stream_sequence_numbers),
                             };
@@ -714,7 +737,7 @@ where
                             *this.state = State::CompressRequestsAndClose {
                                 subject: subject.take(),
                                 compress_messages_fut: Box::pin(async move {
-                                    CompressedRequest::from_requests(requests).await
+                                    C::compress_from_requests(requests).await
                                 }),
                                 stream_sequence_numbers: mem::take(stream_sequence_numbers),
                             };
@@ -736,7 +759,7 @@ where
                     // Parse API request from Jetstream message
                     match parse_message_fut.poll_unpin(cx) {
                         // API request parsed successfully
-                        Poll::Ready(Ok(ApiTypesNegotiate(request))) => {
+                        Poll::Ready(Ok(request)) => {
                             update_heartbeat(this.last_compressing_heartbeat_tx);
 
                             requests.push(request);
@@ -753,7 +776,7 @@ where
                                 *this.state = State::CompressRequests {
                                     subject: subject.take(),
                                     compress_messages_fut: Box::pin(async move {
-                                        CompressedRequest::from_requests(requests).await
+                                        C::compress_from_requests(requests).await
                                     }),
                                     stream_sequence_numbers,
                                 };
@@ -796,7 +819,7 @@ where
                             *this.state = State::CompressRequests {
                                 subject: subject.take(),
                                 compress_messages_fut: Box::pin(async move {
-                                    CompressedRequest::from_requests(requests).await
+                                    C::compress_from_requests(requests).await
                                 }),
                                 stream_sequence_numbers,
                             };

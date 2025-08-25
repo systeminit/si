@@ -1,0 +1,13 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "naxum-extractor-acceptable",
+    deps = [
+        "//lib/acceptable:acceptable",
+        "//lib/nats-std:nats-std",
+        "//lib/naxum:naxum",
+        "//third-party/rust:async-nats",
+        "//third-party/rust:tracing",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)

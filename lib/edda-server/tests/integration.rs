@@ -1,7 +1,7 @@
 use edda_server::{
+    api_types::ChangeSetRequestKind,
     compressed_request::CompressedRequest,
     compressing_stream::CompressingStream,
-    extract::EddaRequestKind,
 };
 use futures::StreamExt as _;
 use test_log::test;
@@ -29,12 +29,12 @@ async fn multiple_updates() {
     let requests: Vec<_> = updates
         .clone()
         .into_iter()
-        .map(EddaRequestKind::Update)
+        .map(ChangeSetRequestKind::Update)
         .collect();
 
     publish_requests(&context, test_name, requests.clone()).await;
 
-    let mut messages = CompressingStream::new(
+    let mut messages: CompressingStream<_, _, CompressedRequest> = CompressingStream::new(
         incoming_messages(&nats, &stream, test_name).await,
         stream.clone(),
         None,
@@ -104,14 +104,14 @@ async fn updates_with_single_rebuild() {
     let mut requests: Vec<_> = updates
         .clone()
         .into_iter()
-        .map(EddaRequestKind::Update)
+        .map(ChangeSetRequestKind::Update)
         .collect();
     // Insert a rebuild into the stream of updates, mid-list
-    requests.insert(4, EddaRequestKind::Rebuild(rebuild_request()));
+    requests.insert(4, ChangeSetRequestKind::Rebuild(rebuild_request()));
 
     publish_requests(&context, test_name, requests.clone()).await;
 
-    let mut messages = CompressingStream::new(
+    let mut messages: CompressingStream<_, _, CompressedRequest> = CompressingStream::new(
         incoming_messages(&nats, &stream, test_name).await,
         stream.clone(),
         None,
@@ -157,9 +157,10 @@ mod helpers {
     use bytes::Bytes;
     use dal::WorkspaceSnapshotAddress;
     use edda_core::api_types::{
-        ApiWrapper,
+        Container,
         ContentInfo,
         RequestId,
+        SerializeContainer,
         rebuild_request::{
             RebuildRequest,
             RebuildRequestVCurrent,
@@ -169,7 +170,7 @@ mod helpers {
             UpdateRequestV1,
         },
     };
-    use edda_server::extract::EddaRequestKind;
+    use edda_server::api_types::ChangeSetRequestKind;
     use futures::TryStreamExt as _;
     use nats_std::subject;
     use rand::RngCore;
@@ -257,11 +258,11 @@ mod helpers {
     pub async fn publish_requests(
         context: &Context,
         subject_suffix: &str,
-        requests: Vec<EddaRequestKind>,
+        requests: Vec<ChangeSetRequestKind>,
     ) {
         for request in requests {
             let (info, payload) = match request {
-                EddaRequestKind::NewChangeSet(request) => {
+                ChangeSetRequestKind::NewChangeSet(request) => {
                     let info = ContentInfo::from(&request);
                     let payload: Bytes = request
                         .to_vec()
@@ -270,7 +271,7 @@ mod helpers {
 
                     (info, payload)
                 }
-                EddaRequestKind::Update(request) => {
+                ChangeSetRequestKind::Update(request) => {
                     let info = ContentInfo::from(&request);
                     let payload: Bytes = request
                         .to_vec()
@@ -279,7 +280,7 @@ mod helpers {
 
                     (info, payload)
                 }
-                EddaRequestKind::Rebuild(request) => {
+                ChangeSetRequestKind::Rebuild(request) => {
                     let info = ContentInfo::from(&request);
                     let payload: Bytes = request
                         .to_vec()
@@ -355,7 +356,7 @@ mod helpers {
         to_snapshot_address: WorkspaceSnapshotAddress,
         change_batch_address: ChangeBatchAddress,
     ) -> UpdateRequest {
-        UpdateRequest::new_current(UpdateRequestV1 {
+        UpdateRequest::new(UpdateRequestV1 {
             id: RequestId::new(),
             from_snapshot_address,
             to_snapshot_address,
@@ -364,7 +365,7 @@ mod helpers {
     }
 
     pub fn rebuild_request() -> RebuildRequest {
-        RebuildRequest::new_current(RebuildRequestVCurrent {
+        RebuildRequest::new(RebuildRequestVCurrent {
             id: RequestId::new(),
         })
     }

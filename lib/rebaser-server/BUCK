@@ -9,6 +9,7 @@ rust_library(
         "//lib/edda-client:edda-client",
         "//lib/nats-dead-letter-queue:nats-dead-letter-queue",
         "//lib/nats-std:nats-std",
+        "//lib/naxum-extractor-acceptable:naxum-extractor-acceptable",
         "//lib/naxum:naxum",
         "//lib/pending-events:pending-events",
         "//lib/pinga-client:pinga-client",

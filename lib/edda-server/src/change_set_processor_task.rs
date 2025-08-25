@@ -62,6 +62,8 @@ use tokio_util::{
 use self::app_state::AppState;
 use crate::{
     ServerMetadata,
+    api_types::ChangeSetRequestKind,
+    compressed_request::CompressedRequest,
     compressing_stream::CompressingStream,
     updates::EddaUpdates,
 };
@@ -92,7 +94,7 @@ impl ChangeSetProcessorTask {
     pub(crate) fn create(
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
-        incoming: CompressingStream<push::Ordered>,
+        incoming: CompressingStream<push::Ordered, ChangeSetRequestKind, CompressedRequest>,
         frigg: FriggStore,
         edda_updates: EddaUpdates,
         parallel_build_limit: usize,

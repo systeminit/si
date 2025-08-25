@@ -19,6 +19,7 @@ json-patch = { workspace = true }
 nats-dead-letter-queue = { path = "../../lib/nats-dead-letter-queue" }
 nats-std = { path = "../../lib/nats-std" }
 naxum = { path = "../../lib/naxum" }
+naxum-extractor-acceptable = { path = "../../lib/naxum-extractor-acceptable" }
 pending-events = { path = "../../lib/pending-events" }
 pinga-client = { path = "../../lib/pinga-client" }
 rebaser-client = { path = "../../lib/rebaser-client" }

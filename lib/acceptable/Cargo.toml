@@ -1,0 +1,27 @@
+[package]
+name = "acceptable"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+acceptable-macros = { path = "../../lib/acceptable-macros", optional = true }
+async-nats = { workspace = true, optional = true }
+ciborium = { workspace = true, optional = true }
+nats-std = { path = "../../lib/nats-std", optional = true }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, optional = true }
+thiserror = { workspace = true }
+ulid = { workspace = true }
+
+[features]
+default = ["derive", "deserialize", "nats-headers", "serialize"] # NOTE: if extracted, then default should probably be empty
+derive = ["acceptable-macros"]
+deserialize = ["ciborium", "serde_json"]
+nats-headers = ["async-nats", "nats-std"]
+serialize = ["ciborium", "serde_json"]
