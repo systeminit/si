@@ -184,7 +184,7 @@
             </div>
           </template>
 
-          <div class="flex flex-col gap-xs p-xs">
+          <div class="flex flex-col gap-sm px-sm py-sm">
             <div
               v-if="selectedComponent.toDelete"
               :class="
