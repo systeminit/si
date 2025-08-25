@@ -405,6 +405,13 @@ const initializeFromUrl = () => {
   const componentIdFromUrl = route.query.component as ComponentId;
   if (componentIdFromUrl) {
     selectedComponentId.value = componentIdFromUrl;
+  } else {
+    // TODO(Wendy) - remove this part to not have the first component selected by default
+    nextTick(() => {
+      if (componentList.value[0]?.id) {
+        selectedComponentId.value = componentList.value[0].id;
+      }
+    });
   }
 };
 

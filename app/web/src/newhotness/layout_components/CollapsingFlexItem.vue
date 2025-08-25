@@ -39,6 +39,7 @@
     >
       <Icon
         v-if="!disableCollapse"
+        class="group-hover/header:scale-125"
         :name="showOpen ? 'chevron-down' : 'chevron-right'"
         size="sm"
       />
