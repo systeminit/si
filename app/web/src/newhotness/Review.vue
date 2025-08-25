@@ -185,6 +185,22 @@
           </template>
 
           <div class="flex flex-col gap-xs p-xs">
+            <div
+              v-if="selectedComponent.toDelete"
+              :class="
+                clsx(
+                  'flex flex-col gap-xs p-sm border',
+                  themeClasses(
+                    'text-neutral-800 border-neutral-400 bg-neutral-100',
+                    'text-neutral-100 border-neutral-600 bg-neutral-900',
+                  ),
+                )
+              "
+            >
+              This component is set to be deleted from HEAD once the change set
+              is applied, all values will be cleaned.
+            </div>
+
             <!-- Show /si/name-->
             <ReviewAttributeItem
               v-if="
@@ -443,22 +459,19 @@ const componentList = computed(() => {
     );
   const mapped = rawComponentList.value
     .map((component) => {
-      // TEMPORARY: "fix" issues in the MV so we can do better testing / display in the short term.
-      // Ultimately, we will fix the MV instead.
       const componentDiff = componentDiffs[component.id];
       const attributeDiffTree = toAttributeDiffTree(componentDiff);
+      const diffStatus = component.toDelete
+        ? "Removed"
+        : componentDiff?.diffStatus ?? component.diffStatus;
       return {
         ...component,
-        diffStatus: componentDiff?.diffStatus ?? component.diffStatus,
+        diffStatus,
         componentDiff,
         attributeDiffTree,
       };
     })
-    .filter(
-      (component) =>
-        component.attributeDiffTree.children &&
-        Object.keys(component.attributeDiffTree.children).length > 0,
-    );
+    .filter((component) => component.diffStatus !== "None");
   if (erasedComponents.data.value?.erased) {
     for (const { diff, component } of Object.values(
       erasedComponents.data.value?.erased,
