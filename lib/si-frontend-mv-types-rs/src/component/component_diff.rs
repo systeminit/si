@@ -6,6 +6,7 @@ use si_events::{
     ComponentId,
     workspace_snapshot::EntityKind,
 };
+use strum::Display;
 use tuple_vec_map;
 
 use crate::{
@@ -50,6 +51,26 @@ pub struct ComponentDiff {
     pub attribute_diffs: Vec<(String, AttributeDiff)>,
     // Also include the TextDiff as we always need it when we need this MV
     pub resource_diff: ComponentTextDiff,
+    // Include the various states of to_delete
+    pub to_delete_diff: ToDeleteDiff,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Display,
+    si_frontend_mv_types_macros::FrontendChecksum,
+)]
+#[serde(rename_all = "camelCase")]
+pub enum ToDeleteDiff {
+    Modified { old: bool, new: bool },
+    Removed { old: bool },
+    Added { new: bool },
+    None,
 }
 
 #[derive(
@@ -256,6 +277,7 @@ mod test {
             ComponentDiff {
                 id,
                 diff_status: ComponentDiffStatus::Added,
+                to_delete_diff: ToDeleteDiff::None,
                 attribute_diffs: vec![
                     (
                         "/domain/Foo".to_string(),
@@ -319,7 +341,7 @@ mod test {
                 }
             },
             serde_json::from_str(&format!(
-                r#"{{ "id": {}, "diffStatus": "Added", "resourceDiff": {{}}, "attributeDiffs": {} }}"#,
+                r#"{{ "id": {}, "diffStatus": "Added", "toDeleteDiff": "none", "resourceDiff": {{}}, "attributeDiffs": {} }}"#,
                 serde_json::to_string(&id)?,
                 r#"{
                         "/domain/Foo": {

@@ -18,13 +18,13 @@ use dal::{
 };
 use si_frontend_mv_types::component::{
     ComponentDiffStatus,
-    ComponentTextDiff,
     component_diff::{
         AttributeDiff,
         AttributeSource,
         AttributeSourceAndValue,
         ComponentDiff,
         SimplifiedAttributeSource,
+        ToDeleteDiff,
     },
 };
 use si_id::{
@@ -42,22 +42,11 @@ pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<Com
     let old_ctx = new_ctx.clone_with_head().await?;
     let old_ctx = &old_ctx;
     if new_ctx.change_set_id() == old_ctx.change_set_id() {
-        let resource_diff = {
-            let dal_component_diff = Component::get_diff(old_ctx, id).await?;
-            let diff = match dal_component_diff.diff {
-                Some(code_view) => code_view.code,
-                None => None,
-            };
-            ComponentTextDiff {
-                current: dal_component_diff.current.code,
-                diff,
-            }
-        };
         return Ok(ComponentDiff {
             id,
             diff_status: ComponentDiffStatus::None,
             attribute_diffs: vec![],
-            resource_diff,
+            to_delete_diff: ToDeleteDiff::None,
         });
     }
 
@@ -76,6 +65,8 @@ pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<Com
 
     // Figure out diff status
     let (diff_status, resource_diff) = if new_root_av_id.is_some() {
+        // If there is a root av for this ctx
+        // get the resource diff
         let resource_diff = {
             let dal_component_diff = Component::get_diff(new_ctx, id).await?;
             let diff = match dal_component_diff.diff {
@@ -93,29 +84,43 @@ pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<Com
             ComponentDiffStatus::Modified
         } else {
             ComponentDiffStatus::None
-        };
-        (diff_status, resource_diff)
+        }
     } else {
-        let resource_diff = {
-            let dal_component_diff = Component::get_diff(old_ctx, id).await?;
-            let diff = match dal_component_diff.diff {
-                Some(code_view) => code_view.code,
-                None => None,
-            };
-            ComponentTextDiff {
-                current: dal_component_diff.current.code,
-                diff,
-            }
-        };
-        (ComponentDiffStatus::Removed, resource_diff)
+        ComponentDiffStatus::Removed
     };
-
+    let to_delete_diff = diff_to_delete(old_ctx, new_ctx, diff_status, id).await?;
     Ok(ComponentDiff {
         id,
         diff_status,
         attribute_diffs,
-        resource_diff,
+        to_delete_diff,
     })
+}
+
+async fn diff_to_delete(
+    old_ctx: &DalContext,
+    new_ctx: &DalContext,
+    diff_status: ComponentDiffStatus,
+    id: ComponentId,
+) -> crate::Result<ToDeleteDiff> {
+    let to_delete_diff = match diff_status {
+        ComponentDiffStatus::Added => ToDeleteDiff::Added {
+            new: self::is_set_to_delete(new_ctx, id).await?,
+        },
+        ComponentDiffStatus::Modified => ToDeleteDiff::Modified {
+            old: self::is_set_to_delete(old_ctx, id).await?,
+            new: self::is_set_to_delete(new_ctx, id).await?,
+        },
+        ComponentDiffStatus::None => ToDeleteDiff::None,
+        ComponentDiffStatus::Removed => ToDeleteDiff::Removed {
+            old: self::is_set_to_delete(old_ctx, id).await?,
+        },
+    };
+    Ok(to_delete_diff)
+}
+
+async fn is_set_to_delete(ctx: &DalContext, id: ComponentId) -> crate::Result<bool> {
+    Ok(Component::is_set_to_delete(ctx, id).await?.unwrap_or(false))
 }
 
 // Walk two attributes, diffing them and their children and adding the results to
