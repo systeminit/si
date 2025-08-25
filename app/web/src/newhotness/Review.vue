@@ -189,7 +189,7 @@
               v-if="selectedComponent.toDelete"
               :class="
                 clsx(
-                  'flex flex-col gap-xs p-sm border',
+                  'flex flex-col gap-xs p-sm border text-sm',
                   themeClasses(
                     'text-neutral-800 border-neutral-400 bg-neutral-100',
                     'text-neutral-100 border-neutral-600 bg-neutral-900',
@@ -264,14 +264,22 @@
             secondaryText="Select a component to see information about it"
           />
         </div>
-        <CollapsingFlexItem headerTextSize="sm" maxHeightContent>
+        <CollapsingFlexItem
+          headerTextSize="sm"
+          maxHeightContent
+          :expandable="false"
+        >
           <template #header> Actions </template>
           <!--
         For anything related to actions, check if we have both the "selectedComponentId" and the
         "details" to make sure the data comes in atomically and with reactivity.
         -->
           <template v-if="selectedComponent" #headerIcons>
-            <ActionPills :actionCounts="actionCounts" mode="row" />
+            <ActionPills
+              :actionCounts="actionCounts"
+              mode="row"
+              showNoPendingActions
+            />
           </template>
           <template v-if="selectedComponent">
             <ActionsPanel :component="selectedComponent" />
@@ -718,9 +726,7 @@ const removedComponentList = computed(
     [],
 );
 
-// Why not just do something similar to the "pendingActionCounts" in the Explore context? For one,
-// we are not within the Explore context. Second, we need to include actions with "zero" in the
-// count. The way the Explore one works is that it only shows when there is at least one action.
+// Calculate action counts for the selected component, only including actions with count > 0
 const { actionPrototypeViews, actionByPrototype } =
   useComponentActions(selectedComponent);
 const actionCounts = computed(() => {
@@ -734,7 +740,10 @@ const actionCounts = computed(() => {
 
       // Group Other actions with Manual
       let actionName = action.name;
-      if (actionName.toLowerCase() === "other") {
+      if (
+        actionName.toLowerCase() === "other" ||
+        action.kind?.toLowerCase() === "other"
+      ) {
         actionName = "Manual";
       }
 
@@ -750,19 +759,14 @@ const actionCounts = computed(() => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         results[actionName]!.hasFailed = true;
       }
-    } else {
-      let actionName = actionPrototype.kind as string;
-      if (actionName.toLowerCase() === "other") {
-        actionName = "Manual";
-      }
-
-      results[actionName] = {
-        count: 0,
-        hasFailed: false,
-      };
     }
+    // Remove the else block that creates entries with count: 0
   }
-  return results;
+
+  // Filter out entries with count of 0
+  return Object.fromEntries(
+    Object.entries(results).filter(([_, value]) => value.count > 0),
+  );
 });
 
 const exitReview = () => {

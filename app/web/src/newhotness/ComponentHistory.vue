@@ -67,7 +67,9 @@
           @click="toggleExpand(auditLog)"
         >
           <div class="flex flex-col">
-            <div class="flex flex-row gap-xs items-center justify-between">
+            <div
+              class="flex flex-row gap-xs items-center justify-between text-sm"
+            >
               <TruncateWithTooltip class="py-2xs">
                 {{ auditLog.title }}
               </TruncateWithTooltip>
