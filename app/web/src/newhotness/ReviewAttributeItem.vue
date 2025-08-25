@@ -37,15 +37,15 @@
     </div>
 
     <template v-if="showDiffs">
-      <ReviewAttributeItemSourceAndValue
-        v-if="diff?.new"
-        :sourceAndValue="diff.new"
-      />
       <!-- TODO use revertibleSource to determine revertibility (but right now revertibleSource seems not right!) -->
       <ReviewAttributeItemSourceAndValue
         v-if="diff?.old"
         :sourceAndValue="diff.old"
         old
+      />
+      <ReviewAttributeItemSourceAndValue
+        v-if="diff?.new"
+        :sourceAndValue="diff.new"
       />
     </template>
 
