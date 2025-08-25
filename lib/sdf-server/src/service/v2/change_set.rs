@@ -97,6 +97,8 @@ pub enum Error {
     ItemWithChecksumNotFound(WorkspacePk, ChangeSetId, String),
     #[error("latest item not found; workspace_pk={0}, change_set_id={1}, kind={2}")]
     LatestItemNotFound(WorkspacePk, ChangeSetId, String),
+    #[error("materialized view error: {0}")]
+    MaterializedView(#[from] Box<dal_materialized_views::Error>),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("property editor error: {0}")]
@@ -133,6 +135,12 @@ pub enum Error {
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+}
+
+impl From<dal_materialized_views::Error> for Error {
+    fn from(error: dal_materialized_views::Error) -> Self {
+        Box::new(error).into()
+    }
 }
 
 impl IntoResponse for Error {

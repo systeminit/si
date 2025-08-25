@@ -1,8 +1,11 @@
-use axum::extract::{
-    Host,
-    OriginalUri,
-    Path,
-    State,
+use axum::{
+    Json,
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+        State,
+    },
 };
 use dal::{
     ChangeSet,
@@ -11,6 +14,7 @@ use dal::{
 };
 use sdf_core::dal_wrapper;
 use si_events::audit_log::AuditLogKind;
+use si_frontend_mv_types::action::ActionViewList;
 
 use super::{
     ChangeSetAPIError,
@@ -35,7 +39,7 @@ pub async fn apply(
     Host(host_name): Host,
     Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     State(mut state): State<AppState>,
-) -> Result<()> {
+) -> Result<Json<ActionViewList>> {
     let mut ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
@@ -45,6 +49,9 @@ pub async fn apply(
 
     // Perform the protected apply flow.
     dal_wrapper::change_set::protected_apply_to_base_change_set(&mut ctx, spicedb_client).await?;
+
+    let head = builder.build_head(request_ctx).await?;
+    let action_list = dal_materialized_views::action::action_view_list::assemble(head).await?;
 
     // Tracking, audit logging, etc.
     {
@@ -82,5 +89,5 @@ pub async fn apply(
         ctx.commit().await?;
     }
 
-    Ok(())
+    Ok(Json(action_list))
 }
