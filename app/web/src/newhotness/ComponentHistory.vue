@@ -123,7 +123,10 @@
             @afterLeave="finishUpdateTimeline"
           >
             <div v-if="shouldExpand(auditLog)" class="mt-xs transition-all">
-              <CodeViewer :code="JSON.stringify(auditLog.inner, null, 2)" />
+              <CodeViewer
+                :code="JSON.stringify(auditLog.inner, null, 2)"
+                @click.stop
+              />
             </div>
           </Transition>
         </div>
