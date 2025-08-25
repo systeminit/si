@@ -30,4 +30,28 @@ if [[ -n "${AWS_REGION:-}" ]]; then
   args+=(-e AWS_REGION="${AWS_REGION}")
 fi
 
+# Validate that the first argument is a valid script name
+if [[ $# -gt 0 ]]; then
+  script_name="$1"
+  script_dir="$(dirname "$0")/scripts"
+
+  # Build array of valid script names
+  valid_scripts=()
+  if [[ -d "$script_dir" ]]; then
+    while IFS= read -r -d '' script_file; do
+      script_basename=$(basename "$script_file")
+      valid_scripts+=("$script_basename")
+    done < <(find "$script_dir" -maxdepth 1 -type f -executable -print0 | sort -z)
+  fi
+
+  if [[ ${#valid_scripts[@]} -eq 0 ]] || [[ ! " ${valid_scripts[*]} " == *" ${script_name} "* ]]; then
+    echo "Error: Unknown script '${script_name}'"
+    echo "Available scripts:"
+    printf "  %s\n" "${valid_scripts[@]}"
+    echo ""
+    echo "Run './awsi.sh info' to see usage for all scripts"
+    exit 1
+  fi
+fi
+
 docker run "${args[@]}" systeminit/toolbox:stable "$*"

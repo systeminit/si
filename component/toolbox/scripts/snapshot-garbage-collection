@@ -19,19 +19,19 @@ done
 # Usage for this script
 usage() {
     echo
-    echo "snapshot-garbage-collection"
-    echo "----------------------------------"
+    title "snapshot-garbage-collection"
+    section "----------------------------------"
     echo "This script will open an SSM session to the first SDF"
     echo "instance it finds to run SDF with run mode set to"
     echo "garbageCollectSnapshots."
-    echo "----------------------------------"
-    echo "Usage: snapshot-garbage-collection [-p profile] [-r region] [-a automatic]"
-    echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
-    echo "  -r region         AWS region to use"
-    echo "  -a automatic      [Y/N] Run through automatically/no-interact"
-    echo "----------------------------------"
-    echo "e.g. ./awsi.sh snapshot-garbage-collection -p pull-from-env -r us-east-1 -a y"
-    exit 1
+    section "----------------------------------"
+    usage_text "Usage:" "snapshot-garbage-collection [-p profile] [-r region] [-a automatic]"
+    echo "  $(option "-p profile")        [pull-from-env/<profile-name>] AWS profile to use"
+    echo "  $(option "-r region")         AWS region to use"
+    echo "  $(option "-a automatic")      [Y/N] Run through automatically/no-interact"
+    section "----------------------------------"
+    example "e.g. ./awsi.sh snapshot-garbage-collection -p pull-from-env -r us-east-1 -a y"
+    exit 0
 }
 
 # Add a check to see if the script is being sourced or executed

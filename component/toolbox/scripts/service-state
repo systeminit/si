@@ -19,20 +19,20 @@ done
 # Usage for this script
 usage() {
     echo
-    echo "service-state"
-    echo "----------------------------------"
+    title "service-state"
+    section "----------------------------------"
     echo "This script will open an SSM session to all available"
     echo "nodes in the region and will set them to the desired state"
-    echo "----------------------------------"
-    echo "Usage: service-state [-p profile] [-r region] [-a automatic] [-s service] [-S state]"
-    echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
-    echo "  -r region         AWS region to use"
-    echo "  -s service        [sdf/rebaser/pinga/veritech/forklift/edda] SI Service to filter by, defaults to all"
-    echo "  -a automatic      [Y/N] Run through automatically/no-interact"
-    echo "  -S state          [down/up] The state the service should be set to"
-    echo "----------------------------------"
-    echo "e.g. ./awsi.sh service-state -p pull-from-env -r us-east-1 -s sdf -a y -S down"
-    exit 1
+    section "----------------------------------"
+    usage_text "Usage:" "service-state [-p profile] [-r region] [-a automatic] [-s service] [-S state]"
+    echo "  $(option "-p profile")        [pull-from-env/<profile-name>] AWS profile to use"
+    echo "  $(option "-r region")         AWS region to use"
+    echo "  $(option "-s service")        [sdf/rebaser/pinga/veritech/forklift/edda] SI Service to filter by, defaults to all"
+    echo "  $(option "-a automatic")      [Y/N] Run through automatically/no-interact"
+    echo "  $(option "-S state")          [down/up] The state the service should be set to"
+    section "----------------------------------"
+    example "e.g. ./awsi.sh service-state -p pull-from-env -r us-east-1 -s sdf -a y -S down"
+    exit 0
 }
 
 # Add a check to see if the script is being sourced or executed

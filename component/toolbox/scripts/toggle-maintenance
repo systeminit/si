@@ -23,21 +23,21 @@ done
 # Usage for this script
 usage() {
     echo
-    echo "toggle-maintenance"
-    echo "----------------------------------"
+    title "toggle-maintenance"
+    section "----------------------------------"
     echo "This script will open an SSM session to all available"
     echo "service nodes in the region and will attempt to toggle on"
     echo "or off the maintenance mode via a USR2 linux signal"
-    echo "----------------------------------"
-    echo "Usage: toggle-maintenance [-p profile] [-r region] [-a automatic] [-s service] [-m maintenance]"
-    echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
-    echo "  -r region         AWS region to use"
-    echo "  -s service        [sdf/rebaser/pinga/veritech/forklift/edda] SI Service to filter by, defaults to all"
-    echo "  -a automatic      [Y/N] Run through automatically/no-interact"
-    echo "  -m maintenance    [Y/N] Whether maintenance should be on"
-    echo "----------------------------------"
-    echo "e.g. ./awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -a y -m y"
-    exit 1
+    section "----------------------------------"
+    usage_text "Usage:" "toggle-maintenance [-p profile] [-r region] [-a automatic] [-s service] [-m maintenance]"
+    echo "  $(option "-p profile")        [pull-from-env/<profile-name>] AWS profile to use"
+    echo "  $(option "-r region")         AWS region to use"
+    echo "  $(option "-s service")        [sdf/rebaser/pinga/veritech/forklift/edda] SI Service to filter by, defaults to all"
+    echo "  $(option "-a automatic")      [Y/N] Run through automatically/no-interact"
+    echo "  $(option "-m maintenance")    [Y/N] Whether maintenance should be on"
+    section "----------------------------------"
+    example "e.g. ./awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -a y -m y"
+    exit 0
 }
 
 # Add a check to see if the script is being sourced or executed
