@@ -40,9 +40,8 @@ action_cache_address = bb.systeminit.com:8980
 cas_address =  bb.systeminit.com:8980
 engine_address = bb.systeminit.com:8980
 http_headers = Authorization:$SI_RBE_TOKEN
-respect_symlinks=true
-enabled = true
 capabilities = true
+cas_ttl_secs = 3600
 
 [build]
 execution_platforms = prelude-si//platforms:default

@@ -52,13 +52,7 @@
           buck2
           cargo
           cargo-sort
-          # TODO: (scott)
-          # this should be a temporary include. In some cases, we are forced to
-          # link locally, so we need to make sure CI has this available. We
-          # should back a CI image that is lighter than the current ci-base that
-          # we also use for remote execution to ensure the environment is the
-          # same no matter where the build happens.
-          libgcc
+          deno
           makeWrapper
           nodePkgs.pnpm
           nodejs

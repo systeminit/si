@@ -21,10 +21,10 @@ def si_rust_toolchain_impl(ctx) -> list[[DefaultInfo, SiRustToolchainInfo]]:
     # Build rustfmt path from rustfmt distribution (if provided) or fall back to rust distribution
     if ctx.attrs.rustfmt_dist:
         rustfmt_dist_dir = ctx.attrs.rustfmt_dist[DefaultInfo].default_outputs[0]
-        rustfmt_path = cmd_args(rustfmt_dist_dir, "/bin/rustfmt", delimiter="")
+        rustfmt_path = cmd_args(rustfmt_dist_dir, "/toolchain/bin/rustfmt", delimiter="")
     elif ctx.attrs.rust_dist:
         rust_dist_dir = ctx.attrs.rust_dist[DefaultInfo].default_outputs[0]
-        rustfmt_path = cmd_args(rust_dist_dir, "/bin/rustfmt", delimiter="")
+        rustfmt_path = cmd_args(rust_dist_dir, "/toolchain/bin/rustfmt", delimiter="")
     else:
         rustfmt_path = cmd_args("rustfmt")
 
