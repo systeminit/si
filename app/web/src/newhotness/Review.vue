@@ -193,7 +193,7 @@
             </TruncateWithTooltip>
           </template>
 
-          <div class="flex flex-col gap-sm px-sm py-sm">
+          <div class="flex flex-col gap-sm px-sm py-sm min-h-full">
             <div
               v-if="selectedComponent.diffStatus === 'Removed'"
               :class="
@@ -283,6 +283,22 @@
                 secret
               />
             </template>
+
+            <div
+              v-if="noAVDiffs"
+              :class="
+                clsx(
+                  'w-full grow flex flex-row items-center justify-center border',
+                  themeClasses('border-neutral-400', 'border-neutral-600'),
+                )
+              "
+            >
+              <EmptyState
+                icon="diff"
+                text="No Attribute Values changed"
+                secondaryText="There are no attribute value changes to display for this component"
+              />
+            </div>
           </div>
         </CollapsingFlexItem>
         <div
@@ -1075,6 +1091,13 @@ onBeforeUnmount(() => {
   keyEmitter.off("ArrowLeft", onArrowLeft);
   keyEmitter.off("ArrowRight", onArrowRight);
 });
+
+const noAVDiffs = computed(
+  () =>
+    !selectedComponent.value?.attributeDiffTree?.children?.si?.children?.name &&
+    !selectedComponent.value?.attributeDiffTree?.children?.domain?.children &&
+    !selectedComponent.value?.attributeDiffTree?.children?.secrets?.children,
+);
 </script>
 
 <style lang="css" scoped>
