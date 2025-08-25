@@ -236,12 +236,11 @@ async fn get_before_prop_value_source(
                 value_subscription,
             ) => match value_subscription.resolve(ctx).await? {
                 Some(resolved_av_id) => {
-                    let resolved_av = AttributeValue::get_by_id(ctx, resolved_av_id).await?;
                     let source_component_id =
                         AttributeValue::component_id(ctx, resolved_av_id).await?;
-                    let value = resolved_av.value(ctx).await?;
+                    let view = AttributeValue::view(ctx, resolved_av_id).await?;
                     PropValueSource::Subscription {
-                        value,
+                        value: view,
                         source_component_id,
                         source_path: value_subscription.path.to_string(),
                     }
@@ -296,10 +295,10 @@ async fn update_attributes_inner(
                         }
                         let before_value = AttributeValue::get_by_id(ctx, target_av_id)
                             .await?
-                            .value(ctx)
+                            .unprocessed_value(ctx)
                             .await?;
                         AttributeValue::update(ctx, target_av_id, value.to_owned().into()).await?;
-                        if before_value != value.clone().into() {
+                        if before_value.as_ref() != Some(&value) {
                             // Build the Audit Log entry!
                             after_value_source =
                                 Some(PropValueSource::Value(serde_json::to_value(value)?));
@@ -352,13 +351,11 @@ async fn update_attributes_inner(
                         // Build the after value for the audit log!
                         after_value_source = match subscription.resolve(ctx).await? {
                             Some(resolved_av_id) => {
-                                let resolved_av =
-                                    AttributeValue::get_by_id(ctx, resolved_av_id).await?;
                                 let source_component_id =
                                     AttributeValue::component_id(ctx, resolved_av_id).await?;
-                                let value = resolved_av.value(ctx).await?;
+                                let view = AttributeValue::view(ctx, resolved_av_id).await?;
                                 Some(PropValueSource::Subscription {
-                                    value,
+                                    value: view,
                                     source_component_id,
                                     source_path: subscription.path.to_string(),
                                 })
