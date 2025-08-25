@@ -20,7 +20,7 @@
         {{ name }}
       </h1>
       <VButton
-        v-if="!!revertToSource"
+        v-if="!disableRevert && !!revertToSource"
         size="xs"
         label="Revert"
         :class="
@@ -55,6 +55,7 @@
           :selectedComponentId="selectedComponentId"
           :name="childName"
           :item="childItem"
+          :disableRevert="disableRevert"
         />
       </template>
     </div>
@@ -80,7 +81,7 @@ const props = defineProps({
   },
   name: { type: String, required: true },
   item: { type: Object as PropType<AttributeDiffTree>, required: true },
-  secret: { type: Boolean },
+  disableRevert: { type: Boolean, required: true },
 });
 
 const path = computed(() => props.item.path);
