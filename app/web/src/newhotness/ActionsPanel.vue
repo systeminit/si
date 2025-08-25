@@ -44,4 +44,8 @@ const props = defineProps<{
 const { actionPrototypeViews, actionByPrototype } = useComponentActions(
   () => props.component,
 );
+
+defineExpose({
+  actionPrototypeViews,
+});
 </script>

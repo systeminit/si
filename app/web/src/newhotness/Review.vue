@@ -171,26 +171,37 @@
           headerTextSize="sm"
         >
           <template #header>
-            <TruncateWithTooltip
-              :class="
-                clsx(
-                  'py-2xs max-w-fit flex-1',
-                  themeClasses('text-neutral-800', 'text-neutral-100'),
-                )
-              "
+            <div
+              class="group/title flex flex-row items-center gap-xs w-full cursor-pointer"
+              @click="goToComponentDetails"
             >
-              {{ selectedComponent.schemaName }}
-            </TruncateWithTooltip>
-            <TruncateWithTooltip
-              :class="
-                clsx(
-                  'py-2xs max-w-fit flex-1',
-                  themeClasses('text-neutral-600', 'text-neutral-400'),
-                )
-              "
-            >
-              ({{ selectedComponent.name }})
-            </TruncateWithTooltip>
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'py-2xs max-w-fit flex-1 group-hover/title:underline',
+                    themeClasses(
+                      'text-neutral-800 group-hover/title:text-action-500',
+                      'text-neutral-100 group-hover/title:text-action-300',
+                    ),
+                  )
+                "
+              >
+                {{ selectedComponent.schemaName }}
+              </TruncateWithTooltip>
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'py-2xs max-w-fit flex-1 group-hover/title:underline',
+                    themeClasses(
+                      'text-neutral-600 group-hover/title:text-action-500',
+                      'text-neutral-400 group-hover/title:text-action-300',
+                    ),
+                  )
+                "
+              >
+                ({{ selectedComponent.name }})
+              </TruncateWithTooltip>
+            </div>
           </template>
 
           <div class="flex flex-col gap-sm px-sm py-sm min-h-full">
@@ -322,6 +333,7 @@
           />
         </div>
         <CollapsingFlexItem
+          ref="actionsRef"
           headerTextSize="sm"
           maxHeightContent
           :expandable="false"
@@ -339,7 +351,10 @@
             />
           </template>
           <template v-if="selectedComponent">
-            <ActionsPanel :component="selectedComponent" />
+            <ActionsPanel
+              ref="actionsPanelRef"
+              :component="selectedComponent"
+            />
           </template>
           <EmptyState
             v-else
@@ -1137,10 +1152,62 @@ onBeforeUnmount(() => {
 
 const noAVDiffs = computed(
   () =>
+    // If no component is selected, this will return false
+    selectedComponent.value &&
     !selectedComponent.value?.attributeDiffTree?.children?.si?.children?.name &&
     !selectedComponent.value?.attributeDiffTree?.children?.domain?.children &&
     !selectedComponent.value?.attributeDiffTree?.children?.secrets?.children,
 );
+
+const selectedComponentErased = computed(
+  () =>
+    selectedComponent.value?.diffStatus === "Removed" &&
+    !selectedComponent.value.toDelete,
+);
+
+const goToComponentDetails = () => {
+  if (!selectedComponentId.value || selectedComponentErased.value) return;
+
+  router.push({
+    name: "new-hotness-component",
+    params: {
+      workspacePk: route.params.workspacePk,
+      changeSetId: route.params.changeSetId,
+      componentId: selectedComponentId.value,
+    },
+  });
+};
+
+const actionsRef = ref<InstanceType<typeof CollapsingFlexItem>>();
+const actionsPanelRef = ref<InstanceType<typeof ActionsPanel>>();
+const fixActionsPanelState = () => {
+  if (selectedComponentId.value) {
+    if (
+      noAVDiffs.value &&
+      actionsRef.value &&
+      !actionsRef.value.openState.open.value
+    ) {
+      // Opens the actions panel if there are noAVDiffs
+      actionsRef.value.openState.toggle();
+    } else {
+      nextTick(() => {
+        if (
+          actionsRef.value &&
+          actionsPanelRef.value?.actionPrototypeViews &&
+          actionsPanelRef.value?.actionPrototypeViews.length === 0 &&
+          actionsRef.value.openState.open.value
+        ) {
+          // Closes the actions panel if there are AVDiffs and no actions
+          actionsRef.value.openState.toggle();
+        }
+      });
+    }
+  }
+};
+
+watch(selectedComponentId, () => {
+  fixActionsPanelState();
+});
 </script>
 
 <style lang="css" scoped>
