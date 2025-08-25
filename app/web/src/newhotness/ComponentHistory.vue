@@ -103,19 +103,6 @@
               v-if="auditLog.beforeValue && auditLog.afterValue"
               class="flex flex-col gap-1 text-xs"
             >
-              <div class="flex flex-row items-center gap-xs">
-                <span class="text-neutral-500 font-bold w-14">Now:</span>
-                <TruncateWithTooltip
-                  :class="
-                    clsx(
-                      'py-2xs',
-                      themeClasses('text-neutral-800', 'text-neutral-100'),
-                    )
-                  "
-                >
-                  {{ auditLog.afterValue }}
-                </TruncateWithTooltip>
-              </div>
               <div class="flex flex-row items-center gap-2xs">
                 <span class="text-neutral-500 font-bold w-14">Previous:</span>
                 <TruncateWithTooltip
@@ -127,6 +114,19 @@
                   "
                 >
                   {{ auditLog.beforeValue }}
+                </TruncateWithTooltip>
+              </div>
+              <div class="flex flex-row items-center gap-xs">
+                <span class="text-neutral-500 font-bold w-14">Now:</span>
+                <TruncateWithTooltip
+                  :class="
+                    clsx(
+                      'py-2xs',
+                      themeClasses('text-neutral-800', 'text-neutral-100'),
+                    )
+                  "
+                >
+                  {{ auditLog.afterValue }}
                 </TruncateWithTooltip>
               </div>
             </div>
