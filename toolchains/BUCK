@@ -10,10 +10,11 @@ load(
     "@prelude//toolchains:remote_test_execution.bzl",
     "remote_test_execution_toolchain",
 )
-load(":clang_distribution.bzl", "download_clang_distribution", "hermetic_clang_toolchain")
-load(":deno_distribution.bzl", "download_deno_distribution", "hermetic_deno_toolchain")
-load(":rust_distribution.bzl", "download_rust_distribution", "hermetic_rust_toolchain")
-load(":python_distribution.bzl", "download_python_distribution", "hermetic_python_toolchain", "hermetic_python_bootstrap_toolchain")
+load("@prelude-si//toolchains:clang_distribution.bzl", "download_clang_distribution", "hermetic_clang_toolchain")
+load("@prelude-si//toolchains:deno_distribution.bzl", "download_deno_distribution")
+load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
+load("@prelude-si//toolchains:rust_distribution.bzl", "download_rust_distribution", "hermetic_rust_toolchain")
+load("@prelude-si//toolchains:python_distribution.bzl", "download_python_distribution", "hermetic_python_toolchain", "hermetic_python_bootstrap_toolchain")
 load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
@@ -68,9 +69,12 @@ hermetic_clang_toolchain(
     name = "cxx",
     distribution = ":clang",
     binary_linker_flags = [
-        "-lclang_rt.builtins",
         "-nostdlib++",
-    ],
+    ] + select({
+        "config//os:linux": ["-lclang_rt.builtins"],
+        "config//os:macos": ["-lclang_rt.osx"],
+        "DEFAULT": ["-lclang_rt.builtins"],
+    }),
     linker_flags = [
         "--rtlib=compiler-rt",
     ],
@@ -105,11 +109,17 @@ hermetic_rust_toolchain(
         "-Coverflow-checks=false",
         "-Clto=false",
         "-Ccodegen-units=16",
-        # Use hermetic toolchain for linking
-        "-Clink-arg=-fuse-ld=lld",
-        # Override GCC runtime with LLVM runtime at link time
-        "-Clink-arg=-Wl,--allow-shlib-undefined",
-    ],
+    ] + select({
+        "config//os:linux": [
+            # Use hermetic toolchain for linking on Linux
+            "-Clink-arg=-fuse-ld=lld",
+            # Override GCC runtime with LLVM runtime at link time on Linux
+            "-Clink-arg=-Wl,--allow-shlib-undefined",
+        ],
+        "DEFAULT": [
+            # On Darwin, use system linker for better SDK integration
+        ],
+    }) 
 )
 
 hermetic_rust_toolchain(
@@ -124,11 +134,17 @@ hermetic_rust_toolchain(
         "-Ccodegen-units=256",
         "-Cdebug-assertions=true",
         "-Coverflow-checks=true",
-        # Use hermetic toolchain for linking
-        "-Clink-arg=-fuse-ld=lld",
-        # Override GCC runtime with LLVM runtime at link time
-        "-Clink-arg=-Wl,--allow-shlib-undefined",
-    ],
+    ] + select({
+        "config//os:linux": [
+            # Use hermetic toolchain for linking on Linux
+            "-Clink-arg=-fuse-ld=lld",
+            # Override GCC runtime with LLVM runtime at link time on Linux
+            "-Clink-arg=-Wl,--allow-shlib-undefined",
+        ],
+        "DEFAULT": [
+            # On Darwin, use system linker for better SDK integration
+        ],
+    }),
 )
 
 toolchain_alias(
@@ -145,9 +161,9 @@ build_context_toolchain(
     visibility = ["PUBLIC"],
 )
 
-hermetic_deno_toolchain(
-    name = "deno",
-    distribution = ":deno_dist",
+deno_toolchain(
+    name = "deno", 
+    deno_binary = "$(location :deno_dist-extraction)/toolchain/bin/deno",
     visibility = ["PUBLIC"],
 )
 
