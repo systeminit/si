@@ -3,7 +3,7 @@
     <div
       :class="
         clsx(
-          'header flex flex-row items-center gap-xs px-sm py-xs mb-xs',
+          'header flex-none flex flex-row items-center gap-xs px-sm py-xs',
           themeClasses('bg-white', 'bg-neutral-800'),
         )
       "
@@ -90,7 +90,7 @@
         @click="exitReview"
       />
     </section>
-    <section v-else class="grid review w-full h-full flex-1">
+    <section v-else class="grid review w-full min-h-0 grow flex-1 p-xs">
       <div
         :class="
           clsx(
@@ -127,7 +127,7 @@
             class="p-sm"
           />
           <EmptyState
-            v-else-if="filteredComponentList.length === 0"
+            v-else-if="filteredComponentList?.length === 0"
             icon="diff"
             text="No changed components match your search"
             class="p-sm"
@@ -161,10 +161,11 @@
           />
         </div>
       </div>
-      <div class="main flex flex-col gap-xs m-xs">
+      <div class="main flex flex-col gap-sm m-xs">
         <CollapsingFlexItem
           v-if="selectedComponentId && selectedComponent"
           disableCollapse
+          headerTextSize="sm"
         >
           <template #header>
             <div
@@ -247,7 +248,7 @@
             secondaryText="Select a component to see information about it"
           />
         </div>
-        <CollapsingFlexItem>
+        <CollapsingFlexItem headerTextSize="sm" maxHeightContent>
           <template #header> Actions </template>
           <!--
         For anything related to actions, check if we have both the "selectedComponentId" and the
@@ -269,7 +270,7 @@
         </CollapsingFlexItem>
       </div>
       <div class="right flex flex-col p-xs">
-        <CollapsingFlexItem open>
+        <CollapsingFlexItem open headerTextSize="sm">
           <template #header>Component History</template>
           <template v-if="selectedComponentId">
             <ComponentHistory :componentId="selectedComponentId" />
@@ -282,7 +283,7 @@
             secondaryText="Select a component to see its history"
           />
         </CollapsingFlexItem>
-        <CollapsingFlexItem open>
+        <CollapsingFlexItem open headerTextSize="sm">
           <template #header>Diff</template>
           <CodeViewer
             v-if="selectedComponent"
