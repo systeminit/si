@@ -375,14 +375,21 @@ async fn assemble_source_and_value(
     av_id: AttributeValueId,
 ) -> crate::Result<AttributeSourceAndValue> {
     let value = AttributeValue::view(ctx, av_id).await?;
-    let source = assemble_source(ctx, av_id).await?;
-    Ok(AttributeSourceAndValue { value, source })
+    let (source, secret) = assemble_source(ctx, av_id).await?;
+    Ok(AttributeSourceAndValue {
+        value,
+        source,
+        secret,
+    })
 }
 
 async fn assemble_source(
     ctx: &DalContext,
     av_id: AttributeValueId,
-) -> crate::Result<AttributeSource> {
+) -> crate::Result<(
+    AttributeSource,
+    Option<si_frontend_mv_types::secret::Secret>,
+)> {
     // Get the controlling prototype and where it's from (from_schema / from_ancestor)
     let (from_ancestor, av_id) = match AttributeValue::controlling_av_id(ctx, av_id).await? {
         Some(controlling_av_id) if controlling_av_id != av_id => {
@@ -401,19 +408,25 @@ async fn assemble_source(
         };
 
     // Assemble the result
-    let simplified_source = assemble_simplified_source(ctx, av_id, prototype_id).await?;
-    Ok(AttributeSource {
-        simplified_source,
-        from_schema,
-        from_ancestor,
-    })
+    let (simplified_source, secret) = assemble_simplified_source(ctx, av_id, prototype_id).await?;
+    Ok((
+        AttributeSource {
+            simplified_source,
+            from_schema,
+            from_ancestor,
+        },
+        secret,
+    ))
 }
 
 async fn assemble_simplified_source(
     ctx: &DalContext,
     av_id: AttributeValueId,
     prototype_id: AttributePrototypeId,
-) -> crate::Result<SimplifiedAttributeSource> {
+) -> crate::Result<(
+    SimplifiedAttributeSource,
+    Option<si_frontend_mv_types::secret::Secret>,
+)> {
     // Handle special-case subscription or value
     let args = AttributePrototype::list_arguments(ctx, prototype_id).await?;
     if let Some(&arg_id) = args.first()
@@ -435,16 +448,15 @@ async fn assemble_simplified_source(
                 };
                 // if the value source is a secret - construct the correct response
                 let secret = crate::secret::assemble(ctx, secret_id).await?;
-                return Ok(SimplifiedAttributeSource::SecretValue { value, secret });
+                return Ok((SimplifiedAttributeSource::Value { value }, Some(secret)));
             }
+
             // Static value (si:setString(), si:setObject(), etc.)
-            if let Some(static_value) =
+            if let Some(StaticArgumentValue { value, .. }) =
                 AttributePrototypeArgument::static_value_by_id(ctx, arg_id).await?
                 && intrinsic.set_func().is_some()
             {
-                return Ok(SimplifiedAttributeSource::Value {
-                    value: static_value.value,
-                });
+                return Ok((SimplifiedAttributeSource::Value { value }, None));
             }
 
             // Subscription (si:identity(subscription to /component /path))
@@ -452,8 +464,12 @@ async fn assemble_simplified_source(
                 AttributePrototypeArgument::value_source(ctx, arg_id).await?
                 && IntrinsicFunc::Identity == intrinsic
             {
-                // Special case secrets
                 // if it's a subscription to /secrets/* - get the secret
+                //
+                // TODO there is probably a way to get the secret based on the AV's current
+                // value, no matter whether it's a subscription or something else. We should be
+                // doing that outside this method instead of returning a pair!
+                let mut secret = None;
                 if subscription
                     .path
                     .is_under(&dal::attribute::path::AttributePath::JsonPointer(
@@ -461,9 +477,6 @@ async fn assemble_simplified_source(
                     ))
                 {
                     if let Some(secret_av_id) = subscription.resolve(ctx).await? {
-                        let component =
-                            AttributeValue::component_id(ctx, subscription.attribute_value_id)
-                                .await?;
                         if let Some(value) = AttributeValue::get_by_id(ctx, secret_av_id)
                             .await?
                             .value(ctx)
@@ -473,12 +486,7 @@ async fn assemble_simplified_source(
                             if let Ok(secret_id) =
                                 Secret::get_id_by_key_or_error(ctx, secret_key).await
                             {
-                                let secret = crate::secret::assemble(ctx, secret_id).await?;
-                                return Ok(SimplifiedAttributeSource::SecretSubscription {
-                                    component,
-                                    path: subscription.path.to_string(),
-                                    secret,
-                                });
+                                secret = Some(crate::secret::assemble(ctx, secret_id).await?);
                             } else {
                                 // Fall back to complex prototype if we can't find the secret?
                                 warn!(si.error.message="Could not find secret for secret key", si.secret_key=%secret_key);
@@ -491,12 +499,15 @@ async fn assemble_simplified_source(
                 // deeply nested, we'll call it a complex prototype and let fmt_title handle it.
                 let (root_id, root_path) =
                     AttributeValue::path_from_root(ctx, subscription.attribute_value_id).await?;
-                if root_path == "/" {
+                if root_path.is_empty() {
                     let component = AttributeValue::component_id(ctx, root_id).await?;
-                    return Ok(SimplifiedAttributeSource::Subscription {
-                        component,
-                        path: subscription.path.to_string(),
-                    });
+                    return Ok((
+                        SimplifiedAttributeSource::Subscription {
+                            component,
+                            path: subscription.path.to_string(),
+                        },
+                        secret,
+                    ));
                 }
             }
         }
@@ -504,9 +515,12 @@ async fn assemble_simplified_source(
 
     // If it isn't a special simplified case, show the prototype instead.
     let component_id = AttributeValue::component_id(ctx, av_id).await?;
-    Ok(SimplifiedAttributeSource::Prototype {
-        prototype: AttributePrototype::fmt_title(ctx, prototype_id, Some(component_id)).await,
-    })
+    Ok((
+        SimplifiedAttributeSource::Prototype {
+            prototype: AttributePrototype::fmt_title(ctx, prototype_id, Some(component_id)).await,
+        },
+        None,
+    ))
 }
 
 async fn child_av_pairs(
