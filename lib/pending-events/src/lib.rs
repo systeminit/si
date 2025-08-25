@@ -77,6 +77,8 @@ pub enum PendingEventsError {
     AckPublishMessage(#[source] PublishError),
     #[error("create stream error: {0}")]
     CreateStream(#[from] CreateStreamError),
+    #[error("tokio join error: {0}")]
+    Join(#[from] tokio::task::JoinError),
     #[error("publish final message error: {0}")]
     PublishFinalMessage(#[source] PublishError),
     #[error("publish message error: {0}")]
@@ -211,13 +213,44 @@ impl PendingEventsStream {
         message: &impl Serialize,
         final_message: bool,
     ) -> Result<()> {
+        let self_clone = self.clone();
+        let message = serde_json::to_vec(message)?;
+        let subject = subject.to_string();
+        let parameters = parameters.to_string();
+
+        tokio::spawn(async move {
+            if let Err(err) = self_clone
+                .publish_message_inner_fallible(
+                    &subject,
+                    &parameters,
+                    headers,
+                    message.into(),
+                    final_message,
+                )
+                .await
+            {
+                error!(si.error.message = ?err, "publishing to pending_events stream failed");
+            }
+        });
+
+        Ok(())
+    }
+
+    async fn publish_message_inner_fallible(
+        &self,
+        subject: &str,
+        parameters: &str,
+        headers: Option<HeaderMap>,
+        payload: bytes::Bytes,
+        final_message: bool,
+    ) -> Result<()> {
         let subject = self.prefixed_subject(subject, parameters);
         let publish_result = self
             .context
             .publish_with_headers(
                 subject,
                 headers.unwrap_or(propagation::empty_injected_headers()),
-                serde_json::to_vec(message)?.into(),
+                payload,
             )
             .await;
 

@@ -8,10 +8,12 @@ rust_library(
         "//lib/si-events-rs:si-events",
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:bytes",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
     ],
     srcs = glob([
         "src/**/*.rs",

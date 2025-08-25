@@ -5980,6 +5980,7 @@ dependencies = [
 name = "pending-events"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "remain",
  "serde",
  "serde_json",
@@ -5989,6 +5990,7 @@ dependencies = [
  "telemetry",
  "telemetry-nats",
  "thiserror 2.0.12",
+ "tokio",
 ]
 
 [[package]]
