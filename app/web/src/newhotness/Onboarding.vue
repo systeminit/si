@@ -1,7 +1,7 @@
 <template>
   <div
     data-testid="lobby"
-    class="absolute w-screen h-screen bg-neutral-900 z-[1000] flex flex-col items-center"
+    class="absolute w-screen h-screen bg-neutral-900 z-[1000] flex flex-col items-center text-white"
   >
     <div class="flex flex-row items-center justify-between w-full px-sm py-xs">
       <SiLogo class="block h-md w-md flex-none" />
@@ -27,6 +27,7 @@
           :message="data.sentence"
           :isActive="index === visibleItemsCount - 1"
           :isLastElement="index === visibleItemsCount - 1"
+          fast
         />
       </div>
       <Transition
@@ -91,37 +92,27 @@
                       clsx(
                         'h-lg p-xs text-sm border font-mono cursor-text basis-0 grow',
                         'focus:outline-none focus:ring-0 focus:z-10',
-                        themeClasses(
-                          'text-shade-100 bg-white border-neutral-400 focus:border-action-500',
-                          'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
-                        ),
+                        'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
                       )
                     "
                   />
                 </div>
                 <!-- Secret Values -->
-                <div class="flex flex-col border border-neutral-600 pb-sm">
-                  <div
-                    class="flex flex-row justify-end px-sm py-xs border-b border-neutral-600"
-                  >
-                    <span class="text-neutral-400 text-sm">
-                      All data in this section will be encrypted
-                    </span>
-                  </div>
-                  <ErrorMessage
-                    class="rounded-md text-md px-xs py-xs bg-action-900 my-xs mx-sm"
-                    tone="action"
-                    variant="block"
-                    noIcon
-                  >
-                    Pro tip: Paste the full Bash environment block into the
-                    first field — we’ll auto-fill the rest.
-                  </ErrorMessage>
+                <ErrorMessage
+                  class="rounded-md text-md px-xs py-xs bg-action-900 mt-xs"
+                  tone="action"
+                  variant="block"
+                  noIcon
+                >
+                  Pro tip: Paste the full Bash environment block into the first
+                  field — we’ll auto-fill the rest.
+                </ErrorMessage>
 
+                <div class="flex flex-col">
                   <div
                     v-for="(field, title) in secretFormFields"
                     :key="title"
-                    :class="'flex flex-row justify-between items-center text-sm px-sm'"
+                    :class="'flex flex-row justify-between items-center text-sm'"
                   >
                     <label
                       class="basis-0 grow flex flex-row items-center gap-2xs"
@@ -143,10 +134,7 @@
                           clsx(
                             'h-lg p-xs text-sm border font-mono cursor-text grow',
                             'focus:outline-none focus:ring-0 focus:z-10',
-                            themeClasses(
-                              'text-shade-100 bg-white border-neutral-400 focus:border-action-500',
-                              'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
-                            ),
+                            'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
                           )
                         "
                         placeholder="***"
@@ -161,6 +149,10 @@
                       />
                     </div>
                   </div>
+                </div>
+
+                <div class="text-neutral-400 text-xs text-end">
+                  All data in this section will be encrypted
                 </div>
               </div>
               <!-- Region -->
@@ -206,10 +198,7 @@
                       clsx(
                         'h-lg basis-0 grow p-xs text-sm border font-mono cursor-pointer',
                         'focus:outline-none focus:ring-0 focus:z-10',
-                        themeClasses(
-                          'text-shade-100 bg-white border-neutral-400 focus:border-action-500',
-                          'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
-                        ),
+                        'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
                       )
                     "
                   >
@@ -261,7 +250,7 @@
                   tone="action"
                   variant="block"
                 >
-                  We're only showing you the vale of this token once. Please,
+                  We're only showing you the value of this token once. Please,
                   store it somewhere safe.
                 </ErrorMessage>
                 <CopiableTextBlock :text="apiToken" />
@@ -305,12 +294,7 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import clsx from "clsx";
 import { sleep } from "@si/ts-lib/src/async-sleep";
-import {
-  ErrorMessage,
-  Icon,
-  themeClasses,
-  VButton,
-} from "@si/vue-lib/design-system";
+import { ErrorMessage, Icon, VButton } from "@si/vue-lib/design-system";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import * as _ from "lodash-es";
 import OnboardingCollapsingArea from "@/newhotness/OnboardingCollapsingArea.vue";
@@ -327,42 +311,33 @@ const aiTutorialAreaRef = ref<InstanceType<typeof OnboardingCollapsingArea>>();
 
 const sentences = [
   {
-    sentence:
-      "Welcome to your System Initiative workspace where you get work done",
+    sentence: "Welcome to your System Initiative Workspace.",
   },
   {
-    sentence:
-      "Follow these 2 quick and easy steps to discover your existing (or build new) infrastructure",
+    sentence: "Follow these 2 steps to get started:",
   },
 ];
 
-const showPanel = ref(false);
 const visibleItemsCount = ref<number>(0);
 const visibleSentences = computed(() =>
   sentences.slice(0, visibleItemsCount.value),
 );
 
 /// STARTUP LOGIC
-// Delay before opening, so we don't blink the screen
-const BLINK_DELAY_MS = 500;
 // Delay so we complete the fade in before starting to show log lines
 const TRANSITION_DELAY_MS = 200;
 
 const kickOffTerminalLogs = async () => {
-  await sleep(BLINK_DELAY_MS);
-  showPanel.value = true;
   await sleep(TRANSITION_DELAY_MS);
   visibleItemsCount.value = 1;
 };
 
 onMounted(kickOffTerminalLogs);
 
-// Every time we show a sentence, enqueue showing the next sentence after a delay
-const LOADING_STEP_DELAY_MS = [4500, 3000];
+// Every time we start showing a sentence, enqueue showing the next sentence after a delay
+const LOADING_STEP_DELAY_MS = [1200, 1000];
 
 watch([visibleItemsCount], async () => {
-  if (!showPanel.value) return;
-
   if (visibleItemsCount.value > sentences.length) return;
 
   const delay = LOADING_STEP_DELAY_MS[visibleItemsCount.value - 1];
@@ -609,7 +584,6 @@ const closeOnboarding = async (fast = false) => {
 
 const handleDoneClick = () => {
   aiTutorialAreaRef.value?.close();
-  window.open("https://docs.systeminit.com", "_blank");
   setupAiDone.value = true;
 };
 

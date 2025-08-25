@@ -45,6 +45,8 @@ const props = defineProps({
   // When the user goes out of the tab then comes back, we have an issue where multiple lines will be animating at the same time.
   // this is because this component is mounted only at that time. This flag prevents that by forcing animate only on the last line.
   isLastElement: { type: Boolean },
+  // Scroll the characters very fast, without the initial delay.
+  fast: { type: Boolean },
 });
 
 const visibleCharCount = ref(-1);
@@ -65,7 +67,7 @@ onMounted(startWritingSentence);
 
 // Write character one at a time, enqueuing the next change with a watch that sleeps
 const INITIAL_DELAY_MS = 800;
-const CHAR_DELAY_MS = 35;
+const CHAR_DELAY_MS = props.fast ? 15 : 35;
 const BASE_ELLIPSIS_DELAY_MS = 300;
 const ellipsisDelay = () =>
   BASE_ELLIPSIS_DELAY_MS + Math.floor(Math.random() * 100);
@@ -81,7 +83,7 @@ watch([visibleCharCount], async () => {
   let delay = CHAR_DELAY_MS;
 
   // Add some extra delay on the initial character, except if the line is a loader
-  if (!props.isLoader && visibleCharCount.value === 0) {
+  if (!props.fast && !props.isLoader && visibleCharCount.value === 0) {
     delay = INITIAL_DELAY_MS;
   } else if (latestChar === ".") {
     delay = ellipsisDelay();

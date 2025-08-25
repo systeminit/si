@@ -202,12 +202,13 @@
             "
             class="flex-1 gap-sm overflow-hidden flex flex-col items-center justify-center"
           >
+            <WelcomeBanner />
             <div class="grow flex items-center justify-center">
               <EmptyState
                 icon="logo-si"
                 iconSize="lg"
                 iconNoBg
-                text="Manage your infrastructure in a clear, controlled, and intelligent way."
+                text="Manage your infrastructure with clarity, control, and confidence."
               >
                 <template #secondary>
                   <div class="flex flex-row gap-sm">

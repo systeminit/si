@@ -52,7 +52,7 @@
     <div
       :class="
         clsx(
-          'flex flex-row justify-between border rounded-sm px-sm py-xs items-center',
+          'flex flex-row justify-between border rounded-sm px-sm py-xs items-center gap-xs',
           themeClasses(
             'border-neutral-400 bg-neutral-300',
             'bg-neutral-800 border-neutral-600',
