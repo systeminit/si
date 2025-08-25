@@ -949,6 +949,7 @@ impl Action {
                 func_id,
                 func_display_name: func.display_name,
                 func_name: func.name.clone(),
+                component_id: Some(component_id),
             },
             func.name,
         )

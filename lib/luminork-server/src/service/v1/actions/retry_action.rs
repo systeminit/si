@@ -55,6 +55,7 @@ pub async fn retry_action(
         .map_err(|_a| ActionsError::ActionNotFound(action_id))?;
 
     let prototype_id = Action::prototype_id(ctx, action_id).await?;
+    let component_id = Action::component_id(ctx, action_id).await?;
     let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
     let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
     let func = Func::get_by_id(ctx, func_id).await?;
@@ -66,6 +67,7 @@ pub async fn retry_action(
             func_id,
             func_display_name: func.display_name.clone(),
             func_name: func.name.clone(),
+            component_id,
         },
         func.name.clone(),
     )
