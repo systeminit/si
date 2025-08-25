@@ -1,6 +1,5 @@
 <template>
   <div
-    v-if="displayKind !== 'hidden'"
     :class="
       clsx(
         'flex flex-row items-center gap-xs font-mono h-10 p-xs rounded-sm',
@@ -21,7 +20,7 @@
       {{ old ? "-" : "+" }}
     </div>
 
-    <AttributeValueBox v-if="displayKind === 'subscription'" class="min-w-0">
+    <AttributeValueBox v-if="$source.component" class="min-w-0">
       <div
         :class="
           clsx(
@@ -31,20 +30,19 @@
         "
       >
         <TruncateWithTooltip :class="clsx(!old && 'text-purple')">
-          {{ rawSource.componentName }}
+          {{ $source.componentName }}
         </TruncateWithTooltip>
         <div class="flex-none">/</div>
         <TruncateWithTooltip
           :class="themeClasses('text-neutral-600', 'text-neutral-400')"
         >
-          <template v-if="secret">
-            <!-- TODO(Wendy) - Ideally we would put the secret's name here -->
-            secret
+          <template v-if="$secret">
+            {{ $secret.name }}
           </template>
-          <template v-if="rawValue !== undefined">
-            {{ rawValue }}
+          <template v-else-if="$value !== undefined">
+            {{ $value }}
           </template>
-          <template v-else> &lt;{{ rawSource.path }}&gt; </template>
+          <template v-else> &lt;{{ $source.path }}&gt; </template>
         </TruncateWithTooltip>
       </div>
     </AttributeValueBox>
@@ -52,12 +50,12 @@
       v-else
       :class="clsx('py-2xs min-w-0', old && 'line-through')"
     >
-      <template v-if="displayKind === 'secret'">
+      <template v-if="$secret">
         <!-- TODO(Wendy) - Ideally we would put the secret's name here -->
         Secret {{ old ? "Removed" : "Added" }}
       </template>
       <template v-else>
-        {{ rawValue }}
+        {{ $value }}
       </template>
     </TruncateWithTooltip>
   </div>
@@ -70,24 +68,15 @@ import { computed } from "vue";
 import { AttributeSourceAndValue } from "@/workers/types/entity_kind_types";
 import AttributeValueBox from "./layout_components/AttributeValueBox.vue";
 
-type DisplayKind = "hidden" | "value" | "subscription" | "secret" | "complex";
-
 const props = defineProps<{
   sourceAndValue: AttributeSourceAndValue;
   old?: boolean;
   secret?: boolean;
 }>();
 
-const rawValue = computed(() => props.sourceAndValue.$value);
-const rawSource = computed(() => props.sourceAndValue.$source);
-
-const displayKind = computed<DisplayKind>(() => {
-  if ("component" in rawSource.value) return "subscription";
-  if (props.secret) return "secret";
-  if ("value" in rawSource.value) return "value";
-  // TODO(Wendy) - complex AV diffs?
-  return "hidden";
-});
+const $source = computed(() => props.sourceAndValue.$source);
+const $value = computed(() => props.sourceAndValue.$value);
+const $secret = computed(() => props.sourceAndValue.$secret);
 
 const emit = defineEmits<{
   (e: "revert"): void;

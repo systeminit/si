@@ -38,14 +38,12 @@
       <ReviewAttributeItemSourceAndValue
         v-if="diff?.new"
         :sourceAndValue="diff.new"
-        :secret="secret"
       />
       <!-- TODO use revertibleSource to determine revertibility (but right now revertibleSource seems not right!) -->
       <ReviewAttributeItemSourceAndValue
         v-if="diff?.old"
         :sourceAndValue="diff.old"
         old
-        :secret="secret"
       />
     </template>
 
