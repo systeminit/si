@@ -340,11 +340,38 @@ const auditLogs = computed((): ProcessedAuditLog[] | undefined => {
             string,
             unknown
           > | null;
+
+          const getDisplayValue = (
+            value: Record<string, unknown> | null,
+          ): string => {
+            if (!value) return "<empty>";
+
+            if (value.Subscription) {
+              const subscription = value.Subscription as Record<
+                string,
+                unknown
+              >;
+              const compId = subscription.source_component_id as string;
+              const componentName =
+                ctx.componentDetails.value[compId]?.name || "UnknownComponent";
+              const subscriptionValue = subscription.value;
+              const path =
+                subscriptionValue !== null && subscriptionValue !== undefined
+                  ? (subscriptionValue as string)
+                  : `<${subscription.source_path}>`;
+              return `${componentName}/${path}`;
+            }
+            if (value.Value) {
+              return value.Value as string;
+            }
+            return "<empty>";
+          };
+
           return {
             inner: filteredAuditLog,
             title: `${filteredAuditLog.entityName} changed`,
-            beforeValue: (beforeValue?.Value as string) ?? "<empty>",
-            afterValue: (afterValue?.Value as string) ?? "<empty>",
+            beforeValue: getDisplayValue(beforeValue),
+            afterValue: getDisplayValue(afterValue),
           };
         }
       }
