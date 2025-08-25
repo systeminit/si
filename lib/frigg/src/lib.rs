@@ -500,6 +500,11 @@ impl FriggStore {
                     return Ok(None);
                 }
             };
+        // TEMPORARY: Definition checksum validation bypassed
+        // This allows deployment indexes to be used even when definition checksums don't match
+        //
+        // TODO: Re-enable this validation once the deployment-level MV definition checksum is decoupled from the change set level MV definition checksum.
+        /*
         // If the definition checksum for the current set of MVs is not the same as the one the
         // MvIndex was built for, then the MvIndex is out of date and should not be used at all.
         if index_pointer_value.definition_checksum != materialized_view_definitions_checksum() {
@@ -510,6 +515,12 @@ impl FriggStore {
             );
             return Ok(None);
         }
+        */
+        debug!(
+            "deployment index checksum validation bypassed (temporary): index checksum: {}, expected checksum: {}",
+            index_pointer_value.definition_checksum,
+            materialized_view_definitions_checksum()
+        );
 
         let object_key = index_pointer_value.index_object_key;
         let bytes = self
