@@ -13,7 +13,6 @@
     "@std/assert": "jsr:@std/assert@1",
     "@std/encoding": "jsr:@std/encoding@^1.0.10",
     "@systeminit/api-client": "jsr:@systeminit/api-client@^1.0.8",
-    "@systeminit/cf-db": "jsr:@systeminit/cf-db@^0.1.4",
     "axios": "npm:axios@^1.6.1",
     "jwt-decode": "npm:jwt-decode@^4.0.0",
     "lodash": "npm:lodash@^4.17.21",

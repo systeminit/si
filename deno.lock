@@ -1650,7 +1650,6 @@
           "jsr:@std/assert@1",
           "jsr:@std/encoding@^1.0.10",
           "jsr:@systeminit/api-client@^1.0.8",
-          "jsr:@systeminit/cf-db@~0.1.4",
           "npm:@modelcontextprotocol/sdk@^1.16.0",
           "npm:axios@^1.6.1",
           "npm:jwt-decode@4",
