@@ -15,6 +15,7 @@ rust_library(
         "//third-party/rust:serde_json",
         "//third-party/rust:strum",
         "//third-party/rust:thiserror",
+        "//third-party/rust:tracing",
     ],
     srcs = glob(["src/**/*.rs"]),
 )

@@ -1,7 +1,6 @@
 load(
     "@prelude-si//:macros.bzl",
     "docker_image",
-    "nix_omnibus_pkg",
     "rust_binary",
 )
 
@@ -28,16 +27,14 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "module-index",
-    flake_lock = "//:flake.lock",
+    build_args = {
+        "BIN": "module-index",
+        "SI_RBE_TOKEN": "",
+        "BUILDKITE_BUILD_ID": ""
+    },
     build_deps = ["//bin/module-index:module-index"],
     # TODO(fnichol): revisit post 2025-02-01
     promote_multi_arches = [
         "amd64",
     ],
-)
-
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "module-index",
-    build_dep = "//bin/module-index:module-index",
 )

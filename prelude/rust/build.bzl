@@ -1032,7 +1032,10 @@ def _compute_common_args(
 
     # FIXME(JakobDegen): This computation is an awfully broad over-approximation
     emit_requires_linking = dep_metadata_kind == MetadataKind("link")
-    if compile_ctx.dep_ctx.advanced_unstable_linking or not crate_type_codegen(crate_type):
+    # NOTE(scott): This is necessary for remote execution where the advanced linking
+    # optimization doesn't work correctly. Without this, certain binaries will not build becaise
+    # they cannot find the .rlibs they require in the right place. Looking at you bin/pinga
+    if emit != Emit("link") and (compile_ctx.dep_ctx.advanced_unstable_linking or not crate_type_codegen(crate_type)):
         if dep_metadata_kind == MetadataKind("link"):
             dep_metadata_kind = MetadataKind("full")
 

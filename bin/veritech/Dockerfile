@@ -1,99 +1,49 @@
-###########################################################################
-# Builder Stage: veritech
-###########################################################################
-# hadolint ignore=DL3007
-FROM nixos/nix:2.28.2 AS builder-veritech
-ARG BIN=veritech
+FROM alpine:3 AS buck2
+
+RUN apk add --no-cache curl zstd libc6-compat
+RUN ARCH=$(uname -m); \
+    case "$ARCH" in \
+        x86_64) BUCK2_ARCH="x86_64";; \
+        aarch64) BUCK2_ARCH="aarch64";; \
+        *) echo "unsupported arch $ARCH" && exit 1;; \
+    esac; \
+    curl -L \
+        "https://github.com/facebook/buck2/releases/download/latest/buck2-${BUCK2_ARCH}-unknown-linux-musl.zst" \
+        -o /tmp/buck2.zst && \
+    unzstd /tmp/buck2.zst -c > /bin/buck2 && chmod +x /bin/buck2
+
+FROM alpine:3 AS builder
+ARG BIN
+ARG SI_RBE_TOKEN
 
 COPY . /workdir
 WORKDIR /workdir
 
+COPY --from=buck2 /bin/buck2 /usr/local/bin/buck2
+
+RUN buck2 build bin/$BIN:$BIN \
+    --out /tmp/local-bin/$BIN
+
+FROM debian:bullseye-slim AS final
+ARG BIN
+ENV BIN=${BIN}
+
+# hadolint ignore=DL3008,DL3009
 RUN set -eux; \
-    nix \
-        --extra-experimental-features "nix-command flakes impure-derivations ca-derivations" \
-        --option filter-syscalls false \
-        build \
-        ".#$BIN";
-
-RUN mkdir -p /tmp/nix-store-closure /tmp/local-bin
-# hadolint ignore=SC2046
-RUN cp -R $(nix-store --query --requisites result/) /tmp/nix-store-closure
-# hadolint ignore=SC2046
-RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
-
-# Add wrapper/entrypoint for `$BIN` to exec `.$BIN`
-RUN set -eux; \
-    mv -v "/tmp/local-bin/$BIN" "/tmp/local-bin/.$BIN"; \
-    cp -pv /workdir/bin/$BIN/docker-entrypoint.sh "/tmp/local-bin/$BIN";
-
-###########################################################################
-# Builder Stage: cyclone
-###########################################################################
-# hadolint ignore=DL3007
-FROM nixos/nix:2.28.2 AS builder-cyclone
-ARG BIN=cyclone
-
-COPY . /workdir
-WORKDIR /workdir
-
-RUN set -eux; \
-    nix \
-        --extra-experimental-features "nix-command flakes impure-derivations ca-derivations" \
-        --option filter-syscalls false \
-        build \
-        ".#$BIN";
-
-RUN mkdir -p /tmp/nix-store-closure /tmp/local-bin
-# hadolint ignore=SC2046
-RUN cp -R $(nix-store --query --requisites result/) /tmp/nix-store-closure
-# hadolint ignore=SC2046
-RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
-
-###########################################################################
-# Builder Stage: lang-js
-###########################################################################
-# hadolint ignore=DL3007
-FROM nixos/nix:2.28.2 AS builder-lang-js
-ARG BIN=lang-js
-
-COPY . /workdir
-WORKDIR /workdir
-
-RUN set -eux; \
-    nix \
-        --extra-experimental-features "nix-command flakes impure-derivations ca-derivations" \
-        --option filter-syscalls false \
-        build \
-        ".#$BIN";
-
-RUN mkdir -p /tmp/nix-store-closure /tmp/local-bin
-# hadolint ignore=SC2046
-RUN cp -R $(nix-store --query --requisites result/) /tmp/nix-store-closure
-# hadolint ignore=SC2046
-RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
-
-###########################################################################
-# Final Stage
-###########################################################################
-FROM alpine:3 AS final
-ARG BIN=veritech
-
-# hadolint ignore=DL3018
-RUN set -eux; \
-    apk add --no-cache runuser; \
-    adduser -D app; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        runit \
+        passwd \
+        adduser \
+        ca-certificates; \
+    rm -rf /var/lib/apt/lists/*; \
+    adduser --disabled-password --gecos '' app; \
     for dir in /run /etc /usr/local/etc /home/app/.config; do \
         mkdir -pv "$dir/$BIN"; \
     done;
 
 WORKDIR /run/$BIN
-COPY --from=builder-veritech /tmp/nix-store-closure /nix/store
-COPY --from=builder-veritech /tmp/local-bin/* /usr/local/bin/
-COPY --from=builder-cyclone /tmp/nix-store-closure /nix/store
-COPY --from=builder-cyclone /tmp/local-bin/* /usr/local/bin/
-COPY --from=builder-lang-js /tmp/nix-store-closure /nix/store
-COPY --from=builder-lang-js /tmp/local-bin/* /usr/local/bin/
+COPY --from=builder /tmp/local-bin/* /usr/local/bin/
 
-ENTRYPOINT [ \
-  "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/veritech" \
-]
+USER app
+ENTRYPOINT "/usr/local/bin/$BIN"
