@@ -49,6 +49,7 @@ use si_data_nats::{
             },
         },
     },
+    header,
     jetstream,
 };
 use si_events::{
@@ -219,6 +220,11 @@ impl PendingEventsStream {
         let parameters = parameters.to_string();
 
         tokio::spawn(async move {
+            let maybe_nats_message_id = match headers.as_ref() {
+                Some(headers) => headers.get(header::NATS_MESSAGE_ID).cloned(),
+                None => None,
+            };
+
             if let Err(err) = self_clone
                 .publish_message_inner_fallible(
                     &subject,
@@ -229,7 +235,30 @@ impl PendingEventsStream {
                 )
                 .await
             {
-                error!(si.error.message = ?err, "publishing to pending_events stream failed");
+                let metadata = self_clone.context.metadata();
+                let nats_message_id = maybe_nats_message_id
+                    .map(|v| v.to_string())
+                    .unwrap_or_default();
+
+                error!(
+                    messaging.client_id = metadata.messaging_client_id(),
+                    messaging.destination.name = subject.as_str(),
+                    messaging.message.id = nats_message_id,
+                    messaging.nats.server.id = metadata.messaging_nats_server_id(),
+                    messaging.nats.server.name = metadata.messaging_nats_server_name(),
+                    messaging.nats.server.version = metadata.messaging_nats_server_version(),
+                    messaging.system = metadata.messaging_system(),
+                    messaging.url = metadata.messaging_url(),
+                    network.peer.address = metadata.network_peer_address(),
+                    network.protocol.name = metadata.network_protocol_name(),
+                    network.protocol.version = metadata.network_protocol_version(),
+                    network.transport = metadata.network_transport(),
+                    server.address = metadata.server_address(),
+                    server.port = metadata.server_port(),
+                    si.error.message = ?err,
+                    si.final_message = final_message,
+                    "publishing to pending_events stream failed",
+                );
             }
         });
 
