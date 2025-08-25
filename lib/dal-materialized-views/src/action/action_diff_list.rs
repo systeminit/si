@@ -34,7 +34,7 @@ pub async fn assemble(new_ctx: DalContext) -> crate::Result<ActionDiffListMv> {
     let only_old_actions: Vec<&ActionId> = old_action_ids.difference(&new_action_ids).collect();
     for old_action in only_old_actions {
         let Some(component_id) = Action::component_id(old_ctx, *old_action).await? else {
-            warn!(si.error.message="Found orphaned action while building Diff MV", si.action.id=%old_action.to_string());
+            debug!(si.error.message="Found orphaned action while building Diff MV", si.action.id=%old_action.to_string());
             continue;
         };
 
@@ -48,7 +48,7 @@ pub async fn assemble(new_ctx: DalContext) -> crate::Result<ActionDiffListMv> {
     let only_new_actions: Vec<&ActionId> = new_action_ids.difference(&old_action_ids).collect();
     for new_action in only_new_actions {
         let Some(component_id) = Action::component_id(new_ctx, *new_action).await? else {
-            warn!(si.error.message="Found orphaned action while building Diff MV", si.action.id=%new_action.to_string());
+            debug!(si.error.message="Found orphaned action while building Diff MV", si.action.id=%new_action.to_string());
             continue;
         };
         let state = Action::get_by_id(new_ctx, *new_action).await?.state();
@@ -65,7 +65,7 @@ pub async fn assemble(new_ctx: DalContext) -> crate::Result<ActionDiffListMv> {
         let old_state = Action::get_by_id(old_ctx, *action).await?.state();
         let new_state = Action::get_by_id(new_ctx, *action).await?.state();
         let Some(component_id) = Action::component_id(new_ctx, *action).await? else {
-            warn!(si.error.message="Found orphaned action while building Diff MV", si.action.id=%action.to_string());
+            debug!(si.error.message="Found orphaned action while building Diff MV", si.action.id=%action.to_string());
             continue;
         };
         let has_different_state = old_state != new_state;
