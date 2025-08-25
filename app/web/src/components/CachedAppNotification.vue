@@ -1,10 +1,10 @@
 <template>
-  <Modal ref="modalRef" title="Please refresh your browser">
+  <Modal ref="modalRef" title="Please refresh your browser" noExit>
     <Stack>
       <RichText>
         <p>
-          Looks like you might be running a cached version of this web app. For
-          new features and to ensure compatibility, please refresh your browser.
+          Looks like you are running an out of date version of this web app. To
+          continue working, please refresh your browser.
         </p>
       </RichText>
       <VButton icon="refresh" @click="reloadBrowser">Refresh</VButton>
@@ -19,6 +19,7 @@ import { Modal, RichText, Stack, VButton } from "@si/vue-lib/design-system";
 import {
   cachedAppEmitter,
   SHOW_CACHED_APP_NOTIFICATION_EVENT,
+  cachedAppNotificationIsOpen,
 } from "@/store/realtime/cached_app_emitter";
 
 // const APP_FILENAME_REGEX = /\/?assets\/index-([0-9a-z]+).js/;
@@ -26,10 +27,17 @@ const getFilenameFromPath = (path: string) => path.split("/").pop();
 
 const runningHash = getRunningHash();
 
-const modalRef = ref();
+const modalRef = ref<InstanceType<typeof Modal>>();
+
+const openModal = () => {
+  if (modalRef.value) {
+    cachedAppNotificationIsOpen.value = true;
+    modalRef.value.open();
+  }
+};
 
 cachedAppEmitter.on(SHOW_CACHED_APP_NOTIFICATION_EVENT, () => {
-  modalRef.value?.open();
+  openModal();
 });
 
 async function check() {
@@ -46,7 +54,7 @@ async function check() {
 
     const latestHash = getFilenameFromPath(latestAppFileWithHash);
     if (runningHash && latestHash !== runningHash) {
-      modalRef.value?.open();
+      openModal();
     }
   } catch (err) {
     // local dev errors here because the manifest file doesn't exist
