@@ -1,9 +1,14 @@
 import * as _ from "lodash-es";
 import { computed, ComputedRef, Ref, ref } from "vue";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { RouteLocationNormalizedLoadedGeneric, Router } from "vue-router";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
+import {
+  BifrostActionViewList,
+  EntityKind,
+} from "@/workers/types/entity_kind_types";
+import { useMakeKeyForHead } from "@/store/realtime/heimdall";
 import { ApprovalData, Context, UserId } from "../types";
 import { routes, useApi } from "../api_composables";
 import { reset } from "./navigation_stack";
@@ -64,12 +69,18 @@ export const useChangeSets = (
 
 export const useApplyChangeSet = (ctx: Context) => {
   const api = useApi(ctx);
+  const queryClient = useQueryClient();
+  const makeKeyForHead = useMakeKeyForHead();
 
   const applyInFlight = computed(() => api.inFlight.value);
 
   const performApply = async () => {
-    const call = api.endpoint(routes.ApplyChangeSet);
+    const call = api.endpoint<BifrostActionViewList>(routes.ApplyChangeSet);
     const { req } = await call.post({});
+    if (api.ok(req)) {
+      const actionsKey = makeKeyForHead(EntityKind.ActionViewList).value;
+      queryClient.setQueryData(actionsKey, req.data);
+    }
     return { success: api.ok(req) };
   };
 
