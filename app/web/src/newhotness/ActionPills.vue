@@ -9,6 +9,17 @@
     "
   >
     <TextPill
+      v-if="
+        showNoPendingActions &&
+        (!actionCounts || Object.keys(actionCounts).length === 0)
+      "
+      variant="key2"
+      size="sm"
+      class="text-xs flex items-center gap-1"
+    >
+      No pending actions
+    </TextPill>
+    <TextPill
       v-for="(actionData, actionName) in actionCounts"
       :key="actionName"
       v-tooltip="getTooltip(actionName, actionData.count, actionData.hasFailed)"
@@ -35,6 +46,7 @@ import clsx from "clsx";
 defineProps<{
   actionCounts?: Record<string, { count: number; hasFailed: boolean }>;
   mode: "grid" | "row";
+  showNoPendingActions?: boolean;
 }>();
 
 const getIcon = (actionName: string): IconNames => {

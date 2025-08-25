@@ -2,7 +2,7 @@
   <div
     :class="
       clsx(
-        'flex flex-row items-center gap-xs font-mono h-10 p-xs rounded-sm',
+        'flex flex-row items-center gap-xs font-mono h-10 p-xs rounded-sm text-xs',
         old
           ? themeClasses('text-neutral-600', 'text-neutral-400')
           : themeClasses('bg-success-200', 'bg-newhotness-success'),
