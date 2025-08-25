@@ -66,11 +66,19 @@
           "
           @click="toggleExpand(auditLog)"
         >
-          <div class="flex flex-col">
+          <div class="flex flex-col gap-2">
             <div
               class="flex flex-row gap-xs items-center justify-between text-sm"
             >
-              <TruncateWithTooltip class="py-2xs">
+              <TruncateWithTooltip
+                class="py-2xs"
+                :class="
+                  clsx(
+                    'py-2xs',
+                    themeClasses('text-neutral-800', 'text-neutral-100'),
+                  )
+                "
+              >
                 {{ auditLog.title }}
               </TruncateWithTooltip>
 
@@ -93,21 +101,34 @@
             </div>
             <div
               v-if="auditLog.beforeValue && auditLog.afterValue"
-              class="flex flex-row gap-sm"
+              class="flex flex-col gap-1 text-xs"
             >
-              <TruncateWithTooltip class="line-through text-neutral-500 py-2xs">
-                {{ auditLog.beforeValue }}
-              </TruncateWithTooltip>
-              <TruncateWithTooltip
-                :class="
-                  clsx(
-                    'py-2xs',
-                    themeClasses('text-neutral-600', 'text-neutral-300'),
-                  )
-                "
-              >
-                {{ auditLog.afterValue }}
-              </TruncateWithTooltip>
+              <div class="flex flex-row items-center gap-xs">
+                <span class="text-neutral-500 font-bold w-14">Now:</span>
+                <TruncateWithTooltip
+                  :class="
+                    clsx(
+                      'py-2xs',
+                      themeClasses('text-neutral-800', 'text-neutral-100'),
+                    )
+                  "
+                >
+                  {{ auditLog.afterValue }}
+                </TruncateWithTooltip>
+              </div>
+              <div class="flex flex-row items-center gap-2xs">
+                <span class="text-neutral-500 font-bold w-14">Previous:</span>
+                <TruncateWithTooltip
+                  :class="
+                    clsx(
+                      'py-2xs line-through',
+                      themeClasses('text-neutral-500', 'text-neutral-400'),
+                    )
+                  "
+                >
+                  {{ auditLog.beforeValue }}
+                </TruncateWithTooltip>
+              </div>
             </div>
           </div>
           <Transition
@@ -302,24 +323,24 @@ const auditLogs = computed((): ProcessedAuditLog[] => {
             inner: filteredAuditLog,
             title: `${filteredAuditLog.entityName} changed`,
             beforeValue:
-              (filteredAuditLog.metadata.beforeValue as string) ?? "null",
+              (filteredAuditLog.metadata.beforeValue as string) ?? "<empty>",
             afterValue:
-              (filteredAuditLog.metadata.afterValue as string) ?? "null",
+              (filteredAuditLog.metadata.afterValue as string) ?? "<empty>",
           };
         } else {
           const beforeValue = filteredAuditLog.metadata.beforeValue as Record<
             string,
             unknown
-          >;
+          > | null;
           const afterValue = filteredAuditLog.metadata.afterValue as Record<
             string,
             unknown
-          >;
+          > | null;
           return {
             inner: filteredAuditLog,
             title: `${filteredAuditLog.entityName} changed`,
-            beforeValue: (beforeValue.Value as string) ?? "null",
-            afterValue: (afterValue.Value as string) ?? "null",
+            beforeValue: (beforeValue?.Value as string) ?? "<empty>",
+            afterValue: (afterValue?.Value as string) ?? "<empty>",
           };
         }
       }
