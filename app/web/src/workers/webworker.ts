@@ -1205,7 +1205,11 @@ const applyWorkspacePatch = async (
   indexChecksum: Checksum,
 ) => {
   return await tracer.startActiveSpan("applyWorkspacePatch", async (span) => {
-    span.setAttribute("atom", JSON.stringify(atom));
+    span.setAttributes({
+      workspaceId: atom.workspaceId,
+      changeSetId: atom.changeSetId,
+      atom: JSON.stringify(atom),
+    });
     debug(
       "🔧 Applying patch:",
       atom.kind,
@@ -1974,6 +1978,7 @@ const niflheim = async (
   changeSetId: ChangeSetId,
 ): Promise<boolean> => {
   return await tracer.startActiveSpan("niflheim", async (span: Span) => {
+    span.setAttributes({ workspaceId, changeSetId });
     const sdf = getSdfClientForWorkspace(workspaceId, span);
     if (!sdf) {
       span.end();
@@ -3608,6 +3613,12 @@ const dbInterface: TabDBInterface = {
                 messageKind: data.kind,
                 ...data.meta,
               });
+              if ("workspaceId" in data.meta) {
+                span.setAttributes({
+                  workspaceId: data.meta.workspaceId,
+                  changeSetId: data.meta.changeSetId,
+                });
+              }
             }
 
             if (data.kind === MessageKind.WORKSPACE_PATCH) {
