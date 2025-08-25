@@ -666,6 +666,8 @@ function toAttributeDiffTree(componentDiff?: ComponentDiff): AttributeDiffTree {
   if (!attributeDiffs) return tree;
 
   for (const [attributePath, attributeDiff] of Object.entries(attributeDiffs)) {
+    const attributePathSegments = attributePath.slice(1).split("/");
+
     // Do any fixups we want to the diff!
     // TODO fix this in the backend MV instead, and don't do this
     const diff = {
@@ -673,12 +675,12 @@ function toAttributeDiffTree(componentDiff?: ComponentDiff): AttributeDiffTree {
       old: fixAttributeSourceAndValue(attributeDiff.old),
     } as AttributeDiff;
 
-    if (!shouldIncludeDiff(diff)) continue;
+    if (!shouldIncludeDiff(attributePathSegments, diff)) continue;
 
     // Recursively create (or get) the element in the tree we want; then set the diff on it
     let child = tree;
     if (attributePath.length > 1) {
-      for (const segment of attributePath.slice(1).split("/")) {
+      for (const segment of attributePathSegments) {
         const path = `${child.path}/${segment}` as AttributePath;
         child.children ??= {};
         child.children[segment] ??= { path };
@@ -693,16 +695,29 @@ function toAttributeDiffTree(componentDiff?: ComponentDiff): AttributeDiffTree {
   return tree;
 }
 
-function shouldIncludeDiff(diff: AttributeDiff) {
+function shouldIncludeDiff(
+  attributePathSegments: string[],
+  diff: AttributeDiff,
+) {
   // If the values and sources are equal (which could happen in some cases on component
   // upgrade), don't show this diff.
   if (_.isEqual(diff.new, diff.old)) return false;
 
   if (!diff.old || !diff.new) {
     const { $source, $value } = diff.old ?? diff.new;
-    // Don't show "uninteresting" (empty) default values.
+    // Don't show "uninteresting" default values (static values, or empty values from functions).
     if ($source.fromSchema) {
-      if (!$value || _.isEmpty($value)) return false;
+      if (_.isObject($value) && _.isEmpty($value)) return false;
+      if (_.isArray($value) && _.isEmpty($value)) return false;
+      if ($value === "" || $value === 0) return false;
+      if ($value === undefined || $value === null) return false;
+    }
+    // Don't show new objects if they are fields of an object (otherwise we see a bunch of {}).
+    // NOTE: If it's under a top-level path then we *know* it's a field of an object and can safely
+    // not show it! We can't do the same for deeply nested fields until the MV tells us whether
+    // the parent prop is an object or not (we can *only* avoid showing object fields).
+    if (attributePathSegments.length <= 2) {
+      if ("value" in $source && _.isObject($source.value)) return false;
     }
   }
 
@@ -731,6 +746,15 @@ function fixAttributeSourceAndValue(sourceAndValue?: AttributeSourceAndValue) {
         componentName,
       },
     } as AttributeSourceAndValue;
+  }
+  // Make $value match $source (the only time it doesn't is object field defaults, which we don't want to show!)
+  if ("value" in $source) {
+    if (_.isObject($source.value)) {
+      return {
+        $source,
+        $value: $source.value,
+      };
+    }
   }
   return sourceAndValue;
 }
