@@ -11,7 +11,7 @@ import {
 } from "./commonBehavior.ts";
 import { ChangeSet } from "../data/changeSets.ts";
 
-const description = `<description>Generates a URL for a component details page or a review screen for a change set.</description><usage>Use this tool to generate a url to a component details page or a change set review screen in the System Initiative web application. You should never try and create a component to match the users request. You should never offer to link the user to another component and you should never try and find a matching component in a different change set once a change set has been specified.</usage>`;
+const description = `<description>Generates a URL for a component details page, the change set review screen, the change set map view or the default link for the workspace.</description><usage>Use this tool to generate a url to a component details page, change set review screen, the change set map view or the default change set page in the System Initiative web application. You should never try and create a component to match the users request. You should never offer to link the user to another component and you should never try and find a matching component in a different change set once a change set has been specified.</usage>`;
 
 const GenerateSiUrlInputSchemaRaw = {
   changeSetId: z
@@ -26,6 +26,16 @@ const GenerateSiUrlInputSchemaRaw = {
     .optional()
     .default(false)
     .describe("whether to generate a link to the review screen"),
+  getMapView: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("whether to link to the map view or not"),
+  getWorkspaceDefaultLink: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("whether to give the default link for the workspace"),
 };
 
 const GenerateSiUrlOutputSchemaRaw = {
@@ -66,6 +76,8 @@ export function generateSiUrlTool(server: McpServer) {
       changeSetId,
       componentId,
       showReview,
+      getMapView,
+      getWorkspaceDefaultLink,
     }): Promise<CallToolResult> => {
       if (!changeSetId) {
         const changeSetsApi = new ChangeSetsApi(apiConfig);
@@ -90,17 +102,22 @@ export function generateSiUrlTool(server: McpServer) {
         }
       }
 
-      if (!componentId && !showReview) {
+      if (
+        !componentId &&
+        !showReview &&
+        !getWorkspaceDefaultLink &&
+        !getMapView
+      ) {
         return errorResponse({
           message:
-            "Invalid request, either `showReview` or `componentId` must be specified",
+            "Invalid request, either `showReview`, `componentId`, `getMapView` or `getWorkspaceDefaultLink` must be specified",
         });
       }
 
-      if (componentId && showReview) {
+      if (componentId && showReview && getWorkspaceDefaultLink && getMapView) {
         return errorResponse({
           message:
-            "Invalid request, one of `showReview` or `componentId` must be specified, not both",
+            "Invalid request, one of `showReview`, `componentId`, `getWorkspaceDefaultLink` or `getMapView` must be specified, not both",
         });
       }
 
@@ -124,8 +141,16 @@ export function generateSiUrlTool(server: McpServer) {
         }
       }
 
+      if (generateGridViewLink) {
+        result.url = generateGridViewLink(changeSetId);
+      }
+
       if (showReview) {
         result.url = generateReviewLink(changeSetId);
+      }
+
+      if (getMapView) {
+        result.url = generateMapViewLink(changeSetId);
       }
 
       return successResponse(result);
@@ -139,6 +164,16 @@ function generateComponentLink(
 ): string {
   const config = createLinkConfig();
   return `${config.baseUrl}/n/${config.workspaceId}/${changeSetId}/h/${componentId}/c`;
+}
+
+function generateMapViewLink(changeSetId: string): string {
+  const config = createLinkConfig();
+  return `${config.baseUrl}/n/${config.workspaceId}/${changeSetId}/h?map=1`;
+}
+
+function generateGridViewLink(changeSetId: string): string {
+  const config = createLinkConfig();
+  return `${config.baseUrl}/n/${config.workspaceId}/${changeSetId}/h`;
 }
 
 function generateReviewLink(changeSetId: string): string {
