@@ -6,7 +6,7 @@
   <div
     :class="
       clsx(
-        'flex flex-col gap-xs p-sm border',
+        'flex flex-col gap-2xs px-sm py-xs border',
         themeClasses(
           'border-neutral-400 bg-white',
           'border-neutral-600 bg-neutral-800',

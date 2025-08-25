@@ -50,7 +50,7 @@
       v-else
       :class="
         clsx('py-2xs min-w-0', {
-          'line-through': !!($secret || $value),
+          'line-through': !!old && !!($secret || $value),
           italic: !($secret || $value),
         })
       "
