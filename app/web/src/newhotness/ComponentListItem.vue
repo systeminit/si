@@ -16,11 +16,20 @@
     <TextPill
       tighter
       variant="component"
-      :class="themeClasses('text-green-light-mode', 'text-green-dark-mode')"
+      :class="
+        clsx(
+          themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+          'max-w-fit flex-1',
+        )
+      "
     >
       <TruncateWithTooltip>{{ component.schemaName }}</TruncateWithTooltip>
     </TextPill>
-    <TextPill tighter variant="component" class="text-purple">
+    <TextPill
+      tighter
+      variant="component"
+      :class="clsx('text-purple max-w-fit flex-1')"
+    >
       <TruncateWithTooltip>{{ component.name }}</TruncateWithTooltip>
     </TextPill>
     <StatusIndicatorIcon

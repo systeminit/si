@@ -3,8 +3,11 @@
     <div
       :class="
         clsx(
-          'header flex-none flex flex-row items-center gap-xs px-sm py-xs',
-          themeClasses('bg-white', 'bg-neutral-800'),
+          'header flex-none flex flex-row items-center gap-xs px-sm py-xs border-b',
+          themeClasses(
+            'bg-white border-neutral-300',
+            'bg-neutral-800 border-neutral-600',
+          ),
         )
       "
     >
@@ -168,20 +171,26 @@
           headerTextSize="sm"
         >
           <template #header>
-            <div
+            <TruncateWithTooltip
               :class="
-                clsx(themeClasses('text-neutral-800', 'text-neutral-100'))
+                clsx(
+                  'py-2xs max-w-fit flex-1',
+                  themeClasses('text-neutral-800', 'text-neutral-100'),
+                )
               "
             >
               {{ selectedComponent.schemaName }}
-            </div>
-            <div
+            </TruncateWithTooltip>
+            <TruncateWithTooltip
               :class="
-                clsx(themeClasses('text-neutral-600', 'text-neutral-400'))
+                clsx(
+                  'py-2xs max-w-fit flex-1',
+                  themeClasses('text-neutral-600', 'text-neutral-400'),
+                )
               "
             >
               ({{ selectedComponent.name }})
-            </div>
+            </TruncateWithTooltip>
           </template>
 
           <div class="flex flex-col gap-sm px-sm py-sm">
@@ -349,6 +358,7 @@ import {
   themeClasses,
   VButton,
   IconButton,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import * as _ from "lodash-es";
