@@ -416,6 +416,8 @@ import {
   useMakeKey,
 } from "@/store/realtime/heimdall";
 import {
+  ActionDiffList,
+  ActionDiffView,
   AttributeDiff,
   AttributeSourceAndValue,
   ComponentDiff,
@@ -497,6 +499,14 @@ const erasedComponents = useQuery({
     await bifrost<ErasedComponents>(args(EntityKind.ErasedComponents)),
 });
 
+/** Query to get actions that have changed relative to HEAD. */
+const actionDiffListQuery = useQuery({
+  queryKey: key(EntityKind.ActionDiffList),
+  enabled: ctx.queriesEnabled,
+  queryFn: async () =>
+    await bifrost<ActionDiffList>(args(EntityKind.ActionDiffList)),
+});
+
 /**
  * The complete component list without diff information added yet
  * We need this computed so that we can get info about the components
@@ -523,7 +533,17 @@ const rawComponentList = computed(() => {
  * so we don't have to "fix" it here
  */
 const componentList = computed(() => {
-  // Add diffs to each component in the change set, and include "removed"
+  const componentActionDiffs: { [id in ComponentId]?: ActionDiffView[] } = {};
+  for (const actionDiff of Object.values(
+    actionDiffListQuery.data.value?.actionDiffs ?? [],
+  )) {
+    if (actionDiff.diffStatus !== "None") {
+      componentActionDiffs[actionDiff.componentId] ??= [];
+      componentActionDiffs[actionDiff.componentId]?.push(actionDiff);
+    }
+  }
+
+  // Add component and action diffs to each component in the change set, and include "removed"
   const componentDiffs: { [id in ComponentId]?: ComponentDiff } =
     Object.fromEntries(
       componentDiffQueries.value.map(
@@ -533,6 +553,7 @@ const componentList = computed(() => {
   const mapped = rawComponentList.value
     .map((component) => {
       const componentDiff = componentDiffs[component.id];
+      const actionDiffs = componentActionDiffs[component.id];
       const attributeDiffTree = toAttributeDiffTree(componentDiff);
 
       // Figure out diffStatus
@@ -547,33 +568,43 @@ const componentList = computed(() => {
       ) {
         diffStatus = "None";
       }
+
+      // If we don't have a ComponentDiff diffStatus, fall back to the ComponentInList's diffStatus
+      diffStatus ??= component.diffStatus;
+
+      // If there are diffs, we are Modified
+      if (diffStatus === "None" && actionDiffs && actionDiffs?.length > 0) {
+        diffStatus = "Modified";
+      }
+
       // If it's toDelete, put it in the Removed category
       if (component.toDelete) {
         diffStatus = "Removed";
       }
-      // If we don't have a ComponentDiff diffStatus, fall back to the ComponentInList's diffStatus
-      diffStatus ??= component.diffStatus;
 
       return {
         ...component,
         diffStatus,
         componentDiff,
         attributeDiffTree,
+        actionDiffs,
       };
     })
     .filter((component) => component.diffStatus !== "None");
-  if (erasedComponents.data.value?.erased) {
-    for (const { diff, component } of Object.values(
-      erasedComponents.data.value?.erased,
-    )) {
-      const attributeDiffTree = toAttributeDiffTree(diff);
-      mapped.push({
-        ...component,
-        diffStatus: "Removed",
-        componentDiff: diff,
-        attributeDiffTree,
-      });
-    }
+
+  // Add erased components
+  for (const { diff, component } of Object.values(
+    erasedComponents.data.value?.erased ?? {},
+  )) {
+    const actionDiffs = componentActionDiffs[component.id];
+    const attributeDiffTree = toAttributeDiffTree(diff);
+    mapped.push({
+      ...component,
+      diffStatus: "Removed",
+      componentDiff: diff,
+      attributeDiffTree,
+      actionDiffs,
+    });
   }
   return mapped;
 });

@@ -1,7 +1,12 @@
 import { ActionProposedView } from "@/store/actions.store";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
-import { ActionKind, ActionPrototypeId } from "@/api/sdf/dal/action";
+import {
+  ActionId,
+  ActionKind,
+  ActionPrototypeId,
+  ActionState,
+} from "@/api/sdf/dal/action";
 import { FuncId } from "@/api/sdf/dal/func";
 import { AttributeValueId } from "@/store/status.store";
 import { PropId, PropKind } from "@/api/sdf/dal/prop";
@@ -13,6 +18,7 @@ import { ViewId } from "@/api/sdf/dal/views";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentName } from "@/store/components.store";
+import { WorkspacePk } from "@/newhotness/types";
 import { ComponentInfo } from "./dbinterface";
 
 export enum EntityKind {
@@ -152,6 +158,27 @@ export interface BifrostActionViewList {
   id: ChangeSetId;
   actions: ActionProposedView[];
 }
+
+export interface ActionDiffList {
+  id: WorkspacePk;
+  actionDiffs: Record<ActionId, ActionDiffView>;
+}
+
+export interface ActionDiffView {
+  id: ActionId;
+  componentId: ComponentId;
+  diffStatus: ActionDiffStatus;
+}
+
+export type ActionDiffStatus =
+  | {
+      Added: { new_state: ActionState };
+    }
+  | {
+      Modified: { old_state: ActionState; new_state: ActionState };
+    }
+  | "None"
+  | "Removed";
 
 export interface ComponentQualificationTotals {
   total: number;
