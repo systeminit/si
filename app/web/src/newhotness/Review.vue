@@ -251,6 +251,7 @@
               :item="
                 selectedComponent.attributeDiffTree.children.si.children.name
               "
+              :disableRevert="disableRevert"
             />
             <!-- Show children of /si/domain -->
             <template
@@ -265,6 +266,7 @@
                 :selectedComponentId="selectedComponentId"
                 :name="name"
                 :item="item"
+                :disableRevert="disableRevert"
               />
             </template>
             <!-- Show children of /si/secrets -->
@@ -280,7 +282,7 @@
                 :selectedComponentId="selectedComponentId"
                 :name="name"
                 :item="item"
-                secret
+                :disableRevert="disableRevert"
               />
             </template>
 
@@ -692,6 +694,12 @@ function shouldIncludeDiff(diff: AttributeDiff) {
   return true;
 }
 
+/**
+ * Augment AttributeSourceAndValue with component name.
+ *
+ * This is where we put any fixups we need while working in the frontend; any changes here need
+ * to move to the backend MV.
+ */
 function fixAttributeSourceAndValue(sourceAndValue?: AttributeSourceAndValue) {
   if (!sourceAndValue) return undefined;
   const { $source } = sourceAndValue;
@@ -729,6 +737,10 @@ function fixAttributeSourceAndValue(sourceAndValue?: AttributeSourceAndValue) {
 /** The currently-selected component data, including diffs */
 const selectedComponent = computed(() =>
   componentList.value.find((c) => c.id === selectedComponentId.value),
+);
+
+const disableRevert = computed(
+  () => selectedComponent.value?.diffStatus === "Removed",
 );
 
 // When absolutely anything in the selected component changes, or the selection itself changes,
