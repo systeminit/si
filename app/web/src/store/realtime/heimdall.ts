@@ -43,6 +43,7 @@ import { WorkspaceMetadata, WorkspacePk } from "@/api/sdf/dal/workspace";
 import {
   cachedAppEmitter,
   SHOW_CACHED_APP_NOTIFICATION_EVENT,
+  cachedAppNotificationIsOpen,
 } from "./cached_app_emitter";
 
 // We want an id right away, not later. But ulid fails if run in this context
@@ -91,6 +92,14 @@ const tabWorker = new Worker(new URL(WORKER_URL, import.meta.url), {
   name: `si-db-${__WEBWORKER_HASH__}`,
 });
 const tabDb: Comlink.Remote<TabDBInterface> = Comlink.wrap(tabWorker);
+
+watch(cachedAppNotificationIsOpen, (isOpen) => {
+  if (isOpen) {
+    // eslint-disable-next-line no-console
+    console.log("Shutting down tab webworker since user must refresh the page");
+    tabWorker.terminate();
+  }
+});
 
 const onSharedWorkerBootBroadcastChannel = new BroadcastChannel(
   SHARED_BROADCAST_CHANNEL_NAME,
