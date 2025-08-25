@@ -64,6 +64,7 @@
     "0": "#FFFFFF"
   },
   "newhotness": {
-    "destructive": "#332222"
+    "destructive": "#332222",
+    "success": "#354139"
   }
 }

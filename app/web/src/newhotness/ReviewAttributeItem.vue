@@ -6,7 +6,7 @@
   <div
     :class="
       clsx(
-        'flex flex-col gap-xs p-xs border',
+        'flex flex-col gap-xs p-sm border',
         themeClasses(
           'border-neutral-400 bg-white',
           'border-neutral-600 bg-neutral-800',
@@ -16,7 +16,7 @@
   >
     <!-- Title and revert button-->
     <div class="flex flex-row items-center">
-      <h1 class="h-10 py-xs mr-auto">{{ name }}</h1>
+      <h1 class="h-10 py-xs mr-auto text-sm">{{ name }}</h1>
       <VButton
         v-if="!!revertToSource"
         size="xs"

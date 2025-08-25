@@ -10,7 +10,7 @@
     v-else-if="actionPrototypeViews.length === 0"
     text="No actions available"
     icon="tools"
-    class="p-sm"
+    class="p-lg"
   />
   <div v-else class="flex flex-col">
     <div

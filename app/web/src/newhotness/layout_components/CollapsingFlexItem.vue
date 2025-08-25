@@ -11,6 +11,7 @@
           'border-neutral-600 bg-neutral-800',
         ),
         showOpen ? 'grow' : 'shrink',
+        maxHeightContent && 'max-h-fit',
       )
     "
     :style="`min-height: ${headerHeight}px`"
@@ -101,6 +102,7 @@ const props = withDefaults(
     expandable?: boolean;
     headerTextSize?: SpacingSizes;
     disableCollapse?: boolean;
+    maxHeightContent?: boolean;
   }>(),
   {
     h3class: tw`flex flex-row items-center gap-xs p-2xs z-30`,
