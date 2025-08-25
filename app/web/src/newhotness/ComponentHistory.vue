@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="auditLogs.length > 0"
+    v-if="auditLogs && auditLogs.length > 0"
     ref="scrollContainerRef"
     class="px-xs py-sm overflow-x-hidden max-h-full"
     @scrollend="handleScrollEnd"
@@ -164,12 +164,13 @@
       <span v-else-if="!hasNextPage"> All Entries Loaded </span>
     </div>
   </div>
+  <LoadingMessage v-else-if="!auditLogs" message="Loading History" />
   <EmptyState
     v-else
     class="p-lg"
     icon="component"
-    text="No Direct Changes"
-    secondaryText="There were no direct changes made to the component."
+    text="No History Found"
+    secondaryText="No history found for this component in this change set"
   />
 </template>
 
@@ -181,6 +182,7 @@ import {
   Timestamp,
   Icon,
   themeClasses,
+  LoadingMessage,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -275,8 +277,8 @@ const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
   });
 
 // Flatten all pages and filter out socket-related audit logs
-const auditLogs = computed((): ProcessedAuditLog[] => {
-  if (!data.value) return [];
+const auditLogs = computed((): ProcessedAuditLog[] | undefined => {
+  if (!data.value) return undefined;
 
   // There should only be one page!
   const allLogs = data.value.pages.flatMap(

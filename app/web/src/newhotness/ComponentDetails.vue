@@ -131,8 +131,11 @@
         data-testid="component-name-section"
         :class="
           clsx(
-            'name flex flex-row items-center gap-xs',
-            themeClasses('bg-white', 'bg-neutral-800'),
+            'name flex flex-row items-center gap-xs border-b',
+            themeClasses(
+              'bg-white border-neutral-300',
+              'bg-neutral-800 border-neutral-600',
+            ),
           )
         "
       >
@@ -1042,14 +1045,6 @@ section.grid.no-component {
   margin-top: -1em;
   padding: 0 0.5rem 0 0.5rem;
   height: 2.75rem;
-}
-.name {
-  border-top: 1px solid #d4d4d8; /* neutral-300 */
-  border-bottom: 1px solid #d4d4d8; /* neutral-300 */
-}
-:global(.dark) .name {
-  border-top: 1px solid #525252; /* neutral-600 */
-  border-bottom: 1px solid #525252; /* neutral-600 */
 }
 .attrs {
   grid-area: attrs;

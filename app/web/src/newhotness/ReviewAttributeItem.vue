@@ -16,7 +16,9 @@
   >
     <!-- Title and revert button-->
     <div class="flex flex-row items-center">
-      <h1 class="h-10 py-xs mr-auto text-sm">{{ name }}</h1>
+      <h1 class="h-10 py-xs mr-auto text-sm">
+        {{ name }}
+      </h1>
       <VButton
         v-if="!!revertToSource"
         size="xs"

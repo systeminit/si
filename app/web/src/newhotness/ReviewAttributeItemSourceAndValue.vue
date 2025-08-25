@@ -2,7 +2,7 @@
   <div
     :class="
       clsx(
-        'flex flex-row items-center gap-xs font-mono h-10 p-xs rounded-sm text-xs',
+        'flex flex-row items-center gap-xs font-mono min-h-10 p-xs rounded-sm text-xs',
         old
           ? themeClasses('text-neutral-600', 'text-neutral-400')
           : themeClasses('bg-success-200', 'bg-newhotness-success'),
@@ -29,13 +29,11 @@
           )
         "
       >
-        <TruncateWithTooltip :class="clsx(!old && 'text-purple')">
+        <div :class="clsx(!old && 'text-purple')">
           {{ $source.componentName }}
-        </TruncateWithTooltip>
+        </div>
         <div class="flex-none">/</div>
-        <TruncateWithTooltip
-          :class="themeClasses('text-neutral-600', 'text-neutral-400')"
-        >
+        <div :class="themeClasses('text-neutral-600', 'text-neutral-400')">
           <template v-if="$secret">
             {{ $secret.name }}
           </template>
@@ -43,13 +41,13 @@
             {{ $value }}
           </template>
           <template v-else> &lt;{{ $source.path }}&gt; </template>
-        </TruncateWithTooltip>
+        </div>
       </div>
     </AttributeValueBox>
-    <TruncateWithTooltip
+    <div
       v-else
       :class="
-        clsx('py-2xs min-w-0', {
+        clsx('py-2xs min-w-0 break-words', {
           'line-through': !!old && !!($secret || $value),
           italic: !($secret || $value),
         })
@@ -62,12 +60,12 @@
       <template v-else>
         {{ $value ?? "No value on HEAD" }}
       </template>
-    </TruncateWithTooltip>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
+import { themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed } from "vue";
 import { AttributeSourceAndValue } from "@/workers/types/entity_kind_types";
@@ -82,8 +80,4 @@ const props = defineProps<{
 const $source = computed(() => props.sourceAndValue.$source);
 const $value = computed(() => props.sourceAndValue.$value);
 const $secret = computed(() => props.sourceAndValue.$secret);
-
-const emit = defineEmits<{
-  (e: "revert"): void;
-}>();
 </script>
