@@ -218,6 +218,7 @@ impl PendingEventsStream {
         let message = serde_json::to_vec(message)?;
         let subject = subject.to_string();
         let parameters = parameters.to_string();
+        let publishing_subject = self.prefixed_subject(&subject, &parameters);
 
         tokio::spawn(async move {
             let maybe_nats_message_id = match headers.as_ref() {
@@ -242,7 +243,7 @@ impl PendingEventsStream {
 
                 error!(
                     messaging.client_id = metadata.messaging_client_id(),
-                    messaging.destination.name = subject.as_str(),
+                    messaging.destination.name = publishing_subject.as_str(),
                     messaging.message.id = nats_message_id,
                     messaging.nats.server.id = metadata.messaging_nats_server_id(),
                     messaging.nats.server.name = metadata.messaging_nats_server_name(),
