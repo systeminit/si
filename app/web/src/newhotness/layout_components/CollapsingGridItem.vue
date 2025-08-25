@@ -16,7 +16,7 @@
       <Icon
         class="group-hover/header:scale-125 mr-xs"
         :name="openState.open.value ? 'chevron-down' : 'chevron-right'"
-        size="md"
+        size="sm"
       />
       <slot name="header" />
       <div class="ml-auto" />

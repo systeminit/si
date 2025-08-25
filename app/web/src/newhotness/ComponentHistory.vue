@@ -45,12 +45,7 @@
         v-for="auditLog in auditLogs"
         ref="logRefs"
         :key="identifier(auditLog)"
-        v-tooltip="
-          shouldExpand(auditLog)
-            ? 'Click to hide full audit log'
-            : 'Click to see full audit log'
-        "
-        class="grid grid-cols-[10px_1fr] gap-2xs items-stretch cursor-pointer"
+        class="grid grid-cols-[10px_1fr] gap-2xs items-stretch"
       >
         <div
           class="relative flex flex-row justify-center items-start h-full pt-sm self-stretch"
@@ -60,7 +55,8 @@
         <div
           :class="
             clsx(
-              'p-xs border rounded-sm min-h-[2.5rem] min-w-0 break-words',
+              'group/historylog',
+              'p-xs border rounded-sm min-h-[2.5rem] min-w-0 break-words cursor-pointer',
               themeClasses('border-neutral-400', 'border-neutral-600'),
             )
           "
@@ -92,7 +88,13 @@
                   refresh
                 />
                 <Icon
-                  class="text-neutral-400"
+                  v-tooltip="{
+                    content: shouldExpand(auditLog)
+                      ? 'Click to hide full audit log'
+                      : 'Click to see full audit log',
+                    placement: 'left',
+                  }"
+                  :class="clsx('group-hover/historylog:scale-125')"
                   :name="
                     shouldExpand(auditLog) ? 'chevron--down' : 'chevron--left'
                   "
