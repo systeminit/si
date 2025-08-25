@@ -34,6 +34,10 @@ use si_db::{
 use si_events::{
     ContentHash,
     Timestamp,
+    audit_log::{
+        AuditLogKind,
+        PropValueSource,
+    },
     ulid::Ulid,
 };
 use si_frontend_types::{
@@ -1758,7 +1762,24 @@ impl Component {
 
         let av_for_name = Self::attribute_value_for_prop_id(ctx, self.id(), name_prop_id).await?;
 
+        let before_value = AttributeValue::get_by_id(ctx, av_for_name)
+            .await?
+            .value(ctx)
+            .await?;
+
         AttributeValue::update(ctx, av_for_name, Some(serde_json::to_value(name)?)).await?;
+
+        ctx.write_audit_log(
+            AuditLogKind::SetAttribute {
+                component_id: self.id,
+                attribute_value_id: av_for_name,
+                path: "/si/name/".to_string(),
+                before_value: Some(PropValueSource::Value(serde_json::to_value(before_value)?)),
+                after_value: Some(PropValueSource::Value(serde_json::to_value(name)?)),
+            },
+            "/si/name/".to_string(),
+        )
+        .await?;
 
         Ok(())
     }
