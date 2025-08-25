@@ -15,17 +15,17 @@ done
 
 usage() {
     echo
-    echo "zed-cli"
-    echo "----------------------------------"
+    title "zed-cli"
+    section "----------------------------------"
     echo "This script uses AWS creds to retrieve a preshared key"
     echo "for a SpiceDB cluster and open a zed session to it."
-    echo "----------------------------------"
-    echo "Usage: spicedb [-p profile] [-r region] [-s spicedb]"
-    echo "  -p profile    AWS profile to use"
-    echo "  -r region     AWS region to use"
-    echo "  -s spicedb    SpiceDB cluster (tools, production, perf)"
+    section "----------------------------------"
+    usage_text "Usage:" "zed-cli [-p profile] [-r region] [-s spicedb]"
+    echo "  $(option "-p profile")    AWS profile to use"
+    echo "  $(option "-r region")     AWS region to use"
+    echo "  $(option "-s spicedb")    SpiceDB cluster (tools, production, perf)"
     echo
-    exit 1
+    exit 0
 }
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then

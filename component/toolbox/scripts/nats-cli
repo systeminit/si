@@ -15,18 +15,18 @@ done
 
 usage() {
     echo
-    echo "nats"
-    echo "----------------------------------"
-    echo "This script will use aws creds to "
+    title "nats-cli"
+    section "----------------------------------"
+    echo "This script will use aws creds to"
     echo "get creds for a specific nats cluster"
     echo "and open a nats-cli session for it."
-    echo "----------------------------------"
-    echo "Usage: nats [-p profile] [-r region] [-n nats]"
-    echo "  -p profile    AWS profile to use"
-    echo "  -r region     AWS region to use"
-    echo "  -n nats       NATs cluster to connect to"
+    section "----------------------------------"
+    usage_text "Usage:" "nats-cli [-p profile] [-r region] [-n nats]"
+    echo "  $(option "-p profile")    AWS profile to use"
+    echo "  $(option "-r region")     AWS region to use"
+    echo "  $(option "-n nats")       NATs cluster to connect to"
     echo
-    exit 1
+    exit 0
 }
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then

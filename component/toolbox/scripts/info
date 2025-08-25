@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Find & Import all the supporting functions from the supporting folder
+# Get the directory of the current script to figure out where the
+# Supporting funcs are
+IMPORT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+
+for script in ${IMPORT_DIR}/supporting-funcs/*.sh; do
+    if [[ -f "$script" ]]; then
+        source "$script"
+    fi
+done
+
+
 usage() {
     echo "----------------------------------"
     echo "The toolbox provides a bunch of helper"
@@ -12,10 +24,14 @@ usage() {
 list_usages() {
   for script in /usr/local/bin/si/*; do
     if [[ -f "$script" && $(basename "$script") != "info" ]]; then
-      source "$script"
-      usage
+      (
+        source "$script" 2>/dev/null
+        usage 2>/dev/null || true
+      )
+      section ""
+      section "**************************************************************************************************************"
     fi
   done
 }
 
-usage
+list_usages

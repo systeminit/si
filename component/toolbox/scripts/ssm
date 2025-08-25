@@ -21,18 +21,18 @@ done
 
 usage() {
     echo
-    echo "ssm"
-    echo "----------------------------------"
+    title "ssm"
+    section "----------------------------------"
     echo "This script will open an SSH session to"
     echo "an EC2 instance you select. It finds all"
     echo "EC2 instances in a given region of the"
     echo "AWS account of the supplied profile."
-    echo "----------------------------------"
-    echo "Usage: ssm [-p profile] [-r region]"
-    echo "  -p profile    AWS profile to use"
-    echo "  -r region     AWS region to use"
+    section "----------------------------------"
+    usage_text "Usage:" "ssm [-p profile] [-r region]"
+    echo "  $(option "-p profile")    AWS profile to use"
+    echo "  $(option "-r region")     AWS region to use"
     echo
-    exit 1
+    exit 0
 }
 
 # Add a check to see if the script is being sourced or executed

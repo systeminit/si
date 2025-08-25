@@ -20,20 +20,20 @@ done
 # Usage for this script
 usage() {
 	echo
-	echo "check-invalidation"
-	echo "----------------------------------"
+	title "check-invalidation"
+	section "----------------------------------"
 	echo "This script will check for an active invalidation against a cloudfront"
 	echo "distribution and wait for n seconds for it to finish"
-	echo "----------------------------------"
-	echo "Usage: migrate [-p profile] [-r region] [-a automatic]"
-	echo "  -p profile        [pull-from-env/<profile-name>] AWS profile to use"
-	echo "  -r region         AWS region to use"
-	echo "  -a automatic      [Y/N] Run through automatically/no-interact"
-	echo "  -t time           Time to wait for active invalidations to pass"
-	echo "  -d distribution   ID of the distribution to check/use"
-	echo "----------------------------------"
-	echo "e.g. ./awsi.sh migrate -p pull-from-env -r us-east-1 -a y"
-	exit 1
+	section "----------------------------------"
+	usage_text "Usage:" "check-invalidation [-p profile] [-r region] [-a automatic] [-t time] [-d distribution]"
+	echo "  $(option "-p profile")        [pull-from-env/<profile-name>] AWS profile to use"
+	echo "  $(option "-r region")         AWS region to use"
+	echo "  $(option "-a automatic")      [Y/N] Run through automatically/no-interact"
+	echo "  $(option "-t time")           Time to wait for active invalidations to pass"
+	echo "  $(option "-d distribution")   ID of the distribution to check/use"
+	section "----------------------------------"
+	example "e.g. ./awsi.sh check-invalidation -p pull-from-env -r us-east-1 -a y"
+	exit 0
 }
 
 # Add a check to see if the script is being sourced or executed
