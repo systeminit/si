@@ -534,6 +534,7 @@ function toAttributeDiffTree(componentDiff?: ComponentDiff): AttributeDiffTree {
     }
     child.diff = diff;
   }
+
   // Set the top level path correctly to / (kind of a special case)
   tree.path = "/";
   return tree;
@@ -541,20 +542,14 @@ function toAttributeDiffTree(componentDiff?: ComponentDiff): AttributeDiffTree {
 
 function shouldIncludeDiff(diff: AttributeDiff) {
   // If the values and sources are equal (which could happen in some cases on component
-  // upgrade), don't add this to the tree
+  // upgrade), don't show this diff.
   if (_.isEqual(diff.new, diff.old)) return false;
 
-  // If this is an empty default (schema unset/empty container) on an added/removed thing, don't
-  // include it in the diff
-  if (!diff.new || !diff.old) {
-    const singleDiff = diff.new ?? diff.old;
-    if (singleDiff.$value === undefined && singleDiff.$source.fromSchema)
-      return false;
-    if (singleDiff.$source.fromSchema) {
-      if (singleDiff.$value === undefined) return false;
-      if (Array.isArray(singleDiff.$value) && singleDiff.$value.length === 0)
-        return false;
-      // TODO empty object
+  if (!diff.old || !diff.new) {
+    const { $source, $value } = diff.old ?? diff.new;
+    // Don't show "uninteresting" (empty) default values.
+    if ($source.fromSchema) {
+      if (!$value || _.isEmpty($value)) return false;
     }
   }
 
