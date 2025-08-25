@@ -1208,6 +1208,8 @@ const applyWorkspacePatch = async (
     span.setAttributes({
       workspaceId: atom.workspaceId,
       changeSetId: atom.changeSetId,
+      toIndexChecksum: atom.toIndexChecksum,
+      fromIndexChecksum: atom.fromIndexChecksum,
       atom: JSON.stringify(atom),
     });
     debug(
@@ -3617,6 +3619,8 @@ const dbInterface: TabDBInterface = {
                 span.setAttributes({
                   workspaceId: data.meta.workspaceId,
                   changeSetId: data.meta.changeSetId,
+                  toIndexChecksum: data.meta.toIndexChecksum,
+                  fromIndexChecksum: data.meta.fromIndexChecksum,
                 });
               }
             }
