@@ -63,6 +63,7 @@ pub enum AuditLogKindV1 {
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+        component_id: Option<ComponentId>,
     },
     AddApprover {
         approval_requirement_definition_id: ApprovalRequirementDefinitionId,
@@ -124,6 +125,7 @@ pub enum AuditLogKindV1 {
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+        component_id: Option<ComponentId>,
     },
     ContributeModule {
         version: String,
@@ -253,6 +255,14 @@ pub enum AuditLogKindV1 {
         func_name: String,
         asset_name: String,
     },
+    HoldAction {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        component_id: Option<ComponentId>,
+    },
 
     InstallWorkspace {
         id: WorkspacePk,
@@ -329,6 +339,7 @@ pub enum AuditLogKindV1 {
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+        component_id: Option<ComponentId>,
     },
     RunAction {
         prototype_id: ActionPrototypeId,
@@ -524,6 +535,7 @@ pub enum AuditLogMetadataV1 {
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+        component_id: Option<ComponentId>,
     },
     #[serde(rename_all = "camelCase")]
     AddApprover {
@@ -593,6 +605,7 @@ pub enum AuditLogMetadataV1 {
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+        component_id: Option<ComponentId>,
     },
     #[serde(rename_all = "camelCase")]
     ContributeModule {
@@ -734,6 +747,15 @@ pub enum AuditLogMetadataV1 {
         func_name: String,
         asset_name: String,
     },
+    #[serde(rename_all = "camelCase")]
+    HoldAction {
+        prototype_id: ActionPrototypeId,
+        action_kind: ActionKind,
+        func_id: FuncId,
+        func_display_name: Option<String>,
+        func_name: String,
+        component_id: Option<ComponentId>,
+    },
 
     #[serde(rename_all = "camelCase")]
     InstallWorkspace {
@@ -816,6 +838,7 @@ pub enum AuditLogMetadataV1 {
         func_id: FuncId,
         func_display_name: Option<String>,
         func_name: String,
+        component_id: Option<ComponentId>,
     },
     #[serde(rename_all = "camelCase")]
     RunAction {
@@ -1054,6 +1077,7 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::ExportWorkspace => ("Exported", Some("Workspace")),
             MetadataDiscrim::InstallWorkspace => ("Installed", Some("Workspace")),
             MetadataDiscrim::GenerateTemplate => ("Generated", Some("Template")),
+            MetadataDiscrim::HoldAction => ("Held", Some("Action")),
             MetadataDiscrim::Login => ("Authenticated", None),
             MetadataDiscrim::ManagementOperationsComplete => {
                 ("Executed", Some("Management Operations"))
@@ -1121,12 +1145,14 @@ impl From<Kind> for Metadata {
                 func_id,
                 func_display_name,
                 func_name,
+                component_id,
             } => Self::AddAction {
                 prototype_id,
                 action_kind,
                 func_id,
                 func_display_name,
                 func_name,
+                component_id,
             },
             Kind::AddApprover {
                 approval_requirement_definition_id,
@@ -1231,12 +1257,14 @@ impl From<Kind> for Metadata {
                 func_id,
                 func_display_name,
                 func_name,
+                component_id,
             } => Self::CancelAction {
                 prototype_id,
                 action_kind,
                 func_id,
                 func_display_name,
                 func_name,
+                component_id,
             },
             Kind::ContributeModule {
                 version,
@@ -1441,6 +1469,21 @@ impl From<Kind> for Metadata {
                 func_name,
                 asset_name,
             },
+            Kind::HoldAction {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+                component_id,
+            } => Self::HoldAction {
+                prototype_id,
+                action_kind,
+                func_id,
+                func_display_name,
+                func_name,
+                component_id,
+            },
             Kind::InstallWorkspace { id, name, version } => {
                 Self::InstallWorkspace { id, name, version }
             }
@@ -1549,12 +1592,14 @@ impl From<Kind> for Metadata {
                 func_id,
                 func_display_name,
                 func_name,
+                component_id,
             } => Self::RetryAction {
                 prototype_id,
                 action_kind,
                 func_id,
                 func_display_name,
                 func_name,
+                component_id,
             },
             Kind::RunAction {
                 prototype_id,

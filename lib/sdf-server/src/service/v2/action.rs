@@ -190,6 +190,7 @@ pub async fn add(
             func_id,
             func_display_name: func.display_name,
             func_name: func.name.clone(),
+            component_id: Some(component_id),
         },
         func.name,
     )
@@ -236,6 +237,7 @@ pub async fn cancel(
         .await?;
 
     let prototype_id = Action::prototype_id(&ctx, action_id).await?;
+    let component_id = Action::component_id(&ctx, action_id).await?;
     let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
     let func_id = ActionPrototype::func_id(&ctx, prototype_id).await?;
     let func = Func::get_by_id(&ctx, func_id).await?;
@@ -246,6 +248,7 @@ pub async fn cancel(
             func_id,
             func_display_name: func.display_name,
             func_name: func.name.clone(),
+            component_id,
         },
         func.name,
     )
@@ -274,7 +277,26 @@ pub async fn hold(
         ActionState::Queued | ActionState::Failed => {}
     }
 
+    let prototype_id = Action::prototype_id(&ctx, action_id).await?;
+    let component_id = Action::component_id(&ctx, action_id).await?;
+    let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
+    let func_id = ActionPrototype::func_id(&ctx, prototype_id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
+
     Action::set_state(&ctx, action.id(), ActionState::OnHold).await?;
+
+    ctx.write_audit_log(
+        AuditLogKind::HoldAction {
+            prototype_id,
+            action_kind: prototype.kind.into(),
+            func_id,
+            func_display_name: func.display_name,
+            func_name: func.name.clone(),
+            component_id,
+        },
+        func.name,
+    )
+    .await?;
 
     ctx.commit().await?;
     Ok(())
@@ -292,6 +314,7 @@ pub async fn retry(
     let action = Action::get_by_id(&ctx, action_id).await?;
 
     let prototype_id = Action::prototype_id(&ctx, action_id).await?;
+    let component_id = Action::component_id(&ctx, action_id).await?;
     let prototype = ActionPrototype::get_by_id(&ctx, prototype_id).await?;
     let func_id = ActionPrototype::func_id(&ctx, prototype_id).await?;
     let func = Func::get_by_id(&ctx, func_id).await?;
@@ -302,6 +325,7 @@ pub async fn retry(
             func_id,
             func_display_name: func.display_name,
             func_name: func.name.clone(),
+            component_id,
         },
         func.name,
     )
