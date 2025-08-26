@@ -2199,6 +2199,12 @@
       "YAML"
     ]
   },
+  "The record format that Lambda delivers to your function after schema validation.\n  +  Choose ``JSON`` to have Lambda deliver the record to your function as a standard JSON object.\n  +  Choose ``SOURCE`` to have Lambda deliver the record to your function in its original source format. Lambda removes all schema metadata, such as the schema ID, before sending the record to your function.": {
+    "enum": [
+      "JSON",
+      "SOURCE"
+    ]
+  },
   "The type of deployment package. Set to ``Image`` for container image and set ``Zip`` for .zip file archive.": {
     "enum": [
       "Image",
@@ -10341,6 +10347,9 @@
     "enum": null
   },
   "The URI for your schema registry. The correct URI format depends on the type of schema registry you're using.": {
+    "enum": null
+  },
+  "The URI for your schema registry. The correct URI format depends on the type of schema registry you're using.\n  +  For GLU schema registries, use the ARN of the registry.\n  +  For Confluent schema registries, use the URL of the registry.": {
     "enum": null
   },
   "The URI of an image in the Amazon ECR registry. This field is required when you create a new application. If you leave this field blank in an update, Amazon EMR will remove the image configuration.": {
