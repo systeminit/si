@@ -279,6 +279,79 @@ async fn update_attributes_runs_in_order_and_allows_duplicates(ctx: &mut DalCont
     Ok(())
 }
 
+#[test]
+async fn update_attributes_serializes_json(ctx: &mut DalContext) -> Result<()> {
+    variant::create(
+        ctx,
+        "test",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "Json", kind: "json" },
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+    let test = component::create(ctx, "test", "test").await?;
+
+    // Set Json = string
+    attributes::update_attributes(
+        ctx,
+        test,
+        serde_json::from_str(
+            r#"{
+                "/domain/Json": "{ \"foo\": \"bar\" }"
+            }"#,
+        )?,
+    )
+    .await?;
+    assert_eq!(
+        r#"{ "foo": "bar" }"#,
+        value::get(ctx, ("test", "/domain/Json")).await?
+    );
+
+    // Set Json = object
+    attributes::update_attributes(
+        ctx,
+        test,
+        serde_json::from_str(
+            r#"{
+                "/domain/Json": { "foo": "bar" }
+            }"#,
+        )?,
+    )
+    .await?;
+    assert_eq!(
+        r#"{
+  "foo": "bar"
+}"#,
+        value::get(ctx, ("test", "/domain/Json")).await?
+    );
+
+    // Set Json = array
+    attributes::update_attributes(
+        ctx,
+        test,
+        serde_json::from_str(
+            r#"{
+                "/domain/Json": [ 1, 2 ]
+            }"#,
+        )?,
+    )
+    .await?;
+    assert_eq!(
+        r#"[
+  1,
+  2
+]"#,
+        value::get(ctx, ("test", "/domain/Json")).await?
+    );
+    Ok(())
+}
+
 // Test that attribute updates are processed in the order they are specified sets them (and their parents) correctly, but leaves default
 // values and other values alone.
 #[test]
