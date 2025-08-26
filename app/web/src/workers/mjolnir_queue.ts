@@ -130,21 +130,41 @@ const inflight = new Set<string>();
 // When we are running a bulk mjolnir, dont let other hammers fly...
 // Hold them in a queue, and if the bulk fails, let them fly...
 // if the bulk succeeds, don't fire them...
-let _bulkInflight = false;
+const _bulkInflight: Record<string, Set<string>> = {};
 
-export const bulkInflight = () => {
+export const bulkInflight = (args: {
+  workspaceId: string;
+  changeSetId: string;
+}) => {
+  debug("BULK IN FLIGHT", args);
   bulkQueue.pause();
   processPatchQueue.pause();
   bustQueue.pause();
-  _bulkInflight = true;
+  let inflight = _bulkInflight[args.workspaceId];
+  if (!inflight) {
+    inflight = new Set<string>();
+    _bulkInflight[args.workspaceId] = inflight;
+  }
+  inflight.add(args.changeSetId);
 };
-export const bulkDone = (runQueue = false) => {
-  _bulkInflight = false;
-  if (runQueue) {
-    bulkQueue.start();
-  } else bulkQueue.clear();
-  if (processPatchQueue.size === 0) bustQueue.start();
-  processPatchQueue.start();
+export const bulkDone = (
+  args: { workspaceId: string; changeSetId: string },
+  runQueue = false,
+) => {
+  debug("BULK DONE", args);
+  let inflight = _bulkInflight[args.workspaceId];
+  if (!inflight) {
+    inflight = new Set<string>();
+    _bulkInflight[args.workspaceId] = inflight;
+  }
+  inflight.delete(args.changeSetId);
+  if (inflight.size === 0) {
+    if (runQueue) {
+      bulkQueue.start();
+    } else bulkQueue.clear();
+    if (processPatchQueue.size === 0) bustQueue.start();
+    processPatchQueue.start();
+  }
 };
 
 type Description = {
@@ -174,7 +194,8 @@ export const hasReturned = (desc: Description) => {
 };
 
 export const maybeMjolnir = async (desc: Description, fn: () => void) => {
-  if (_bulkInflight) {
+  const bulk = _bulkInflight[desc.workspaceId];
+  if (bulk && bulk.size === 0) {
     await bulkQueue.add(fn);
     return;
   }
