@@ -1282,7 +1282,10 @@ const rightClickedNode = (e: MouseEvent, n: layoutNode) => {
   }
 
   // Show context menu for all selected components
-  showContextMenuForSelection(n.component, e.target as Element);
+  // wait for the map to animate
+  setTimeout(() => {
+    showContextMenuForSelection(n.component, e.target as Element);
+  }, 500);
 };
 
 const showContextMenuForSelection = (
@@ -1728,6 +1731,7 @@ watch(ctx.changeSetId, () => {
 });
 
 // debouncing since the fzf and svg is actually a bit of a grind for every key press
+// PSA: selecting a component re-fires this watcher. Why? Entirely unsure.
 watch(
   mapData,
   _.debounce(
@@ -1880,8 +1884,9 @@ watch(
 
           renderEdges(svg, edges);
 
-          if (selectedComponent.value)
+          if (selectedComponent.value) {
             panToComponent(selectedComponent.value.id);
+          }
 
           // Selection state is already handled during animation above
         } else {
