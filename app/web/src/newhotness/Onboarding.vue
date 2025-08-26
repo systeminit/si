@@ -241,6 +241,16 @@
             </template>
             <template #body>
               <div class="flex flex-col gap-xs">
+                <span>Clone the AI Agent</span>
+                <CopyableTextBlock
+                  text="git clone https://github.com/systeminit/si-ai-agent.git"
+                />
+              </div>
+              <div class="flex flex-col gap-xs">
+                <span>Run the setup script</span>
+                <CopyableTextBlock text="./setup.sh" />
+              </div>
+              <div class="flex flex-col gap-xs">
                 <span>
                   Copy this API token to use as part of the AI Agent setup
                 </span>
@@ -253,17 +263,7 @@
                   We're only showing you the value of this token once. Please,
                   store it somewhere safe.
                 </ErrorMessage>
-                <CopiableTextBlock :text="apiToken" />
-              </div>
-              <div class="flex flex-col gap-xs">
-                <span>Clone the AI Agent</span>
-                <CopiableTextBlock
-                  text="git clone https://github.com/systeminit/si-ai-agent.git"
-                />
-              </div>
-              <div class="flex flex-col gap-xs">
-                <span>Run the setup script</span>
-                <CopiableTextBlock text="./setup.sh" />
+                <CopyableTextBlock :text="apiToken" expandable />
               </div>
             </template>
             <template #footer>
@@ -302,7 +302,7 @@ import ScrollingOutputLine from "@/newhotness/ScrollingOutputLine.vue";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { componentTypes, routes, useApi } from "@/newhotness/api_composables";
 import { useContext } from "@/newhotness/logic_composables/context";
-import CopiableTextBlock from "@/newhotness/CopiableTextBlock.vue";
+import CopyableTextBlock from "@/newhotness/CopyableTextBlock.vue";
 
 const ctx = useContext();
 
