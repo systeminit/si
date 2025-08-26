@@ -92,6 +92,44 @@ def manage_component(change_set_id, component_id, manager_component_id):
     return response.json()
 
 
+def force_apply_with_retry(change_set_id,
+                           timeout_seconds=120,
+                           retry_interval=5):
+    """Force apply change set with retry logic for if DVU roots still exist."""
+    start_time = time.time()
+    while time.time() - start_time < timeout_seconds:
+        try:
+            force_apply_url = f'{API_URL}/v1/w/{WORKSPACE_ID}/change-sets/{change_set_id}/force_apply'
+            response = requests.post(force_apply_url,
+                                     headers={
+                                         'Authorization':
+                                         f'Bearer {API_TOKEN}',
+                                         'accept': 'application/json'
+                                     },
+                                     data='')
+            response.raise_for_status()
+            print('Change set applied successfully.')
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 428:  # PRECONDITION_REQUIRED == DVU
+                elapsed = time.time() - start_time
+                remaining = timeout_seconds - elapsed
+                print(
+                    f'⏳ DVU Roots still present. Retrying in {retry_interval}s... ({remaining:.1f}s remaining)'
+                )
+                if remaining > retry_interval:
+                    time.sleep(retry_interval)
+                    continue
+                else:
+                    break
+            else:
+                raise e
+
+    raise TimeoutError(
+        f"❌ Force apply failed after {timeout_seconds}s - DVUs still processing"
+    )
+
+
 def create_change_set(name):
     response = requests.post(f'{API_URL}/v1/w/{WORKSPACE_ID}/change-sets',
                              headers=headers,
@@ -108,6 +146,21 @@ def create_component(change_set_id, schema_name, name, options=None):
         f'{API_URL}/v1/w/{WORKSPACE_ID}/change-sets/{change_set_id}/components',
         headers=headers,
         json=request_body)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_change_set(change_set_id):
+    response = requests.get(
+        f'{API_URL}/v1/w/{WORKSPACE_ID}/change-sets/{change_set_id}',
+        headers=headers)
+    return response
+
+
+def delete_change_set(change_set_id):
+    response = requests.delete(
+        f'{API_URL}/v1/w/{WORKSPACE_ID}/change-sets/{change_set_id}',
+        headers=headers)
     response.raise_for_status()
     return response.json()
 
@@ -152,114 +205,112 @@ def main():
                          MANAGER_COMPONENT_ID)
         print('Userdata component now managed.')
 
-    except requests.exceptions.HTTPError as err:
-        print(f'HTTP Error: {err}')
-        print(f'Response: {err.response.text}')
-    except Exception as err:
-        print(f'General Error: {err}')
+        ec2_properties = {
+            "InstanceType":
+            "c6i.16xlarge",
+            "BlockDeviceMappings": [{
+                "DeviceName": "/dev/sda1",
+                "Ebs": {
+                    "DeleteOnTermination": True,
+                    "VolumeSize": 100,
+                    "VolumeType": "gp3"
+                }
+            }],
+            "Tags": [{
+                "Key": "Name",
+                "Value": "frontend-ci-validation-test-machine"
+            }]
+        }
 
-    ec2_properties = {
-        "InstanceType":
-        "c6i.16xlarge",
-        "BlockDeviceMappings": [{
-            "DeviceName": "/dev/sda1",
-            "Ebs": {
-                "DeleteOnTermination": True,
-                "VolumeSize": 100,
-                "VolumeType": "gp3"
-            }
-        }],
-        "Tags": [{
-            "Key": "Name",
-            "Value": "frontend-ci-validation-test-machine"
-        }]
-    }
-
-    ec2_options = {
-        "domain": ec2_properties,
-        "subscriptions": {
-            "/domain/SecurityGroupIds/0": {
-                "component": "frontend-ci-validation-sg",
-                "propPath": "/resource_value/GroupId",
+        ec2_options = {
+            "domain": ec2_properties,
+            "subscriptions": {
+                "/domain/SecurityGroupIds/0": {
+                    "component": "frontend-ci-validation-sg",
+                    "propPath": "/resource_value/GroupId",
+                },
+                "/domain/ImageId": {
+                    "component": "Arch Linux",
+                    "propPath": "/domain/ImageId",
+                },
+                "/domain/SubnetId": {
+                    "component": "frontend-ci-validation-subnet-pub-1",
+                    "propPath": "/resource_value/SubnetId",
+                },
+                "/domain/KeyName": {
+                    "component": "frontend-ci-validation-kp",
+                    "propPath": "/domain/KeyName",
+                },
+                "/domain/extra/Region": {
+                    "component": "us-east-1",
+                    "propPath": "/domain/region"
+                },
+                "/domain/UserData": {
+                    "component": f'userdata-{str(environment_uuid)}',
+                    "propPath": "/domain/userdataContentBase64"
+                },
+                "/domain/IamInstanceProfile": {
+                    "component": "ci-validation-instance-instance-profile",
+                    "propPath": "/domain/InstanceProfileName"
+                },
+                "/secrets/AWS Credential": {
+                    "component": "si-tools-sandbox",
+                    "propPath": "/secrets/AWS Credential"
+                }
             },
-            "/domain/ImageId": {
-                "component": "Arch Linux",
-                "propPath": "/domain/ImageId",
-            },
-            "/domain/SubnetId": {
-                "component": "frontend-ci-validation-subnet-pub-1",
-                "propPath": "/resource_value/SubnetId",
-            },
-            "/domain/KeyName": {
-                "component": "frontend-ci-validation-kp",
-                "propPath": "/domain/KeyName",
-            },
-            "/domain/extra/Region": {
-                "component": "us-east-1",
-                "propPath": "/domain/region"
-            },
-            "/domain/UserData": {
-                "component": f'userdata-{str(environment_uuid)}',
-                "propPath": "/domain/userdataContentBase64"
-            },
-            "/domain/IamInstanceProfile": {
-                "component": "ci-validation-instance-instance-profile",
-                "propPath": "/domain/InstanceProfileName"
-            },
-            "/secrets/AWS Credential": {
-                "component": "si-tools-sandbox",
-                "propPath": "/secrets/AWS Credential"
-            }
-        },
-        "viewName": "Environments",
-    }
+            "viewName": "Environments",
+        }
 
-    print("Creating EC2 instance component...")
-    ec2_data = create_component(  # Super annoying it doesn't tell you what a misaligned prop mapping is
-        change_set_id,  # would be so much better if it returned something like the valid schema for the
-        "AWS::EC2::Instance",  # attempted connection. It also breaks copy and paste of the component
-        str(environment_uuid),
-        ec2_options)
+        print("Creating EC2 instance component...")
+        ec2_data = create_component(  # Super annoying it doesn't tell you what a misaligned prop mapping is
+            change_set_id,  # would be so much better if it returned something like the valid schema for the
+            "AWS::EC2::Instance",  # attempted connection. It also breaks copy and paste of the component
+            str(environment_uuid),
+            ec2_options)
 
-    ec2_component_id = ec2_data["component"]["id"]
-    print(f'EC2 component ID: {ec2_component_id}')
+        ec2_component_id = ec2_data["component"]["id"]
+        print(f'EC2 component ID: {ec2_component_id}')
 
-    print(f'Setting manager for EC2 component {ec2_component_id}...')
-    manage_component(change_set_id, ec2_component_id, MANAGER_COMPONENT_ID)
-    print('EC2 component now managed.')
+        print(f'Setting manager for EC2 component {ec2_component_id}...')
+        manage_component(change_set_id, ec2_component_id, MANAGER_COMPONENT_ID)
+        print('EC2 component now managed.')
 
-    print("Waiting for DVU")
-    time.sleep(
-        30
-    )  # I really need a method here to detect DVU is complete more elegantly
+        print(f'Force applying change set {change_set_id}...')
+        force_apply_with_retry(change_set_id)
 
-    print(f'Force applying change set {change_set_id}...')
-    force_apply_url = f'{API_URL}/v1/w/{WORKSPACE_ID}/change-sets/{change_set_id}/force_apply'
-    response = requests.post(force_apply_url,
-                             headers={
-                                 'Authorization': f'Bearer {API_TOKEN}',
-                                 'accept': 'application/json'
-                             },
-                             data='')
-    response.raise_for_status()
-    print('Change set applied successfully.')
+        print("Waiting for actions to complete...")
+        wait_for_merge_success(change_set_id)
+        print("All actions completed successfully...")
 
-    print("Waiting for actions to complete...")
-    wait_for_merge_success(change_set_id)
-    print("All actions completed successfully...")
+        base_change_set_id = "head"
+        print("Querying for public IP...")
+        ip_output_file = './ip'
 
-    base_change_set_id = "head"
-    print("Querying for public IP...")
-    ip_output_file = './ip'
-
-    try:
         public_ip = get_public_ip(base_change_set_id, ec2_component_id, 60, 5)
         print(f"Instance is reachable at: {public_ip}")
         with open(ip_output_file, 'w') as f:
             f.write(f'{public_ip}')
+
     except TimeoutError as e:
         print(str(e))
         sys.exit(1)
+    except requests.exceptions.HTTPError as err:
+        print(f'HTTP Error: {err}')
+        print(f'Response: {err.response.text}')
+        sys.exit(1)
+    except Exception as err:
+        print(f'General Error: {err}')
+        sys.exit(1)
+    finally:
+        if change_set_id:
+            try:
+                response = get_change_set(change_set_id)
+                if response.status_code == 200:
+                    print(f'Cleaning up change set {change_set_id}...')
+                    delete_change_set(change_set_id)
+                    print('Change set deleted.')
+            except Exception as cleanup_err:
+                print(f'Failed to cleanup change set: {cleanup_err}')
 
 
 if __name__ == '__main__':
