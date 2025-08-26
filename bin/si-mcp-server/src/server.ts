@@ -18,6 +18,7 @@ import { componentImportTool } from "./tools/componentImport.ts";
 import { importPrompt } from "./prompts/import.ts";
 import { componentDiscoverTool } from "./tools/componentDiscover.ts";
 import { discoverPrompt } from "./prompts/discover.ts";
+import { createAwsIamPrompt } from "./prompts/create-aws-iam.ts";
 import { componentDeleteTool } from "./tools/componentDelete.ts";
 import { componentEraseTool } from "./tools/componentErase.ts";
 import { componentRestoreTool } from "./tools/componentRestore.ts";
@@ -51,6 +52,7 @@ export function createServer(): McpServer {
   generateSiUrlTool(server);
   importPrompt(server);
   discoverPrompt(server);
+  createAwsIamPrompt(server);
 
   return server;
 }
