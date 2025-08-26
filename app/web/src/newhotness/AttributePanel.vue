@@ -818,4 +818,8 @@ const nameForm = wForm.newForm({
     }
   },
 });
+
+defineExpose({
+  focusSearch,
+});
 </script>
