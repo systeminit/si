@@ -1018,7 +1018,7 @@ const handleWorkspacePatchMessage = async (
       try {
         indexChecksum = initIndexAndChangeSet(db, data.meta, span);
         debug("📦 Index logic completed, resolved checksum:", indexChecksum);
-      } catch (err) {
+      } catch (err: unknown) {
         if (err instanceof Ragnarok) {
           // not currently implemented
           span.addEvent("ragnarok", {
@@ -1029,6 +1029,10 @@ const handleWorkspacePatchMessage = async (
           ragnarok(db, err.workspaceId, err.changeSetId);
           return;
         } else {
+          span.addEvent("error", {
+            source: "initIndexAndChangeSet",
+            error: err instanceof Error ? err.toString() : "unknown",
+          });
           throw err;
         }
       }
@@ -1197,6 +1201,7 @@ const handleWorkspacePatchMessage = async (
 
       debug("📦 BATCH COMPLETE:", batchId);
     } finally {
+      // this always runs regardless of return, throw, etc
       span.end();
     }
   });
@@ -1208,176 +1213,189 @@ const applyWorkspacePatch = async (
   indexChecksum: Checksum,
 ) => {
   return await tracer.startActiveSpan("applyWorkspacePatch", async (span) => {
-    span.setAttributes({
-      workspaceId: atom.workspaceId,
-      changeSetId: atom.changeSetId,
-      toIndexChecksum: atom.toIndexChecksum,
-      fromIndexChecksum: atom.fromIndexChecksum,
-      atom: JSON.stringify(atom),
-    });
-    debug(
-      "🔧 Applying patch:",
-      atom.kind,
-      atom.id,
-      `${atom.fromChecksum} -> ${atom.toChecksum}`,
-    );
-
-    let needToInsertMTM = false;
-    let bustCache = false;
-    let doc;
-    let removed = false;
-    let patchRequired = true;
-
-    // Check if we actually have the atom data, not just the MTM relationship
-    const upToDateAtomIndexes = workspaceAtomExistsOnIndexes(
-      db,
-      atom.kind,
-      atom.id,
-      atom.toChecksum,
-    );
-    if (upToDateAtomIndexes.length > 0) {
-      patchRequired = false;
+    try {
+      span.setAttributes({
+        workspaceId: atom.workspaceId,
+        changeSetId: atom.changeSetId,
+        toIndexChecksum: atom.toIndexChecksum,
+        fromIndexChecksum: atom.fromIndexChecksum,
+        atom: JSON.stringify(atom),
+      });
       debug(
-        "🔧 No Op Patch!",
+        "🔧 Applying patch:",
+        atom.kind,
+        atom.id,
+        `${atom.fromChecksum} -> ${atom.toChecksum}`,
+      );
+
+      let needToInsertMTM = false;
+      let bustCache = false;
+      let doc;
+      let removed = false;
+      let patchRequired = true;
+
+      // Check if we actually have the atom data, not just the MTM relationship
+      const upToDateAtomIndexes = workspaceAtomExistsOnIndexes(
+        db,
         atom.kind,
         atom.id,
         atom.toChecksum,
-        upToDateAtomIndexes,
       );
-      // get the doc for post processing
-      doc = atomDocumentForChecksum(db, atom.kind, atom.id, atom.toChecksum);
+      if (upToDateAtomIndexes.length > 0) {
+        patchRequired = false;
+        debug(
+          "🔧 No Op Patch!",
+          atom.kind,
+          atom.id,
+          atom.toChecksum,
+          upToDateAtomIndexes,
+        );
+        // get the doc for post processing
+        doc = atomDocumentForChecksum(db, atom.kind, atom.id, atom.toChecksum);
+        span.setAttributes({
+          noop: true,
+          upToDateAtomIndexes: JSON.stringify(upToDateAtomIndexes),
+        });
+        if (!upToDateAtomIndexes.includes(indexChecksum)) {
+          needToInsertMTM = true;
+          bustCache = true;
+        }
+      }
+
+      if (patchRequired) {
+        // do we have an index with the fromChecksum (without we cannot patch)
+        const previousIndexes = workspaceAtomExistsOnIndexes(
+          db,
+          atom.kind,
+          atom.id,
+          atom.fromChecksum,
+        );
+        span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
+        const exists = previousIndexes.length > 0;
+        span.setAttribute("exists", exists);
+        debug(
+          "🔧 Previous indexes exist:",
+          exists,
+          "fromChecksum:",
+          atom.fromChecksum,
+        );
+
+        if (atom.fromChecksum === "0") {
+          if (!exists) {
+            // if i already have it, this is a NOOP
+            debug("🔧 Creating new atom from patch:", atom.kind, atom.id);
+            span.setAttribute("createAtom", true);
+            doc = await createAtomFromPatch(db, atom, span);
+            needToInsertMTM = true;
+            bustCache = true;
+          } else {
+            debug("🔧 New atom already exists (noop):", atom.kind, atom.id);
+          }
+        } else if (atom.toChecksum === "0") {
+          // if i've already removed it, this is a NOOP
+          if (exists) {
+            debug("🔧 Removing atom:", atom.kind, atom.id);
+            span.setAttribute("removeAtom", true);
+            removeAtom(
+              db,
+              indexChecksum,
+              atom.kind,
+              atom.id,
+              atom.fromChecksum,
+            );
+            bustCache = true;
+            removed = true;
+          } else {
+            debug("🔧 Atom already removed (noop):", atom.kind, atom.id);
+          }
+        } else {
+          // patch it if I can
+          if (exists) {
+            debug("🔧 Patching existing atom:", atom.kind, atom.id);
+            span.setAttribute("patchAtom", true);
+            doc = await patchAtom(db, atom);
+            needToInsertMTM = true;
+            bustCache = true;
+          } // otherwise, fire the small hammer to get the full object
+          else {
+            debug(
+              "🔨 MJOLNIR RACE: Missing fromChecksum data, firing hammer:",
+              atom.kind,
+              atom.id,
+              "fromChecksum:",
+              atom.fromChecksum,
+            );
+            span.setAttributes({
+              mjolnir: true,
+              mjolnirAtom: JSON.stringify(atom),
+              mjolnirPreviousIndexes: JSON.stringify(previousIndexes),
+              mjolnirToChecksumIndexes: JSON.stringify([]), // indexes variable was removed
+              mjolnirSource: "applyWorkspacePatch",
+            });
+            debug("applyWorkspacePatch mjolnir", atom.kind, atom.id);
+            mjolnir(
+              db,
+              atom.workspaceId,
+              atom.changeSetId,
+              atom.kind,
+              atom.id,
+              atom.toChecksum,
+            );
+          }
+        }
+      }
+
+      // this insert potentially replaces the MTM row that exists for the current index
+      // based on the table constraint
       span.setAttributes({
-        noop: true,
-        upToDateAtomIndexes: JSON.stringify(upToDateAtomIndexes),
+        needToInsertMTM,
+        bustCache,
       });
+      if (needToInsertMTM) {
+        debug(
+          "🔧 Inserting MTM for:",
+          atom.kind,
+          atom.id,
+          "indexChecksum:",
+          indexChecksum,
+        );
+        initIndexAndChangeSet(db, atom, span);
+        const inserted = insertAtomMTM(db, atom, indexChecksum);
+        span.setAttribute("insertedMTM", inserted);
+        debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
+      }
+
+      if (
+        COMPUTED_KINDS.includes(atom.kind) ||
+        LISTABLE_ITEMS.includes(atom.kind)
+      ) {
+        debug("🔧 Updating computed for:", atom.kind, atom.id);
+        postProcess(
+          db,
+          atom.workspaceId,
+          atom.changeSetId,
+          atom.kind,
+          doc,
+          atom.id,
+          indexChecksum,
+          removed,
+        );
+      }
+
+      if (bustCache) {
+        debug("🔧 Patch successful, will bust cache for:", atom.kind, atom.id);
+        return atom;
+      }
+      debug("🔧 Patch completed (no cache bust needed):", atom.kind, atom.id);
+      return undefined;
+    } catch (err: unknown) {
+      span.addEvent("error", {
+        error: err instanceof Error ? err.toString() : "unknown",
+      });
+    } finally {
+      // this always runs regardless of return, throw, etc
       span.end();
-      if (!upToDateAtomIndexes.includes(indexChecksum)) {
-        needToInsertMTM = true;
-        bustCache = true;
-      }
     }
-
-    if (patchRequired) {
-      // do we have an index with the fromChecksum (without we cannot patch)
-      const previousIndexes = workspaceAtomExistsOnIndexes(
-        db,
-        atom.kind,
-        atom.id,
-        atom.fromChecksum,
-      );
-      span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
-      const exists = previousIndexes.length > 0;
-      span.setAttribute("exists", exists);
-      debug(
-        "🔧 Previous indexes exist:",
-        exists,
-        "fromChecksum:",
-        atom.fromChecksum,
-      );
-
-      if (atom.fromChecksum === "0") {
-        if (!exists) {
-          // if i already have it, this is a NOOP
-          debug("🔧 Creating new atom from patch:", atom.kind, atom.id);
-          span.setAttribute("createAtom", true);
-          doc = await createAtomFromPatch(db, atom, span);
-          needToInsertMTM = true;
-          bustCache = true;
-        } else {
-          debug("🔧 New atom already exists (noop):", atom.kind, atom.id);
-        }
-      } else if (atom.toChecksum === "0") {
-        // if i've already removed it, this is a NOOP
-        if (exists) {
-          debug("🔧 Removing atom:", atom.kind, atom.id);
-          span.setAttribute("removeAtom", true);
-          removeAtom(db, indexChecksum, atom.kind, atom.id, atom.fromChecksum);
-          bustCache = true;
-          removed = true;
-        } else {
-          debug("🔧 Atom already removed (noop):", atom.kind, atom.id);
-        }
-      } else {
-        // patch it if I can
-        if (exists) {
-          debug("🔧 Patching existing atom:", atom.kind, atom.id);
-          span.setAttribute("patchAtom", true);
-          doc = await patchAtom(db, atom);
-          needToInsertMTM = true;
-          bustCache = true;
-        } // otherwise, fire the small hammer to get the full object
-        else {
-          debug(
-            "🔨 MJOLNIR RACE: Missing fromChecksum data, firing hammer:",
-            atom.kind,
-            atom.id,
-            "fromChecksum:",
-            atom.fromChecksum,
-          );
-          span.setAttributes({
-            mjolnir: true,
-            mjolnirAtom: JSON.stringify(atom),
-            mjolnirPreviousIndexes: JSON.stringify(previousIndexes),
-            mjolnirToChecksumIndexes: JSON.stringify([]), // indexes variable was removed
-            mjolnirSource: "applyWorkspacePatch",
-          });
-          debug("applyWorkspacePatch mjolnir", atom.kind, atom.id);
-          mjolnir(
-            db,
-            atom.workspaceId,
-            atom.changeSetId,
-            atom.kind,
-            atom.id,
-            atom.toChecksum,
-          );
-        }
-      }
-    }
-
-    // this insert potentially replaces the MTM row that exists for the current index
-    // based on the table constraint
-    span.setAttributes({
-      needToInsertMTM,
-      bustCache,
-    });
-    if (needToInsertMTM) {
-      debug(
-        "🔧 Inserting MTM for:",
-        atom.kind,
-        atom.id,
-        "indexChecksum:",
-        indexChecksum,
-      );
-      initIndexAndChangeSet(db, atom, span);
-      const inserted = insertAtomMTM(db, atom, indexChecksum);
-      span.setAttribute("insertedMTM", inserted);
-      debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
-    }
-    span.end();
-
-    if (
-      COMPUTED_KINDS.includes(atom.kind) ||
-      LISTABLE_ITEMS.includes(atom.kind)
-    ) {
-      debug("🔧 Updating computed for:", atom.kind, atom.id);
-      postProcess(
-        db,
-        atom.workspaceId,
-        atom.changeSetId,
-        atom.kind,
-        doc,
-        atom.id,
-        indexChecksum,
-        removed,
-      );
-    }
-
-    if (bustCache) {
-      debug("🔧 Patch successful, will bust cache for:", atom.kind, atom.id);
-      return atom;
-    }
-    debug("🔧 Patch completed (no cache bust needed):", atom.kind, atom.id);
-    return undefined;
   });
 };
 
