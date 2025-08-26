@@ -66,6 +66,11 @@ impl ErrorIntoResponse for ChangeSetError {
             ChangeSetError::ChangeSet(dal::ChangeSetError::ChangeSetNotFound(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
+            ChangeSetError::ChangeSet(dal::ChangeSetError::DvuRootsNotEmpty(_)) => (
+                StatusCode::PRECONDITION_REQUIRED,
+                "There are dependent values that still need to be calculated. Please retry!"
+                    .to_string(),
+            ),
             ChangeSetError::CannotAbandonHead => (StatusCode::BAD_REQUEST, self.to_string()),
             ChangeSetError::CannotMergeHead => (StatusCode::BAD_REQUEST, self.to_string()),
             ChangeSetError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
