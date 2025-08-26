@@ -7484,6 +7484,7 @@ dependencies = [
  "edda-client",
  "edda-core",
  "frigg",
+ "futures-lite",
  "hyper 0.14.32",
  "nats-multiplexer-client",
  "once_cell",

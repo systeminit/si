@@ -4,6 +4,7 @@ use axum::{
         Host,
         OriginalUri,
     },
+    response::IntoResponse,
 };
 use dal::{
     ChangeSetId,
@@ -14,10 +15,12 @@ use dal::{
 };
 use sdf_core::{
     EddaClient,
+    change_set_mvs::create_index_for_new_change_set_and_watch,
     tracking::track,
 };
 use sdf_extract::{
     EddaClient as EddaClientExtractor,
+    FriggStore,
     HandlerContext,
     PosthogClient,
     v1::AccessBuilder,
@@ -30,19 +33,20 @@ use si_frontend_types::{
 use telemetry::prelude::*;
 
 use super::ChangeSetResult;
+use crate::StatusCode;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_change_set(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
+    FriggStore(frigg): FriggStore,
     EddaClientExtractor(edda_client): EddaClientExtractor,
     Json(request): Json<CreateChangeSetRequest>,
-) -> ChangeSetResult<Json<CreateChangeSetResponse>> {
+) -> ChangeSetResult<impl IntoResponse> {
     let ctx = builder.build_head(access_builder).await?;
-
-    let workspace_pk = ctx.workspace_pk()?;
 
     let change_set_name = &request.change_set_name;
 
@@ -67,19 +71,28 @@ pub async fn create_change_set(
         .publish_on_commit(&ctx)
         .await?;
 
-    create_index_for_new_change_set(
-        &edda_client,
-        workspace_pk,
-        change_set.id,
-        ctx.change_set_id(),
-        change_set.workspace_snapshot_address,
-    )
-    .await?;
-
     let change_set = change_set.into_frontend_type(&ctx).await?;
     ctx.commit_no_rebase().await?;
-
-    Ok(Json(CreateChangeSetResponse { change_set }))
+    if create_index_for_new_change_set_and_watch(
+        &frigg,
+        &edda_client,
+        ctx.workspace_pk()?,
+        change_set.id,
+        ctx.change_set_id(), // note DalCtx is built for Head here to create a change set!
+        ctx.workspace_snapshot()?.address().await,
+    )
+    .await?
+    {
+        // Return 200 if the build succeeded in time
+        Ok((StatusCode::OK, Json(CreateChangeSetResponse { change_set })))
+    } else {
+        // Return 202 Accepted with the same response body if the build didn't succeed in time
+        // to let the caller know the create succeeded, we're just waiting on downstream work
+        Ok((
+            StatusCode::ACCEPTED,
+            Json(CreateChangeSetResponse { change_set }),
+        ))
+    }
 }
 
 #[instrument(

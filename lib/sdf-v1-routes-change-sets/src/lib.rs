@@ -48,6 +48,8 @@ pub enum ChangeSetError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("cannot abandon head change set")]
     CannotAbandonHead,
+    #[error("change set mvs error: {0}")]
+    ChangeSetMvs(#[from] sdf_core::change_set_mvs::ChangeSetMvsError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("dal change set error: {0}")]
