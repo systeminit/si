@@ -238,9 +238,9 @@ async fn get_before_prop_value_source(
                 Some(resolved_av_id) => {
                     let source_component_id =
                         AttributeValue::component_id(ctx, resolved_av_id).await?;
-                    let view = AttributeValue::view(ctx, resolved_av_id).await?;
+                    let value = AttributeValue::view(ctx, resolved_av_id).await?;
                     PropValueSource::Subscription {
-                        value: view,
+                        value,
                         source_component_id,
                         source_path: value_subscription.path.to_string(),
                     }
@@ -293,6 +293,19 @@ async fn update_attributes_inner(
                             component.set_resource(ctx, resource_data).await?;
                             continue;
                         }
+
+                        let kind = AttributeValue::prop_kind(ctx, target_av_id).await?;
+
+                        // If we are passed an object or array, to a JSON field, we JSON stringify it
+                        // for the user.
+                        let value = match (kind, &value) {
+                            (
+                                PropKind::Json,
+                                serde_json::Value::Object(_) | serde_json::Value::Array(_),
+                            ) => serde_json::to_string_pretty(&value)?.into(),
+                            _ => value,
+                        };
+
                         let before_value = AttributeValue::get_by_id(ctx, target_av_id)
                             .await?
                             .unprocessed_value(ctx)

@@ -1890,18 +1890,18 @@ async fn create_and_subscribe_to_source(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(
         json!({
             "Value": "value from source",
-            "Sources": {
+            "Sources": serde_json::to_string_pretty(&json!({
                 "/domain/Value": { "component": component::id(ctx, "NewComponent").await?, "path": "/domain/Value" }
-            }
+            }))?,
         }),
         component::domain(ctx, "manager").await?,
     );
     assert_eq!(
         json!({
             "Value": "value from source",
-            "Sources": {
+            "Sources": serde_json::to_string_pretty(&json!({
                 "/domain/Value": { "component": component::id(ctx, "source").await?, "path": "/domain/Value" }
-            }
+            }))?
         }),
         component::domain(ctx, "NewComponent").await?,
     );
@@ -1960,23 +1960,23 @@ async fn create_and_subscribe_foo_to_bar(ctx: &mut DalContext) -> Result<()> {
     change_set::commit(ctx).await?;
     assert_eq!(
         json!({
-            "Sources": {}
+            "Sources": "{}"
         }),
         component::domain(ctx, "manager").await?,
     );
     assert_eq!(
         json!({
             "Value": "value from Bar",
-            "Sources": {
+            "Sources": serde_json::to_string_pretty(&json!({
                 "/domain/Value": { "component": component::id(ctx, "Bar").await?, "path": "/domain/Value" }
-            }
+            }))?
         }),
         component::domain(ctx, "Foo").await?,
     );
     assert_eq!(
         json!({
             "Value": "value from Bar",
-            "Sources": {}
+            "Sources": "{}"
         }),
         component::domain(ctx, "Bar").await?,
     );
@@ -2027,23 +2027,23 @@ async fn create_and_subscribe_bar_to_foo(ctx: &mut DalContext) -> Result<()> {
     change_set::commit(ctx).await?;
     assert_eq!(
         json!({
-            "Sources": {}
+            "Sources": "{}"
         }),
         component::domain(ctx, "manager").await?,
     );
     assert_eq!(
         json!({
             "Value": "value from Foo",
-            "Sources": {}
+            "Sources": "{}"
         }),
         component::domain(ctx, "Foo").await?,
     );
     assert_eq!(
         json!({
             "Value": "value from Foo",
-            "Sources": {
+            "Sources": serde_json::to_string_pretty(&json!({
                 "/domain/Value": { "component": component::id(ctx, "Foo").await?, "path": "/domain/Value" }
-            }
+            }))?
         }),
         component::domain(ctx, "Bar").await?,
     );
@@ -2095,23 +2095,23 @@ async fn create_and_subscribe_foo_to_bar_reverse(ctx: &mut DalContext) -> Result
     change_set::commit(ctx).await?;
     assert_eq!(
         json!({
-            "Sources": {}
+            "Sources": "{}"
         }),
         component::domain(ctx, "manager").await?,
     );
     assert_eq!(
         json!({
             "Value": "value from Bar",
-            "Sources": {
+            "Sources": serde_json::to_string_pretty(&json!({
                 "/domain/Value": { "component": component::id(ctx, "Bar").await?, "path": "/domain/Value" }
-            }
+            }))?
         }),
         component::domain(ctx, "Foo").await?,
     );
     assert_eq!(
         json!({
             "Value": "value from Bar",
-            "Sources": {}
+            "Sources": "{}"
         }),
         component::domain(ctx, "Bar").await?,
     );
