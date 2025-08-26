@@ -33,9 +33,9 @@
       <!-- Search and filters -->
       <ExploreSearchBarSkeleton v-if="showSkeleton" />
       <template v-else>
-        <div class="flex-none flex flex-row items-center gap-xs">
+        <div class="flex-none flex flex-row items-start gap-xs">
           <DropdownMenuButton
-            class="rounded min-w-[128px]"
+            class="rounded min-w-[128px] h-[2.5rem]"
             :options="viewListOptions"
             :modelValue="selectedViewId"
             minWidthToAnchor
@@ -66,46 +66,96 @@
               />
             </template>
           </DropdownMenuButton>
-          <InstructiveVormInput
-            :class="clsx('rounded grow cursor-text')"
-            :activeClasses="
-              themeClasses('border-action-500', 'border-action-300')
-            "
-            :inactiveClasses="
-              themeClasses(
-                'border-neutral-400 hover:border-black',
-                'border-neutral-600 hover:border-white',
-              )
-            "
-            :pills="showGrid ? ['Tab'] : undefined"
-            :instructions="showGrid ? 'to navigate' : undefined"
-            @click="searchRef?.focus()"
-          >
-            <template #left>
-              <Icon name="search" tone="neutral" size="sm" />
-            </template>
-            <template #default="slotProps">
-              <VormInput
-                ref="searchRef"
-                v-model="searchString"
-                autocomplete="off"
-                :class="slotProps.class"
-                noStyles
-                :placeholder="placeholderSearchText"
-                @focus="
-                  () => {
-                    clearSelection();
-                    mapRef?.deselect();
-                    slotProps.focus();
-                    focusedComponentIdx = -1;
-                  }
+          <div class="grow relative">
+            <InstructiveVormInput
+              :class="clsx('rounded cursor-text')"
+              :activeClasses="
+                themeClasses('border-action-500', 'border-action-300')
+              "
+              :inactiveClasses="
+                themeClasses(
+                  'border-neutral-400 hover:border-black',
+                  'border-neutral-600 hover:border-white',
+                )
+              "
+              :pills="showGrid ? ['Tab'] : undefined"
+              :instructions="showGrid ? 'to navigate' : undefined"
+              @click="searchRef?.focus()"
+            >
+              <template #left>
+                <Icon name="search" tone="neutral" size="sm" />
+              </template>
+              <template #default="slotProps">
+                <VormInput
+                  ref="searchRef"
+                  v-model="searchString"
+                  autocomplete="off"
+                  :class="slotProps.class"
+                  noStyles
+                  :placeholder="placeholderSearchText"
+                  @focus="
+                    () => {
+                      clearSelection();
+                      mapRef?.deselect();
+                      slotProps.focus();
+                      focusedComponentIdx = -1;
+                      showSearchFooter = true;
+                    }
+                  "
+                  @blur="
+                    () => {
+                      slotProps.blur();
+                      showSearchFooter = false;
+                    }
+                  "
+                  @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
+                  @keydown.esc="onEscape"
+                />
+              </template>
+            </InstructiveVormInput>
+
+            <!-- Search footer - absolute positioned overlay -->
+            <Transition
+              enterActiveClass="transition duration-200 ease-out"
+              enterFromClass="opacity-0 translate-y-1"
+              enterToClass="opacity-100 translate-y-0"
+              leaveActiveClass="transition duration-150 ease-in"
+              leaveFromClass="opacity-100 translate-y-0"
+              leaveToClass="opacity-0 translate-y-1"
+            >
+              <div
+                v-if="showSearchFooter"
+                :class="
+                  clsx(
+                    'absolute top-full left-0 right-0 z-50',
+                    'flex items-center gap-1 px-sm py-2xs text-xs',
+                    'border border-t-0 rounded-b-sm',
+                    themeClasses(
+                      'bg-neutral-50 border-neutral-300 text-neutral-600',
+                      'bg-neutral-800 border-neutral-600 text-neutral-300',
+                    ),
+                  )
                 "
-                @blur="slotProps.blur"
-                @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
-                @keydown.esc="onEscape"
-              />
-            </template>
-          </InstructiveVormInput>
+              >
+                <a
+                  href="https://docs.systeminit.com/explanation/search-syntax"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :class="
+                    clsx(
+                      'cursor-pointer underline',
+                      themeClasses(
+                        'text-neutral-600 hover:text-black',
+                        'text-neutral-300 hover:text-white',
+                      ),
+                    )
+                  "
+                >
+                  Learn more about our search query syntax
+                </a>
+              </div>
+            </Transition>
+          </div>
         </div>
         <div
           class="flex-none flex flex-row items-center gap-xs justify-between"
@@ -1669,6 +1719,7 @@ provide("EXPLORE_CONTEXT", exploreContext.value);
 // THE SEARCH BAR AND FILTERING
 // searchString can be null because VormInput sets the value to null onBlur if it's an empty string
 const searchString = ref<string | null>("");
+const showSearchFooter = ref(false);
 const filteredComponents = useComponentSearch(
   () => searchString.value ?? "",
   componentList,
