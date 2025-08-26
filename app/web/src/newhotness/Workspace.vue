@@ -21,50 +21,26 @@
         ref="navbarPanelLeftRef"
         :workspaceId="workspacePk"
         :changeSetId="changeSetId"
+        :invalidWorkspace="tokenFail"
       />
 
       <!-- Center -->
-      <div
-        v-if="!lobby"
-        class="flex flex-row flex-none items-center h-full justify-center place-items-center mx-auto overflow-hidden"
-      >
-        <NavbarButton
-          tooltipText="Compose"
-          icon="grid"
-          :selected="route.name?.toString().startsWith('new-hotness')"
-          :linkTo="compositionLink"
-        />
-
-        <NavbarButton
-          tooltipText="Customize"
-          icon="beaker"
-          :selected="route.matched.some((r) => r.name === 'workspace-lab')"
-          :linkTo="{
-            path: `/w/${workspacePk}/${changeSetId}/l`,
-          }"
-        />
-
-        <NavbarButton
-          tooltipText="Audit"
-          icon="eye"
-          :selected="route.matched.some((r) => r.name === 'workspace-audit')"
-          :linkTo="{
-            path: `/w/${workspacePk}/${changeSetId}/a`,
-          }"
-        />
-      </div>
+      <NavbarPanelCenter
+        v-if="!lobby && !tokenFail"
+        :workspaceId="workspacePk"
+        :changeSetId="changeSetId"
+        :componentId="componentId"
+        :viewId="viewId"
+      />
 
       <!-- Right -->
       <NavbarPanelRight
         :changeSetId="changeSetId"
         :workspaceId="workspacePk"
         :changeSetsNeedingApproval="changeSetsNeedingApproval"
+        :invalidWorkspace="tokenFail"
       />
     </nav>
-
-    <main v-if="lobby && tokenFail" class="grow min-h-0">
-      <div>Bad Token</div>
-    </main>
 
     <!-- Since lobby hides away the navbar, it's more of an overlay and stays apart from all else -->
     <Transition
@@ -80,7 +56,43 @@
         :loadingSteps="_.values(muspelheimStatuses)"
       />
     </Transition>
-    <template v-if="!lobby">
+
+    <main
+      v-if="tokenFail"
+      :class="
+        clsx(
+          'grow min-h-0 m-sm border flex flex-row items-center justify-center',
+          themeClasses('border-neutral-400', 'border-neutral-600'),
+        )
+      "
+      :data-error-code="tokenFailStatus"
+    >
+      <EmptyState
+        v-if="tokenFailStatus === 401"
+        icon="logo-si"
+        text="Unauthorized"
+        secondaryText="Your account is not authorized to access this workspace"
+        finalLinkText="Click here to see your workspaces"
+        @final="bumpToWorkspaces"
+      />
+      <EmptyState
+        v-else-if="tokenFailStatus === 400"
+        icon="logo-si"
+        text="Invalid workspace id"
+        :secondaryText="`A workspace with the id &quot;${workspacePk}&quot; does not exist`"
+        finalLinkText="Click here to see your workspaces"
+        @final="bumpToWorkspaces"
+      />
+      <EmptyState
+        v-else
+        icon="logo-si"
+        text="Something went wrong"
+        secondaryText="Click here to see your workspaces"
+        secondaryClickable
+        @secondary="bumpToWorkspaces"
+      />
+    </main>
+    <template v-else-if="!lobby">
       <Onboarding
         v-if="showOnboarding"
         @completed="onboardingCompleted = true"
@@ -88,8 +100,7 @@
       <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
            min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
       <main v-else class="grow min-h-0">
-        <div v-if="tokenFail">Bad Token</div>
-        <ComponentPage v-else-if="componentId" :componentId="componentId" />
+        <ComponentPage v-if="componentId" :componentId="componentId" />
         <FuncRunDetails v-else-if="funcRunId" :funcRunId="funcRunId" />
         <LatestFuncRunDetails
           v-else-if="actionId"
@@ -122,7 +133,6 @@ import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Span, trace } from "@opentelemetry/api";
 import { themeClasses } from "@si/vue-lib/design-system";
-import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
@@ -155,6 +165,10 @@ import NavbarPanelLeft from "./nav/NavbarPanelLeft.vue";
 import { useChangeSets } from "./logic_composables/change_set";
 import { routes, useApi } from "./api_composables";
 import Review from "./Review.vue";
+import EmptyState from "./EmptyState.vue";
+import NavbarPanelCenter from "./nav/NavbarPanelCenter.vue";
+
+const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
 const tracer = trace.getTracer("si-vue");
 const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
@@ -391,6 +405,7 @@ const checkOnboardingCompleteData = async () => {
 
   if (status !== 200) {
     tokenFail.value = true;
+    tokenFailStatus.value = status;
     return;
   }
 
@@ -449,19 +464,7 @@ export type SelectionsInQueryString = Partial<{
   hideSubscriptions: string; // Flag to hide unconnected components when navigating to map
 }>;
 
-const compositionLink = computed(() => {
-  // eslint-disable-next-line no-nested-ternary
-  const name = props.componentId
-    ? "new-hotness-component"
-    : props.viewId
-    ? "new-hotness-view"
-    : "new-hotness";
-  return {
-    name,
-    params: props,
-  };
-});
-
+const tokenFailStatus = ref();
 const tokenFail = ref(false);
 
 const queryClient = useQueryClient();
@@ -504,6 +507,7 @@ onBeforeMount(async () => {
   const workspaceAuthToken = getTokenForWorkspace(thisWorkspacePk);
   if (!workspaceAuthToken) {
     tokenFail.value = true;
+    tokenFailStatus.value = 500;
     return;
   }
 
@@ -533,6 +537,7 @@ watch(
       const workspaceToken = getTokenForWorkspace(newWorkspacePk);
       if (!workspaceToken) {
         tokenFail.value = true;
+        tokenFailStatus.value = 401;
         return;
       }
       await heimdall.registerBearerToken(newWorkspacePk, workspaceToken);
@@ -852,6 +857,10 @@ watch(
   },
   { immediate: true },
 );
+
+const bumpToWorkspaces = () => {
+  window.open(`${AUTH_PORTAL_URL}/workspaces/`, "_self");
+};
 
 const onReviewPage = computed(() => route.name === "new-hotness-review");
 
