@@ -11,7 +11,7 @@
       :alignOutsideLeftEdge="!onGrid"
       :overlapAnchorOffset="Y_OFFSET"
       :anchorXOffset="4"
-      @enterPressedNoSelection="emit('edit')"
+      @enterPressedNoSelection="() => emit('edit')"
     />
     <EraseModal ref="eraseModalRef" @confirm="componentsFinishErase" />
     <DeleteModal
