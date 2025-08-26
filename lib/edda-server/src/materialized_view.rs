@@ -21,6 +21,10 @@ use dal::{
     cached_module::CachedModuleError,
     diagram::DiagramError,
     prop::PropError,
+    slow_rt::{
+        self,
+        SlowRuntimeError,
+    },
     workspace_snapshot::WorkspaceSnapshotSelector,
 };
 use frigg::{
@@ -149,6 +153,8 @@ pub enum MaterializedViewError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde_json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] SlowRuntimeError),
     #[error("Transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("WorkspaceSnapshot error: {0}")]
@@ -787,9 +793,9 @@ async fn build_mv_for_graph_task<F, T, E>(
     build_mv_future: F,
 ) -> BuildMvTaskResult
 where
-    F: Future<Output = Result<T, E>>,
-    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
-    E: Into<MaterializedViewError>,
+    F: Future<Output = Result<T, E>> + Send + 'static,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum + Send + 'static,
+    E: Into<MaterializedViewError> + Send + 'static,
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
 {
@@ -826,9 +832,9 @@ async fn build_mv_for_graph_task_inner<F, T, E>(
     build_mv_future: F,
 ) -> MvBuilderResult
 where
-    F: Future<Output = Result<T, E>>,
-    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
-    E: Into<MaterializedViewError>,
+    F: Future<Output = Result<T, E>> + Send + 'static,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum + Send + 'static,
+    E: Into<MaterializedViewError> + Send + 'static,
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
 {
@@ -875,9 +881,9 @@ pub async fn build_mv<F, T, E>(
     build_mv_future: F,
 ) -> MvBuilderResult
 where
-    F: Future<Output = Result<T, E>>,
-    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
-    E: Into<MaterializedViewError>,
+    F: Future<Output = Result<T, E>> + Send + 'static,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum + Send + 'static,
+    E: Into<MaterializedViewError> + std::marker::Send + 'static,
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
 {
@@ -897,7 +903,7 @@ where
             None,
         ))
     } else {
-        let mv = build_mv_future.await?;
+        let mv = slow_rt::spawn(build_mv_future)?.await??;
         let mv_json = serde_json::to_value(&mv)?;
         let to_checksum = FrontendChecksum::checksum(&mv).to_string();
         let frontend_object: FrontendObject = mv.try_into()?;
@@ -1211,9 +1217,9 @@ async fn build_mv_for_deployment_task<F, T, E>(
     build_mv_future: F,
 ) -> BuildMvTaskResult
 where
-    F: Future<Output = Result<T, E>>,
-    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
-    E: Into<MaterializedViewError>,
+    F: Future<Output = Result<T, E>> + Send + 'static,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum + Send + 'static,
+    E: Into<MaterializedViewError> + Send + 'static,
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
 {
@@ -1234,9 +1240,9 @@ async fn build_mv_for_deployment_task_inner<F, T, E>(
     build_mv_future: F,
 ) -> MvBuilderResult
 where
-    F: Future<Output = Result<T, E>>,
-    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
-    E: Into<MaterializedViewError>,
+    F: Future<Output = Result<T, E>> + Send + 'static,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum + Send + 'static,
+    E: Into<MaterializedViewError> + Send + 'static,
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
 {
