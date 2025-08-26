@@ -32,6 +32,7 @@ use crate::extract::{
     responses(
         (status = 200, description = "Change Set force applied successfully", body = ForceApplyChangeSetV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
+        (status = 428, description = "DVU Roots still exist, apply must be tried again later."),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
