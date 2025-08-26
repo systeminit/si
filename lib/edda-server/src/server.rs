@@ -133,6 +133,12 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let compute_executor = Self::create_compute_executor()?;
 
+        let mut frigg_nats_config = config.nats().clone();
+        if let Some(name) = frigg_nats_config.connection_name {
+            frigg_nats_config.connection_name = Some(format!("{name}-frigg"));
+        }
+        let frigg_nats = Self::connect_to_nats(&frigg_nats_config).await?;
+
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::from_config(
             config.layer_db_config().clone(),
             compute_executor.clone(),
@@ -163,6 +169,7 @@ impl Server {
             config.parallel_build_limit(),
             config.streaming_patches(),
             services_context,
+            frigg_nats,
             config.quiescent_period(),
             shutdown_token,
         )
@@ -170,6 +177,7 @@ impl Server {
     }
 
     /// Creates a runnable [`Server`] from pre-configured and pre-created services.
+    #[allow(clippy::too_many_arguments)]
     #[instrument(name = "edda.init.from_services", level = "info", skip_all)]
     pub async fn from_services(
         instance_id: impl Into<String>,
@@ -177,6 +185,7 @@ impl Server {
         parallel_build_limit: usize,
         streaming_patches: bool,
         services_context: ServicesContext,
+        frigg_nats: NatsClient,
         quiescent_period: Duration,
         shutdown_token: CancellationToken,
     ) -> Result<Self> {
@@ -200,7 +209,13 @@ impl Server {
 
         let requests_stream = nats::edda_requests_jetstream_stream(&context).await?;
 
-        let frigg = FriggStore::new(nats.clone(), frigg_kv(&context, prefix.as_deref()).await?);
+        let frigg = {
+            let frigg_context = jetstream::new(frigg_nats.clone());
+            FriggStore::new(
+                frigg_nats,
+                frigg_kv(&frigg_context, prefix.as_deref()).await?,
+            )
+        };
 
         let edda_updates = EddaUpdates::new(
             nats.clone(),
