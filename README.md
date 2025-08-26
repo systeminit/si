@@ -8,9 +8,15 @@ This is a monolithic repository containing the System Initiative software.
 
 ## About
 
-System Initiative is the future of DevOps Automation. It is an Intuitive, Powerful, and Collaborative replacement for Infrastructure as Code.
+System Initiative is the world’s first AI Native Infrastructure Automation platform.
 
-To learn more, read our ["System Initiative is the Future" blog post](https://www.systeminit.com/blog-system-initiative-is-the-future) and the [System Initiative docs](https://docs.systeminit.com).
+- Engineers can now work directly with AI agents to do their work in a profound new way.
+- AI agents can discover infrastructure, propose changes, and execute them safely.
+- Human review and dynamic policy enforcement are built in to provide safety.
+
+The resulting workflow reduces multi-day tasks down to minutes and unlocks previously intractable problems in infrastructure automation.
+
+To learn more, check out the [website](https://systeminit.com) and the [docs](https://docs.systeminit.com).
 
 ## Local Development Quickstart
 
