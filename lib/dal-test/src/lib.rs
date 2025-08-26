@@ -783,12 +783,15 @@ pub async fn edda_server(
             .wrap_err("failed to build Edda server config")?
     };
 
+    let frigg_nats = services_context.nats_conn().clone();
+
     let server = edda_server::Server::from_services(
         config.instance_id(),
         config.concurrency_limit(),
         config.parallel_build_limit(),
         config.streaming_patches(),
         services_context,
+        frigg_nats,
         config.quiescent_period(),
         shutdown_token,
     )
