@@ -307,6 +307,7 @@
             </div>
           </template>
           <AttributePanel
+            ref="attributePanelRef"
             :component="component"
             :attributeTree="attributeTree"
             :importFunc="
@@ -514,7 +515,11 @@ import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AttributePanel from "./AttributePanel.vue";
 import ResourceValuesPanel from "./ResourceValuesPanel.vue";
-import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
+import {
+  attributeEmitter,
+  KeyDetails,
+  keyEmitter,
+} from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import StatusBox from "./layout_components/StatusBox.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
@@ -554,6 +559,10 @@ const queryClient = useQueryClient();
 const docsOpen = ref(true);
 
 const componentId = computed(() => props.componentId);
+
+const attributePanelRef = ref<InstanceType<typeof AttributePanel>>();
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const componentQuery = useQuery<BifrostComponent | undefined>({
   queryKey: key(EntityKind.Component, componentId),
@@ -815,35 +824,87 @@ const specialCaseManagementExecutionStatus = computed(() => {
   );
 });
 
-onMounted(() => {
-  keyEmitter.on("Escape", () => {
-    close();
-  });
+const onBackspace = () => {
+  if (!component.value?.toDelete) {
+    deleteComponent();
+  }
+};
 
-  keyEmitter.on("KeyE", () => {
+const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
+  // a: used for select all in Explore, not used here
+  // b: undefined,
+  c: (e) => {
+    e.preventDefault();
+    if (e.metaKey || e.ctrlKey) return;
+    emit("openChangesetModal");
+  },
+  // d: used for duplicate in Explore, not used here
+  e: (e) => {
+    e.preventDefault();
     if (!component.value?.toDelete) {
       eraseComponent();
     }
-  });
-
-  keyEmitter.on("Backspace", () => {
-    if (!component.value?.toDelete) {
-      deleteComponent();
-    }
-  });
-
-  keyEmitter.on("KeyF", () => {
+  },
+  f: (e) => {
+    e.preventDefault();
     if (component.value?.toDelete) {
       restoreComponent();
     }
-  });
+  },
+  // g: undefined,
+  // h: undefined,
+  // i: undefined,
+  // j: undefined,
+  k: (e) => {
+    e.preventDefault();
+    // k focuses the search on Explore, so why not have it focus the search here too?
+    attributePanelRef.value?.focusSearch();
+  },
+  // l: undefined,
+  // m: used to toggle the minimap in the Map view
+  // n: used to open the add component modal in Explore
+  // o: undefined,
+  // p: used to pin a component in the Grid view
+  // q: undefined,
+  r: (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      // This is the chrome hotkey combo for refreshing the page! Let it happen!
+      return;
+    } else if (ctx.onHead.value) {
+      // Can't open the review screen on Head
+      return;
+    }
 
-  keyEmitter.on("KeyU", () => {
+    if (featureFlagsStore.REVIEW_PAGE) {
+      e.preventDefault();
+      router.push({
+        name: "new-hotness-review",
+      });
+    }
+  },
+  // s: undefined,
+  // t: used on the Grid view to open the create template modal
+  u: () => {
     if (!component.value?.toDelete && isUpgradeable.value) {
       upgradeComponent();
     }
-  });
+  },
+  // v: undefined,
+  // w: undefined,
+  // x: undefined,
+  // y: undefined,
+  // z: undefined,
+  Backspace: onBackspace,
+  Delete: onBackspace,
+  Escape: () => {
+    close();
+  },
+};
 
+onMounted(() => {
+  for (const [key, func] of Object.entries(shortcuts)) {
+    keyEmitter.on(key, func);
+  }
   realtimeStore.subscribe(MGMT_RUN_KEY, `changeset/${ctx.changeSetId.value}`, [
     {
       eventType: "FuncRunLogUpdated",
@@ -860,11 +921,9 @@ onMounted(() => {
   ]);
 });
 onBeforeUnmount(() => {
-  keyEmitter.off("Escape");
-  keyEmitter.off("KeyE");
-  keyEmitter.off("Backspace");
-  keyEmitter.off("KeyF");
-  keyEmitter.off("KeyU");
+  for (const [key, func] of Object.entries(shortcuts)) {
+    keyEmitter.off(key, func);
+  }
   realtimeStore.unsubscribe(MGMT_RUN_KEY);
 });
 
@@ -995,6 +1054,10 @@ const navigateToFuncRunDetails = (funcRunId: string) => {
     },
   });
 };
+
+const emit = defineEmits<{
+  (e: "openChangesetModal"): void;
+}>();
 </script>
 
 <style lang="less" scoped>

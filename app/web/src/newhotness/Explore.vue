@@ -1834,7 +1834,7 @@ const allSelectedComponentsAreRestorable = computed(() => {
 
 const fixContextMenu = async () => {
   if (bulkEditing.value) return;
-  if (!focusedComponentRef.value) await nextTick();
+  await nextTick();
 
   // If we focus on the pinned component, do not bring up the context menu.
   if (
@@ -2103,9 +2103,8 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     if (e.metaKey || e.ctrlKey) {
       // This is the chrome hotkey combo for refreshing the page! Let it happen!
       return;
-    }
-
-    if (ctx.onHead.value) {
+    } else if (ctx.onHead.value) {
+      // Can't open the review screen on Head
       return;
     }
 
@@ -2139,6 +2138,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
       mapRef.value?.onU(e);
     }
   },
+  // v: undefined,
   // w: undefined,
   // x: undefined,
   // y: undefined,
