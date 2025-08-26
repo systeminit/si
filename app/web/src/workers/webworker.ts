@@ -126,8 +126,6 @@ registerInstrumentations({
 
 const tracer = trace.getTracer("bifrost");
 // eslint-disable-next-line no-console
-const log = console.log;
-// eslint-disable-next-line no-console
 const error = console.error;
 const _DEBUG = import.meta.env.VITE_SI_ENV === "local";
 const _START_FRESH = false;
@@ -135,6 +133,11 @@ const _START_FRESH = false;
 function debug(...args: any | any[]) {
   // eslint-disable-next-line no-console
   if (_DEBUG) console.debug(args);
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function log(...args: any | any[]) {
+  // eslint-disable-next-line no-console
+  if (_DEBUG) console.log(args);
 }
 
 /**
@@ -1513,7 +1516,7 @@ const mjolnirBulk = async (
 
   if (!req) {
     debug("🔨 MJOLNIR BULK FAILED:", indexChecksum, "no response");
-    bulkDone(true);
+    bulkDone({ workspaceId, changeSetId }, true);
     return;
   }
 
@@ -1577,7 +1580,7 @@ const mjolnirBulk = async (
 
   const writeToSqlMs = performance.now() - startWriteToSql;
   log(`🔨 MJOLNIR BULK DONE! ${writeToSqlMs}ms`);
-  bulkDone();
+  bulkDone({ workspaceId, changeSetId });
 };
 
 const mjolnir = (
@@ -1989,7 +1992,7 @@ const niflheim = async (
 
     // build connections list based on data we have in the DB
     // connections list will rebuild as data comes in
-    bulkInflight();
+    bulkInflight({ workspaceId, changeSetId });
 
     // clear out references, no queries have been performed yet
     clearAllWeakReferences(db, changeSetId);
@@ -2005,9 +2008,9 @@ const niflheim = async (
     });
 
     // Check for 202 status - user needs to go to lobby
+    frigg.setAttribute("status", req.status);
     if (req.status === STATUS_INDEX_IN_PROGRESS) {
-      frigg.setAttribute("status", STATUS_INDEX_IN_PROGRESS);
-      frigg.setAttribute("shouldNavigateToLobby", true);
+      debug("‼️ INDEX NOT READY", changeSetId);
       frigg.end();
       span.end();
       return false;
@@ -2121,7 +2124,8 @@ const niflheim = async (
         indexChecksum,
       );
     } else {
-      bulkDone(true);
+      debug("NIFLHEIM NOOP DONE", changeSetId);
+      bulkDone({ workspaceId, changeSetId }, true);
       span.setAttribute("noop", true);
     }
 
@@ -2713,8 +2717,7 @@ const getComponentDetails = (
     returnValue: "resultRows",
   });
   const end = performance.now();
-  // eslint-disable-next-line no-console
-  console.log("sql get names", end - start, "ms");
+  debug("sql get names", end - start, "ms");
   const details: Record<string, ComponentInfo> = {};
   data.forEach((row) => {
     details[row[0] as string] = {
@@ -3640,7 +3643,7 @@ const dbInterface: TabDBInterface = {
                   ),
               );
               debug(
-                "📨 WORKSPACE PATCH MESSAGE COMPLETE:",
+                "📨 WORKSPACE PATCH MESSAGE ADDED:",
                 data.meta.toIndexChecksum,
               );
             } else if (data.kind === MessageKind.DEPLOYMENT_PATCH) {
@@ -3654,6 +3657,7 @@ const dbInterface: TabDBInterface = {
               debug("📨 DEPLOYMENT PATCH IS NOT BEING HANDLED RIGHT NOW");
             } else if (data.kind === MessageKind.WORKSPACE_INDEXUPDATE) {
               // Index has been updated - signal lobby exit
+              debug("📨 INDEX UPDATE", data.meta.changeSetId);
               if (lobbyExitFn) {
                 lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
               }
