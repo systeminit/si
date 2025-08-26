@@ -18,6 +18,7 @@ use dal::{
     NatsProcessor,
     ServicesContext,
     feature_flags::FeatureFlagService,
+    slow_rt,
 };
 use edda_core::nats;
 use frigg::{
@@ -162,6 +163,10 @@ impl Server {
             FeatureFlagService::default(),
             compute_executor,
         );
+
+        let _ = slow_rt::spawn(async {
+            info!("Hello from the slow runtime");
+        });
 
         Self::from_services(
             config.instance_id().to_string(),
