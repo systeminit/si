@@ -452,12 +452,13 @@ impl ManagementFuncJob {
         ctx_clone.restart_connections().await?;
 
         if new_state == ManagementState::Failure {
-            if let Ok(snap) = ctx.workspace_snapshot() {
+            if let Ok(snap) = ctx_clone.workspace_snapshot() {
                 snap.revert().await;
             }
         }
+
         ManagementFuncJobState::transition_state(
-            ctx,
+            &ctx_clone,
             execution_state_id,
             new_state,
             func_run_id,
