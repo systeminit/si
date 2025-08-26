@@ -158,7 +158,7 @@
           </div>
         </div>
         <div
-          class="flex-none flex flex-row items-center gap-xs justify-between"
+          class="flex-none flex flex-row flex-wrap items-center gap-xs justify-between"
         >
           <TabGroupToggle
             ref="groupRef"
@@ -182,7 +182,7 @@
               />
             </template>
           </TabGroupToggle>
-          <div v-if="showGrid" class="flex flex-row gap-xs">
+          <div v-if="showGrid" class="flex flex-row flex-wrap gap-xs">
             <DefaultSubscriptionsButton
               v-if="featureFlagsStore.DEFAULT_SUBS"
               :selected="gridMode.mode === 'defaultSubscriptions'"
