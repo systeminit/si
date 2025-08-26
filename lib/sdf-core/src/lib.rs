@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 pub mod api_error;
 pub mod app_state;
 pub mod async_route;
+pub mod change_set_mvs;
 pub mod dal_wrapper;
 pub mod force_change_set_response;
 pub mod generate_template;

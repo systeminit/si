@@ -7,6 +7,7 @@ use dal::{
     ChangeSet,
     WsEvent,
 };
+use sdf_core::change_set_mvs::create_index_for_new_change_set_and_watch;
 use sdf_extract::{
     EddaClient,
     FriggStore,
@@ -20,7 +21,6 @@ use serde::{
 use si_events::audit_log::AuditLogKind;
 
 use super::Result;
-use crate::service::v2::change_set::create_index_for_new_change_set_and_watch;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

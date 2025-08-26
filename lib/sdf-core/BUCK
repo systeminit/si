@@ -23,6 +23,7 @@ rust_library(
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:axum",
         "//third-party/rust:derive_more",
+        "//third-party/rust:futures-lite",
         "//third-party/rust:hyper",
         "//third-party/rust:once_cell",
         "//third-party/rust:remain",

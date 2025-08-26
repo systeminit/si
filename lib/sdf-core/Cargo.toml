@@ -17,6 +17,7 @@ derive_more = { workspace = true }
 edda-client = { path = "../../lib/edda-client" }
 edda-core = { path = "../../lib/edda-core" }
 frigg = { path = "../../lib/frigg" }
+futures-lite = { workspace = true }
 hyper = { workspace = true }
 nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
 once_cell = { workspace = true }
