@@ -55,27 +55,28 @@ const qualifications = computed<Qualification[]>(() => {
     "qualification",
     "qualificationItem",
   ]);
-  if (!data) return items;
-  const { attributeValues } = data;
+  if (data) {
+    const { attributeValues } = data;
 
-  attributeValues.forEach((av) => {
-    const name = av.key;
-    const children = r.treeInfo[av.id]?.children ?? [];
-    let status;
-    let message;
-    children.forEach((avId) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const child = r.attributeValues[avId]!;
-      if (child.path?.endsWith("result")) status = child.value;
-      else if (child.path?.endsWith("message")) message = child.value;
+    attributeValues.forEach((av) => {
+      const name = av.key;
+      const children = r.treeInfo[av.id]?.children ?? [];
+      let status;
+      let message;
+      children.forEach((avId) => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const child = r.attributeValues[avId]!;
+        if (child.path?.endsWith("result")) status = child.value;
+        else if (child.path?.endsWith("message")) message = child.value;
+      });
+      items.push({
+        avId: av.id,
+        name,
+        status,
+        message,
+      });
     });
-    items.push({
-      avId: av.id,
-      name,
-      status,
-      message,
-    });
-  });
+  }
 
   // Since we have all the data locally, we compute the validation rollup qualification over here
   // The qualification also gets computed in the backed for the old UI and luminork, so at some point we may
