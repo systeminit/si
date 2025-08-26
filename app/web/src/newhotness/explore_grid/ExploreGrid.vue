@@ -194,7 +194,7 @@ const scrollCurrentTileIntoView = () => {
   );
 };
 
-watch([() => exploreContext.focusedComponentIdx], scrollCurrentTileIntoView);
+watch([exploreContext.focusedComponentIdx], scrollCurrentTileIntoView);
 
 const emit = defineEmits<{
   (e: "bulkDone"): void;

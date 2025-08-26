@@ -336,14 +336,10 @@
             v-else
             ref="scrollRef"
             data-testid="tile-container"
-            :class="
-              clsx(
-                'grow',
-                bulkEditing && 'min-h-0',
-                !bulkEditing && 'scrollable',
-              )
-            "
+            :class="clsx('grow', bulkEditing ? 'min-h-0' : 'scrollable')"
             :style="!bulkEditing && 'overflow-anchor: none;'"
+            @scroll="onScroll"
+            @scrollend="fixContextMenuAfterScroll"
           >
             <WelcomeBanner
               v-if="featureFlagsStore.INITIALIZER_ONBOARD && ctx.onHead.value"
@@ -369,9 +365,7 @@
               "
               @childUnhover="() => (hoveredComponentId = undefined)"
               @unpin="() => (gridMode = { mode: 'default', label: '' })"
-              @scrollend="fixContextMenuAfterScroll"
               @collapse="collapse"
-              @scroll="onScroll"
             />
           </div>
           <footer
@@ -1902,7 +1896,12 @@ const fixContextMenu = async () => {
 const clearSelection = () => {
   selectedComponentIndexes.clear();
   bulkEditing.value = false;
-  unfocus();
+  if (focusedComponentIdx.value === -1) {
+    setFocusedComponentIdx(-1);
+    componentContextMenuRef.value?.close();
+  } else {
+    unfocus();
+  }
 };
 
 const selectComponent = (componentIdx: number) => {
@@ -2294,7 +2293,6 @@ const onClick = (e: MouseDetails["click"]) => {
     if (inside && e.target instanceof Node && inside(e.target)) {
       return;
     }
-
     clearSelection();
   }
 };

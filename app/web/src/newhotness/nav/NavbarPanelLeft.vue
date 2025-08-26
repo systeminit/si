@@ -30,14 +30,16 @@
       </DropdownMenuButton>
     </label>
 
-    <Icon
-      name="chevron--right"
-      size="xs"
-      tone="neutral"
-      class="mt-[14px] flex-none"
-    />
+    <template v-if="!invalidWorkspace">
+      <Icon
+        name="chevron--right"
+        size="xs"
+        tone="neutral"
+        class="mt-[14px] flex-none"
+      />
 
-    <ChangeSetPanel ref="changeSetPanelRef" :changeSetId="changeSetId" />
+      <ChangeSetPanel ref="changeSetPanelRef" :changeSetId="changeSetId" />
+    </template>
 
     <StatusPanel />
   </div>
@@ -62,9 +64,12 @@ const workspaces = inject<Workspaces>("WORKSPACES");
 const props = defineProps<{
   workspaceId: string;
   changeSetId: string;
+  invalidWorkspace?: boolean;
 }>();
 
-const selectedWorkspaceId = ref(props.workspaceId);
+const selectedWorkspaceId = ref(
+  props.invalidWorkspace ? undefined : props.workspaceId,
+);
 watch(
   () => props.workspaceId,
   () => {

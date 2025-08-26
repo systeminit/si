@@ -2,8 +2,10 @@
   <div
     class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end"
   >
-    <Collaborators />
-    <Notifications :changeSetsNeedingApproval="changeSetsNeedingApproval" />
+    <template v-if="!invalidWorkspace">
+      <Collaborators />
+      <Notifications :changeSetsNeedingApproval="changeSetsNeedingApproval" />
+    </template>
 
     <template v-if="featureFlagsStore.SQLITE_TOOLS">
       <NavbarButton icon="odin" size="sm">
@@ -66,7 +68,7 @@
 
     <ProfileButton :showTopLevelMenuItems="collapse" />
 
-    <ApplyChangeSetButton />
+    <ApplyChangeSetButton v-if="!invalidWorkspace" />
 
     <Modal ref="modalRef" title="Throw">
       <Stack>
@@ -109,6 +111,7 @@ const props = defineProps<{
   changeSetId: string;
   workspaceId: string;
   changeSetsNeedingApproval: ChangeSet[];
+  invalidWorkspace?: boolean;
 }>();
 
 const featureFlagsStore = useFeatureFlagsStore();
