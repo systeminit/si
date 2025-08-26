@@ -2036,7 +2036,7 @@ impl SchemaVariant {
     pub async fn all_func_ids(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<HashSet<FuncId>> {
+    ) -> SchemaVariantResult<Vec<FuncId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut all_func_ids = HashSet::new();
 
@@ -2127,8 +2127,10 @@ impl SchemaVariant {
                 all_func_ids.insert(func_id);
             }
         }
+        let mut result: Vec<_> = all_func_ids.into_iter().collect();
+        result.sort_unstable();
 
-        Ok(all_func_ids)
+        Ok(result)
     }
 
     pub async fn list_auth_func_ids_for_id(
