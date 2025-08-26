@@ -198,9 +198,12 @@ const WAIT_BETWEEN_BATCHES: Duration = Duration::from_millis(100);
 
 impl CachedModule {
     pub async fn si_pkg(&mut self, ctx: &DalContext) -> CachedModuleResult<SiPkg> {
-        let package_data = self.package_data(ctx).await?;
-        // slow_rt, and cache this
-        Ok(SiPkg::load_from_bytes(package_data)?)
+        self.package_data(ctx).await?;
+        if let Some(package_data) = self.package_data.take() {
+            Ok(slow_rt::spawn(async move { SiPkg::load_from_bytes(&package_data) })?.await??)
+        } else {
+            Err(CachedModuleError::NoPackageData)
+        }
     }
 
     async fn package_data(&mut self, ctx: &DalContext) -> CachedModuleResult<&[u8]> {
