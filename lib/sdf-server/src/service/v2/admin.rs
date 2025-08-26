@@ -100,6 +100,8 @@ pub enum AdminAPIError {
     Component(#[from] dal::component::ComponentError),
     #[error("diagram error: {0}")]
     Diagram(#[from] sdf_v1_routes_diagram::DiagramError),
+    #[error("edda client error: {0}")]
+    Edda(#[from] edda_client::ClientError),
     #[error("func runner error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
     #[error("inferred connection graph error: {0}")]

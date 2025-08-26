@@ -87,7 +87,8 @@ pub async fn update_cached_modules_inner(
     edda_client: edda_client::EddaClient,
 ) -> AdminAPIResult<()> {
     info!("Starting module cache update");
-    CachedModule::update_cached_modules(ctx, edda_client).await?;
+    CachedModule::update_cached_modules(ctx, edda_client.clone()).await?;
+    edda_client.rebuild_for_deployment().await?;
 
     track(
         &posthog_client,
