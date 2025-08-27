@@ -143,7 +143,6 @@
                       <span
                         v-html-safe="highlight(attr.prop.kind)"
                         class="px-xs py-2xs rounded text-2xs"
-                        :class="kindTagClass"
                       >
                       </span>
                     </td>
@@ -414,6 +413,7 @@
 import { computed, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { SiSearch, themeClasses } from "@si/vue-lib/design-system";
+import { tw } from "@si/vue-lib";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { routes, useApi } from "./api_composables";
 import EmptyState from "./EmptyState.vue";
@@ -528,35 +528,29 @@ const expandedRows = ref(new Set<string>());
 // Style classes
 const cardClass = computed(() =>
   themeClasses(
-    "bg-shade-0 border-neutral-300",
-    "bg-shade-100 border-neutral-600",
+    tw`bg-shade-0 border-neutral-300`,
+    tw`bg-shade-100 border-neutral-600`,
   ),
 );
 const headerClass = computed(() =>
-  themeClasses("text-neutral-900", "text-neutral-100"),
+  themeClasses(tw`text-neutral-900`, tw`text-neutral-100`),
 );
 const docClass = computed(() =>
   themeClasses(
-    "bg-neutral-50 text-neutral-700",
-    "bg-neutral-800 text-neutral-300",
-  ),
-);
-const kindTagClass = computed(() =>
-  themeClasses(
-    "bg-purple-100 text-purple-800",
-    "bg-purple-800 text-purple-200",
+    tw`bg-neutral-50 text-neutral-700`,
+    tw`bg-neutral-800 text-neutral-300`,
   ),
 );
 const destructiveClass = computed(() =>
-  themeClasses("text-destructive-500", "text-destructive-400"),
+  themeClasses(tw`text-destructive-500`, tw`text-destructive-400`),
 );
 const tagClass = computed(() =>
   themeClasses(
-    "bg-neutral-100 text-neutral-700",
-    "bg-neutral-700 text-neutral-300",
+    tw`bg-neutral-100 text-neutral-700`,
+    tw`bg-neutral-700 text-neutral-300`,
   ),
 );
-const bgClass = computed(() => themeClasses("bg-white", "bg-neutral-900"));
+const bgClass = computed(() => themeClasses(tw`bg-white`, tw`bg-neutral-900`));
 
 // Utility functions
 const stripRootFromPath = (path: string): string => {

@@ -18,7 +18,10 @@
       :class="
         clsx(
           'min-w-0',
-          themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+          themeClasses(
+            'text-newhotness-greenlight',
+            'text-newhotness-greendark',
+          ),
         )
       "
     >
@@ -29,10 +32,21 @@
         }}
       </TruncateWithTooltip>
     </TextPill>
-    <TextPill mono class="text-purple min-w-0">
-      <TruncateWithTooltip>{{
-        ctx.componentDetails.value[componentId]?.name ?? componentId
-      }}</TruncateWithTooltip>
+    <TextPill
+      mono
+      :class="
+        clsx(
+          'min-w-0',
+          themeClasses(
+            'text-newhotness-purplelight',
+            'text-newhotness-purpledark',
+          ),
+        )
+      "
+    >
+      <TruncateWithTooltip>
+        {{ ctx.componentDetails.value[componentId]?.name ?? componentId }}
+      </TruncateWithTooltip>
     </TextPill>
   </li>
 </template>

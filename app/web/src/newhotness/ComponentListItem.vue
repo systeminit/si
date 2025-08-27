@@ -18,7 +18,10 @@
       variant="component"
       :class="
         clsx(
-          themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+          themeClasses(
+            'text-newhotness-greenlight',
+            'text-newhotness-greendark',
+          ),
           'max-w-fit flex-1',
         )
       "
@@ -28,7 +31,15 @@
     <TextPill
       tighter
       variant="component"
-      :class="clsx('text-purple max-w-fit flex-1')"
+      :class="
+        clsx(
+          'max-w-fit flex-1',
+          themeClasses(
+            'text-newhotness-purplelight',
+            'text-newhotness-purpledark',
+          ),
+        )
+      "
     >
       <TruncateWithTooltip>{{ component.name }}</TruncateWithTooltip>
     </TextPill>
