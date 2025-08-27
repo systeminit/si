@@ -751,52 +751,10 @@
             </DropdownMenuItem>
           </DropdownMenuButton>
         </template>
-        <template v-else-if="widgetKind === 'secret'">
-          <div class="p-2xs" @click="secretModalRef?.open()">
-            <div
-              v-if="secret"
-              :class="
-                clsx(
-                  'line-clamp-6 px-[10px] py-3xs rounded leading-[18px] text-xs cursor-pointer',
-                  secret.isUsable
-                    ? themeClasses('bg-action-200', 'bg-action-700')
-                    : themeClasses('bg-destructive-400', 'bg-destructive-600'),
-                )
-              "
-            >
-              <Icon class="inline-block align-middle" name="key" size="2xs" />
-              {{ secret.definition }} / {{ secret.name }}
-            </div>
-            <div
-              v-else
-              class="opacity-60 italic pl-6 cursor-pointer hover:opacity-100"
-            >
-              select/add secret
-            </div>
-          </div>
-
-          <SecretsModal
-            v-if="secretDefinitionIdForProp"
-            ref="secretModalRef"
-            :definitionId="secretDefinitionIdForProp"
-            @select="secretSelectedHandler"
-          />
-        </template>
+        <template v-else-if="widgetKind === 'secret'"> </template>
         <template v-else>
           <div class="py-[4px] px-[8px] text-sm">{{ widgetKind }}</div>
         </template>
-        <!-- <div
-          v-if="!propIsEditable && attributesPanel"
-          v-tooltip="sourceTooltipText"
-          :class="
-            clsx(
-              'attributes-panel-item__blocked-overlay',
-              'absolute top-0 w-full h-full z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50',
-              themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark'),
-            )
-          "
-          @click="openNonEditableModal"
-        /> -->
 
         <SourceTooltip
           v-if="!propIsEditable && attributesPanel"
@@ -1046,7 +1004,7 @@ import {
   useComponentAttributesStore,
 } from "@/store/component_attributes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { Secret, useSecretsStore } from "@/store/secrets.store";
+import { useSecretsStore } from "@/store/secrets.store";
 import { useViewsStore } from "@/store/views.store";
 import {
   PropertyEditorProp,
@@ -1067,7 +1025,6 @@ import {
 } from "@/store/components.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import CodeEditor from "../CodeEditor.vue";
-import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 import CodeViewer from "../CodeViewer.vue";
 import { TreeFormContext } from "./TreeForm.vue";
@@ -1120,7 +1077,6 @@ const props = defineProps({
 const propDocModalRef = ref<InstanceType<typeof Modal>>();
 const viewModalRef = ref<InstanceType<typeof Modal>>();
 const editModalRef = ref<InstanceType<typeof Modal>>();
-const secretModalRef = ref<InstanceType<typeof SecretsModal>>();
 
 const isOpen = ref(!props.startClosed); // ref(props.attributeDef.children.length > 0);
 const showValidationDetails = ref(false);
@@ -1748,22 +1704,6 @@ const isCreateOnly = computed(
     props.attributesPanel &&
     (fullPropDef.value as PropertyEditorProp).createOnly,
 );
-const secretDefinitionIdForProp = computed(() => {
-  if (props.treeDef.propDef.widgetKind.kind !== "secret") return;
-  const widgetOptions = props.treeDef.propDef.widgetKind.options;
-  // A widget of kind=secret has a single option that points to its secret definition
-  const secretKind = _.find(
-    widgetOptions,
-    (o) => o.label === "secretKind",
-  )?.value;
-  if (!secretKind) throw new Error("Missing secretKind on secret widget...?");
-  return secretKind;
-});
-function secretSelectedHandler(newSecret: Secret) {
-  newValueString.value = newSecret.id;
-  updateValue();
-  secretModalRef.value?.close();
-}
 
 const confirmEditModalRef = ref<InstanceType<typeof Modal>>();
 const confirmEditModalTitle = computed(() => {

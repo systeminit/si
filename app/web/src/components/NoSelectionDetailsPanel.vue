@@ -64,9 +64,7 @@
         <TabGroupItem label="History" slug="history">
           <ChangesPanelHistory />
         </TabGroupItem>
-        <TabGroupItem label="Secrets" slug="secrets">
-          <SecretsPanel />
-        </TabGroupItem>
+        <TabGroupItem label="Secrets" slug="secrets"> </TabGroupItem>
       </TabGroup>
     </div>
   </ScrollArea>
@@ -89,7 +87,6 @@ import { ref } from "vue";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
-import SecretsPanel from "./SecretsPanel.vue";
 import ChangesPanelProposed from "./ChangesPanelProposed.vue";
 import ChangesPanelHistory from "./ChangesPanelHistory.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";

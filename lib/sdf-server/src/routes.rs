@@ -118,7 +118,6 @@ fn v1_routes() -> Router<AppState> {
         .nest("/component", sdf_v1_routes_component::routes()) // MOST USED IN OLD UI (ONE IN FUNC EDITOR)
         .nest("/diagram", sdf_v1_routes_diagram::routes()) // ALL USED IN OLD UI
         .nest("/qualification", sdf_v1_routes_qualification::routes()) // ALL USED IN OLD UI (AND ONE IN API TESTS)
-        .nest("/secret", sdf_v1_routes_secret::routes()) // ALL USED IN OLD UI IN SECRETS STORE
         .nest("/session", sdf_v1_routes_session::routes()) // ALL MIGHT BE USED IN NEWHOTNESS
         .nest("/ws", sdf_v1_routes_ws::routes()) // ALL USED IN NEWHOTNESS, BUT CRDT IS ONLY USED IN THE CODEVIEWER AND WORKSPACES UPDATES MIGHT BE ABLE TO BE TRIMMED (E.G. COMPONENT POSITION)
         .nest("/module", sdf_v1_routes_module::routes()) // ALL USED IN CUSTOMIZE SCREEN

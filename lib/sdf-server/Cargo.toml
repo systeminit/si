@@ -55,7 +55,6 @@ sdf-v1-routes-component = { path = "../../lib/sdf-v1-routes-component" }
 sdf-v1-routes-diagram = { path = "../../lib/sdf-v1-routes-diagram" }
 sdf-v1-routes-module = { path = "../../lib/sdf-v1-routes-module" }
 sdf-v1-routes-qualification = { path = "../../lib/sdf-v1-routes-qualification" }
-sdf-v1-routes-secret = { path = "../../lib/sdf-v1-routes-secret" }
 sdf-v1-routes-session = { path = "../../lib/sdf-v1-routes-session" }
 sdf-v1-routes-variant = { path = "../../lib/sdf-v1-routes-variant" }
 sdf-v1-routes-ws = { path = "../../lib/sdf-v1-routes-ws" }
