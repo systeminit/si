@@ -626,10 +626,6 @@ pub async fn build_all_mvs_for_deployment(
 macro_rules! spawn_build_mv_task {
     ($build_tasks:expr, $ctx:expr, $frigg:expr, $change:expr, $mv_id:expr, $mv:ty, $build_fn:expr $(,)?) => {
         let kind = <$mv as ::si_frontend_mv_types::materialized_view::MaterializedView>::kind();
-
-        // Record the currently running number of MV build tasks so we can see just how parallel this actually
-        // ends up being.
-        metric!(counter.edda.mv_build = 1);
         $build_tasks.spawn(build_mv_for_graph_task(
             $ctx.clone(),
             $frigg.clone(),
@@ -717,13 +713,17 @@ async fn build_mv_inner(
                 change,
                 mv_kind,
                 workspace_pk,
+                change_set_id,
             )
             .await?
         }
 
         if let Some(join_result) = build_tasks.join_next().await {
             let (kind, mv_id, build_duration, execution_result) = join_result?;
-            metric!(counter.edda.mv_build = -1);
+            metric!(
+                counter.edda.mv_build = -1,
+                label = format!("{workspace_pk}:{change_set_id}:{kind}")
+            );
 
             match execution_result {
                 Ok((maybe_patch, maybe_frontend_object)) => {
@@ -1098,7 +1098,7 @@ async fn build_deployment_mv_inner(
 
         if let Some(join_result) = build_tasks.join_next().await {
             let (kind, mv_id, build_duration, execution_result) = join_result?;
-            metric!(counter.edda.mv_build = -1);
+            metric!(counter.edda.mv_build = -1, label = kind.to_string());
 
             match execution_result {
                 Ok((maybe_patch, maybe_frontend_object)) => {
@@ -1145,7 +1145,7 @@ async fn spawn_deployment_mv_task(
     mv_id: String,
 ) -> Result<(), MaterializedViewError> {
     // Record the currently running number of MV build tasks
-    metric!(counter.edda.mv_build = 1);
+    metric!(counter.edda.mv_build = 1, label = mv_kind.to_string());
 
     match mv_kind {
         ReferenceKind::CachedSchemas => {
@@ -1270,10 +1270,15 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
     change: Change,
     mv_kind: ReferenceKind,
     workspace_pk: si_id::WorkspacePk,
+    change_set_id_for_metrics_only: ChangeSetId,
 ) -> Result<(), MaterializedViewError> {
     match mv_kind {
         ReferenceKind::ActionDiffList => {
             let workspace_mv_id = workspace_pk.to_string();
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1286,7 +1291,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::ActionPrototypeViewList => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1302,7 +1310,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::ActionViewList => {
             let workspace_mv_id = workspace_pk.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1315,7 +1326,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::AttributeTree => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1331,7 +1345,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::ComponentInList => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1347,7 +1364,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::Component => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1363,7 +1383,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::ComponentDiff => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1379,7 +1402,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::ComponentList => {
             let workspace_mv_id = workspace_pk.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1392,6 +1418,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::ErasedComponents => {
             let workspace_mv_id = workspace_pk.to_string();
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1404,7 +1434,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::DependentValueComponentList => {
             let workspace_mv_id = workspace_pk.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1417,7 +1450,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::IncomingConnections => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1433,7 +1469,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::ManagementConnections => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1449,7 +1488,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::IncomingConnectionsList => {
             let workspace_mv_id = workspace_pk.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1462,7 +1504,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::LuminorkSchemaVariant => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1479,7 +1524,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         ReferenceKind::LuminorkDefaultVariant => {
             let schema_id = si_events::ulid::Ulid::from(change.entity_id);
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1495,7 +1543,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::SchemaMembers => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1511,7 +1562,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::SchemaVariant => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1527,7 +1581,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::SchemaVariantCategories => {
             let workspace_mv_id = workspace_pk.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1540,7 +1597,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::View => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1556,7 +1616,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::ViewList => {
             let workspace_mv_id = workspace_pk.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
@@ -1569,7 +1632,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
         }
         ReferenceKind::ViewComponentList => {
             let entity_mv_id = change.entity_id.to_string();
-
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
             spawn_build_mv_task!(
                 build_tasks,
                 ctx,
