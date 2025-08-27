@@ -15,7 +15,6 @@ itertools = { workspace = true }
 remain = { workspace = true }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-extract = { path = "../../lib/sdf-extract" }
-sdf-v1-routes-diagram = { path = "../../lib/sdf-v1-routes-diagram" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-db = { path = "../../lib/si-db" }

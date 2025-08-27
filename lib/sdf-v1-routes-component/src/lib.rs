@@ -7,10 +7,7 @@ use axum::{
         IntoResponse,
         Response,
     },
-    routing::{
-        get,
-        post,
-    },
+    routing::get,
 };
 use dal::{
     ChangeSetError,
@@ -53,25 +50,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-pub mod delete_property_editor_value;
-pub mod get_code;
-pub mod get_diff;
-pub mod get_property_editor_schema;
-pub mod get_property_editor_values;
-pub mod get_resource;
-pub mod insert_property_editor_value;
 pub mod json;
-pub mod list_qualifications;
-mod manage;
-mod override_with_connection;
-pub mod refresh;
-pub mod restore_default_function;
-pub mod set_name;
-pub mod set_resource_id;
-pub mod set_type;
-mod unmanage;
-pub mod update_property_editor_value;
-mod upgrade;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -90,8 +69,6 @@ pub enum ComponentError {
     ComponentDebugView(#[from] ComponentDebugViewError),
     #[error("dal component error: {0}")]
     DalComponent(#[from] DalComponentError),
-    #[error("diagram error: {0}")]
-    Diagram(#[from] sdf_v1_routes_diagram::DiagramError),
     #[error("diagram error: {0}")]
     DiagramError(#[from] dal::diagram::DiagramError),
     #[error("func error: {0}")]
@@ -186,48 +163,5 @@ impl IntoResponse for ComponentError {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new()
-        .route(
-            "/get_property_editor_schema", // USED IN OLD UI
-            get(get_property_editor_schema::get_property_editor_schema),
-        )
-        .route(
-            "/get_property_editor_values", // USED IN OLD UI
-            get(get_property_editor_values::get_property_editor_values),
-        )
-        .route(
-            "/list_qualifications", // USED IN OLD UI
-            get(list_qualifications::list_qualifications),
-        )
-        .route("/get_code", get(get_code::get_code)) // USED IN OLD UI
-        .route("/get_diff", get(get_diff::get_diff)) // USED IN OLD UI
-        .route("/get_resource", get(get_resource::get_resource)) // USED IN OLD UI
-        .route(
-            "/update_property_editor_value", // USED IN OLD UI
-            post(update_property_editor_value::update_property_editor_value),
-        )
-        .route(
-            "/insert_property_editor_value", // USED IN OLD UI
-            post(insert_property_editor_value::insert_property_editor_value),
-        )
-        .route(
-            "/delete_property_editor_value", // USED IN OLD UI
-            post(delete_property_editor_value::delete_property_editor_value),
-        )
-        .route(
-            "/restore_default_function", // USED IN OLD UI
-            post(restore_default_function::restore_default_function),
-        )
-        .route("/set_type", post(set_type::set_type)) // USED IN OLD UI
-        .route("/set_name", post(set_name::set_name)) // USED IN OLD UI
-        .route("/set_resource_id", post(set_resource_id::set_resource_id)) // USED IN OLD UI
-        .route("/refresh", post(refresh::refresh)) // USED IN OLD UI
-        .route(
-            "/override_with_connection", // USED IN OLD UI
-            post(override_with_connection::override_with_connection),
-        )
-        .route("/json", get(json::json)) // USED IN FUNC EDITOR
-        .route("/upgrade_component", post(upgrade::upgrade)) // USED IN OLD UI
-        .route("/manage", post(manage::manage)) // USED IN OLD UI
-        .route("/unmanage", post(unmanage::unmanage)) // USED IN OLD UI
+    Router::new().route("/json", get(json::json)) // USED IN FUNC EDITOR
 }
