@@ -260,7 +260,6 @@ async fn migrate_connection(
             // inferred connections.
             if migration.explicit_connection_id.is_none() {
                 info!("Making inferred socket connection explicit due to issues");
-                make_socket_connection_explicit(ctx, &migration.socket_connection).await?;
             }
             return Ok(None);
         }
@@ -358,30 +357,4 @@ async fn remove_socket_connection(
     }
 
     Ok(true)
-}
-
-/// Make the socket connection explicit, if it isn't already.
-/// Returns false if there is nothing to make explicit.
-async fn make_socket_connection_explicit(
-    ctx: &DalContext,
-    socket_connection: &Option<SocketConnection>,
-) -> AdminAPIResult<bool> {
-    if let &Some(SocketConnection {
-        from: (from_component_id, from_socket_id),
-        to: (to_component_id, to_socket_id),
-    }) = socket_connection
-    {
-        // Reuse the code from the create_connection endpoint to send WsEvents and such
-        sdf_v1_routes_diagram::create_connection::create_connection_inner(
-            ctx,
-            from_component_id,
-            from_socket_id,
-            to_component_id,
-            to_socket_id,
-        )
-        .await?;
-        Ok(true)
-    } else {
-        Ok(false)
-    }
 }

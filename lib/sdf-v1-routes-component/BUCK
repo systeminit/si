@@ -6,7 +6,6 @@ rust_library(
         "//lib/dal:dal",
         "//lib/sdf-core:sdf-core",
         "//lib/sdf-extract:sdf-extract",
-        "//lib/sdf-v1-routes-diagram:sdf-v1-routes-diagram",
         "//lib/si-db:si-db",
         "//lib/si-events-rs:si-events",
         "//lib/si-frontend-types-rs:si-frontend-types",

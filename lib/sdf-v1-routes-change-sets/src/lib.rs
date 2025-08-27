@@ -34,7 +34,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 pub mod abandon_change_set;
-pub mod add_action;
 pub mod create_change_set;
 
 #[remain::sorted]
@@ -104,7 +103,6 @@ impl IntoResponse for ChangeSetError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/add_action", post(add_action::add_action)) // USED IN OLD UI
         .route(
             "/create_change_set", // USED IN NEW UI
             post(create_change_set::create_change_set),
