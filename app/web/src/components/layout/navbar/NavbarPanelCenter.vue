@@ -24,6 +24,15 @@
     />
 
     <NavbarButton
+      v-if="!onHead"
+      tooltipText="Review"
+      icon="eye"
+      :linkTo="{
+        path: `/n/${changeSetStore.selectedWorkspacePk}/${changeSetStore.selectedChangeSetId}/h/r`,
+      }"
+    />
+    <NavbarButton
+      v-else
       tooltipText="Audit"
       icon="eye"
       :selected="route.matched.some((r) => r.name === 'workspace-audit')"
@@ -37,16 +46,19 @@
 
 <script setup lang="ts">
 import { useRoute } from "vue-router";
+import { computed } from "vue";
 import { useViewsStore } from "@/store/views.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import NavbarButton from "./NavbarButton.vue";
 
 const route = useRoute();
+const changeSetStore = useChangeSetsStore();
+
+const onHead = computed(() => changeSetStore.headSelected);
 
 const modelingLink = () => {
   const viewsStore = useViewsStore();
-  const changeSetStore = useChangeSetsStore();
   const ffStore = useFeatureFlagsStore();
   const prefix = ffStore.ENABLE_NEW_EXPERIENCE
     ? "new-hotness"

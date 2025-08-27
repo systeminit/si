@@ -6,7 +6,10 @@
       <NavbarButton
         tooltipText="Compose"
         icon="grid"
-        :selected="route.name?.toString().startsWith('new-hotness')"
+        :selected="
+          route.name?.toString().startsWith('new-hotness') &&
+          route.name?.toString() !== 'new-hotness-review'
+        "
         :linkTo="compositionLink"
       />
 
@@ -20,6 +23,16 @@
       />
 
       <NavbarButton
+        v-if="!ctx.onHead.value"
+        tooltipText="Review"
+        icon="eye"
+        :selected="route.matched.some((r) => r.name === 'new-hotness-review')"
+        :linkTo="{
+          path: `/n/${workspaceId}/${changeSetId}/h/r`,
+        }"
+      />
+      <NavbarButton
+        v-else
         tooltipText="Audit"
         icon="eye"
         :selected="route.matched.some((r) => r.name === 'workspace-audit')"
@@ -52,7 +65,9 @@ import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { themeClasses, Icon } from "@si/vue-lib/design-system";
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
+import { useContext } from "../logic_composables/context";
 
+const ctx = useContext();
 const route = useRoute();
 
 const props = defineProps<{
