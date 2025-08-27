@@ -72,75 +72,22 @@
           class="flex-none"
         />
       </template>
-      <Modal
-        ref="firstTimeModalRef"
-        noExit
-        size="2xl"
-        title="Welcome To System Initiative!"
-      >
-        <iframe
-          class="aspect-video"
-          src="https://www.youtube.com/embed/7vrIJmP49IE?si=Kknr-Qm5DDBDXjTu"
-          title="YouTube video player"
-          frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen
-        ></iframe>
-        <div class="flex flex-row justify-center pt-5 pb-5">
-          <a
-            href="https://docs.systeminit.com/tutorials/getting-started"
-            target="_blank"
-            class="underline hover:text-blue-50"
-          >
-            Follow along with the tutorial on the documentation site
-          </a>
-        </div>
-        <div class="flex flex-row gap-sm mt-xs">
-          <VormInput
-            v-model="firstTimeModalCheckbox"
-            class="flex flex-row-reverse gap-0 italic"
-            type="checkbox"
-            label="Don't show me this again."
-            inlineLabel
-          />
-          <VButton
-            id="first-time-modal-continue-button"
-            class="flex-grow"
-            label="Let's Get Started!"
-            @click="closeFirstTimeModal"
-          />
-        </div>
-      </Modal>
     </template>
   </AppLayout>
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, PropType, ref, watch } from "vue";
+import { computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import * as _ from "lodash-es";
-import storage from "local-storage-fallback";
-import {
-  ErrorMessage,
-  Icon,
-  LoadingMessage,
-  Modal,
-  VButton,
-  VormInput,
-} from "@si/vue-lib/design-system";
+import { ErrorMessage, Icon, LoadingMessage } from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useViewsStore } from "@/store/views.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { useAuthStore } from "@/store/auth.store";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar.vue";
 import StatusBar from "@/components/StatusBar/StatusBar.vue";
 import { useRouterStore } from "@/store/router.store";
-
-const props = defineProps({
-  changeSetId: { type: String as PropType<string | "auto"> },
-});
 
 const router = useRouter();
 const route = useRoute();
@@ -148,7 +95,6 @@ const routerStore = useRouterStore();
 
 const workspacesStore = useWorkspacesStore();
 const changeSetsStore = useChangeSetsStore();
-const authStore = useAuthStore();
 
 const workspacesReqStatus = workspacesStore.getRequestStatus(
   "FETCH_USER_WORKSPACES",
@@ -161,29 +107,6 @@ const changeSetsReqStatus =
 
 // this page is the parent of many child routes so we watch the route rather than use mounted hooks
 watch([route, changeSetsReqStatus], handleUrlChange, { immediate: true });
-
-const firstTimeModalFired = ref(false);
-const firstTimeModalRef = ref<InstanceType<typeof Modal>>();
-onMounted(async () => {
-  if (authStore.user) {
-    const showModal = await authStore.CHECK_FIRST_MODAL(authStore.user.pk);
-
-    const hasServedModal = storage.getItem("SI_FIRST_TIME_MODAL_SHOWN");
-    if (!firstTimeModalFired.value && showModal && !hasServedModal) {
-      firstTimeModalRef.value?.open();
-      firstTimeModalFired.value = true;
-    }
-  }
-});
-
-const firstTimeModalCheckbox = ref(false);
-const closeFirstTimeModal = () => {
-  if (authStore.user && firstTimeModalCheckbox.value) {
-    authStore.DISMISS_FIRST_TIME_MODAL(authStore.user.pk);
-    storage.setItem("SI_FIRST_TIME_MODAL_SHOWN", "1");
-  }
-  firstTimeModalRef.value?.close();
-};
 
 function handleUrlChange() {
   changeSetsStore.creatingChangeSet = false;
