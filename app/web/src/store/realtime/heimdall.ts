@@ -28,6 +28,7 @@ import {
   UpdateFn,
   QueryAttributesTerm,
   FORCE_LEADER_ELECTION,
+  ConnStatusFn,
 } from "@/workers/types/dbinterface";
 import {
   Connection,
@@ -295,6 +296,22 @@ const updateCache = (
   });
 };
 
+export const wsConnections = ref<Record<string, boolean>>({});
+
+const updateConnectionStatus: ConnStatusFn = (
+  workspaceId: WorkspacePk,
+  connected: boolean,
+  noBroadcast?: boolean,
+) => {
+  wsConnections.value[workspaceId] = connected;
+  if (!noBroadcast) {
+    db.broadcastMessage({
+      messageKind: "updateConnectionStatus",
+      arguments: { workspaceId, connected },
+    });
+  }
+};
+
 const atomUpdated: UpdateFn = (
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
@@ -378,6 +395,7 @@ tabDb.addListenerInFlight(Comlink.proxy(inFlight));
 tabDb.addListenerReturned(Comlink.proxy(returned));
 tabDb.addListenerLobbyExit(Comlink.proxy(lobbyExit));
 tabDb.addAtomUpdated(Comlink.proxy(atomUpdated));
+tabDb.addConnStatusFn(Comlink.proxy(updateConnectionStatus));
 
 export const bifrostReconnect = async () => {
   await db.bifrostReconnect();

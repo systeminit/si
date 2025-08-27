@@ -41,6 +41,12 @@ export type IncomingManagementConnections = DefaultMap<
   Record<string, Connection>
 >;
 
+export type ConnStatusFn = (
+  workspaceId: string,
+  connected: boolean,
+  noBroadcast?: boolean,
+) => void;
+
 export type UpdateFn = (
   workspaceId: string,
   changeSetId: string,
@@ -93,6 +99,10 @@ export type BroadcastMessage =
         listIds: string[];
         removed: boolean;
       };
+    }
+  | {
+      messageKind: "updateConnectionStatus";
+      arguments: { workspaceId: string; connected: boolean };
     }
   | {
       messageKind: "listenerInFlight";
@@ -332,6 +342,7 @@ export interface TabDBInterface {
   addListenerReturned(fn: RainbowFn): void;
   addListenerLobbyExit(fn: LobbyExitFn): void;
   addAtomUpdated(fn: UpdateFn): void;
+  addConnStatusFn(fn: ConnStatusFn): void;
   changeSetExists(workspaceId: string, changeSetId: ChangeSetId): boolean;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
@@ -472,6 +483,7 @@ export interface WorkspaceIndexUpdate {
   meta: WorkspaceAtomMeta;
   kind: MessageKind.WORKSPACE_INDEXUPDATE;
   indexChecksum: string;
+  frontEndObject: IndexObject;
 }
 
 export interface DeploymentIndexUpdate {

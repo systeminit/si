@@ -68,6 +68,7 @@ import {
   UpdateFn,
   DeploymentIndexUpdate,
   DeploymentPatchBatch,
+  ConnStatusFn,
 } from "./types/dbinterface";
 import {
   BifrostComponent,
@@ -3486,6 +3487,7 @@ let inFlightFn: RainbowFn;
 let returnedFn: RainbowFn;
 let lobbyExitFn: LobbyExitFn;
 let atomUpdatedFn: UpdateFn;
+let updateConnectionStatus: ConnStatusFn;
 
 let abortController: AbortController | undefined;
 
@@ -3502,6 +3504,13 @@ const assertNever = (_foo: never) => {};
 const dbInterface: TabDBInterface = {
   async receiveBroadcast(message: BroadcastMessage) {
     switch (message.messageKind) {
+      case "updateConnectionStatus":
+        updateConnectionStatus(
+          message.arguments.workspaceId,
+          message.arguments.connected,
+          true,
+        );
+        break;
       case "cacheBust":
         bustCacheFn(
           message.arguments.workspaceId,
@@ -3607,6 +3616,13 @@ const dbInterface: TabDBInterface = {
     } catch (err) {
       error(err);
     }
+
+    sockets[workspaceId]?.addEventListener("close", () => {
+      updateConnectionStatus(workspaceId, false);
+    });
+    sockets[workspaceId]?.addEventListener("open", () => {
+      updateConnectionStatus(workspaceId, true);
+    });
 
     sockets[workspaceId]?.addEventListener("message", (messageEvent) => {
       tracer.startActiveSpan("handleEvent", async (span) => {
@@ -3804,6 +3820,10 @@ const dbInterface: TabDBInterface = {
 
   addListenerBustCache(cb: BustCacheFn) {
     bustCacheFn = cb;
+  },
+
+  addConnStatusFn(cb: ConnStatusFn) {
+    updateConnectionStatus = cb;
   },
 
   async addListenerInFlight(cb: RainbowFn) {
