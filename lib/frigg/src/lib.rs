@@ -361,10 +361,41 @@ impl FriggStore {
         kind: &str,
         id: &str,
     ) -> Result<Option<FrontendObject>> {
-        let Some((current_index, _)) = self
+        let maybe_mv_index = self
             .get_change_set_index(workspace_id, change_set_id)
             .await?
-        else {
+            .map(|r| r.0);
+
+        self.get_current_workspace_object_with_index(
+            workspace_id,
+            change_set_id,
+            kind,
+            id,
+            maybe_mv_index,
+        )
+        .await
+    }
+
+    #[instrument(
+        name = "frigg.get_current_workspace_object_with_index",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.change_set.id = %change_set_id,
+            si.frontend_object.id = %id,
+            si.frontend_object.kind = %kind,
+        )
+    )]
+    pub async fn get_current_workspace_object_with_index(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        kind: &str,
+        id: &str,
+        maybe_mv_index: Option<FrontendObject>,
+    ) -> Result<Option<FrontendObject>> {
+        let Some(current_index) = maybe_mv_index else {
             return Ok(None);
         };
         let mv_index: ChangeSetMvIndex =

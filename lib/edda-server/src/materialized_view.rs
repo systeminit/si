@@ -625,7 +625,7 @@ pub async fn build_all_mvs_for_deployment(
 }
 
 macro_rules! spawn_build_mv_task {
-    ($build_tasks:expr, $ctx:expr, $frigg:expr, $change:expr, $mv_id:expr, $mv:ty, $build_fn:expr $(,)?) => {
+    ($build_tasks:expr, $ctx:expr, $frigg:expr, $change:expr, $mv_id:expr, $mv:ty, $build_fn:expr, $maybe_mv_index:expr $(,)?) => {
         let kind = <$mv as ::si_frontend_mv_types::materialized_view::MaterializedView>::kind();
         $build_tasks.spawn(build_mv_for_graph_task(
             $ctx.clone(),
@@ -634,6 +634,7 @@ macro_rules! spawn_build_mv_task {
             $mv_id,
             kind,
             $build_fn,
+            $maybe_mv_index,
         ));
     };
 }
@@ -669,6 +670,13 @@ async fn build_mv_inner(
     let mut patches = Vec::new();
     let mut build_tasks = JoinSet::new();
     let mut queued_mv_builds = BinaryHeap::new();
+
+    let maybe_mv_index = Arc::new(
+        frigg
+            .get_change_set_index(workspace_pk, change_set_id)
+            .await?
+            .map(|r| r.0),
+    );
 
     // Queue everything so we can let the priority queue determine the order everything is built.
     for &change in changes {
@@ -715,6 +723,7 @@ async fn build_mv_inner(
                 mv_kind,
                 workspace_pk,
                 change_set_id,
+                maybe_mv_index.clone(),
             )
             .await?
         }
@@ -792,6 +801,7 @@ async fn build_mv_for_graph_task<F, T, E>(
     mv_id: String,
     mv_kind: ReferenceKind,
     build_mv_future: F,
+    maybe_mv_index: Option<FrontendObject>,
 ) -> BuildMvTaskResult
 where
     F: Future<Output = Result<T, E>> + Send + 'static,
@@ -810,6 +820,7 @@ where
         mv_id.clone(),
         mv_kind,
         build_mv_future,
+        maybe_mv_index,
     )
     .await;
 
@@ -831,6 +842,7 @@ async fn build_mv_for_graph_task_inner<F, T, E>(
     mv_id: String,
     mv_kind: ReferenceKind,
     build_mv_future: F,
+    maybe_mv_index: Option<FrontendObject>,
 ) -> MvBuilderResult
 where
     F: Future<Output = Result<T, E>> + Send + 'static,
@@ -841,11 +853,12 @@ where
 {
     let op = {
         let maybe_previous_version = frigg
-            .get_current_workspace_object(
+            .get_current_workspace_object_with_index(
                 ctx.workspace_pk()?,
                 ctx.change_set_id(),
                 &mv_kind.to_string(),
                 &mv_id,
+                maybe_mv_index,
             )
             .await?;
 
@@ -1294,6 +1307,7 @@ where
     build_mv(op, mv_kind, build_mv_future).await
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn spawn_build_mv_task_for_change_and_mv_kind(
     build_tasks: &mut JoinSet<BuildMvTaskResult>,
     ctx: &DalContext,
@@ -1302,6 +1316,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
     mv_kind: ReferenceKind,
     workspace_pk: si_id::WorkspacePk,
     change_set_id_for_metrics_only: ChangeSetId,
+    maybe_mv_index: Arc<Option<FrontendObject>>,
 ) -> Result<(), MaterializedViewError> {
     match mv_kind {
         ReferenceKind::ActionDiffList => {
@@ -1318,6 +1333,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 ActionDiffListMv,
                 dal_materialized_views::action::action_diff_list::assemble(ctx.clone()),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::ActionPrototypeViewList => {
@@ -1337,6 +1353,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into()
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::ActionViewList => {
@@ -1353,6 +1370,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 ActionViewListMv,
                 dal_materialized_views::action::action_view_list::assemble(ctx.clone()),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::AttributeTree => {
@@ -1372,6 +1390,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into(),
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::ComponentInList => {
@@ -1391,6 +1410,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into(),
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::Component => {
@@ -1410,6 +1430,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into(),
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::ComponentDiff => {
@@ -1429,6 +1450,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into(),
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::ComponentList => {
@@ -1445,6 +1467,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 ComponentListMv,
                 dal_materialized_views::component_list::assemble(ctx.clone()),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::ErasedComponents => {
@@ -1461,6 +1484,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 ErasedComponentsMv,
                 dal_materialized_views::component::erased_components::assemble(ctx.clone()),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::DependentValueComponentList => {
@@ -1477,6 +1501,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 DependentValueComponentListMv,
                 dal_materialized_views::dependent_value_component_list::assemble(ctx.clone()),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::IncomingConnections => {
@@ -1496,6 +1521,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into(),
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::ManagementConnections => {
@@ -1515,6 +1541,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into(),
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::IncomingConnectionsList => {
@@ -1531,6 +1558,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 IncomingConnectionsListMv,
                 dal_materialized_views::incoming_connections_list::assemble(ctx.clone()),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::LuminorkSchemaVariant => {
@@ -1550,6 +1578,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into()
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::LuminorkDefaultVariant => {
@@ -1570,6 +1599,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     schema_id.into()
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::SchemaMembers => {
@@ -1589,6 +1619,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into()
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::SchemaVariant => {
@@ -1608,6 +1639,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into()
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::SchemaVariantCategories => {
@@ -1624,6 +1656,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 SchemaVariantCategoriesMv,
                 dal_materialized_views::schema_variant_categories::assemble(ctx.clone()),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::View => {
@@ -1642,7 +1675,8 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 dal_materialized_views::view::assemble(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into()
-                )
+                ),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::ViewList => {
@@ -1659,6 +1693,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 ViewListMv,
                 dal_materialized_views::view_list::assemble(ctx.clone()),
+                (*maybe_mv_index).clone(),
             );
         }
         ReferenceKind::ViewComponentList => {
@@ -1678,6 +1713,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into(),
                 ),
+                (*maybe_mv_index).clone(),
             );
         }
 
