@@ -143,9 +143,7 @@
 
                 <AssetDiffDetails :component="props.component" />
               </TabGroupItem>
-              <TabGroupItem label="Debug" slug="debug">
-                <ComponentDebugDetails :component="props.component" />
-              </TabGroupItem>
+              <TabGroupItem label="Debug" slug="debug"></TabGroupItem>
             </TabGroup>
           </TabGroupItem>
           <TabGroupItem slug="resource">
@@ -200,7 +198,6 @@ import { useViewsStore } from "@/store/views.store";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsManagement from "./ComponentDetailsManagement.vue";
-import ComponentDebugDetails from "./Debug/ComponentDebugDetails.vue";
 import AssetQualificationsDetails from "./AssetQualificationsDetails.vue";
 import AssetActionsDetails from "./AssetActionsDetails.vue";
 import AssetDiffDetails from "./AssetDiffDetails.vue";

@@ -109,35 +109,6 @@ export type Categories = {
   schemaVariants: CategoryVariant[];
 }[];
 
-export interface AttributeDebugView {
-  path: string;
-  name: string;
-  attributeValueId: string;
-  proxyFor?: string | null;
-  funcName: string;
-  funcId: string;
-  funcArgs: { [key: string]: FuncArgDebugView[] } | null;
-  visibility: {
-    visibility_change_set_pk: string;
-    visibility_deleted_at: Date | undefined | null;
-  };
-  value: object | string | number | boolean | null;
-  prototypeId: string;
-  prototypeIsComponentSpecific: boolean;
-  kind: string;
-  view?: string;
-}
-
-export interface FuncArgDebugView {
-  value: object | string | number | boolean | null;
-  name: string;
-  valueSource: string;
-  valueSourceId: string;
-  socketSourceKind: string | null;
-  path: string | null;
-  isUsed: boolean;
-}
-
 export type AutoconnectData = {
   componentId: ComponentId;
   componentName: string;
@@ -167,32 +138,6 @@ export type PotentialConnectionMatchData = {
   value: any | null;
   key: string;
 };
-
-export interface SocketDebugView extends AttributeDebugView {
-  socketId: string;
-  connectionAnnotations: string[];
-  inferredConnections: string[];
-}
-
-export interface ComponentDebugView {
-  name: string;
-  schemaVariantId: string;
-  attributes: AttributeDebugView[];
-  inputSockets: SocketDebugView[];
-  outputSockets: SocketDebugView[];
-  parentId?: string | null;
-  geometry: {
-    [key: string]: {
-      id: string;
-      created_at: Date;
-      updated_at: Date;
-      x: number;
-      y: number;
-      width?: number;
-      height?: number;
-    };
-  };
-}
 
 export interface ComponentGeometry {
   componentId: string;
@@ -800,8 +745,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           selectedInsertCategoryVariantId: null as string | null,
 
           refreshingStatus: {} as Record<ComponentId, boolean>,
-
-          debugDataByComponentId: {} as Record<ComponentId, ComponentDebugView>,
         }),
         getters: {
           diagramSubscriptionEdgesById(): Record<EdgeId, DiagramEdgeData> {
@@ -1173,20 +1116,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             edgesToSet.forEach((edge) => {
               this.rawEdgesById[edge.id] = edge;
               this.processRawEdge(edge.id);
-            });
-          },
-
-          async FETCH_COMPONENT_DEBUG_VIEW(componentId: ComponentId) {
-            return new ApiRequest<ComponentDebugView>({
-              url: "component/debug",
-              keyRequestStatusBy: componentId,
-              params: {
-                componentId,
-                ...visibilityParams,
-              },
-              onSuccess: (debugData) => {
-                this.debugDataByComponentId[componentId] = debugData;
-              },
             });
           },
 
