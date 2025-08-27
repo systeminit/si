@@ -305,12 +305,8 @@ impl BifrostStarted {
                                 handle: self.handle,
                             });
                         }
-                        // Received unexpected web socket message type
-                        Some(Ok(unexpected_message)) => {
-                            warn!(
-                                message = ?unexpected_message,
-                                "received unexpected message type; skipping",
-                            );
+                        Some(Ok(ws::Message::Binary(_payload))) => {
+                            // using as keep-alive traffic for the LB
                             continue;
                         }
                         // Next message was a web socket error
