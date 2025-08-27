@@ -204,8 +204,29 @@ impl FriggStore {
         kind: ReferenceKind,
         id: &str,
     ) -> Result<Option<FrontendObject>> {
+        let maybe_mv_index = self.get_deployment_index().await?.map(|r| r.0);
+
+        self.get_current_deployment_object_with_index(kind, id, maybe_mv_index)
+            .await
+    }
+
+    #[instrument(
+        name = "frigg.get_current_deployment_object_with_index",
+        level = "debug",
+        skip_all,
+        fields(
+            si.frontend_object.id = %id,
+            si.frontend_object.kind = %kind,
+        )
+    )]
+    pub async fn get_current_deployment_object_with_index(
+        &self,
+        kind: ReferenceKind,
+        id: &str,
+        maybe_mv_index: Option<FrontendObject>,
+    ) -> Result<Option<FrontendObject>> {
         let kind_str = kind.to_string();
-        let Some((current_index, _)) = self.get_deployment_index().await? else {
+        let Some(current_index) = maybe_mv_index else {
             return Ok(None);
         };
         let mv_index: DeploymentMvIndex =

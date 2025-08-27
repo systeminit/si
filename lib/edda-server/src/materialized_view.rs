@@ -3,6 +3,7 @@ use std::{
         BinaryHeap,
         HashSet,
     },
+    sync::Arc,
     time::Duration,
 };
 
@@ -1062,6 +1063,9 @@ async fn build_deployment_mv_inner(
     let mut build_tasks = JoinSet::new();
     let mut queued_mv_builds = BinaryHeap::new();
 
+    let maybe_deployment_mv_index =
+        Arc::new(frigg.get_deployment_index().await?.map(|result| result.0));
+
     // Queue all deployment tasks
     for task in deployment_tasks {
         queued_mv_builds.push(task.clone());
@@ -1087,7 +1091,15 @@ async fn build_deployment_mv_inner(
                 // `queued_mv_builds` is not empty.
                 break;
             };
-            spawn_deployment_mv_task(&mut build_tasks, ctx, frigg, mv_kind, mv_id).await?;
+            spawn_deployment_mv_task(
+                &mut build_tasks,
+                ctx,
+                frigg,
+                mv_kind,
+                mv_id,
+                maybe_deployment_mv_index.clone(),
+            )
+            .await?;
         }
 
         if let Some(join_result) = build_tasks.join_next().await {
@@ -1137,6 +1149,7 @@ async fn spawn_deployment_mv_task(
     frigg: &FriggStore,
     mv_kind: ReferenceKind,
     mv_id: String,
+    maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
 ) -> Result<(), MaterializedViewError> {
     // Record the currently running number of MV build tasks
     metric!(counter.edda.mv_build = 1);
@@ -1149,6 +1162,7 @@ async fn spawn_deployment_mv_task(
                 mv_id,
                 mv_kind,
                 dal_materialized_views::cached::schemas::assemble(ctx.clone()),
+                maybe_deployment_mv_index,
             ));
         }
         ReferenceKind::CachedSchema => {
@@ -1161,6 +1175,7 @@ async fn spawn_deployment_mv_task(
                 mv_id,
                 mv_kind,
                 dal_materialized_views::cached::schema::assemble(ctx.clone(), schema_id),
+                maybe_deployment_mv_index,
             ));
         }
         ReferenceKind::CachedSchemaVariant => {
@@ -1174,6 +1189,7 @@ async fn spawn_deployment_mv_task(
                 mv_id,
                 mv_kind,
                 dal_materialized_views::cached::schema::variant::assemble(ctx.clone(), variant_id),
+                maybe_deployment_mv_index,
             ));
         }
         ReferenceKind::CachedDefaultVariant => {
@@ -1190,6 +1206,7 @@ async fn spawn_deployment_mv_task(
                     ctx.clone(),
                     schema_id,
                 ),
+                maybe_deployment_mv_index,
             ));
         }
         _ => {
@@ -1209,6 +1226,7 @@ async fn build_mv_for_deployment_task<F, T, E>(
     mv_id: String,
     mv_kind: ReferenceKind,
     build_mv_future: F,
+    maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
 ) -> BuildMvTaskResult
 where
     F: Future<Output = Result<T, E>>,
@@ -1220,8 +1238,14 @@ where
     debug!(kind = %mv_kind, id = %mv_id, "Building Deployment MV");
     let start = Instant::now();
 
-    let result =
-        build_mv_for_deployment_task_inner(&frigg, mv_id.clone(), mv_kind, build_mv_future).await;
+    let result = build_mv_for_deployment_task_inner(
+        &frigg,
+        mv_id.clone(),
+        mv_kind,
+        build_mv_future,
+        maybe_deployment_mv_index,
+    )
+    .await;
 
     (mv_kind, mv_id, start.elapsed(), result)
 }
@@ -1232,6 +1256,7 @@ async fn build_mv_for_deployment_task_inner<F, T, E>(
     mv_id: String,
     mv_kind: ReferenceKind,
     build_mv_future: F,
+    maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
 ) -> MvBuilderResult
 where
     F: Future<Output = Result<T, E>>,
@@ -1242,7 +1267,13 @@ where
 {
     // For deployment MVs, check if object exists in deployment storage
     let op = {
-        let maybe_previous_version = frigg.get_current_deployment_object(mv_kind, &mv_id).await?;
+        let maybe_previous_version = frigg
+            .get_current_deployment_object_with_index(
+                mv_kind,
+                &mv_id,
+                (*maybe_deployment_mv_index).clone(),
+            )
+            .await?;
 
         if let Some(previous_version) = maybe_previous_version {
             BuildMvOp::UpdateFrom {
