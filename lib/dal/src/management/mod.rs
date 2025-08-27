@@ -53,24 +53,17 @@ use crate::{
         prototype::argument::AttributePrototypeArgumentError,
         value::AttributeValueError,
     },
-    change_status::ChangeStatus::Added,
     component::{
         ControllingFuncData,
         delete::{
             ComponentDeletionStatus,
             delete_components,
         },
-        frame::{
-            Frame,
-            FrameError,
-            InferredEdgeChanges,
-        },
+        frame::FrameError,
         resource::ResourceData,
     },
-    dependency_graph::DependencyGraph,
     diagram::{
         DiagramError,
-        SummaryDiagramInferredEdge,
         SummaryDiagramManagementEdge,
         geometry::{
             Geometry,
@@ -264,7 +257,6 @@ pub struct ManagementUpdateOperation {
     properties: Option<serde_json::Value>,
     attributes: Option<AttributeSources>,
     geometry: Option<HashMap<String, ManagementGeometry>>,
-    parent: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -284,7 +276,6 @@ pub struct ManagementCreateOperation {
     #[serde(skip_serializing_if = "Option::is_none")]
     attributes: Option<AttributeSources>,
     geometry: Option<ManagementCreateGeometry>,
-    parent: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -442,12 +433,6 @@ pub struct ManagementOperator<'a> {
 }
 
 #[derive(Clone, Debug)]
-struct PendingParent {
-    child_component_id: ComponentId,
-    parent: String,
-}
-
-#[derive(Clone, Debug)]
 struct PendingManage {
     managed_component_id: ComponentId,
     managed_component_schema_id: SchemaId,
@@ -455,10 +440,7 @@ struct PendingManage {
 
 #[derive(Clone, Debug)]
 enum PendingOperation {
-    InferredEdgeRemoveEvent(Vec<SummaryDiagramInferredEdge>),
-    InferredEdgeUpsertEvent(Vec<SummaryDiagramInferredEdge>),
     Manage(PendingManage),
-    Parent(PendingParent),
 }
 
 struct CreatedComponent {
@@ -689,18 +671,6 @@ impl<'a> ManagementOperator<'a> {
         })
     }
 
-    async fn set_parent(
-        &self,
-        child_id: ComponentId,
-        parent_placeholder: &str,
-    ) -> ManagementResult<(ComponentId, Option<InferredEdgeChanges>)> {
-        let new_parent_id = self.get_managed_component_id(parent_placeholder)?;
-        let inferred_edges =
-            Frame::upsert_parent_no_events(self.ctx, child_id, new_parent_id).await?;
-
-        Ok((new_parent_id, inferred_edges))
-    }
-
     async fn manage(
         &self,
         component_id: ComponentId,
@@ -776,7 +746,6 @@ impl<'a> ManagementOperator<'a> {
                     properties,
                     attributes,
                     geometry: _,
-                    parent,
                 },
             ) in created
             {
@@ -801,13 +770,6 @@ impl<'a> ManagementOperator<'a> {
 
                 self.last_component_geometry.extend(geometry);
 
-                if let Some(parent) = parent {
-                    pending_operations.push(PendingOperation::Parent(PendingParent {
-                        child_component_id: component_id,
-                        parent,
-                    }));
-                }
-
                 pending_operations.push(PendingOperation::Manage(PendingManage {
                     managed_component_id: component_id,
                     managed_component_schema_id: schema_id,
@@ -831,12 +793,10 @@ impl<'a> ManagementOperator<'a> {
         )
     }
 
-    async fn updates(&mut self) -> ManagementResult<Vec<PendingOperation>> {
-        let mut pending = vec![];
-
+    async fn updates(&mut self) -> ManagementResult<()> {
         let updates = self.operations.update.take();
         let Some(updates) = updates else {
-            return Ok(pending);
+            return Ok(());
         };
 
         for (placeholder, operation) in updates {
@@ -844,7 +804,6 @@ impl<'a> ManagementOperator<'a> {
                 properties,
                 attributes,
                 geometry,
-                parent,
             } = operation;
             let component_id = self.get_managed_component_id(&placeholder)?;
             let mut component = Component::get_by_id(self.ctx, component_id).await?;
@@ -946,18 +905,11 @@ impl<'a> ManagementOperator<'a> {
                     .await?;
             }
 
-            if let Some(new_parent) = parent {
-                pending.push(PendingOperation::Parent(PendingParent {
-                    child_component_id: component_id,
-                    parent: new_parent.to_owned(),
-                }));
-            }
-
             self.updated_components
                 .insert(component_id, view_ids.iter().copied().collect());
         }
 
-        Ok(pending)
+        Ok(())
     }
 
     async fn actions(&self) -> ManagementResult<()> {
@@ -972,108 +924,6 @@ impl<'a> ManagementOperator<'a> {
                 .await?
                 .publish_on_commit(self.ctx)
                 .await?;
-        }
-
-        Ok(())
-    }
-
-    // Using the dep graph to ensure we send ws events for components in parent
-    // to child order, so that parents exist in the frontend before their
-    // children / parents are rendered as frames before their children report
-    // their parentage. We have to send an update for every view for which the
-    // component has a geometry.
-    async fn send_component_ws_events(
-        &mut self,
-        mut parentage_graph: DependencyGraph<ComponentId>,
-        inferred_edges_by_component_id: HashMap<ComponentId, Vec<SummaryDiagramInferredEdge>>,
-    ) -> ManagementResult<()> {
-        loop {
-            let independent_ids = parentage_graph.independent_ids();
-            if independent_ids.is_empty() {
-                break;
-            }
-            for id in independent_ids {
-                if let Some(view_ids) = self.created_components.get(&id) {
-                    self.send_created_event(
-                        id,
-                        view_ids,
-                        inferred_edges_by_component_id.get(&id).cloned(),
-                    )
-                    .await?;
-                    self.created_components.remove(&id);
-                } else if let Some(view_ids) = self.updated_components.get(&id) {
-                    self.send_updated_event(id, view_ids).await?;
-                    self.updated_components.remove(&id);
-                }
-                parentage_graph.remove_id(id);
-            }
-        }
-
-        for (&created_id, view_ids) in &self.created_components {
-            self.send_created_event(
-                created_id,
-                view_ids,
-                inferred_edges_by_component_id.get(&created_id).cloned(),
-            )
-            .await?;
-        }
-
-        for (&updated_id, view_ids) in &self.updated_components {
-            self.send_updated_event(updated_id, view_ids).await?;
-        }
-
-        Ok(())
-    }
-
-    async fn send_created_event(
-        &self,
-        id: ComponentId,
-        view_ids: &[ViewId],
-        inferred_edges: Option<Vec<SummaryDiagramInferredEdge>>,
-    ) -> ManagementResult<()> {
-        let component = Component::get_by_id(self.ctx, id).await?;
-
-        for &view_id in view_ids {
-            WsEvent::component_created_with_inferred_edges(
-                self.ctx,
-                component
-                    .into_frontend_type(
-                        self.ctx,
-                        Some(&component.geometry(self.ctx, view_id).await?),
-                        Added,
-                        &mut HashMap::new(),
-                    )
-                    .await?,
-                inferred_edges.clone(),
-            )
-            .await?
-            .publish_on_commit(self.ctx)
-            .await?;
-        }
-
-        Ok(())
-    }
-    async fn send_updated_event(
-        &self,
-        id: ComponentId,
-        view_ids: &[ViewId],
-    ) -> ManagementResult<()> {
-        let component = Component::get_by_id(self.ctx, id).await?;
-        for &view_id in view_ids {
-            WsEvent::component_updated(
-                self.ctx,
-                component
-                    .into_frontend_type(
-                        self.ctx,
-                        Some(&component.geometry(self.ctx, view_id).await?),
-                        component.change_status(self.ctx).await?,
-                        &mut HashMap::new(),
-                    )
-                    .await?,
-            )
-            .await?
-            .publish_on_commit(self.ctx)
-            .await?;
         }
 
         Ok(())
@@ -1237,60 +1087,17 @@ impl<'a> ManagementOperator<'a> {
         self.deletes(true).await?;
         self.deletes(false).await?;
         self.create_views().await?;
-        let mut pending_operations = self.creates().await?;
-        let mut component_graph = DependencyGraph::new();
-        pending_operations.extend(self.updates().await?);
-        let mut inferred_edges_by_component_id = HashMap::new();
-
-        // Parents have to be set before component events are sent
-
-        let mut new_pending_ops_from_parentage = vec![];
-        for pending_parent in pending_operations
-            .iter()
-            .filter_map(|pending_op| match pending_op {
-                PendingOperation::Parent(pending_parent) => Some(pending_parent),
-                _ => None,
-            })
-        {
-            let (parent_id, inferred_edges) = self
-                .set_parent(pending_parent.child_component_id, &pending_parent.parent)
-                .await?;
-            if let Some(inferred_edges) = inferred_edges {
-                inferred_edges_by_component_id.insert(
-                    pending_parent.child_component_id,
-                    inferred_edges.upserted_edges.clone(),
-                );
-
-                // Inferred edge events should also come after all component events
-                if !inferred_edges.upserted_edges.is_empty() {
-                    new_pending_ops_from_parentage.push(PendingOperation::InferredEdgeUpsertEvent(
-                        inferred_edges.upserted_edges,
-                    ));
-                }
-                if !inferred_edges.removed_edges.is_empty() {
-                    new_pending_ops_from_parentage.push(PendingOperation::InferredEdgeRemoveEvent(
-                        inferred_edges.removed_edges,
-                    ));
-                }
-            }
-
-            component_graph.id_depends_on(pending_parent.child_component_id, parent_id);
-        }
+        let pending_operations = self.creates().await?;
+        self.updates().await?;
 
         let created_component_ids = (!self.created_components.is_empty())
             .then_some(self.created_components.keys().copied().collect());
 
-        self.send_component_ws_events(component_graph, inferred_edges_by_component_id)
-            .await?;
-
-        // Now, the rest of the pending ops can be executed, which need to have
-        // their wsevents sent *after* the component ws events (otherwise some
-        // will be discarded by the frontend, since it does not know about the
-        // newly created components until the above events are sent)
-        for pending_op in pending_operations
-            .into_iter()
-            .chain(new_pending_ops_from_parentage.into_iter())
-        {
+        // Now, the ops can be executed, which need to have their wsevents sent
+        // *after* the component ws events (otherwise some will be discarded by the
+        // frontend, since it does not know about the newly created components until
+        // the above events are sent)
+        for pending_op in pending_operations {
             // Signal when we process a pending operation.
             WsEvent::management_operations_in_progress(self.ctx, self.request_ulid)
                 .await?
@@ -1305,19 +1112,6 @@ impl<'a> ManagementOperator<'a> {
                     self.manage(managed_component_id, managed_component_schema_id)
                         .await?;
                 }
-                PendingOperation::InferredEdgeRemoveEvent(removed_edges) => {
-                    WsEvent::remove_inferred_edges(self.ctx, removed_edges)
-                        .await?
-                        .publish_on_commit(self.ctx)
-                        .await?;
-                }
-                PendingOperation::InferredEdgeUpsertEvent(upserted_edges) => {
-                    WsEvent::upsert_inferred_edges(self.ctx, upserted_edges)
-                        .await?
-                        .publish_on_commit(self.ctx)
-                        .await?;
-                }
-                PendingOperation::Parent(_) => {}
             }
         }
 

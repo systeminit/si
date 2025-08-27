@@ -115,25 +115,25 @@ async fn down_frames_omega_nesting(ctx: &mut DalContext) {
 
     // Perform all frame-related connections and commit.
     {
-        Frame::upsert_parent(ctx, level_two.id(), level_one.id())
+        Frame::upsert_parent_for_tests(ctx, level_two.id(), level_one.id())
             .await
             .expect("could not upsert parent");
-        Frame::upsert_parent(ctx, level_three.id(), level_two.id())
+        Frame::upsert_parent_for_tests(ctx, level_three.id(), level_two.id())
             .await
             .expect("could not upsert parent");
-        Frame::upsert_parent(ctx, level_three_no_children.id(), level_two.id())
+        Frame::upsert_parent_for_tests(ctx, level_three_no_children.id(), level_two.id())
             .await
             .expect("could not upsert parent");
-        Frame::upsert_parent(ctx, level_four.id(), level_three.id())
+        Frame::upsert_parent_for_tests(ctx, level_four.id(), level_three.id())
             .await
             .expect("could not upsert parent");
-        Frame::upsert_parent(ctx, level_five.id(), level_four.id())
+        Frame::upsert_parent_for_tests(ctx, level_five.id(), level_four.id())
             .await
             .expect("could not upsert parent");
-        Frame::upsert_parent(ctx, level_five_no_children.id(), level_four.id())
+        Frame::upsert_parent_for_tests(ctx, level_five_no_children.id(), level_four.id())
             .await
             .expect("could not upsert parent");
-        Frame::upsert_parent(ctx, level_six.id(), level_five.id())
+        Frame::upsert_parent_for_tests(ctx, level_six.id(), level_five.id())
             .await
             .expect("could not upsert parent");
     }

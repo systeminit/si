@@ -17,6 +17,7 @@ use crate::{
     ComponentId,
     ComponentType,
     DalContext,
+    EdgeWeightKind,
     InputSocket,
     OutputSocket,
     TransactionsError,
@@ -32,10 +33,7 @@ use crate::{
     workspace_snapshot::{
         WorkspaceSnapshotError,
         dependent_value_root::DependentValueRootError,
-        edge_weight::{
-            EdgeWeightKind,
-            EdgeWeightKindDiscriminants,
-        },
+        edge_weight::EdgeWeightKindDiscriminants,
     },
 };
 
@@ -188,27 +186,16 @@ impl Frame {
 
     /// Provides the ability to attach or replace a child [`Component`]'s parent
     #[instrument(level = "info", skip(ctx))]
-    pub async fn upsert_parent(
+    pub async fn upsert_parent_for_tests(
         ctx: &DalContext,
         child_id: ComponentId,
         new_parent_id: ComponentId,
     ) -> FrameResult<Option<InferredEdgeChanges>> {
-        Self::upsert_parent_inner(ctx, child_id, new_parent_id, true).await
-    }
-
-    /// Provides the ability to attach or replace a child [`Component`]'s
-    /// parent, but does not automatically send WsEvents related to the changes
-    #[instrument(level = "info", skip(ctx))]
-    pub async fn upsert_parent_no_events(
-        ctx: &DalContext,
-        child_id: ComponentId,
-        new_parent_id: ComponentId,
-    ) -> FrameResult<Option<InferredEdgeChanges>> {
-        Self::upsert_parent_inner(ctx, child_id, new_parent_id, false).await
+        Self::upsert_parent_inner_for_tests(ctx, child_id, new_parent_id, true).await
     }
 
     #[instrument(level = "info", skip(ctx))]
-    async fn upsert_parent_inner(
+    async fn upsert_parent_inner_for_tests(
         ctx: &DalContext,
         child_id: ComponentId,
         new_parent_id: ComponentId,
@@ -224,8 +211,13 @@ impl Frame {
         match Component::get_type_by_id(ctx, new_parent_id).await? {
             ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
                 Ok(Some(
-                    Self::attach_child_to_parent_inner(ctx, new_parent_id, child_id, send_events)
-                        .await?,
+                    Self::attach_child_to_parent_inner_for_tests(
+                        ctx,
+                        new_parent_id,
+                        child_id,
+                        send_events,
+                    )
+                    .await?,
                 ))
             }
             ComponentType::Component => Err(FrameError::ParentIsNotAFrame(child_id, new_parent_id)),
@@ -239,7 +231,7 @@ impl Frame {
     /// Also, determines what needs to be rerun due to the change, based on which
     /// input sockets have new/removed/different output sockets driving them
     #[instrument(level = "info", skip(ctx))]
-    async fn attach_child_to_parent_inner(
+    async fn attach_child_to_parent_inner_for_tests(
         ctx: &DalContext,
         parent_id: ComponentId,
         child_id: ComponentId,
@@ -270,8 +262,13 @@ impl Frame {
 
         let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
         // add the new edge
-        Component::add_edge_to_frame(ctx, parent_id, child_id, EdgeWeightKind::FrameContains)
-            .await?;
+        Component::add_edge_to_frame_for_tests(
+            ctx,
+            parent_id,
+            child_id,
+            EdgeWeightKind::FrameContains,
+        )
+        .await?;
         drop(cycle_check_guard);
         ctx.workspace_snapshot()?
             .clear_inferred_connection_graph()
