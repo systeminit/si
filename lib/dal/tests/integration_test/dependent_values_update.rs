@@ -119,7 +119,7 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         oysters_component.id(),
         output_socket.id(),
@@ -134,7 +134,7 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         lunch_component.id(),
         output_socket.id(),
@@ -287,7 +287,7 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         oysters_component.id(),
         output_socket.id(),
@@ -302,7 +302,7 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         lunch_component.id(),
         output_socket.id(),

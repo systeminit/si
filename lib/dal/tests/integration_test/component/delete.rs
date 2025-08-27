@@ -275,7 +275,7 @@ async fn delete_updates_downstream_components(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         oysters_component.id(),
         output_socket.id(),
@@ -290,7 +290,7 @@ async fn delete_updates_downstream_components(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         lunch_component.id(),
         output_socket.id(),
@@ -441,7 +441,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         oysters_component.id(),
         output_socket.id(),
@@ -456,7 +456,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         lunch_component.id(),
         output_socket.id(),

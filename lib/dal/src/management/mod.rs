@@ -10,10 +10,6 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_db::{
-    ActorView,
-    HistoryEventMetadata,
-};
 use si_events::audit_log::AuditLogKind;
 use si_id::AttributeValueId;
 use telemetry::prelude::*;
@@ -33,10 +29,6 @@ use crate::{
     EdgeWeightKind,
     Func,
     FuncError,
-    InputSocket,
-    InputSocketId,
-    OutputSocket,
-    OutputSocketId,
     Prop,
     PropKind,
     Schema,
@@ -58,15 +50,11 @@ use crate::{
     },
     attribute::{
         attributes::AttributeSources,
-        prototype::argument::{
-            AttributePrototypeArgument,
-            AttributePrototypeArgumentError,
-        },
+        prototype::argument::AttributePrototypeArgumentError,
         value::AttributeValueError,
     },
     change_status::ChangeStatus::Added,
     component::{
-        Connection,
         ControllingFuncData,
         delete::{
             ComponentDeletionStatus,
@@ -82,7 +70,6 @@ use crate::{
     dependency_graph::DependencyGraph,
     diagram::{
         DiagramError,
-        SummaryDiagramEdge,
         SummaryDiagramInferredEdge,
         SummaryDiagramManagementEdge,
         geometry::{
@@ -277,7 +264,6 @@ pub struct ManagementUpdateOperation {
     properties: Option<serde_json::Value>,
     attributes: Option<AttributeSources>,
     geometry: Option<HashMap<String, ManagementGeometry>>,
-    connect: Option<ManagementUpdateConnections>,
     parent: Option<String>,
 }
 
@@ -298,7 +284,6 @@ pub struct ManagementCreateOperation {
     #[serde(skip_serializing_if = "Option::is_none")]
     attributes: Option<AttributeSources>,
     geometry: Option<ManagementCreateGeometry>,
-    connect: Option<Vec<ManagementConnection>>,
     parent: Option<String>,
 }
 
@@ -440,86 +425,6 @@ impl ComponentSchemaMap {
     }
 }
 
-struct VariantSocketMap {
-    input_sockets: HashMap<SchemaVariantId, HashMap<String, InputSocketId>>,
-    output_sockets: HashMap<SchemaVariantId, HashMap<String, OutputSocketId>>,
-}
-
-impl VariantSocketMap {
-    pub fn new() -> Self {
-        Self {
-            input_sockets: HashMap::new(),
-            output_sockets: HashMap::new(),
-        }
-    }
-
-    fn add_input_socket_for_id(
-        &mut self,
-        variant_id: SchemaVariantId,
-        name: &str,
-        socket_id: InputSocketId,
-    ) {
-        self.input_sockets
-            .entry(variant_id)
-            .or_default()
-            .insert(name.to_owned(), socket_id);
-    }
-
-    fn add_output_socket_for_id(
-        &mut self,
-        variant_id: SchemaVariantId,
-        name: &str,
-        socket_id: OutputSocketId,
-    ) {
-        self.output_sockets
-            .entry(variant_id)
-            .or_default()
-            .insert(name.to_owned(), socket_id);
-    }
-
-    pub async fn add_sockets_for_variant(
-        &mut self,
-        ctx: &DalContext,
-        variant_id: SchemaVariantId,
-    ) -> ManagementResult<()> {
-        if self.input_sockets.contains_key(&variant_id) {
-            return Ok(());
-        }
-
-        for socket in InputSocket::list(ctx, variant_id).await? {
-            self.add_input_socket_for_id(variant_id, socket.name(), socket.id());
-        }
-
-        for socket in OutputSocket::list(ctx, variant_id).await? {
-            self.add_output_socket_for_id(variant_id, socket.name(), socket.id());
-        }
-
-        Ok(())
-    }
-
-    pub fn output_socket_id(
-        &self,
-        variant_id: SchemaVariantId,
-        name: &str,
-    ) -> Option<OutputSocketId> {
-        self.output_sockets
-            .get(&variant_id)
-            .and_then(|sockets| sockets.get(name))
-            .copied()
-    }
-
-    pub fn input_socket_id(
-        &self,
-        variant_id: SchemaVariantId,
-        name: &str,
-    ) -> Option<InputSocketId> {
-        self.input_sockets
-            .get(&variant_id)
-            .and_then(|sockets| sockets.get(name))
-            .copied()
-    }
-}
-
 pub struct ManagementOperator<'a> {
     ctx: &'a DalContext,
     manager_component_id: ComponentId,
@@ -529,19 +434,11 @@ pub struct ManagementOperator<'a> {
     operations: ManagementOperations,
     managed_component_id_placeholders: HashMap<String, ComponentId>,
     component_id_placeholders: HashMap<String, ComponentId>,
-    component_schema_map: ComponentSchemaMap,
-    socket_map: VariantSocketMap,
     current_view_id: ViewId,
     view_placeholders: HashMap<String, ViewId>,
     created_components: HashMap<ComponentId, Vec<ViewId>>,
     updated_components: HashMap<ComponentId, Vec<ViewId>>,
     request_ulid: ulid::Ulid,
-}
-
-#[derive(Clone, Debug)]
-struct PendingConnect {
-    component_id: ComponentId,
-    connection: ManagementConnection,
 }
 
 #[derive(Clone, Debug)]
@@ -558,12 +455,10 @@ struct PendingManage {
 
 #[derive(Clone, Debug)]
 enum PendingOperation {
-    Connect(PendingConnect),
     InferredEdgeRemoveEvent(Vec<SummaryDiagramInferredEdge>),
     InferredEdgeUpsertEvent(Vec<SummaryDiagramInferredEdge>),
     Manage(PendingManage),
     Parent(PendingParent),
-    RemoveConnection(PendingConnect),
 }
 
 struct CreatedComponent {
@@ -621,8 +516,6 @@ impl<'a> ManagementOperator<'a> {
             operations,
             managed_component_id_placeholders: management_execution.managed_component_placeholders,
             component_id_placeholders,
-            component_schema_map,
-            socket_map: VariantSocketMap::new(),
             current_view_id,
             view_placeholders: views,
             created_components: HashMap::new(),
@@ -796,164 +689,6 @@ impl<'a> ManagementOperator<'a> {
         })
     }
 
-    async fn input_socket_id(
-        &mut self,
-        component_id: ComponentId,
-        socket: &str,
-    ) -> ManagementResult<InputSocketId> {
-        let variant_id = self
-            .component_schema_map
-            .variant_for_component_id(self.ctx, component_id)
-            .await?;
-        // if the map was already constructed this does nothing
-        self.socket_map
-            .add_sockets_for_variant(self.ctx, variant_id)
-            .await?;
-        let socket_id = self.socket_map.input_socket_id(variant_id, socket).ok_or(
-            ManagementError::InputSocketDoesNotExist(component_id, socket.to_owned()),
-        )?;
-        Ok(socket_id)
-    }
-
-    async fn output_socket_id(
-        &mut self,
-        component_id: ComponentId,
-        socket: &str,
-    ) -> ManagementResult<OutputSocketId> {
-        let variant_id = self
-            .component_schema_map
-            .variant_for_component_id(self.ctx, component_id)
-            .await?;
-        // if the map was already constructed this does nothing
-        self.socket_map
-            .add_sockets_for_variant(self.ctx, variant_id)
-            .await?;
-        let socket_id = self.socket_map.output_socket_id(variant_id, socket).ok_or(
-            ManagementError::OutputSocketDoesNotExist(component_id, socket.to_owned()),
-        )?;
-        Ok(socket_id)
-    }
-
-    async fn prepare_for_connection(
-        &mut self,
-        component_id: ComponentId,
-        connection: &ManagementConnection,
-    ) -> ManagementResult<(ComponentId, OutputSocketId, ComponentId, InputSocketId)> {
-        // Figure out socket direction
-        let (from_component_id, from_socket, to_component_id, to_socket) = match connection {
-            ManagementConnection::Input { from, to } => (
-                self.get_managed_or_external_component_id(&from.component)?,
-                &from.socket,
-                component_id,
-                to,
-            ),
-            ManagementConnection::Output { from, to } => (
-                component_id,
-                from,
-                self.get_managed_or_external_component_id(&to.component)?,
-                &to.socket,
-            ),
-        };
-
-        // Look up the sockets and return
-        Ok((
-            from_component_id,
-            self.output_socket_id(from_component_id, from_socket)
-                .await?,
-            to_component_id,
-            self.input_socket_id(to_component_id, to_socket).await?,
-        ))
-    }
-
-    async fn create_connection(
-        &mut self,
-        component_id: ComponentId,
-        connection: &ManagementConnection,
-    ) -> ManagementResult<()> {
-        let (
-            source_component_id,
-            source_output_socket_id,
-            destination_component_id,
-            destination_input_socket_id,
-        ) = self
-            .prepare_for_connection(component_id, connection)
-            .await?;
-
-        if let Some(connection_apa_id) = Component::connect(
-            self.ctx,
-            source_component_id,
-            source_output_socket_id,
-            destination_component_id,
-            destination_input_socket_id,
-        )
-        .await?
-        {
-            let apa = AttributePrototypeArgument::get_by_id(self.ctx, connection_apa_id).await?;
-            let created_info = {
-                let history_actor = self.ctx.history_actor();
-                let actor = ActorView::from_history_actor(self.ctx, *history_actor).await?;
-                HistoryEventMetadata {
-                    actor,
-                    timestamp: apa.timestamp().created_at,
-                }
-            };
-            let incoming_connection = Connection {
-                attribute_prototype_argument_id: connection_apa_id,
-                to_component_id: destination_component_id,
-                to_input_socket_id: destination_input_socket_id,
-                from_component_id: source_component_id,
-                from_output_socket_id: source_output_socket_id,
-                created_info,
-                deleted_info: None,
-            };
-            let edge = SummaryDiagramEdge::assemble_just_added(incoming_connection)?;
-
-            WsEvent::connection_upserted(self.ctx, edge.into())
-                .await?
-                .publish_on_commit(self.ctx)
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    async fn remove_connection(
-        &mut self,
-        component_id: ComponentId,
-        connection: &ManagementConnection,
-    ) -> ManagementResult<()> {
-        let (
-            source_component_id,
-            source_output_socket_id,
-            destination_component_id,
-            destination_input_socket_id,
-        ) = self
-            .prepare_for_connection(component_id, connection)
-            .await?;
-
-        Component::remove_connection(
-            self.ctx,
-            source_component_id,
-            source_output_socket_id,
-            destination_component_id,
-            destination_input_socket_id,
-        )
-        .await?;
-
-        WsEvent::connection_deleted(
-            self.ctx,
-            source_component_id,
-            destination_component_id,
-            source_output_socket_id,
-            destination_input_socket_id,
-        )
-        .await?
-        .publish_on_commit(self.ctx)
-        .await?;
-
-        Ok(())
-    }
-
     async fn set_parent(
         &self,
         child_id: ComponentId,
@@ -1041,7 +776,6 @@ impl<'a> ManagementOperator<'a> {
                     properties,
                     attributes,
                     geometry: _,
-                    connect,
                     parent,
                 },
             ) in created
@@ -1063,15 +797,6 @@ impl<'a> ManagementOperator<'a> {
                 if let Some(attributes) = attributes {
                     crate::update_attributes_without_validation(self.ctx, component_id, attributes)
                         .await?;
-                }
-
-                if let Some(connections) = connect {
-                    for create in connections {
-                        pending_operations.push(PendingOperation::Connect(PendingConnect {
-                            component_id,
-                            connection: create.to_owned(),
-                        }));
-                    }
                 }
 
                 self.last_component_geometry.extend(geometry);
@@ -1106,19 +831,6 @@ impl<'a> ManagementOperator<'a> {
         )
     }
 
-    fn get_managed_or_external_component_id(
-        &self,
-        placeholder_or_id: &str,
-    ) -> ManagementResult<ComponentId> {
-        match self.get_managed_component_id_opt(placeholder_or_id) {
-            Some(component_id) => Ok(component_id),
-            // If we don't find the component by name, see if it's a component id and use that!
-            None => placeholder_or_id.parse().map_err(|_| {
-                ManagementError::ComponentWithPlaceholderNotFound(placeholder_or_id.to_owned())
-            }),
-        }
-    }
-
     async fn updates(&mut self) -> ManagementResult<Vec<PendingOperation>> {
         let mut pending = vec![];
 
@@ -1132,7 +844,6 @@ impl<'a> ManagementOperator<'a> {
                 properties,
                 attributes,
                 geometry,
-                connect,
                 parent,
             } = operation;
             let component_id = self.get_managed_component_id(&placeholder)?;
@@ -1233,26 +944,6 @@ impl<'a> ManagementOperator<'a> {
             if let Some(attributes) = attributes {
                 crate::update_attributes_without_validation(self.ctx, component_id, attributes)
                     .await?;
-            }
-
-            if let Some(update_conns) = connect {
-                if let Some(remove_conns) = &update_conns.remove {
-                    for to_remove in remove_conns {
-                        pending.push(PendingOperation::RemoveConnection(PendingConnect {
-                            component_id,
-                            connection: to_remove.to_owned(),
-                        }));
-                    }
-                }
-
-                if let Some(add_conns) = &update_conns.add {
-                    for to_add in add_conns {
-                        pending.push(PendingOperation::Connect(PendingConnect {
-                            component_id,
-                            connection: to_add.to_owned(),
-                        }));
-                    }
-                }
             }
 
             if let Some(new_parent) = parent {
@@ -1607,17 +1298,6 @@ impl<'a> ManagementOperator<'a> {
                 .await?;
 
             match pending_op {
-                PendingOperation::Connect(pending_connect) => {
-                    self.create_connection(
-                        pending_connect.component_id,
-                        &pending_connect.connection,
-                    )
-                    .await?;
-                }
-                PendingOperation::RemoveConnection(remove) => {
-                    self.remove_connection(remove.component_id, &remove.connection)
-                        .await?;
-                }
                 PendingOperation::Manage(PendingManage {
                     managed_component_id,
                     managed_component_schema_id,

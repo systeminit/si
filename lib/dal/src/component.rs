@@ -2146,7 +2146,7 @@ impl Component {
     }
 
     #[instrument(level = "debug", skip(ctx))]
-    async fn create_new_connection(
+    async fn create_new_connection_for_tests(
         ctx: &DalContext,
         source_component_id: ComponentId,
         source_output_socket_id: OutputSocketId,
@@ -2163,14 +2163,15 @@ impl Component {
         );
         let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
 
-        let attribute_prototype_argument = AttributePrototypeArgument::new_inter_component(
-            ctx,
-            source_component_id,
-            source_output_socket_id,
-            destination_component_id,
-            destination_prototype_id,
-        )
-        .await?;
+        let attribute_prototype_argument =
+            AttributePrototypeArgument::new_inter_component_for_tests(
+                ctx,
+                source_component_id,
+                source_output_socket_id,
+                destination_component_id,
+                destination_prototype_id,
+            )
+            .await?;
 
         drop(cycle_check_guard);
         debug!("Cycle Check Guard dropped");
@@ -2197,8 +2198,9 @@ impl Component {
         Ok(())
     }
 
+    // ONLY used in tests
     #[instrument(level = "info", skip(ctx))]
-    pub async fn connect(
+    pub async fn connect_for_tests(
         ctx: &DalContext,
         source_component_id: ComponentId,
         source_output_socket_id: OutputSocketId,
@@ -2248,7 +2250,7 @@ impl Component {
         let destination_prototype_id =
             AttributeValue::prototype_id(ctx, destination_attribute_value_id).await?;
 
-        Self::connect_arity_cleanup(
+        Self::connect_arity_cleanup_for_tests(
             ctx,
             destination_component_id,
             destination_input_socket_id,
@@ -2267,7 +2269,7 @@ impl Component {
         {
             Some(apa_id) => apa_id,
             None => {
-                Self::create_new_connection(
+                Self::create_new_connection_for_tests(
                     ctx,
                     source_component_id,
                     source_output_socket_id,
@@ -2293,7 +2295,7 @@ impl Component {
     /// Check for socket arity on the input socket; if the input socket has arity of
     /// one, and there's an existing edge, need to remove it before we can add a new one.
     #[instrument(level = "debug", skip(ctx))]
-    async fn connect_arity_cleanup(
+    async fn connect_arity_cleanup_for_tests(
         ctx: &DalContext,
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
@@ -2964,342 +2966,6 @@ impl Component {
         Ok(None)
     }
 
-    pub async fn autoconnect(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<(
-        Vec<InputSocketId>,
-        HashMap<
-            ComponentInputSocket,
-            (
-                Vec<(ComponentId, OutputSocketId, serde_json::Value)>,
-                Option<serde_json::Value>,
-            ),
-        >,
-    )> {
-        let mut available_input_sockets_to_connect = HashMap::new();
-        let incoming_connections =
-            Component::incoming_connections_for_id(ctx, component_id).await?;
-        struct PotentialMatchData {
-            attr_value_id: AttributeValueId,
-            value: Option<serde_json::Value>,
-        }
-        // for a given component, check all domain props for values that have a component specific prototype
-        let attribute_value_tree = AttributeValue::tree_for_component(ctx, component_id).await?;
-        let mut flattened = Vec::new();
-        let mut queue = VecDeque::from_iter(attribute_value_tree.keys().copied());
-
-        while let Some(av_id) = queue.pop_front() {
-            flattened.push(av_id);
-            if let Some(children) = attribute_value_tree.get(&av_id) {
-                queue.extend(children);
-            }
-        }
-
-        for attribute_value_id in flattened {
-            if AttributeValue::component_prototype_id(ctx, attribute_value_id)
-                .await?
-                .is_some()
-            {
-                // this is a component specific prototype. Let's see what the input args would have been though
-                if let Some(prop_id) = AttributeValue::prop_id_opt(ctx, attribute_value_id).await? {
-                    // get the schema variant defined prototype to see what it's potential inputs are
-                    let schema_prototype = Prop::prototype_id(ctx, prop_id).await?;
-                    let attribute_prototype_arg_ids =
-                        AttributePrototypeArgument::list_ids_for_prototype(ctx, schema_prototype)
-                            .await?;
-                    // if any of the arguments are for an Input Socket, that means this value *could* have
-                    // been set by a socket
-                    for attr_arg_id in attribute_prototype_arg_ids {
-                        let value_source =
-                            AttributePrototypeArgument::value_source(ctx, attr_arg_id).await?;
-                        if let ValueSource::InputSocket(input_socket_id) = value_source {
-                            // find this specific input socket and see if it already has a connection (actual one)
-                            if !incoming_connections
-                                .iter()
-                                .any(|conn| conn.to_input_socket_id == input_socket_id)
-                            {
-                                // no existing connection, so let's queue this up to see if there's a matching socket
-                                // somewhere!
-                                let view = AttributeValue::view(ctx, attribute_value_id).await?;
-                                let info_needed = PotentialMatchData {
-                                    attr_value_id: attribute_value_id,
-                                    value: view,
-                                };
-                                available_input_sockets_to_connect
-                                    .insert(input_socket_id, info_needed);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // build up a map of potential matches.  We consider a match valid if the sockets can actually connect
-        // and the value for the attribute value matches the output socket's value
-        // OR for multi-arity sockets, we also check if the output socket matches a single entry in the array
-        let mut potential_matches: HashMap<
-            InputSocketId,
-            Vec<(ComponentId, OutputSocketId, serde_json::Value)>,
-        > = HashMap::new();
-
-        // loop through all components + output sockets
-        for component in Self::list(ctx).await? {
-            // don't interrogate current component!
-            if component.id() == component_id {
-                continue;
-            }
-            // build a map of component output sockets and values
-            let output_sockets = component.output_socket_attribute_values(ctx).await?;
-            let outgoing_connections_to_check = component
-                .outgoing_connections(ctx)
-                .await?
-                .iter()
-                .map(|outgoing| outgoing.from_output_socket_id)
-                .collect_vec();
-            for output_socket_av in output_sockets {
-                if let Some(output_socket_id) =
-                    OutputSocket::find_for_attribute_value_id(ctx, output_socket_av).await?
-                {
-                    let is_single_arity = OutputSocket::get_by_id(ctx, output_socket_id)
-                        .await?
-                        .arity()
-                        == SocketArity::One;
-                    // First ensure that if the socket arity is single, there isn't an existing connection from this output socket
-                    if !is_single_arity
-                        || !outgoing_connections_to_check.contains(&output_socket_id)
-                    {
-                        let output_value = AttributeValue::view(ctx, output_socket_av).await?;
-                        // Check against the list of available input sockets for compatibility
-                        for (input_socket_id, info) in &available_input_sockets_to_connect {
-                            // Does this output socket fits this input socket? (including annotations!)
-                            if OutputSocket::fits_input_by_id(
-                                ctx,
-                                *input_socket_id,
-                                output_socket_id,
-                            )
-                            .await?
-                            {
-                                let input_socket =
-                                    InputSocket::get_by_id(ctx, *input_socket_id).await?;
-
-                                // does the output socket have a value?
-                                if let (Some(input), Some(output)) = (&info.value, &output_value) {
-                                    // does the output socket's value match what's set for the attribute value?
-                                    if input == output {
-                                        potential_matches.entry(*input_socket_id).or_default().push(
-                                            (component.id(), output_socket_id, output.clone()),
-                                        )
-                                    }
-                                    // if value for the prop we're trying to connect is an array, and the input socket is
-                                    // multi-arity, see if the output socket's value matches an entry in the array
-
-                                    // let's see if anything matches either case!
-                                    if let serde_json::Value::Array(values) = input {
-                                        if input_socket.arity() == SocketArity::Many
-                                            && values.contains(output)
-                                        {
-                                            potential_matches
-                                                .entry(*input_socket_id)
-                                                .or_default()
-                                                .push((
-                                                    component.id(),
-                                                    output_socket_id,
-                                                    output.clone(),
-                                                ))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // now we've got potential matches, so let's iterate over them and create connections for the ones that match 1:1
-        // if there's a conflict, record it as such and surface it to the user!
-
-        let mut connections_created = Vec::new();
-        let mut conflicted_connections = HashMap::new();
-
-        for (input_socket_id, matches) in potential_matches {
-            // Get the input socket to check its arity
-            let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
-
-            if let Some(info_needed) = available_input_sockets_to_connect.get(&input_socket_id) {
-                if let Some(serde_json::Value::Array(values)) = &info_needed.value {
-                    if input_socket.arity() == SocketArity::Many {
-                        // For array values with arity many, ensure each value has exactly one match
-                        let mut valid_matches = Vec::new();
-                        let mut coverage_for_all_items = true;
-                        let mut duplicate_entry_for_items = false;
-                        // but first let's see if any output socket matches the whole thing
-                        let whole_array_match: Vec<_> = matches
-                            .iter()
-                            .filter(|(_, _, output_value)| {
-                                Some(output_value) == info_needed.value.as_ref()
-                            })
-                            .collect();
-
-                        for value in values {
-                            let value_matches: Vec<_> = matches
-                                .iter()
-                                .filter(|(_, _, output_value)| output_value == value)
-                                .collect();
-                            if value_matches.len() == 1 {
-                                valid_matches.push(value_matches[0]);
-                            }
-                            // if there's one value that doesn't exist, it means we don't have a full set
-                            else if value_matches.is_empty() {
-                                coverage_for_all_items = false;
-                            }
-                            // if there are multiple valid matches, record them anyways for returning conflicts later
-                            else if value_matches.len() > 1 {
-                                duplicate_entry_for_items = true;
-                                valid_matches.extend(value_matches);
-                            }
-                        }
-
-                        // Use the whole match iff (if and only if!):
-                        // 1. There is exactly one connection that is a whole match AND
-                        // 2. We don't have coverage for all of the entries by individual connections OR
-                        let should_use_whole_match =
-                            (whole_array_match.len() == 1) && !coverage_for_all_items;
-
-                        // Use the individual matches iff:
-                        // 1. There are no whole matches AND
-                        // 2. We have coverage of all entries in the array AND
-                        // 3. We do not have any duplicates!
-                        let should_use_valid_matches = whole_array_match.is_empty()
-                            && coverage_for_all_items
-                            && !duplicate_entry_for_items;
-
-                        // only 1 valid match on the whole array, yeehaw
-                        if should_use_whole_match {
-                            // Reset the prototype and create the one connection!
-                            AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
-                                .await?;
-                            let (source_component_id, output_socket_id, value) =
-                                whole_array_match[0];
-
-                            match Component::connect(
-                                ctx,
-                                *source_component_id,
-                                *output_socket_id,
-                                component_id,
-                                input_socket_id,
-                            )
-                            .await
-                            {
-                                Ok(_) => connections_created.push(input_socket_id),
-                                Err(err) => {
-                                    warn!(si.error.message = ?err, "Failed to create connection to Component {}", *source_component_id);
-                                    AttributeValue::set_value(
-                                        ctx,
-                                        info_needed.attr_value_id,
-                                        Some(value.clone()),
-                                    )
-                                    .await?;
-                                }
-                            }
-                        } else if should_use_valid_matches {
-                            // Reset the prototype then create connections for each valid output socket match
-                            AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id)
-                                .await?;
-                            for &(source_component_id, output_socket_id, value) in &valid_matches {
-                                match Component::connect(
-                                    ctx,
-                                    *source_component_id,
-                                    *output_socket_id,
-                                    component_id,
-                                    input_socket_id,
-                                )
-                                .await
-                                {
-                                    Ok(_) => connections_created.push(input_socket_id),
-                                    Err(err) => {
-                                        warn!(si.error.message = ?err, "Failed to create connection to Component {}", *source_component_id);
-                                        // need to reset this value if there was an error otherwise it's lost
-                                        AttributeValue::set_value(
-                                            ctx,
-                                            info_needed.attr_value_id,
-                                            Some(value.clone()),
-                                        )
-                                        .await?;
-                                        // don't keep looping if one of the array values fails, just reset to what it was
-                                        break;
-                                    }
-                                }
-                            }
-                        } else {
-                            // conflicted!
-                            // Return all whole matches we found, and all individual matches but only if we have full coverage
-                            // maybe in the future we return partial matches??
-                            let mut conflicted = Vec::new();
-                            for wm in whole_array_match {
-                                conflicted.push(wm.clone());
-                            }
-                            if coverage_for_all_items {
-                                for im in valid_matches {
-                                    conflicted.push(im.clone());
-                                }
-                            }
-                            if !conflicted.is_empty() {
-                                conflicted_connections.insert(
-                                    ComponentInputSocket {
-                                        component_id,
-                                        input_socket_id,
-                                        attribute_value_id: info_needed.attr_value_id,
-                                    },
-                                    (conflicted, info_needed.value.clone()),
-                                );
-                            }
-                        }
-                    }
-                } else
-                // For non-array values or arity one, just check if there's exactly one match
-                // if so, use it!
-                if matches.len() == 1 {
-                    AttributeValue::use_default_prototype(ctx, info_needed.attr_value_id).await?;
-                    let (source_component_id, output_socket_id, value) = &matches[0];
-                    match Component::connect(
-                        ctx,
-                        *source_component_id,
-                        *output_socket_id,
-                        component_id,
-                        input_socket_id,
-                    )
-                    .await
-                    {
-                        Err(err) => {
-                            warn!(si.error.message = ?err, "Failed to create connection to Component {}", source_component_id);
-                            AttributeValue::set_value(
-                                ctx,
-                                info_needed.attr_value_id,
-                                Some(value.clone()),
-                            )
-                            .await?;
-                        }
-                        Ok(_) => connections_created.push(input_socket_id),
-                    }
-                } else if matches.len() > 1 {
-                    // conflicted! let the user pick
-                    conflicted_connections.insert(
-                        ComponentInputSocket {
-                            component_id,
-                            input_socket_id,
-                            attribute_value_id: info_needed.attr_value_id,
-                        },
-                        (matches, info_needed.value.clone()),
-                    );
-                }
-            }
-        }
-
-        Ok((connections_created, conflicted_connections))
-    }
-
     /// `AttributeValueId`s of all input sockets connected to any output socket of this component.
     async fn downstream_attribute_value_ids(
         &self,
@@ -3503,18 +3169,6 @@ impl Component {
                     ctx,
                     maybe_pasted(manager_id),
                     maybe_pasted(component_id),
-                )
-                .await?;
-            }
-
-            // Copy incoming socket connections
-            for connection in Component::incoming_connections_for_id(ctx, component_id).await? {
-                Component::connect(
-                    ctx,
-                    maybe_pasted(connection.from_component_id),
-                    connection.from_output_socket_id,
-                    pasted_component_id,
-                    connection.to_input_socket_id,
                 )
                 .await?;
             }
@@ -3955,81 +3609,6 @@ impl Component {
         }
         for original_manager_id in original_managers {
             Component::manage_component(ctx, original_manager_id, upgraded_component.id()).await?;
-        }
-        for incoming in &original_incoming_connections {
-            let socket = InputSocket::get_by_id(ctx, incoming.to_input_socket_id).await?;
-            if let Some(socket) =
-                InputSocket::find_with_name(ctx, socket.name(), schema_variant_id).await?
-            {
-                Component::connect(
-                    ctx,
-                    incoming.from_component_id,
-                    incoming.from_output_socket_id,
-                    upgraded_component.id(),
-                    socket.id(),
-                )
-                .await?;
-                let edge = SummaryDiagramEdge {
-                    from_component_id: incoming.from_component_id,
-                    from_socket_id: incoming.from_output_socket_id,
-                    to_component_id: upgraded_component.id(),
-                    to_socket_id: socket.id(),
-                    // was Unmodified, but get_diagram shows them as Added
-                    change_status: ChangeStatus::Added,
-                    created_info: serde_json::to_value(&incoming.created_info)?,
-                    deleted_info: serde_json::to_value(&incoming.deleted_info)?,
-                    to_delete: false,
-                    from_base_change_set: false,
-                };
-                WsEvent::connection_upserted(ctx, edge.into())
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
-            } else {
-                debug!(
-                    "Unable to reconnect to socket_id: {0} for component_id: {1}",
-                    socket.id(),
-                    upgraded_component.id()
-                );
-            }
-        }
-
-        for outgoing in &original_outgoing_connections {
-            let socket = OutputSocket::get_by_id(ctx, outgoing.from_output_socket_id).await?;
-            if let Some(socket) =
-                OutputSocket::find_with_name(ctx, socket.name(), schema_variant_id).await?
-            {
-                Component::connect(
-                    ctx,
-                    upgraded_component.id(),
-                    socket.id(),
-                    outgoing.to_component_id,
-                    outgoing.to_input_socket_id,
-                )
-                .await?;
-                let edge = SummaryDiagramEdge {
-                    from_component_id: upgraded_component.id(),
-                    from_socket_id: socket.id(),
-                    to_component_id: outgoing.to_component_id,
-                    to_socket_id: outgoing.to_input_socket_id,
-                    // was Unmodified, but get_diagram shows them as Added
-                    change_status: ChangeStatus::Added,
-                    created_info: serde_json::to_value(&outgoing.created_info)?,
-                    deleted_info: serde_json::to_value(&outgoing.deleted_info)?,
-                    to_delete: false,
-                    from_base_change_set: false,
-                };
-                WsEvent::connection_upserted(ctx, edge.into())
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
-            } else {
-                debug!(
-                    "Unable to reconnect to socket_id: {0} for component_id: {1}",
-                    socket.id(),
-                    upgraded_component.id()
-                );
-            }
         }
 
         // Reconnect subscribers
