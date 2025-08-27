@@ -30,7 +30,7 @@ use super::{
     SecretPropKey,
     connections::{
         Connection,
-        handle_connection,
+        remove_connection,
     },
     resolve_secret_id,
     subscriptions::{
@@ -170,28 +170,8 @@ pub async fn update_component(
     }
 
     if !payload.connection_changes.add.is_empty() || !payload.connection_changes.remove.is_empty() {
-        for connection in payload.connection_changes.add.iter() {
-            handle_connection(
-                ctx,
-                connection,
-                component_id,
-                variant_id,
-                &component_list,
-                true,
-            )
-            .await?;
-        }
-
         for connection in payload.connection_changes.remove.iter() {
-            handle_connection(
-                ctx,
-                connection,
-                component_id,
-                variant_id,
-                &component_list,
-                false,
-            )
-            .await?;
+            remove_connection(ctx, connection, component_id, variant_id, &component_list).await?;
         }
     }
 

@@ -36,7 +36,16 @@ pub struct AttributePrototypeArgumentNodeWeight {
 }
 
 impl AttributePrototypeArgumentNodeWeight {
-    pub fn new(id: Ulid, lineage_id: Ulid, targets: Option<ArgumentTargets>) -> Self {
+    pub fn new(id: Ulid, lineage_id: Ulid) -> Self {
+        Self::new_with_targets_for_tests(id, lineage_id, None)
+    }
+
+    // Only for use in tests (and called by other test-only functions)
+    pub(crate) fn new_with_targets_for_tests(
+        id: Ulid,
+        lineage_id: Ulid,
+        targets: Option<ArgumentTargets>,
+    ) -> Self {
         Self {
             id,
             lineage_id,

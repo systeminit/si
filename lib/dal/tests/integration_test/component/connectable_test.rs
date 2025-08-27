@@ -154,7 +154,7 @@ impl ConnectableTest {
         connectable.set_value(ctx, name).await?;
 
         if let Some(from) = connect_one {
-            Component::connect(
+            Component::connect_for_tests(
                 ctx,
                 from.id,
                 from.value_output_socket_id(ctx).await?,
@@ -164,7 +164,7 @@ impl ConnectableTest {
             .await?;
         }
         for from in connect_many {
-            Component::connect(
+            Component::connect_for_tests(
                 ctx,
                 from.id,
                 from.value_output_socket_id(ctx).await?,

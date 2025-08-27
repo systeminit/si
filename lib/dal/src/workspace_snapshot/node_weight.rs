@@ -1131,13 +1131,26 @@ impl NodeWeight {
     pub fn new_attribute_prototype_argument(
         attribute_prototype_argument_id: Ulid,
         lineage_id: Ulid,
-        targets: Option<ArgumentTargets>,
     ) -> Self {
         NodeWeight::AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight::new(
             attribute_prototype_argument_id,
             lineage_id,
-            targets,
         ))
+    }
+
+    // Only for use in tests (and called by other test-only functions)
+    pub fn new_attribute_prototype_argument_with_targets_for_tests(
+        attribute_prototype_argument_id: Ulid,
+        lineage_id: Ulid,
+        targets: Option<ArgumentTargets>,
+    ) -> Self {
+        NodeWeight::AttributePrototypeArgument(
+            AttributePrototypeArgumentNodeWeight::new_with_targets_for_tests(
+                attribute_prototype_argument_id,
+                lineage_id,
+                targets,
+            ),
+        )
     }
 
     pub fn new_secret(

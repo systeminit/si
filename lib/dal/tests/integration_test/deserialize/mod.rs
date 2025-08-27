@@ -124,7 +124,7 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
                 None,
             ),
             NodeWeightDiscriminants::AttributePrototypeArgument => {
-                NodeWeight::new_attribute_prototype_argument(
+                NodeWeight::new_attribute_prototype_argument_with_targets_for_tests(
                     Ulid::new(),
                     Ulid::new(),
                     Some(ArgumentTargets {

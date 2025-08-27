@@ -256,11 +256,6 @@ async fn migrate_connection(
         ) if migration.prop_connections.is_empty() => {}
         // If there's an issue, we can't migrate.
         Some(_) => {
-            // If it's an inferred connection, we still want to make it explicit! No more
-            // inferred connections.
-            if migration.explicit_connection_id.is_none() {
-                info!("Making inferred socket connection explicit due to issues");
-            }
             return Ok(None);
         }
     }

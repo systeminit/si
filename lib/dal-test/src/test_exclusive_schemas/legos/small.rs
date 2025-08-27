@@ -210,171 +210,6 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         update_in_view_mgmt_func_name,
     )?;
 
-    let create_and_connect_from_self_func_code = r#"
-    async function main({ thisComponent, components }: Input): Promise<Output> {
-        const thisName = thisComponent.properties?.si?.name ?? "unknown";
-
-        let count = parseInt(thisComponent.properties?.si?.resourceId);
-        if (isNaN(count) || count < 1) {
-            count = 1;
-        }
-
-        const create: { [key: string]: unknown } = {};
-        const names = [];
-        for (let i = 0; i < count; i++) {
-            let name = `clone_${i}`;
-            names.push(name);
-            create[name] = {
-                kind: "small even lego",
-                properties: { si: { name } },
-            };
-        }
-
-        return {
-            status: "ok",
-            ops: {
-                create,
-                update: {
-                    self: {
-                        connect: {
-                            add: names.map(name => ({ from: "two", to: { component: name, socket: "two" }}))
-                        }
-                    }
-                }
-            },
-            message: `created ${names.join(", ")}`,
-        }
-    }
-    "#;
-    let create_and_connect_from_self_name = "test:createAndConnectFromSelf";
-    let create_and_connect_from_self_func = build_management_func(
-        create_and_connect_from_self_func_code,
-        create_and_connect_from_self_name,
-    )?;
-
-    let create_and_connect_to_self_func_code = r#"
-    async function main({ thisComponent, components }: Input): Promise<Output> {
-        const thisName = thisComponent.properties?.si?.name ?? "unknown";
-
-        let count = parseInt(thisComponent.properties?.si?.resourceId);
-        if (isNaN(count) || count < 1) {
-            count = 1;
-        }
-
-        let create: { [key: string]: unknown } = {};
-        for (let i = 0; i < count; i++) {
-            let name = `clone_${i}`;
-            create[name] = {
-                kind: "small even lego",
-                properties: { si: { name } },
-                geometry: { x: 10, y: 10 },
-                connect: [{
-                    from: "one",
-                    to: {
-                        component: "self",
-                        socket: "one",
-                    }
-                }]
-            };
-        }
-
-        return {
-            status: "ok",
-            ops: {
-                create,
-            }
-        }
-    }
-    "#;
-    let create_and_connect_to_self_name = "test:createAndConnectToSelf";
-    let create_and_connect_to_self_func = build_management_func(
-        create_and_connect_to_self_func_code,
-        create_and_connect_to_self_name,
-    )?;
-
-    // This will create a small even lego component and connect its inputs to everything
-    // connected to the management component's "one" or "arity_one" sockets.
-    let create_and_connect_to_inputs_func = build_management_func(
-        r#"
-    async function main({ thisComponent, components }: Input): Promise<Output> {
-        const allConnections = []
-        allConnections.push(...thisComponent.incomingConnections.one);
-        if (thisComponent.incomingConnections.arity_one) {
-            allConnections.push(thisComponent.incomingConnections.arity_one);
-        }
-
-        return {
-            status: "ok",
-            ops: {
-                create: {
-                    lego: {
-                        kind: "small even lego",
-                        connect: allConnections.map((from) => ({ from, to: "two" })),
-                    },
-                }
-            }
-        }
-    }
-        "#,
-        "test:createAndConnectToInputs",
-    )?;
-
-    // This will connect the "lego" component's inputs to everything connected to the
-    // management component's "one" or "arity_one" sockets.
-    let connect_to_inputs_func = build_management_func(
-        r#"
-    async function main({ thisComponent, components }: Input): Promise<Output> {
-        const allConnections = []
-        allConnections.push(...thisComponent.incomingConnections.one)
-        if (thisComponent.incomingConnections.arity_one) {
-            allConnections.push(thisComponent.incomingConnections.arity_one)
-        }
-
-        return {
-            status: "ok",
-            ops: {
-                update: {
-                    lego: {
-                        connect: {
-                            add: allConnections.map((from) => ({ from, to: "two" }))
-                        }
-                    }
-                }
-            }
-        }
-    }
-        "#,
-        "test:connectToInputs",
-    )?;
-
-    // This will disconnect the "lego" component's inputs from everything connected to the
-    // management component's "one" or "arity_one" sockets.
-    let disconnect_from_inputs_func = build_management_func(
-        r#"
-    async function main({ thisComponent, components }: Input): Promise<Output> {
-        const allConnections = []
-        allConnections.push(...thisComponent.incomingConnections.one);
-        if (thisComponent.incomingConnections.arity_one) {
-            allConnections.push(thisComponent.incomingConnections.arity_one);
-        }
-
-        return {
-            status: "ok",
-            ops: {
-                update: {
-                    lego: {
-                        connect: {
-                            remove: allConnections.map((from) => ({ from, to: "two" }))
-                        }
-                    }
-                }
-            }
-        }
-    }
-        "#,
-        "test:disconnectFromInputs",
-    )?;
-
     // This will grab the manager component's input socket values and put them in test_result.
     let get_input_values_func = build_management_func(
         r#"
@@ -399,40 +234,6 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
     }
         "#,
         "test:getInputValues",
-    )?;
-
-    let create_and_connect_to_self_as_children_code = r#"
-    async function main({ thisComponent, components }: Input): Promise<Output> {
-        const thisName = thisComponent.properties?.si?.name ?? "unknown";
-
-        let count = parseInt(thisComponent.properties?.si?.resourceId);
-        if (isNaN(count) || count < 1) {
-            count = 1;
-        }
-
-        let create: { [key: string]: unknown } = {};
-        for (let i = 0; i < count; i++) {
-            let name = `clone_${i}`;
-            create[name] = {
-                kind: "small even lego",
-                properties: { si: { name } },
-                parent: "self"
-            };
-        }
-
-        return {
-            status: "ok",
-            ops: {
-                update: { self: { properties: { si: { type: "configurationFrameDown" } } } },
-                create,
-            }
-        }
-    }
-    "#;
-    let create_and_connect_to_self_as_children_name = "test:createAndConnectToSelfAsChildren";
-    let create_and_connect_to_self_as_children_func = build_management_func(
-        create_and_connect_to_self_as_children_code,
-        create_and_connect_to_self_as_children_name,
     )?;
 
     let deeply_nested_children_code = r#"
@@ -702,36 +503,6 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                 )
                 .management_func(
                     ManagementFuncSpec::builder()
-                        .name("Create and Connect From Self")
-                        .func_unique_id(&create_and_connect_from_self_func.unique_id)
-                        .build()?,
-                )
-                .management_func(
-                    ManagementFuncSpec::builder()
-                        .name("Create and Connect to Self")
-                        .func_unique_id(&create_and_connect_to_self_func.unique_id)
-                        .build()?,
-                )
-                .management_func(
-                    ManagementFuncSpec::builder()
-                        .name("Create and Connect to Inputs")
-                        .func_unique_id(&create_and_connect_to_inputs_func.unique_id)
-                        .build()?,
-                )
-                .management_func(
-                    ManagementFuncSpec::builder()
-                        .name("Connect to Inputs")
-                        .func_unique_id(&connect_to_inputs_func.unique_id)
-                        .build()?,
-                )
-                .management_func(
-                    ManagementFuncSpec::builder()
-                        .name("Disconnect from Inputs")
-                        .func_unique_id(&disconnect_from_inputs_func.unique_id)
-                        .build()?,
-                )
-                .management_func(
-                    ManagementFuncSpec::builder()
                         .name("Get Input Values")
                         .func_unique_id(&get_input_values_func.unique_id)
                         .build()?,
@@ -740,12 +511,6 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
                     ManagementFuncSpec::builder()
                         .name("Deeply Nested Children")
                         .func_unique_id(&deeply_nested_children.unique_id)
-                        .build()?,
-                )
-                .management_func(
-                    ManagementFuncSpec::builder()
-                        .name("Create and Connect to Self as Children")
-                        .func_unique_id(&create_and_connect_to_self_as_children_func.unique_id)
                         .build()?,
                 )
                 .management_func(
@@ -793,12 +558,6 @@ pub(crate) async fn migrate_test_exclusive_schema_small_odd_lego(
         .func(clone_me_mgmt_func)
         .func(update_mgmt_func)
         .func(update_in_view_mgmt_func)
-        .func(create_and_connect_from_self_func)
-        .func(create_and_connect_to_self_func)
-        .func(create_and_connect_to_self_as_children_func)
-        .func(create_and_connect_to_inputs_func)
-        .func(connect_to_inputs_func)
-        .func(disconnect_from_inputs_func)
         .func(get_input_values_func)
         .func(deeply_nested_children)
         .func(create_component_in_other_views)

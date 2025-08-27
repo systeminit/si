@@ -199,7 +199,7 @@ pub async fn connect(
     let dest_id = id(ctx, dest.0).await?;
     let dest_variant_id = Component::schema_variant_id(ctx, dest_id).await?;
     let dest_socket = InputSocket::find_with_name_or_error(ctx, dest.1, dest_variant_id).await?;
-    Component::connect(
+    Component::connect_for_tests(
         ctx,
         source_id,
         source_socket.id(),
