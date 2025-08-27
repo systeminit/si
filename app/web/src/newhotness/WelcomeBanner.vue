@@ -14,8 +14,14 @@
     <div class="flex flex-col gap-xs">
       <div class="flex flex-row justify-between">
         <span class="font-medium">
-          Run these prompts and watch your AI agent bring AI-native
-          infrastructure to life, effortlessly
+          Get started with these prompts in our
+          <a
+            class="font-medium underline"
+            href="https://github.com/systeminit/si-ai-agent"
+            target="_blank"
+          >
+            AI Agent:
+          </a>
         </span>
         <Icon
           name="x"
@@ -24,11 +30,6 @@
           @click="closed = true"
         />
       </div>
-      <span class="text-sm">
-        You’re currently in HEAD. Once you run a prompt, the AI will create a
-        new change set (like a branch where you can do anything before changing
-        your real infrastructure). Ready to start?
-      </span>
     </div>
     <div class="flex flex-row gap-md">
       <div
@@ -49,37 +50,6 @@
         <Icon name="copy" size="sm" />
       </div>
     </div>
-    <div
-      :class="
-        clsx(
-          'flex flex-row justify-between border rounded-sm px-sm py-xs items-center gap-xs',
-          themeClasses(
-            'border-neutral-400 bg-neutral-300',
-            'bg-neutral-800 border-neutral-600',
-          ),
-        )
-      "
-    >
-      <span class="leading-snug">
-        See how it works with your real data; reach out and have us help you to
-        take the most out of System Initiative
-      </span>
-      <a
-        :class="
-          clsx(
-            'p-xs border rounded-sm  whitespace-nowrap font-medium',
-            themeClasses(
-              'border-neutral-400 bg-neutral-200 hover:bg-neutral-400',
-              'bg-neutral-700 border-neutral-600 hover:bg-neutral-600',
-            ),
-          )
-        "
-        href="https://www.systeminit.com/?modal=demo"
-        target="_blank"
-      >
-        Schedule a demo
-      </a>
-    </div>
   </div>
 </template>
 
@@ -93,9 +63,9 @@ const HAS_DISMISSED_WELCOME_BANNER_KEY = "dismissed-welcome-banner";
 const closed = useLocalStorage(HAS_DISMISSED_WELCOME_BANNER_KEY, false);
 
 const prompts = [
-  "Reach into my AWS account and pull out the default VPC. If additional VPCs are found, remove them from the model after discovery",
-  "Start from the VPC and discover related Subnets, Route tables, NAT Gateways and VPC Gateway Attachments and Internet Gateways.",
-  "Import all existing VPCs in my AWS account",
+  "Can you analyze my AWS infrastructure with System Initiative, discover what resources you need to, and explain what you find?  Pay special attention to what applications are running and how they are situated on the network.",
+  "Create a security group that only my IP can access",
+  "Discover all EC2 instances and ensure that they follow a consistent tagging mechanism to include a cost-center and and team",
 ];
 
 const copyText = (text: string) => {
