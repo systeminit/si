@@ -17,7 +17,6 @@
           class="absolute translate-x-[-50%]"
           hasHoverState
           forceDark
-          @click="goToUserChangeSet(user)"
         />
       </div>
     </template>
@@ -86,7 +85,6 @@
             :key="index"
             :user="user"
             iconHasHoverState
-            @iconClicked="goToUserChangeSet(user)"
           />
         </div>
       </div>
@@ -99,18 +97,14 @@ import * as _ from "lodash-es";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { SiSearch, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { useRoute, useRouter } from "vue-router";
 import Popover from "@/components/Popover.vue";
 import { usePresenceStore } from "@/store/presence.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useViewsStore } from "@/store/views.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
-const router = useRouter();
-const route = useRoute();
 
 export type UserInfo = {
   name: string;
@@ -280,35 +274,4 @@ const filteredUsers = computed(() => {
     );
   } else return sortedUsers.value;
 });
-
-function goToUserChangeSet(user: UserInfo) {
-  if (!user || !user.changeSet) return;
-
-  if (user.view) {
-    if (user.changeSet === changeSetsStore.selectedChangeSetId) {
-      const viewsStore = useViewsStore(); // have to access the store here to prevent ending up with the none change set views store
-      viewsStore.selectView(user.view);
-    } else {
-      router.push({
-        name: "workspace-compose-view",
-        params: {
-          ...route.params,
-          changeSetId: user.changeSet,
-          viewId: user.view,
-        },
-        query: route.query,
-      });
-    }
-    return;
-  }
-
-  router.push({
-    name: "change-set-home",
-    params: {
-      ...route.params,
-      changeSetId: user.changeSet,
-    },
-    query: route.query,
-  });
-}
 </script>
