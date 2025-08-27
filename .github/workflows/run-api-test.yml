@@ -144,55 +144,77 @@ jobs:
           name: ${{ matrix.tests.name }}
           path: artifacts/${{ matrix.tests.name }}
 
-  # luminork-api-test:
-  #   name: API Test Luminork
-  #   environment: ${{ inputs.environment }}
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     LUMINORK_API_URL: ${{ vars.LUMINORK_API_URL }}
-  #     LUMINORK_WORKSPACE_ID: ${{ vars.LUMINORK_WORKSPACE_ID }}
-  #     LUMINORK_AUTH_TOKEN: ${{ secrets.LUMINORK_AUTH_TOKEN }}
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  luminork-api-test:
+    name: API Test Luminork
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    env:
+      LUMINORK_API_URL: ${{ vars.LUMINORK_API_URL }}
+      LUMINORK_WORKSPACE_ID: ${{ vars.LUMINORK_WORKSPACE_ID }}
+      LUMINORK_AUTH_TOKEN: ${{ secrets.LUMINORK_AUTH_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Install Deno
-  #       uses: denoland/setup-deno@v2
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
 
-  #     - name: Run the deno exec with retry
-  #       run: |
-  #         cd bin/si-luminork-api-tests
-  #         ./scripts/run-tests.sh || exit_code=$?
+      - name: Run the deno exec with retry
+        run: |
+          cd bin/si-luminork-api-tests
 
-  #         # Check the exit code
-  #         if [ -z "$exit_code" ]; then
-  #           echo "Deno task succeeded [ or the orchestration failed for a totally non-valid reason ]!"
-  #           exit_code=0
-  #         else
-  #           echo "Luminork API tests failed"
-  #           cd ../..
-  #           mkdir -p artifacts/luminork_tests
-  #           echo "failure-marker" > artifacts/luminork_tests/failure-marker
-  #         fi
+          n=0
+          max_retries=5
+          exit_code=0
 
-  #         echo "last_exit_code=$exit_code" >> "$GITHUB_ENV"
-  #         exit "$exit_code"
+          until [ $n -ge $max_retries ]
+          do
+            unset exit_code || echo "exit_code not set"
 
-  #     - name: Upload artifact if exit code 53
-  #       if: failure()
-  #       run: |
-  #         if [ "${{ env.last_exit_code }}" == "53" ]; then
-  #           echo "Uploading marker for test luminork_tests"
-  #           mkdir -p artifacts/luminork_tests
-  #           echo "failure-marker" > artifacts/luminork_tests/failure-marker
-  #         fi
+            # Run the luminork tests and store exit code in a variable
+            ./scripts/run-tests.sh || exit_code=$?
 
-  #     - name: Upload artifacts
-  #       if: failure()
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: luminork_tests
-  #         path: artifacts/luminork_tests
+            # Check the exit code
+            if [ -z "$exit_code" ]; then
+              echo "Deno task succeeded [ or the orchestration failed for a totally non-valid reason ]!"
+              exit 0
+            fi
+
+            n=$((n+1))
+            echo "Attempt $n/$max_retries failed with exit code $exit_code! Retrying..."
+
+            # If we failed, back off and retry!
+            sleep_time=$((6 * n))
+            echo "Waiting ${sleep_time} seconds before retry..."
+            sleep $sleep_time
+          done
+
+          if [ $n -ge $max_retries ]; then
+            echo "All $max_retries attempts failed."
+            echo "Luminork API tests failed"
+            cd ../..
+            mkdir -p artifacts/luminork_tests
+            echo "failure-marker" > artifacts/luminork_tests/failure-marker
+          fi
+
+          echo "last_exit_code=$exit_code" >> "$GITHUB_ENV"
+          exit "$exit_code"
+
+      - name: Upload artifact if exit code 53
+        if: failure()
+        run: |
+          if [ "${{ env.last_exit_code }}" == "53" ]; then
+            echo "Uploading marker for test luminork_tests"
+            mkdir -p artifacts/luminork_tests
+            echo "failure-marker" > artifacts/luminork_tests/failure-marker
+          fi
+
+      - name: Upload artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luminork_tests
+          path: artifacts/luminork_tests
 
   on-failure:
     runs-on: ubuntu-latest
