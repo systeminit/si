@@ -28,6 +28,7 @@ pub mod attributes;
 pub mod autosubscribe;
 pub mod debug_component;
 pub mod delete_components;
+pub mod get_json;
 pub mod manage;
 pub mod name;
 pub mod restore_components;
@@ -112,6 +113,7 @@ pub fn v2_routes() -> Router<AppState> {
             "/:componentId",
             Router::new()
                 .route("/debug", get(debug_component::debug_component))
+                .route("/json", get(get_json::get_json))
                 .nest("/attributes", attributes::v2_routes())
                 .nest("/name", name::v2_routes())
                 .nest("/secret", secrets::v2_routes())
