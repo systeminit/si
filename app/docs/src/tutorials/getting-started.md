@@ -18,10 +18,12 @@ To follow along, you'll need a few things:
 3. Claude Code installed locally -
    [See si-ai-agent.git for more details](https://github.com/systeminit/si-ai-agent)
 
-::: info SI is developed in compliance with modern web standards, but the only
+:::info
+SI is developed in compliance with modern web standards, but the only
 officially supported browsers are Chrome and Firefox. If you encounter issues
 while using another browser, we recommend switching to one of the supported
-options. :::
+options.
+:::
 
 ## Getting Started Guide
 
