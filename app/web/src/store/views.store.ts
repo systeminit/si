@@ -38,7 +38,6 @@ import {
   NODE_WIDTH,
   SOCKET_SIZE,
 } from "@/components/ModelingDiagram/diagram_constants";
-import { vectorAdd } from "@/components/ModelingDiagram/utils/math";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentType, SchemaVariant } from "@/api/sdf/dal/schema";
 import { nonNullable } from "@/utils/typescriptLinter";
@@ -60,6 +59,13 @@ import { useRouterStore } from "./router.store";
 import { useQualificationsStore } from "./qualifications.store";
 import { useAuthStore, UserId } from "./auth.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
+
+function vectorAdd(v1: Vector2d, v2: Vector2d) {
+  return {
+    x: v1.x + v2.x,
+    y: v1.y + v2.y,
+  } as Vector2d;
+}
 
 const MAX_RETRIES = 5;
 

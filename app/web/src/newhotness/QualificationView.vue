@@ -69,7 +69,7 @@
 import { computed, ref, toRef } from "vue";
 import * as _ from "lodash-es";
 import { LoadingMessage, VButton } from "@si/vue-lib/design-system";
-import StatusMessageBox from "@/components/StatusMessageBox.vue";
+import StatusMessageBox from "@/newhotness/layout_components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import {
   Qualification,
