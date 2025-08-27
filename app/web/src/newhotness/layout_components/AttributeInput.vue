@@ -120,8 +120,8 @@
                       clsx(
                         'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
                         themeClasses(
-                          'text-green-light-mode',
-                          'text-green-dark-mode',
+                          'text-newhotness-greenlight',
+                          'text-newhotness-greendark',
                         ),
                       )
                     "
@@ -141,7 +141,14 @@
                 class="max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit"
               >
                 <!-- TODO: Paul make this an actual tailwind color! -->
-                <TruncateWithTooltip class="text-purple">
+                <TruncateWithTooltip
+                  :class="
+                    themeClasses(
+                      'text-newhotness-purplelight',
+                      'text-newhotness-purpledark',
+                    )
+                  "
+                >
                   {{ externalSources[0]?.componentName }}
                 </TruncateWithTooltip>
                 <div class="flex-none">/</div>
@@ -159,7 +166,10 @@
             <AttributeValueBox
               v-else-if="isSecret && field.state.value"
               :class="
-                themeClasses('text-green-light-mode', 'text-green-dark-mode')
+                themeClasses(
+                  'text-newhotness-greenlight',
+                  'text-newhotness-greendark',
+                )
               "
             >
               {{ field.state.value }}

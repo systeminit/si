@@ -29,7 +29,17 @@
           )
         "
       >
-        <div :class="clsx(!old && 'text-purple')">
+        <div
+          :class="
+            clsx(
+              !old &&
+                themeClasses(
+                  'text-newhotness-purplelight',
+                  'text-newhotness-purpledark',
+                ),
+            )
+          "
+        >
           {{ $source.componentName }}
         </div>
         <div class="flex-none">/</div>

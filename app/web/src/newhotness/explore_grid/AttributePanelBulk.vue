@@ -69,7 +69,10 @@
               :class="
                 clsx(
                   'min-w-0',
-                  themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+                  themeClasses(
+                    'text-newhotness-greenlight',
+                    'text-newhotness-greendark',
+                  ),
                 )
               "
             >
@@ -77,7 +80,18 @@
                 {{ component.schemaVariantName }}
               </TruncateWithTooltip>
             </TextPill>
-            <TextPill mono class="text-purple min-w-0">
+            <TextPill
+              mono
+              :class="
+                clsx(
+                  'min-w-0',
+                  themeClasses(
+                    'text-newhotness-purplelight',
+                    'text-newhotness-purpledark',
+                  ),
+                )
+              "
+            >
               <TruncateWithTooltip>
                 {{ component.name }}
               </TruncateWithTooltip>

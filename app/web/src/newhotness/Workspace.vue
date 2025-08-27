@@ -1027,19 +1027,4 @@ body.dark .skeleton-shimmer::before {
  * END Shimmer for skeleton divs
  * ================================================================================================
  */
-
-// other cards may look differently, can be defined globally, or piecemeal
-
-/* TODO(Wendy) - temporary color classes for the new UI */
-.text-purple {
-  color: #d4b4fe;
-}
-
-.text-green-light-mode {
-  color: #3b8e48;
-}
-
-.text-green-dark-mode {
-  color: #aafec7;
-}
 </style>

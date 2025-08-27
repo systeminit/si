@@ -25,11 +25,23 @@
       class="flex flex-row items-center gap-xs font-mono [&>*]:basis-1/2 [&>*]:flex-grow [&>*]:max-w-fit"
     >
       <TruncateWithTooltip
-        :class="themeClasses('text-green-light-mode', 'text-green-dark-mode')"
+        :class="
+          themeClasses(
+            'text-newhotness-greenlight',
+            'text-newhotness-greendark',
+          )
+        "
       >
         {{ connection.schemaName }}
       </TruncateWithTooltip>
-      <TruncateWithTooltip class="text-purple">
+      <TruncateWithTooltip
+        :class="
+          themeClasses(
+            'text-newhotness-purplelight',
+            'text-newhotness-purpledark',
+          )
+        "
+      >
         {{ connection.componentName }}
       </TruncateWithTooltip>
     </div>

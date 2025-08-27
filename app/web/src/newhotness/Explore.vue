@@ -4,7 +4,7 @@
     <!-- 12 pixel padding to align with the SI logo -->
     <div
       data-testid="left-column-new-hotness-explore"
-      class="main pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]"
+      class="main pt-sm flex flex-col gap-sm items-stretch [&>div]:mx-[12px]"
     >
       <!-- Socket connections banner -->
       <div
@@ -339,7 +339,7 @@
             :class="clsx('grow', bulkEditing ? 'min-h-0' : 'scrollable')"
             :style="!bulkEditing && 'overflow-anchor: none;'"
             @scroll="onScroll"
-            @scrollend="fixContextMenuAfterScroll"
+            @scrollend="onScrollEnd"
           >
             <WelcomeBanner
               v-if="featureFlagsStore.INITIALIZER_ONBOARD && ctx.onHead.value"
@@ -1879,13 +1879,21 @@ const allSelectedComponentsAreRestorable = computed(() => {
 
 const fixContextMenu = async () => {
   if (bulkEditing.value) return;
-  await nextTick();
+
+  // We wait for three ticks to prevent the menu from opening
+  // before the DOM scrolls to put the ExploreGridTile on screen
+  // This eliminates menu flashing caused by the interaction between
+  // fixing the menu's position and the automatic scroll behavior
+  for (let i = 0; i < 3; i++) {
+    await nextTick();
+  }
 
   // If we focus on the pinned component, do not bring up the context menu.
   if (
     exploreContext.value.focusedComponentRef.value &&
     selectionComponentsForAction.value &&
-    !focusedComponentIsPinned.value
+    !focusedComponentIsPinned.value &&
+    !gridScrolling.value
   ) {
     componentContextMenuRef.value?.open(
       exploreContext.value.focusedComponentRef.value,
@@ -2235,8 +2243,10 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
 
 // ================================================================================================
 // SCROLLING AND CLICKING
+const gridScrolling = ref(false);
 const onScroll = (event: Event) => {
   componentContextMenuRef.value?.close();
+  gridScrolling.value = true;
 
   const target = event.target as HTMLElement;
   if (!target) return;
@@ -2266,7 +2276,9 @@ const onScroll = (event: Event) => {
   }, 250);
 };
 
-const fixContextMenuAfterScroll = async () => {
+const onScrollEnd = async () => {
+  gridScrolling.value = false;
+
   // We need to fix the context menu after scrolling!
   // If the element is scrolled into view, show the menu
   // If the element is scrolled offscreen, unfocus and reset selected component index

@@ -65,6 +65,10 @@
   },
   "newhotness": {
     "destructive": "#332222",
-    "success": "#354139"
+    "success": "#354139",
+    "purpledark": "#d4b4fe",
+    "purplelight": "#631AC2",
+    "greendark": "#aafec7",
+    "greenlight": "#3b8e48"
   }
 }

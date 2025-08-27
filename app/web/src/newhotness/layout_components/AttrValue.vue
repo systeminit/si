@@ -6,11 +6,22 @@
         'p-2xs text-sm font-bold',
         strikeout && 'line-through',
         isSecret &&
-          themeClasses('text-green-light-mode', 'text-green-dark-mode'),
+          themeClasses(
+            'text-newhotness-greenlight',
+            'text-newhotness-greendark',
+          ),
       )
     "
   >
-    <TruncateWithTooltip v-if="showComponentName" class="text-purple">
+    <TruncateWithTooltip
+      v-if="showComponentName"
+      :class="
+        themeClasses(
+          'text-newhotness-purplelight',
+          'text-newhotness-purpledark',
+        )
+      "
+    >
       {{ componentName }}
     </TruncateWithTooltip>
     <div v-if="showComponentName" class="flex-none">/</div>

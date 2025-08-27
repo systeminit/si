@@ -69,7 +69,14 @@
               >
                 Set via subscription to
               </span>
-              <span class="text-purple">
+              <span
+                :class="
+                  themeClasses(
+                    'text-newhotness-purplelight',
+                    'text-newhotness-purpledark',
+                  )
+                "
+              >
                 {{
                   attributeTree.attributeValue.externalSources[0]?.componentName
                 }}
