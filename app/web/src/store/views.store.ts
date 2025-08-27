@@ -1878,9 +1878,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 // If the component that updated wasn't in this change set,
                 // don't update
                 if (data.changeSetId !== changeSetId) return;
-                if (this.selectedComponentId === data.component.id) {
-                  componentsStore.FETCH_COMPONENT_DEBUG_VIEW(data.component.id);
-                }
               },
             },
             {
@@ -2000,19 +1997,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   }
                 });
                 this.setGroupZIndex();
-
-                if (this.selectedComponentId === data.component.id) {
-                  if (data.component.changeStatus !== "deleted") {
-                    componentsStore.FETCH_COMPONENT_DEBUG_VIEW(
-                      data.component.id,
-                    );
-                  } else {
-                    const idx = this.selectedComponentIds.findIndex(
-                      (cId) => cId === data.component.id,
-                    );
-                    if (idx !== -1) this.selectedComponentIds.slice(idx, 1);
-                  }
-                }
               },
             },
 
