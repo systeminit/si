@@ -30,10 +30,11 @@ import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
-import { SecretId } from "../secrets.store";
 import { FuncRunId } from "../actions.store";
 import { FuncRunLogId } from "../func_runs.store";
 import { ConnectionMigration } from "../admin.store";
+
+export type SecretId = string;
 
 export type WebsocketRequest =
   | CursorRequest
