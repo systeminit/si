@@ -645,7 +645,7 @@ impl Component {
     implement_add_edge_to!(
         source_id: ComponentId,
         destination_id: ComponentId,
-        add_fn: add_edge_to_frame,
+        add_fn: add_edge_to_frame_for_tests,
         discriminant: EdgeWeightKindDiscriminants::FrameContains,
         result: ComponentResult,
     );
@@ -2699,11 +2699,10 @@ impl Component {
         let component = Self::get_by_id(ctx, id).await?;
         let root_attribute_value_id = Self::root_attribute_value_id(ctx, id).await?;
 
-        if let Some(parent_id) = component.parent(ctx).await? {
-            // if we are removing a component with children, re-parent them if I have a parent
-            // if this component doesn't have a parent, it's children will be orphaned anyways
+        if component.parent(ctx).await?.is_some() {
+            // if we are removing a component with children, unparent its children as well.
             for child_id in Component::get_children_for_id(ctx, id).await? {
-                Frame::upsert_parent(ctx, child_id, parent_id).await?;
+                Frame::orphan_child(ctx, child_id).await?;
             }
             Frame::orphan_child(ctx, id).await?;
         }
@@ -3132,7 +3131,6 @@ impl Component {
     pub async fn batch_copy(
         ctx: &mut DalContext,
         to_view_id: ViewId,
-        to_parent_id: Option<ComponentId>,
         components: Vec<(ComponentId, RawGeometry)>,
     ) -> ComponentResult<Vec<ComponentId>> {
         // Paste all the components and get the mapping from original to pasted
@@ -3151,16 +3149,6 @@ impl Component {
 
         // Fix parentage and connections
         for (&component_id, &pasted_component_id) in &to_pasted_id {
-            // Fix parentage:
-            // 1. If the component's parent was in the batch, use the pasted version.
-            // 2. Otherwise, set it to the place the user is pasting to.
-            let pasted_parent_id = Component::get_parent_by_id(ctx, component_id)
-                .await?
-                .and_then(|parent_id| to_pasted_id.get(&parent_id).copied());
-            if let Some(pasted_parent_id) = pasted_parent_id.or(to_parent_id) {
-                Frame::upsert_parent(ctx, pasted_component_id, pasted_parent_id).await?;
-            }
-
             // Copy manager connections
             for manager_id in Component::managers_by_id(ctx, component_id).await? {
                 // If we were managed by a component that was also pasted, we should be managed by
@@ -3432,7 +3420,6 @@ impl Component {
             Component::root_attribute_value_id(ctx, original_component_id).await?;
         let original_subscriber_apas = AttributeValue::subscribers(ctx, original_root_id).await?;
 
-        let original_parent = original_component.parent(ctx).await?;
         let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
 
         let geometry_ids = Geometry::list_ids_by_component(ctx, original_component_id).await?;
@@ -3585,11 +3572,6 @@ impl Component {
         let upgraded_component = Self::get_by_id(ctx, original_component_id).await?;
         let mut diagram_sockets = HashMap::new();
 
-        // Restore parent connection on new component
-        if let Some(parent) = original_parent {
-            Frame::upsert_parent(ctx, upgraded_component.id(), parent).await?;
-        }
-
         let payload = upgraded_component
             .into_frontend_type(ctx, None, ChangeStatus::Unmodified, &mut diagram_sockets)
             .await?;
@@ -3597,11 +3579,6 @@ impl Component {
             .await?
             .publish_on_commit(ctx)
             .await?;
-
-        // Restore child connections on new component
-        for child in original_children {
-            Frame::upsert_parent(ctx, child, upgraded_component.id()).await?;
-        }
 
         // Restore connections on new component
         for original_managed_id in original_managed {

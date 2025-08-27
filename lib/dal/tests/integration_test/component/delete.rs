@@ -651,7 +651,7 @@ async fn delete_with_frames_without_resources(ctx: &mut DalContext) {
 
     let inner_frame_id = inner_frame.id();
 
-    Frame::upsert_parent(ctx, inner_frame.id(), outer_frame.id())
+    Frame::upsert_parent_for_tests(ctx, inner_frame.id(), outer_frame.id())
         .await
         .expect("could not upsert frame");
 
@@ -667,7 +667,7 @@ async fn delete_with_frames_without_resources(ctx: &mut DalContext) {
 
     let component_id = component.id();
 
-    Frame::upsert_parent(ctx, component.id(), inner_frame.id())
+    Frame::upsert_parent_for_tests(ctx, component.id(), inner_frame.id())
         .await
         .expect("could not upsert frame");
 
@@ -691,17 +691,16 @@ async fn delete_with_frames_without_resources(ctx: &mut DalContext) {
     // component is really removed
     assert!(deleted_inner.is_none());
 
-    // ensure component is re-parented
+    // Components are no longer reparented when their parent is removed
     let component = Component::get_by_id(ctx, component_id)
         .await
         .expect("could not get component");
-    assert_eq!(
+    assert!(
         component
             .parent(ctx)
             .await
             .expect("could not get parent")
-            .expect("is some"),
-        outer_frame_id
+            .is_none()
     );
 }
 #[test]
@@ -759,7 +758,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
 
     let inner_frame_id = inner_frame.id();
 
-    Frame::upsert_parent(ctx, inner_frame.id(), outer_frame.id())
+    Frame::upsert_parent_for_tests(ctx, inner_frame.id(), outer_frame.id())
         .await
         .expect("could not upsert frame");
 
@@ -778,7 +777,7 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
         .expect("could not set resource");
     let component_id = component.id();
 
-    Frame::upsert_parent(ctx, component.id(), inner_frame.id())
+    Frame::upsert_parent_for_tests(ctx, component.id(), inner_frame.id())
         .await
         .expect("could not upsert frame");
 
@@ -1054,10 +1053,10 @@ async fn delete_with_multiple_frames(ctx: &mut DalContext) {
 
     let inner_frame_id_2 = inner_frame_2.id();
 
-    Frame::upsert_parent(ctx, inner_frame_1.id(), outer_frame.id())
+    Frame::upsert_parent_for_tests(ctx, inner_frame_1.id(), outer_frame.id())
         .await
         .expect("could not upsert frame");
-    Frame::upsert_parent(ctx, inner_frame_2.id(), outer_frame.id())
+    Frame::upsert_parent_for_tests(ctx, inner_frame_2.id(), outer_frame.id())
         .await
         .expect("could not upsert frame");
 
@@ -1076,7 +1075,7 @@ async fn delete_with_multiple_frames(ctx: &mut DalContext) {
         .expect("could not set resource");
     let component_1_id = component_1.id();
 
-    Frame::upsert_parent(ctx, component_1_id, inner_frame_1.id())
+    Frame::upsert_parent_for_tests(ctx, component_1_id, inner_frame_1.id())
         .await
         .expect("could not upsert frame");
 
@@ -1094,7 +1093,7 @@ async fn delete_with_multiple_frames(ctx: &mut DalContext) {
         .expect("could not set resource");
     let component_2_id = component_2.id();
 
-    Frame::upsert_parent(ctx, component_2_id, inner_frame_2.id())
+    Frame::upsert_parent_for_tests(ctx, component_2_id, inner_frame_2.id())
         .await
         .expect("could not upsert frame");
 

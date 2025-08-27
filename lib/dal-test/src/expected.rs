@@ -535,7 +535,7 @@ impl ExpectComponent {
     }
 
     pub async fn upsert_parent(self, ctx: &DalContext, parent_id: impl Into<ComponentId>) {
-        dal::component::frame::Frame::upsert_parent(ctx, self.0, parent_id.into())
+        dal::component::frame::Frame::upsert_parent_for_tests(ctx, self.0, parent_id.into())
             .await
             .expect("could not upsert parent");
     }

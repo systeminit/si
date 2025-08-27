@@ -2,11 +2,7 @@ use std::collections::HashMap;
 
 use axum::{
     Json,
-    extract::{
-        Host,
-        OriginalUri,
-        Path,
-    },
+    extract::Path,
 };
 use dal::{
     ChangeSet,
@@ -21,7 +17,6 @@ use dal::{
     WorkspacePk,
     WsEvent,
     change_status::ChangeStatus,
-    component::frame::Frame,
     diagram::{
         geometry::Geometry,
         view::ViewId,
@@ -47,15 +42,11 @@ use super::{
     ViewResult,
 };
 use crate::{
-    extract::{
-        HandlerContext,
-        PosthogClient,
-    },
+    extract::HandlerContext,
     service::{
         force_change_set_response::ForceChangeSetResponse,
         v2::AccessBuilder,
     },
-    track,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
@@ -71,7 +62,6 @@ pub struct CreateComponentRequest {
     pub schema_type: CreateComponentSchemaType,
     pub schema_variant_id: Option<SchemaVariantId>,
     pub schema_id: Option<SchemaId>,
-    pub parent_id: Option<ComponentId>,
     pub x: String,
     pub y: String,
     pub height: Option<String>,
@@ -91,9 +81,6 @@ pub struct CreateComponentResponse {
 pub async fn create_component(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
-    PosthogClient(posthog_client): PosthogClient,
-    OriginalUri(original_uri): OriginalUri,
-    Host(host_name): Host,
     Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<CreateComponentRequest>,
 ) -> ViewResult<ForceChangeSetResponse<CreateComponentResponse>> {
@@ -186,43 +173,6 @@ pub async fn create_component(
         ));
     }
 
-    let mut maybe_inferred_edges = None;
-    if let Some(frame_id) = request.parent_id {
-        maybe_inferred_edges = Frame::upsert_parent(&ctx, component.id(), frame_id)
-            .await?
-            .map(|edges| edges.upserted_edges);
-
-        track(
-            &posthog_client,
-            &ctx,
-            &original_uri,
-            &host_name,
-            "component_attached_to_frame",
-            serde_json::json!({
-                "how": "/diagram/create_component",
-                "component_id": component.id(),
-                "parent_id": frame_id.clone(),
-                "change_set_id": ctx.change_set_id(),
-                "installed_on_demand": matches!(request.schema_type, CreateComponentSchemaType::Uninstalled),
-            }),
-        );
-    } else {
-        track(
-            &posthog_client,
-            &ctx,
-            &original_uri,
-            &host_name,
-            "component_created",
-            serde_json::json!({
-                "how": "/diagram/create_component",
-                "component_id": component.id(),
-                "component_name": name.clone(),
-                "change_set_id": ctx.change_set_id(),
-                "installed_on_demand": matches!(request.schema_type, CreateComponentSchemaType::Uninstalled),
-            }),
-        );
-    }
-
     let mut diagram_sockets = HashMap::new();
     let payload = component
         .into_frontend_type(
@@ -232,7 +182,7 @@ pub async fn create_component(
             &mut diagram_sockets,
         )
         .await?;
-    WsEvent::component_created_with_inferred_edges(&ctx, payload, maybe_inferred_edges)
+    WsEvent::component_created_with_inferred_edges(&ctx, payload, None)
         .await?
         .publish_on_commit(&ctx)
         .await?;

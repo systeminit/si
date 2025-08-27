@@ -411,7 +411,7 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) -> Result<()> {
         vec![]
     );
 
-    Frame::upsert_parent(ctx, second_component.id(), first_component.id()).await?;
+    Frame::upsert_parent_for_tests(ctx, second_component.id(), first_component.id()).await?;
     let actions = Action::list_topologically(ctx).await?;
     // make sure two actions are enqueued
     assert_eq!(actions.len(), 2);
@@ -585,8 +585,8 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
         "one",
     )
     .await?;
-    Frame::upsert_parent(ctx, second_component_id, first_component_id).await?;
-    Frame::upsert_parent(ctx, third_component_id, second_component_id).await?;
+    Frame::upsert_parent_for_tests(ctx, second_component_id, first_component_id).await?;
+    Frame::upsert_parent_for_tests(ctx, third_component_id, second_component_id).await?;
 
     // there should be two actions enqueued
     let actions = Action::list_topologically(ctx).await?;
