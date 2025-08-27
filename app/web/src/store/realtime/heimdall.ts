@@ -297,13 +297,22 @@ const updateCache = (
 };
 
 export const wsConnections = ref<Record<string, boolean>>({});
+export const _wsConnections = ref<Record<string, boolean>>({});
 
 const updateConnectionStatus: ConnStatusFn = (
   workspaceId: WorkspacePk,
   connected: boolean,
   noBroadcast?: boolean,
 ) => {
-  wsConnections.value[workspaceId] = connected;
+  _wsConnections.value[workspaceId] = connected;
+
+  // prevent blips in the UI
+  setTimeout(() => {
+    Object.entries(_wsConnections.value).forEach(([k, v]) => {
+      wsConnections.value[k] = v;
+    });
+  }, 7 * 1000);
+
   if (!noBroadcast) {
     db.broadcastMessage({
       messageKind: "updateConnectionStatus",
