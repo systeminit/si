@@ -7588,7 +7588,6 @@ dependencies = [
  "sdf-v1-routes-diagram",
  "sdf-v1-routes-module",
  "sdf-v1-routes-qualification",
- "sdf-v1-routes-secret",
  "sdf-v1-routes-session",
  "sdf-v1-routes-variant",
  "sdf-v1-routes-ws",
@@ -7788,26 +7787,6 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-db",
- "telemetry",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "sdf-v1-routes-secret"
-version = "0.1.0"
-dependencies = [
- "axum 0.6.20",
- "dal",
- "hyper 0.14.32",
- "remain",
- "sdf-core",
- "sdf-extract",
- "serde",
- "serde_json",
- "si-data-nats",
- "si-data-pg",
- "si-db",
- "si-events",
  "telemetry",
  "thiserror 2.0.12",
 ]
