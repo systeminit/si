@@ -3617,11 +3617,17 @@ const dbInterface: TabDBInterface = {
       error(err);
     }
 
+    let interval: NodeJS.Timeout;
     sockets[workspaceId]?.addEventListener("close", () => {
+      if (interval) clearInterval(interval);
       updateConnectionStatus(workspaceId, false);
     });
     sockets[workspaceId]?.addEventListener("open", () => {
       updateConnectionStatus(workspaceId, true);
+      // heartbeat ping
+      interval = setInterval(() => {
+        sockets[workspaceId]?.send(new Uint8Array([0x9]));
+      }, 1000 * 20);
     });
 
     sockets[workspaceId]?.addEventListener("message", (messageEvent) => {
