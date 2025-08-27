@@ -168,14 +168,12 @@ const routes: RouteRecordRaw[] = [
       {
         path: ":changeSetId/c",
         name: "workspace-compose",
-        component: () =>
-          import("@/components/Workspace/WorkspaceModelAndView.vue"),
+        redirect: { name: "new-hotness" },
         children: [
           {
             path: ":viewId/v/",
             name: "workspace-compose-view",
-            component: () =>
-              import("@/components/Workspace/WorkspaceModelAndView.vue"),
+            redirect: { name: "new-hotness" },
           },
         ],
       },
