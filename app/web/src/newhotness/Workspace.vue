@@ -31,6 +31,7 @@
         :changeSetId="changeSetId"
         :componentId="componentId"
         :viewId="viewId"
+        :connected="haveWSConn"
       />
 
       <!-- Right -->
@@ -195,6 +196,11 @@ const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
 
 const coldStartInProgress = computed(() => heimdall.muspelheimInProgress.value);
+
+const haveWSConn = computed<boolean>(() => {
+  if (!heimdall.initCompleted.value) return true; // dont show error if we havent gotten started
+  return !!heimdall.wsConnections.value[props.workspacePk];
+});
 
 // no tan stack queries hitting sqlite until after the cold start has finished
 const queriesEnabled = computed(
