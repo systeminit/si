@@ -111,6 +111,15 @@
           component.
         </div>
       </div>
+      <div>
+        <div class="keys">
+          <div class="key">R</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">R</TextPill> to open the review
+          screen when on a change set.
+        </div>
+      </div>
 
       <span class="font-bold mt-md underline">Selected Component Actions</span>
       <div>
