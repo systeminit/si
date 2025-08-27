@@ -128,7 +128,6 @@ import {
   watch,
   Ref,
   inject,
-  watchEffect,
 } from "vue";
 import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
@@ -495,20 +494,6 @@ onBeforeMount(async () => {
     container.loadingGuard.value = true;
   }
 
-  // NOTE(nick,wendy): if you do not have the flag enabled, you will be re-directed. This will be
-  // true for all of the new hotness routes, provided that they are all children of the parent
-  // route that uses this component. We wait until we know the feature flag is false before
-  // redirecting; undefined means the feature flag is still loading.
-  watchEffect(() => {
-    if (featureFlagsStore.ENABLE_NEW_EXPERIENCE === false) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        "ENABLE_NEW_EXPERIENCE feature flag is false! Redirecting to old experience.",
-      );
-      window.location.href = `/w/${props.workspacePk}/${props.changeSetId}`;
-    }
-  });
-
   const thisWorkspacePk = workspacePk.value;
   const workspaceAuthToken = getTokenForWorkspace(thisWorkspacePk);
   if (!workspaceAuthToken) {
@@ -614,8 +599,7 @@ realtimeStore.subscribe(
           ].includes(data.changeSet.status) &&
           data.changeSet.id !== ctx.value.headChangeSetId.value
         ) {
-          if (featureFlagsStore.ENABLE_NEW_EXPERIENCE)
-            heimdall.prune(props.workspacePk, data.changeSet.id);
+          heimdall.prune(props.workspacePk, data.changeSet.id);
         }
         // If I'm the one who requested this change set - toast that it's been approved/rejected/etc.
         if (data.changeSet.mergeRequestedByUserId === authStore.user?.pk) {

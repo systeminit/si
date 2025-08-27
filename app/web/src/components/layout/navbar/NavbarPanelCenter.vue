@@ -47,9 +47,7 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
 import { computed } from "vue";
-import { useViewsStore } from "@/store/views.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import NavbarButton from "./NavbarButton.vue";
 
 const route = useRoute();
@@ -58,29 +56,14 @@ const changeSetStore = useChangeSetsStore();
 const onHead = computed(() => changeSetStore.headSelected);
 
 const modelingLink = () => {
-  const viewsStore = useViewsStore();
-  const ffStore = useFeatureFlagsStore();
-  const prefix = ffStore.ENABLE_NEW_EXPERIENCE
-    ? "new-hotness"
-    : "workspace-compose";
   if (changeSetStore.selectedChangeSetId) {
-    if (viewsStore.selectedViewId) {
-      return {
-        name: `${prefix}-view`,
-        params: {
-          changeSetId: changeSetStore.selectedChangeSetId,
-          viewId: viewsStore.selectedViewId,
-        },
-      };
-    } else {
-      return {
-        name: prefix,
-        params: { changeSetId: changeSetStore.selectedChangeSetId },
-      };
-    }
+    return {
+      name: "new-hotness",
+      params: { changeSetId: changeSetStore.selectedChangeSetId },
+    };
   }
   return {
-    name: prefix,
+    name: "new-hotness",
     params: { changeSetId: "auto" },
   };
 };

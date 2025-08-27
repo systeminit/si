@@ -27,10 +27,7 @@ import { watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { ErrorMessage, Icon } from "@si/vue-lib/design-system";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AppLayout from "@/components/layout/AppLayout.vue";
-
-const featureFlagStore = useFeatureFlagsStore();
 
 const router = useRouter();
 const route = useRoute();
@@ -53,20 +50,7 @@ async function autoSelectWorkspace() {
     params: { workspacePk },
   });
 
-  const flagsLoaded = new Promise((resolve) => {
-    const id = setInterval(() => {
-      if (featureFlagStore.ENABLE_NEW_EXPERIENCE !== undefined) {
-        clearInterval(id);
-        resolve(null);
-      }
-    }, 50);
-  });
-
-  await flagsLoaded;
-  let routeName = "workspace-single";
-  if (featureFlagStore.ENABLE_NEW_EXPERIENCE) {
-    routeName = "new-hotness-workspace";
-  }
+  const routeName = "new-hotness-workspace";
 
   const redirectObject = redirectPath
     ? { path: redirectPath }
