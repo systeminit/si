@@ -197,6 +197,37 @@ export interface ApiSuccessString {
 /**
  * 
  * @export
+ * @interface BuildingResponseV1
+ */
+export interface BuildingResponseV1 {
+    /**
+     * 
+     * @type {number}
+     * @memberof BuildingResponseV1
+     */
+    'estimatedCompletionSeconds': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof BuildingResponseV1
+     */
+    'message': string;
+    /**
+     * 
+     * @type {number}
+     * @memberof BuildingResponseV1
+     */
+    'retryAfterSeconds': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof BuildingResponseV1
+     */
+    'status': string;
+}
+/**
+ * 
+ * @export
  * @interface CancelActionV1Response
  */
 export interface CancelActionV1Response {
@@ -1495,7 +1526,7 @@ export interface GetSchemaVariantV1Response {
      * @type {PropSchemaV1}
      * @memberof GetSchemaVariantV1Response
      */
-    'domainProps': PropSchemaV1;
+    'domainProps'?: PropSchemaV1 | null;
     /**
      * 
      * @type {boolean}
@@ -1901,10 +1932,28 @@ export interface PropSchemaV1 {
     'children': Array<PropSchemaV1>;
     /**
      * 
+     * @type {any}
+     * @memberof PropSchemaV1
+     */
+    'defaultValue': any;
+    /**
+     * 
      * @type {string}
      * @memberof PropSchemaV1
      */
     'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof PropSchemaV1
+     */
+    'docLink': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof PropSchemaV1
+     */
+    'hidden': boolean;
     /**
      * 
      * @type {string}
@@ -1923,6 +1972,12 @@ export interface PropSchemaV1 {
      * @memberof PropSchemaV1
      */
     'propType': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof PropSchemaV1
+     */
+    'validationFormat': string;
 }
 /**
  * 

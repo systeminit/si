@@ -677,6 +677,7 @@ class ChangeSetsApi:
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "ForceApplyChangeSetV1Response",
             '401': None,
+            '428': None,
             '500': "ApiError",
         }
         response_data = self.api_client.call_api(
@@ -749,6 +750,7 @@ class ChangeSetsApi:
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "ForceApplyChangeSetV1Response",
             '401': None,
+            '428': None,
             '500': "ApiError",
         }
         response_data = self.api_client.call_api(
@@ -821,6 +823,7 @@ class ChangeSetsApi:
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "ForceApplyChangeSetV1Response",
             '401': None,
+            '428': None,
             '500': "ApiError",
         }
         response_data = self.api_client.call_api(
