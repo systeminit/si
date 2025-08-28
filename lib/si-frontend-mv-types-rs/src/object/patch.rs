@@ -168,14 +168,20 @@ pub struct ChangesetIndexUpdate {
     kind: &'static str,
     /// Checksum
     pub index_checksum: String,
+    pub patch: Option<ObjectPatch>,
 }
 
 impl ChangesetIndexUpdate {
-    pub fn new(meta: ChangesetUpdateMeta, index_checksum: String) -> Self {
+    pub fn new(
+        meta: ChangesetUpdateMeta,
+        index_checksum: String,
+        patch: Option<ObjectPatch>,
+    ) -> Self {
         Self {
             meta,
             kind: CHANGESET_INDEX_UPDATE_KIND,
             index_checksum,
+            patch,
         }
     }
 

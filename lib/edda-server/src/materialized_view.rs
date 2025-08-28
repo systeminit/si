@@ -223,7 +223,7 @@ pub async fn try_reuse_mv_index_for_new_change_set(
                 from_index_checksum: pointer.clone().index_checksum.to_owned(), // These are the same because we're starting from current for the new change set
                 to_index_checksum: pointer.clone().index_checksum,
             };
-            let index_update = ChangesetIndexUpdate::new(meta, pointer.index_checksum);
+            let index_update = ChangesetIndexUpdate::new(meta, pointer.index_checksum, None);
             edda_updates
                 .publish_change_set_index_update(index_update)
                 .await?;
@@ -377,8 +377,9 @@ pub async fn build_all_mv_for_change_set(
     };
     let patch_batch = ChangesetPatchBatch::new(meta.clone(), patches);
     let change_set_mv_id = change_set_id.to_string();
+
     let index_update =
-        ChangesetIndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned());
+        ChangesetIndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned(), None);
 
     frigg
         .put_change_set_index(
@@ -482,7 +483,7 @@ pub async fn build_mv_for_changes_in_change_set(
         span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
     }
 
-    let mv_index: ChangeSetMvIndex = serde_json::from_value(index_frontend_object.data)?;
+    let mv_index: ChangeSetMvIndex = serde_json::from_value(index_frontend_object.data.clone())?;
     let removal_checksum = "0".to_string();
     let removed_items: HashSet<(String, String)> = patches
         .iter()
@@ -512,17 +513,35 @@ pub async fn build_mv_for_changes_in_change_set(
     index_entries.sort();
 
     let new_mv_index = ChangeSetMvIndex::new(to_snapshot_address.to_string(), index_entries);
-
     let new_mv_index_frontend_object = FrontendObject::try_from(new_mv_index)?;
+
+    let patch = json_patch::diff(
+        &index_frontend_object.data,
+        &new_mv_index_frontend_object.data,
+    );
+
+    let to_index_checksum = new_mv_index_frontend_object.checksum.to_owned();
     let meta = ChangesetUpdateMeta {
         workspace_id,
         change_set_id,
-        from_index_checksum,
-        to_index_checksum: new_mv_index_frontend_object.checksum.to_owned(),
+        from_index_checksum: from_index_checksum.clone(),
+        to_index_checksum: to_index_checksum.clone(),
     };
     let patch_batch = ChangesetPatchBatch::new(meta.clone(), patches);
-    let index_update =
-        ChangesetIndexUpdate::new(meta, new_mv_index_frontend_object.checksum.to_owned());
+
+    let index_patch = ObjectPatch {
+        kind: ReferenceKind::ChangeSetMvIndex.to_string(),
+        id: new_mv_index_frontend_object.id.clone(),
+        from_checksum: from_index_checksum,
+        to_checksum: to_index_checksum,
+        patch,
+    };
+
+    let index_update = ChangesetIndexUpdate::new(
+        meta,
+        new_mv_index_frontend_object.checksum.to_owned(),
+        Some(index_patch),
+    );
     let change_set_mv_id = change_set_id.to_string();
 
     frigg
