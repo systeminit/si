@@ -1405,12 +1405,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           async FETCH_COMPONENT_JSON(componentId: ComponentId) {
             return new ApiRequest<{ json: unknown }>({
-              url: "component/json",
+              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/components/${componentId}/json`,
               keyRequestStatusBy: componentId,
-              params: {
-                componentId,
-                ...visibilityParams,
-              },
             });
           },
 
