@@ -7583,7 +7583,6 @@ dependencies = [
  "sdf-test",
  "sdf-v1-routes-attribute",
  "sdf-v1-routes-change-sets",
- "sdf-v1-routes-component",
  "sdf-v1-routes-module",
  "sdf-v1-routes-session",
  "sdf-v1-routes-variant",
@@ -7672,27 +7671,6 @@ dependencies = [
  "si-layer-cache",
  "telemetry",
  "thiserror 2.0.12",
-]
-
-[[package]]
-name = "sdf-v1-routes-component"
-version = "0.1.0"
-dependencies = [
- "axum 0.6.20",
- "dal",
- "itertools 0.13.0",
- "remain",
- "sdf-core",
- "sdf-extract",
- "serde",
- "serde_json",
- "si-db",
- "si-events",
- "si-frontend-types",
- "si-posthog",
- "telemetry",
- "thiserror 2.0.12",
- "tokio",
 ]
 
 [[package]]
