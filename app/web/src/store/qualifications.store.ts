@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { addStoreHooks } from "@si/vue-lib/pinia";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -127,66 +127,6 @@ export const useQualificationsStore = () => {
           },
         },
         actions: {
-          async FETCH_QUALIFICATIONS_SUMMARY() {
-            return new ApiRequest<{
-              total: number;
-              succeeded: number;
-              warned: number;
-              failed: number;
-              components: {
-                componentId: string;
-                componentName: string;
-                total: number;
-                warned: number;
-                succeeded: number;
-                failed: number;
-              }[];
-            }>({
-              url: "qualification/get_summary",
-              params: {
-                visibility_change_set_pk: changeSetId,
-              },
-              onSuccess: (response) => {
-                // response also includes component totals, but we'll ignore it and use getters instead
-                const byComponentId = _.keyBy(
-                  response.components,
-                  "componentId",
-                );
-
-                this.qualificationStatsByComponentId = _.mapValues(
-                  byComponentId,
-                  ({ total, succeeded, warned, failed }) => ({
-                    // transform the data slightly to add "running" so we can avoid recalculating again elsewhere
-                    total,
-                    succeeded,
-                    warned,
-                    failed,
-                    running: total - succeeded - failed - warned,
-                  }),
-                );
-              },
-            });
-          },
-
-          async FETCH_COMPONENT_QUALIFICATIONS(componentId: ComponentId) {
-            // Do not fetch qualifications for a deleted component
-            // const componentsStore = useComponentsStore();
-            // const component = componentsStore.componentsById[componentId];
-            // if (component?.changeStatus === "deleted") return;
-
-            return new ApiRequest<Qualification[]>({
-              url: "component/list_qualifications",
-              keyRequestStatusBy: componentId,
-              params: {
-                componentId,
-                visibility_change_set_pk: changeSetId,
-              },
-              onSuccess: (response) => {
-                this.qualificationsByComponentId[componentId] = response;
-              },
-            });
-          },
-
           registerRequestsBegin(requestUlid: string, actionName: string) {
             realtimeStore.inflightRequests.set(requestUlid, actionName);
           },
@@ -196,31 +136,6 @@ export const useQualificationsStore = () => {
         },
         async onActivated() {
           if (!changeSetId) return;
-
-          await this.FETCH_QUALIFICATIONS_SUMMARY();
-
-          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            {
-              eventType: "ChangeSetWritten",
-              callback: () => {
-                this.FETCH_QUALIFICATIONS_SUMMARY();
-              },
-            },
-            {
-              eventType: "ComponentUpdated",
-              callback: (data) => {
-                if (data.changeSetId === changeSetId) {
-                  this.FETCH_QUALIFICATIONS_SUMMARY();
-                }
-              },
-            },
-            {
-              eventType: "ChangeSetApplied",
-              callback: () => {
-                this.FETCH_QUALIFICATIONS_SUMMARY();
-              },
-            },
-          ]);
 
           const actionUnsub = this.$onAction(handleStoreError);
 
