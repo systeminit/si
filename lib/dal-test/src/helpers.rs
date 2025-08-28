@@ -224,7 +224,7 @@ pub async fn connect_components_with_socket_names(
             .id()
     };
 
-    Component::connect(
+    Component::connect_for_tests(
         ctx,
         source_component_id,
         from_socket_id,

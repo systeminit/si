@@ -289,7 +289,7 @@ impl AttributePrototypeArgument {
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
 
-        let node_weight = NodeWeight::new_attribute_prototype_argument(id, lineage_id, None);
+        let node_weight = NodeWeight::new_attribute_prototype_argument(id, lineage_id);
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -324,8 +324,9 @@ impl AttributePrototypeArgument {
         Self::new(ctx, prototype_id, arg_id, static_value.id()).await
     }
 
+    // Only for use in tests (and called by other test-only functions)
     #[instrument(level = "info", skip(ctx))]
-    pub async fn new_inter_component(
+    pub(crate) async fn new_inter_component_for_tests(
         ctx: &DalContext,
         source_component_id: ComponentId,
         source_output_socket_id: OutputSocketId,
@@ -334,7 +335,7 @@ impl AttributePrototypeArgument {
     ) -> AttributePrototypeArgumentResult<Self> {
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
-        let node_weight = NodeWeight::new_attribute_prototype_argument(
+        let node_weight = NodeWeight::new_attribute_prototype_argument_with_targets_for_tests(
             id,
             lineage_id,
             Some(ArgumentTargets {

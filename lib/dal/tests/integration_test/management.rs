@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    time::Duration,
-};
+use std::time::Duration;
 
 use dal::{
     AttributeValue,
@@ -10,7 +7,6 @@ use dal::{
     ComponentId,
     DalContext,
     Func,
-    SchemaId,
     SchemaVariantId,
     Ulid,
     action::Action,
@@ -34,10 +30,8 @@ use dal::{
 use dal_test::{
     Report,
     Result,
-    SCHEMA_ID_SMALL_EVEN_LEGO,
     expected::{
         ExpectComponent,
-        ExpectComponentInputSocket,
         ExpectSchemaVariant,
         ExpectView,
     },
@@ -94,33 +88,6 @@ async fn exec_mgmt_func(
         .try_into()?;
 
     Ok((execution_result, result))
-}
-
-async fn exec_mgmt_func_and_operate(
-    ctx: &DalContext,
-    component_id: ComponentId,
-    prototype_name: &str,
-    view_id: Option<ViewId>,
-) -> Result<()> {
-    let (execution_result, result) =
-        exec_mgmt_func(ctx, component_id, prototype_name, view_id).await?;
-
-    assert_eq!(ManagementFuncStatus::Ok, result.status);
-
-    let operations = result.operations.expect("should have operations");
-
-    ManagementOperator::new(
-        ctx,
-        component_id,
-        operations,
-        execution_result,
-        None,
-        ulid::Ulid::new(),
-    )
-    .await?
-    .operate()
-    .await?;
-    Ok(())
 }
 
 #[test]
@@ -532,234 +499,6 @@ async fn create_component_of_other_schema(ctx: &DalContext) -> Result<()> {
         Some(json!("small even lego resource id")),
         av.value(ctx).await?
     );
-
-    Ok(())
-}
-
-#[test]
-async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) -> Result<()> {
-    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
-        ctx,
-        "small odd lego",
-        "small odd lego",
-    )
-    .await?;
-
-    let av_id = Component::attribute_value_for_prop(
-        ctx,
-        small_odd_lego.id(),
-        &["root", "si", "resourceId"],
-    )
-    .await?;
-
-    let new_component_count = 3;
-    let string_count = format!("{new_component_count}");
-
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count))).await?;
-
-    let (execution_result, result) = exec_mgmt_func(
-        ctx,
-        small_odd_lego.id(),
-        "Create and Connect to Self as Children",
-        None,
-    )
-    .await?;
-
-    assert_eq!(result.status, ManagementFuncStatus::Ok);
-
-    let operations = result.operations.expect("should have operations");
-
-    ManagementOperator::new(
-        ctx,
-        small_odd_lego.id(),
-        operations,
-        execution_result,
-        None,
-        ulid::Ulid::new(),
-    )
-    .await?
-    .operate()
-    .await?;
-
-    let geometry = small_odd_lego
-        .geometry(ctx, View::get_id_for_default(ctx).await?)
-        .await?;
-
-    assert_eq!(Some(500), geometry.width());
-    assert_eq!(Some(500), geometry.height());
-
-    let components = Component::list(ctx).await?;
-    assert_eq!(4, components.len());
-
-    let children: HashSet<_> = Component::get_children_for_id(ctx, small_odd_lego.id())
-        .await?
-        .into_iter()
-        .collect();
-    assert_eq!(3, children.len());
-    let managed: HashSet<_> = small_odd_lego.get_managed(ctx).await?.into_iter().collect();
-    assert_eq!(children, managed);
-
-    let small_even_lego_schema_id: SchemaId =
-        ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)?.into();
-
-    for &child_id in &children {
-        let c = Component::get_by_id(ctx, child_id).await?;
-        let schema_id = c.schema(ctx).await?.id();
-        assert_eq!(small_even_lego_schema_id, schema_id);
-    }
-
-    // Ensure parallel edges make it through the rebase
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
-
-    let children_base: HashSet<_> = Component::get_children_for_id(ctx, small_odd_lego.id())
-        .await?
-        .into_iter()
-        .collect();
-    assert_eq!(3, children_base.len());
-    let managed_base: HashSet<_> = small_odd_lego.get_managed(ctx).await?.into_iter().collect();
-
-    assert_eq!(children, children_base);
-    assert_eq!(children_base, managed_base);
-
-    Ok(())
-}
-
-#[test]
-async fn create_and_connect_to_self(ctx: &DalContext) -> Result<()> {
-    let mut small_odd_lego = create_component_for_default_schema_name_in_default_view(
-        ctx,
-        "small odd lego",
-        "small odd lego",
-    )
-    .await?;
-    let view_id = View::get_id_for_default(ctx).await?;
-
-    let manager_x: isize = 123;
-    let manager_y: isize = 346;
-
-    small_odd_lego
-        .set_geometry(
-            ctx,
-            view_id,
-            manager_x,
-            manager_y,
-            None::<isize>,
-            None::<isize>,
-        )
-        .await?;
-
-    let av_id = Component::attribute_value_for_prop(
-        ctx,
-        small_odd_lego.id(),
-        &["root", "si", "resourceId"],
-    )
-    .await?;
-
-    let new_component_count = 3;
-    let string_count = format!("{new_component_count}");
-
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count))).await?;
-
-    let (execution_result, result) =
-        exec_mgmt_func(ctx, small_odd_lego.id(), "Create and Connect to Self", None).await?;
-
-    assert_eq!(result.status, ManagementFuncStatus::Ok);
-
-    let operations = result.operations.expect("should have operations");
-
-    ManagementOperator::new(
-        ctx,
-        small_odd_lego.id(),
-        operations,
-        execution_result,
-        None,
-        ulid::Ulid::new(),
-    )
-    .await?
-    .operate()
-    .await?;
-
-    let components = Component::list(ctx).await?;
-    assert_eq!(4, components.len());
-
-    let connections = small_odd_lego.incoming_connections(ctx).await?;
-    assert_eq!(3, connections.len());
-    let small_even_lego_schema_id: SchemaId =
-        ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)?.into();
-    let manager_geometry = small_odd_lego.geometry(ctx, view_id).await?.into_raw();
-    for connection in connections {
-        let c = Component::get_by_id(ctx, connection.from_component_id).await?;
-
-        let c_geo = c.geometry(ctx, view_id).await?.into_raw();
-        assert_eq!(manager_x, manager_geometry.x);
-        assert_eq!(manager_y, manager_geometry.y);
-        assert_eq!(manager_geometry.x + 10, c_geo.x);
-        assert_eq!(manager_geometry.y + 10, c_geo.y);
-
-        let schema_id = c.schema(ctx).await?.id();
-        assert_eq!(small_even_lego_schema_id, schema_id);
-    }
-
-    Ok(())
-}
-
-#[test]
-async fn create_and_connect_from_self(ctx: &DalContext) -> Result<()> {
-    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
-        ctx,
-        "small odd lego",
-        "small odd lego",
-    )
-    .await?;
-
-    let av_id = Component::attribute_value_for_prop(
-        ctx,
-        small_odd_lego.id(),
-        &["root", "si", "resourceId"],
-    )
-    .await?;
-
-    let new_component_count = 3;
-    let string_count = format!("{new_component_count}");
-
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!(string_count))).await?;
-
-    let (execution_result, result) = exec_mgmt_func(
-        ctx,
-        small_odd_lego.id(),
-        "Create and Connect From Self",
-        None,
-    )
-    .await?;
-
-    assert_eq!(result.status, ManagementFuncStatus::Ok);
-
-    let operations = result.operations.expect("should have operations");
-
-    ManagementOperator::new(
-        ctx,
-        small_odd_lego.id(),
-        operations,
-        execution_result,
-        None,
-        ulid::Ulid::new(),
-    )
-    .await?
-    .operate()
-    .await?;
-
-    let components = Component::list(ctx).await?;
-    assert_eq!(4, components.len());
-
-    let connections = small_odd_lego.outgoing_connections(ctx).await?;
-    assert_eq!(3, connections.len());
-    let small_even_lego_schema_id: SchemaId =
-        ulid::Ulid::from_string(SCHEMA_ID_SMALL_EVEN_LEGO)?.into();
-    for connection in connections {
-        let c = Component::get_by_id(ctx, connection.to_component_id).await?;
-        let schema_id = c.schema(ctx).await?.id();
-        assert_eq!(small_even_lego_schema_id, schema_id);
-    }
 
     Ok(())
 }
@@ -1404,220 +1143,6 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-struct SmallOddLego {
-    component: ExpectComponent,
-    arity_one: ExpectComponentInputSocket,
-    one: ExpectComponentInputSocket,
-}
-
-impl SmallOddLego {
-    async fn create(ctx: &mut DalContext) -> Self {
-        let component = ExpectComponent::create(ctx, "small odd lego").await;
-        Self {
-            component,
-            arity_one: component.input_socket(ctx, "arity_one").await,
-            one: component.input_socket(ctx, "one").await,
-        }
-    }
-    async fn create_and_connect_to_inputs(
-        &self,
-        ctx: &mut DalContext,
-    ) -> Result<ExpectComponentInputSocket> {
-        exec_mgmt_func_and_operate(
-            ctx,
-            self.component.id(),
-            "Create and Connect to Inputs",
-            None,
-        )
-        .await?;
-        Ok(ExpectComponent::find(ctx, "lego")
-            .await
-            .input_socket(ctx, "two")
-            .await)
-    }
-
-    async fn connect_to_inputs(&self, ctx: &mut DalContext) -> Result<()> {
-        exec_mgmt_func_and_operate(ctx, self.component.id(), "Connect to Inputs", None).await
-    }
-
-    async fn disconnect_from_inputs(&self, ctx: &mut DalContext) -> Result<()> {
-        exec_mgmt_func_and_operate(ctx, self.component.id(), "Disconnect from Inputs", None).await
-    }
-
-    async fn get_input_values(&self, ctx: &mut DalContext) -> Result<serde_json::Value> {
-        exec_mgmt_func_and_operate(ctx, self.component.id(), "Get Input Values", None).await?;
-        Ok(self
-            .component
-            .prop(ctx, ["root", "domain", "test_result"])
-            .await
-            .view(ctx)
-            .await
-            .expect("No test_result value"))
-    }
-}
-
-#[test]
-async fn create_connect_input_sockets(ctx: &mut DalContext) -> Result<()> {
-    // Manager component
-    let manager = SmallOddLego::create(ctx).await;
-
-    // External component to connect to the manager
-    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
-    let one = external.output_socket(ctx, "one").await;
-    let three = external.output_socket(ctx, "three").await;
-    let five = external.output_socket(ctx, "five").await;
-
-    // Create lego from inputs arity_one=one, two=[three,five]
-    one.connect(ctx, manager.arity_one).await;
-    three.connect(ctx, manager.one).await;
-    five.connect(ctx, manager.one).await;
-    let lego = manager.create_and_connect_to_inputs(ctx).await?;
-    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
-
-    Ok(())
-}
-
-#[test]
-async fn update_connect_add_input_sockets(ctx: &mut DalContext) -> Result<()> {
-    // Manager component
-    let manager = SmallOddLego::create(ctx).await;
-
-    // External component to connect to the manager
-    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
-    let one = external.output_socket(ctx, "one").await;
-    let three = external.output_socket(ctx, "three").await;
-    let five = external.output_socket(ctx, "five").await;
-
-    // Create empty lego
-    let lego = manager.create_and_connect_to_inputs(ctx).await?;
-    assert_eq!(lego.connections(ctx).await, vec![]);
-
-    // Connect lego to inputs arity_one=one, two=[three,five]
-    one.connect(ctx, manager.arity_one).await;
-    three.connect(ctx, manager.one).await;
-    five.connect(ctx, manager.one).await;
-    manager.connect_to_inputs(ctx).await?;
-    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
-
-    Ok(())
-}
-
-#[test]
-async fn update_connect_remove_input_sockets(ctx: &mut DalContext) -> Result<()> {
-    // Manager component
-    let manager = SmallOddLego::create(ctx).await;
-
-    // External component to connect to the manager
-    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
-    let one = external.output_socket(ctx, "one").await;
-    let three = external.output_socket(ctx, "three").await;
-    let five = external.output_socket(ctx, "five").await;
-
-    // Create lego from inputs arity_one=one, two=[three,five]
-    one.connect(ctx, manager.arity_one).await;
-    three.connect(ctx, manager.one).await;
-    five.connect(ctx, manager.one).await;
-    let lego = manager.create_and_connect_to_inputs(ctx).await?;
-    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
-
-    // Disconnect from all inputs
-    manager.disconnect_from_inputs(ctx).await?;
-    assert_eq!(lego.connections(ctx).await, vec![]);
-
-    Ok(())
-}
-
-#[test]
-async fn connect_input_sockets_redundant(ctx: &mut DalContext) -> Result<()> {
-    // Manager component
-    let manager = SmallOddLego::create(ctx).await;
-
-    // External component to connect to the manager
-    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
-    let one = external.output_socket(ctx, "one").await;
-    let three = external.output_socket(ctx, "three").await;
-    let five = external.output_socket(ctx, "five").await;
-
-    // Create empty lego
-    let lego = manager.create_and_connect_to_inputs(ctx).await?;
-    assert_eq!(lego.connections(ctx).await, vec![]);
-
-    // Connect all inputs to all sockets (including arity_one and one, which means we'll pass
-    // the same input twice and it should only connect once)
-    one.connect(ctx, manager.arity_one).await;
-    one.connect(ctx, manager.one).await;
-    three.connect(ctx, manager.one).await;
-    five.connect(ctx, manager.one).await;
-
-    // Disconnect from all inputs even though there are no inputs to disconnect from
-    manager.disconnect_from_inputs(ctx).await?;
-    assert_eq!(lego.connections(ctx).await, vec![]);
-
-    // Connect to all inputs
-    manager.connect_to_inputs(ctx).await?;
-    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
-
-    // Connect to all inputs again even though we've already connected to them all
-    manager.connect_to_inputs(ctx).await?;
-    assert_eq!(lego.connections(ctx).await, vec![one, three, five]);
-
-    Ok(())
-}
-
-#[test]
-async fn get_input_socket_values(ctx: &mut DalContext) -> Result<()> {
-    // Manager component
-    let manager = SmallOddLego::create(ctx).await;
-
-    // External component to connect to the manager
-    let external = ExpectComponent::create_named(ctx, "large even lego", "external").await;
-    let one = external.output_socket(ctx, "one").await;
-    let three = external.output_socket(ctx, "three").await;
-    let five = external.output_socket(ctx, "five").await;
-    external
-        .prop(ctx, ["root", "domain", "one"])
-        .await
-        .set(ctx, json!("one"))
-        .await;
-    external
-        .prop(ctx, ["root", "domain", "three"])
-        .await
-        .set(ctx, "three")
-        .await;
-    external
-        .prop(ctx, ["root", "domain", "five"])
-        .await
-        .set(ctx, "five")
-        .await;
-
-    // Create empty lego
-    manager.create_and_connect_to_inputs(ctx).await?;
-    change_set::commit(ctx).await?; // wait for dvu
-    assert_eq!(manager.get_input_values(ctx).await?, json!({ "one": [] }));
-
-    // Connect all sockets
-    one.connect(ctx, manager.arity_one).await;
-    three.connect(ctx, manager.one).await;
-    five.connect(ctx, manager.one).await;
-    manager.connect_to_inputs(ctx).await?;
-    change_set::commit(ctx).await?; // wait for dvu
-    assert_eq!(
-        manager.get_input_values(ctx).await?,
-        json!({ "arity_one": "one", "one": ["five", "three"] })
-    );
-
-    // Connect one socket redundantly
-    one.connect(ctx, manager.one).await;
-    manager.connect_to_inputs(ctx).await?;
-    change_set::commit(ctx).await?; // wait for dvu
-    assert_eq!(
-        manager.get_input_values(ctx).await?,
-        json!({ "arity_one": "one", "one": ["five", "one", "three"] })
-    );
-
-    Ok(())
-}
-
 #[test]
 async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
     // Set up management schema
@@ -1684,95 +1209,6 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
 }
 
 #[test]
-async fn incoming_connections_inferred_from_parent(ctx: DalContext) -> Result<()> {
-    // Create a manager with inferred connection to parent value
-    let mut test = connection_test::setup(ctx).await?;
-    let parent = test.create_input("parent", None).await?;
-    test.set(parent, "Value", "parent").await;
-    let manager = test.create_output("manager", parent).await?;
-    test.commit().await?;
-    assert_eq!(
-        manager.domain(&test.ctx).await,
-        json!({ "Value": "parent" })
-    );
-
-    // Call management function to create component with inferred parent connections.
-    let component = test.create_output_and_copy_connection(manager).await?;
-    test.commit().await?;
-
-    // Check that value propagated from parent to connection
-    assert_eq!(
-        component.domain(&test.ctx).await,
-        json!({ "Value": "parent" })
-    );
-
-    // Check that the connection is real: delete manager and update parent value, and see if it
-    // propagates.
-    manager.component(&test.ctx).await.delete(&test.ctx).await?;
-    test.set(parent, "Value", "new_parent").await;
-    test.commit().await?;
-    assert_eq!(
-        component.domain(&test.ctx).await,
-        json!({ "Value": "new_parent" })
-    );
-
-    Ok(())
-}
-
-#[test]
-async fn incoming_connections_inferred_multiple_ancestors(ctx: DalContext) -> Result<()> {
-    // Create a manager with inferred connection to parent value
-    let mut test = connection_test::setup(ctx).await?;
-    let parent = test.create_input("parent", None).await?;
-    let parent2 = test.create_input2("parent2", parent).await?;
-    test.set(parent, "Value", "parent").await;
-    test.set(parent2, "Value2", "parent2").await;
-    let manager = test.create_output("manager", parent2).await?;
-    test.commit().await?;
-    assert_eq!(
-        manager.domain(&test.ctx).await,
-        json!({ "Value": "parent", "Value2": "parent2" })
-    );
-
-    // Call management function to create component with inferred parent connections.
-    let component = test.create_output_and_copy_connection(manager).await?;
-    test.commit().await?;
-    assert_eq!(
-        component.domain(&test.ctx).await,
-        json!({ "Value": "parent", "Value2": "parent2" })
-    );
-
-    // Check that the connection is real: delete manager and update parent value, and see if it
-    // propagates.
-    manager.component(&test.ctx).await.delete(&test.ctx).await?;
-    test.set(parent, "Value", "new_parent").await;
-    test.set(parent2, "Value2", "new_parent2").await;
-    test.commit().await?;
-    assert_eq!(
-        component.domain(&test.ctx).await,
-        json!({ "Value": "new_parent", "Value2": "new_parent2" })
-    );
-
-    Ok(())
-}
-
-#[test]
-async fn incoming_connections_none(ctx: DalContext) -> Result<()> {
-    // Create a manager with inferred connection
-    let mut test = connection_test::setup(ctx).await?;
-    let manager = test.create_output("manager", None).await?;
-    test.commit().await?;
-    assert_eq!(manager.domain(&test.ctx).await, json!({}));
-
-    // Call management function to create component without incomingConnections.
-    let component = test.create_output_and_copy_connection(manager).await?;
-    test.commit().await?;
-    assert_eq!(component.domain(&test.ctx).await, json!({}));
-
-    Ok(())
-}
-
-#[test]
 async fn component_incoming_connections(ctx: DalContext) -> Result<()> {
     // Create a manager with inferred connection to parent value
     let mut test = connection_test::setup(ctx).await?;
@@ -1790,15 +1226,15 @@ async fn component_incoming_connections(ctx: DalContext) -> Result<()> {
     );
 
     // Call management function to count and delete component incoming connections.
-    test.remove_all_connections(manager).await;
+    test.count_connections(manager).await;
     test.commit().await?;
 
     // Check that the connection was passed and removed
     test.set(input, "Value", "new_input").await;
     test.commit().await?;
     assert_eq!(
-        component.domain(&test.ctx).await,
-        json!({ "IncomingConnectionsCount": 1 })
+        json!({ "Value": "new_input", "IncomingConnectionsCount": 1 }),
+        component.domain(&test.ctx).await
     );
 
     Ok(())
@@ -1821,7 +1257,7 @@ async fn component_incoming_connections_inferred_from_parent(ctx: DalContext) ->
     );
 
     // Call management function to count and delete component incoming connections.
-    test.remove_all_connections(manager).await;
+    test.count_connections(manager).await;
     test.commit().await?;
 
     // Check that the connection was passed but the connection was not removed
@@ -2200,45 +1636,8 @@ pub mod connection_test {
         "#).await;
 
         // Management func that creates a new component connected to our input
-        let create_output_and_copy_connection = variant::create_management_func(
-            &ctx,
-            "output",
-            "create_output_and_copy_connection",
-            r#"
-                    async function main({ thisComponent }: Input): Promise<Output> {
-                        let connect = [];
-                        if (thisComponent.incomingConnections.Value) {
-                            connect.push({
-                                from: thisComponent.incomingConnections.Value,
-                                to: "Value"
-                            });
-                        }
-                        if (thisComponent.incomingConnections.Value2) {
-                            connect.push({
-                                from: thisComponent.incomingConnections.Value2,
-                                to: "Value2"
-                            });
-                        }
-                        return {
-                            status: "ok",
-                            ops: {
-                                create: {
-                                    output: {
-                                        kind: "output",
-                                        connect
-                                    }
-                                }
-                            }
-                        }
-                    }
-                "#,
-        )
-        .await?
-        .into();
-
-        // Management func that creates a new component connected to our input
-        let remove_all_connections = variant::create_management_func(&ctx, "output",
-        "remove_all_connections",
+        let count_connections = variant::create_management_func(&ctx, "output",
+        "count_connections",
                 r#"
                     async function main({ components }: Input): Promise<Output> {
                         function updateComponent(component: Input["components"][string]) {
@@ -2282,20 +1681,16 @@ pub mod connection_test {
         Ok(ConnectionTest {
             ctx,
             input,
-            input2,
             output,
-            create_output_and_copy_connection,
-            remove_all_connections,
+            count_connections,
         })
     }
 
     pub struct ConnectionTest {
         pub ctx: DalContext,
         pub input: ExpectSchemaVariant,
-        pub input2: ExpectSchemaVariant,
         pub output: ExpectSchemaVariant,
-        pub create_output_and_copy_connection: ExpectFunc,
-        pub remove_all_connections: ExpectFunc,
+        pub count_connections: ExpectFunc,
     }
 
     impl ConnectionTest {
@@ -2307,20 +1702,6 @@ pub mod connection_test {
         ) -> Result<ExpectComponent> {
             let component =
                 ExpectComponent(component::create(&self.ctx, self.input.id(), name).await?);
-            if let Some(parent) = parent.into() {
-                component.upsert_parent(&self.ctx, parent).await;
-            }
-            Ok(component)
-        }
-
-        /// Create an input2 component with given (optional) parent
-        pub async fn create_input2(
-            &self,
-            name: &str,
-            parent: impl Into<Option<ExpectComponent>>,
-        ) -> Result<ExpectComponent> {
-            let component =
-                ExpectComponent(component::create(&self.ctx, self.input2.id(), name).await?);
             if let Some(parent) = parent.into() {
                 component.upsert_parent(&self.ctx, parent).await;
             }
@@ -2350,28 +1731,9 @@ pub mod connection_test {
             serde_json::json!(value)
         }
 
-        pub async fn create_output_and_copy_connection(
-            &self,
-            manager: ExpectComponent,
-        ) -> Result<ExpectComponent> {
+        pub async fn count_connections(&self, manager: ExpectComponent) {
             manager
-                .execute_management_func(&self.ctx, self.create_output_and_copy_connection)
-                .await;
-            let mut managed = manager
-                .component(&self.ctx)
-                .await
-                .get_managed(&self.ctx)
-                .await?;
-            assert_eq!(managed.len(), 1);
-            Ok(managed
-                .pop()
-                .expect("should have a managed component")
-                .into())
-        }
-
-        pub async fn remove_all_connections(&self, manager: ExpectComponent) {
-            manager
-                .execute_management_func(&self.ctx, self.remove_all_connections)
+                .execute_management_func(&self.ctx, self.count_connections)
                 .await;
         }
 

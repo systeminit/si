@@ -785,7 +785,7 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
             .await
             .expect("could not perform find with name")
             .expect("input socket not found by name");
-    Component::connect(
+    Component::connect_for_tests(
         ctx,
         source_component.id(),
         source_output_socket.id(),

@@ -324,15 +324,11 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
         "[ConnectionAnnotation { tokens: [\"one\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]"
     );
 
-    // check connections on the component
-    let mut incoming_connections = component.incoming_connections(ctx).await?;
-    assert_eq!(incoming_connections.len(), 1);
-    let incoming_connection = incoming_connections.pop().expect("has one connection");
-    assert_eq!(incoming_connection.from_component_id, input_comp.id());
-    let mut outgoing_connections = component.outgoing_connections(ctx).await?;
-    assert_eq!(outgoing_connections.len(), 1);
-    let outgoing_connection = outgoing_connections.pop().expect("has a connection");
-    assert_eq!(outgoing_connection.to_component_id, output_comp.id());
+    // connections are NO LONGER maintained on regenerate and upgrade
+    let incoming_connections = component.incoming_connections(ctx).await?;
+    assert!(incoming_connections.is_empty());
+    let outgoing_connections = component.outgoing_connections(ctx).await?;
+    assert!(outgoing_connections.is_empty());
 
     Ok(())
 }

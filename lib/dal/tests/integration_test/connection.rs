@@ -80,7 +80,7 @@ async fn make_multiple_trees(ctx: &mut DalContext) {
         .id();
 
     //connect each of them
-    let _result = Component::connect(
+    let _result = Component::connect_for_tests(
         ctx,
         even_lego_1.id(),
         output_socket_id,
@@ -93,7 +93,7 @@ async fn make_multiple_trees(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    let _result_2 = Component::connect(
+    let _result_2 = Component::connect_for_tests(
         ctx,
         even_lego_2.id(),
         output_socket_id,
@@ -181,7 +181,7 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
         .expect("input socket exists")
         .id();
 
-    let result = Component::connect(
+    let result = Component::connect_for_tests(
         ctx,
         odd_component_1.id(),
         odd_output_socket_id,
@@ -228,7 +228,7 @@ async fn make_chain_remove_middle(ctx: &mut DalContext) {
         .expect("found input socket")
         .expect("input socket exists")
         .id();
-    let apa_id = Component::connect(
+    let apa_id = Component::connect_for_tests(
         ctx,
         even_component_1.id(),
         even_output_socket_id,
@@ -357,7 +357,7 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
         .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         oysters_component.id(),
         output_socket.id(),
@@ -372,7 +372,7 @@ async fn connect_and_disconnect_components_explicit_connection(ctx: &mut DalCont
         .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         lunch_component.id(),
         output_socket.id(),
@@ -517,7 +517,7 @@ async fn connect_to_one_destination_with_multiple_candidates_of_same_schema_vari
         .expect("could not perform find input socket")
         .expect("input socket not found");
 
-    Component::connect(
+    Component::connect_for_tests(
         ctx,
         source.id(),
         output_socket.id(),
@@ -620,7 +620,7 @@ async fn remove_connection(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect the components!
-    let inter_component_attribute_prototype_argument_id = Component::connect(
+    let inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         oysters_component.id(),
         output_socket.id(),
@@ -636,7 +636,7 @@ async fn remove_connection(ctx: &mut DalContext) {
         .expect("could not commit and update snapshot to visibility");
 
     // Connect component 2
-    let _inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect_for_tests(
         ctx,
         lunch_component.id(),
         output_socket.id(),

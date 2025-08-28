@@ -725,7 +725,7 @@ impl ExpectComponentOutputSocket {
     }
 
     pub async fn connect(self, ctx: &DalContext, dest: ExpectComponentInputSocket) {
-        Component::connect(ctx, self.0, self.1, dest.0, dest.1)
+        Component::connect_for_tests(ctx, self.0, self.1, dest.0, dest.1)
             .await
             .expect("could not connect components");
     }
