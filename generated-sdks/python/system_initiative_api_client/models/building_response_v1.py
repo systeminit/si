@@ -17,25 +17,21 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
-from typing import Any, ClassVar, Dict, List, Optional
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from typing import Any, ClassVar, Dict, List
+from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
 
-class PropSchemaV1(BaseModel):
+class BuildingResponseV1(BaseModel):
     """
-    PropSchemaV1
+    BuildingResponseV1
     """ # noqa: E501
-    children: List[PropSchemaV1]
-    default_value: Optional[Any] = Field(alias="defaultValue")
-    description: StrictStr
-    doc_link: StrictStr = Field(alias="docLink")
-    hidden: StrictBool
-    name: StrictStr
-    prop_id: StrictStr = Field(alias="propId")
-    prop_type: StrictStr = Field(alias="propType")
-    validation_format: StrictStr = Field(alias="validationFormat")
-    __properties: ClassVar[List[str]] = ["children", "defaultValue", "description", "docLink", "hidden", "name", "propId", "propType", "validationFormat"]
+    estimated_completion_seconds: Annotated[int, Field(strict=True, ge=0)] = Field(alias="estimatedCompletionSeconds")
+    message: StrictStr
+    retry_after_seconds: Annotated[int, Field(strict=True, ge=0)] = Field(alias="retryAfterSeconds")
+    status: StrictStr
+    __properties: ClassVar[List[str]] = ["estimatedCompletionSeconds", "message", "retryAfterSeconds", "status"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -55,7 +51,7 @@ class PropSchemaV1(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of PropSchemaV1 from a JSON string"""
+        """Create an instance of BuildingResponseV1 from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -76,23 +72,11 @@ class PropSchemaV1(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of each item in children (list)
-        _items = []
-        if self.children:
-            for _item_children in self.children:
-                if _item_children:
-                    _items.append(_item_children.to_dict())
-            _dict['children'] = _items
-        # set to None if default_value (nullable) is None
-        # and model_fields_set contains the field
-        if self.default_value is None and "default_value" in self.model_fields_set:
-            _dict['defaultValue'] = None
-
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of PropSchemaV1 from a dict"""
+        """Create an instance of BuildingResponseV1 from a dict"""
         if obj is None:
             return None
 
@@ -100,18 +84,11 @@ class PropSchemaV1(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "children": [PropSchemaV1.from_dict(_item) for _item in obj["children"]] if obj.get("children") is not None else None,
-            "defaultValue": obj.get("defaultValue"),
-            "description": obj.get("description"),
-            "docLink": obj.get("docLink"),
-            "hidden": obj.get("hidden"),
-            "name": obj.get("name"),
-            "propId": obj.get("propId"),
-            "propType": obj.get("propType"),
-            "validationFormat": obj.get("validationFormat")
+            "estimatedCompletionSeconds": obj.get("estimatedCompletionSeconds"),
+            "message": obj.get("message"),
+            "retryAfterSeconds": obj.get("retryAfterSeconds"),
+            "status": obj.get("status")
         })
         return _obj
 
-# TODO: Rewrite to not use raise_errors
-PropSchemaV1.model_rebuild(raise_errors=False)
 

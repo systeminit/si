@@ -419,6 +419,7 @@ class SchemasApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "GetSchemaVariantV1Response",
+            '202': "BuildingResponseV1",
             '401': None,
             '404': None,
             '500': "ApiError",
@@ -496,6 +497,7 @@ class SchemasApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "GetSchemaVariantV1Response",
+            '202': "BuildingResponseV1",
             '401': None,
             '404': None,
             '500': "ApiError",
@@ -573,6 +575,7 @@ class SchemasApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "GetSchemaVariantV1Response",
+            '202': "BuildingResponseV1",
             '401': None,
             '404': None,
             '500': "ApiError",
@@ -715,6 +718,7 @@ class SchemasApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "GetSchemaV1Response",
+            '202': "BuildingResponseV1",
             '401': None,
             '404': None,
             '500': "ApiError",
@@ -792,6 +796,7 @@ class SchemasApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "GetSchemaV1Response",
+            '202': "BuildingResponseV1",
             '401': None,
             '404': None,
             '500': "ApiError",
@@ -869,6 +874,7 @@ class SchemasApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "GetSchemaV1Response",
+            '202': "BuildingResponseV1",
             '401': None,
             '404': None,
             '500': "ApiError",
@@ -1015,6 +1021,7 @@ class SchemasApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "GetSchemaVariantV1Response",
+            '202': "BuildingResponseV1",
             '401': None,
             '404': None,
             '412': None,
@@ -1097,6 +1104,7 @@ class SchemasApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "GetSchemaVariantV1Response",
+            '202': "BuildingResponseV1",
             '401': None,
             '404': None,
             '412': None,
@@ -1179,6 +1187,7 @@ class SchemasApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "GetSchemaVariantV1Response",
+            '202': "BuildingResponseV1",
             '401': None,
             '404': None,
             '412': None,

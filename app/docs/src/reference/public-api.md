@@ -290,6 +290,7 @@ Change Set management endpoints
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change Set force applied successfully|[ForceApplyChangeSetV1Response](#schemaforceapplychangesetv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|428|[Precondition Required](https://tools.ietf.org/html/rfc6585#section-3)|DVU Roots still exist, apply must be tried again later.|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## Get Change Set post merge status
@@ -1337,6 +1338,42 @@ Components management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Restore a component that is marked for deletion
+
+<a id="opIdrestore_component"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/restore`
+
+<h3 id="restore-a-component-that-is-marked-for-deletion-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|component_id|path|string|true|Component identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "status": "true"
+}
+```
+
+<h3 id="restore-a-component-that-is-marked-for-deletion-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Component restored successfully|[RestoreComponentV1Response](#schemarestorecomponentv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Component not marked for deletion|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Upgrade a component to the latest schema variant
 
 <a id="opIdupgrade_component"></a>
@@ -1553,6 +1590,7 @@ Schemas management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema retrieved successfully|[GetSchemaV1Response](#schemagetschemav1response)|
+|202|[Accepted](https://tools.ietf.org/html/rfc7231#section-6.3.3)|Schema data is being generated from cached modules|[BuildingResponseV1](#schemabuildingresponsev1)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
@@ -1584,15 +1622,7 @@ Schemas management endpoints
   "color": "#FF5733",
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
-  "domainProps": {
-    "children": [
-      {}
-    ],
-    "description": "string",
-    "name": "string",
-    "propId": "string",
-    "propType": "string"
-  },
+  "domainProps": {},
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -1609,6 +1639,7 @@ Schemas management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema variant retrieved successfully|[GetSchemaVariantV1Response](#schemagetschemavariantv1response)|
+|202|[Accepted](https://tools.ietf.org/html/rfc7231#section-6.3.3)|Schema variant building, try again later|[BuildingResponseV1](#schemabuildingresponsev1)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
@@ -1641,15 +1672,7 @@ Schemas management endpoints
   "color": "#FF5733",
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
-  "domainProps": {
-    "children": [
-      {}
-    ],
-    "description": "string",
-    "name": "string",
-    "propId": "string",
-    "propType": "string"
-  },
+  "domainProps": {},
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -1666,6 +1689,7 @@ Schemas management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema variant retrieved successfully|[GetSchemaVariantV1Response](#schemagetschemavariantv1response)|
+|202|[Accepted](https://tools.ietf.org/html/rfc7231#section-6.3.3)|Schema variant building, try again later|[BuildingResponseV1](#schemabuildingresponsev1)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
@@ -2483,6 +2507,32 @@ Standard success response format for v1 API
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |data|string|true|none|none|
+
+## [BuildingResponseV1](#tocS_BuildingResponseV1)
+
+<a id="schemabuildingresponsev1"></a>
+<a id="schema_BuildingResponseV1"></a>
+<a id="tocSbuildingresponsev1"></a>
+<a id="tocsbuildingresponsev1"></a>
+
+```json
+{
+  "estimatedCompletionSeconds": 10,
+  "message": "Schema data is being generated, please retry shortly",
+  "retryAfterSeconds": 2,
+  "status": "building"
+}
+
+```
+
+### [Properties](#buildingresponsev1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|estimatedCompletionSeconds|integer(int64)|true|none|none|
+|message|string|true|none|none|
+|retryAfterSeconds|integer(int64)|true|none|none|
+|status|string|true|none|none|
 
 ## [CancelActionV1Response](#tocS_CancelActionV1Response)
 
@@ -4006,15 +4056,7 @@ continued
   "color": "#FF5733",
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
-  "domainProps": {
-    "children": [
-      {}
-    ],
-    "description": "string",
-    "name": "string",
-    "propId": "string",
-    "propType": "string"
-  },
+  "domainProps": {},
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -4036,7 +4078,24 @@ continued
 |color|string|true|none|none|
 |description|string|true|none|none|
 |displayName|string|true|none|none|
-|domainProps|[PropSchemaV1](#schemapropschemav1)|true|none|none|
+|domainProps|any|false|none|none|
+
+oneOf
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|null|false|none|none|
+
+xor
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|[PropSchemaV1](#schemapropschemav1)|false|none|none|
+
+continued
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
 |isDefaultVariant|boolean|true|none|none|
 |isLocked|boolean|true|none|none|
 |link|string|true|none|none|
@@ -4612,16 +4671,24 @@ Component details in action response
   "children": [
     {
       "children": [],
+      "defaultValue": null,
       "description": "string",
+      "docLink": "string",
+      "hidden": true,
       "name": "string",
       "propId": "string",
-      "propType": "string"
+      "propType": "string",
+      "validationFormat": "string"
     }
   ],
+  "defaultValue": null,
   "description": "string",
+  "docLink": "string",
+  "hidden": true,
   "name": "string",
   "propId": "string",
-  "propType": "string"
+  "propType": "string",
+  "validationFormat": "string"
 }
 
 ```
@@ -4631,10 +4698,14 @@ Component details in action response
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |children|[[PropSchemaV1](#schemapropschemav1)]|true|none|none|
+|defaultValue|any|true|none|none|
 |description|string|true|none|none|
+|docLink|string|true|none|none|
+|hidden|boolean|true|none|none|
 |name|string|true|none|none|
 |propId|string|true|none|none|
 |propType|string|true|none|none|
+|validationFormat|string|true|none|none|
 
 ## [PurgeOpenChangeSetsV1Response](#tocS_PurgeOpenChangeSetsV1Response)
 
@@ -4697,6 +4768,26 @@ Component details in action response
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |success|boolean|true|none|none|
+
+## [RestoreComponentV1Response](#tocS_RestoreComponentV1Response)
+
+<a id="schemarestorecomponentv1response"></a>
+<a id="schema_RestoreComponentV1Response"></a>
+<a id="tocSrestorecomponentv1response"></a>
+<a id="tocsrestorecomponentv1response"></a>
+
+```json
+{
+  "status": "true"
+}
+
+```
+
+### [Properties](#restorecomponentv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|status|boolean|true|none|none|
 
 ## [RetryActionV1Response](#tocS_RetryActionV1Response)
 

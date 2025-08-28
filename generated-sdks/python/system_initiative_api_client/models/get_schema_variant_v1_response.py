@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from system_initiative_api_client.models.prop_schema_v1 import PropSchemaV1
 from typing import Optional, Set
 from typing_extensions import Self
@@ -32,7 +32,7 @@ class GetSchemaVariantV1Response(BaseModel):
     color: StrictStr
     description: StrictStr
     display_name: StrictStr = Field(alias="displayName")
-    domain_props: PropSchemaV1 = Field(alias="domainProps")
+    domain_props: Optional[PropSchemaV1] = Field(default=None, alias="domainProps")
     is_default_variant: StrictBool = Field(alias="isDefaultVariant")
     is_locked: StrictBool = Field(alias="isLocked")
     link: StrictStr
@@ -82,6 +82,11 @@ class GetSchemaVariantV1Response(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of domain_props
         if self.domain_props:
             _dict['domainProps'] = self.domain_props.to_dict()
+        # set to None if domain_props (nullable) is None
+        # and model_fields_set contains the field
+        if self.domain_props is None and "domain_props" in self.model_fields_set:
+            _dict['domainProps'] = None
+
         return _dict
 
     @classmethod
