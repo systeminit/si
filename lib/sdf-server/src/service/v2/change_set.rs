@@ -41,6 +41,7 @@ use thiserror::Error;
 
 use crate::middleware::WorkspacePermissionLayer;
 
+mod abandon;
 mod apply;
 mod approval_status;
 mod approve;
@@ -58,6 +59,8 @@ mod request_approval;
 pub enum Error {
     #[error("attributes error: {0}")]
     Attributes(#[from] dal::attribute::attributes::AttributesError),
+    #[error("cannot abandon head change set")]
+    CannotAbandonHead,
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set apply error: {0}")]
@@ -235,6 +238,7 @@ pub fn change_set_routes(state: AppState) -> Router<AppState> {
         .route("/apply", post(apply::apply))
         .route("/approval_status", get(approval_status::approval_status))
         .route("/approve", post(approve::approve))
+        .route("/abandon", post(abandon::abandon))
         .route(
             "/cancel_approval_request",
             post(cancel_approval_request::cancel_approval_request),
