@@ -61,7 +61,6 @@ import {
   WorkspacePatchBatch,
   QueryAttributesTerm,
   QueryKey,
-  Ragnarok,
   RainbowFn,
   TabDBInterface,
   DB_NOT_INIT_ERR,
@@ -69,6 +68,7 @@ import {
   DeploymentIndexUpdate,
   DeploymentPatchBatch,
   ConnStatusFn,
+  StoredMvIndex,
 } from "./types/dbinterface";
 import {
   BifrostComponent,
@@ -481,7 +481,7 @@ const createAtomFromPatch = async (
 
 const createAtom = async (
   db: Database,
-  atom: WorkspaceAtom,
+  atom: Omit<WorkspaceAtom, "toIndexChecksum" | "fromIndexChecksum">,
   doc: object,
   _span?: Span,
 ) => {
@@ -848,7 +848,7 @@ const bulkInsertAtomMTMs = (
 
 const insertAtomMTM = (
   db: Database,
-  atom: WorkspaceAtom,
+  atom: Omit<WorkspaceAtom, "toIndexChecksum" | "fromIndexChecksum">,
   indexChecksum: Checksum,
 ) => {
   try {
@@ -915,21 +915,6 @@ const initIndexAndChangeSet = (
     throw new Error("Null value from SQL, impossible");
   }
 
-  // if (
-  //   changeSetExists &&
-  //   meta.fromIndexChecksum &&
-  //   meta.fromIndexChecksum !== currentIndexChecksum
-  // ) {
-  //   debug("🔥🔥 RAGNAROK", meta.fromIndexChecksum, currentIndexChecksum);
-  //   // throw new Ragnarok(
-  //   //   "From Checksum Doesn't Exist",
-  //   //   workspaceId,
-  //   //   changeSetId,
-  //   //   meta.fromIndexChecksum,
-  //   //   currentIndexChecksum,
-  //   // );
-  // }
-
   //
   // Create the index if it doesn't exist--and copy the previous index if we have them
   //
@@ -955,6 +940,126 @@ const initIndexAndChangeSet = (
   debug("✓ Index checksum validation passed", toIndexChecksum);
 
   return toIndexChecksum;
+};
+
+const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
+  await tracer.startActiveSpan("IndexMvPatch", async (span) => {
+    const data = {
+      kind: msg.patch.kind, // EntityKind.MvIndex
+      fromChecksum: msg.patch.fromChecksum,
+      toChecksum: msg.patch.toChecksum,
+      workspaceId: msg.meta.workspaceId,
+      changeSetId: msg.meta.changeSetId,
+      fromIndexChecksum: msg.meta.fromIndexChecksum,
+      toIndexChecksum: msg.meta.toIndexChecksum,
+    };
+    span.setAttributes({
+      ...data,
+      insertedMTM: false,
+      indexExists: false,
+      previousIndexes: "",
+    });
+    // should always be present
+    if (!msg.patch.fromChecksum) {
+      span.end();
+      error("Missing fromChecksum on MvIndex Patch", msg.patch);
+      return;
+    }
+
+    // if we don't *already* have the toIndexChecksum stored
+    // that means we never got the MV data we care about for this index
+    // so the patch is useless to us, abort
+    const indexQuery = db.exec({
+      sql: `select checksum from indexes where checksum = ?`,
+      returnValue: "resultRows",
+      bind: [msg.meta.toIndexChecksum],
+    });
+    const indexExists = oneInOne(indexQuery);
+    if (indexExists) span.setAttribute("indexExists", indexExists?.toString());
+    else {
+      span.end();
+      debug(
+        `${msg.meta.toIndexChecksum} doesn't exist, ignoring index patch WTF`,
+      );
+      return;
+    }
+
+    // if we don't have the fromChecksum, we can't patch
+    // Ragnarok the world has ended, fetch the full index
+    const previousIndexes = workspaceAtomExistsOnIndexes(
+      db,
+      msg.patch.kind,
+      msg.meta.workspaceId,
+      msg.patch.fromChecksum,
+    );
+    span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
+    if (previousIndexes.length === 0) {
+      debug(
+        `Cannot patch, atom not found at ${msg.patch.fromChecksum}: ${previousIndexes}`,
+      );
+      await niflheim(db, msg.meta.workspaceId, msg.meta.changeSetId);
+      span.end();
+      return;
+    }
+
+    // PASSED CHECKS, patch it
+    const atom: Required<WorkspaceAtom> = {
+      ...data,
+      fromChecksum: msg.patch.fromChecksum, // duplicated for tsc
+      operations: msg.patch.patch,
+      id: msg.meta.workspaceId,
+    };
+    patchAtom(db, atom);
+    const inserted = insertAtomMTM(db, atom, msg.meta.toIndexChecksum);
+    span.setAttribute("insertedMTM", inserted);
+    span.end();
+
+    // don't move any indexes on the changeset record, thats taken care of elsewhere
+
+    const patchedIndex = get(
+      db,
+      msg.meta.workspaceId,
+      msg.meta.changeSetId,
+      EntityKind.MvIndex,
+      msg.meta.workspaceId,
+    );
+    if (patchedIndex === -1) {
+      error("Index not found after writing", msg.meta.workspaceId);
+      span.setAttribute("readFailure", true);
+      span.end();
+      return;
+    }
+
+    // now delete any atom mtms that dont exist in the index
+    const placeholders: string[] = [];
+    const bind: string[] = [];
+    (patchedIndex as StoredMvIndex).mvList.forEach((atom) => {
+      placeholders.push("(?, ?, ?, ?)");
+      bind.push(msg.meta.toIndexChecksum, atom.kind, atom.id, atom.checksum);
+    });
+    bind.push(msg.meta.toIndexChecksum);
+    const sql = `
+      delete from index_mtm_atoms
+      where 
+        (
+          index_checksum,
+          kind,
+          args,
+          checksum
+        )
+      NOT IN
+        (
+          (${placeholders.join("), (")})
+        )
+      AND index_checksum = ?;
+    `;
+    db.exec({
+      sql,
+      bind,
+    });
+
+    span.end();
+  });
 };
 
 const handleWorkspacePatchMessage = async (
@@ -1020,22 +1125,11 @@ const handleWorkspacePatchMessage = async (
         indexChecksum = initIndexAndChangeSet(db, data.meta, span);
         debug("📦 Index logic completed, resolved checksum:", indexChecksum);
       } catch (err: unknown) {
-        if (err instanceof Ragnarok) {
-          // not currently implemented
-          span.addEvent("ragnarok", {
-            patchBatch: JSON.stringify(data),
-            fromChecksumExpected: err.fromChecksumExpected,
-            currentChecksum: err.currentChecksum,
-          });
-          ragnarok(db, err.workspaceId, err.changeSetId);
-          return;
-        } else {
-          span.addEvent("error", {
-            source: "initIndexAndChangeSet",
-            error: err instanceof Error ? err.toString() : "unknown",
-          });
-          throw err;
-        }
+        span.addEvent("error", {
+          source: "initIndexAndChangeSet",
+          error: err instanceof Error ? err.toString() : "unknown",
+        });
+        throw err;
       }
 
       /**
@@ -1062,7 +1156,7 @@ const handleWorkspacePatchMessage = async (
         })
         .filter(
           (rawAtom): rawAtom is Required<WorkspaceAtom> =>
-            !!rawAtom.fromChecksum,
+            !!rawAtom.fromChecksum && !!rawAtom.operations,
         );
 
       span.setAttribute("numAtoms", atoms.length);
@@ -2129,6 +2223,17 @@ const niflheim = async (
       // need to see the result
       bulkRemoveAtoms(db, atomsToUnlink, indexChecksum);
     }
+
+    // store the MvIndex itself
+    const mvAtom = {
+      workspaceId,
+      changeSetId,
+      id: workspaceId,
+      kind: EntityKind.MvIndex,
+      toChecksum: indexChecksum,
+    };
+    await createAtom(db, mvAtom, req.data.frontEndObject.data);
+    insertAtomMTM(db, mvAtom, indexChecksum);
 
     // link the checksum to the change set (just in case its not done in init)
     updateChangeSetWithNewIndex(db, meta);
@@ -3357,6 +3462,70 @@ const get = (
   }
 };
 
+const getExists = (
+  db: Database,
+  workspaceId: string,
+  changeSetId: ChangeSetId,
+  kind: Gettable,
+  id: Id,
+) => {
+  const sql = `
+    select
+      args
+    from
+      atoms
+    INNER JOIN
+      (
+      select
+        ref ->> '$.id' as args,
+        ref ->> '$.kind' as kind
+      from
+        (
+          select
+            json_each.value as ref
+          from
+            atoms,
+            json_each(jsonb_extract(CAST(atoms.data as text), 'mvList'))
+            inner join index_mtm_atoms mtm
+              ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+            inner join indexes ON mtm.index_checksum = indexes.checksum
+              "inner join changesets ON changesets.index_checksum = indexes.checksum"
+          where
+            changesets.change_set_id = ?
+            AND atoms.kind = ?
+            AND atoms.args = ?
+        ) as items
+      ) item_refs
+    ON
+    atoms.args = item_refs.args
+    AND atoms.kind = item_refs.kind
+    inner join index_mtm_atoms mtm
+      ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+    inner join indexes ON mtm.index_checksum = indexes.checksum
+    inner join changesets ON changesets.index_checksum = indexes.checksum
+    where
+      changesets.change_set_id = ?
+      and kind = ?
+      and args = ?
+  ) as resolved
+;      `;
+  const bind = [
+    changeSetId,
+    EntityKind.MvIndex,
+    workspaceId,
+    changeSetId,
+    kind,
+    id,
+  ];
+  const exists = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+
+  return exists.length > 0;
+};
+
 const getSchemaMembers = (
   db: Database,
   _workspaceId: string,
@@ -3698,6 +3867,10 @@ const dbInterface: TabDBInterface = {
             } else if (data.kind === MessageKind.WORKSPACE_INDEXUPDATE) {
               // Index has been updated - signal lobby exit
               debug("📨 INDEX UPDATE", data.meta.changeSetId);
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              await sqlite!.transaction(async (db) =>
+                handleIndexMvPatch(db, data),
+              );
               if (lobbyExitFn) {
                 lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
               }
@@ -3854,6 +4027,16 @@ const dbInterface: TabDBInterface = {
     }
     return sqlite.transaction((db) =>
       get(db, workspaceId, changeSetId, kind, id),
+    );
+  },
+  getExists(workspaceId, changeSetId, kind, id) {
+    if (IGNORE_LIST.has(kind)) return false;
+
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) =>
+      getExists(db, workspaceId, changeSetId, kind, id),
     );
   },
   getList(workspaceId, changeSetId, kind, id) {

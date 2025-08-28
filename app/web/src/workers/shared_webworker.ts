@@ -291,6 +291,18 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
+  async getExists(
+    workspaceId: string,
+    changeSetId: string,
+    kind: Gettable,
+    id: string,
+  ): Promise<boolean> {
+    return await withLeader(
+      async (remote) =>
+        await remote.getExists(workspaceId, changeSetId, kind, id),
+    );
+  },
+
   async getList(
     workspaceId: string,
     changeSetId: string,
