@@ -117,6 +117,7 @@ def _hermetic_rust_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             rustdoc = RunInfo(args = rustdoc_cmd),
             rustdoc_flags = ctx.attrs.rustdoc_flags,
             warn_lints = ctx.attrs.warn_lints,
+            advanced_unstable_linking = True,
         ),
     ]
 
