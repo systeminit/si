@@ -1,7 +1,6 @@
 use dal::{
     Component,
     DalContext,
-    component::frame::Frame,
     diagram::view::View,
 };
 use dal_test::{
@@ -290,7 +289,6 @@ async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()>
         let pasted = Component::batch_copy(
             ctx,
             View::get_id_for_default(ctx).await?,
-            None,
             vec![(original1.id, GEOMETRY2), (original2.id, GEOMETRY1)],
         )
         .await?;
@@ -496,7 +494,6 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
         let pasted = Component::batch_copy(
             ctx,
             View::get_id_for_default(ctx).await?,
-            None,
             vec![(original2.id, GEOMETRY2), (original1.id, GEOMETRY1)],
         )
         .await?;
@@ -568,229 +565,6 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
 }
 
 #[test]
-async fn paste_child_and_parent(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await?;
-
-    // parent and child
-    let parent = test.create_parent(ctx, "parent").await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    let child = test.create_connectable(ctx, "child", None, []).await?;
-    Frame::upsert_parent(ctx, child.id, parent.id).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    assert_eq!(
-        json!({
-            "Value": "child",
-            "Inferred": "parent",
-        }),
-        child.domain(ctx).await?
-    );
-
-    // Copy/paste parent/child -> pasted_parent/pasted_child
-    let (pasted_parent, pasted_child) = {
-        let pasted = Component::batch_copy(
-            ctx,
-            View::get_id_for_default(ctx).await?,
-            None,
-            vec![(parent.id, GEOMETRY1), (child.id, GEOMETRY2)],
-        )
-        .await?;
-        assert_eq!(pasted.len(), 2);
-        (
-            Connectable::new(test, pasted[0]),
-            Connectable::new(test, pasted[1]),
-        )
-    };
-
-    // Set the pasted components' values to make sure those are flowing as expected
-    pasted_parent.set_value(ctx, "pasted parent").await?;
-    pasted_child.set_value(ctx, "pasted child").await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    // Make sure child infers its value from parent now
-    assert_eq!(
-        json!({
-            "Value": "pasted child",
-            "Inferred": "pasted parent"
-        }),
-        pasted_child.domain(ctx).await?
-    );
-
-    // Make sure original didn't change
-    assert_eq!(
-        json!({
-            "Value": "child",
-            "Inferred": "parent",
-        }),
-        child.domain(ctx).await?
-    );
-
-    Ok(())
-}
-
-#[test]
-async fn paste_child_and_parent_opposite_order(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await?;
-
-    // parent and child
-    let parent = test.create_parent(ctx, "parent").await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    let child = test.create_connectable(ctx, "child", None, []).await?;
-    Frame::upsert_parent(ctx, child.id, parent.id).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    assert_eq!(
-        json!({
-            "Value": "child",
-            "Inferred": "parent",
-        }),
-        child.domain(ctx).await?
-    );
-
-    // Copy/paste child/parent -> pasted_child, pasted_parent
-    let (pasted_child, pasted_parent) = {
-        let pasted = Component::batch_copy(
-            ctx,
-            View::get_id_for_default(ctx).await?,
-            None,
-            vec![(child.id, GEOMETRY1), (parent.id, GEOMETRY2)],
-        )
-        .await?;
-        assert_eq!(pasted.len(), 2);
-        (
-            Connectable::new(test, pasted[0]),
-            Connectable::new(test, pasted[1]),
-        )
-    };
-
-    // Set the pasted components' values to make sure those are flowing as expected
-    pasted_parent.set_value(ctx, "pasted parent").await?;
-    pasted_child.set_value(ctx, "pasted child").await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    // Make sure child infers its value from parent now
-    assert_eq!(
-        json!({
-            "Value": "pasted child",
-            "Inferred": "pasted parent"
-        }),
-        pasted_child.domain(ctx).await?
-    );
-
-    // Make sure original didn't change
-    assert_eq!(
-        json!({
-            "Value": "child",
-            "Inferred": "parent",
-        }),
-        child.domain(ctx).await?
-    );
-
-    Ok(())
-}
-
-#[test]
-async fn paste_child_only(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await?;
-
-    // parent and child
-    let parent = test.create_parent(ctx, "parent").await?;
-    let child = test.create_connectable(ctx, "child", None, []).await?;
-    Frame::upsert_parent(ctx, child.id, parent.id).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    assert_eq!(
-        json!({
-            "Value": "child",
-            "Inferred": "parent",
-        }),
-        child.domain(ctx).await?
-    );
-
-    // Copy/paste child -> pasted_child
-    let pasted_child = {
-        let pasted = Component::batch_copy(
-            ctx,
-            View::get_id_for_default(ctx).await?,
-            None,
-            vec![(child.id, GEOMETRY1)],
-        )
-        .await?;
-        assert_eq!(pasted.len(), 1);
-        Connectable::new(test, pasted[0])
-    };
-
-    // Set the pasted components' values to make sure those are flowing as expected
-    pasted_child.set_value(ctx, "pasted child").await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    // Make sure child no longer gets a parent value
-    assert_eq!(
-        json!({
-            "Value": "pasted child"
-        }),
-        pasted_child.domain(ctx).await?
-    );
-
-    // Make sure originals didn't change
-    assert_eq!(
-        json!({
-            "Value": "child",
-            "Inferred": "parent",
-        }),
-        child.domain(ctx).await?
-    );
-
-    Ok(())
-}
-
-#[test]
-async fn paste_child_into_new_parent(ctx: &mut DalContext) -> Result<()> {
-    let test = ConnectableTest::setup(ctx).await?;
-
-    // parent and child
-    let parent = test.create_parent(ctx, "parent").await?;
-    let parent2 = test.create_parent(ctx, "parent2").await?;
-    let child = test.create_connectable(ctx, "child", None, []).await?;
-    Frame::upsert_parent(ctx, child.id, parent.id).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    assert_eq!(
-        json!({
-            "Value": "child",
-            "Inferred": "parent",
-        }),
-        child.domain(ctx).await?
-    );
-
-    // Copy/paste child -> pasted_child
-    let pasted_child = {
-        let pasted = Component::batch_copy(
-            ctx,
-            View::get_id_for_default(ctx).await?,
-            Some(parent2.id),
-            vec![(child.id, GEOMETRY1)],
-        )
-        .await?;
-        assert_eq!(pasted.len(), 1);
-        Connectable::new(test, pasted[0])
-    };
-
-    // Set the pasted components' values to make sure those are flowing as expected
-    pasted_child.set_value(ctx, "pasted child").await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    // Make sure child infers its value from parent now
-    assert_eq!(
-        json!({
-            "Value": "pasted child",
-            "Inferred": "parent2"
-        }),
-        pasted_child.domain(ctx).await?
-    );
-
-    Ok(())
-}
-
-#[test]
 async fn paste_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
 
@@ -805,7 +579,6 @@ async fn paste_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
         let pasted = Component::batch_copy(
             ctx,
             View::get_id_for_default(ctx).await?,
-            None,
             vec![(manager.id, GEOMETRY1), (original.id, GEOMETRY2)],
         )
         .await?;
@@ -848,7 +621,6 @@ async fn paste_manager_and_managed_opposite_order(ctx: &mut DalContext) -> Resul
         let pasted = Component::batch_copy(
             ctx,
             View::get_id_for_default(ctx).await?,
-            None,
             vec![(original.id, GEOMETRY1), (manager.id, GEOMETRY2)],
         )
         .await?;
@@ -891,7 +663,6 @@ async fn paste_manager(ctx: &mut DalContext) -> Result<()> {
         let pasted = Component::batch_copy(
             ctx,
             View::get_id_for_default(ctx).await?,
-            None,
             vec![(manager.id, GEOMETRY1)],
         )
         .await?;
@@ -927,7 +698,6 @@ async fn paste_managed(ctx: &mut DalContext) -> Result<()> {
         let pasted = Component::batch_copy(
             ctx,
             View::get_id_for_default(ctx).await?,
-            None,
             vec![(original.id, GEOMETRY1)],
         )
         .await?;
