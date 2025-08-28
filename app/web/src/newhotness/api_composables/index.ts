@@ -141,11 +141,10 @@ const _routes: Record<routes, string> = {
   ViewAddComponents: "/views/<viewId>/add_components",
   ViewEraseComponents: "/views/<viewId>/erase_components",
 
-  // THESE ARE SPECIAL CASED & NOT V2
-  CreateChangeSet: "/change_set/create_change_set",
   AbandonChangeSet: "/change_set/abandon_change_set",
   // URLs without the default `change-set/:id` section
   ChangeSets: "/change-sets",
+  CreateChangeSet: "/change-sets/create_change_set",
   ChangeSetInitializeAndApply: "/change-sets/create_initialize_apply",
   WorkspaceListUsers: "/users",
   // Auth Api Endpoints
@@ -256,7 +255,6 @@ export class APICall<Response, Args> {
       [
         _routes.Workspaces,
         _routes.AbandonChangeSet,
-        _routes.CreateChangeSet,
         _routes.CheckDismissedOnboarding,
         _routes.DismissOnboarding,
       ].includes(this.path)
@@ -269,6 +267,7 @@ export class APICall<Response, Args> {
     if (
       [
         _routes.ChangeSets,
+        _routes.CreateChangeSet,
         _routes.ChangeSetInitializeAndApply,
         _routes.WorkspaceListUsers,
       ].includes(this.path)
