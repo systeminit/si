@@ -1,5 +1,5 @@
 <template>
-  <DelayedLoader v-if="componentQuery.isLoading.value" :size="'full'" />
+  <DelayedLoader v-if="componentQuery.isLoading.value" size="full" />
   <section v-else :class="clsx('grid gap-sm h-full p-sm', gridStateClass)">
     <!-- Single banner area for all banner types -->
     <div
@@ -12,7 +12,7 @@
       class="banner flex flex-col"
     >
       <!-- No component banner -->
-      <template v-if="!component">
+      <template v-if="!component && !componentExists">
         <div
           :class="
             clsx(
@@ -34,6 +34,31 @@
           <TruncateWithTooltip class="py-xs text-sm">
             No component with id "{{ componentId }}" exists on this change set.
           </TruncateWithTooltip>
+        </div>
+      </template>
+      <template v-else-if="componentExists">
+        <div
+          :class="
+            clsx(
+              'flex flex-row items-center gap-xs px-sm py-xs',
+              themeClasses('bg-neutral-300', 'bg-neutral-600'),
+            )
+          "
+        >
+          <IconButton
+            tooltip="Close (Esc)"
+            tooltipPlacement="top"
+            class="border-0 mr-2em"
+            icon="x"
+            size="sm"
+            iconIdleTone="shade"
+            iconTone="shade"
+            @click="close"
+          />
+          <TruncateWithTooltip class="py-xs text-sm">
+            Component data is being retrieved...
+          </TruncateWithTooltip>
+          <DelayedLoader size="full" />
         </div>
       </template>
 
@@ -501,7 +526,12 @@ import {
 import { computed, ref, onMounted, onBeforeUnmount, inject, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import {
+  bifrost,
+  bifrostExists,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import {
   AttributeTree,
   BifrostComponent,
@@ -574,6 +604,17 @@ const componentQuery = useQuery<BifrostComponent | undefined>({
       key(EntityKind.Component, componentId).value,
     ),
 });
+
+const componentExistsInIndexQuery = useQuery<boolean>({
+  queryKey: key(EntityKind.Component, componentId, "exists"),
+  queryFn: async () =>
+    await bifrostExists(args(EntityKind.Component, componentId.value)),
+  enabled: computed(() => componentQuery.isFetched && !componentQuery.data),
+});
+
+const componentExists = computed(
+  () => componentExistsInIndexQuery.data.value ?? false,
+);
 
 const attributeTreeQuery = useQuery<AttributeTree | undefined>({
   queryKey: key(EntityKind.AttributeTree, componentId),

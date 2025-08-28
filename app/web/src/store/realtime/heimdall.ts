@@ -441,6 +441,27 @@ export const bifrost = async <T>(args: {
   return reactive(maybeAtomDoc);
 };
 
+export const bifrostExists = async (args: {
+  workspaceId: WorkspacePk;
+  changeSetId: ChangeSetId;
+  kind: Gettable;
+  id: Id;
+}): Promise<boolean> => {
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
+  const start = performance.now();
+  const exists = await db.getExists(
+    args.workspaceId,
+    args.changeSetId,
+    args.kind,
+    args.id,
+  );
+  const end = performance.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost exists", args.kind, args.id, end - start, "ms");
+  return exists;
+};
+
 export const bifrostList = async <T>(args: {
   workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;

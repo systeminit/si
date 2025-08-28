@@ -53,6 +53,8 @@ export enum EntityKind {
   View = "View",
   ViewComponentList = "ViewComponentList",
   ViewList = "ViewList",
+  // The IndexMv itself
+  MvIndex = "ChangeSetMvIndex",
   // IGNORING THESE
   LuminorkDefaultVariant = "LuminorkDefaultVariant",
   LuminorkSchemaVariant = "LuminorkSchemaVariant",
