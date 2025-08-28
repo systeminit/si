@@ -129,7 +129,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import {
@@ -152,7 +152,7 @@ import AbandonChangeSetModal from "./AbandonChangeSetModal.vue";
 import * as heimdall from "../../store/realtime/heimdall";
 import { routes, useApi } from "../api_composables";
 import { useChangeSets } from "../logic_composables/change_set";
-import { assertIsDefined, Context } from "../types";
+import { useContext } from "../logic_composables/context";
 
 const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
 
@@ -168,8 +168,8 @@ watch(
   },
 );
 
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
+const ctx = useContext();
+
 const { openChangeSets, changeSet } = useChangeSets(computed(() => ctx));
 
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
@@ -284,14 +284,24 @@ const createApi = useApi();
 async function onCreateChangeSet() {
   if (validationMethods.hasError()) return;
 
-  const call = createApi.endpoint<{ changeSet: ChangeSet }>(
-    routes.CreateChangeSet,
-  );
-  const { req } = await call.post({ changeSetName: createChangeSetName.value });
+  const call = createApi.endpoint<ChangeSet>(routes.CreateChangeSet);
+  const { req } = await call.post({ name: createChangeSetName.value });
 
   if (createApi.ok(req)) {
-    const newChangeSetId = req.data.changeSet.id;
+    const newChangeSetId = req.data.id;
     onSelectChangeSet(newChangeSetId);
+
+    createApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: ctx.workspacePk.value,
+          changeSetId: req.data.id,
+        },
+      },
+      req.data.id,
+    );
+
     createModalRef.value?.close();
   }
 }
