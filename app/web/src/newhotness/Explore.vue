@@ -259,13 +259,16 @@
                 iconSize="lg"
                 iconNoBg
                 text="Your data will be shown here"
-                :secondaryText="
-                  hasUsedAiAgent
-                    ? 'Finish setting up your AI agent to see the platform in action.'
-                    : ''
-                "
               >
                 <template #secondary>
+                  <div
+                    v-if="!hasUsedAiAgent"
+                    class="flex flex-row text-neutral-400"
+                  >
+                    Finish setting up your AI agent to see the platform in
+                    action.
+                  </div>
+
                   <div
                     v-if="
                       featureFlagsStore.INITIALIZER_ONBOARD &&

@@ -13,9 +13,7 @@
   >
     <div class="flex flex-col gap-xs">
       <div class="flex flex-row justify-between">
-        <span
-          v-if="hasUsedAiAgent"
-          class="font-medium">
+        <span v-if="hasUsedAiAgent" class="font-medium">
           Get started with these prompts in our
           <a
             class="font-medium underline"
@@ -25,10 +23,9 @@
             AI Agent:
           </a>
         </span>
-        <span
-          v-else
-          class="font-medium">
-          Set up the AI agent and run these prompts to see System Initiative in action:
+        <span v-else class="font-medium">
+          Set up the AI agent and run these prompts to see System Initiative in
+          action:
         </span>
         <Icon
           v-if="hasUsedAiAgent"
