@@ -964,6 +964,7 @@ pub struct ConnectionMigrationSummary {
     pub connections: usize,
     pub migrated: usize,
     pub unmigrateable: usize,
+    pub removed_parents: usize,
 }
 
 /// Sent when a connection migration is run (though it may not actually be migrated; see
