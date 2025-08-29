@@ -25,6 +25,7 @@ use crate::{
         },
     },
     middleware::WorkspacePermissionLayer,
+    service::v1::user::set_ai_agent_executed,
 };
 
 #[remain::sorted]
@@ -93,6 +94,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
                                 middleware::from_extractor::<TargetChangeSetIdentFromPath>(),
                             ),
                     ),
+            )
+            .nest(
+                "/user",
+                Router::new().route("/set_ai_agent_executed", post(set_ai_agent_executed)),
             )
             .route_layer(middleware::from_extractor_with_state::<
                 AuthorizedForAutomationRole,

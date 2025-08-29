@@ -39,6 +39,13 @@ pub struct OnlinePayload {
     pub idle: bool,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct UserWorkspaceFlagsPayload {
+    user_pk: UserPk,
+    flags: serde_json::Value,
+}
+
 impl WsEvent {
     pub async fn cursor(
         workspace_pk: WorkspacePk,
@@ -57,5 +64,22 @@ impl WsEvent {
 
     pub async fn online(workspace_pk: WorkspacePk, online: OnlinePayload) -> WsEventResult<Self> {
         WsEvent::new_raw(workspace_pk, None, None, None, WsPayload::Online(online)).await
+    }
+
+    pub async fn user_workspace_flags_update(
+        workspace_pk: WorkspacePk,
+        user_pk: UserPk,
+        flags: serde_json::Value,
+    ) -> WsEventResult<Self> {
+        let payload = UserWorkspaceFlagsPayload { user_pk, flags };
+
+        WsEvent::new_raw(
+            workspace_pk,
+            None,
+            None,
+            None,
+            WsPayload::UserWorkspaceFlagsUpdated(payload),
+        )
+        .await
     }
 }

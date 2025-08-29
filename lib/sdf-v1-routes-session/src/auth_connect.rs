@@ -71,6 +71,7 @@ pub struct AuthConnectResponse {
     pub user: User,
     pub workspace: Workspace,
     pub token: String,
+    pub user_workspace_flags: serde_json::Value,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -78,6 +79,7 @@ pub struct AuthConnectResponse {
 pub struct AuthReconnectResponse {
     pub user: User,
     pub workspace: Workspace,
+    pub user_workspace_flags: serde_json::Value,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -133,7 +135,7 @@ async fn find_or_create_user_and_workspace(
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: &[String],
     spicedb_client: Option<&mut SpiceDbClient>,
-) -> SessionResult<(User, Workspace)> {
+) -> SessionResult<(DalContext, User, Workspace)> {
     // lookup user or create if we've never seen it before
     let maybe_user = User::get_by_pk_opt(&ctx, auth_api_user.id).await?;
     let user = match maybe_user {
@@ -248,7 +250,7 @@ async fn find_or_create_user_and_workspace(
 
     ctx.commit_no_rebase().await?;
 
-    Ok((user, workspace))
+    Ok((ctx, user, workspace))
 }
 
 pub async fn auth_connect(
@@ -281,7 +283,7 @@ pub async fn auth_connect(
 
     let ctx = builder.build_default(request_ulid).await?;
 
-    let (user, workspace) = find_or_create_user_and_workspace(
+    let (ctx, user, workspace) = find_or_create_user_and_workspace(
         ctx,
         &original_uri,
         &host_name,
@@ -294,10 +296,14 @@ pub async fn auth_connect(
     )
     .await?;
 
+    let user_workspace_flags =
+        User::get_flags_for_user_on_workspace(&ctx, user.pk(), *workspace.pk()).await?;
+
     Ok(Json(AuthConnectResponse {
         user,
         workspace,
         token: res_body.token,
+        user_workspace_flags,
     }))
 }
 
@@ -330,7 +336,7 @@ pub async fn auth_reconnect(
 
     let ctx = builder.build_default(request_ulid).await?;
 
-    let (user, workspace) = find_or_create_user_and_workspace(
+    let (ctx, user, workspace) = find_or_create_user_and_workspace(
         ctx,
         &original_uri,
         &host_name,
@@ -343,7 +349,14 @@ pub async fn auth_reconnect(
     )
     .await?;
 
-    Ok(Json(AuthReconnectResponse { user, workspace }))
+    let user_workspace_flags =
+        User::get_flags_for_user_on_workspace(&ctx, user.pk(), *workspace.pk()).await?;
+
+    Ok(Json(AuthReconnectResponse {
+        user,
+        workspace,
+        user_workspace_flags,
+    }))
 }
 
 pub async fn user_has_permission_to_create_workspace(

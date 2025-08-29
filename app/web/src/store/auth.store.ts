@@ -8,7 +8,6 @@ import { posthog } from "@/utils/posthog";
 import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { useWorkspacesStore } from "./workspaces.store";
-import handleStoreError from "./errors";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { AuthApiRequest } from ".";
 
@@ -31,6 +30,7 @@ interface LoginResponse {
   user: User;
   workspace: Workspace;
   token: string;
+  userWorkspaceFlags: Record<string, boolean>;
 }
 
 export interface WorkspaceUser {
@@ -52,6 +52,7 @@ export const useAuthStore = () => {
       user: null as User | null,
       // TODO - Users will not be in this list if they have NEVER logged into the workspace
       workspaceUsers: {} as Record<string, WorkspaceUser>,
+      userWorkspaceFlags: {} as Record<string, boolean>,
     }),
     getters: {
       // previously we checked only for the token existing
@@ -94,6 +95,7 @@ export const useAuthStore = () => {
           url: "/session/restore_authentication",
           onSuccess: (response) => {
             this.user = response.user;
+            this.userWorkspaceFlags = response.userWorkspaceFlags;
           },
           onFail(e) {
             /* eslint-disable-next-line no-console */
@@ -153,6 +155,7 @@ export const useAuthStore = () => {
           url: "/session/reconnect",
           onSuccess: (response) => {
             this.user = response.user;
+            this.userWorkspaceFlags = response.userWorkspaceFlags;
           },
           onFail(e) {
             /* eslint-disable-next-line no-console */
@@ -250,6 +253,7 @@ export const useAuthStore = () => {
             [decodedJwt.workspace_pk]: loginResponse.token,
           },
           user: loginResponse.user,
+          userWorkspaceFlags: loginResponse.userWorkspaceFlags,
         });
         // store the tokens in localstorage
         storage.setItem(
@@ -261,6 +265,11 @@ export const useAuthStore = () => {
           email: loginResponse.user.email,
         });
       },
+
+      updateFlags(flags: Record<string, boolean>) {
+        this.userWorkspaceFlags = flags;
+      },
+
       async FORCE_REFRESH_MEMBERS(workspaceId: string) {
         return new ApiRequest({
           method: "post",
@@ -278,12 +287,8 @@ export const useAuthStore = () => {
         realtimeStore.inflightRequests.delete(requestUlid);
       },
     },
-    onActivated() {
-      const actionUnsub = this.$onAction(handleStoreError);
-
-      return () => {
-        actionUnsub();
-      };
-    },
+    // THIS STORE ISN'T WRAPPED IN addStoreHooks SO THIS DOES NOT RUN
+    // websocket event listener for authStore events is in App.vue
+    onActivated() {},
   })();
 };

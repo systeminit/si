@@ -11,6 +11,7 @@ mod funcs;
 mod management_funcs;
 mod schemas;
 mod secrets;
+mod user;
 mod workspaces;
 
 pub use actions::{

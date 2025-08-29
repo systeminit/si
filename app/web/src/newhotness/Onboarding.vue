@@ -6,6 +6,7 @@
     <div class="flex flex-row items-center justify-between w-full px-sm py-xs">
       <SiLogo class="block h-md w-md flex-none" />
       <VButton
+        aria-label="Skip Onboarding"
         class="text-neutral-400 hover:text-white font-normal"
         label="Skip"
         tone="empty"

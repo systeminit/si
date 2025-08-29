@@ -20,6 +20,10 @@ use crate::{
 pub const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
 pub const USER_LIST_FOR_WORKSPACE: &str =
     include_str!("queries/user/list_members_for_workspace.sql");
+pub const FLAGS_GET_BY_PK_ON_WORKSPACE: &str =
+    include_str!("queries/user/get_flags_by_pk_and_workspace.sql");
+pub const FLAGS_SET_BY_PK_ON_WORKSPACE: &str =
+    include_str!("queries/user/set_flags_by_pk_and_workspace.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct User {
@@ -191,5 +195,46 @@ impl User {
             user_pks.push(row.try_get("pk")?);
         }
         Ok(user_pks)
+    }
+
+    pub async fn get_flags_for_user_on_workspace(
+        ctx: &impl SiDbContext,
+        user_pk: UserPk,
+        workspace_pk: WorkspacePk,
+    ) -> Result<serde_json::Value> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(FLAGS_GET_BY_PK_ON_WORKSPACE, &[&user_pk, &workspace_pk])
+            .await?;
+
+        let map: serde_json::Value = row.try_get("object")?;
+
+        Ok(map)
+    }
+
+    pub async fn set_flag_for_user_on_workspace(
+        ctx: &impl SiDbContext,
+        user_pk: UserPk,
+        workspace_pk: WorkspacePk,
+        key: impl AsRef<str>,
+        value: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let formatted_key = Vec::from([key.as_ref()]);
+
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                FLAGS_SET_BY_PK_ON_WORKSPACE,
+                &[&user_pk, &workspace_pk, &formatted_key, &value],
+            )
+            .await?;
+
+        let map: serde_json::Value = row.try_get("object")?;
+
+        Ok(map)
     }
 }

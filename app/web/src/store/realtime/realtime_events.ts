@@ -441,4 +441,9 @@ export type WsEventPayloadMap = {
     approvalRequirementDefinitionId: ApprovalRequirementDefinitionId;
     userId: UserId;
   };
+
+  UserWorkspaceFlagsUpdated: {
+    flags: Record<string, boolean>;
+    userPk: UserId;
+  };
 };
