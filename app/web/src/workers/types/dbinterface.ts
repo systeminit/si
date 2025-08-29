@@ -196,6 +196,12 @@ export interface SharedDBInterface {
     kind: Gettable,
     id: Id,
   ): Promise<typeof NOROW | AtomDocument>;
+  getExists(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: Gettable,
+    id: Id,
+  ): Promise<boolean>;
   getList(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -303,6 +309,12 @@ export interface TabDBInterface {
     kind: Gettable,
     id: Id,
   ): typeof NOROW | AtomDocument;
+  getExists(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: Gettable,
+    id: Id,
+  ): boolean;
   getList(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -483,7 +495,7 @@ export interface WorkspaceIndexUpdate {
   meta: WorkspaceAtomMeta;
   kind: MessageKind.WORKSPACE_INDEXUPDATE;
   indexChecksum: string;
-  frontEndObject: IndexObject;
+  patch: AtomOperation;
 }
 
 export interface DeploymentIndexUpdate {
@@ -496,6 +508,10 @@ export interface Common {
   kind: EntityKind;
   id: Id;
   checksum: string;
+}
+
+export interface StoredMvIndex {
+  mvList: Common[];
 }
 
 export interface IndexObject extends Common {
