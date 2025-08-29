@@ -42,6 +42,24 @@
         :invalidWorkspace="tokenFail"
       />
     </nav>
+    <div
+      v-if="!hasUsedAiAgent"
+      class="w-full shrink-0 flex flex-row items-center justify-between bg-[#7D4A1740] border border-warning-500 px-sm py-xs"
+    >
+      <div class="flex flex-row items-center gap-xs">
+        <Icon name="alert-triangle-outline" class="text-warning-500" />
+        <span>
+          System Initiative works best with an AI Agent.
+          <a
+            href="https://docs.systeminit.com/tutorials/getting-started"
+            class="underline"
+            target="_blank"
+          >
+            Follow these instructions to get started.
+          </a>
+        </span>
+      </div>
+    </div>
 
     <!-- Since lobby hides away the navbar, it's more of an overlay and stays apart from all else -->
     <Transition
@@ -132,7 +150,7 @@ import {
 import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Span, trace } from "@opentelemetry/api";
-import { themeClasses } from "@si/vue-lib/design-system";
+import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
@@ -194,6 +212,10 @@ const realtimeStore = useRealtimeStore();
 
 const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
+
+const hasUsedAiAgent = computed(
+  () => authStore.userWorkspaceFlags.executedAgent ?? false,
+);
 
 const coldStartInProgress = computed(() => heimdall.muspelheimInProgress.value);
 
