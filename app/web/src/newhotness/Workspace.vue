@@ -133,6 +133,7 @@ import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Span, trace } from "@opentelemetry/api";
 import { themeClasses } from "@si/vue-lib/design-system";
+import { storeToRefs } from "pinia";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
@@ -281,13 +282,16 @@ const reopenOnboarding = () => {
   onboardingCompleted.value = false;
 };
 
+const { user, userWorkspaceFlags } = storeToRefs(authStore);
+
 const ctx = computed<Context>(() => {
   return {
     workspacePk,
     changeSetId,
     changeSet,
     approvers,
-    user: authStore.user,
+    user: user.value,
+    userWorkspaceFlags,
     onHead: computed(() => {
       return changeSetId.value === _headChangeSetId.value;
     }),

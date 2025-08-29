@@ -51,6 +51,7 @@ export interface Context {
   changeSet: Ref<ChangeSet | undefined>;
   approvers: Ref<string[]>;
   user: User | null;
+  userWorkspaceFlags: Ref<Record<string, boolean>>;
   onHead: ComputedRef<boolean>;
   headChangeSetId: Ref<string>;
   outgoingCounts: ComputedRef<Record<ComponentId, number>>;

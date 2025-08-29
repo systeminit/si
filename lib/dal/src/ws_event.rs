@@ -86,6 +86,7 @@ use crate::{
     user::{
         CursorPayload,
         OnlinePayload,
+        UserWorkspaceFlagsPayload,
     },
     workspace_snapshot::graph::validator::connections::{
         ConnectionMigratedPayload,
@@ -192,6 +193,7 @@ pub enum WsPayload {
     SetComponentPosition(ComponentSetPositionPayload),
     StatusUpdate(StatusUpdate),
     TemplateGenerated(TemplateGeneratedPayload),
+    UserWorkspaceFlagsUpdated(UserWorkspaceFlagsPayload),
     ViewComponentsUpdate(ViewComponentsUpdatePayload),
     ViewCreated(ViewWsPayload),
     ViewDeleted(ViewDeletedPayload),

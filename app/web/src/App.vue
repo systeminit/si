@@ -35,6 +35,7 @@ import {
   ref,
   onErrorCaptured,
   provide,
+  watch,
 } from "vue";
 import "floating-vue/dist/style.css";
 
@@ -139,7 +140,30 @@ const workspacesStore = useWorkspacesStore();
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
 // initialize the realtime store - which will watch for auth and open/close websocket
-const _realtimeStore = useRealtimeStore();
+const realtimeStore = useRealtimeStore();
+
+const user = computed(() => authStore.user);
+const subscribed = ref(false);
+
+watch([selectedWorkspace, user], () => {
+  const workspaceId = selectedWorkspace.value?.id;
+  const userPk = user.value?.pk;
+  if (subscribed.value || workspaceId === undefined || userPk === undefined)
+    return;
+
+  subscribed.value = true;
+  // the authStore does not run the activated hook so we let the App handle its subscriptions.
+  // This makes sure we always subscribe on a workspace id, but only once, since the id may not be defined at the start but will never change.
+  realtimeStore.subscribe("auth", `workspace/${workspaceId}`, [
+    {
+      eventType: "UserWorkspaceFlagsUpdated",
+      callback: (payload) => {
+        if (userPk !== payload.userPk) return;
+        authStore.updateFlags(payload.flags);
+      },
+    },
+  ]);
+});
 </script>
 
 <style lang="less">
