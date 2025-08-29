@@ -139,17 +139,16 @@
 
     <!-- BUTTONS -->
     <div class="flex flex-row flex-none gap-sm justify-center mt-sm shrink-0">
-      <VButton
+      <NewButton
         label="Withdraw Request"
         tone="warning"
-        variant="ghost"
         icon="x"
         :loading="cancelApi.inFlight.value || reopenApi.inFlight.value"
         loadingText="Processing..."
         @click="withdraw"
       />
       <template v-if="userIsApprover">
-        <VButton
+        <NewButton
           :disabled="iRejected"
           label="Reject Request"
           tone="destructive"
@@ -158,28 +157,25 @@
           loadingText="Rejecting..."
           @click="reject"
         />
-        <VButton
+        <NewButton
           :disabled="iApproved"
           label="Approve Request"
-          tone="success"
+          tone="action"
           icon="thumbs-up"
           :loading="approveApi.inFlight.value"
           loadingText="Approving..."
           @click="approve"
         />
       </template>
-      <VButton
+      <NewButton
         :disabled="disallowApplyForApprovalFlow"
-        tone="success"
+        label="Apply Change Set"
+        icon="tools"
+        tone="action"
         :loading="flowStatus === 'approved' ? applyInFlight : false"
         loadingText="Applying..."
         @click="apply"
-      >
-        <span class="dark:text-neutral-800">Apply Change Set</span>
-        <template #icon>
-          <Icon name="tools" size="sm" class="dark:text-neutral-800" />
-        </template>
-      </VButton>
+      />
     </div>
   </div>
 </template>
@@ -187,7 +183,6 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import {
-  VButton,
   Timestamp,
   Tones,
   ErrorMessage,
@@ -195,6 +190,7 @@ import {
   IconNames,
   themeClasses,
   TruncateWithTooltip,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import { computed } from "vue";
 import { RouterLink } from "vue-router";

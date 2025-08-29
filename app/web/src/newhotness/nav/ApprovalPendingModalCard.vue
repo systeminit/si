@@ -37,18 +37,15 @@
       </div>
     </div>
     <div class="flex gap-xs flex-none">
-      <VButton
-        size="xs"
+      <NewButton
         label="Reject"
-        variant="ghost"
         tone="destructive"
         :loading="isRejecting"
         loadingText="Rejecting..."
         @click.stop="rejectChangeSet(changeSet.id)"
       />
-      <VButton
-        size="xs"
-        tone="success"
+      <NewButton
+        tone="action"
         class="grow"
         label="Approve"
         :loading="isApproving"
@@ -63,7 +60,7 @@
 import clsx from "clsx";
 import * as _ from "lodash-es";
 import { ref } from "vue";
-import { themeClasses, VButton, Timestamp } from "@si/vue-lib/design-system";
+import { themeClasses, Timestamp, NewButton } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
 import { ChangeSet, ChangeSetId } from "@/api/sdf/dal/change_set";
 import { useContext } from "../logic_composables/context";

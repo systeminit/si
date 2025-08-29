@@ -2,32 +2,23 @@
   <div
     v-if="auditLogs && auditLogs.length > 0"
     ref="scrollContainerRef"
-    class="px-xs py-sm overflow-x-hidden max-h-full"
+    class="p-xs overflow-x-hidden max-h-full"
     @scrollend="handleScrollEnd"
   >
-    <!--
-    TODO(nick,paul): talk to Victoria about how we want these styled.
-    <div class="flex-1 flex flex-row justify-between items-center gap-xs">
-      <VButton
-        class="grow rounded-sm"
-        tone="neutral"
-        variant="ghost"
+    <div class="flex flex-row justify-between items-center gap-xs pb-xs">
+      <NewButton
+        class="grow"
         size="xs"
-        :rounded="false"
         label="Expand All"
         @click="handleAll('expand')"
       />
-      <VButton
-        class="grow rounded-sm"
-        tone="neutral"
-        variant="ghost"
+      <NewButton
+        class="grow"
         size="xs"
-        :rounded="false"
         label="Collapse All"
         @click="handleAll('collapse')"
       />
     </div>
-    -->
     <div ref="wrapperRef" class="grid gap-xs relative">
       <!-- Single continuous timeline line behind all items -->
       <div
@@ -185,6 +176,7 @@ import {
   Icon,
   themeClasses,
   LoadingMessage,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -229,13 +221,14 @@ const shouldExpand = (auditLog: ProcessedAuditLog): boolean => {
   return expand[identifier(auditLog)] ?? false;
 };
 
-// TODO(nick,paul): this comes back when the expand and collapse buttons come back.
 // // Ability to expand and collapse everything.
-// const handleAll = (option: "expand" | "collapse") => {
-//   for (const auditLog of auditLogs.value) {
-//     expand[identifier(auditLog)] = option === "expand";
-//   }
-// };
+const handleAll = (option: "expand" | "collapse") => {
+  if (auditLogs.value) {
+    for (const auditLog of auditLogs.value) {
+      expand[identifier(auditLog)] = option === "expand";
+    }
+  }
+};
 
 interface ProcessedAuditLog {
   inner: AuditLog;

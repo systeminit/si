@@ -41,40 +41,29 @@
               : filteredComponentList.length
           }}
         </div>
-        <VButton
+        <NewButton
           label="Previous"
-          size="sm"
-          tone="neutral"
           :disabled="!canGoBack"
           @click.stop.prevent="goToPreviousComponent"
         >
           <template #icon>
-            <div class="border border-neutral-400 rounded px-2xs py-2xs mr-2xs">
+            <div class="border border-neutral-400 rounded p-3xs mr-2xs">
               <Icon name="arrow--left" size="xs" />
             </div>
           </template>
-        </VButton>
-        <VButton
+        </NewButton>
+        <NewButton
           label="Next"
-          size="sm"
-          :class="
-            clsx(
-              '!text-sm !border !cursor-pointer !px-xs',
-              themeClasses(
-                '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-              ),
-            )
-          "
+          tone="action"
           :disabled="!canGoForward"
           @click.stop.prevent="goToNextComponent"
         >
           <template #iconRight>
-            <div class="border border-action-200 rounded px-2xs py-2xs ml-2xs">
+            <div class="border border-action-200 rounded p-3xs ml-2xs">
               <Icon name="arrow--right" size="xs" />
             </div>
           </template>
-        </VButton>
+        </NewButton>
       </div>
     </div>
     <section
@@ -86,12 +75,7 @@
         text="You are on HEAD"
         secondaryText="There are no changes to review"
       />
-      <VButton
-        label="Exit"
-        tone="neutral"
-        icon="chevron--left"
-        @click="exitReview"
-      />
+      <NewButton label="Exit" icon="chevron--left" @click="exitReview" />
     </section>
     <section v-else class="grid review w-full min-h-0 grow flex-1 p-xs">
       <div
@@ -222,25 +206,15 @@
                   This component will be removed from HEAD once the current
                   change set is applied.
                 </div>
-                <VButton
+                <NewButton
                   v-if="
                     selectedComponent.toDelete &&
                     restoreComponentStatus !== 'succeeded'
                   "
-                  size="sm"
                   label="Restore"
                   :loading="restoreComponentStatus === 'inProgress'"
                   loadingIcon="loader"
                   loadingText="Restoring..."
-                  :class="
-                    clsx(
-                      '!text-sm !border !cursor-pointer !px-xs',
-                      themeClasses(
-                        '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
-                        '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
-                      ),
-                    )
-                  "
                   @click="restoreComponent"
                 />
               </template>
@@ -419,9 +393,9 @@ import {
   Icon,
   SiSearch,
   themeClasses,
-  VButton,
   IconButton,
   TruncateWithTooltip,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import * as _ from "lodash-es";

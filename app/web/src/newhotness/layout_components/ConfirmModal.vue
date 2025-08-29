@@ -15,10 +15,8 @@
       </VormInput>
 
       <div class="flex flex-row items-center gap-sm">
-        <VButton icon="x" tone="shade" variant="ghost" @click="close">
-          Cancel
-        </VButton>
-        <VButton
+        <NewButton icon="x" @click="close"> Cancel </NewButton>
+        <NewButton
           class="flex-grow"
           :icon="confirmIcon"
           :tone="confirmTone"
@@ -26,7 +24,7 @@
           @click="emit('confirm')"
         >
           {{ confirmLabel }}
-        </VButton>
+        </NewButton>
       </div>
     </div>
   </Modal>
@@ -36,9 +34,9 @@
 import {
   IconNames,
   Modal,
-  Tones,
+  NewButton,
+  ButtonTones,
   useModal,
-  VButton,
   VormInput,
 } from "@si/vue-lib/design-system";
 import { nextTick, PropType, ref } from "vue";
@@ -48,7 +46,7 @@ const props = defineProps({
   irreversible: { type: Boolean },
   confirmLabel: { type: String, default: "Confirm" },
   confirmIcon: { type: String as PropType<IconNames> },
-  confirmTone: { type: String as PropType<Tones> },
+  confirmTone: { type: String as PropType<ButtonTones> },
   size: {
     type: String as PropType<
       "sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "4wxl" | "6xl" | "7xl" | "max"

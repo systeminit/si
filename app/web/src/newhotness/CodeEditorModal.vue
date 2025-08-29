@@ -41,20 +41,8 @@
     </div>
 
     <div class="flex justify-end gap-sm mt-sm">
-      <VButton label="Cancel" tone="shade" variant="ghost" @click="cancel" />
-      <VButton
-        :class="
-          clsx(
-            '!text-sm !border !cursor-pointer !px-xs',
-            themeClasses(
-              '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-              '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-            ),
-          )
-        "
-        label="Save"
-        @click="save"
-      />
+      <NewButton label="Cancel" @click="cancel" />
+      <NewButton label="Save" tone="action" @click="save" />
     </div>
   </Modal>
 </template>
@@ -63,9 +51,9 @@
 import {
   Icon,
   Modal,
+  NewButton,
   themeClasses,
   useModal,
-  VButton,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { onBeforeUnmount, ref, watch } from "vue";

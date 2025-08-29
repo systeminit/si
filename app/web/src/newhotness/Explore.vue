@@ -23,8 +23,9 @@
           A faster, smarter experience is here. Some component settings may be
           incompatible.
         </TruncateWithTooltip>
-        <VButton
+        <NewButton
           size="sm"
+          tone="action"
           label="Learn more"
           @click="openWorkspaceMigrationDocumentation"
         />
@@ -262,28 +263,24 @@
               >
                 <template #secondary>
                   <div class="flex flex-row gap-sm">
-                    <VButton
+                    <NewButton
                       label="Check our how-to guide"
                       tone="action"
-                      size="sm"
                       href="https://docs.systeminit.com/how-tos/"
                       target="_blank"
                     />
-                    <VButton
+                    <NewButton
                       label="API guidelines"
-                      tone="neutral"
-                      size="sm"
                       href="https://docs.systeminit.com/reference/public-api"
                       target="_blank"
                     />
-                    <VButton
+                    <NewButton
                       v-if="
                         featureFlagsStore.INITIALIZER_ONBOARD &&
                         ctx.onHead.value
                       "
                       label="Initialize your Workspace"
                       tone="action"
-                      size="sm"
                       @click="ctx.reopenOnboarding"
                     />
                   </div>
@@ -382,7 +379,7 @@
           >
             <!-- footer, for bulk editing we teleport contents in here -->
             <template v-if="!bulkEditing">
-              <div
+              <TruncateWithTooltip
                 v-if="!ctx.onHead.value && ctx.changeSet.value"
                 :class="
                   clsx(
@@ -394,28 +391,18 @@
               >
                 You are in a simulated change set:
                 {{ ctx.changeSet.value.name }}
-              </div>
-              <!-- <VButton
+              </TruncateWithTooltip>
+              <!-- <NewButton
                 label="See keyboard shortcuts"
                 pill="?"
                 tone="neutral"
-                size="sm"
                 @click="openShortcutModal"
               /> -->
-              <VButton
+              <NewButton
                 class="ml-auto"
                 label="Add a component"
                 pill="N"
-                size="sm"
-                :class="
-                  clsx(
-                    '!text-sm !border !cursor-pointer !px-xs',
-                    themeClasses(
-                      '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                      '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                    ),
-                  )
-                "
+                tone="action"
                 @click="openAddComponentModal"
               />
             </template>
@@ -552,6 +539,7 @@ import {
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
+  NewButton,
   DropdownMenuButton,
   DropdownMenuItem,
   Icon,
@@ -559,7 +547,6 @@ import {
   TextPill,
   themeClasses,
   TruncateWithTooltip,
-  VButton,
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
