@@ -514,6 +514,24 @@ impl AttributePrototype {
         )
     }
 
+    // If this is a prototype for a prop, returns the PropId. Otherwise, returns None.
+    pub async fn prop_id(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<Option<PropId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        if let Some(for_id) = workspace_snapshot
+            .source_opt(apa_id, EdgeWeightKindDiscriminants::Prototype)
+            .await?
+        {
+            if let NodeWeight::Prop(node) = workspace_snapshot.get_node_weight(for_id).await? {
+                return Ok(Some(node.id().into()));
+            }
+        }
+
+        Ok(None)
+    }
+
     /// If this prototype is defined at the component level, it will have an incoming edge from the
     /// AttributeValue for which it is the prototype. Otherwise this will return None, indicating a
     /// prototype defined at the schema variant level (which has no attribute value)

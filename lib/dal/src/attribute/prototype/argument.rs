@@ -584,6 +584,22 @@ impl AttributePrototypeArgument {
         }
     }
 
+    pub async fn list_references_to_value_source(
+        ctx: &DalContext,
+        value_source_id: impl Into<Ulid> + Into<ValueSource>,
+    ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentId>> {
+        Ok(ctx
+            .workspace_snapshot()?
+            .incoming_sources_for_edge_weight_kind(
+                value_source_id,
+                EdgeWeightKind::PrototypeArgumentValue,
+            )
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+
     pub async fn prototype_id(
         ctx: &DalContext,
         attribute_prototype_argument_id: AttributePrototypeArgumentId,
