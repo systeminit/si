@@ -91,7 +91,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
 
     // Check that everything looks as we expect.
     {
-        let expected_total = 4;
+        let expected_total = 5;
         confirm_jetstream_stream_has_no_messages(
             &source_stream,
             STREAM_RETRY_TIMEOUT_SECONDS,
