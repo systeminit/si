@@ -80,15 +80,16 @@ rust_library(
         "//third-party/rust:tokio-util",
         "//third-party/rust:tower",
         "//third-party/rust:tower-http",
+        "//third-party/rust:tracing",
         "//third-party/rust:tracing-tunnel",
         "//third-party/rust:ulid",
         "//third-party/rust:url",
         "//third-party/rust:y-sync",
     ],
-    srcs = glob([
-        "src/**/*.rs",
-        "src/service/v2/fs/editor_typescript.txt"
-    ]),
+    srcs = glob(["src/**/*.rs"]) + ["//app/web:editor_typescript.txt"],
+    env = {
+        "CARGO_MANIFEST_DIR": ".",
+    },
     extra_test_targets = [":test-integration"],
 )
 
@@ -121,6 +122,7 @@ rust_test(
         "//third-party/rust:pretty_assertions_sorted",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
+        "//third-party/rust:tracing",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-tungstenite",
         "//third-party/rust:tokio-util",

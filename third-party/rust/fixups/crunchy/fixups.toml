@@ -1,4 +1,4 @@
+cargo_env = true
 buildscript.run = true
-
 [env]
 CRUNCHY_LIB_SUFFIX = "/lib.rs"

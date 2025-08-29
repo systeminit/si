@@ -4,7 +4,5 @@
 # commit-date: 2022-12-01T03:10:27-0800
 # source: https://github.com/facebook/buck2/blob/9080cce1b8588afc08e5c9d53d22c652f7567ecf/shim/third-party/rust/fixups/libc/fixups.toml
 
-buildscript.run = true
-
 # reindeer cannot see through `cfg_proto!` macros and the like
 extra_srcs = ["src/**/*.rs"]
