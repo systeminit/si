@@ -146,6 +146,13 @@ export function buildAttributesStructure(
 ): FlatSchema {
   const attributes: FlatAttribute[] = [];
   const root = input.domainProps;
+  if (!root) {
+    // We can't build the attributesStructure so we return it empty!
+    return {
+      schemaName: input.displayName,
+      attributes,
+    };
+  }
   const basePath = `/${root.name}`;
   collectFlatAttributes(
     root.children,
@@ -163,6 +170,10 @@ export function buildAttributeDocsIndex(
   const attributesSink: FlatAttribute[] = []; // unused but cheap
   const docsIndex: DocsIndex = new Map();
   const root = input.domainProps;
+  if (!root) {
+    // We can't build the docIndex so we return it empty!
+    return docsIndex;
+  }
   const basePath = `/${root.name}`;
   collectFlatAttributes(root.children, basePath, attributesSink, docsIndex);
   return docsIndex;

@@ -13,7 +13,7 @@
   >
     <div class="flex flex-col gap-xs">
       <div class="flex flex-row justify-between">
-        <span class="font-medium">
+        <span v-if="hasUsedAiAgent" class="font-medium">
           Get started with these prompts in our
           <a
             class="font-medium underline"
@@ -23,12 +23,42 @@
             AI Agent:
           </a>
         </span>
+        <span v-else class="font-medium">
+          Set up the AI agent and run these prompts to see System Initiative in
+          action:
+        </span>
         <Icon
+          v-if="hasUsedAiAgent"
           name="x"
           size="sm"
           class="cursor-pointer hover:scale-110 rounded-full opacity-80 hover:opacity-100 self-start"
           @click="closed = true"
         />
+        <div v-else class="flex flex-row gap-sm">
+          <VButton
+            label="Learn More"
+            tone="neutral"
+            size="sm"
+            href="https://docs.systeminit.com/tutorials/getting-started"
+            target="_blank"
+          />
+          <VButton
+            aria-label="Go to Onboarding"
+            label="Get started"
+            tone="action"
+            size="sm"
+            :class="
+              clsx(
+                '!text-sm !border !cursor-pointer !px-xs',
+                themeClasses(
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                ),
+              )
+            "
+            @click="ctx.reopenOnboarding"
+          />
+        </div>
       </div>
     </div>
     <div class="flex flex-row gap-md">
@@ -55,8 +85,16 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import { Icon, themeClasses, VButton } from "@si/vue-lib/design-system";
 import { useLocalStorage } from "@vueuse/core";
+import { computed } from "vue";
+import { useContext } from "@/newhotness/logic_composables/context";
+
+const ctx = useContext();
+
+const hasUsedAiAgent = computed(
+  () => ctx.userWorkspaceFlags.value.executedAgent ?? false,
+);
 
 const HAS_DISMISSED_WELCOME_BANNER_KEY = "dismissed-welcome-banner";
 

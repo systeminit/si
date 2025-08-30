@@ -258,13 +258,45 @@
                 icon="logo-si"
                 iconSize="lg"
                 iconNoBg
-                text="Manage your infrastructure with clarity, control, and confidence."
+                text="Your data will be shown here"
               >
                 <template #secondary>
+                  <div
+                    v-if="!hasUsedAiAgent"
+                    class="flex flex-row text-neutral-400"
+                  >
+                    Finish setting up your AI agent to see the platform in
+                    action.
+                  </div>
+
+                  <div
+                    v-if="
+                      featureFlagsStore.INITIALIZER_ONBOARD &&
+                      (ctx.onHead.value || !hasUsedAiAgent)
+                    "
+                    class="flex flex-row"
+                  >
+                    <VButton
+                      aria-label="Go to Onboarding"
+                      label="Get started"
+                      tone="action"
+                      size="sm"
+                      :class="
+                        clsx(
+                          '!text-sm !border !cursor-pointer !px-xs',
+                          themeClasses(
+                            '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                            '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
+                          ),
+                        )
+                      "
+                      @click="ctx.reopenOnboarding"
+                    />
+                  </div>
                   <div class="flex flex-row gap-sm">
                     <VButton
-                      label="Check our how-to guide"
-                      tone="action"
+                      label="How-to guide"
+                      tone="neutral"
                       size="sm"
                       href="https://docs.systeminit.com/how-tos/"
                       target="_blank"
@@ -275,16 +307,6 @@
                       size="sm"
                       href="https://docs.systeminit.com/reference/public-api"
                       target="_blank"
-                    />
-                    <VButton
-                      v-if="
-                        featureFlagsStore.INITIALIZER_ONBOARD &&
-                        ctx.onHead.value
-                      "
-                      label="Initialize your Workspace"
-                      tone="action"
-                      size="sm"
-                      @click="ctx.reopenOnboarding"
                     />
                   </div>
                 </template>
@@ -639,6 +661,10 @@ const featureFlagsStore = useFeatureFlagsStore();
 const router = useRouter();
 const route = useRoute();
 const ctx = useContext();
+
+const hasUsedAiAgent = computed(
+  () => ctx.userWorkspaceFlags.value.executedAgent ?? false,
+);
 
 const key = useMakeKey();
 const args = useMakeArgs();

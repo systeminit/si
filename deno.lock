@@ -48,6 +48,7 @@
     "npm:adze@^2.2.0": "2.2.5",
     "npm:adze@^2.2.1": "2.2.5",
     "npm:argparse@2.0.1": "2.0.1",
+    "npm:axios@*": "1.11.0",
     "npm:axios@^1.6.1": "1.11.0",
     "npm:data-uri-to-buffer@4.0.1": "4.0.1",
     "npm:encoding@0.1.13": "0.1.13",
@@ -203,7 +204,7 @@
     "@systeminit/api-client@1.0.8": {
       "integrity": "b0bff1aef4b8a6930104553a4b3423ea3b1352bf0df14f2a49e3c8d9114b3b1b",
       "dependencies": [
-        "npm:axios"
+        "npm:axios@^1.6.1"
       ]
     },
     "@systeminit/cf-db@0.1.4": {
