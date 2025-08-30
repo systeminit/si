@@ -9,14 +9,14 @@
       <div>GO</div>
     </section>
     <footer class="flex justify-end">
-      <VButton label="SKIP" size="xs" tone="neutral" @click="skip" />
+      <NewButton label="SKIP" size="xs" @click="skip" />
     </footer>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { useRouter } from "vue-router";
-import { VButton } from "@si/vue-lib/design-system";
+import { NewButton } from "@si/vue-lib/design-system";
 
 const router = useRouter();
 

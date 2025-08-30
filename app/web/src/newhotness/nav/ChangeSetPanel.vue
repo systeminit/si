@@ -42,20 +42,18 @@
       </DropdownMenuButton>
     </label>
 
-    <VButton
+    <NewButton
       v-tooltip="{
         content: 'Create Change Set',
       }"
       data-testid="create-change-set-button"
       icon="git-branch-plus"
-      size="sm"
       tone="action"
-      variant="ghost"
       class="flex-none"
       @click="openCreateModal"
     />
 
-    <VButton
+    <NewButton
       v-tooltip="{
         content: 'Abandon Change Set',
       }"
@@ -68,9 +66,7 @@
         changeSet.status === ChangeSetStatus.NeedsApproval
       "
       icon="trash"
-      size="sm"
       tone="action"
-      variant="ghost"
       class="flex-none"
       @click="openAbandonConfirmationModal"
     />
@@ -97,25 +93,16 @@
             requiredMessage="Please choose a name for your change set!"
             @enterPressed="onCreateChangeSet"
           />
-          <div class="flex flex-row-reverse gap-sm">
-            <VButton
-              :disabled="validationState.isError"
-              :requestStatus="createApi.requestStatuses.value"
-              :class="
-                clsx(
-                  'flex-grow !text-sm !border !cursor-pointer !px-xs',
-                  themeClasses(
-                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                    '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                  ),
-                )
-              "
-              icon="plus-circle"
-              label="Create change set"
-              loadingText="Creating Change Set"
-              submit
-            />
-          </div>
+          <NewButton
+            :disabled="validationState.isError"
+            :requestStatus="createApi.requestStatuses.value"
+            icon="plus-circle"
+            label="Create change set"
+            tone="action"
+            loadingText="Creating Change Set"
+            submit
+            class="w-full"
+          />
         </Stack>
       </form>
     </Modal>
@@ -133,7 +120,6 @@ import { computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import {
-  VButton,
   VormInput,
   Stack,
   Modal,
@@ -141,9 +127,8 @@ import {
   DropdownMenuButton,
   DropdownMenuItem,
   DEFAULT_DROPDOWN_SEARCH_THRESHOLD,
-  themeClasses,
+  NewButton,
 } from "@si/vue-lib/design-system";
-import clsx from "clsx";
 import { tw } from "@si/vue-lib";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";

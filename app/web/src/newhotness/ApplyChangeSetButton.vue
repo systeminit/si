@@ -1,18 +1,10 @@
 <template>
   <section v-if="!ctx.onHead.value">
-    <VButton
+    <NewButton
       ref="applyButtonRef"
-      size="sm"
+      tone="action"
       label="Apply Change Set"
-      :class="
-        clsx(
-          'ml-2xs mr-xs !text-sm !border !cursor-pointer !px-xs',
-          themeClasses(
-            '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-            '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-          ),
-        )
-      "
+      class="ml-2xs mr-xs"
       loadingText="Applying Changes"
       :loading="applyInFlight"
       @click="openApplyChangeSetModal"
@@ -25,7 +17,7 @@
           class="border border-action-200 ml-2xs py-2xs"
         />
       </template>
-    </VButton>
+    </NewButton>
     <ApplyChangeSetModal
       ref="applyChangeSetModalRef"
       votingKind="merge"
@@ -37,8 +29,7 @@
 <script lang="ts" setup>
 import { computed, ref, watchEffect, nextTick } from "vue";
 import * as _ from "lodash-es";
-import { VButton, PillCounter, themeClasses } from "@si/vue-lib/design-system";
-import clsx from "clsx";
+import { PillCounter, NewButton } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
 import { useRoute, useRouter } from "vue-router";
 import {

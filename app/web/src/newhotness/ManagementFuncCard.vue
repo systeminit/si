@@ -13,31 +13,21 @@
     >
       <template #right>
         <div class="flex gap-xs">
-          <VButton
-            size="sm"
+          <NewButton
             :label="
               managementExecutionStatus === 'Failure'
                 ? 'Re-run function'
                 : 'Run function'
             "
+            tone="action"
             :loading="managementExecutionStatus === 'Running'"
             loadingText="Running function"
             :disabled="managementExecutionStatus === 'Running'"
             loadingIcon="loader"
-            :class="
-              clsx(
-                '!text-sm !border !cursor-pointer !px-xs',
-                themeClasses(
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                ),
-              )
-            "
             @click.stop="runMgmtFunc(func.id)"
           />
-          <VButton
+          <NewButton
             v-if="funcRun"
-            size="sm"
             label="See Func Run"
             tone="neutral"
             @click="navigateToFuncRunDetails(funcRun.id)"
@@ -49,10 +39,9 @@
 </template>
 
 <script setup lang="ts">
-import { themeClasses, VButton } from "@si/vue-lib/design-system";
+import { NewButton } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
 import { computed, inject, ref } from "vue";
-import clsx from "clsx";
 import { routes, useApi } from "@/newhotness/api_composables";
 import { funcRunStatus, FuncRun } from "@/newhotness/api_composables/func_run";
 import { MgmtFuncKind, MgmtFunction } from "@/workers/types/entity_kind_types";

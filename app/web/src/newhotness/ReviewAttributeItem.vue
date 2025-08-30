@@ -19,19 +19,10 @@
       <h1 class="h-10 py-xs mr-auto text-sm">
         {{ name }}
       </h1>
-      <VButton
+      <NewButton
         v-if="!disableRevert && !!revertToSource"
         size="xs"
         label="Revert"
-        :class="
-          clsx(
-            '!text-sm !border !cursor-pointer !px-xs',
-            themeClasses(
-              '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
-              '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
-            ),
-          )
-        "
         @click="revert"
       />
     </div>
@@ -63,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { themeClasses, VButton } from "@si/vue-lib/design-system";
+import { NewButton, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, PropType } from "vue";
 import * as _ from "lodash-es";

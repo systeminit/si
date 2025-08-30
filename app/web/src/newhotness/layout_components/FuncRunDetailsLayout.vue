@@ -13,7 +13,7 @@
     <header
       :class="
         clsx(
-          'flex flex-row items-center px-sm py-xs border-t border-b border-neutral-600',
+          'flex flex-row items-center gap-xs px-sm py-xs border-t border-b border-neutral-600',
           themeClasses('bg-neutral-200', 'bg-neutral-800'),
         )
       "
@@ -68,7 +68,7 @@
       </div>
 
       <!-- Action buttons -->
-      <div class="flex gap-2">
+      <div class="flex gap-xs">
         <slot name="actions"></slot>
       </div>
     </header>
