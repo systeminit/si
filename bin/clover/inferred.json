@@ -10390,6 +10390,12 @@
   "The TTL in seconds for a resolver that has caching activated.\n Valid values are 1–3,600 seconds.": {
     "enum": null
   },
+  "The TagOption key.": {
+    "enum": null
+  },
+  "The TagOption value.": {
+    "enum": null
+  },
   "The Target Role Arn of the pod identity association.": {
     "enum": null
   },
@@ -14486,6 +14492,9 @@
     "enum": null
   },
   "The name of your CEV. The name format is ``major version.customized_string``. For example, a valid CEV name is ``19.my_cev1``. This setting is required for RDS Custom for Oracle, but optional for Amazon RDS. The combination of ``Engine`` and ``EngineVersion`` is unique per customer per Region.\n  *Constraints:* Minimum length is 1. Maximum length is 60.\n  *Pattern:* ``^[a-z0-9_.-]{1,60$``}": {
+    "enum": null
+  },
+  "The name of your CEV. The name format is ``major version.customized_string``. For example, a valid CEV name is ``19.my_cev1``. This setting is required for RDS Custom for Oracle, but optional for Amazon RDS. The combination of ``Engine`` and ``EngineVersion`` is unique per customer per Region.\n *Constraints:* Minimum length is 1. Maximum length is 60.\n *Pattern:*``^[a-z0-9_.-]{1,60$``}": {
     "enum": null
   },
   "The name of your Security Lake subscriber account.": {
