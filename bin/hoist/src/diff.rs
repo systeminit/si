@@ -80,6 +80,10 @@ pub fn patch_list_to_changelog(patch: Patch) -> Vec<String> {
 
         match operation {
             PatchOperation::Add(op) => {
+                // Skip null values in diff output
+                if op.value.is_null() {
+                    continue;
+                }
                 logs.push(format!(
                     "#### Added {target}:\n```\n{}\n```\n",
                     serde_json::to_string_pretty(&op.value).expect("unable to parse json")
@@ -87,6 +91,10 @@ pub fn patch_list_to_changelog(patch: Patch) -> Vec<String> {
             }
             PatchOperation::Remove(_) => logs.push(format!("Removed {target}")),
             PatchOperation::Replace(op) => {
+                // Skip null values in diff output
+                if op.value.is_null() {
+                    continue;
+                }
                 logs.push(format!(
                     "#### Replaced value within {target}:\n```\n{}\n```\n",
                     serde_json::to_string_pretty(&op.value).expect("unable to parse json")
