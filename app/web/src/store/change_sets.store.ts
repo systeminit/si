@@ -217,14 +217,14 @@ export function useChangeSetsStore() {
           });
         },
         async CREATE_CHANGE_SET(name: string) {
-          return new ApiRequest<{ changeSet: ChangeSet }>({
+          return new ApiRequest<ChangeSet>({
             method: "post",
-            url: "change_set/create_change_set",
+            url: BASE_API.concat(["create_change_set"]),
             params: {
-              changeSetName: name,
+              name,
             },
             onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.id] = response.changeSet;
+              this.changeSetsById[response.id] = response;
             },
           });
         },
@@ -243,12 +243,10 @@ export function useChangeSetsStore() {
           ) {
             router.push({ name: "workspace-lab" });
           }
-          return new ApiRequest<{ changeSet: ChangeSet }>({
+          const selectedChangeSetId = this.selectedChangeSetId;
+          return new ApiRequest({
             method: "post",
-            url: "change_set/abandon_change_set",
-            params: {
-              changeSetId: this.selectedChangeSet.id,
-            },
+            url: BASE_API.concat([{ selectedChangeSetId }, "abandon"]),
             optimistic: () => {
               // remove component selections, its corrupting navigation
               const key = `${this.selectedChangeSetId}_selected_component`;
