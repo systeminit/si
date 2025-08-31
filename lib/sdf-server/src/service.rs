@@ -1,5 +1,4 @@
 pub mod force_change_set_response;
-pub mod public;
 pub mod v2;
 pub mod whoami;
 
