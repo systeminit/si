@@ -57,7 +57,7 @@ use inode_table::{
 use nix::{
     libc::{
         EACCES,
-        EBADFD,
+        EBADF,
         EINVAL,
         ENODATA,
         ENOENT,
@@ -1686,7 +1686,7 @@ impl SiFileSystem {
             };
 
             let Some(mut open_file) = self.open_files.get_mut(&fh) else {
-                reply.error(EBADFD);
+                reply.error(EBADF);
                 return Ok(());
             };
 
