@@ -69,7 +69,6 @@ members = [
   "lib/sdf-server",
   "lib/sdf-test",
   "lib/sdf-v1-routes-attribute",
-  "lib/sdf-v1-routes-change-sets",
   "lib/sdf-v1-routes-module",
   "lib/sdf-v1-routes-session",
   "lib/sdf-v1-routes-variant",
