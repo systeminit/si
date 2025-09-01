@@ -287,9 +287,8 @@ async function onCreateChangeSet() {
     createChangeSetName.value,
   );
 
-  if (createReq.result.success) {
-    // reusing above to navigate to new change set... will probably clean this all up later
-    const newChangeSetId = createReq.result.data.changeSet.id;
+  if (createReq.result.success && createReq.result.data?.id) {
+    const newChangeSetId = createReq.result.data.id;
     onSelectChangeSet(newChangeSetId);
     createModalRef.value?.close();
   }
