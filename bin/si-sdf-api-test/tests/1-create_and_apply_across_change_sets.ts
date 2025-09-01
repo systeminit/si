@@ -1,6 +1,14 @@
 import assert from "node:assert";
 import { SdfApiClient } from "../sdf_api_client.ts";
-import { abandon_all_change_sets, createComponent, createComponentPayload, eventualMVAssert, getVariants, getViews, installModule } from "../test_helpers.ts";
+import {
+  abandon_all_change_sets,
+  createComponent,
+  createComponentPayload,
+  eventualMVAssert,
+  getVariants,
+  getViews,
+  installModule,
+} from "../test_helpers.ts";
 
 export default async function create_and_and_apply_across_change_sets(
   sdfApiClient: SdfApiClient,
@@ -27,25 +35,43 @@ async function create_and_and_apply_across_change_sets_inner(
       const defaultView = views.find((v: any) => v.isDefault);
       assert(defaultView, "Expected to find a default view");
 
-
       let schemaVariants = await getVariants(sdf, changeSetId);
 
       // first let's make sure our test asset is installed
       // this is really just so we can run this against any workspace
-      if (!schemaVariants.installed.some((v: any) => v.schemaName === "TestResourceActions")) {
-        const installResult = await installModule(sdf, changeSetId, TEST_RESOURCE_ACTION_MODULE_ID);
+      if (
+        !schemaVariants.installed.some(
+          (v: any) => v.schemaName === "TestResourceActions",
+        )
+      ) {
+        const installResult = await installModule(
+          sdf,
+          changeSetId,
+          TEST_RESOURCE_ACTION_MODULE_ID,
+        );
         console.log("Install Result:", installResult);
-        assert(installResult[0]?.schemaVariantId, "Expected to get a schemaVariantId after installing TestResourceActions module");
+        assert(
+          installResult[0]?.schemaVariantId,
+          "Expected to get a schemaVariantId after installing TestResourceActions module",
+        );
         const installedVariantId = installResult[0].schemaVariantId;
-        console.log("Installing TestResourceActions schema variant...", installResult);
+        console.log(
+          "Installing TestResourceActions schema variant...",
+          installResult,
+        );
         await eventualMVAssert(
           sdf,
-          changeSetId, "SchemaVariantCategories",
+          changeSetId,
+          "SchemaVariantCategories",
           sdf.workspaceId,
           (mv) => {
-            const installedList: string[] = mv.categories.flatMap((c: any) => c.schemaVariants.filter((v: any) => v.type === "installed").map((v: any) => {
-              return v.id;
-            }));
+            const installedList: string[] = mv.categories.flatMap((c: any) =>
+              c.schemaVariants
+                .filter((v: any) => v.type === "installed")
+                .map((v: any) => {
+                  return v.id;
+                }),
+            );
             console.log("Installed Schema Variants:", installedList);
             console.log("Expected Schema Variant ID:", installedVariantId);
             return installedList.some((v: any) => v === installedVariantId);
@@ -56,13 +82,30 @@ async function create_and_and_apply_across_change_sets_inner(
       }
 
       // Create a component with the TestResourceActions schema variant
-      console.log("Creating a component with the TestResourceActions schema variant...");
-      let createComponentBody = createComponentPayload(schemaVariants, "TestResourceActions");
-      const newComponentId = await createComponent(sdf, changeSetId, defaultView.id, createComponentBody);
+      console.log(
+        "Creating a component with the TestResourceActions schema variant...",
+      );
+      let createComponentBody = createComponentPayload(
+        schemaVariants,
+        "TestResourceActions",
+      );
+      const newComponentId = await createComponent(
+        sdf,
+        changeSetId,
+        defaultView.id,
+        createComponentBody,
+      );
       assert(newComponentId, "Expected to get a component id after creation");
       await sdf.waitForDVURoots(changeSetId, 2000, 60000);
-      await eventualMVAssert(sdf, changeSetId, "ComponentList", sdf.workspaceId, (mv) => mv.components.length === 1, "Expected one component in the ComponentList MV after apply", 60000);
-
+      await eventualMVAssert(
+        sdf,
+        changeSetId,
+        "ComponentList",
+        sdf.workspaceId,
+        (mv) => mv.components.length === 1,
+        "Expected one component in the ComponentList MV after apply",
+        60000,
+      );
     }
 
     console.log("Done! Running an apply...");
@@ -75,7 +118,6 @@ async function create_and_and_apply_across_change_sets_inner(
         changeSetId: appliedChangeSetId,
       },
     });
-
   } catch (e) {
     console.error("An error occurred during the test:", e);
     err = e;
@@ -83,11 +125,20 @@ async function create_and_and_apply_across_change_sets_inner(
     console.log("verifying and cleaning up change sets...");
     for (const changeSetId of changeSetIds) {
       try {
-        await eventualMVAssert(sdf, changeSetId, "ComponentList", sdf.workspaceId, (mv) => mv.components.length === 2, "Expected one component in the ComponentList MV after apply", 60000);
+        await eventualMVAssert(
+          sdf,
+          changeSetId,
+          "ComponentList",
+          sdf.workspaceId,
+          (mv) => mv.components.length === 2,
+          "Expected one component in the ComponentList MV after apply",
+          60000,
+        );
 
         await sdf.call({
           route: "abandon_change_set",
-          body: {
+          routeVars: {
+            workspaceId: sdf.workspaceId,
             changeSetId,
           },
         });
@@ -108,7 +159,11 @@ async function cleanupHead(sdf: SdfApiClient): Promise<void> {
   const changeSetId = await createChangeSet(sdf);
   const workspaceId = sdf.workspaceId;
 
-  const components = await sdf.mjolnir(changeSetId, "ComponentList", workspaceId);
+  const components = await sdf.mjolnir(
+    changeSetId,
+    "ComponentList",
+    workspaceId,
+  );
 
   const currentComponentIds = components.components.map((c) => c.id);
   if (currentComponentIds) {
@@ -142,9 +197,9 @@ async function createChangeSet(sdf: SdfApiClient): Promise<string> {
   const data = await sdf.call({
     route: "create_change_set",
     body: {
-      changeSetName,
+      name: changeSetName,
     },
   });
-  await sdf.fetchChangeSetIndex(data.changeSet.id);
-  return data.changeSet.id;
+  await sdf.fetchChangeSetIndex(data.id);
+  return data.id;
 }
