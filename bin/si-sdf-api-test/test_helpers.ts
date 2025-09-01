@@ -18,13 +18,22 @@ export async function retryUntil(
   message?: string,
   retries = 20,
   backoffFactor = 1.2, // exponential backoff factor
-  initialDelay = .4, // in seconds
+  initialDelay = 0.4, // in seconds
 ): Promise<void> {
-  const retryPromise = retryWithBackoff(fn, retries, backoffFactor, initialDelay);
+  const retryPromise = retryWithBackoff(
+    fn,
+    retries,
+    backoffFactor,
+    initialDelay,
+  );
 
   const timeoutPromise = new Promise<void>((_, reject) => {
     setTimeout(() => {
-      reject(new Error(`Timeout after ${timeoutMs}ms while retrying operation: ${message}`));
+      reject(
+        new Error(
+          `Timeout after ${timeoutMs}ms while retrying operation: ${message}`,
+        ),
+      );
     }, timeoutMs);
   });
 
@@ -74,11 +83,11 @@ export async function runWithTemporaryChangeset(
   const data = await sdf.call({
     route: "create_change_set",
     body: {
-      changeSetName,
+      name: changeSetName,
     },
   });
-  assert(typeof data.changeSet === "object", "Expected changeSet in response");
-  const changeSet = data.changeSet;
+  assert(typeof data === "object", "Expected changeSet in response");
+  const changeSet = data;
   assert(changeSet?.id, "Expected Change Set id");
   assert(
     changeSet?.name === changeSetName,
@@ -98,7 +107,8 @@ export async function runWithTemporaryChangeset(
   // DELETE CHANGE SET
   await sdf.call({
     route: "abandon_change_set",
-    body: {
+    routeVars: {
+      workspaceId: sdf.workspaceId,
       changeSetId,
     },
   });
@@ -112,7 +122,6 @@ export const nilId = "00000000000000000000000000";
 
 // Various Helpers ------------------------------------------------------------
 
-
 export async function getFuncs(sdf: SdfApiClient, changeSetId: string) {
   return await sdf.call({
     route: "func_list",
@@ -123,7 +132,6 @@ export async function getFuncs(sdf: SdfApiClient, changeSetId: string) {
   });
 }
 
-
 export async function installModule(
   sdf: SdfApiClient,
   changeSetId: string,
@@ -131,7 +139,7 @@ export async function installModule(
 ) {
   const installModulePayload = {
     visibility_change_set_pk: changeSetId,
-    ids: [moduleId]
+    ids: [moduleId],
   };
 
   return await sdf.call({
@@ -153,7 +161,10 @@ export async function createAsset(
     color: "#AAFF00",
   };
 
-  const createResp = await sdf.call({ route: "create_variant", body: createAssetPayload });
+  const createResp = await sdf.call({
+    route: "create_variant",
+    body: createAssetPayload,
+  });
   const schemaVariantId = createResp?.schemaVariantId;
   assert(schemaVariantId, "Expected to get a schema variant id after creation");
   return schemaVariantId;
@@ -167,7 +178,8 @@ export async function updateAssetCode(
 ): Promise<string> {
   // Get variant
   const variant = await sdf.call({
-    route: "get_variant", routeVars: {
+    route: "get_variant",
+    routeVars: {
       workspaceId: sdf.workspaceId,
       changeSetId,
       schemaVariantId,
@@ -202,7 +214,6 @@ export async function updateAssetCode(
   return maybeNewId;
 }
 
-
 // Component Helpers ------------------------------------------------------------
 
 export async function createComponent(
@@ -221,7 +232,10 @@ export async function createComponent(
     },
     body: request,
   });
-  const { newComponentId, newComponentName } = { newComponentId: createComponentResp?.componentId, newComponentName: createComponentResp?.materializedView?.name };
+  const { newComponentId, newComponentName } = {
+    newComponentId: createComponentResp?.componentId,
+    newComponentName: createComponentResp?.materializedView?.name,
+  };
   assert(newComponentId, "Expected to get a component id after creation");
 
   // Wait for and verify component MV
@@ -231,15 +245,19 @@ export async function createComponent(
     "Component",
     newComponentId,
     (mv) => mv.name === newComponentName,
-    "Component MV should exist and have matching name"
+    "Component MV should exist and have matching name",
   );
-
 
   return newComponentId;
 }
 
-export function createComponentPayload(schemaVariantCategoriesMV: any, schemaName: string) {
-  const installedVariant = schemaVariantCategoriesMV.installed?.find((sv: any) => sv.schemaName === schemaName);
+export function createComponentPayload(
+  schemaVariantCategoriesMV: any,
+  schemaName: string,
+) {
+  const installedVariant = schemaVariantCategoriesMV.installed?.find(
+    (sv: any) => sv.schemaName === schemaName,
+  );
   if (installedVariant) {
     return {
       schemaVariantId: installedVariant.schemaVariantId,
@@ -250,9 +268,10 @@ export function createComponentPayload(schemaVariantCategoriesMV: any, schemaNam
       parentId: null,
       schemaType: "installed",
     };
-  }
-  else {
-    const uninstalledVariant = schemaVariantCategoriesMV.uninstalled?.find((sv: any) => sv.schemaName === schemaName);
+  } else {
+    const uninstalledVariant = schemaVariantCategoriesMV.uninstalled?.find(
+      (sv: any) => sv.schemaName === schemaName,
+    );
     assert(uninstalledVariant, `Expected to find ${schemaName} schema variant`);
     return {
       schemaId: uninstalledVariant.schemaId,
@@ -262,13 +281,17 @@ export function createComponentPayload(schemaVariantCategoriesMV: any, schemaNam
       height: "0",
       width: "0",
       parentId: null,
-    }
+    };
   }
 }
 
 // Func Helpers ------------------------------------------------------------
 
-export async function getFuncRun(sdf: SdfApiClient, changeSetId: string, funcRunId: string) {
+export async function getFuncRun(
+  sdf: SdfApiClient,
+  changeSetId: string,
+  funcRunId: string,
+) {
   console.log(funcRunId);
   const funcRun = await sdf.call({
     route: "get_func_run",
@@ -276,15 +299,22 @@ export async function getFuncRun(sdf: SdfApiClient, changeSetId: string, funcRun
       workspaceId: sdf.workspaceId,
       changeSetId,
       funcRunId,
-    }
+    },
   });
   return funcRun;
 }
-export async function testExecuteFunc(sdf: SdfApiClient, changeSetId: string, funcId: string, componentId: string, code: string, args: any) {
+export async function testExecuteFunc(
+  sdf: SdfApiClient,
+  changeSetId: string,
+  funcId: string,
+  componentId: string,
+  code: string,
+  args: any,
+) {
   const testExecuteFuncPayload = {
     args,
     code,
-    componentId
+    componentId,
   };
   const createFuncResp = await sdf.call({
     route: "test_execute",
@@ -299,7 +329,13 @@ export async function testExecuteFunc(sdf: SdfApiClient, changeSetId: string, fu
   return createFuncResp;
 }
 
-export async function createQualification(sdf: SdfApiClient, changeSetId: string, name: string, schemaVariantId: string, code: string) {
+export async function createQualification(
+  sdf: SdfApiClient,
+  changeSetId: string,
+  name: string,
+  schemaVariantId: string,
+  code: string,
+) {
   const createFuncPayload = {
     name,
     displayName: name,
@@ -349,10 +385,7 @@ export async function createQualification(sdf: SdfApiClient, changeSetId: string
     body: codePayload,
   });
   return funcId;
-
 }
-
-
 
 // MV Helpers -------------------------------------------------------
 
@@ -366,13 +399,16 @@ export async function abandon_all_change_sets(sdf: SdfApiClient) {
   });
   // loop through them and abandon each one that's not head
   assert(data.defaultChangeSetId, "Expected headChangeSetId");
-  const changeSetsToAbandon = data.changeSets.filter((c) => c.id !== data.defaultChangeSetId);
+  const changeSetsToAbandon = data.changeSets.filter(
+    (c) => c.id !== data.defaultChangeSetId,
+  );
 
   for (const changeSet of changeSetsToAbandon) {
     const changeSetId = changeSet.id;
     await sdf.call({
       route: "abandon_change_set",
-      body: {
+      routeVars: {
+        workspaceId: sdf.workspaceId,
         changeSetId,
       },
     });
@@ -380,21 +416,34 @@ export async function abandon_all_change_sets(sdf: SdfApiClient) {
 }
 
 export async function getActions(sdf: SdfApiClient, changeSetId: string) {
-  const actions = await sdf.mjolnir(changeSetId, "ActionViewList", sdf.workspaceId);
+  const actions = await sdf.mjolnir(
+    changeSetId,
+    "ActionViewList",
+    sdf.workspaceId,
+  );
   assert(actions, "Expected to get actions MV");
   return actions;
 }
 
 export async function getVariants(sdf: SdfApiClient, changeSetId: string) {
-  const schemas = await sdf.mjolnir(changeSetId, "SchemaVariantCategories", sdf.workspaceId);
+  const schemas = await sdf.mjolnir(
+    changeSetId,
+    "SchemaVariantCategories",
+    sdf.workspaceId,
+  );
   assert(schemas, "Expected to get schemas MV");
 
-  const installedList: { kind: string, id: string }[] = schemas.categories.flatMap((c: any) => c.schemaVariants.filter((v: any) => v.type === "installed").map((v: any) => {
-    return {
-      kind: "SchemaVariant",
-      id: v.id,
-    }
-  }));
+  const installedList: { kind: string; id: string }[] =
+    schemas.categories.flatMap((c: any) =>
+      c.schemaVariants
+        .filter((v: any) => v.type === "installed")
+        .map((v: any) => {
+          return {
+            kind: "SchemaVariant",
+            id: v.id,
+          };
+        }),
+    );
   let installed = [];
   if (installedList.length > 0) {
     let installedResp = await sdf.multiMjolnir(changeSetId, installedList);
@@ -407,13 +456,15 @@ export async function getVariants(sdf: SdfApiClient, changeSetId: string) {
       .filter((v: any) => v.type === "uninstalled")
       .map((v: any) => {
         const uninstalledMeta = schemas.uninstalled?.[v.id];
-        assert(uninstalledMeta, `Expected uninstalled metadata for schemaId ${v.id}`);
+        assert(
+          uninstalledMeta,
+          `Expected uninstalled metadata for schemaId ${v.id}`,
+        );
         return uninstalledMeta;
-      })
+      }),
   );
   return { installed, uninstalled };
 }
-
 
 export async function getViews(sdf: SdfApiClient, changeSetId: string) {
   const viewsList = await sdf.mjolnir(changeSetId, "ViewList", sdf.workspaceId);
@@ -432,9 +483,8 @@ export async function eventualMVAssert(
   assertFn: (mv: any) => boolean,
   message: string,
   timeoutMs: number = 60000, // 60 seconds
-
 ): Promise<void> {
-  // update this to use sdf.mjolnir and retryUntil 
+  // update this to use sdf.mjolnir and retryUntil
   if (!sdf || !changeSetId || !kind || !id) {
     throw new Error("Invalid parameters for eventualAssert");
   }
@@ -460,4 +510,3 @@ export async function eventualMVAssert(
     throw new Error(`Timeout after ${timeoutMs}ms: ${message}`);
   }
 }
-
