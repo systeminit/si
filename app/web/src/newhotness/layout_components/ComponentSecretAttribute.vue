@@ -258,6 +258,8 @@ const keyApi = useApi();
 
 const wForm = useWatchedForm<Record<string, string>>(
   `component.av.secret.${props.attributeTree.prop?.id}`,
+  false,
+  true,
 );
 const secretForm = wForm.newForm({
   data: secretFormData,

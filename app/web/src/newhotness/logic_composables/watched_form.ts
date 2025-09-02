@@ -37,7 +37,11 @@ const tracer = trace.getTracer("si-vue");
  * So the user know their form submission worked and we're waiting
  * for updated data
  */
-export const useWatchedForm = <Data>(label: string, resetBlank?: boolean) => {
+export const useWatchedForm = <Data>(
+  label: string,
+  resetBlank?: boolean,
+  disableResetWatcher?: boolean,
+) => {
   /**
    * Lifecycle of `bifrosting`
    *
@@ -138,12 +142,14 @@ export const useWatchedForm = <Data>(label: string, resetBlank?: boolean) => {
 
     // Update form data as data changes
     // im not 100% certain we always want this behavior
-    watch(
-      () => toValue(data),
-      (newData) => {
-        wForm.reset(newData);
-      },
-    );
+    if (!disableResetWatcher) {
+      watch(
+        () => toValue(data),
+        (newData) => {
+          wForm.reset(newData);
+        },
+      );
+    }
 
     return wForm;
   };
