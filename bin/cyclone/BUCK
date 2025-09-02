@@ -69,12 +69,6 @@ docker_image(
     ],
 )
 
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "cyclone",
-    build_dep = "//bin/cyclone:cyclone",
-)
-
 rootfs(
     name = "rootfs",
     pkg_name = "cyclone",

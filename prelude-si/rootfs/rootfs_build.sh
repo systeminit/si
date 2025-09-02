@@ -165,6 +165,7 @@ if [ "\$ARCH" = "aarch64" ]; then
     MC_ARCH="linux-arm64"
     DOCTL_ARCH="linux-arm64"
     GCP_ARCH="linux-arm"
+    DENO_ARCH="aarch64-unknown-linux-gnu"
 else
     GH_PATTERN="browser_download_url.*linux_amd64.tar.gz"
     FASTLY_PATTERN="browser_download_url.*linux-amd64.tar.gz"
@@ -172,6 +173,7 @@ else
     MC_ARCH="linux-amd64"
     DOCTL_ARCH="linux-amd64"
     GCP_ARCH="linux-x86_64"
+    DENO_ARCH="x86_64-unknown-linux-gnu"
 fi
 
 # GitHub CLI
@@ -194,6 +196,10 @@ curl -sL "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-clou
 
 for tool in gcloud gsutil bq; do ln -sf "/opt/google-cloud-sdk/bin/\$tool" "/usr/local/bin/\$tool"; done
 chmod +x /usr/local/bin/{butane,mc,doctl}
+
+# Deno
+curl -sL "https://github.com/denoland/deno/releases/download/v2.2.12/deno-\$DENO_ARCH.zip" -o deno.zip
+unzip -q deno.zip && mv deno /usr/local/bin/ && chmod +x /usr/local/bin/deno && rm -f deno.zip
 
 # Linode CLI
 pip3 install --break-system-packages linode-cli
