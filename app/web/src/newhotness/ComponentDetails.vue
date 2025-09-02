@@ -1,5 +1,5 @@
 <template>
-  <DelayedLoader v-if="componentQuery.isLoading.value" :size="'full'" />
+  <ComponentDetailsSkeleton v-if="showSkeleton" />
   <section v-else :class="clsx('grid gap-sm h-full p-sm', gridStateClass)">
     <!-- Single banner area for all banner types -->
     <div
@@ -153,8 +153,9 @@
         <div class="flex-none">/</div>
         <TruncateWithTooltip
           class="flex-1 min-w-0 m-[-4px] py-2xs px-xs text-sm"
-          >{{ component.name }}</TruncateWithTooltip
         >
+          {{ component.name }}
+        </TruncateWithTooltip>
         <div class="ml-auto flex gap-xs">
           <VButton
             v-if="component.toDelete"
@@ -513,6 +514,7 @@ import { ExploreContext } from "@/newhotness/types";
 import { funcRunStatus, FuncRun } from "@/newhotness/api_composables/func_run";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import ComponentDetailsSkeleton from "@/newhotness/skeletons/ComponentDetailsSkeleton.vue";
 import AttributePanel from "./AttributePanel.vue";
 import ResourceValuesPanel from "./ResourceValuesPanel.vue";
 import {
@@ -522,7 +524,6 @@ import {
 } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import StatusBox from "./layout_components/StatusBox.vue";
-import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import { useApi, routes } from "./api_composables";
 import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
@@ -542,6 +543,12 @@ import { useManagementFuncJobState } from "./logic_composables/management";
 import { useComponentActions } from "./logic_composables/component_actions";
 import { openWorkspaceMigrationDocumentation } from "./util";
 import { useContext } from "./logic_composables/context";
+
+const showSkeleton = computed(
+  () =>
+    attributeTreeQuery.isLoading.value ||
+    (!attributeTree.value && componentQuery.isLoading.value), // Prevent going back to skeleton after user changes
+);
 
 const props = defineProps<{
   componentId: string;
