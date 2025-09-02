@@ -1,7 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
     "rust_binary",
+    "rust_binary_pkg",
 )
 
 rust_binary(
@@ -24,16 +24,7 @@ rust_binary(
     },
 )
 
-docker_image(
-    name = "image",
-    image_name = "luminork",
-    build_args = {
-        "BASE_VERSION": "bookworm",
-        "BIN": "luminork",
-        "SI_RBE_TOKEN": ""
-    },
-    build_deps = [
-        "//bin/luminork:luminork",
-        "//pkgs:pkgs",
-    ]
+rust_binary_pkg(
+    name = "luminork",
+    binary = ":luminork"
 )
