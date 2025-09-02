@@ -29,10 +29,7 @@ use super::{
     ComponentPropKey,
     ComponentReference,
     SecretPropKey,
-    connections::{
-        Connection,
-        handle_connection,
-    },
+    connections::Connection,
     resolve_component_reference,
     resolve_secret_id,
     subscriptions::{
@@ -192,17 +189,7 @@ pub async fn create_component(
         handle_subscription(ctx, av_to_set, &sub, component.id(), &component_list).await?;
     }
 
-    for connection in payload.connections.iter() {
-        handle_connection(
-            ctx,
-            connection,
-            component.id(),
-            variant_id,
-            &component_list,
-            true,
-        )
-        .await?;
-    }
+    // We no longer create connections
 
     ctx.write_audit_log(
         AuditLogKind::UpdateComponent {
@@ -224,7 +211,7 @@ pub async fn create_component(
         json!({
             "component_id": component.id(),
             "component_name": comp_name.clone(),
-            "added_connections": payload.connections.len(),
+            "added_connections": 0,
             "deleted_connections": "0",
             "updated_props": payload.domain.len(),
             "updated_secrets": payload.secrets.len()

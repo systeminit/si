@@ -5,8 +5,6 @@ use dal::{
     OutputSocket,
     SchemaVariantId,
     WsEvent,
-    change_status::ChangeStatus,
-    diagram::SummaryDiagramEdge,
 };
 use serde::{
     Deserialize,
@@ -90,13 +88,12 @@ pub async fn find_component_output_socket_id(
     find_output_socket_id(ctx, socket_name, variant_id).await
 }
 
-pub async fn handle_connection(
+pub async fn remove_connection(
     ctx: &dal::DalContext,
     connection: &Connection,
     component_id: ComponentId,
     variant_id: SchemaVariantId,
     component_list: &[ComponentId],
-    is_add: bool,
 ) -> ComponentsResult<()> {
     match connection {
         Connection::Incoming {
@@ -110,54 +107,24 @@ pub async fn handle_connection(
                 find_component_output_socket_id(ctx, source_component_id, &from.socket_name)
                     .await?;
 
-            if is_add {
-                Component::connect(
-                    ctx,
-                    source_component_id,
-                    source_socket_id,
-                    component_id,
-                    target_socket_id,
-                )
-                .await?;
-                let from_component = Component::get_by_id(ctx, source_component_id).await?;
-                let to_component = Component::get_by_id(ctx, component_id).await?;
-                for incoming_connection in to_component.incoming_connections(ctx).await? {
-                    if incoming_connection.to_input_socket_id == target_socket_id
-                        && incoming_connection.from_component_id == from_component.id()
-                        && incoming_connection.to_component_id == to_component.id()
-                    {
-                        let edge = SummaryDiagramEdge::assemble(
-                            incoming_connection,
-                            &from_component,
-                            &to_component,
-                            ChangeStatus::Added,
-                        )?;
-                        WsEvent::connection_upserted(ctx, edge.into())
-                            .await?
-                            .publish_on_commit(ctx)
-                            .await?;
-                    }
-                }
-            } else {
-                Component::remove_connection(
-                    ctx,
-                    source_component_id,
-                    source_socket_id,
-                    component_id,
-                    target_socket_id,
-                )
-                .await?;
-                WsEvent::connection_deleted(
-                    ctx,
-                    source_component_id,
-                    component_id,
-                    source_socket_id,
-                    target_socket_id,
-                )
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-            }
+            Component::remove_connection(
+                ctx,
+                source_component_id,
+                source_socket_id,
+                component_id,
+                target_socket_id,
+            )
+            .await?;
+            WsEvent::connection_deleted(
+                ctx,
+                source_component_id,
+                component_id,
+                source_socket_id,
+                target_socket_id,
+            )
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
         }
         Connection::Outgoing {
             from: from_socket_name,
@@ -169,54 +136,24 @@ pub async fn handle_connection(
             let target_socket_id =
                 find_component_input_socket_id(ctx, target_component_id, &to.socket_name).await?;
 
-            if is_add {
-                Component::connect(
-                    ctx,
-                    component_id,
-                    source_socket_id,
-                    target_component_id,
-                    target_socket_id,
-                )
-                .await?;
-                let from_component = Component::get_by_id(ctx, component_id).await?;
-                let to_component = Component::get_by_id(ctx, target_component_id).await?;
-                for incoming_connection in to_component.incoming_connections(ctx).await? {
-                    if incoming_connection.to_input_socket_id == target_socket_id
-                        && incoming_connection.from_component_id == from_component.id()
-                        && incoming_connection.to_component_id == to_component.id()
-                    {
-                        let edge = SummaryDiagramEdge::assemble(
-                            incoming_connection,
-                            &from_component,
-                            &to_component,
-                            ChangeStatus::Added,
-                        )?;
-                        WsEvent::connection_upserted(ctx, edge.into())
-                            .await?
-                            .publish_on_commit(ctx)
-                            .await?;
-                    }
-                }
-            } else {
-                Component::remove_connection(
-                    ctx,
-                    component_id,
-                    source_socket_id,
-                    target_component_id,
-                    target_socket_id,
-                )
-                .await?;
-                WsEvent::connection_deleted(
-                    ctx,
-                    component_id,
-                    target_component_id,
-                    source_socket_id,
-                    target_socket_id,
-                )
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-            }
+            Component::remove_connection(
+                ctx,
+                component_id,
+                source_socket_id,
+                target_component_id,
+                target_socket_id,
+            )
+            .await?;
+            WsEvent::connection_deleted(
+                ctx,
+                component_id,
+                target_component_id,
+                source_socket_id,
+                target_socket_id,
+            )
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
         }
     }
 
