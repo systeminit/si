@@ -2,7 +2,6 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "rust_binary",
-    "nix_omnibus_pkg",
 )
 
 rust_binary(
@@ -22,11 +21,10 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "innit",
+    build_args = {
+        "BIN": "innit",
+        "SI_RBE_TOKEN": "",
+        "BUILDKITE_BUILD_ID": ""
+    },
     build_deps = ["//bin/innit:innit"],
-)
-
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "innit",
-    build_dep = "//bin/innit:innit",
 )

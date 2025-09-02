@@ -28,6 +28,7 @@ rust_library(
         "//third-party/rust:tokio-util",
         "//third-party/rust:tower",
         "//third-party/rust:tower-http",
+        "//third-party/rust:tracing",
     ] + select({
         "DEFAULT": [],
         "config//os:linux": [

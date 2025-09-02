@@ -127,3 +127,59 @@ artifact_promote = rule(
         ),
     },
 )
+
+def artifact_download_impl(ctx: AnalysisContext) -> list[Provider]:
+    """Download an artifact from S3 without extraction."""
+    
+    # Construct S3 URL  
+    filename = "{}-{}-{}-{}.tar.gz".format(
+        ctx.attrs.family,
+        ctx.attrs.version,
+        ctx.attrs.os,
+        ctx.attrs.arch
+    )
+    url = "{}/{}/{}/{}/{}/{}".format(
+        ctx.attrs.destination.rstrip("/"),
+        ctx.attrs.family,
+        ctx.attrs.version,
+        ctx.attrs.os,
+        ctx.attrs.arch,
+        filename
+    )
+    
+    # Download file
+    output_file = ctx.actions.declare_output("{}-{}-{}-{}.tar.gz".format(
+        ctx.attrs.family,
+        ctx.attrs.version,
+        ctx.attrs.os,
+        ctx.attrs.arch
+    ))
+    
+    ctx.actions.download_file(output_file.as_output(), url, sha256 = ctx.attrs.sha256)
+    
+    return [DefaultInfo(default_output = output_file)]
+
+artifact_download = rule(
+    impl = artifact_download_impl,
+    attrs = {
+        "destination": attrs.string(
+            doc = """Destination base URL (e.g., https://artifacts.systeminit.com/toolchains).""",
+            default = "https://artifacts.systeminit.com/toolchains",
+        ),
+        "family": attrs.string(
+            doc = """Artifact family (rust, python, clang, deno).""",
+        ),
+        "version": attrs.string(
+            doc = """Artifact version.""",
+        ),
+        "os": attrs.string(
+            doc = """Operating system (linux, darwin).""",
+        ),
+        "arch": attrs.string(
+            doc = """Architecture (x86_64, aarch64).""",
+        ),
+        "sha256": attrs.string(
+            doc = """SHA256 checksum.""",
+        ),
+    },
+)

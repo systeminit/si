@@ -143,7 +143,13 @@ def build_image(
         cmd.append(f"{key}={value}")
     for build_arg in build_args:
         cmd.append("--build-arg")
-        cmd.append(build_arg)
+        # If the build_arg already contains '=', pass it as-is
+        # otherwise, pass just the key (for empty values).
+        # This allows docker to look up env vars from the host
+        if '=' in build_arg and not build_arg.endswith('='):
+            cmd.append(build_arg)
+        else:
+            cmd.append(build_arg.rstrip('='))
     for tag in tags:
         cmd.append("--tag")
         cmd.append(tag)

@@ -30,3 +30,18 @@ ignore = \
   third-party/rust/.cargo/**/BUCK, \
   third-party/rust/vendor/**/BUCK, \
   tmp
+
+[buck2]
+digest_algorithms = SHA256
+restarter = true
+
+[buck2_re_client]
+action_cache_address = bb.systeminit.com:8980
+cas_address =  bb.systeminit.com:8980
+engine_address = bb.systeminit.com:8980
+http_headers = Authorization:$SI_RBE_TOKEN
+capabilities = true
+cas_ttl_secs = 3600
+
+[build]
+execution_platforms = prelude-si//platforms:default

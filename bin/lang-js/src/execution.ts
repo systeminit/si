@@ -77,9 +77,7 @@ export async function runCode(
   // Reuse sandbox bundle if already written
   let bundlePath = sandboxBundleCache.get(execution_id);
   if (!bundlePath) {
-    const SANDBOX_BUNDLE = await Deno.readTextFile(
-      import.meta.dirname + "/bundle.js",
-    );
+    const SANDBOX_BUNDLE = await Deno.readTextFile(join(import.meta.dirname!, "bundle.js"));
     bundlePath = join(tempDir, "sandbox.bundle.js");
     await Deno.writeTextFile(bundlePath, SANDBOX_BUNDLE);
     sandboxBundleCache.set(execution_id, bundlePath);
