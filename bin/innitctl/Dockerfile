@@ -48,5 +48,8 @@ WORKDIR /run/$BIN
 COPY --from=builder /tmp/local-bin/* /usr/local/bin/
 COPY --chown=app:app ./configs /configs
 
-USER app
-ENTRYPOINT "/usr/local/bin/$BIN"
+RUN mkdir -p /output && \
+    chown -R app:app /output && \
+    chmod -R 775 /output
+
+ENTRYPOINT ["sh", "-c", "chown -R app:app /output; exec runuser -u app -- /usr/local/bin/innitctl \"$@\"", "--"]
