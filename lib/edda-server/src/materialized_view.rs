@@ -1164,7 +1164,8 @@ async fn build_deployment_mv_inner(
                     build_total_elapsed += build_duration;
                 }
                 Err(err) => {
-                    warn!(name = "deployment_mv_build_error", si.error.message = err.to_string(), kind = %kind, id = %mv_id);
+                    error!(name = "deployment_mv_build_error", si.error.message = err.to_string(), kind = %kind, id = %mv_id);
+                    return Err(err);
                 }
             }
         }
