@@ -112,7 +112,6 @@ pub fn routes(state: AppState) -> Router {
 fn v1_routes() -> Router<AppState> {
     Router::new()
         .nest("/attribute", sdf_v1_routes_attribute::routes()) // ALL USED IN FUNC EDITOR
-        .nest("/change_set", sdf_v1_routes_change_sets::routes()) // SOME USED IN NEW UI
         .nest("/session", sdf_v1_routes_session::routes()) // ALL MIGHT BE USED IN NEWHOTNESS
         .nest("/ws", sdf_v1_routes_ws::routes()) // ALL USED IN NEWHOTNESS, BUT CRDT IS ONLY USED IN THE CODEVIEWER AND WORKSPACES UPDATES MIGHT BE ABLE TO BE TRIMMED (E.G. COMPONENT POSITION)
         .nest("/module", sdf_v1_routes_module::routes()) // ALL USED IN CUSTOMIZE SCREEN

@@ -7582,7 +7582,6 @@ dependencies = [
  "sdf-extract",
  "sdf-test",
  "sdf-v1-routes-attribute",
- "sdf-v1-routes-change-sets",
  "sdf-v1-routes-module",
  "sdf-v1-routes-session",
  "sdf-v1-routes-variant",
@@ -7649,26 +7648,6 @@ dependencies = [
  "serde",
  "serde_json",
  "si-db",
- "telemetry",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "sdf-v1-routes-change-sets"
-version = "0.1.0"
-dependencies = [
- "axum 0.6.20",
- "dal",
- "hyper 0.14.32",
- "remain",
- "sdf-core",
- "sdf-extract",
- "serde",
- "serde_json",
- "si-db",
- "si-events",
- "si-frontend-types",
- "si-layer-cache",
  "telemetry",
  "thiserror 2.0.12",
 ]
