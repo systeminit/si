@@ -52,4 +52,4 @@ RUN mkdir -p /output && \
     chown -R app:app /output && \
     chmod -R 775 /output
 
-ENTRYPOINT ["sh", "-c", "chown -R app:app /output; exec runuser -u app -- /usr/local/bin/innitctl \"$@\"", "--"]
+ENTRYPOINT ["/usr/local/bin/innitctl"]
