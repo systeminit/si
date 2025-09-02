@@ -62,8 +62,7 @@ async fn app_state_middeware<B>(
 #[allow(clippy::too_many_arguments)]
 pub fn routes(state: AppState) -> Router {
     Router::new()
-        .nest("/api", v1_routes()) // INVESTIGATED!
-        .nest("/api/public", crate::service::public::routes(state.clone())) // INVESTIGATING NEXT...
+        .nest("/api", v1_routes())
         .nest("/api/v2", crate::service::v2::routes(state.clone()))
         .nest("/api/whoami", crate::service::whoami::routes())
         .layer(CompressionLayer::new())
