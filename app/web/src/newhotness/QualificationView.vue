@@ -4,11 +4,9 @@
       class="border-b border-neutral-600 text-sm flex flex-row items-center justify-between"
     >
       <span>{{ qualification.name }}</span>
-      <VButton
+      <NewButton
         v-if="qualification.avId"
         label="Rerun qualification"
-        size="xs"
-        tone="neutral"
         @click="enqueueDVU"
       />
     </div>
@@ -29,14 +27,12 @@
           <span class="grow">
             {{ qualification.message }}
           </span>
-          <VButton
+          <NewButton
             v-if="
               (qualification.avId || qualification.output) &&
               (qualification.message || output?.length)
             "
             :label="showDetails ? 'Hide Details' : 'View Details'"
-            size="xs"
-            tone="neutral"
             @click="toggleHidden"
           />
         </div>
@@ -68,7 +64,7 @@
 <script lang="ts" setup>
 import { computed, ref, toRef } from "vue";
 import * as _ from "lodash-es";
-import { LoadingMessage, VButton } from "@si/vue-lib/design-system";
+import { LoadingMessage, NewButton } from "@si/vue-lib/design-system";
 import StatusMessageBox from "@/newhotness/layout_components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import {

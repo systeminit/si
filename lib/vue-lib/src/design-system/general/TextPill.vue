@@ -3,7 +3,7 @@
     :class="
       clsx(
         'text-pill',
-        'border rounded-sm font-normal',
+        'border rounded-sm font-normal whitespace-nowrap',
         tighter ? 'leading-snug tracking-tighter px-3xs' : 'py-3xs px-2xs',
         mono && 'font-mono pt-3xs',
         variant === 'key' &&

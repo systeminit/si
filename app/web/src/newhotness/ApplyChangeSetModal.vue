@@ -70,39 +70,20 @@
           v-else
           class="flex flex-row w-full items-center justify-center gap-sm mt-xs"
         >
-          <VButton
-            label="Cancel"
-            tone="neutral"
-            pill="Esc"
-            @click="closeModalHandler"
-          />
-          <VButton
+          <NewButton label="Cancel" pill="Esc" @click="closeModalHandler" />
+          <NewButton
             v-if="approvalsEnabled"
             label="Request Approval"
-            :class="
-              clsx(
-                'grow !text-sm !border !cursor-pointer !px-xs',
-                themeClasses(
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                ),
-              )
-            "
+            tone="action"
+            class="grow"
             pill="Cmd + Enter"
             @click="debouncedRequestApproval"
           />
-          <VButton
+          <NewButton
             v-else
             label="Apply Change Set"
-            :class="
-              clsx(
-                'grow !text-sm !border !cursor-pointer !px-xs',
-                themeClasses(
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                ),
-              )
-            "
+            tone="action"
+            class="grow"
             loadingText="Applying Changes"
             :loading="applyInFlight"
             :disabled="!allowedToApplyWithApprovalsDisabled"
@@ -117,13 +98,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import {
-  PillCounter,
-  Icon,
-  VButton,
-  Modal,
-  themeClasses,
-} from "@si/vue-lib/design-system";
+import { PillCounter, Icon, NewButton, Modal } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRouter, useRoute } from "vue-router";
 import { computed, onBeforeUnmount, inject, onMounted, ref, watch } from "vue";

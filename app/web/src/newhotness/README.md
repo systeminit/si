@@ -53,7 +53,6 @@ There are a fair amount of new approaches in here. Look to them for inspiration!
 - Re-usable accordion style collapsible (with no extra html, its not even a "component" its just CSS) :chefskiss:
 - Scrolling contents (with no extra html)
 - Re-usable component for putting instruction text "inside" `VormInput` (stolen and refactored from `FloatingConnectionMenu`)
-- Extended `VButton` for the same `TextPill` instructions
 - Global / re-usable card definition and grid, CSS FTW :metal:
 - Placeholder routes for views and secrets
 - global keydown watcher and emitter for shortcuts and user actions

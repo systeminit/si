@@ -16,14 +16,12 @@
     :isLive="isLive"
   >
     <template #actions>
-      <VButton
+      <NewButton
         v-if="funcRun && funcRun.componentId && componentExists"
-        tone="neutral"
         label="Go to Component"
-        size="xs"
         @click="navigateToComponent"
       />
-      <VButton
+      <NewButton
         v-if="
           funcRun &&
           funcRun.actionId &&
@@ -33,10 +31,9 @@
         "
         tone="destructive"
         label="Remove"
-        size="xs"
         @click="removeAction"
       />
-      <VButton
+      <NewButton
         v-if="
           funcRun &&
           funcRun.actionId &&
@@ -44,7 +41,6 @@
         "
         tone="action"
         label="Retry"
-        size="xs"
         @click="retryAction"
       />
     </template>
@@ -55,7 +51,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, onBeforeUnmount, ref, inject, unref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
-import { VButton } from "@si/vue-lib/design-system";
+import { NewButton } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
 import { bifrost, useMakeKey, useMakeArgs } from "@/store/realtime/heimdall";

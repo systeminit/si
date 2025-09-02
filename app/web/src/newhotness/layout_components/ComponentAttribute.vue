@@ -98,7 +98,7 @@
                 @click="removeSubscription"
               />
             </div>
-            <VButton
+            <NewButton
               v-if="
                 attributeTree.isBuildable &&
                 !component.toDelete &&
@@ -112,14 +112,19 @@
               :tabIndex="
                 attributeTree.isBuildable && !component.toDelete ? 0 : undefined
               "
-              variant="ghost"
-              size="xs"
-              class="focus:outline focus:outline-action-500"
+              label="Connect"
+              :class="
+                clsx(
+                  'focus:outline',
+                  themeClasses(
+                    'focus:outline-action-500',
+                    'focus:outline-action-300',
+                  ),
+                )
+              "
               @click.stop.prevent="createSubscription"
               @keydown.tab.stop.prevent="onConnectButtonTab"
-            >
-              Connect
-            </VButton>
+            />
             <IconButton
               v-if="
                 attributeTree.isBuildable &&
@@ -208,7 +213,7 @@
             </keyForm.Field>
           </template>
           <div class="p-xs">
-            <VButton
+            <NewButton
               v-if="
                 !attributeTree.attributeValue.externalSources?.length &&
                 !props.forceReadOnly &&
@@ -217,16 +222,13 @@
               ref="addButtonRef"
               :class="
                 clsx(
-                  'font-normal',
+                  'focus:outline',
                   themeClasses(
-                    'focus:!border-action-500',
-                    'focus:!border-action-300',
+                    'focus:outline-action-500',
+                    'focus:outline-action-300',
                   ),
                 )
               "
-              tone="shade"
-              variant="ghost"
-              size="sm"
               :loading="addButtonBifrosting"
               :disabled="addButtonBifrosting"
               loadingIcon="loader"
@@ -235,7 +237,7 @@
               @keydown.tab.stop.prevent="onAddButtonTab"
             >
               + add "{{ displayName }}" item
-            </VButton>
+            </NewButton>
           </div>
         </div>
       </AttributeChildLayout>
@@ -275,7 +277,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
-import { VButton, IconButton, themeClasses } from "@si/vue-lib/design-system";
+import { IconButton, themeClasses, NewButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import {
@@ -523,8 +525,8 @@ const showingChildren = computed(
 );
 
 const headerRef = ref<HTMLDivElement>();
-const addButtonRef = ref<InstanceType<typeof VButton>>();
-const connectButtonRef = ref<InstanceType<typeof VButton>>();
+const addButtonRef = ref<InstanceType<typeof NewButton>>();
+const connectButtonRef = ref<InstanceType<typeof NewButton>>();
 const deleteButtonRef = ref<InstanceType<typeof IconButton>>();
 
 const handleTab = (e: KeyboardEvent, currentFocus?: HTMLElement) => {

@@ -70,11 +70,12 @@
             ),
           )
         "
-        ><Icon name="arrow-outward" size="xs" />
-        <TruncateWithTooltip>{{
-          defaultSubSourceValuesQuery.data.value.value
-        }}</TruncateWithTooltip></span
       >
+        <Icon name="arrow-outward" size="xs" />
+        <TruncateWithTooltip>
+          {{ defaultSubSourceValuesQuery.data.value.value }}
+        </TruncateWithTooltip>
+      </span>
     </div>
     <PillCounter :count="row.count" class="text-xs" />
   </div>

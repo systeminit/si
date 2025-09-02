@@ -1,3 +1,5 @@
+<!-- THIS COMPONENT IS DEPRECATED, DO NOT USE IT ANYMORE!-->
+
 <template>
   <component
     :is="htmlTagOrComponentType"
