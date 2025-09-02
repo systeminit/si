@@ -4,7 +4,10 @@ use axum::{
     extract::rejection::JsonRejection,
     http::StatusCode,
     response::IntoResponse,
-    routing::get,
+    routing::{
+        get,
+        post,
+    },
 };
 use dal::{
     FuncId,
@@ -12,7 +15,9 @@ use dal::{
     SchemaId,
     SchemaVariantId,
     TransactionsError,
+    func::authoring::FuncAuthoringError,
     prop::PropError,
+    schema::variant::authoring::VariantAuthoringError,
 };
 use frigg::FriggError;
 use serde::{
@@ -21,15 +26,32 @@ use serde::{
 };
 use si_frontend_mv_types::prop_schema::PropSchemaV1 as CachedPropSchemaV1;
 use thiserror::Error;
-use utoipa::ToSchema;
+use utoipa::{
+    self,
+    ToSchema,
+    openapi::schema::{
+        ArrayBuilder,
+        ObjectBuilder,
+        Schema,
+        Type,
+    },
+};
 
 use crate::AppState;
 
+pub mod create_action;
+pub mod create_authentication;
+pub mod create_codegen;
+pub mod create_management;
+pub mod create_qualification;
+pub mod create_schema;
 pub mod find_schema;
 pub mod get_default_variant;
 pub mod get_schema;
 pub mod get_variant;
 pub mod list_schemas;
+pub mod unlock_schema;
+// pub mod update_schema_variant;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -40,6 +62,14 @@ pub enum SchemaError {
     Decode(#[from] ulid::DecodeError),
     #[error("frigg error: {0}")]
     Frigg(#[from] FriggError),
+    #[error("func authoring error: {0}")]
+    FuncAuthoring(#[from] FuncAuthoringError),
+    #[error("trying to modify locked variant: {0}")]
+    LockedVariant(SchemaVariantId),
+    #[error("schema missing asset func id: {0}")]
+    MissingVariantFunc(SchemaVariantId),
+    #[error("changes not permitted on HEAD change set")]
+    NotPermittedOnHead,
     #[error("prop error: {0}")]
     Prop(#[from] Box<PropError>),
     #[error("schema error: {0}")]
@@ -58,6 +88,8 @@ pub enum SchemaError {
     Transactions(#[from] TransactionsError),
     #[error("validation error: {0}")]
     Validation(String),
+    #[error("variant authuring error: {0}")]
+    VariantAuthoring(#[from] VariantAuthoringError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }
@@ -126,18 +158,41 @@ impl From<JsonRejection> for SchemaError {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_schemas::list_schemas))
+        .route("/", post(create_schema::create_schema))
         .route("/find", get(find_schema::find_schema))
         .nest(
             "/:schema_id",
-            Router::new().route("/", get(get_schema::get_schema)).nest(
-                "/variant",
-                Router::new()
-                    .route("/default", get(get_default_variant::get_default_variant))
-                    .nest(
-                        "/:schema_variant_id",
-                        Router::new().route("/", get(get_variant::get_variant)),
-                    ),
-            ),
+            Router::new()
+                .route("/", get(get_schema::get_schema))
+                .route("/unlock", post(unlock_schema::unlock_schema))
+                .nest(
+                    "/variant",
+                    Router::new()
+                        .route("/default", get(get_default_variant::get_default_variant))
+                        .nest(
+                            "/:schema_variant_id",
+                            Router::new()
+                                .route("/", get(get_variant::get_variant))
+                                .nest(
+                                "/funcs",
+                                Router::new()
+                                    .route("/action", post(create_action::create_variant_action))
+                                    .route(
+                                        "/management",
+                                        post(create_management::create_variant_management),
+                                    )
+                                    .route(
+                                        "/authentication",
+                                        post(create_authentication::create_variant_authentication),
+                                    )
+                                    .route("/codegen", post(create_codegen::create_variant_codegen))
+                                    .route(
+                                        "/qualification",
+                                        post(create_qualification::create_variant_qualification),
+                                    ),
+                            ),
+                        ),
+                ),
         )
 }
 
@@ -544,4 +599,18 @@ impl IntoResponse for SchemaResponseV1 {
             }
         }
     }
+}
+
+#[allow(dead_code)]
+pub fn leaf_input_locations_schema() -> Schema {
+    Schema::Array(
+        ArrayBuilder::new()
+            .items(
+                ObjectBuilder::new()
+                    .schema_type(Type::String)
+                    .enum_values(Some(["code", "deletedAt", "domain", "resource", "secrets"]))
+                    .build(),
+            )
+            .build(),
+    )
 }

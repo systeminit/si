@@ -3,9 +3,15 @@ use axum::{
     extract::rejection::JsonRejection,
     http::StatusCode,
     response::IntoResponse,
-    routing::get,
+    routing::{
+        get,
+        put,
+    },
 };
-use dal::FuncId;
+use dal::{
+    FuncId,
+    func::authoring::FuncAuthoringError,
+};
 use serde::Deserialize;
 use si_id::FuncRunId;
 use si_layer_cache::LayerDbError;
@@ -16,18 +22,27 @@ use crate::AppState;
 
 pub mod get_func;
 pub mod get_func_run;
+pub mod update_func;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum FuncsError {
     #[error("funcs error: {0}")]
     Func(#[from] dal::FuncError),
+    #[error("func authoring error: {0}")]
+    FuncAuthoring(#[from] FuncAuthoringError),
     #[error("func not found: {0}")]
     FuncNotFound(FuncId),
     #[error("func run not found: {0}")]
     FuncRunNotFound(FuncRunId),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("trying to modify locked func: {0}")]
+    LockedFunc(FuncId),
+    #[error("changes not permitted on HEAD change set")]
+    NotPermittedOnHead,
+    #[error("transactions error: {0}")]
+    Transactions(#[from] dal::TransactionsError),
     #[error("validation error: {0}")]
     Validation(String),
 }
@@ -85,7 +100,9 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .nest(
             "/:func_id",
-            Router::new().route("/", get(get_func::get_func)),
+            Router::new()
+                .route("/", get(get_func::get_func))
+                .route("/", put(update_func::update_func)),
         )
         .nest(
             "/runs",
