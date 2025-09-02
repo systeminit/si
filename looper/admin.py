@@ -521,7 +521,7 @@ class SIAdminReporter:
             workspace = workspaces[0]
             workspace_name = workspace['name']
             change_set_num = 0
-            change_sets = [change_set for change_set in await self.list_change_sets_for_workspace(workspace_id) if not (change_set['status'] == 'Abandoned' or change_set['status'] == 'Applied')]
+            change_sets = [change_set for change_set in await self.list_change_sets_for_workspace(workspace_id) if not (change_set['status'] == 'Abandoned' or change_set['status'] == 'Applied') and change_set['name'] == 'HEAD']
             for change_set in change_sets:
                 change_set_num += 1
                 change_set_id = change_set['id']
@@ -544,7 +544,7 @@ class SIAdminReporter:
                     f.write(snapshot)
 
                 # Trigger the migration
-                await self.trigger_migration(workspace_id, change_set_id)
+                await self.trigger_dry_run_migration(workspace_id, change_set_id)
                 print(f"🎯 {workspace_num}/{len(workspace_ids)} Triggered migration for workspace {workspace_name} ({workspace_id}), {change_set['status']} changeset {change_set_num}/{len(change_sets)} {change_set_name} ({change_set_id}) ...")
 
                 # Give the system 10 seconds to settle after every 5 migrations
