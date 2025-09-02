@@ -72,6 +72,7 @@ async fn multiple_updates() {
             from_snapshot_address,
             to_snapshot_address,
             change_batch_addresses,
+            rebuild_changed_definitions: _,
         } => {
             let first_from = updates.first().unwrap().from_snapshot_address;
             let last_to = updates.last().unwrap().to_snapshot_address;
@@ -200,6 +201,15 @@ mod helpers {
                     (info, payload)
                 }
                 ChangeSetRequest::Rebuild(request) => {
+                    let mut info = ContentInfo::from(&request);
+                    let (content_type, payload) =
+                        request.to_vec().expect("failed to serialize request");
+                    info.content_type = content_type.into();
+                    let payload: Bytes = payload.into();
+
+                    (info, payload)
+                }
+                ChangeSetRequest::RebuildChangedDefinitions(request) => {
                     let mut info = ContentInfo::from(&request);
                     let (content_type, payload) =
                         request.to_vec().expect("failed to serialize request");

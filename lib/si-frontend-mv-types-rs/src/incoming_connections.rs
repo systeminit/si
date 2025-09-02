@@ -23,7 +23,16 @@ use crate::reference::{
 };
 
 #[derive(
-    Clone, Debug, Deserialize, Eq, PartialEq, Ord, PartialOrd, Serialize, FrontendChecksum,
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Serialize,
+    FrontendChecksum,
+    si_frontend_mv_types_macros::DefinitionChecksum,
 )]
 #[remain::sorted]
 #[serde(rename_all = "camelCase", tag = "kind")]
@@ -49,7 +58,17 @@ pub enum Connection {
 }
 
 #[derive(
-    Clone, Debug, Deserialize, Eq, PartialEq, Serialize, FrontendChecksum, FrontendObject, Refer, MV,
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    PartialEq,
+    Serialize,
+    FrontendChecksum,
+    FrontendObject,
+    Refer,
+    MV,
+    si_frontend_mv_types_macros::DefinitionChecksum,
 )]
 #[serde(rename_all = "camelCase")]
 #[mv(
@@ -62,7 +81,17 @@ pub struct IncomingConnections {
 }
 
 #[derive(
-    Clone, Debug, Deserialize, Eq, PartialEq, Serialize, FrontendChecksum, FrontendObject, Refer, MV,
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    PartialEq,
+    Serialize,
+    FrontendChecksum,
+    FrontendObject,
+    Refer,
+    MV,
+    si_frontend_mv_types_macros::DefinitionChecksum,
 )]
 #[serde(rename_all = "camelCase")]
 #[mv(
@@ -75,7 +104,17 @@ pub struct ManagementConnections {
 }
 
 #[derive(
-    Clone, Debug, Deserialize, Eq, PartialEq, Serialize, FrontendChecksum, FrontendObject, Refer, MV,
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    PartialEq,
+    Serialize,
+    FrontendChecksum,
+    FrontendObject,
+    Refer,
+    MV,
+    si_frontend_mv_types_macros::DefinitionChecksum,
 )]
 #[serde(rename_all = "camelCase")]
 #[mv(

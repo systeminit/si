@@ -362,13 +362,25 @@ mod handlers {
 
         match request {
             CompressedDeploymentRequest::Rebuild { .. } => {
-                // Rebuild
+                // Rebuild all deployment MVs
                 materialized_view::build_all_mvs_for_deployment(
                     ctx,
                     frigg,
                     edda_updates,
                     parallel_build_limit,
                     "explicit rebuild",
+                )
+                .await
+                .map_err(Into::into)
+            }
+            CompressedDeploymentRequest::RebuildChangedDefinitions { .. } => {
+                // Rebuild only deployment MVs with outdated definition checksums
+                materialized_view::build_outdated_mvs_for_deployment(
+                    ctx,
+                    frigg,
+                    edda_updates,
+                    parallel_build_limit,
+                    "selective rebuild based on definition checksums",
                 )
                 .await
                 .map_err(Into::into)

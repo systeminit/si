@@ -33,6 +33,7 @@ pub use prototype::{
     Eq,
     Clone,
     si_frontend_mv_types_macros::FrontendChecksum,
+    si_frontend_mv_types_macros::DefinitionChecksum,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ActionView {

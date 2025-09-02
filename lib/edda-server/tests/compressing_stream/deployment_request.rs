@@ -75,6 +75,9 @@ async fn multiple_rebuilds() {
         CompressedDeploymentRequest::Rebuild { src_requests_count } => {
             assert_eq!(requests.len(), src_requests_count);
         }
+        CompressedDeploymentRequest::RebuildChangedDefinitions { .. } => {
+            panic!("Received unexpected RebuildChangedDefinitions.");
+        }
     }
 }
 
@@ -107,6 +110,9 @@ mod helpers {
                     let payload: Bytes = payload.into();
 
                     (info, payload)
+                }
+                DeploymentRequest::RebuildChangedDefinitions { .. } => {
+                    panic!("Received unexpected RebuildChangeDefinitions.");
                 }
             };
 
