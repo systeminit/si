@@ -11,32 +11,6 @@
       "
       class="banner flex flex-col"
     >
-      <!-- No component banner -->
-      <template v-if="!component">
-        <div
-          :class="
-            clsx(
-              'flex flex-row items-center gap-xs px-sm py-xs',
-              themeClasses('bg-neutral-300', 'bg-neutral-600'),
-            )
-          "
-        >
-          <IconButton
-            tooltip="Close (Esc)"
-            tooltipPlacement="top"
-            class="border-0 mr-2em"
-            icon="x"
-            size="sm"
-            iconIdleTone="shade"
-            iconTone="shade"
-            @click="close"
-          />
-          <TruncateWithTooltip class="py-xs text-sm">
-            No component with id "{{ componentId }}" exists on this change set.
-          </TruncateWithTooltip>
-        </div>
-      </template>
-
       <!-- Status and deletion banners for existing components -->
       <template v-if="component">
         <!-- Status banner (template functions) -->
@@ -50,16 +24,15 @@
           :text="statusBannerText"
         >
           <template #right>
-            <VButton
+            <NewButton
               v-if="specialCaseManagementFuncRun"
               :label="seeFuncRunLabel"
-              tone="neutral"
               @click="navigateToFuncRunDetails(specialCaseManagementFuncRun.id)"
             />
           </template>
         </StatusBox>
 
-        <!-- Deletion banner (highest priority) -->
+        <!-- Deletion banner (second highest priority) -->
         <div
           v-else-if="component.toDelete"
           :class="
@@ -69,12 +42,10 @@
             )
           "
         >
-          <VButton
+          <NewButton
             v-tooltip="'Close (Esc)'"
             label="Marked for deletion"
-            size="sm"
-            tone="neutral"
-            class="font-normal !py-0 flex-none"
+            class="flex-none"
             @click="close"
           />
           <TruncateWithTooltip class="py-2xs text-sm">
@@ -108,20 +79,36 @@
             experience. To learn how to update them, check out our
             documentation.
           </TruncateWithTooltip>
-          <VButton
-            size="sm"
+          <NewButton
             label="Learn more"
-            :class="
-              clsx(
-                '!text-sm !border !cursor-pointer !px-xs',
-                themeClasses(
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                ),
-              )
-            "
+            tone="action"
             @click="openWorkspaceMigrationDocumentation"
           />
+        </div>
+      </template>
+      <!-- No component banner -->
+      <template v-else>
+        <div
+          :class="
+            clsx(
+              'flex flex-row items-center gap-xs px-sm py-xs',
+              themeClasses('bg-neutral-300', 'bg-neutral-600'),
+            )
+          "
+        >
+          <IconButton
+            tooltip="Close (Esc)"
+            tooltipPlacement="top"
+            class="border-0 mr-2em"
+            icon="x"
+            size="sm"
+            iconIdleTone="shade"
+            iconTone="shade"
+            @click="close"
+          />
+          <TruncateWithTooltip class="py-xs text-sm">
+            No component with id "{{ componentId }}" exists on this change set.
+          </TruncateWithTooltip>
         </div>
       </template>
     </div>
@@ -156,56 +143,29 @@
         >
           {{ component.name }}
         </TruncateWithTooltip>
-        <div class="ml-auto flex gap-xs">
-          <VButton
+        <div class="ml-auto flex flex-row gap-xs">
+          <NewButton
             v-if="component.toDelete"
             v-tooltip="'Restore (R)'"
-            size="sm"
             label="Restore"
+            tone="action"
             :loading="restoreLoading"
             loadingText="Restoring..."
             loadingIcon="loader"
             :disabled="restoreLoading"
-            :class="
-              clsx(
-                '!text-sm !border !cursor-pointer !px-xs',
-                themeClasses(
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                ),
-              )
-            "
             @click="restoreComponent"
           />
           <template v-else>
-            <VButton
+            <NewButton
               v-tooltip="'Erase (E)'"
-              size="sm"
               label="Erase"
-              :class="
-                clsx(
-                  '!text-sm !border !cursor-pointer !px-xs',
-                  themeClasses(
-                    '!text-neutral-900 !bg-destructive-100 !border-destructive-100 hover:!bg-white',
-                    '!text-[#F5CECE] !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
-                  ),
-                )
-              "
+              tone="destructive"
               @click="eraseComponent"
             />
-            <VButton
+            <NewButton
               v-tooltip="'Delete (⌫)'"
-              size="sm"
               label="Delete"
-              :class="
-                clsx(
-                  '!text-sm !border !cursor-pointer !px-xs',
-                  themeClasses(
-                    '!text-neutral-900 !bg-destructive-100 !border-destructive-100 hover:!bg-white',
-                    '!text-[#F5CECE] !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
-                  ),
-                )
-              "
+              tone="destructive"
               @click="deleteComponent"
             />
             <div
@@ -216,24 +176,14 @@
               "
               class="w-px h-6 bg-neutral-600 self-center"
             ></div>
-            <VButton
+            <NewButton
               v-if="isUpgradeable"
               v-tooltip="'Upgrade (U)'"
-              size="sm"
               :label="upgradeLoading ? 'Upgrading...' : 'Upgrade'"
               :icon="upgradeLoading ? 'loader' : 'bolt-outline'"
               :loading="upgradeLoading"
               :disabled="upgradeLoading"
               loadingIcon="loader"
-              :class="
-                clsx(
-                  '!text-sm !border !cursor-pointer !px-xs',
-                  themeClasses(
-                    '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100',
-                    '!text-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600',
-                  ),
-                )
-              "
               @click="upgradeComponent"
             />
           </template>
@@ -250,58 +200,40 @@
       >
         <CollapsingFlexItem ref="attrRef" :expandable="false" open>
           <template #header>
-            <div class="flex place-content-between w-full">
+            <div
+              class="flex flex-row items-center place-content-between w-full"
+            >
               <span class="text-sm flex items-center">Attributes</span>
-              <template v-if="specialCaseManagementFuncKind === 'import'">
-                <VButton
-                  size="xs"
-                  :label="
-                    showResourceInput
-                      ? 'Set attributes manually'
-                      : 'Import a Resource'
-                  "
-                  :class="
-                    clsx(
-                      '!text-sm !border !cursor-pointer !px-xs',
-                      themeClasses(
-                        '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
-                        '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
-                      ),
-                    )
-                  "
-                  @click.stop="
-                    () => {
-                      showResourceInput = !showResourceInput;
-                    }
-                  "
-                />
-              </template>
+              <NewButton
+                v-if="specialCaseManagementFuncKind === 'import'"
+                :label="
+                  showResourceInput
+                    ? 'Set attributes manually'
+                    : 'Import a Resource'
+                "
+                @click.stop="
+                  () => {
+                    showResourceInput = !showResourceInput;
+                  }
+                "
+              />
               <template
                 v-else-if="
                   specialCaseManagementFuncKind === 'runTemplate' &&
                   specialCaseManagementFunc?.id
                 "
               >
-                <VButton
-                  size="sm"
+                <NewButton
                   :label="
                     specialCaseManagementExecutionStatus === 'Failure'
                       ? 'Re-run template'
                       : 'Run template'
                   "
+                  tone="action"
                   :loading="specialCaseManagementExecutionStatus === 'Running'"
                   loadingText="Running template"
                   :disabled="specialCaseManagementExecutionStatus === 'Running'"
                   loadingIcon="loader"
-                  :class="
-                    clsx(
-                      '!text-sm !border !cursor-pointer !px-xs',
-                      themeClasses(
-                        '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                        '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                      ),
-                    )
-                  "
                   @click.stop="runMgmtFunc(specialCaseManagementFunc?.id)"
                 />
               </template>
@@ -398,18 +330,9 @@
             ><span class="text-sm">Subscriptions</span></template
           >
           <template #headerIcons>
-            <VButton
+            <NewButton
               label="Visualize Subscriptions"
-              size="xs"
-              :class="
-                clsx(
-                  '!text-sm !border !cursor-pointer !px-xs',
-                  themeClasses(
-                    '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
-                    '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
-                  ),
-                )
-              "
+              truncateText
               @click="navigateToMap"
             />
           </template>
@@ -434,19 +357,9 @@
         <CollapsingFlexItem expandable>
           <template #header><span class="text-sm">Resource</span></template>
           <template #headerIcons>
-            <VButton
+            <NewButton
               v-if="refreshEnabled"
-              size="xs"
               label="Refresh"
-              :class="
-                clsx(
-                  'font-normal p-0 h-md mt-[1px] [&>div]:top-[-2px] !text-sm !border !cursor-pointer !px-xs',
-                  themeClasses(
-                    '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
-                    '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
-                  ),
-                )
-              "
               :loading="refreshActionRunning"
               loadingIcon="loader"
               loadingText="Refreshing..."
@@ -493,11 +406,11 @@
 <script lang="ts" setup>
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import {
-  VButton,
   Icon,
   themeClasses,
   IconButton,
   TruncateWithTooltip,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import { computed, ref, onMounted, onBeforeUnmount, inject, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";

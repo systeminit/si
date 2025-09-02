@@ -40,7 +40,24 @@
         />
       </div>
 
-      <div class="w-full px-lg text-xl text-left">Empty State Icons</div>
+      <div class="w-full px-lg text-xl text-left">Button Garden (NEW UI)</div>
+      <div
+        class="w-full flex flex-row gap-sm flex-wrap px-lg pb-lg justify-start"
+      >
+        <NewButton label="Neutral" />
+        <NewButton label="Action" tone="action" />
+        <NewButton label="Warning" tone="warning" />
+        <NewButton label="Destructive" tone="destructive" />
+        <NewButton
+          v-tooltip="'Here is the tooltip'"
+          label="Disabled"
+          disabled
+        />
+      </div>
+
+      <div class="w-full px-lg text-xl text-left">
+        Empty State Icons (OLD UI)
+      </div>
       <div class="w-full flex flex-row flex-wrap px-lg pb-lg justify-start">
         <div v-for="(_, name) in BIG_ICONS" :key="name" class="basis-1/4">
           <EmptyStateIcon
@@ -229,6 +246,7 @@ import {
   LOGO_ICONS,
   ColorNamesArray,
   SPINNABLE_ICONS,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import { colors } from "@si/vue-lib";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";

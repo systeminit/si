@@ -36,23 +36,12 @@
     </form>
 
     <div class="flex gap-sm mt-sm">
-      <VButton
-        label="Cancel"
-        tone="shade"
-        variant="ghost"
-        @click="() => modalRef?.close()"
-      />
-      <VButton
-        :class="
-          clsx(
-            'flex-grow !text-sm !border !cursor-pointer !px-xs',
-            themeClasses(
-              '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-              '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-            ),
-          )
-        "
+      <NewButton label="Cancel" @click="() => modalRef?.close()" />
+      <NewButton
+        class="flex-grow"
+        icon="plus"
         label="Create"
+        tone="action"
         :loading="wForm.bifrosting.value"
         :disabled="wForm.bifrosting.value"
         @click="() => nameForm.handleSubmit()"
@@ -62,7 +51,12 @@
 </template>
 
 <script setup lang="ts">
-import { Modal, Icon, VButton, themeClasses } from "@si/vue-lib/design-system";
+import {
+  Modal,
+  Icon,
+  NewButton,
+  themeClasses,
+} from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import clsx from "clsx";

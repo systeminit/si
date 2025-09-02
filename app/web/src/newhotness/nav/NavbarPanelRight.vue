@@ -74,12 +74,7 @@
       <Stack>
         <VormInput v-model="entityKind" label="Entity Kind" type="text" />
         <VormInput v-model="entityId" label="ID" type="text" />
-        <VButton
-          label="Mjolnir!"
-          tone="action"
-          variant="soft"
-          @click="hammer"
-        />
+        <NewButton label="Mjolnir!" tone="action" @click="hammer" />
       </Stack>
     </Modal>
   </div>
@@ -90,9 +85,9 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   DropdownMenuItem,
   VormInput,
-  VButton,
   Modal,
   Stack,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import { URLPattern, describePattern } from "@si/vue-lib";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";

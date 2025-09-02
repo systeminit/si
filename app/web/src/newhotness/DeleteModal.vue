@@ -50,8 +50,8 @@
       </div>
 
       <div class="flex gap-sm">
-        <VButton label="Cancel" tone="shade" variant="ghost" @click="close" />
-        <VButton
+        <NewButton label="Cancel" @click="close" />
+        <NewButton
           class="flex-grow"
           icon="trash"
           label="Confirm"
@@ -67,8 +67,8 @@
 import * as _ from "lodash-es";
 import {
   Modal,
+  NewButton,
   useModal,
-  VButton,
   VormInput,
   VormInputOption,
 } from "@si/vue-lib/design-system";

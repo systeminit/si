@@ -3,7 +3,7 @@
     v-if="!closed"
     :class="
       clsx(
-        'flex flex-col gap-md border rounded-sm p-sm mt-xs mb-md leading-snug',
+        'flex flex-col gap-md border rounded-sm p-sm mt-xs leading-snug',
         themeClasses(
           'border-neutral-400 bg-neutral-200',
           'bg-transparent border-neutral-600',
@@ -35,27 +35,15 @@
           @click="closed = true"
         />
         <div v-else class="flex flex-row gap-sm">
-          <VButton
+          <NewButton
             label="Learn More"
-            tone="neutral"
-            size="sm"
             href="https://docs.systeminit.com/tutorials/getting-started"
             target="_blank"
           />
-          <VButton
+          <NewButton
             aria-label="Go to Onboarding"
             label="Get started"
             tone="action"
-            size="sm"
-            :class="
-              clsx(
-                '!text-sm !border !cursor-pointer !px-xs',
-                themeClasses(
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                  '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                ),
-              )
-            "
             @click="ctx.reopenOnboarding"
           />
         </div>
@@ -85,7 +73,7 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { Icon, themeClasses, VButton } from "@si/vue-lib/design-system";
+import { Icon, NewButton, themeClasses } from "@si/vue-lib/design-system";
 import { useLocalStorage } from "@vueuse/core";
 import { computed } from "vue";
 import { useContext } from "@/newhotness/logic_composables/context";

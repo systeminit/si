@@ -5,7 +5,7 @@
   >
     <div class="flex flex-row items-center justify-between w-full px-sm py-xs">
       <SiLogo class="block h-md w-md flex-none" />
-      <VButton
+      <NewButton
         aria-label="Skip Onboarding"
         class="text-neutral-400 hover:text-white font-normal"
         label="Skip"
@@ -139,12 +139,15 @@
                           )
                         "
                         placeholder="***"
+                        data-lpignore="true"
+                        data-1p-ignore
+                        data-bwignore
+                        data-form-type="other"
                         @paste="(ev: ClipboardEvent) => tryMatchOnPaste(ev)"
                       />
-                      <VButton
+                      <!-- TODO(Wendy+Victor) - let's get this working, see SecretInput for an example -->
+                      <NewButton
                         icon="eye"
-                        variant="ghost"
-                        size="xs"
                         class="hidden"
                         @click="toggleVisibility(field)"
                       />
@@ -211,10 +214,9 @@
               </div>
             </template>
             <template #footer>
-              <VButton
+              <NewButton
                 :label="initializeApiError ? 'Retry' : 'Next'"
-                size="xs"
-                class="!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC] rounded-sm"
+                tone="action"
                 :disabled="!formHasValues"
                 @click="
                   aiTutorialAreaRef?.open();
@@ -268,19 +270,15 @@
               </div>
             </template>
             <template #footer>
-              <VButton
+              <NewButton
                 label="Previous"
                 tone="neutral"
-                size="xs"
-                class="!text-neutral-100 !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 rounded-sm"
                 @click="userInputAreaRef?.open()"
               />
-              <VButton
+              <NewButton
                 label="Done"
                 tone="action"
-                size="xs"
                 :disabled="!initializeRequestSentAndSuccessful"
-                class="!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC] rounded-sm"
                 @click="handleDoneClick()"
               />
             </template>
@@ -295,7 +293,7 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import clsx from "clsx";
 import { sleep } from "@si/ts-lib/src/async-sleep";
-import { ErrorMessage, Icon, VButton } from "@si/vue-lib/design-system";
+import { ErrorMessage, Icon, NewButton } from "@si/vue-lib/design-system";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import * as _ from "lodash-es";
 import OnboardingCollapsingArea from "@/newhotness/OnboardingCollapsingArea.vue";

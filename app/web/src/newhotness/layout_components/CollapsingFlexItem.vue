@@ -44,10 +44,10 @@
         size="sm"
       />
       <slot name="header" />
-      <div class="ml-auto" />
+      <div v-if="$slots.headerIcons || showExpandButton" class="ml-auto" />
       <slot name="headerIcons" />
       <IconButton
-        v-if="expandable && showOpen && !disableCollapse"
+        v-if="showExpandButton"
         tooltip="Expand"
         tooltipPlacement="top"
         size="xs"
@@ -130,6 +130,10 @@ const toggleOpen = () => {
   emit("toggle");
   openState.toggle();
 };
+
+const showExpandButton = computed(
+  () => props.expandable && showOpen.value && !props.disableCollapse,
+);
 
 defineExpose({
   openState,

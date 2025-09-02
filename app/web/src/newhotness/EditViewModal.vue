@@ -65,67 +65,18 @@
     </div>
 
     <div class="flex gap-sm mt-sm">
-      <div v-tooltip="tooltipText">
-        <VButton
-          label="Delete View"
-          :class="
-            clsx(
-              '!text-sm !border !px-xs !font-normal',
-              canDeleteView === 'yes'
-                ? '!cursor-pointer'
-                : '!cursor-not-allowed',
-              canDeleteView === 'yes'
-                ? themeClasses(
-                    '!text-neutral-900 !bg-destructive-100 !border-destructive-100 hover:!bg-white',
-                    '!text-[#F5CECE] !bg-[#341C1C] !border-[#A93232] hover:!bg-[#562E2E]',
-                  )
-                : themeClasses(
-                    '!text-neutral-500 !bg-neutral-200 !border-neutral-300',
-                    '!text-neutral-500 !bg-neutral-700 !border-neutral-600',
-                  ),
-            )
-          "
-          :disabled="canDeleteView !== 'yes'"
-          :loading="canDeleteView === 'loading'"
-          @click="deleteView"
-        />
-      </div>
+      <NewButton
+        v-tooltip="tooltipText"
+        label="Delete View"
+        :disabled="canDeleteView !== 'yes'"
+        :loading="canDeleteView === 'loading'"
+        @click="deleteView"
+      />
       <div class="flex gap-sm ml-auto">
-        <VButton
-          size="xs"
-          :class="
-            clsx(
-              '!text-sm !border !cursor-pointer !px-xs !font-normal flex items-center gap-sm',
-              themeClasses(
-                '!text-neutral-900 !bg-neutral-200 !border-neutral-400 hover:!bg-neutral-100 hover:!border-neutral-600',
-                '!text-si-white !bg-neutral-700 !border-neutral-600 hover:!bg-neutral-600 hover:!border-neutral-600',
-              ),
-            )
-          "
-          @click="() => modalRef?.close()"
-        >
-          <span>Cancel </span>
-          <span
-            :class="
-              clsx(
-                'text-xs px-2xs py-3xs border rounded font-mono',
-                themeClasses('border-neutral-500', 'border-neutral-500'),
-              )
-            "
-            >ESC</span
-          >
-        </VButton>
-        <VButton
-          :class="
-            clsx(
-              '!text-sm !border !cursor-pointer !px-xs !font-normal',
-              themeClasses(
-                '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-                '!text-neutral-100 !bg-[#1264BF] !border-[#318AED] hover:!bg-[#2583EC]',
-              ),
-            )
-          "
+        <NewButton label="Cancel" pill="ESC" @click="() => modalRef?.close()" />
+        <NewButton
           label="Done"
+          tone="action"
           :loading="wForm.bifrosting.value"
           :disabled="wForm.bifrosting.value"
           @click="() => nameForm.handleSubmit()"
@@ -136,7 +87,12 @@
 </template>
 
 <script setup lang="ts">
-import { VButton, Modal, Icon, themeClasses } from "@si/vue-lib/design-system";
+import {
+  Modal,
+  Icon,
+  themeClasses,
+  NewButton,
+} from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import clsx from "clsx";
 import { useRoute } from "vue-router";

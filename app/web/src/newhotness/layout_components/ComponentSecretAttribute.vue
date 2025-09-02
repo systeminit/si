@@ -63,7 +63,7 @@
             </secretForm.Field>
           </li>
           <!-- TODO(Wendy) - figure out tabbing for buttons -->
-          <VButton
+          <NewButton
             :label="attributeTree.secret ? 'Replace Secret' : 'Add Secret'"
             :loading="wForm.bifrosting.value"
             loadingText="Saving Secret"
@@ -124,7 +124,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
-import { themeClasses, VButton } from "@si/vue-lib/design-system";
+import { NewButton, themeClasses } from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
 import {
