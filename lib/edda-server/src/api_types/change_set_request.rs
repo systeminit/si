@@ -13,6 +13,7 @@ use edda_core::api_types::{
     Negotiate,
     NegotiateError,
     new_change_set_request::NewChangeSetRequest,
+    rebuild_changed_definitions_request::RebuildChangedDefinitionsRequest,
     rebuild_request::RebuildRequest,
     update_request::UpdateRequest,
 };
@@ -36,6 +37,7 @@ pub enum ChangeSetRequest {
     NewChangeSet(NewChangeSetRequest),
     Update(UpdateRequest),
     Rebuild(RebuildRequest),
+    RebuildChangedDefinitions(RebuildChangedDefinitionsRequest),
 }
 
 impl Negotiate for ChangeSetRequest {
@@ -54,6 +56,11 @@ impl Negotiate for ChangeSetRequest {
             RebuildRequest::MESSAGE_TYPE => Ok(ChangeSetRequest::Rebuild(
                 RebuildRequest::negotiate(content_info, bytes)?,
             )),
+            RebuildChangedDefinitionsRequest::MESSAGE_TYPE => {
+                Ok(ChangeSetRequest::RebuildChangedDefinitions(
+                    RebuildChangedDefinitionsRequest::negotiate(content_info, bytes)?,
+                ))
+            }
             NewChangeSetRequest::MESSAGE_TYPE => Ok(ChangeSetRequest::NewChangeSet(
                 NewChangeSetRequest::negotiate(content_info, bytes)?,
             )),
@@ -76,6 +83,9 @@ pub enum CompressedChangeSetRequest {
     },
     // use option<index checksum> as idempotency key?
     Rebuild {
+        src_requests_count: usize,
+    },
+    RebuildChangedDefinitions {
         src_requests_count: usize,
     },
     Update {
@@ -135,6 +145,7 @@ impl CompressedChangeSetRequest {
                 src_requests_count, ..
             }
             | Self::Rebuild { src_requests_count }
+            | Self::RebuildChangedDefinitions { src_requests_count }
             | Self::Update {
                 src_requests_count, ..
             } => *src_requests_count,
@@ -182,6 +193,13 @@ impl CompressedChangeSetRequest {
             // `cr_tc05_`
             Ok(Self::Rebuild { src_requests_count })
         }
+        // If all requests are RebuildChangedDefinitions, then return a single one
+        else if requests
+            .iter()
+            .all(|request| matches!(request, ChangeSetRequest::RebuildChangedDefinitions(_)))
+        {
+            Ok(Self::RebuildChangedDefinitions { src_requests_count })
+        }
         // If all requests are updates, assert it's a contiguous series (i.e. last `to` is current
         // `from`, etc.)
         else if requests
@@ -193,94 +211,42 @@ impl CompressedChangeSetRequest {
             // `cr_tc08_`
             Self::all_updates(requests, src_requests_count)
         }
+        // If all requests are only updates and rebuild changed definitions, merge them
+        else if requests.iter().all(|request| {
+            matches!(
+                request,
+                ChangeSetRequest::Update(_) | ChangeSetRequest::RebuildChangedDefinitions(_)
+            )
+        }) {
+            // Filter out only the update requests
+            let update_requests: VecDeque<_> = requests
+                .into_iter()
+                .filter(|request| matches!(request, ChangeSetRequest::Update(_)))
+                .collect();
+
+            // Process the updates
+            Self::all_updates(update_requests, src_requests_count)
+        }
         // All requests are of at least two kinds
         else {
-            // Pop first element off list
-            let first = requests.pop_front().expect("vec is non-empty");
+            // Check if we have mixed rebuild types and prioritize full rebuild
+            let has_rebuild = requests
+                .iter()
+                .any(|r| matches!(r, ChangeSetRequest::Rebuild(_)));
+            let has_rebuild_changed_definitions = requests
+                .iter()
+                .any(|r| matches!(r, ChangeSetRequest::RebuildChangedDefinitions(_)));
 
-            match first {
-                ChangeSetRequest::NewChangeSet(first) => {
-                    // If remaining list is empty, return new change set
-                    if requests.is_empty() {
-                        // no test as covered by above branches
-                        Ok(Self::NewChangeSet {
-                            src_requests_count,
-                            base_change_set_id: first.base_change_set_id,
-                            new_change_set_id: first.new_change_set_id,
-                            to_snapshot_address: first.to_snapshot_address,
-                            change_batch_addresses: vec![],
-                        })
-                    }
-                    // If all remaining requests are updates, assert it's a contiguous series (i.e.
-                    // last `to` is current `from`, etc.)
-                    else if requests
-                        .iter()
-                        .all(|request| matches!(request, ChangeSetRequest::Update(_)))
-                    {
-                        match Self::all_updates(requests, src_requests_count)? {
-                            // If result was new change set, return first one (note: this shouldn't
-                            // be a valid code path)
-                            Self::NewChangeSet { .. } => {
-                                // no test as covered by above branches
-                                Ok(Self::NewChangeSet {
-                                    src_requests_count,
-                                    base_change_set_id: first.base_change_set_id,
-                                    new_change_set_id: first.new_change_set_id,
-                                    to_snapshot_address: first.to_snapshot_address,
-                                    change_batch_addresses: vec![],
-                                })
-                            }
-                            // Remaining updates were discontiguous, return rebuild
-                            Self::Rebuild { src_requests_count } => {
-                                // `cr_tc09_`
-                                Ok(Self::Rebuild { src_requests_count })
-                            }
-                            // Remaining updates were contigous, return new change set with updates
-                            Self::Update {
-                                change_batch_addresses,
-                                ..
-                            } => {
-                                // `cr_tc10_`
-                                Ok(Self::NewChangeSet {
-                                    src_requests_count,
-                                    base_change_set_id: first.base_change_set_id,
-                                    new_change_set_id: first.new_change_set_id,
-                                    to_snapshot_address: first.to_snapshot_address,
-                                    change_batch_addresses,
-                                })
-                            }
-                        }
-                    }
-                    // If all remainin requests are rebuilds
-                    else if requests
-                        .iter()
-                        .all(|request| matches!(request, ChangeSetRequest::Rebuild(_)))
-                    {
-                        // Return new change set and drop the rebuilds.
-                        //
-                        // Remember: the consumer of this request will fall back to a rebuild if
-                        // the index copy fails
-                        //
-                        // `cr_tc11_`
-                        // `cr_tc12_`
-                        Ok(Self::NewChangeSet {
-                            src_requests_count,
-                            base_change_set_id: first.base_change_set_id,
-                            new_change_set_id: first.new_change_set_id,
-                            to_snapshot_address: first.to_snapshot_address,
-                            change_batch_addresses: vec![],
-                        })
-                    }
-                    // Remaining requests are of at least two kinds
-                    else {
-                        // Filter out new change sets & rebuild and look at updates
-                        requests.retain(|request| match request {
-                            ChangeSetRequest::Update(_) => true,
-                            ChangeSetRequest::NewChangeSet(_) | ChangeSetRequest::Rebuild(_) => {
-                                false
-                            }
-                        });
+            if has_rebuild && has_rebuild_changed_definitions {
+                // If we have both types of rebuild requests, prioritize full rebuild
+                Ok(Self::Rebuild { src_requests_count })
+            } else {
+                // Pop first element off list
+                let first = requests.pop_front().expect("vec is non-empty");
 
+                match first {
+                    ChangeSetRequest::NewChangeSet(first) => {
+                        // If remaining list is empty, return new change set
                         if requests.is_empty() {
                             // no test as covered by above branches
                             Ok(Self::NewChangeSet {
@@ -290,10 +256,16 @@ impl CompressedChangeSetRequest {
                                 to_snapshot_address: first.to_snapshot_address,
                                 change_batch_addresses: vec![],
                             })
-                        } else {
+                        }
+                        // If all remaining requests are updates, assert it's a contiguous series (i.e.
+                        // last `to` is current `from`, etc.)
+                        else if requests
+                            .iter()
+                            .all(|request| matches!(request, ChangeSetRequest::Update(_)))
+                        {
                             match Self::all_updates(requests, src_requests_count)? {
-                                // If result was new change set, return first one (note: this
-                                // shouldn't be a valid code path)
+                                // If result was new change set, return first one (note: this shouldn't
+                                // be a valid code path)
                                 Self::NewChangeSet { .. } => {
                                     // no test as covered by above branches
                                     Ok(Self::NewChangeSet {
@@ -304,32 +276,21 @@ impl CompressedChangeSetRequest {
                                         change_batch_addresses: vec![],
                                     })
                                 }
-                                // Remaining updates were discontiguous, return new change set and
-                                // drop the rebuilds
-                                //
-                                // Remember: the consumer of this request will fall back to a
-                                // rebuild if the index copy fails
+                                // Remaining updates were discontiguous, return rebuild
                                 Self::Rebuild { src_requests_count } => {
-                                    // `cr_tc13_`
-                                    // `cr_tc14_`
-                                    Ok(Self::NewChangeSet {
-                                        src_requests_count,
-                                        base_change_set_id: first.base_change_set_id,
-                                        new_change_set_id: first.new_change_set_id,
-                                        to_snapshot_address: first.to_snapshot_address,
-                                        change_batch_addresses: vec![],
-                                    })
+                                    // `cr_tc09_`
+                                    Ok(Self::Rebuild { src_requests_count })
                                 }
-                                // Remaining updates were contigous, return new change set with
-                                // updates
+                                // This shouldn't happen as all_updates only returns the above variants
+                                Self::RebuildChangedDefinitions { src_requests_count } => {
+                                    Ok(Self::Rebuild { src_requests_count })
+                                }
+                                // Remaining updates were contigous, return new change set with updates
                                 Self::Update {
                                     change_batch_addresses,
                                     ..
                                 } => {
-                                    // `cr_tc15_`
-                                    // `cr_tc16_`
-                                    // `cr_tc32_`
-                                    // `cr_tc33_`
+                                    // `cr_tc10_`
                                     Ok(Self::NewChangeSet {
                                         src_requests_count,
                                         base_change_set_id: first.base_change_set_id,
@@ -340,149 +301,278 @@ impl CompressedChangeSetRequest {
                                 }
                             }
                         }
-                    }
-                }
-                ChangeSetRequest::Rebuild(_first) => {
-                    // If remaining list is empty, return rebuild
-                    if requests.is_empty() {
-                        // no test as covered by above branches
-                        Ok(Self::Rebuild { src_requests_count })
-                    }
-                    // If all remaining requests are updates, assert it's a contiguous series (i.e.
-                    // last `to` is current `from`, etc.)
-                    else if requests
-                        .iter()
-                        .all(|request| matches!(request, ChangeSetRequest::Update(_)))
-                    {
-                        match Self::all_updates(requests, src_requests_count)? {
-                            // If result was new change set, return the new change set (the
-                            // rebuild/new change set requests might have arrived out of order)
+                        // If all remainin requests are rebuilds
+                        else if requests
+                            .iter()
+                            .all(|request| matches!(request, ChangeSetRequest::Rebuild(_)))
+                        {
+                            // Return new change set and drop the rebuilds.
                             //
-                            // (note: this shouldn't be a valid code path)
-                            Self::NewChangeSet {
+                            // Remember: the consumer of this request will fall back to a rebuild if
+                            // the index copy fails
+                            //
+                            // `cr_tc11_`
+                            // `cr_tc12_`
+                            Ok(Self::NewChangeSet {
                                 src_requests_count,
-                                base_change_set_id,
-                                new_change_set_id,
-                                to_snapshot_address,
-                                change_batch_addresses,
-                            } => {
-                                // not reachable as a code path
+                                base_change_set_id: first.base_change_set_id,
+                                new_change_set_id: first.new_change_set_id,
+                                to_snapshot_address: first.to_snapshot_address,
+                                change_batch_addresses: vec![],
+                            })
+                        }
+                        // Remaining requests are of at least two kinds
+                        else {
+                            // Filter out new change sets & rebuild and look at updates
+                            requests.retain(|request| match request {
+                                ChangeSetRequest::Update(_) => true,
+                                ChangeSetRequest::NewChangeSet(_)
+                                | ChangeSetRequest::Rebuild(_)
+                                | ChangeSetRequest::RebuildChangedDefinitions(_) => false,
+                            });
+
+                            if requests.is_empty() {
+                                // no test as covered by above branches
                                 Ok(Self::NewChangeSet {
+                                    src_requests_count,
+                                    base_change_set_id: first.base_change_set_id,
+                                    new_change_set_id: first.new_change_set_id,
+                                    to_snapshot_address: first.to_snapshot_address,
+                                    change_batch_addresses: vec![],
+                                })
+                            } else {
+                                match Self::all_updates(requests, src_requests_count)? {
+                                    // If result was new change set, return first one (note: this
+                                    // shouldn't be a valid code path)
+                                    Self::NewChangeSet { .. } => {
+                                        // no test as covered by above branches
+                                        Ok(Self::NewChangeSet {
+                                            src_requests_count,
+                                            base_change_set_id: first.base_change_set_id,
+                                            new_change_set_id: first.new_change_set_id,
+                                            to_snapshot_address: first.to_snapshot_address,
+                                            change_batch_addresses: vec![],
+                                        })
+                                    }
+                                    // Remaining updates were discontiguous, return new change set and
+                                    // drop the rebuilds
+                                    //
+                                    // Remember: the consumer of this request will fall back to a
+                                    // rebuild if the index copy fails
+                                    Self::Rebuild { src_requests_count } => {
+                                        // `cr_tc13_`
+                                        // `cr_tc14_`
+                                        Ok(Self::NewChangeSet {
+                                            src_requests_count,
+                                            base_change_set_id: first.base_change_set_id,
+                                            new_change_set_id: first.new_change_set_id,
+                                            to_snapshot_address: first.to_snapshot_address,
+                                            change_batch_addresses: vec![],
+                                        })
+                                    }
+                                    // This shouldn't happen as all_updates only returns the above variants
+                                    Self::RebuildChangedDefinitions { src_requests_count } => {
+                                        Ok(Self::NewChangeSet {
+                                            src_requests_count,
+                                            base_change_set_id: first.base_change_set_id,
+                                            new_change_set_id: first.new_change_set_id,
+                                            to_snapshot_address: first.to_snapshot_address,
+                                            change_batch_addresses: vec![],
+                                        })
+                                    }
+                                    // Remaining updates were contigous, return new change set with
+                                    // updates
+                                    Self::Update {
+                                        change_batch_addresses,
+                                        ..
+                                    } => {
+                                        // `cr_tc15_`
+                                        // `cr_tc16_`
+                                        // `cr_tc32_`
+                                        // `cr_tc33_`
+                                        Ok(Self::NewChangeSet {
+                                            src_requests_count,
+                                            base_change_set_id: first.base_change_set_id,
+                                            new_change_set_id: first.new_change_set_id,
+                                            to_snapshot_address: first.to_snapshot_address,
+                                            change_batch_addresses,
+                                        })
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ChangeSetRequest::Rebuild(_first) => {
+                        // If remaining list is empty, return rebuild
+                        if requests.is_empty() {
+                            // no test as covered by above branches
+                            Ok(Self::Rebuild { src_requests_count })
+                        }
+                        // If all remaining requests are updates, assert it's a contiguous series (i.e.
+                        // last `to` is current `from`, etc.)
+                        else if requests
+                            .iter()
+                            .all(|request| matches!(request, ChangeSetRequest::Update(_)))
+                        {
+                            match Self::all_updates(requests, src_requests_count)? {
+                                // If result was new change set, return the new change set (the
+                                // rebuild/new change set requests might have arrived out of order)
+                                //
+                                // (note: this shouldn't be a valid code path)
+                                Self::NewChangeSet {
                                     src_requests_count,
                                     base_change_set_id,
                                     new_change_set_id,
                                     to_snapshot_address,
                                     change_batch_addresses,
-                                })
-                            }
-                            // Remaining updates were discontiguous, return rebuild
-                            Self::Rebuild { src_requests_count } => {
-                                // `cr_tc17_`
-                                Ok(Self::Rebuild { src_requests_count })
-                            }
-                            // Remaining updates were contigous, but there was still a rebuild, so
-                            // return rebuild
-                            Self::Update {
-                                src_requests_count, ..
-                            } => {
-                                // `cr_tc18_`
-                                Ok(Self::Rebuild { src_requests_count })
+                                } => {
+                                    // not reachable as a code path
+                                    Ok(Self::NewChangeSet {
+                                        src_requests_count,
+                                        base_change_set_id,
+                                        new_change_set_id,
+                                        to_snapshot_address,
+                                        change_batch_addresses,
+                                    })
+                                }
+                                // Remaining updates were discontiguous, return rebuild
+                                Self::Rebuild { src_requests_count } => {
+                                    // `cr_tc17_`
+                                    Ok(Self::Rebuild { src_requests_count })
+                                }
+                                // This shouldn't happen as all_updates only returns the above variants
+                                Self::RebuildChangedDefinitions { src_requests_count } => {
+                                    Ok(Self::Rebuild { src_requests_count })
+                                }
+                                // Remaining updates were contigous, but there was still a rebuild, so
+                                // return rebuild
+                                Self::Update {
+                                    src_requests_count, ..
+                                } => {
+                                    // `cr_tc18_`
+                                    Ok(Self::Rebuild { src_requests_count })
+                                }
                             }
                         }
-                    }
-                    // If all remaining requests are new change sets
-                    else if requests
-                        .iter()
-                        .all(|request| matches!(request, ChangeSetRequest::NewChangeSet(_)))
-                    {
-                        // Return first new change set.
-                        //
-                        // Remember: the consumer of this request will fall back to a rebuild if
-                        // the index copy fails
-                        //
-                        let first_ncsr = match requests.pop_front().expect("vec is non-empty") {
-                            ChangeSetRequest::NewChangeSet(request) => request,
-                            ChangeSetRequest::Update(_) | ChangeSetRequest::Rebuild(_) => {
-                                unreachable!("vec popluated only with new change set requests")
-                            }
-                        };
+                        // If all remaining requests are new change sets
+                        else if requests
+                            .iter()
+                            .all(|request| matches!(request, ChangeSetRequest::NewChangeSet(_)))
+                        {
+                            // Return first new change set.
+                            //
+                            // Remember: the consumer of this request will fall back to a rebuild if
+                            // the index copy fails
+                            //
+                            let first_ncsr = match requests.pop_front().expect("vec is non-empty") {
+                                ChangeSetRequest::NewChangeSet(request) => request,
+                                ChangeSetRequest::Update(_)
+                                | ChangeSetRequest::Rebuild(_)
+                                | ChangeSetRequest::RebuildChangedDefinitions(_) => {
+                                    unreachable!("vec populated only with new change set requests")
+                                }
+                            };
 
-                        // `cr_tc19_`
-                        // `cr_tc20_`
-                        Ok(Self::NewChangeSet {
-                            src_requests_count,
-                            base_change_set_id: first_ncsr.base_change_set_id,
-                            new_change_set_id: first_ncsr.new_change_set_id,
-                            to_snapshot_address: first_ncsr.to_snapshot_address,
-                            change_batch_addresses: vec![],
-                        })
-                    }
-                    // Remaining requests are of at least two kinds
-                    //
-                    // Now we're in to "nonsense" territory, so rebuild
-                    else {
-                        // `cr_tc21_`
-                        // `cr_tc22_`
-                        Ok(Self::Rebuild { src_requests_count })
-                    }
-                }
-                ChangeSetRequest::Update(first) => {
-                    // If remaining list is empty, return update
-                    if requests.is_empty() {
-                        // no test as covered by above branches
-                        Ok(Self::Update {
-                            src_requests_count,
-                            from_snapshot_address: first.from_snapshot_address,
-                            to_snapshot_address: first.to_snapshot_address,
-                            change_batch_addresses: vec![first.change_batch_address],
-                        })
-                    }
-                    // If all remaining requests are new change sets
-                    else if requests
-                        .iter()
-                        .all(|request| matches!(request, ChangeSetRequest::NewChangeSet(_)))
-                    {
-                        // Return first new change set.
+                            // `cr_tc19_`
+                            // `cr_tc20_`
+                            Ok(Self::NewChangeSet {
+                                src_requests_count,
+                                base_change_set_id: first_ncsr.base_change_set_id,
+                                new_change_set_id: first_ncsr.new_change_set_id,
+                                to_snapshot_address: first_ncsr.to_snapshot_address,
+                                change_batch_addresses: vec![],
+                            })
+                        }
+                        // Remaining requests are of at least two kinds
                         //
-                        // Remember: the consumer of this request will fall back to a rebuild if
-                        // the index copy fails
-                        //
-                        let first_ncsr = match requests.pop_front().expect("vec is non-empty") {
-                            ChangeSetRequest::NewChangeSet(request) => request,
-                            ChangeSetRequest::Update(_) | ChangeSetRequest::Rebuild(_) => {
-                                unreachable!("vec popluated only with new change set requests")
-                            }
-                        };
+                        // Now we're in to "nonsense" territory, so rebuild
+                        else {
+                            // `cr_tc21_`
+                            // `cr_tc22_`
+                            Ok(Self::Rebuild { src_requests_count })
+                        }
+                    }
+                    ChangeSetRequest::RebuildChangedDefinitions(_first) => {
+                        // If remaining list is empty, return RebuildChangedDefinitions
+                        if requests.is_empty() {
+                            Ok(Self::RebuildChangedDefinitions { src_requests_count })
+                        }
+                        // If there are any other requests mixed with RebuildChangedDefinitions,
+                        // prioritize full rebuild if any Rebuild requests are present
+                        else if requests
+                            .iter()
+                            .any(|request| matches!(request, ChangeSetRequest::Rebuild(_)))
+                        {
+                            Ok(Self::Rebuild { src_requests_count })
+                        }
+                        // Otherwise, treat similar to rebuild but return RebuildChangedDefinitions
+                        else {
+                            Ok(Self::RebuildChangedDefinitions { src_requests_count })
+                        }
+                    }
+                    ChangeSetRequest::Update(first) => {
+                        // If remaining list is empty, return update
+                        if requests.is_empty() {
+                            // no test as covered by above branches
+                            Ok(Self::Update {
+                                src_requests_count,
+                                from_snapshot_address: first.from_snapshot_address,
+                                to_snapshot_address: first.to_snapshot_address,
+                                change_batch_addresses: vec![first.change_batch_address],
+                            })
+                        }
+                        // If all remaining requests are new change sets
+                        else if requests
+                            .iter()
+                            .all(|request| matches!(request, ChangeSetRequest::NewChangeSet(_)))
+                        {
+                            // Return first new change set.
+                            //
+                            // Remember: the consumer of this request will fall back to a rebuild if
+                            // the index copy fails
+                            //
+                            let first_ncsr = match requests.pop_front().expect("vec is non-empty") {
+                                ChangeSetRequest::NewChangeSet(request) => request,
+                                ChangeSetRequest::Update(_)
+                                | ChangeSetRequest::Rebuild(_)
+                                | ChangeSetRequest::RebuildChangedDefinitions(_) => {
+                                    unreachable!("vec populated only with new change set requests")
+                                }
+                            };
 
-                        // `cr_tc23_`
-                        // `cr_tc24_`
-                        Ok(Self::NewChangeSet {
-                            src_requests_count,
-                            base_change_set_id: first_ncsr.base_change_set_id,
-                            new_change_set_id: first_ncsr.new_change_set_id,
-                            to_snapshot_address: first_ncsr.to_snapshot_address,
-                            change_batch_addresses: vec![first.change_batch_address],
-                        })
-                    }
-                    // If all remainin requests are rebuilds
-                    else if requests
-                        .iter()
-                        .all(|request| matches!(request, ChangeSetRequest::Rebuild(_)))
-                    {
-                        // `cr_tc25_`
-                        // `cr_tc26_`
-                        Ok(Self::Rebuild { src_requests_count })
-                    }
-                    // Remaining requests are of at least two kinds
-                    //
-                    // Now we're in to "nonsense" territory, so rebuild
-                    else {
-                        // `cr_tc27_`
-                        // `cr_tc28_`
-                        // `cr_tc29_`
-                        // `cr_tc30_`
-                        // `cr_tc31_`
-                        Ok(Self::Rebuild { src_requests_count })
+                            // `cr_tc23_`
+                            // `cr_tc24_`
+                            Ok(Self::NewChangeSet {
+                                src_requests_count,
+                                base_change_set_id: first_ncsr.base_change_set_id,
+                                new_change_set_id: first_ncsr.new_change_set_id,
+                                to_snapshot_address: first_ncsr.to_snapshot_address,
+                                change_batch_addresses: vec![first.change_batch_address],
+                            })
+                        }
+                        // If all remainin requests are rebuilds or rebuild changed definitions
+                        else if requests.iter().all(|request| {
+                            matches!(
+                                request,
+                                ChangeSetRequest::Rebuild(_)
+                                    | ChangeSetRequest::RebuildChangedDefinitions(_)
+                            )
+                        }) {
+                            // `cr_tc25_`
+                            // `cr_tc26_`
+                            Ok(Self::Rebuild { src_requests_count })
+                        }
+                        // Remaining requests are of at least two kinds
+                        //
+                        // Now we're in to "nonsense" territory, so rebuild
+                        else {
+                            // `cr_tc27_`
+                            // `cr_tc28_`
+                            // `cr_tc29_`
+                            // `cr_tc30_`
+                            // `cr_tc31_`
+                            Ok(Self::Rebuild { src_requests_count })
+                        }
                     }
                 }
             }
@@ -1546,6 +1636,132 @@ mod tests {
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
+    async fn cr_tc32_single_rebuild_changed_definitions() {
+        let inputs = vec![rebuild_changed_definitions_request()];
+        let requests: Vec<_> = inputs
+            .clone()
+            .into_iter()
+            .map(ChangeSetRequest::RebuildChangedDefinitions)
+            .collect();
+
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
+            .await
+            .expect("failed to compress requests");
+
+        match compressed {
+            CompressedChangeSetRequest::RebuildChangedDefinitions { src_requests_count } => {
+                assert_eq!(requests.len(), src_requests_count);
+            }
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
+    async fn cr_tc33_multiple_rebuild_changed_definitions() {
+        let inputs = vec![
+            rebuild_changed_definitions_request(),
+            rebuild_changed_definitions_request(),
+            rebuild_changed_definitions_request(),
+        ];
+        let requests: Vec<_> = inputs
+            .clone()
+            .into_iter()
+            .map(ChangeSetRequest::RebuildChangedDefinitions)
+            .collect();
+
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
+            .await
+            .expect("failed to compress requests");
+
+        match compressed {
+            CompressedChangeSetRequest::RebuildChangedDefinitions { src_requests_count } => {
+                assert_eq!(requests.len(), src_requests_count);
+            }
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
+    async fn cr_tc34_mixed_rebuild_and_rebuild_changed_definitions_prioritizes_full_rebuild() {
+        let inputs = vec![
+            ChangeSetRequest::RebuildChangedDefinitions(rebuild_changed_definitions_request()),
+            ChangeSetRequest::Rebuild(rebuild_request()),
+            ChangeSetRequest::RebuildChangedDefinitions(rebuild_changed_definitions_request()),
+        ];
+
+        let compressed = CompressedChangeSetRequest::compress_from_requests(inputs.clone())
+            .await
+            .expect("failed to compress requests");
+
+        // When we have both full rebuild and selective rebuild requests,
+        // prioritize the full rebuild
+        match compressed {
+            CompressedChangeSetRequest::Rebuild { src_requests_count } => {
+                assert_eq!(inputs.len(), src_requests_count);
+            }
+            _ => panic!("expected Rebuild variant for mixed requests, got: {compressed:?}"),
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
+    async fn cr_tc35_mixed_updates_and_rebuild_changed_definitions() {
+        let updates = contiguous_update_requests(2);
+        let requests = vec![
+            ChangeSetRequest::Update(updates[0].clone()),
+            ChangeSetRequest::RebuildChangedDefinitions(rebuild_changed_definitions_request()),
+            ChangeSetRequest::Update(updates[1].clone()),
+        ];
+
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
+            .await
+            .expect("failed to compress requests");
+
+        match compressed {
+            CompressedChangeSetRequest::Update {
+                src_requests_count,
+                from_snapshot_address,
+                to_snapshot_address,
+                change_batch_addresses,
+            } => {
+                let first_from = updates.first().unwrap().from_snapshot_address;
+                let last_to = updates.last().unwrap().to_snapshot_address;
+                let addresses: Vec<_> = updates.iter().map(|r| r.change_batch_address).collect();
+
+                assert_eq!(requests.len(), src_requests_count);
+                assert_eq!(first_from, from_snapshot_address);
+                assert_eq!(last_to, to_snapshot_address);
+                assert_eq!(addresses, change_batch_addresses);
+            }
+            _ => panic!("expected Update variant for mixed requests, got: {compressed:?}"),
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
+    async fn cr_tc36_only_rebuild_changed_definitions_no_updates() {
+        let requests = vec![
+            ChangeSetRequest::RebuildChangedDefinitions(rebuild_changed_definitions_request()),
+            ChangeSetRequest::RebuildChangedDefinitions(rebuild_changed_definitions_request()),
+        ];
+
+        let compressed = CompressedChangeSetRequest::compress_from_requests(requests.clone())
+            .await
+            .expect("failed to compress requests");
+
+        // Pure RebuildChangedDefinitions requests should still use the dedicated variant
+        match compressed {
+            CompressedChangeSetRequest::RebuildChangedDefinitions { src_requests_count } => {
+                assert_eq!(requests.len(), src_requests_count);
+            }
+            _ => panic!("expected RebuildChangedDefinitions variant, got: {compressed:?}"),
+        }
+    }
+
     mod helpers {
         use dal::{
             ChangeSetId,
@@ -1557,6 +1773,10 @@ mod tests {
             new_change_set_request::{
                 NewChangeSetRequest,
                 NewChangeSetRequestVCurrent,
+            },
+            rebuild_changed_definitions_request::{
+                RebuildChangedDefinitionsRequest,
+                RebuildChangedDefinitionsRequestV1,
             },
             rebuild_request::{
                 RebuildRequest,
@@ -1641,6 +1861,12 @@ mod tests {
 
         pub fn rebuild_request() -> RebuildRequest {
             RebuildRequest::new(RebuildRequestVCurrent {
+                id: RequestId::new(),
+            })
+        }
+
+        pub fn rebuild_changed_definitions_request() -> RebuildChangedDefinitionsRequest {
+            RebuildChangedDefinitionsRequest::new(RebuildChangedDefinitionsRequestV1 {
                 id: RequestId::new(),
             })
         }

@@ -19,7 +19,17 @@ use crate::{
 };
 
 // This type goes into the content store so cannot be re-ordered, only extended
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Display)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    Eq,
+    Display,
+    si_frontend_mv_types_macros::DefinitionChecksum,
+)]
 pub enum ValidationStatus {
     Pending,
     Error,
@@ -34,6 +44,7 @@ pub enum ValidationStatus {
     Clone,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 pub struct ValidationOutput {
@@ -48,6 +59,7 @@ pub struct ValidationOutput {
     Clone,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -65,6 +77,7 @@ pub struct ExternalSource {
     Deserialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -92,6 +105,7 @@ pub struct AttributeValue {
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
     si_frontend_mv_types_macros::FrontendObject,
     si_frontend_mv_types_macros::Refer,
@@ -118,6 +132,7 @@ pub struct AttributeTree {
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 pub struct AvTreeInfo {

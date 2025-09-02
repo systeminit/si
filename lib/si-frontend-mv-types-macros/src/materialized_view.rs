@@ -1,6 +1,9 @@
 use std::str::FromStr;
 
-use darling::FromAttributes;
+use darling::{
+    FromAttributes,
+    FromField,
+};
 use manyhow::{
     bail,
     emit,
@@ -27,6 +30,15 @@ struct MaterializedViewOptions {
     build_priority: Option<String>,
 }
 
+#[derive(Debug, Default, FromField)]
+#[darling(attributes(definition_checksum), default)]
+struct FieldOptions {
+    /// Marks a field as recursive, using field name + type string instead of recursive checksum
+    /// This prevents infinite loops during static initialization while maintaining schema change detection
+    #[darling(default)]
+    recursive_definition: bool,
+}
+
 pub fn derive_materialized_view(
     input: proc_macro::TokenStream,
     errors: &mut manyhow::Emitter,
@@ -46,20 +58,45 @@ pub fn derive_materialized_view(
 
     let mut definition_checksum_updates: Vec<TokenStream> = Vec::new();
     for field in &struct_data.fields {
-        let maybe_checksum_field_name = field.ident.as_ref().map(|i| i.to_string());
-        let checksum_field_type = ty_to_string(&field.ty);
-
-        if let Some(checksum_field_name) = maybe_checksum_field_name {
-            definition_checksum_updates.push(quote! {
-                hasher.update(#checksum_field_name.as_bytes());
-                hasher.update(#checksum_field_type.as_bytes());
-            });
-        } else {
+        let Some(field_ident) = &field.ident else {
             emit!(
                 errors,
                 field,
-                "Unable to extract field name for checksum calculation"
+                "MaterializedView can only be derived for structs with named fields"
             );
+            continue;
+        };
+
+        let field_name = field_ident.to_string();
+        let field_type = ty_to_string(&field.ty);
+
+        // Parse field-level attributes to check for recursive_definition
+        let field_options = match FieldOptions::from_field(field) {
+            Ok(options) => options,
+            Err(err) => {
+                emit!(errors, err);
+                FieldOptions::default()
+            }
+        };
+
+        // Critical implementation: NO fallbacks - enforce DefinitionChecksum trait
+        if field_options.recursive_definition {
+            // For recursive fields: use field name + type string to break recursion cycles
+            // This prevents infinite loops during static initialization while still
+            // detecting schema changes (e.g., changing Vec<PropSchemaV1> to HashMap<String, PropSchemaV1>)
+            definition_checksum_updates.push(quote! {
+                hasher.update(#field_name.as_bytes());
+                hasher.update(#field_type.as_bytes());
+            });
+        } else {
+            // For non-recursive fields: use field name + recursive DefinitionChecksum
+            // This provides full schema change detection for nested types
+            // CRITICAL: No fallback - missing DefinitionChecksum implementations cause compilation errors
+            let field_ty = &field.ty;
+            definition_checksum_updates.push(quote! {
+                hasher.update(#field_name.as_bytes());
+                hasher.update(<#field_ty as crate::definition_checksum::DefinitionChecksum>::definition_checksum().as_bytes());
+            });
         }
     }
     errors.into_result()?;

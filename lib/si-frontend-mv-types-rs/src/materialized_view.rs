@@ -8,10 +8,7 @@ use si_events::{
     },
 };
 
-use crate::{
-    checksum::FrontendChecksumInventoryItem,
-    reference::ReferenceKind,
-};
+use crate::reference::ReferenceKind;
 
 pub trait MaterializedView {
     fn kind() -> ReferenceKind;
@@ -68,16 +65,10 @@ static MATERIALIZED_VIEW_DEFINITIONS_CHECKSUM: ::std::sync::LazyLock<Checksum> =
     ::std::sync::LazyLock::new(|| {
         let mut mv_items: Vec<_> = ::inventory::iter::<MaterializedViewInventoryItem>().collect();
         mv_items.sort_by_key(|item| item.kind());
-        let mut frontend_checksum_items: Vec<_> =
-            ::inventory::iter::<FrontendChecksumInventoryItem>().collect();
-        frontend_checksum_items.sort_by_key(|item| item.ident());
 
         let mut hasher = ChecksumHasher::new();
         for mv in mv_items {
             hasher.update(mv.definition_checksum().as_bytes());
-        }
-        for frontend_checksum_item in frontend_checksum_items {
-            hasher.update(frontend_checksum_item.definition_checksum().as_bytes());
         }
 
         hasher.finalize()

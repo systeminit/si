@@ -14,6 +14,7 @@ use si_id::PropId;
     Eq,
     Clone,
     si_frontend_mv_types_macros::FrontendChecksum,
+    si_frontend_mv_types_macros::DefinitionChecksum,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct PropSchemaV1 {
@@ -21,6 +22,10 @@ pub struct PropSchemaV1 {
     pub name: String,
     pub prop_type: String,
     pub description: Option<String>,
+    /// Recursive field: Uses field name + type string to break recursion cycles
+    /// This prevents infinite loops during static initialization while maintaining
+    /// schema change detection (e.g., changing Vec<PropSchemaV1> to HashMap<String, PropSchemaV1>)
+    #[definition_checksum(recursive_definition)]
     pub children: Option<Vec<PropSchemaV1>>,
     // New fields from PropSpecData (excluding func/widget/ui fields)
     pub validation_format: Option<String>,

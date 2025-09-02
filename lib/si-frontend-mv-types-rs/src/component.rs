@@ -33,6 +33,7 @@ pub mod erased_components;
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -50,6 +51,7 @@ pub struct ComponentQualificationStats {
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -65,6 +67,7 @@ pub struct ComponentTextDiff {
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
     si_frontend_mv_types_macros::FrontendObject,
     si_frontend_mv_types_macros::Refer,
@@ -107,6 +110,7 @@ pub struct Component {
     Eq,
     Copy,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 pub enum ComponentDiffStatus {
@@ -123,6 +127,7 @@ pub enum ComponentDiffStatus {
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
     si_frontend_mv_types_macros::FrontendObject,
     si_frontend_mv_types_macros::Refer,
@@ -159,6 +164,7 @@ pub struct ComponentInList {
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
     si_frontend_mv_types_macros::FrontendObject,
     si_frontend_mv_types_macros::Refer,
@@ -181,6 +187,7 @@ pub struct SchemaMembers {
     Serialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
     si_frontend_mv_types_macros::FrontendObject,
     si_frontend_mv_types_macros::Refer,

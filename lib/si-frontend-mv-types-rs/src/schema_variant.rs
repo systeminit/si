@@ -37,6 +37,7 @@ pub mod prop_tree;
     Eq,
     Serialize,
     PartialEq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
     si_frontend_mv_types_macros::FrontendObject,
     si_frontend_mv_types_macros::Refer,
@@ -75,6 +76,7 @@ pub struct SchemaVariant {
     Eq,
     Serialize,
     PartialEq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -90,6 +92,7 @@ pub struct InstalledVariant {
     Eq,
     Serialize,
     PartialEq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -112,6 +115,7 @@ pub struct UninstalledVariant {
     Serialize,
     Eq,
     PartialEq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(untagged, rename_all = "camelCase")]
@@ -133,6 +137,7 @@ pub enum Variant {
     Eq,
     PartialEq,
     Serialize,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -148,6 +153,7 @@ pub enum VariantType {
     Serialize,
     Eq,
     PartialEq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -157,7 +163,9 @@ pub struct DisambiguateVariant {
     pub id: String,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, PartialEq, Eq, si_frontend_mv_types_macros::DefinitionChecksum,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariantsByCategory {
     pub display_name: String,
@@ -170,6 +178,7 @@ pub struct SchemaVariantsByCategory {
     Serialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
     si_frontend_mv_types_macros::FrontendObject,
     si_frontend_mv_types_macros::Refer,

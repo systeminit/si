@@ -8,6 +8,7 @@ use edda_core::api_types::{
     ContentInfo,
     Negotiate,
     NegotiateError,
+    rebuild_changed_definitions_request::RebuildChangedDefinitionsRequest,
     rebuild_request::RebuildRequest,
 };
 use naxum::async_trait;
@@ -27,6 +28,7 @@ use super::{
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DeploymentRequest {
     Rebuild(RebuildRequest),
+    RebuildChangedDefinitions(RebuildChangedDefinitionsRequest),
 }
 
 impl Negotiate for DeploymentRequest {
@@ -41,6 +43,11 @@ impl Negotiate for DeploymentRequest {
             RebuildRequest::MESSAGE_TYPE => Ok(DeploymentRequest::Rebuild(
                 RebuildRequest::negotiate(content_info, bytes)?,
             )),
+            RebuildChangedDefinitionsRequest::MESSAGE_TYPE => {
+                Ok(DeploymentRequest::RebuildChangedDefinitions(
+                    RebuildChangedDefinitionsRequest::negotiate(content_info, bytes)?,
+                ))
+            }
             unsupported => Err(NegotiateError::UnsupportedContentType(
                 unsupported.to_string(),
             )),
@@ -52,6 +59,7 @@ impl Negotiate for DeploymentRequest {
 #[derive(AsRefStr, Clone, Debug, Deserialize, Serialize)]
 pub enum CompressedDeploymentRequest {
     Rebuild { src_requests_count: usize },
+    RebuildChangedDefinitions { src_requests_count: usize },
 }
 
 #[async_trait]
@@ -100,6 +108,7 @@ impl CompressedDeploymentRequest {
     pub fn src_requests_count(&self) -> usize {
         match self {
             Self::Rebuild { src_requests_count } => *src_requests_count,
+            Self::RebuildChangedDefinitions { src_requests_count } => *src_requests_count,
         }
     }
 
@@ -115,11 +124,30 @@ impl CompressedDeploymentRequest {
             // `cr_tc01_`
             Err(Error::NoRequests)
         }
-        // If all requests are rebuilds, then return a single one
+        // Analyze what types of requests we have and compress accordingly
         else {
-            // `cr_tc02_`
-            // `cr_tc03_`
-            Ok(Self::Rebuild { src_requests_count })
+            let has_rebuild = requests
+                .iter()
+                .any(|r| matches!(r, DeploymentRequest::Rebuild(_)));
+            let has_rebuild_changed_definitions = requests
+                .iter()
+                .any(|r| matches!(r, DeploymentRequest::RebuildChangedDefinitions(_)));
+
+            match (has_rebuild, has_rebuild_changed_definitions) {
+                // If we have any full rebuild requests, prioritize those (full rebuild will also fix out-of-sync definitions)
+                (true, _) => {
+                    // `cr_tc02_`
+                    // `cr_tc03_`
+                    Ok(Self::Rebuild { src_requests_count })
+                }
+                // If we only have changed definitions rebuild requests
+                (false, true) => {
+                    // `cr_tc04_`
+                    Ok(Self::RebuildChangedDefinitions { src_requests_count })
+                }
+                // This case shouldn't happen since we've already checked for empty requests
+                (false, false) => unreachable!(),
+            }
         }
     }
 }
@@ -162,6 +190,7 @@ mod tests {
             CompressedDeploymentRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
+            _ => panic!("expected Rebuild variant"),
         }
     }
 
@@ -183,6 +212,77 @@ mod tests {
             CompressedDeploymentRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
+            _ => panic!("expected Rebuild variant"),
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
+    async fn cr_tc04_single_rebuild_changed_definitions() {
+        let inputs = vec![rebuild_changed_definitions_request()];
+        let requests: Vec<_> = inputs
+            .clone()
+            .into_iter()
+            .map(DeploymentRequest::RebuildChangedDefinitions)
+            .collect();
+
+        let compressed = CompressedDeploymentRequest::compress_from_requests(requests.clone())
+            .await
+            .expect("failed to compress requests");
+
+        match compressed {
+            CompressedDeploymentRequest::RebuildChangedDefinitions { src_requests_count } => {
+                assert_eq!(requests.len(), src_requests_count);
+            }
+            _ => panic!("expected RebuildChangedDefinitions variant"),
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
+    async fn cr_tc05_multiple_rebuild_changed_definitions() {
+        let inputs = vec![
+            rebuild_changed_definitions_request(),
+            rebuild_changed_definitions_request(),
+            rebuild_changed_definitions_request(),
+        ];
+        let requests: Vec<_> = inputs
+            .clone()
+            .into_iter()
+            .map(DeploymentRequest::RebuildChangedDefinitions)
+            .collect();
+
+        let compressed = CompressedDeploymentRequest::compress_from_requests(requests.clone())
+            .await
+            .expect("failed to compress requests");
+
+        match compressed {
+            CompressedDeploymentRequest::RebuildChangedDefinitions { src_requests_count } => {
+                assert_eq!(requests.len(), src_requests_count);
+            }
+            _ => panic!("expected RebuildChangedDefinitions variant"),
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
+    async fn cr_tc06_mixed_requests_prioritize_full_rebuild() {
+        let requests = vec![
+            DeploymentRequest::RebuildChangedDefinitions(rebuild_changed_definitions_request()),
+            DeploymentRequest::Rebuild(rebuild_request()),
+            DeploymentRequest::RebuildChangedDefinitions(rebuild_changed_definitions_request()),
+        ];
+
+        let compressed = CompressedDeploymentRequest::compress_from_requests(requests.clone())
+            .await
+            .expect("failed to compress requests");
+
+        // Should prioritize full rebuild when mixed requests are present
+        match compressed {
+            CompressedDeploymentRequest::Rebuild { src_requests_count } => {
+                assert_eq!(requests.len(), src_requests_count);
+            }
+            _ => panic!("expected Rebuild variant when mixed requests are present"),
         }
     }
 
@@ -190,6 +290,10 @@ mod tests {
         use edda_core::api_types::{
             Container,
             RequestId,
+            rebuild_changed_definitions_request::{
+                RebuildChangedDefinitionsRequest,
+                RebuildChangedDefinitionsRequestV1,
+            },
             rebuild_request::{
                 RebuildRequest,
                 RebuildRequestVCurrent,
@@ -198,6 +302,12 @@ mod tests {
 
         pub fn rebuild_request() -> RebuildRequest {
             RebuildRequest::new(RebuildRequestVCurrent {
+                id: RequestId::new(),
+            })
+        }
+
+        pub fn rebuild_changed_definitions_request() -> RebuildChangedDefinitionsRequest {
+            RebuildChangedDefinitionsRequest::new(RebuildChangedDefinitionsRequestV1 {
                 id: RequestId::new(),
             })
         }
