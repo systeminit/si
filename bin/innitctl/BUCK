@@ -22,9 +22,9 @@ docker_image(
     name = "image",
     image_name = "innitctl",
     build_args = {
+        "BASE_VERSION": "bookworm",
         "BIN": "innitctl",
-        "SI_RBE_TOKEN": "",
-        "BUILDKITE_BUILD_ID": ""
+        "SI_RBE_TOKEN": ""
     },
     build_deps = ["//bin/innitctl:innitctl"],
     srcs = {
