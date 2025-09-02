@@ -30,6 +30,7 @@ pub mod cached_schemas;
 mod change_set;
 pub mod checksum;
 pub mod component;
+pub mod definition_checksum;
 pub mod dependent_values;
 pub mod incoming_connections;
 pub mod index;
