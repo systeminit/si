@@ -181,6 +181,20 @@ async fn migrate_connections_async_fallible(
         migrations.push(migration);
     }
 
+    // Remove all parentage everywhere
+    for component in ctx.workspace_snapshot()?.nodes().await? {
+        let component_id = component.id().into();
+        if Component::get_parent_by_id(ctx, component_id)
+            .await?
+            .is_some()
+        {
+            let component_title = Component::fmt_title(ctx, component_id).await;
+            info!(component = component_title, "remove_parent");
+            Frame::orphan_child(ctx, component_id).await?;
+            summary.removed_parents += 1;
+        }
+    }
+
     // Send WsEvents for components we migrated, and commit (unless it's a dry_run)
     if !dry_run {
         let mut components = HashSet::new();
@@ -211,20 +225,6 @@ async fn migrate_connections_async_fallible(
 
         // Commits
         ctx.commit().await?;
-    }
-
-    // Remove all parentage everywhere
-    for component in ctx.workspace_snapshot()?.nodes().await? {
-        let component_id = component.id().into();
-        if Component::get_parent_by_id(ctx, component_id)
-            .await?
-            .is_some()
-        {
-            let component_title = Component::fmt_title(ctx, component_id).await;
-            info!(component = component_title, "remove_parent");
-            Frame::orphan_child(ctx, component_id).await?;
-            summary.removed_parents += 1;
-        }
     }
 
     Ok(())
@@ -356,7 +356,9 @@ async fn freeze_connection_values(
                 {
                     // Pull the current value from the AV, and set it explicitly to that value
                     // so it remains the same, but doesn't rely on the connection anymore
+                    let attribute = AttributeValue::fmt_title(ctx, av_id).await;
                     let value = AttributeValue::view(ctx, av_id).await?;
+                    info!(attribute, "Setting to frozen, static value");
                     AttributeValue::update(ctx, av_id, value).await?;
                     did_something = true;
                 }
