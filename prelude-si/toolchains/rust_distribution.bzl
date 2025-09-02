@@ -17,7 +17,7 @@ _RUST_S3_CHECKSUMS = {
         },
         "darwin": {
             "x86_64": "847e986ec6a9f11c1c48b1e2bd4e623ea92e1a2fd552d43456c8c64d189eaac0",
-            "aarch64": "825a4f3843d6b30b0f1fa875b78e58505f461ddf3ba556b61ba3eb28056870f7",
+            "aarch64": "e04e944504c9bfcd4ff0c1cf52550cce7dace373da130f9a8fef5dbe4e99f334",
         },
     },
     "nightly-2025-04-17": {
