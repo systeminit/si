@@ -37,14 +37,20 @@ mainSteps:
                 export SI_SERVICE={{ Service }}
                 export SI_HOSTENV={{ Environment }}
                 export SI_VERSION=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-si-version-$SI_SERVICE")
+                export SI_ARTIFACT_TYPE=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-binary-type")
 
                 docker-compose -f /run/app/docker-compose.yaml --profile $SI_SERVICE down -v &
                 docker-compose -f /run/app/docker-compose.yaml --profile $SI_SERVICE pull &
                 wait
                 docker-compose -f /run/app/docker-compose.yaml --profile $SI_SERVICE up --wait
 
-                wget --no-verbose https://artifacts.systeminit.com/{{ Service }}/${SI_VERSION}/omnibus/linux/$(arch)/{{ Service }}-${SI_VERSION}-omnibus-linux-$(arch).tar.gz -O - | tar -xzf - -C /
-                METADATA=$(sudo find / -wholename '/etc/nix-omnibus/{{ Service }}/**/metadata.json' | tail -n 1 | xargs cat | jq)
+                wget --no-verbose https://artifacts.systeminit.com/{{ Service }}/${SI_VERSION}/${SI_ARTIFACT_TYPE}/linux/$(arch)/{{ Service }}-${SI_VERSION}-${SI_ARTIFACT_TYPE}-linux-$(arch).tar.gz -O - | tar -xzf - -C /
+
+                if [ -f "/usr/local/share/{{ Service }}/metadata.json" ]; then
+                    METADATA=$(cat /usr/local/share/{{ Service }}/metadata.json | jq)
+                else
+                    METADATA=$(sudo find / -wholename '/etc/nix-omnibus/{{ Service }}/**/metadata.json' | tail -n 1 | xargs cat | jq)
+                fi
                 COMMIT=$(echo $METADATA | jq -r '.commit')
                 RUNNING_VERSION=$(echo $METADATA | jq -r '.version')
 

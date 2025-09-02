@@ -31,8 +31,15 @@ mainSteps:
         export SI_SERVICE={{ Service }}
         export SI_HOSTENV={{ Environment }}
         export SI_VERSION=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-si-version-$SI_SERVICE")
-        NEW_VERSION=$(curl -Ls https://artifacts.systeminit.com/{{ Service }}/${SI_VERSION}/omnibus/linux/$(arch)/{{ Service }}-${SI_VERSION}-omnibus-linux-$(arch).tar.gz.metadata.json | jq -r '.version')
-        RUNNING_VERSION=$(sudo find / -wholename '/etc/nix-omnibus/{{ Service }}/**/metadata.json' | tail -n 1 | xargs cat | jq -r '.version')
+        export SI_ARTIFACT_TYPE=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-binary-type")
+
+        NEW_VERSION=$(curl -Ls https://artifacts.systeminit.com/{{ Service }}/${SI_VERSION}/${SI_ARTIFACT_TYPE}/linux/$(arch)/{{ Service }}-${SI_VERSION}-${SI_ARTIFACT_TYPE}-linux-$(arch).tar.gz.metadata.json | jq -r '.version')
+
+        if [ -f "/usr/local/share/{{ Service }}/metadata.json" ]; then
+            RUNNING_VERSION=$(cat /usr/local/share/{{ Service }}/metadata.json | jq -r '.version')
+        else
+            RUNNING_VERSION=$(sudo find / -wholename '/etc/nix-omnibus/{{ Service }}/**/metadata.json' | tail -n 1 | xargs cat | jq -r '.version')
+        fi
 
         # Check if both versions are set to non-empty values
         if [ -z "$NEW_VERSION" ] || [ -z "$RUNNING_VERSION" ]; then

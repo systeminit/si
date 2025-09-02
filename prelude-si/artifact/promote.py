@@ -305,7 +305,7 @@ def artifact_name(md: ArtifactMetadata) -> str:
 
     match md.variant:
         case Variant.Binary:
-            return prefix
+            return f"{prefix}.tar.gz"
         case Variant.Omnibus:
             return f"{prefix}.tar.gz"
         case Variant.Rootfs:
