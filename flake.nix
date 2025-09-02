@@ -4,6 +4,12 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+      };
+    };
     # NOTE 2025-07-17
     # ---------------
     #
@@ -25,6 +31,7 @@
   outputs = {
     nixpkgs,
     flake-utils,
+    rust-overlay,
     pinnedDenoVersion,
     ...
   }:
@@ -33,6 +40,7 @@
         (self: super: {
           nodejs = super.nodejs_20;
         })
+        (import rust-overlay)
         # NOTE 2025-07-17: see inputs for explanation. When input is deleted,
         # remove this overlay too.
         (final: prev: {
@@ -42,16 +50,21 @@
 
       pkgs = import nixpkgs {inherit overlays system;};
 
+      rustVersion = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain;
+      rust-toolchain = rustVersion.override {
+        extensions = ["clippy" "rust-analyzer" "rust-src"];
+      };
+      rustfmt-nightly = pkgs.rust-bin.nightly."2025-04-17".rustfmt;
+
       nodePkgs = pkgs.nodePackages.override {
         nodejs = pkgs.nodejs_20;
       };
+
 
       buck2NativeBuildInputs = with pkgs;
         [
           b3sum
           buck2
-          cargo
-          cargo-sort
           deno
           git
           makeWrapper
@@ -59,6 +72,8 @@
           nodejs
           python3
           ripgrep
+          rust-toolchain
+          rustfmt-nightly
           taplo
 
           # breakpointHook
