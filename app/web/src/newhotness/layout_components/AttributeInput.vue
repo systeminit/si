@@ -1224,7 +1224,8 @@ const resetEverything = () => {
   if (readOnly.value) return;
 
   resetFilteredOptions();
-  if (!valueForm.state.canSubmit) valueForm.reset();
+  if (!valueForm.state.canSubmit || valueForm.state.isDirty)
+    wForm.reset(valueForm);
   mapKey.value = "";
   mapKeyError.value = false;
   selectedIndex.value = defaultSelectedIndex();

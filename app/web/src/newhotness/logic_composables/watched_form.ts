@@ -5,6 +5,7 @@ import {
   MaybeRefOrGetter,
   toValue,
   WatchSource,
+  nextTick,
 } from "vue";
 import { useForm, formOptions } from "@tanstack/vue-form";
 import { trace } from "@opentelemetry/api";
@@ -37,10 +38,9 @@ const tracer = trace.getTracer("si-vue");
  * So the user know their form submission worked and we're waiting
  * for updated data
  */
-export const useWatchedForm = <Data>(
+export const useWatchedForm = <Data extends Record<string, string>>(
   label: string,
   resetBlank?: boolean,
-  disableResetWatcher?: boolean,
 ) => {
   /**
    * Lifecycle of `bifrosting`
@@ -72,6 +72,14 @@ export const useWatchedForm = <Data>(
     onChangedAsync: ValidationFn;
     onBlurAsync: ValidationFn;
   }>;
+
+  // USE THIS RESET, NOT THE `form.reset()` FUNCTION!
+  let dirty = false;
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const reset = (f: any, data?: MaybeRefOrGetter<Data>) => {
+    f.reset(data);
+    dirty = false;
+  };
   const newForm = ({
     data,
     onSubmit,
@@ -81,15 +89,32 @@ export const useWatchedForm = <Data>(
     data: MaybeRefOrGetter<Data>;
     // NOTE: props also contains `formApi`, but I can't realistically type it here
     onSubmit: (props: { value: Data }) => Promise<void> | void;
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     watchFn?: WatchSource<unknown>;
     validators?: Validators;
   }) => {
     const opts = formOptions({
       defaultValues: toValue(data),
     });
+
+    // keep the form up to date with values until the user
+    // changes form values, then we stop, and leave them be.
+    watch(
+      () => toValue(data),
+      async (newData) => {
+        if (!dirty) {
+          // without this nextTick the form intermittently does not update!
+          await nextTick();
+          wForm.reset(newData);
+        }
+      },
+    );
     const wForm = useForm({
       ...opts,
+      listeners: {
+        onChange(_props) {
+          dirty = true;
+        },
+      },
       onSubmit: async (props) => {
         // Set up the rainbow spinner and bifrosting
         const start = Date.now();
@@ -106,9 +131,9 @@ export const useWatchedForm = <Data>(
         // Mark submission as complete and remove the rainbow spinner
         const markComplete = () => {
           bifrosting.value = false;
+          dirty = false;
           rainbow.remove(ctx.changeSetId.value, label);
-          if (!wForm.state.canSubmit)
-            wForm.reset(resetBlank ? undefined : props.value);
+          wForm.reset(resetBlank ? undefined : props.value);
           if (span) {
             span.setAttribute("measured_time", Date.now() - start);
             span.end();
@@ -116,45 +141,38 @@ export const useWatchedForm = <Data>(
         };
 
         // Submit the form
+        let hasSubmitted = false;
         try {
           await onSubmit(props);
-          // Set the form data optimistically
-          wForm.reset(resetBlank ? undefined : props.value);
+          hasSubmitted = true;
         } catch (e) {
           // TODO report errors and display on caller forms
           // Cancel the spinner and bifrosting on failure
           markComplete();
         }
 
-        if (watchFn) {
-          watch(watchFn, markComplete);
-        } else {
-          watch(() => toValue(data), markComplete);
-          // there are cases in which we don't have a watched value
-          // so this will never get removed, this is just a UI fallback
-          setTimeout(() => {
-            rainbow.remove(ctx.changeSetId.value, label);
-          }, 750);
+        if (hasSubmitted) {
+          if (watchFn) {
+            watch(watchFn, markComplete, { deep: true });
+          } else {
+            watch(() => toValue(data), markComplete, { deep: true });
+            // there are cases in which we don't have a watched value
+            // so this will never get removed, this is just a UI fallback
+            setTimeout(() => {
+              rainbow.remove(ctx.changeSetId.value, label);
+            }, 750);
+          }
         }
       },
       validators,
     });
 
-    // Update form data as data changes
-    // im not 100% certain we always want this behavior
-    if (!disableResetWatcher) {
-      watch(
-        () => toValue(data),
-        (newData) => {
-          wForm.reset(newData);
-        },
-      );
-    }
-
     return wForm;
   };
 
-  return { bifrosting, newForm };
+  // PSA: don't use the TANSTACK `form.reset()` use our `wForm.reset(form)` fn
+  // so we can keep track of the dirty state accurately...
+  return { bifrosting, newForm, reset };
 };
 
 // NOTE: when the bifrost implements optimistic updates
