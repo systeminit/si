@@ -53,6 +53,7 @@
           cargo
           cargo-sort
           deno
+          git
           makeWrapper
           nodePkgs.pnpm
           nodejs

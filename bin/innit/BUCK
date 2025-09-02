@@ -27,4 +27,5 @@ docker_image(
         "BUILDKITE_BUILD_ID": ""
     },
     build_deps = ["//bin/innit:innit"],
+    promote_multi_arches = ["amd64"],
 )
