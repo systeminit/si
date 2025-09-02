@@ -22,9 +22,9 @@ docker_image(
     name = "image",
     image_name = "innit",
     build_args = {
+        "BASE_VERSION": "bookworm",
         "BIN": "innit",
-        "SI_RBE_TOKEN": "",
-        "BUILDKITE_BUILD_ID": ""
+        "SI_RBE_TOKEN": ""
     },
     build_deps = ["//bin/innit:innit"],
     promote_multi_arches = ["amd64"],

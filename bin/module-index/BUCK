@@ -28,9 +28,9 @@ docker_image(
     name = "image",
     image_name = "module-index",
     build_args = {
+        "BASE_VERSION": "bookworm",
         "BIN": "module-index",
-        "SI_RBE_TOKEN": "",
-        "BUILDKITE_BUILD_ID": ""
+        "SI_RBE_TOKEN": ""
     },
     build_deps = ["//bin/module-index:module-index"],
     # TODO(fnichol): revisit post 2025-02-01

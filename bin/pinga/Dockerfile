@@ -1,3 +1,5 @@
+ARG BASE_VERSION
+
 FROM alpine:3 AS buck2
 
 RUN apk add --no-cache curl zstd libc6-compat
@@ -24,7 +26,7 @@ COPY --from=buck2 /bin/buck2 /usr/local/bin/buck2
 RUN buck2 build bin/$BIN:$BIN \
     --out /tmp/local-bin/$BIN
 
-FROM debian:bullseye-slim AS final
+FROM debian:${BASE_VERSION} AS final
 ARG BIN
 ENV BIN=${BIN}
 
