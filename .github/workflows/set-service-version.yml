@@ -39,13 +39,14 @@ jobs:
       - name: Set service version
         run: |
             check_version_exists() {
+                local type
                 local version
                 local service
                 local URL
                 local check
                 version="$1"
                 service="$2"
-                URL="https://artifacts.systeminit.com/${service}/${version}/omnibus/linux/x86_64/${service}-${version}-omnibus-linux-x86_64.tar.gz"
+                URL="https://artifacts.systeminit.com/${service}/${version}/${type}/linux/x86_64/${service}-${version}-${type}-linux-x86_64.tar.gz"
                 check=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
                 [[ "$check" -eq 200 || "$check" -eq 301 ]]
             }
@@ -53,6 +54,7 @@ jobs:
             ENVIRONMENT="${{ inputs.environment }}"
             VERSION="${{ inputs.version }}"
             SERVICE="${{ inputs.service }}"
-            if check_version_exists "$VERSION" "$SERVICE"; then
+            ARTIFACT_TYPE=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$ENVIRONMENT-binary-type")
+            if check_version_exists "$ARTIFACT_TYPE" "$VERSION" "$SERVICE"; then
               aws ssm put-parameter --name "${ENVIRONMENT}-si-version-${SERVICE}" --value "${VERSION}" --type "String" --overwrite
             fi
