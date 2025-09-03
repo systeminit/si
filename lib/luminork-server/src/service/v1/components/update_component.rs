@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{
     extract::Path,
     response::Json,
@@ -24,20 +22,8 @@ use utoipa::{
 };
 
 use super::{
-    ComponentPropKey,
     ComponentV1RequestPath,
     ComponentViewV1,
-    SecretPropKey,
-    connections::{
-        Connection,
-        remove_connection,
-    },
-    resolve_secret_id,
-    subscriptions::{
-        AttributeValueIdent,
-        Subscription,
-        handle_subscription,
-    },
 };
 use crate::{
     extract::{
@@ -134,51 +120,6 @@ pub async fn update_component(
         .await?;
     }
 
-    let component_list = Component::list_ids(ctx).await?;
-
-    for (key, value) in payload.secrets.clone().into_iter() {
-        let prop_id = key.prop_id(ctx, variant_id).await?;
-
-        let secret_id = resolve_secret_id(ctx, &value).await?;
-
-        let attribute_value_id =
-            Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
-        dal::Secret::attach_for_attribute_value(ctx, attribute_value_id, Some(secret_id)).await?;
-    }
-
-    for (key, value) in payload.domain.clone().into_iter() {
-        let prop_id = key.prop_id(ctx, variant_id).await?;
-        let attribute_value_id =
-            Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
-        let existing_value = AttributeValue::get_by_id(ctx, attribute_value_id)
-            .await?
-            .value(ctx)
-            .await?;
-        AttributeValue::update(ctx, attribute_value_id, Some(value.clone())).await?;
-        if existing_value != value.into() {
-            // If the values have changed then we should enqueue an update action
-            // if the values haven't changed then we can skip this update action as it is usually a no-op
-            Component::enqueue_update_action_if_applicable(ctx, attribute_value_id).await?;
-        }
-    }
-
-    for unset in payload.unset.iter() {
-        let prop_id = unset.prop_id(ctx, variant_id).await?;
-        let attribute_value_id =
-            Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
-        AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
-    }
-
-    if !payload.connection_changes.add.is_empty() || !payload.connection_changes.remove.is_empty() {
-        for connection in payload.connection_changes.remove.iter() {
-            remove_connection(ctx, connection, component_id, variant_id, &component_list).await?;
-        }
-    }
-
-    for (av_to_set, sub) in payload.subscriptions.clone().into_iter() {
-        handle_subscription(ctx, av_to_set, &sub, component_id, &component_list).await?;
-    }
-
     // Send a websocket event about the component update
     let updated_component = Component::get_by_id(ctx, component_id).await?;
     let new_name = updated_component.name(ctx).await?;
@@ -194,11 +135,6 @@ pub async fn update_component(
         AuditLogKind::UpdateComponent {
             component_id: updated_component.id(),
             component_name: new_name.clone(),
-            before_domain_tree: None,
-            after_domain_tree: None,
-            added_connections: None,
-            deleted_connections: None,
-            added_secrets: payload.secrets.len(),
         },
         new_name.clone(),
     )
@@ -210,10 +146,6 @@ pub async fn update_component(
         json!({
             "component_id": component.id(),
             "component_name": new_name.clone(),
-            "added_connections": payload.connection_changes.add.len(),
-            "deleted_connections": payload.connection_changes.remove.len(),
-            "updated_props": payload.domain.len() + payload.unset.len(),
-            "updated_secrets": payload.secrets.len(),
         }),
     );
 
@@ -256,55 +188,6 @@ pub struct UpdateComponentV1Request {
         })
     )]
     pub attributes: AttributeSources,
-
-    #[deprecated(
-        note = "Secrets deprecated in favour of using attributes parameter and will be removed in a future version of the API"
-    )]
-    #[schema(example = json!({}))]
-    #[serde(default)]
-    pub secrets: HashMap<SecretPropKey, serde_json::Value>,
-
-    #[deprecated(
-        note = "Domain deprecated in favour of using attributes parameter and will be removed in a future version of the API"
-    )]
-    #[schema(example = json!({}))]
-    #[serde(default)]
-    pub domain: HashMap<ComponentPropKey, serde_json::Value>,
-
-    #[deprecated(
-        note = "Unset deprecated in favour of using attributes parameter and will be removed in a future version of the API"
-    )]
-    #[schema(example = json!({}))]
-    #[serde(default)]
-    pub unset: Vec<ComponentPropKey>,
-
-    #[serde(default)]
-    #[deprecated(
-        note = "Connection changes - socket connections no longer supported and will be removed in a future version of the API"
-    )]
-    #[schema(example = json!({}))]
-    pub connection_changes: ConnectionDetails,
-
-    #[deprecated(
-        note = "Subscriptions deprecated in favour of using attributes parameter and will be removed in a future version of the API"
-    )]
-    #[schema(example = json!({}))]
-    #[serde(default)]
-    pub subscriptions: HashMap<AttributeValueIdent, Subscription>,
-}
-
-#[derive(Deserialize, Serialize, Debug, ToSchema, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectionDetails {
-    #[serde(default)]
-    #[deprecated]
-    #[schema(example = json!({}))]
-    pub add: Vec<Connection>,
-
-    #[serde(default)]
-    #[deprecated]
-    #[schema(example = json!({}))]
-    pub remove: Vec<Connection>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
@@ -314,7 +197,6 @@ pub struct UpdateComponentV1Response {
         "id": "01H9ZQD35JPMBGHH69BT0Q79AA",
         "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
         "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
-        "sockets": [],
         "domainProps": [],
         "resourceProps": [],
         "name": "My EC2 Instance",

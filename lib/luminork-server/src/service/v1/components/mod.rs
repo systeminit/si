@@ -23,7 +23,6 @@ use dal::{
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
-    SocketArity,
     action::{
         ActionError,
         prototype::{
@@ -32,10 +31,6 @@ use dal::{
         },
     },
     attribute::attributes::AttributeSources,
-    component::socket::{
-        ComponentInputSocket,
-        ComponentOutputSocket,
-    },
     diagram::{
         geometry::Geometry,
         view::View,
@@ -60,8 +55,6 @@ use si_id::{
 use strum::{
     AsRefStr,
     Display,
-    EnumIter,
-    EnumString,
 };
 use thiserror::Error;
 use utoipa::ToSchema;
@@ -69,7 +62,6 @@ use utoipa::ToSchema;
 use crate::AppState;
 
 pub mod add_action;
-pub mod connections;
 pub mod create_component;
 pub mod delete_component;
 pub mod duplicate_components;
@@ -82,7 +74,6 @@ pub mod list_components;
 pub mod manage_component;
 pub mod restore_component;
 pub mod search_components;
-pub mod subscriptions;
 pub mod update_component;
 pub mod upgrade_component;
 
@@ -180,45 +171,6 @@ pub enum ComponentsError {
 }
 
 pub type ComponentsResult<T> = Result<T, ComponentsError>;
-
-/// Resolves a secret value (ID or name) to a SecretId
-pub async fn resolve_secret_id(
-    ctx: &dal::DalContext,
-    value: &serde_json::Value,
-) -> ComponentsResult<dal::SecretId> {
-    match value {
-        serde_json::Value::String(value_str) => {
-            if let Ok(id) = value_str.parse() {
-                if dal::Secret::get_by_id(ctx, id).await.is_ok() {
-                    Ok(id)
-                } else {
-                    let secrets = dal::Secret::list(ctx).await?;
-                    let found_secret = secrets
-                        .into_iter()
-                        .find(|s| s.name() == value_str)
-                        .ok_or_else(|| {
-                            ComponentsError::SecretNotFound(format!(
-                                "Secret '{value_str}' not found"
-                            ))
-                        })?;
-                    Ok(found_secret.id())
-                }
-            } else {
-                let secrets = dal::Secret::list(ctx).await?;
-                let found_secret = secrets
-                    .into_iter()
-                    .find(|s| s.name() == value_str)
-                    .ok_or_else(|| {
-                        ComponentsError::SecretNotFound(format!("Secret '{value_str}' not found"))
-                    })?;
-                Ok(found_secret.id())
-            }
-        }
-        _ => Err(ComponentsError::InvalidSecretValue(format!(
-            "Secret value must be a string containing ID or name, got: {value}"
-        ))),
-    }
-}
 
 #[derive(Deserialize, ToSchema)]
 pub struct ComponentV1RequestPath {
@@ -481,7 +433,6 @@ pub struct ComponentViewV1 {
     pub schema_id: SchemaId,
     #[schema(value_type = String)]
     pub schema_variant_id: SchemaVariantId,
-    pub sockets: Vec<SocketViewV1>,
     // this is everything below root/domain - the whole tree! (not including root/domain itself)
     pub domain_props: Vec<ComponentPropViewV1>,
     // from root/resource_value NOT root/resource/payload
@@ -546,29 +497,8 @@ pub struct ViewV1 {
 #[derive(AsRefStr, Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum ConnectionViewV1 {
-    Incoming(IncomingConnectionViewV1),
-    Outgoing(OutgoingConnectionViewV1),
     Managing(ManagingConnectionViewV1),
     ManagedBy(ManagedByConnectionViewV1),
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct IncomingConnectionViewV1 {
-    #[schema(value_type = String)]
-    pub from_component_id: ComponentId,
-    pub from_component_name: String,
-    pub from: String, // from socket or prop
-    pub to: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct OutgoingConnectionViewV1 {
-    #[schema(value_type = String)]
-    pub to_component_id: ComponentId,
-    pub to_component_name: String,
-    pub from: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
@@ -587,98 +517,12 @@ pub struct ManagedByConnectionViewV1 {
     pub component_name: String,
 }
 
-#[remain::sorted]
-#[derive(
-    AsRefStr,
-    Clone,
-    Copy,
-    Debug,
-    Deserialize,
-    Display,
-    EnumIter,
-    EnumString,
-    Eq,
-    PartialEq,
-    Serialize,
-    ToSchema,
-)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum SocketDirection {
-    Input,
-    Output,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct SocketViewV1 {
-    pub id: String,
-    pub name: String,
-    pub direction: SocketDirection,
-    #[schema(value_type = String, example = "one", example = "many")]
-    pub arity: SocketArity,
-    #[schema(value_type = Object)]
-    pub value: Option<serde_json::Value>,
-}
-
 impl ComponentViewV1 {
     pub async fn assemble(ctx: &DalContext, component_id: ComponentId) -> ComponentsResult<Self> {
         let component = Component::get_by_id(ctx, component_id).await?;
         let schema_variant = component.schema_variant(ctx).await?;
-        // lets get all sockets
-        let mut sockets = Vec::new();
-        let (output_sockets, input_sockets) =
-            SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
-        for output in output_sockets {
-            sockets.push(SocketViewV1 {
-                id: output.id().to_string(),
-                name: output.name().to_owned(),
-                direction: SocketDirection::Output,
-                arity: output.arity(),
-                value: ComponentOutputSocket::value_for_output_socket_id_for_component_id_opt(
-                    ctx,
-                    component_id,
-                    output.id(),
-                )
-                .await?,
-            });
-        }
 
-        for input in input_sockets {
-            // TODO(brit): figure out connection annotations
-            sockets.push(SocketViewV1 {
-                id: input.id().to_string(),
-                name: input.name().to_owned(),
-                direction: SocketDirection::Input,
-                arity: input.arity(),
-                value: ComponentInputSocket::value_for_input_socket_id_for_component_id_opt(
-                    ctx,
-                    component_id,
-                    input.id(),
-                )
-                .await?,
-            });
-        }
-        // Socket Connections
         let mut connections = Vec::new();
-        let incoming = component.incoming_connections(ctx).await?;
-        for input in incoming {
-            connections.push(ConnectionViewV1::Incoming(IncomingConnectionViewV1 {
-                from_component_id: input.from_component_id,
-                from_component_name: Component::name_by_id(ctx, input.from_component_id).await?,
-                from: input.from_output_socket_id.to_string(),
-                to: input.to_input_socket_id.to_string(),
-            }));
-        }
-        let outgoing = component.outgoing_connections(ctx).await?;
-        for output in outgoing {
-            connections.push(ConnectionViewV1::Outgoing(OutgoingConnectionViewV1 {
-                to_component_id: output.to_component_id,
-                to_component_name: Component::name_by_id(ctx, output.to_component_id).await?,
-                from: output.from_output_socket_id.to_string(),
-            }));
-        }
-
         // Management Connections
         // Who is managing this component?
         let managers = Component::managers_by_id(ctx, component_id).await?;
@@ -770,7 +614,6 @@ impl ComponentViewV1 {
             id: component_id,
             schema_id: SchemaVariant::schema_id(ctx, schema_variant.id()).await?,
             schema_variant_id: schema_variant.id(),
-            sockets,
             domain_props,
             resource_props,
             name: component.name(ctx).await?,
