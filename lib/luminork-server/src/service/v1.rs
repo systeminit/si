@@ -55,10 +55,6 @@ pub use components::{
         AddActionV1Request,
         AddActionV1Response,
     },
-    connections::{
-        Connection,
-        ConnectionPoint,
-    },
     create_component::{
         CreateComponentV1Request,
         CreateComponentV1Response,
@@ -250,7 +246,6 @@ pub use crate::api_types::func_run::v1::{
             ManageComponentV1Request,
             ManageComponentV1Response,
             UpgradeComponentV1Response,
-            Connection,
             AddActionV1Response,
             AddActionV1Request,
             ActionReference,
@@ -274,7 +269,6 @@ pub use crate::api_types::func_run::v1::{
             SecretPropKey,
             DomainPropPath,
             SecretPropPath,
-            ConnectionPoint,
             ComponentReference,
             ComponentViewV1,
             ComponentPropViewV1,

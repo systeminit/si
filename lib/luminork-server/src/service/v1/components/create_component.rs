@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::response::Json;
 use dal::{
     AttributeValue,
@@ -7,7 +5,6 @@ use dal::{
     Prop,
     Schema,
     SchemaVariant,
-    Secret,
     attribute::attributes::AttributeSources,
     cached_module::CachedModule,
     diagram::view::View,
@@ -26,17 +23,8 @@ use utoipa::{
 };
 
 use super::{
-    ComponentPropKey,
     ComponentReference,
-    SecretPropKey,
-    connections::Connection,
     resolve_component_reference,
-    resolve_secret_id,
-    subscriptions::{
-        AttributeValueIdent,
-        Subscription,
-        handle_subscription,
-    },
 };
 use crate::{
     extract::{
@@ -167,39 +155,10 @@ pub async fn create_component(
         Component::manage_component(ctx, manager_component_id, component.id()).await?;
     }
 
-    // Ideally a user wouldn't set these as well - it would be pain for them
-    for (key, value) in payload.secrets.clone().into_iter() {
-        let prop_id = key.prop_id(ctx, variant_id).await?;
-
-        let secret_id = resolve_secret_id(ctx, &value).await?;
-
-        let attribute_value_id =
-            Component::attribute_value_for_prop_id(ctx, component.id(), prop_id).await?;
-        Secret::attach_for_attribute_value(ctx, attribute_value_id, Some(secret_id)).await?;
-    }
-
-    for (key, value) in payload.domain.clone().into_iter() {
-        let prop_id = key.prop_id(ctx, variant_id).await?;
-        let attribute_value_id =
-            Component::attribute_value_for_prop_id(ctx, component.id(), prop_id).await?;
-        AttributeValue::update(ctx, attribute_value_id, Some(value.clone())).await?;
-    }
-
-    for (av_to_set, sub) in payload.subscriptions.clone().into_iter() {
-        handle_subscription(ctx, av_to_set, &sub, component.id(), &component_list).await?;
-    }
-
-    // We no longer create connections
-
     ctx.write_audit_log(
         AuditLogKind::UpdateComponent {
             component_id: component.id(),
             component_name: comp_name.clone(),
-            before_domain_tree: None,
-            after_domain_tree: None,
-            added_connections: None,
-            deleted_connections: None,
-            added_secrets: payload.secrets.len(),
         },
         comp_name.clone(),
     )
@@ -211,10 +170,6 @@ pub async fn create_component(
         json!({
             "component_id": component.id(),
             "component_name": comp_name.clone(),
-            "added_connections": 0,
-            "deleted_connections": "0",
-            "updated_props": payload.domain.len(),
-            "updated_secrets": payload.secrets.len()
         }),
     );
 
@@ -267,34 +222,6 @@ pub struct CreateComponentV1Request {
         })
     )]
     pub attributes: AttributeSources,
-
-    #[deprecated(
-        note = "Secrets deprecated in favour of using attributes parameter and will be removed in a future version of the API"
-    )]
-    #[schema(example = json!({}))]
-    #[serde(default)]
-    pub secrets: HashMap<SecretPropKey, serde_json::Value>,
-
-    #[serde(default)]
-    #[deprecated(
-        note = "Connections deprecated - socket connections no longer supported and will be removed in a future version of the API"
-    )]
-    #[schema(example = json!({}))]
-    pub connections: Vec<Connection>,
-
-    #[deprecated(
-        note = "Domain deprecated in favour of using attributes parameter and will be removed in a future version of the API"
-    )]
-    #[schema(example = json!({}))]
-    #[serde(default)]
-    pub domain: HashMap<ComponentPropKey, serde_json::Value>,
-
-    #[deprecated(
-        note = "Subscriptions deprecated in favour of using attributes parameter and will be removed in a future version of the API"
-    )]
-    #[schema(example = json!({}))]
-    #[serde(default)]
-    pub subscriptions: HashMap<AttributeValueIdent, Subscription>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
@@ -311,7 +238,6 @@ pub struct CreateComponentV1Response {
         "resourceId": "i-1234567890abcdef0",
         "toDelete": false,
         "canBeUpgraded": true,
-        "connections": [],
         "views": [
             {
                 "id": "01HAXYZF3GC9CYA6ZVSM3E4YEE",

@@ -25,10 +25,6 @@ use crate::{
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ListComponentsV1Response {
-    #[deprecated(note = "component ids deprecated in favor of component details")]
-    #[schema(value_type = Vec<Vec<String>>, example = json!(["01H9ZQD35JPMBGHH69BT0Q79AA", "01H9ZQD35JPMBGHH69BT0Q79BB", "01H9ZQD35JPMBGHH69BT0Q79CC"]))]
-    pub components: Vec<ComponentId>,
-
     #[schema(
         value_type = Vec<ComponentDetailsV1>,
         example = json!([
@@ -70,10 +66,6 @@ pub struct ComponentDetailsV1 {
     tag = "components",
     responses(
         (status = 200, description = "Components retrieved successfully", body = ListComponentsV1Response, example = json!({
-                    "components": [
-                        "01H9ZQD35JPMBGHH69BT0Q79AA",
-                        "01H9ZQD35JPMBGHH69BT0Q79BB"
-                    ],
                     "componentDetails": [
                         {
                             "component_id": "01H9ZQD35JPMBGHH69BT0Q79AA",
@@ -102,7 +94,6 @@ pub async fn list_components(
     let limit = params.limit.unwrap_or(50).min(300) as usize;
     let cursor = params.cursor;
 
-    let mut component_ids = Vec::with_capacity(limit);
     let mut comp_details = Vec::with_capacity(limit);
 
     // Get all component
@@ -145,14 +136,11 @@ pub async fn list_components(
             name,
             schema_name,
         });
-
-        component_ids.push(component.id());
     }
 
     tracker.track(ctx, "api_list_components", json!({}));
 
     Ok(Json(ListComponentsV1Response {
-        components: component_ids,
         component_details: comp_details,
         next_cursor,
     }))

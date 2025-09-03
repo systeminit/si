@@ -33,7 +33,6 @@ pub struct GetComponentV1Response {
         "id": "01H9ZQD35JPMBGHH69BT0Q79AA",
         "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
         "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
-        "sockets": [],
         "domainProps": [],
         "resourceProps": [],
         "name": "My EC2 Instance",
