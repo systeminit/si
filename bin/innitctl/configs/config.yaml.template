@@ -20,6 +20,7 @@ exporters:
 
 extensions:
   zpages:
+  health_check:
 
 service:
   pipelines:
@@ -31,4 +32,4 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [prometheus]
-  extensions: [zpages]
+  extensions: [zpages, health_check]
