@@ -116,53 +116,59 @@ export const useWatchedForm = <Data extends Record<string, string>>(
         },
       },
       onSubmit: async (props) => {
-        // Set up the rainbow spinner and bifrosting
-        const start = Date.now();
-        const span = tracer.startSpan("watchedForm");
-        span.setAttributes({
-          workspaceId: ctx.workspacePk.value,
-          changeSetId: ctx.changeSetId.value,
-          form: label,
+        const start = performance.now();
+        await tracer.startActiveSpan("watchedForm", async (span) => {
+          span.setAttributes({
+            workspaceId: ctx.workspacePk.value,
+            changeSetId: ctx.changeSetId.value,
+            "watched.label": label,
+          });
+          bifrosting.value = true;
+          if (ctx.changeSetId.value !== ctx.headChangeSetId.value)
+            rainbow.add(ctx.changeSetId.value, label);
+
+          // Mark submission as complete and remove the rainbow spinner
+          const markComplete = () => {
+            bifrosting.value = false;
+            dirty = false;
+            rainbow.remove(ctx.changeSetId.value, label);
+            wForm.reset(resetBlank ? undefined : props.value);
+            if (span) {
+              span.setAttribute("watched.duration", performance.now() - start);
+              span.end();
+            }
+          };
+
+          // Submit the form
+          let hasSubmitted = false;
+          try {
+            await onSubmit(props);
+            hasSubmitted = true;
+          } catch (e) {
+            // TODO report errors and display on caller forms
+            // Cancel the spinner and bifrosting on failure
+            markComplete();
+          }
+
+          // span.end() *must* get called in one of these permutations
+          if (hasSubmitted) {
+            if (watchFn) {
+              watch(watchFn, markComplete, { deep: true });
+            } else {
+              watch(() => toValue(data), markComplete, { deep: true });
+              // there are cases in which we don't have a watched value
+              // or the system isn't responsive
+              setTimeout(() => {
+                rainbow.remove(ctx.changeSetId.value, label);
+                span.setAttributes({
+                  "watched.duration": performance.now() - start,
+                  timed_out: true,
+                });
+                span.end();
+              }, 1500);
+            }
+          }
         });
-        bifrosting.value = true;
-        if (ctx.changeSetId.value !== ctx.headChangeSetId.value)
-          rainbow.add(ctx.changeSetId.value, label);
-
-        // Mark submission as complete and remove the rainbow spinner
-        const markComplete = () => {
-          bifrosting.value = false;
-          dirty = false;
-          rainbow.remove(ctx.changeSetId.value, label);
-          wForm.reset(resetBlank ? undefined : props.value);
-          if (span) {
-            span.setAttribute("measured_time", Date.now() - start);
-            span.end();
-          }
-        };
-
-        // Submit the form
-        let hasSubmitted = false;
-        try {
-          await onSubmit(props);
-          hasSubmitted = true;
-        } catch (e) {
-          // TODO report errors and display on caller forms
-          // Cancel the spinner and bifrosting on failure
-          markComplete();
-        }
-
-        if (hasSubmitted) {
-          if (watchFn) {
-            watch(watchFn, markComplete, { deep: true });
-          } else {
-            watch(() => toValue(data), markComplete, { deep: true });
-            // there are cases in which we don't have a watched value
-            // so this will never get removed, this is just a UI fallback
-            setTimeout(() => {
-              rainbow.remove(ctx.changeSetId.value, label);
-            }, 750);
-          }
-        }
       },
       validators,
     });

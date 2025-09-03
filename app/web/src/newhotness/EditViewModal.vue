@@ -228,7 +228,7 @@ const open = (
   viewId.value = openViewId;
   isDefaultView.value = openIsDefaultView;
   modalRef.value?.open();
-  nameForm.reset();
+  wForm.reset(nameForm);
   nameOnOpen.value = openViewName;
   nameForm.setFieldValue("name", openViewName);
 };

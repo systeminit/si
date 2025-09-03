@@ -289,14 +289,29 @@ export class APICall<Response, Args> {
     data: D,
     params?: URLSearchParams,
   ): Promise<DoResponse<Response, Args>> {
+    const start = performance.now();
     this.obs.requested.value = true;
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
-    if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
+    this.obs.span = tracer.startSpan("watchedApi");
+    this.obs.span.setAttributes({
+      workspaceId: this.ctx.workspacePk.value,
+      "api.on_head": this.ctx.onHead.value,
+      userPk: this.ctx.user?.pk,
+      "http.url": this.path,
+      "api.label": this.obs.label,
+      "api.is_watched": false,
+      "http.method": method,
+      "http.params": params?.toString(),
+      "http.body": JSON.stringify(data),
+    });
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
       newChangeSetId = await this.makeChangeSet();
     }
+    this.obs.span.setAttributes({
+      changeSetId: newChangeSetId ?? this.ctx.changeSetId.value,
+    });
     rainbow.add(this.changeSetId, this.obs.label);
     this.obs.changeSetIdExecutedAgainst = this.changeSetId;
 
@@ -327,9 +342,19 @@ export class APICall<Response, Args> {
       data: formattedData,
       validateStatus: (_status) => true, // don't throw exception on 4/5xxx
     });
+    const end = performance.now();
+    this.obs.span.setAttributes({
+      "http.status_code": req.status,
+      // "watched" API "duration" will contain "how long it took for the data to update"
+      // this will just be the http call time + latency, good to have both
+      "http.duration": end - start,
+    });
     this.obs.inFlight.value = false;
     if (ok(req)) this.obs.success.value = true;
-    if (!this.obs.isWatched) rainbow.remove(this.changeSetId, this.obs.label);
+    if (!this.obs.isWatched) {
+      rainbow.remove(this.changeSetId, this.obs.label);
+      if (this.obs.span) this.obs.span.end();
+    }
 
     // We have two shapes of errors from sdf: data.error as a string and data.error.message as a string
     // This code extracts both of those as an errorMessage value for the caller.
@@ -488,10 +513,20 @@ export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const setWatchFn = (fn: () => any) => {
     labeledObs.isWatched = true;
+    if (labeledObs.span) labeledObs.span.setAttribute("api.is_watched", true);
+    const timeout = setTimeout(() => {
+      if (labeledObs.span) {
+        labeledObs.span.setAttributes({
+          timed_out: true,
+        });
+        labeledObs.span.end();
+      }
+    }, 60000);
     watch(
       fn,
       () => {
         assertIsDefined(ctx);
+        clearTimeout(timeout);
         labeledObs.bifrosting.value = false;
         rainbow.remove(
           labeledObs.changeSetIdExecutedAgainst ?? ctx.changeSetId.value,
