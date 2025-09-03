@@ -488,8 +488,8 @@ export async function eventualMVAssert(
   if (!sdf || !changeSetId || !kind || !id) {
     throw new Error("Invalid parameters for eventualAssert");
   }
-  try {
-    await retryUntil(async () => {
+  await retryUntil(
+    async () => {
       const mv = await sdf.mjolnir(changeSetId, kind, id);
       if (mv) {
         try {
@@ -505,8 +505,8 @@ export async function eventualMVAssert(
       } else {
         throw new Error(`No MV found for ${kind} with ID ${id}`);
       }
-    }, timeoutMs);
-  } catch (err) {
-    throw new Error(`Timeout after ${timeoutMs}ms: ${message}`);
-  }
+    },
+    timeoutMs,
+    message,
+  );
 }
