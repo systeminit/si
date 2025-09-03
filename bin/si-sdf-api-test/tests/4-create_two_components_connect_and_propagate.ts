@@ -39,13 +39,43 @@ async function create_two_components_connect_and_propagate_inner(
   const defaultView = views.find((v: any) => v.isDefault);
   assert(defaultView, "Expected to find a default view");
 
-  // Create two components, an EC2 Instance and a Region
-  let createEC2ComponentBody = createComponentPayload(schemaVariants, "AWS::EC2::Instance");
-  let createRegionComponentBody = createComponentPayload(schemaVariants, "Region");
-  const newEC2ComponentId = await createComponent(sdf, changeSetId, defaultView.id, createEC2ComponentBody);
+  // Create three components, an EC2 Instance, a Region, and a Credential
+  let createEC2ComponentBody = createComponentPayload(
+    schemaVariants,
+    "AWS::EC2::Instance",
+  );
+  let createRegionComponentBody = createComponentPayload(
+    schemaVariants,
+    "Region",
+  );
+  let createCredentialComponentBody = createComponentPayload(
+    schemaVariants,
+    "AWS Credential",
+  );
+  const newEC2ComponentId = await createComponent(
+    sdf,
+    changeSetId,
+    defaultView.id,
+    createEC2ComponentBody,
+  );
   assert(newEC2ComponentId, "Expected to get a component id after creation");
-  const newRegionComponentId = await createComponent(sdf, changeSetId, defaultView.id, createRegionComponentBody);
+  const newRegionComponentId = await createComponent(
+    sdf,
+    changeSetId,
+    defaultView.id,
+    createRegionComponentBody,
+  );
   assert(newRegionComponentId, "Expected to get a component id after creation");
+  const newCredentialComponentId = await createComponent(
+    sdf,
+    changeSetId,
+    defaultView.id,
+    createCredentialComponentBody,
+  );
+  assert(
+    newCredentialComponentId,
+    "Expected to get a component id after creation",
+  );
 
   // Subscribe EC2 Instance to Region
   const subResponse = await sdf.call({
@@ -57,14 +87,30 @@ async function create_two_components_connect_and_propagate_inner(
     },
     body: {
       "/domain/extra/Region": {
-        "$source": {
-          "component": newRegionComponentId,
-          "path": "/domain/region",
-        }
+        $source: {
+          component: newRegionComponentId,
+          path: "/domain/region",
+        },
       },
     },
   });
-
+  // Subscribe EC2 Instance to Credential
+  const subCredResponse = await sdf.call({
+    route: "attributes",
+    routeVars: {
+      workspaceId: sdf.workspaceId,
+      changeSetId,
+      componentId: newEC2ComponentId,
+    },
+    body: {
+      "/secrets/AWS Credential": {
+        $source: {
+          component: newCredentialComponentId,
+          path: "/secrets/AWS Credential",
+        },
+      },
+    },
+  });
 
   // Check that the subscription was successful
   await eventualMVAssert(
@@ -72,27 +118,38 @@ async function create_two_components_connect_and_propagate_inner(
     changeSetId,
     "AttributeTree",
     newEC2ComponentId,
-    (mv) => Object.values(mv.attributeValues).some(
-      (av: any) => av.path === "/domain/extra/Region" &&
-        av.externalSources.length === 1,
-    ),
-    "Expected EC2 Instance to be subscribed to Region",
+    (mv) =>
+      Object.values(mv.attributeValues).some(
+        (av: any) =>
+          av.path === "/domain/extra/Region" && av.externalSources.length === 1,
+      ) &&
+      Object.values(mv.attributeValues).some(
+        (av: any) =>
+          av.path === "/secrets/credential" && av.externalSources.length === 1,
+      ),
+    "Expected EC2 Instance to be subscribed to Region and Credential",
   );
 
   // Update Region value and check propagation
   const regionValue = "us-west-1";
-  const updateRegionResponse = await sdf.call({
-    route: "attributes",
-    routeVars: {
-      workspaceId: sdf.workspaceId,
-      changeSetId,
-      componentId: newRegionComponentId,
+  const updateRegionResponse = await sdf.call(
+    {
+      route: "attributes",
+      routeVars: {
+        workspaceId: sdf.workspaceId,
+        changeSetId,
+        componentId: newRegionComponentId,
+      },
+      body: {
+        "/domain/region": regionValue,
+      },
     },
-    body: {
-      "/domain/region": regionValue,
-    },
-  }, true);
-  assert(updateRegionResponse.status == 200, "Expected to update region value successfully");
+    true,
+  );
+  assert(
+    updateRegionResponse.status == 200,
+    "Expected to update region value successfully",
+  );
 
   // Check that the value was updated on the Region component
   await eventualMVAssert(
@@ -100,10 +157,10 @@ async function create_two_components_connect_and_propagate_inner(
     changeSetId,
     "AttributeTree",
     newRegionComponentId,
-    (mv) => Object.values(mv.attributeValues).some(
-      (av: any) => av.path === "/domain/region" &&
-        av.value === regionValue,
-    ),
+    (mv) =>
+      Object.values(mv.attributeValues).some(
+        (av: any) => av.path === "/domain/region" && av.value === regionValue,
+      ),
     "Expected Region to have a new value",
   );
 
@@ -115,12 +172,11 @@ async function create_two_components_connect_and_propagate_inner(
     newEC2ComponentId,
     (mv) =>
       Object.values(mv.attributeValues).some(
-        (av: any) => av.path === "/domain/extra/Region" &&
-          av.value === regionValue,
-      )
-    ,
+        (av: any) =>
+          av.path === "/domain/extra/Region" && av.value === regionValue,
+      ),
     "Expected propagated region value on EC2 Instance to match source",
-    90000, // give it 90 seconds to make it's way through dvu
+    120000, // give it 120 seconds to make it's way through dvu
   );
 
   // Now remove the subscription and verify the value is no longer propagated
@@ -132,7 +188,7 @@ async function create_two_components_connect_and_propagate_inner(
       componentId: newEC2ComponentId,
     },
     body: {
-      "/domain/extra/Region": { "$source": null },
+      "/domain/extra/Region": { $source: null },
     },
   });
   await eventualMVAssert(
@@ -142,16 +198,21 @@ async function create_two_components_connect_and_propagate_inner(
     newEC2ComponentId,
     (mv) =>
       Object.values(mv.attributeValues).some(
-        (av: any) => av.path === "/domain/extra/Region" &&
-          !av.value && (!av.externalSources || av.externalSources.length === 0),
-      )
-    ,
+        (av: any) =>
+          av.path === "/domain/extra/Region" &&
+          !av.value &&
+          (!av.externalSources || av.externalSources.length === 0),
+      ),
     "Expected region value to no longer be propagated to EC2 Instance",
   );
 
-  // lastly, delete both components
+  // lastly, delete all components
   const deleteComponentPayload = {
-    componentIds: [newEC2ComponentId, newRegionComponentId],
+    componentIds: [
+      newEC2ComponentId,
+      newRegionComponentId,
+      newCredentialComponentId,
+    ],
     forceErase: false,
   };
   await sdf.call({
@@ -168,7 +229,6 @@ async function create_two_components_connect_and_propagate_inner(
     "ComponentList",
     sdf.workspaceId,
     (mv) => mv.components.length === 0,
-    "Should be no components after deletion"
+    "Should be no components after deletion",
   );
-
 }
