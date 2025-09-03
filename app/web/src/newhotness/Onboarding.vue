@@ -6,6 +6,7 @@
     <div class="flex flex-row items-center justify-between w-full px-sm py-xs">
       <SiLogo class="block h-md w-md flex-none" />
       <NewButton
+        v-if="isSkippable"
         aria-label="Skip Onboarding"
         class="text-neutral-400 hover:text-white font-normal"
         label="Skip"
@@ -118,14 +119,7 @@
                     <label
                       class="basis-0 grow flex flex-row items-center gap-2xs"
                     >
-                      {{ title }}
-                      <a
-                        v-if="'help' in field"
-                        :href="field.help"
-                        target="_blank"
-                      >
-                        <Icon name="question-circle" size="xs" />
-                      </a>
+                      {{ title }} {{ field.required && "*" }}
                     </label>
                     <div class="flex flex-row basis-0 grow">
                       <input
@@ -185,9 +179,9 @@
                     />
                     <div class="flex flex-col justify-center align-middle">
                       <span>{{ region.title }}</span>
-                      <span class="text-sm text-neutral-400">{{
-                        region.value
-                      }}</span>
+                      <span class="text-sm text-neutral-400">
+                        {{ region.value }}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -217,7 +211,7 @@
               <NewButton
                 :label="initializeApiError ? 'Retry' : 'Next'"
                 tone="action"
-                :disabled="!formHasValues"
+                :disabled="!formHasRequiredValues"
                 @click="
                   aiTutorialAreaRef?.open();
                   submitOnboardRequest();
@@ -266,7 +260,20 @@
                   We're only showing you the value of this token once. Please,
                   store it somewhere safe.
                 </ErrorMessage>
-                <CopyableTextBlock :text="apiToken" expandable />
+                <CopyableTextBlock
+                  :text="apiToken"
+                  expandable
+                  @copied="trackEvent('onboarding_ai_token_copied')"
+                />
+                <ErrorMessage
+                  v-if="!isSkippable && !hasUsedAiAgent"
+                  class="rounded-md text-md px-xs py-xs bg-[#7D4A1740] my-xs"
+                  icon="loader"
+                  tone="warning"
+                  variant="block"
+                >
+                  Please run the AI agent before continuing.
+                </ErrorMessage>
               </div>
             </template>
             <template #footer>
@@ -278,7 +285,10 @@
               <NewButton
                 label="Done"
                 tone="action"
-                :disabled="!initializeRequestSentAndSuccessful"
+                :disabled="
+                  !initializeRequestSentAndSuccessful ||
+                  (!isSkippable && !hasUsedAiAgent)
+                "
                 @click="handleDoneClick()"
               />
             </template>
@@ -302,6 +312,19 @@ import { encryptMessage } from "@/utils/messageEncryption";
 import { componentTypes, routes, useApi } from "@/newhotness/api_composables";
 import { useContext } from "@/newhotness/logic_composables/context";
 import CopyableTextBlock from "@/newhotness/CopyableTextBlock.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useAuthStore } from "@/store/auth.store";
+import { trackEvent } from "@/utils/tracking";
+
+const authStore = useAuthStore();
+const featureFlagsStore = useFeatureFlagsStore();
+
+const isSkippable = computed(
+  () => !featureFlagsStore.INITIALIZER_ONBOARD_FORCE_AGENT,
+);
+const hasUsedAiAgent = computed(
+  () => authStore.userWorkspaceFlags.executedAgent ?? false,
+);
 
 const ctx = useContext();
 
@@ -366,24 +389,24 @@ const secretFormFields = reactive({
   "AWS access key ID": {
     ref: "",
     type: "password",
+    required: true,
   },
   "AWS secret access key": {
     ref: "",
     type: "password",
+    required: true,
   },
   "AWS session token": {
     ref: "",
     type: "password",
-  },
-  "Assume Role": {
-    ref: "",
-    type: "password",
-    help: "https://docs.systeminit.com/explanation/aws-authentication#assuming-a-role",
+    required: false,
   },
 });
 
-const formHasValues = computed(() =>
-  Object.values(secretFormFields).some((f) => !!f.ref),
+const formHasRequiredValues = computed(
+  () =>
+    !Object.values(secretFormFields).some((f) => f.required && f.ref === "") &&
+    credentialName.value !== "",
 );
 
 type SecretFormFields = typeof secretFormFields;
@@ -493,7 +516,6 @@ const submitOnboardRequest = async () => {
       ["SessionToken", secretFormFields["AWS session token"].ref],
       ["AccessKeyId", secretFormFields["AWS access key ID"].ref],
       ["SecretAccessKey", secretFormFields["AWS secret access key"].ref],
-      ["AssumeRole", secretFormFields["Assume Role"].ref],
     ].filter(([_, value]) => value !== "") as [string, string][]
   ) // Remove empty values
     .reduce<{ [key: string]: string }>((acc, [key, value]) => {

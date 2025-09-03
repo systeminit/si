@@ -166,6 +166,7 @@ import { SchemaId } from "@/api/sdf/dal/schema";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { muspelheimStatuses } from "@/store/realtime/heimdall";
 import Onboarding from "@/newhotness/Onboarding.vue";
+import { trackEvent } from "@/utils/tracking";
 import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
@@ -300,7 +301,10 @@ const changeSet = ref<ChangeSet | undefined>();
 const _headChangeSetId = ref<string>("");
 const approvers = ref<string[]>([]);
 const onboardingCompleted = ref(false);
+const onboardingIsReopened = ref(false);
 const reopenOnboarding = () => {
+  trackEvent("started_onboarding_manual");
+  onboardingIsReopened.value = true;
   onboardingCompleted.value = false;
 };
 
@@ -879,6 +883,29 @@ const bumpToWorkspaces = () => {
 };
 
 const onReviewPage = computed(() => route.name === "new-hotness-review");
+
+// POSTHOG TRACKING
+watch(heimdall.initCompleted, () => {
+  if (heimdall.initCompleted) {
+    trackEvent("finished_cold_start");
+  }
+});
+
+watch(
+  [onboardingIsReopened, showOnboarding],
+  () => {
+    if (!showOnboarding.value) {
+      return;
+    }
+
+    if (onboardingIsReopened.value) {
+      trackEvent("started_onboarding_manual");
+    } else {
+      trackEvent("started_onboarding_auto");
+    }
+  },
+  { immediate: true },
+);
 
 onBeforeUnmount(() => {
   windowResizeEmitter.off("resize", windowResizeHandler);

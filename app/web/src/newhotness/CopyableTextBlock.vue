@@ -42,5 +42,10 @@ const expanded = ref(false);
 
 const copyText = () => {
   navigator.clipboard.writeText(props.text);
+  emit("copied");
 };
+
+const emit = defineEmits<{
+  (e: "copied"): void;
+}>();
 </script>
