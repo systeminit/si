@@ -1,6 +1,11 @@
 // sdf_client.ts
 import JWT from "npm:jsonwebtoken";
-import { retryUntil, retryWithBackoff, sleep, sleepBetween } from "./test_helpers.ts";
+import {
+  retryUntil,
+  retryWithBackoff,
+  sleep,
+  sleepBetween,
+} from "./test_helpers.ts";
 
 type HTTP_METHOD = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 type ROUTE_VARS = Record<string, string>;
@@ -24,7 +29,8 @@ export const ROUTES = {
     method: "POST",
   },
   apply: {
-    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/apply`,
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/apply`,
     method: "POST",
   },
   create_change_set: {
@@ -40,22 +46,25 @@ export const ROUTES = {
 
   // Component Management -------------------------------------------------------
   create_component_v2: {
-    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/views/${vars.viewId}/component`,
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/views/${vars.viewId}/component`,
     method: "POST",
   },
   delete_components_v2: {
-    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/delete`,
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/delete`,
     method: "DELETE",
   },
   attributes: {
-    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/${vars.componentId}/attributes`,
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/${vars.componentId}/attributes`,
     method: "PUT",
   },
   upgrade: {
-    path: (vars: ROUTE_VARS) => `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/upgrade`,
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/components/upgrade`,
     method: "POST",
   },
-
 
   // Variant Management -----------------------------------------------------------
   create_variant: {
@@ -207,7 +216,10 @@ export class SdfApiClient {
     return new SdfApiClient(token, baseUrl, workspaceId);
   }
 
-  public async call({ route, routeVars, params, body }: API_CALL, noThrow?: boolean) {
+  public async call(
+    { route, routeVars, params, body }: API_CALL,
+    noThrow?: boolean,
+  ) {
     const { path, method, headers } = ROUTES[route] as API_DESCRIPTION;
 
     // Ensure routeVars is always defined and contains workspaceId
@@ -315,13 +327,21 @@ export class SdfApiClient {
   ): Promise<void> {
     console.log(`Waiting on DVUs for ${this.workspaceId}...`);
 
-    await retryUntil(async () => {
-      const dvuRoots = await this.mjolnir(changeSetId, "DependentValueComponentList", this.workspaceId);
-      if (dvuRoots.components && dvuRoots.components.length !== 0) {
-        throw new Error("DVU is still being processed");
-      }
-    }, timeout_ms, "Timeout waiting for dvu roots to clear", interval_ms);
-
+    await retryUntil(
+      async () => {
+        const dvuRoots = await this.mjolnir(
+          changeSetId,
+          "DependentValueComponentList",
+          this.workspaceId,
+        );
+        if (dvuRoots.components && dvuRoots.components.length !== 0) {
+          throw new Error("DVU is still being processed");
+        }
+      },
+      timeout_ms,
+      "Timeout waiting for dvu roots to clear",
+      interval_ms,
+    );
   }
 
   public async waitForDVUs(
@@ -356,18 +376,19 @@ export class SdfApiClient {
     return Promise.race([dvuPromise, timeoutPromise]);
   }
 
-
   // Helper functions for interacting with MVs
   public async mjolnir(
     changeSetId: string,
     kind: string,
     id: string,
   ): Promise<any | null> {
-
-    const response = await this.call({
-      route: "mjolnir",
-      routeVars: { changeSetId, materializedViewId: id, referenceKind: kind },
-    }, true);
+    const response = await this.call(
+      {
+        route: "mjolnir",
+        routeVars: { changeSetId, materializedViewId: id, referenceKind: kind },
+      },
+      true,
+    );
     if (response?.status === 200) {
       try {
         const json = await response.json();
@@ -375,71 +396,103 @@ export class SdfApiClient {
       } catch (err) {
         console.error("Error trying to parse response body as JSON", err);
       }
-
     } else if (response?.status === 404) {
-      console.warn(`Materialized view for ${kind} with ID ${id} not (yet?) found`);
-      throw new Error("Materialized view not (yet?) found for kind: " + kind + ", id: " + id);
+      console.warn(
+        `Materialized view for ${kind} with ID ${id} not (yet?) found`,
+      );
+      throw new Error(
+        "Materialized view not (yet?) found for kind: " + kind + ", id: " + id,
+      );
     } else {
       // Fail on non-200 and non-404 errors
-      console.error(`Error ${response.status}: Unable to fetch MV for ${kind} with ID ${id}:`, await response.text());
+      console.error(
+        `Error ${response.status}: Unable to fetch MV for ${kind} with ID ${id}:`,
+        await response.text(),
+      );
       throw new Error(`Error ${response.status}: ${await response.text()}`);
     }
     return null;
   }
 
-  public async multiMjolnir(changeSetId: string, mvs: { kind: string; id: string }[]) {
-    const response = await this.call({
-      route: "multi_mjolnir",
-      routeVars: { changeSetId },
-      body: { requests: mvs },
-    }, true);
+  public async multiMjolnir(
+    changeSetId: string,
+    mvs: { kind: string; id: string }[],
+  ) {
+    const response = await this.call(
+      {
+        route: "multi_mjolnir",
+        routeVars: { changeSetId },
+        body: { requests: mvs },
+      },
+      true,
+    );
 
     if (response?.status === 200) {
       try {
         const json = await response.json();
         if (json.failed && json.failed.length > 0) {
-          console.warn("Some MVs were not found during multi mjolnir:", json.failed);
+          console.warn(
+            "Some MVs were not found during multi mjolnir:",
+            json.failed,
+          );
         }
         return json.successful.map((v: any) => v.frontEndObject.data);
       } catch (err) {
         console.error("Error trying to parse response body as JSON", err);
+        throw new Error(`Error trying to parse response body as JSON: ${err}`);
       }
     } else {
       // Fail on non-200 errors
-      console.error(`Error ${response.status}: Unable to fetch MVs:`, await response.text());
+      console.error(
+        `Error ${response.status}: Unable to fetch MVs:`,
+        await response.text(),
+      );
       throw new Error(`Error ${response.status}: ${await response.text()}`);
     }
   }
 
-  public async fetchChangeSetIndex(changeSetId: string, timeout_ms: number = 30000): Promise<any> {
+  public async fetchChangeSetIndex(
+    changeSetId: string,
+    timeout_ms: number = 150000,
+  ): Promise<any> {
     await retryUntil(
       async () => {
         // your operation that might fail
-        const response = await this.call({
-          route: "index",
-          routeVars: { changeSetId },
-        }, true);
+        const response = await this.call(
+          {
+            route: "index",
+            routeVars: { changeSetId },
+          },
+          true,
+        );
         if (response?.status === 200) {
           const json = await response.json();
           return json;
         } else if (response?.status === 404) {
-          console.warn(`ChangeSet index for ID ${changeSetId} not (yet?) found`);
+          console.warn(
+            `ChangeSet index for ID ${changeSetId} not (yet?) found`,
+          );
           throw new Error("Index not found yet for changeset: " + changeSetId);
-        }
-        else if (response?.status === 202) {
-          console.log(`ChangeSet index for ID ${changeSetId} is still being built (status 202)`);
-          throw new Error("Index still being built for changeset: " + changeSetId);
-        }
-        else {
+        } else if (response?.status === 202) {
+          console.log(
+            `ChangeSet index for ID ${changeSetId} is still being built (status 202)`,
+          );
+          throw new Error(
+            "Index still being built for changeset: " + changeSetId,
+          );
+        } else {
           // Fail on non-200 and non-404 errors
-          console.error(`Error ${response.status}: Unable to fetch ChangeSet index for ID ${changeSetId}:`, await response.text());
+          console.error(
+            `Error ${response.status}: Unable to fetch ChangeSet index for ID ${changeSetId}:`,
+            await response.text(),
+          );
           throw new Error(`Error ${response.status}: ${await response.text()}`);
         }
       },
       timeout_ms,
+      `Timeout waiting for changeset index for ${changeSetId} to be available`,
     );
   }
-
 }
 
 // Helper functions for JWT generation and fetching
