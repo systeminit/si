@@ -5,6 +5,8 @@ import {
   eventualMVAssert,
   getViews,
   runWithTemporaryChangeset,
+  sleep,
+  sleepBetween,
 } from "../test_helpers.ts";
 
 export default async function create_variant(sdfApiClient: SdfApiClient) {
@@ -66,6 +68,8 @@ export async function create_variant_inner(
     createInstancePayload,
   );
   assert(newSchemaComponentId, "Expected to get a component id after creation");
+
+  await sleepBetween(4000, 10000);
 
   // make sure component is in the list
   await eventualMVAssert(
