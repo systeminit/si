@@ -5,11 +5,9 @@ import { InstanceEnvType, Prisma, PrismaClient } from "@prisma/client";
 
 import {
   createWorkspace,
-  LOCAL_WORKSPACE_URL,
   SAAS_WORKSPACE_URL,
 } from "./workspaces.service";
 import { tracker } from "../lib/tracker";
-import { posthog } from "../lib/posthog";
 import { fetchAuth0Profile } from "./auth0.service";
 import { ApiError } from "../lib/api-error";
 import { findLatestTosForUser } from "./tos.service";
@@ -162,29 +160,14 @@ export async function createOrUpdateUserFromAuth0Details(
       lastName: user.lastName,
     });
 
-    const saasReleaseEnabled = await posthog.isFeatureEnabled(
-      "auth_portal_saas_release",
-      user.id,
+    await createWorkspace(
+      user,
+      InstanceEnvType.SI,
+      SAAS_WORKSPACE_URL,
+      `${user.nickname}'s  Production Workspace`,
+      true,
+      "",
     );
-    if (saasReleaseEnabled) {
-      await createWorkspace(
-        user,
-        InstanceEnvType.SI,
-        SAAS_WORKSPACE_URL,
-        `${user.nickname}'s  Production Workspace`,
-        true,
-        "",
-      );
-    } else {
-      await createWorkspace(
-        user,
-        InstanceEnvType.LOCAL,
-        LOCAL_WORKSPACE_URL,
-        `${user.nickname}'s  Dev Workspace`,
-        false,
-        "",
-      );
-    }
   }
 
   return user;
