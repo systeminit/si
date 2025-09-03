@@ -7,6 +7,7 @@
     size="max"
     class="w-[max(800px,66vw)]"
     @click="onClick"
+    @close="close"
   >
     <div class="h-[45svh]">
       <div
@@ -78,85 +79,47 @@
               />
             </HorizontalScrollArea>
             <!-- Fuzzy search results list -->
-            <div v-if="showResults" class="grow min-h-0 scrollable">
-              <TreeNode
-                v-for="category in filteredCategories"
-                ref="categoryTreeNodeRefs"
-                :key="category.name"
-                :defaultOpen="
-                  !(
-                    debouncedSearchString.length === 0 &&
-                    selectedFilter === undefined
-                  )
-                "
-                :class="themeClasses('bg-neutral-200', 'bg-neutral-700')"
-                indentationSize="none"
-                :label="category.name"
-                alwaysShowArrow
-                clickLabelToToggle
-                enableGroupToggle
-                :primaryIcon="category.icon"
-                :color="category.color"
+            <div
+              v-if="showResults"
+              ref="scrollRef"
+              class="grow min-h-0 scrollable"
+            >
+              <div
+                class="w-full relative flex flex-col"
+                :style="{
+                  ['overflow-anchor']: 'none',
+                  height: `${virtualListHeight}px`,
+                }"
               >
-                <TreeNode
-                  v-for="asset in category.assets"
-                  :key="asset.key.schemaId + asset.key.schemaVariantId"
-                  :class="
-                    clsx(
-                      'hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
-                      themeClasses(
-                        'bg-shade-0 hover:outline-action-500',
-                        'bg-neutral-800 hover:outline-action-300',
-                      ),
-                      compareKeys(selectedAsset?.key, asset.key) && [
-                        'add-component-selected-item',
-                        themeClasses(
-                          'outline-action-500 bg-action-200',
-                          'outline-action-300 bg-action-900',
-                        ),
-                      ],
+                <AddComponentModalListRow
+                  v-for="row in virtualItems"
+                  :key="row.index"
+                  :idx="row.index"
+                  :style="{
+                    height:
+                      addComponentRowHeight(
+                        categoryAndSchemaRows[row.index]?.type,
+                      ) + 'px',
+                    transform: `translateY(${row.start}px)`,
+                  }"
+                  :rowData="categoryAndSchemaRows[row.index]!"
+                  :open="openFromIndex(row.index)"
+                  :selected="
+                    compareKeys(
+                      selectedAsset?.key,
+                      schemaFromIndex(row.index)?.key,
                     )
                   "
-                  :color="asset.variant.color"
-                  @click="() => selectAsset(asset, true)"
-                >
-                  <template #label>
-                    <!-- TODO(Wendy) - style this text based on the fuzzy search! -->
-                    <div class="flex flex-row items-center gap-xs">
-                      <TruncateWithTooltip>
-                        {{ asset.name }}
-                      </TruncateWithTooltip>
-                      <EditingPill
-                        v-if="!asset.variant.isLocked"
-                        :color="asset.variant.color"
-                      />
-                    </div>
-                  </template>
-                  <template
-                    v-if="compareKeys(selectedAsset?.key, asset.key)"
-                    #icons
-                  >
-                    <Icon v-if="api.inFlight.value" name="loader" size="sm" />
-                    <div
-                      v-else
-                      :class="
-                        clsx(
-                          'text-xs',
-                          themeClasses('text-neutral-900', 'text-neutral-200'),
-                        )
-                      "
-                    >
-                      <TextPill tighter variant="key2">Enter</TextPill> to add
-                    </div>
-                  </template>
-                </TreeNode>
-              </TreeNode>
-              <EmptyState
-                v-if="filteredCategories.length === 0"
-                text="No Components Found"
-                secondaryText="Your search parameters did not match any components"
-                icon="alert-circle"
-              />
+                  :submitted="
+                    compareKeys(
+                      selectedAsset?.key,
+                      schemaFromIndex(row.index)?.key,
+                    ) && api.inFlight.value
+                  "
+                  @click="() => assetClick(row.index)"
+                />
+                <!-- TODO: Fix indices for category is open -->
+              </div>
             </div>
           </div>
         </div>
@@ -218,12 +181,10 @@
 import {
   BRAND_COLOR_FILTER_HEX_CODES,
   HorizontalScrollArea,
-  Icon,
   IconNames,
   Modal,
   SiSearch,
   themeClasses,
-  TreeNode,
   TruncateWithTooltip,
   TextPill,
 } from "@si/vue-lib/design-system";
@@ -233,7 +194,7 @@ import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { useRoute, useRouter } from "vue-router";
 import { debounce } from "lodash-es";
 import { FzfResultItem } from "fzf";
-import EditingPill from "@/components/EditingPill.vue";
+import { useVirtualizer } from "@tanstack/vue-virtual";
 import {
   CategoryVariant,
   EntityKind,
@@ -245,6 +206,9 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { getKind, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import AddComponentModalListRow, {
+  AddComponentRowData,
+} from "@/newhotness/AddComponentModalListRow.vue";
 import { useFzf } from "./logic_composables/fzf";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -256,31 +220,32 @@ const ctx: Context | undefined = inject("CONTEXT");
 assertIsDefined(ctx);
 const bannerClosed = ref(false);
 
+const scrollRef = ref<HTMLDivElement | undefined>();
+
 const selectedAsset = ref<UIAsset | undefined>(undefined);
 
 const scrollToSelected = () => {
-  nextTick(() => {
-    const el = document.getElementsByClassName(
-      "add-component-selected-item",
-    )[0];
-    if (el) {
-      el.scrollIntoView({ block: "center" });
-    }
-  });
+  const el = document.getElementsByClassName("add-component-selected-item")[0];
+  if (el) {
+    el.scrollIntoView({ block: "center" });
+  }
 };
 
-const selectAsset = (asset: UIAsset, noScroll?: boolean) => {
-  if (compareKeys(selectedAsset.value?.key, asset.key)) onEnter();
-  else {
-    selectedAsset.value = asset;
-  }
+const selectAsset = async (asset: UIAsset, noScroll?: boolean) => {
+  selectedAsset.value = asset;
+  // if you have a selected asset from this category open the category
+  categoryIsOpen.value.add(asset.uiCategory.name);
   selectionIndex.value = filteredAssetsFlat.value.findIndex((a) =>
     compareKeys(a.key, asset.key),
   );
 
-  // If we came here from a mouse click, do not scroll! it can make the double
-  // click "miss"
+  // this gets the virtual list to re-render we move beyond
+  // the currently virtualized rows
   if (!noScroll) {
+    if (selectionIndex.value >= 0) {
+      virtualList.value.scrollToIndex(selectionIndex.value);
+    }
+    // this ensures that we scroll the window properly
     scrollToSelected();
   }
 };
@@ -387,16 +352,25 @@ const onUp = (e: KeyboardEvent) => {
 
   if (selectionIndex.value === undefined) {
     selectionIndex.value = filteredAssetsFlat.value.length - 1;
-  } else if (goByCategory) {
-    selectFirstInNextCategory(selectionIndex.value, -1);
-    return;
+    selectAssetByIndex();
+    setTimeout(() => scrollToSelected(), 200);
   } else {
-    selectionIndex.value--;
-    if (selectionIndex.value < 0) {
-      selectionIndex.value = filteredAssetsFlat.value.length - 1;
+    // if we're going by category or flipping to
+    // the other end of the list delay a scroll
+    let noScroll = false;
+    if (goByCategory) {
+      selectFirstInNextCategory(selectionIndex.value, -1);
+      setTimeout(() => scrollToSelected(), 200);
+    } else {
+      selectionIndex.value--;
+      if (selectionIndex.value < 0) {
+        noScroll = true;
+        selectionIndex.value = filteredAssetsFlat.value.length - 1;
+      }
+      selectAssetByIndex(noScroll);
+      if (noScroll) setTimeout(() => scrollToSelected(), 200);
     }
   }
-  selectAssetByIndex();
 };
 const onDown = (e: KeyboardEvent) => {
   if (!showResults.value) return;
@@ -406,16 +380,25 @@ const onDown = (e: KeyboardEvent) => {
 
   if (selectionIndex.value === undefined) {
     selectionIndex.value = 0;
-  } else if (goByCategory) {
-    selectFirstInNextCategory(selectionIndex.value, 1);
-    return;
+    setTimeout(() => scrollToSelected(), 200);
+    selectAssetByIndex();
   } else {
-    selectionIndex.value++;
-    if (selectionIndex.value > filteredAssetsFlat.value.length - 1) {
-      selectionIndex.value = 0;
+    // if we're going by category or flipping to
+    // the other end of the list delay a scroll
+    let noScroll = false;
+    if (goByCategory) {
+      selectFirstInNextCategory(selectionIndex.value, 1);
+      setTimeout(() => scrollToSelected(), 200);
+    } else {
+      selectionIndex.value++;
+      if (selectionIndex.value > filteredAssetsFlat.value.length - 1) {
+        noScroll = true;
+        selectionIndex.value = 0;
+      }
+      selectAssetByIndex(noScroll);
+      if (noScroll) setTimeout(() => scrollToSelected(), 200);
     }
   }
-  selectAssetByIndex();
 };
 const changeFilterLeft = () => {
   let currentFilterIndex = componentFilters.value.findIndex(
@@ -462,12 +445,12 @@ const onTab = (e: KeyboardEvent) => {
   if (e.shiftKey) changeFilterLeft();
   else changeFilterRight();
 };
-const selectAssetByIndex = () => {
-  if (
-    selectionIndex.value !== undefined &&
-    filteredAssetsFlat.value[selectionIndex.value]
-  ) {
-    selectAsset(filteredAssetsFlat.value[selectionIndex.value] as UIAsset);
+const selectAssetByIndex = (noScroll?: boolean) => {
+  if (selectionIndex.value !== undefined && selectionIndex.value >= 0) {
+    const asset = filteredAssetsFlat.value[selectionIndex.value];
+    if (asset) {
+      selectAsset(asset, noScroll);
+    }
   }
 };
 const selectFirstInNextCategory = (currentIndex: number, direction: 1 | -1) => {
@@ -485,16 +468,16 @@ const selectFirstInNextCategory = (currentIndex: number, direction: 1 | -1) => {
     const lastCategoryAsset =
       filteredCategories.value[filteredCategories.value.length - 1]?.assets[0];
     if (nextCategory && nextCategory.assets[0]) {
-      selectAsset(nextCategory.assets[0]);
+      selectAsset(nextCategory.assets[0], true);
     } else if (direction === 1 && firstCategoryAsset) {
-      selectAsset(firstCategoryAsset);
+      selectAsset(firstCategoryAsset, true);
     } else if (direction === -1 && lastCategoryAsset) {
-      selectAsset(lastCategoryAsset);
+      selectAsset(lastCategoryAsset, true);
     }
   }
 };
 
-export type AssetFilter = {
+type AssetFilter = {
   name: string;
   icon: IconNames;
   count: number;
@@ -518,7 +501,7 @@ type UIAsset = {
   uiCategory: UICategoryInfo;
 };
 
-type UISchemaKey = {
+export type UISchemaKey = {
   schemaId: string;
   schemaVariantId?: string;
 };
@@ -561,10 +544,11 @@ const categories = computed(() => {
       )
         return;
 
-      let category = categories[variant.category];
+      const catName = variant.category || "SI";
+      let category = categories[catName];
       if (!category) {
         category = {
-          name: variant.category,
+          name: catName,
           color: variant.color,
           icon: pickIcon(variant.category),
           assets: [],
@@ -580,17 +564,18 @@ const categories = computed(() => {
         name: variant.displayName ?? "Unknown Name",
         uiCategory: category,
       });
-      categories[variant.category] = category;
+      categories[catName] = category;
     });
   }
 
   // don't show a duplicated default schema if its already installed
   if (defaultSchemas.data.value) {
     defaultSchemas.data.value.forEach((variant) => {
-      let category = categories[variant.category];
+      const catName = variant.category || "SI";
+      let category = categories[catName];
       if (!category) {
         category = {
-          name: variant.category,
+          name: catName,
           color: variant.color,
           icon: pickIcon(variant.category),
           assets: [],
@@ -605,7 +590,7 @@ const categories = computed(() => {
           name: variant.displayName,
           uiCategory: category,
         });
-        categories[variant.category] = category;
+        categories[catName] = category;
       }
     });
   }
@@ -647,6 +632,8 @@ const fzfInstance = computed(() => {
   return useFzf(assets, (a: UIAsset) => `${a.name} ${a.uiCategory.name}`);
 });
 
+// PSA: reactive(new Set()) doesn't actually work!
+const categoryIsOpen = ref<Set<string>>(new Set());
 const filteredCategories = computed(() => {
   const filteredResults: UICategory[] = [];
 
@@ -703,7 +690,6 @@ const showResults = computed(
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const searchRef = ref<InstanceType<typeof SiSearch>>();
-const categoryTreeNodeRefs = ref<InstanceType<typeof TreeNode>[]>();
 
 const fuzzySearchString = ref<string>("");
 const debouncedSearchString = ref<string>("");
@@ -723,32 +709,7 @@ const justCleared = ref(false);
 
 watch([fuzzySearchString, selectedFilter], ([newFuzzySearchString]) => {
   updateDebouncedSearch(newFuzzySearchString);
-  fixCollapse();
 });
-
-watch(selectedAsset, (newSelectedAsset) => {
-  if (newSelectedAsset === undefined || !categoryTreeNodeRefs.value) return;
-
-  const selectedCategoryIndex = filteredCategories.value.findIndex((category) =>
-    category.assets.find((asset) =>
-      compareKeys(asset.key, newSelectedAsset.key),
-    ),
-  );
-
-  const treeNode = categoryTreeNodeRefs.value[selectedCategoryIndex];
-  treeNode?.toggleIsOpen(true);
-});
-
-const fixCollapse = () => {
-  if (
-    fuzzySearchString.value.length === 0 &&
-    selectedFilter.value === undefined
-  ) {
-    categoryTreeNodeRefs.value?.forEach((node) => node.toggleIsOpen(false));
-  } else {
-    categoryTreeNodeRefs.value?.forEach((node) => node.toggleIsOpen(true));
-  }
-};
 
 const toggleFilterTile = (name?: string) => {
   clearSelection();
@@ -759,8 +720,8 @@ const toggleFilterTile = (name?: string) => {
 
 const isFilterSelected = (name: string) => {
   if (name === selectedFilter.value) return true;
-  else if (name === "All" && selectedFilter.value === undefined) return true;
-  else return false;
+  if (name === "All" && selectedFilter.value === undefined) return true;
+  return false;
 };
 
 const open = () => {
@@ -771,12 +732,56 @@ const open = () => {
   toggleFilterTile();
   nextTick(() => {
     searchRef.value?.focusSearch();
-    fixCollapse();
   });
+};
+
+const assetClick = (idx: number) => {
+  const cat = categoryFromIndex(idx);
+  if (cat) {
+    if (categoryIsOpen.value.has(cat.name))
+      categoryIsOpen.value.delete(cat.name);
+    else categoryIsOpen.value.add(cat.name);
+  }
+  const schema = schemaFromIndex(idx);
+  if (schema) {
+    const asset = filteredAssetsFlat.value.find((a) =>
+      compareKeys(a.key, schema.key),
+    );
+    if (asset) {
+      if (compareKeys(asset.key, selectedAsset.value?.key)) onEnter();
+      else selectAsset(asset, true);
+    }
+  }
+};
+
+const schemaFromIndex = (idx: number) => {
+  const maybeSchema = categoryAndSchemaRows.value[idx];
+  if (maybeSchema?.type === "schema") return maybeSchema;
+  return undefined;
+};
+
+const categoryFromIndex = (idx: number) => {
+  const maybeCategory = categoryAndSchemaRows.value[idx];
+  if (maybeCategory?.type === "category") return maybeCategory;
+  return undefined;
+};
+
+const openFromIndex = (idx: number) => {
+  // if searching open everything
+  if (selectedFilter.value || debouncedSearchString.value) return true;
+
+  const cat = categoryFromIndex(idx);
+  if (!cat) return false;
+  return categoryIsOpen.value.has(cat.name);
 };
 
 const close = () => {
   modalRef.value?.close();
+  fuzzySearchString.value = "";
+  categoryIsOpen.value.clear();
+  selectedAsset.value = undefined;
+  selectionIndex.value = undefined;
+  virtualList.value.scrollToIndex(0);
 };
 
 const pickIcon = (name: string): IconNames => {
@@ -853,6 +858,16 @@ const componentFilters = computed((): AssetFilter[] => {
       count: getCategoriesAndCountForFilterString("Templates").count,
     },
   ];
+
+  if (ffStore.AZURE_SCHEMAS) {
+    filters.splice(2, 0, {
+      name: "Microsoft",
+      icon: "logo-si",
+      count: getCategoriesAndCountForFilterString("microsoft").count,
+      color: BRAND_COLOR_FILTER_HEX_CODES.MS,
+    });
+  }
+
   return filters.filter((f) => f.count > 0);
 });
 
@@ -880,6 +895,66 @@ const onClick = (e: MouseEvent | undefined) => {
     close();
   }
 };
+
+const categoryAndSchemaRows = computed(() => {
+  const rows: AddComponentRowData[] = [];
+
+  filteredCategories.value.forEach((category) => {
+    rows.push({
+      type: "category",
+      name: category.name,
+      icon: category.icon,
+      color: category.color,
+    });
+
+    if (
+      selectedFilter.value ||
+      debouncedSearchString.value ||
+      categoryIsOpen.value.has(category.name)
+    ) {
+      category.assets.forEach((asset) => {
+        rows.push({
+          type: "schema",
+          name: asset.name,
+          color: category.color,
+          key: asset.key,
+          editing: !asset.variant.isLocked,
+        });
+      });
+    }
+  });
+
+  return rows;
+});
+
+const CATEGORY_ROW_HEIGHT = 32;
+const SCHEMA_ROW_HEIGHT = 28;
+
+const addComponentRowHeight = (type?: string) => {
+  if (type === "category") return CATEGORY_ROW_HEIGHT;
+  else return SCHEMA_ROW_HEIGHT;
+};
+
+const virtualizerOptions = computed(() => ({
+  count: categoryAndSchemaRows.value.length,
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  getScrollElement: () => scrollRef.value!,
+  estimateSize: (i: number) =>
+    addComponentRowHeight(categoryAndSchemaRows.value[i]?.type),
+  getItemKey: (i: number) => {
+    const row = categoryAndSchemaRows.value[i];
+    if (row?.type === "category") {
+      return `category-${i}`;
+    }
+    return `schema-${i}`;
+  },
+  overscan: 10,
+}));
+
+const virtualList = useVirtualizer(virtualizerOptions);
+
+const virtualListHeight = computed(() => virtualList.value.getTotalSize());
+const virtualItems = computed(() => virtualList.value.getVirtualItems());
 
 defineExpose({ open, close, isOpen: modalRef.value?.isOpen });
 </script>
