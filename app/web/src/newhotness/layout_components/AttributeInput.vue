@@ -861,7 +861,6 @@ const wForm = useWatchedForm<AttrData>(
   `component.av.prop.${props.component.id}.${props.path}`,
   attributeInputContext?.blankInput,
 );
-
 // this gets used by the watcher to ensure that data has propagated
 const rawAttrData = computed<AttrData>(() => {
   return { value: props.value };
