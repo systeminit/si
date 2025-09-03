@@ -12,7 +12,6 @@ use dal_test::{
     helpers::{
         ChangeSetTestHelpers,
         PropEditorTestView,
-        connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
         create_component_for_schema_variant_on_default_view,
     },
@@ -557,176 +556,179 @@ async fn prop_can_be_set_by_socket(ctx: &mut DalContext) {
             .expect("could not get value")
     );
 
-    let pet_shop_component =
-        create_component_for_default_schema_name_in_default_view(ctx, "pet_shop", "Petopia")
-            .await
-            .expect("could not create component");
+    // Removed: canBeSetBySocket may still be true, but socket connections no longer exist
 
-    connect_components_with_socket_names(
-        ctx,
-        pet_shop_component.id(),
-        "parrot_names",
-        pirate_component.id(),
-        "parrot_names",
-    )
-    .await
-    .expect("could not connect components with socket names");
+    //     let pet_shop_component =
+    //         create_component_for_default_schema_name_in_default_view(ctx, "pet_shop", "Petopia")
+    //             .await
+    //             .expect("could not create component");
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    //     connect_components_with_socket_names(
+    //         ctx,
+    //         pet_shop_component.id(),
+    //         "parrot_names",
+    //         pirate_component.id(),
+    //         "parrot_names",
+    //     )
+    //     .await
+    //     .expect("could not connect components with socket names");
 
-    assert_eq!(
-        json![{
-            "id": av_id,
-            "propId": prop_id,
-            "key": null,
-            "value": null,
-            "validation": null,
-            "canBeSetBySocket": true, // prop can be set by socket
-            "isFromExternalSource": true, // now that we have a connection, this is true
-            "isControlledByAncestor": false,
-            "isControlledByDynamicFunc": true,
-            "overridden": false
-        }], // expected
-        PropEditorTestView::for_component_id(ctx, pirate_component.id())
-            .await
-            .expect("could not get property editor test view")
-            .get_value(parrots_path)
-            .expect("could not get value")
-    );
+    //     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+    //         .await
+    //         .expect("could not commit and update snapshot to visibility");
+
+    //     assert_eq!(
+    //         json![{
+    //             "id": av_id,
+    //             "propId": prop_id,
+    //             "key": null,
+    //             "value": null,
+    //             "validation": null,
+    //             "canBeSetBySocket": true, // prop can be set by socket
+    //             "isFromExternalSource": true, // now that we have a connection, this is true
+    //             "isControlledByAncestor": false,
+    //             "isControlledByDynamicFunc": true,
+    //             "overridden": false
+    //         }], // expected
+    //         PropEditorTestView::for_component_id(ctx, pirate_component.id())
+    //             .await
+    //             .expect("could not get property editor test view")
+    //             .get_value(parrots_path)
+    //             .expect("could not get value")
+    //     );
 }
 
-#[test]
-async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
-    let pirate_name = "Long John Silver";
-    let parrot_name = "Captain Flint";
-    let pirate_component =
-        create_component_for_default_schema_name_in_default_view(ctx, "pirate", pirate_name)
-            .await
-            .expect("could not create component");
+// TODO restore this using subscriptions!
+// #[test]
+// async fn values_controlled_by_ancestor(ctx: &mut DalContext) {
+//     let pirate_name = "Long John Silver";
+//     let parrot_name = "Captain Flint";
+//     let pirate_component =
+//         create_component_for_default_schema_name_in_default_view(ctx, "pirate", pirate_name)
+//             .await
+//             .expect("could not create component");
 
-    let parrots_path = &["root", "domain", "parrot_names"];
-    let parrot_entry_path = &["root", "domain", "parrot_names", "parrot_name"];
+//     let parrots_path = &["root", "domain", "parrot_names"];
+//     let parrot_entry_path = &["root", "domain", "parrot_names", "parrot_name"];
 
-    let parrots_av_id = pirate_component
-        .attribute_values_for_prop(ctx, parrots_path)
-        .await
-        .expect("find value ids for prop parrot_names")
-        .pop()
-        .expect("there should only be one value id");
+//     let parrots_av_id = pirate_component
+//         .attribute_values_for_prop(ctx, parrots_path)
+//         .await
+//         .expect("find value ids for prop parrot_names")
+//         .pop()
+//         .expect("there should only be one value id");
 
-    let parrots_prop_id = AttributeValue::prop_id(ctx, parrots_av_id)
-        .await
-        .expect("get prop_id for attribute value");
+//     let parrots_prop_id = AttributeValue::prop_id(ctx, parrots_av_id)
+//         .await
+//         .expect("get prop_id for attribute value");
 
-    assert_eq!(
-        json![{
-            "id": parrots_av_id,
-            "propId": parrots_prop_id,
-            "key": null,
-            "value": null,
-            "validation": null,
-            "canBeSetBySocket": true,
-            "isFromExternalSource": false,
-            "isControlledByAncestor": false,
-            "isControlledByDynamicFunc": true,
-            "overridden": false
-        }], // expected
-        PropEditorTestView::for_component_id(ctx, pirate_component.id())
-            .await
-            .expect("could not get property editor test view")
-            .get_value(parrots_path)
-            .expect("could not get value")
-    );
+//     assert_eq!(
+//         json![{
+//             "id": parrots_av_id,
+//             "propId": parrots_prop_id,
+//             "key": null,
+//             "value": null,
+//             "validation": null,
+//             "canBeSetBySocket": true,
+//             "isFromExternalSource": false,
+//             "isControlledByAncestor": false,
+//             "isControlledByDynamicFunc": true,
+//             "overridden": false
+//         }], // expected
+//         PropEditorTestView::for_component_id(ctx, pirate_component.id())
+//             .await
+//             .expect("could not get property editor test view")
+//             .get_value(parrots_path)
+//             .expect("could not get value")
+//     );
 
-    let pet_shop_component =
-        create_component_for_default_schema_name_in_default_view(ctx, "pet_shop", "Petopia")
-            .await
-            .expect("could not create component");
+//     let pet_shop_component =
+//         create_component_for_default_schema_name_in_default_view(ctx, "pet_shop", "Petopia")
+//             .await
+//             .expect("could not create component");
 
-    // set value on source component
-    {
-        let pet_shop_parrot_av_id = pet_shop_component
-            .attribute_values_for_prop(ctx, parrots_path)
-            .await
-            .expect("find value ids for prop parrot_names")
-            .pop()
-            .expect("there should only be one value id");
+//     // set value on source component
+//     {
+//         let pet_shop_parrot_av_id = pet_shop_component
+//             .attribute_values_for_prop(ctx, parrots_path)
+//             .await
+//             .expect("find value ids for prop parrot_names")
+//             .pop()
+//             .expect("there should only be one value id");
 
-        AttributeValue::insert(ctx, pet_shop_parrot_av_id, Some(parrot_name.into()), None)
-            .await
-            .expect("insert value in pet_shop parrot_names array");
-    }
+//         AttributeValue::insert(ctx, pet_shop_parrot_av_id, Some(parrot_name.into()), None)
+//             .await
+//             .expect("insert value in pet_shop parrot_names array");
+//     }
 
-    connect_components_with_socket_names(
-        ctx,
-        pet_shop_component.id(),
-        "parrot_names",
-        pirate_component.id(),
-        "parrot_names",
-    )
-    .await
-    .expect("could not connect components with socket names");
+//     connect_components_with_socket_names(
+//         ctx,
+//         pet_shop_component.id(),
+//         "parrot_names",
+//         pirate_component.id(),
+//         "parrot_names",
+//     )
+//     .await
+//     .expect("could not connect components with socket names");
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+//     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+//         .await
+//         .expect("could not commit and update snapshot to visibility");
 
-    // av for array should only change isFromExternalSource, because of the connection
-    assert_eq!(
-        json![{
-            "id": parrots_av_id,
-            "propId": parrots_prop_id,
-            "key": null,
-            "value": [],
-            "validation": null,
-            "canBeSetBySocket": true, // prop can be set by socket
-            "isFromExternalSource": true, // prop gets value through that socket
-            "isControlledByAncestor": false,
-            "isControlledByDynamicFunc": true,
-            "overridden": false
-        }], // expected
-        PropEditorTestView::for_component_id(ctx, pirate_component.id())
-            .await
-            .expect("could not get property editor test view")
-            .get_value(parrots_path)
-            .expect("could not get value")
-    );
+//     // av for array should only change isFromExternalSource, because of the connection
+//     assert_eq!(
+//         json![{
+//             "id": parrots_av_id,
+//             "propId": parrots_prop_id,
+//             "key": null,
+//             "value": [],
+//             "validation": null,
+//             "canBeSetBySocket": true, // prop can be set by socket
+//             "isFromExternalSource": true, // prop gets value through that socket
+//             "isControlledByAncestor": false,
+//             "isControlledByDynamicFunc": true,
+//             "overridden": false
+//         }], // expected
+//         PropEditorTestView::for_component_id(ctx, pirate_component.id())
+//             .await
+//             .expect("could not get property editor test view")
+//             .get_value(parrots_path)
+//             .expect("could not get value")
+//     );
 
-    // av for entry is controlled by ancestor
-    {
-        let mut parrot_entry_avs = pirate_component
-            .attribute_values_for_prop(ctx, parrot_entry_path)
-            .await
-            .expect("find value ids for prop parrot_name");
+//     // av for entry is controlled by ancestor
+//     {
+//         let mut parrot_entry_avs = pirate_component
+//             .attribute_values_for_prop(ctx, parrot_entry_path)
+//             .await
+//             .expect("find value ids for prop parrot_name");
 
-        assert_eq!(parrot_entry_avs.len(), 1);
+//         assert_eq!(parrot_entry_avs.len(), 1);
 
-        let parrot_entry_av_id = parrot_entry_avs.pop().expect("there should a value id");
+//         let parrot_entry_av_id = parrot_entry_avs.pop().expect("there should a value id");
 
-        let parrot_entry_prop_id = AttributeValue::prop_id(ctx, parrot_entry_av_id)
-            .await
-            .expect("get prop_id for attribute value");
+//         let parrot_entry_prop_id = AttributeValue::prop_id(ctx, parrot_entry_av_id)
+//             .await
+//             .expect("get prop_id for attribute value");
 
-        assert_eq!(
-            json![{
-                "id": parrot_entry_av_id,
-                "propId": parrot_entry_prop_id,
-                "key": null,
-                "value": parrot_name,
-                "validation": null,
-                "canBeSetBySocket": false,
-                "isFromExternalSource": false,
-                "isControlledByAncestor": true, // this entry in the array comes from the parents function
-                "isControlledByDynamicFunc": true,
-                "overridden": false
-            }], // expected
-            PropEditorTestView::for_component_id(ctx, pirate_component.id())
-                .await
-                .expect("could not get property editor test view")
-                .get_value(&["root", "domain", "parrot_names", "0"])
-                .expect("could not get value")
-        );
-    }
-}
+//         assert_eq!(
+//             json![{
+//                 "id": parrot_entry_av_id,
+//                 "propId": parrot_entry_prop_id,
+//                 "key": null,
+//                 "value": parrot_name,
+//                 "validation": null,
+//                 "canBeSetBySocket": false,
+//                 "isFromExternalSource": false,
+//                 "isControlledByAncestor": true, // this entry in the array comes from the parents function
+//                 "isControlledByDynamicFunc": true,
+//                 "overridden": false
+//             }], // expected
+//             PropEditorTestView::for_component_id(ctx, pirate_component.id())
+//                 .await
+//                 .expect("could not get property editor test view")
+//                 .get_value(&["root", "domain", "parrot_names", "0"])
+//                 .expect("could not get value")
+//         );
+//     }
+// }

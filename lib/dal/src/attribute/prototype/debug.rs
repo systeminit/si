@@ -131,178 +131,157 @@ impl AttributePrototypeDebugView {
             AttributeValue::component_prototype_id(ctx, attribute_value_id)
                 .await?
                 .is_some();
-        let destination_component_id =
-            AttributeValue::component_id(ctx, attribute_value_id).await?;
+        let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
         let mut func_binding_args: HashMap<String, Vec<FuncArgDebugView>> = HashMap::new();
         let attribute_prototype_arg_ids =
             AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
         for attribute_prototype_arg_id in attribute_prototype_arg_ids {
-            let attribute_prototype_argument =
-                AttributePrototypeArgument::get_by_id(ctx, attribute_prototype_arg_id).await?;
-            let expected_source_component_id = attribute_prototype_argument
-                .targets()
-                .map(|targets| targets.source_component_id)
-                .unwrap_or(destination_component_id);
-            if attribute_prototype_argument
-                .targets()
-                .is_none_or(|targets| targets.destination_component_id == destination_component_id)
-            {
-                let arg_used = Component::should_data_flow_between_components(
-                    ctx,
-                    destination_component_id,
-                    expected_source_component_id,
-                )
-                .await?;
+            let func_arg_id =
+                AttributePrototypeArgument::func_argument_id(ctx, attribute_prototype_arg_id)
+                    .await?;
 
-                let func_arg_id =
-                    AttributePrototypeArgument::func_argument_id(ctx, attribute_prototype_arg_id)
-                        .await?;
+            let func_arg_name = FuncArgument::get_name_by_id(ctx, func_arg_id).await?;
+            let value_source =
+                AttributePrototypeArgument::value_source(ctx, attribute_prototype_arg_id).await?;
+            let values_for_arg = match value_source {
+                ValueSource::ValueSubscription(ref subscription) => {
+                    let value_source_id = subscription.attribute_value_id.into();
+                    let view = match subscription.resolve(ctx).await? {
+                        Some(av_id) => AttributeValue::view(ctx, av_id).await?,
+                        None => None,
+                    };
+                    // TODO add subscription path to FuncArgDebugView (path right now is prop path)
+                    // and also make value_source_id optional since there is not necessarily a source
+                    vec![FuncArgDebugView {
+                        value: view.unwrap_or(Value::Null),
+                        name: func_arg_name.clone(),
+                        value_source: format!("{value_source:?}"),
+                        value_source_id,
+                        path: None,
+                        socket_source_kind: None,
+                        is_used: true,
+                    }]
+                }
+                ValueSource::Secret(secret_id) => {
+                    vec![FuncArgDebugView {
+                        value: serde_json::to_value(format!(
+                            "[REDACTED KEY FOR SECRET (ID: {secret_id})]"
+                        ))?,
+                        name: func_arg_name.clone(),
+                        value_source: format!("{value_source:?}"),
+                        value_source_id: secret_id.into(),
+                        path: None,
+                        socket_source_kind: None,
+                        is_used: true,
+                    }]
+                }
+                ValueSource::StaticArgumentValue(static_argument_value_id) => {
+                    let val = StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
+                        .await?
+                        .value;
+                    vec![FuncArgDebugView {
+                        value: val,
+                        name: func_arg_name.clone(),
+                        value_source: format!("{value_source:?}"),
+                        value_source_id: static_argument_value_id.into(),
+                        path: None,
+                        socket_source_kind: None,
+                        is_used: true,
+                    }]
+                }
+                ValueSource::Prop(prop_id) => {
+                    let mut values = vec![];
 
-                let func_arg_name = FuncArgument::get_name_by_id(ctx, func_arg_id).await?;
-                let value_source =
-                    AttributePrototypeArgument::value_source(ctx, attribute_prototype_arg_id)
-                        .await?;
-                let values_for_arg = match value_source {
-                    ValueSource::ValueSubscription(ref subscription) => {
-                        let value_source_id = subscription.attribute_value_id.into();
-                        let view = match subscription.resolve(ctx).await? {
-                            Some(av_id) => AttributeValue::view(ctx, av_id).await?,
-                            None => None,
+                    for attribute_value_id in value_source
+                        .attribute_values_for_component_id(ctx, component_id)
+                        .await?
+                    {
+                        let prop_path =
+                            AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
+                        let view = AttributeValue::view(ctx, attribute_value_id)
+                            .await?
+                            .unwrap_or(Value::Null);
+                        let func_arg_debug = FuncArgDebugView {
+                            value: view,
+                            name: func_arg_name.clone(),
+                            value_source: format!("{value_source:?}"),
+                            value_source_id: prop_id.into(),
+                            socket_source_kind: None,
+                            path: prop_path,
+                            is_used: true,
                         };
-                        // TODO add subscription path to FuncArgDebugView (path right now is prop path)
-                        // and also make value_source_id optional since there is not necessarily a source
-                        vec![FuncArgDebugView {
-                            value: view.unwrap_or(Value::Null),
+                        values.push(func_arg_debug);
+                    }
+
+                    values
+                }
+                ValueSource::InputSocket(input_socket_id) => {
+                    let mut values = vec![];
+
+                    for attribute_value_id in value_source
+                        .attribute_values_for_component_id(ctx, component_id)
+                        .await?
+                    {
+                        let attribute_value_path =
+                            AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
+
+                        let value_view = AttributeValue::view(ctx, attribute_value_id)
+                            .await?
+                            .unwrap_or(Value::Null);
+                        let func_arg_debug = FuncArgDebugView {
+                            value: value_view,
                             name: func_arg_name.clone(),
                             value_source: format!("{value_source:?}"),
-                            value_source_id,
-                            path: None,
-                            socket_source_kind: None,
-                            is_used: arg_used,
-                        }]
+                            value_source_id: input_socket_id.into(),
+                            socket_source_kind: Some(SocketSourceKind::Manual),
+                            path: attribute_value_path,
+                            is_used: true,
+                        };
+                        values.push(func_arg_debug);
                     }
-                    ValueSource::Secret(secret_id) => {
-                        vec![FuncArgDebugView {
-                            value: serde_json::to_value(format!(
-                                "[REDACTED KEY FOR SECRET (ID: {secret_id})]"
-                            ))?,
+
+                    values
+                }
+                ValueSource::OutputSocket(output_socket_id) => {
+                    let mut values = vec![];
+
+                    for attribute_value_id in value_source
+                        .attribute_values_for_component_id(ctx, component_id)
+                        .await?
+                    {
+                        let attribute_value_path =
+                            AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
+
+                        let value_view = AttributeValue::view(ctx, attribute_value_id)
+                            .await?
+                            .unwrap_or(Value::Null);
+                        let func_arg_debug = FuncArgDebugView {
+                            value: value_view,
                             name: func_arg_name.clone(),
                             value_source: format!("{value_source:?}"),
-                            value_source_id: secret_id.into(),
-                            path: None,
-                            socket_source_kind: None,
-                            is_used: arg_used,
-                        }]
+                            value_source_id: output_socket_id.into(),
+                            socket_source_kind: Some(SocketSourceKind::Manual),
+                            path: attribute_value_path,
+                            is_used: true,
+                        };
+                        values.push(func_arg_debug);
                     }
-                    ValueSource::StaticArgumentValue(static_argument_value_id) => {
-                        let val = StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
-                            .await?
-                            .value;
-                        vec![FuncArgDebugView {
-                            value: val,
-                            name: func_arg_name.clone(),
-                            value_source: format!("{value_source:?}"),
-                            value_source_id: static_argument_value_id.into(),
-                            path: None,
-                            socket_source_kind: None,
-                            is_used: arg_used,
-                        }]
-                    }
-                    ValueSource::Prop(prop_id) => {
-                        let mut values = vec![];
 
-                        for attribute_value_id in value_source
-                            .attribute_values_for_component_id(ctx, expected_source_component_id)
-                            .await?
-                        {
-                            let prop_path =
-                                AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
-                            let view = AttributeValue::view(ctx, attribute_value_id)
-                                .await?
-                                .unwrap_or(Value::Null);
-                            let func_arg_debug = FuncArgDebugView {
-                                value: view,
-                                name: func_arg_name.clone(),
-                                value_source: format!("{value_source:?}"),
-                                value_source_id: prop_id.into(),
-                                socket_source_kind: None,
-                                path: prop_path,
-                                is_used: arg_used,
-                            };
-                            values.push(func_arg_debug);
-                        }
+                    values
+                }
+            };
 
-                        values
-                    }
-                    ValueSource::InputSocket(input_socket_id) => {
-                        let mut values = vec![];
-
-                        for attribute_value_id in value_source
-                            .attribute_values_for_component_id(ctx, expected_source_component_id)
-                            .await?
-                        {
-                            let attribute_value_path =
-                                AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
-
-                            let value_view = AttributeValue::view(ctx, attribute_value_id)
-                                .await?
-                                .unwrap_or(Value::Null);
-                            let func_arg_debug = FuncArgDebugView {
-                                value: value_view,
-                                name: func_arg_name.clone(),
-                                value_source: format!("{value_source:?}"),
-                                value_source_id: input_socket_id.into(),
-                                socket_source_kind: Some(SocketSourceKind::Manual),
-                                path: attribute_value_path,
-                                is_used: arg_used,
-                            };
-                            values.push(func_arg_debug);
-                        }
-
-                        values
-                    }
-                    ValueSource::OutputSocket(output_socket_id) => {
-                        let mut values = vec![];
-
-                        for attribute_value_id in value_source
-                            .attribute_values_for_component_id(ctx, expected_source_component_id)
-                            .await?
-                        {
-                            let attribute_value_path =
-                                AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
-
-                            let value_view = AttributeValue::view(ctx, attribute_value_id)
-                                .await?
-                                .unwrap_or(Value::Null);
-                            let func_arg_debug = FuncArgDebugView {
-                                value: value_view,
-                                name: func_arg_name.clone(),
-                                value_source: format!("{value_source:?}"),
-                                value_source_id: output_socket_id.into(),
-                                socket_source_kind: Some(SocketSourceKind::Manual),
-                                path: attribute_value_path,
-                                is_used: arg_used,
-                            };
-                            values.push(func_arg_debug);
-                        }
-
-                        values
-                    }
-                };
-
-                func_binding_args
-                    .entry(func_arg_name)
-                    .and_modify(|values| values.extend(values_for_arg.clone()))
-                    .or_insert(values_for_arg);
-            }
+            func_binding_args
+                .entry(func_arg_name)
+                .and_modify(|values| values.extend(values_for_arg.clone()))
+                .or_insert(values_for_arg);
         }
         // if this attribute value is for an input socket, need to also get any inferred inputs if they exist!
         if let ValueIsFor::InputSocket(input_socket_id) =
             AttributeValue::is_for(ctx, attribute_value_id).await?
         {
             if let Some(component_input_socket) =
-                ComponentInputSocket::get_by_ids(ctx, destination_component_id, input_socket_id)
-                    .await?
+                ComponentInputSocket::get_by_ids(ctx, component_id, input_socket_id).await?
             {
                 // now get inferred func binding args and values!
                 for output_match in component_input_socket

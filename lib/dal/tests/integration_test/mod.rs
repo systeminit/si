@@ -6,7 +6,6 @@ mod attributes;
 mod audit_logging;
 mod change_set;
 mod component;
-mod connection;
 mod cycle_check_guard;
 mod dependent_values_update;
 mod deserialize;

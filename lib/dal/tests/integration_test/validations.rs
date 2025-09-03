@@ -17,7 +17,6 @@ use dal_test::{
         ChangeSetTestHelpers,
         PropEditorTestView,
         component::find_management_prototype,
-        connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
         extract_value_and_validation,
     },
@@ -230,91 +229,91 @@ async fn validation_pre_post_mgmt_func(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[ignore]
-#[test]
-async fn validation_on_dependent_value(ctx: &mut DalContext) -> Result<()> {
-    let output_component =
-        create_component_for_default_schema_name_in_default_view(ctx, "ValidatedOutput", "Output")
-            .await?;
-    let input_component =
-        create_component_for_default_schema_name_in_default_view(ctx, "ValidatedInput", "Input")
-            .await?;
+// #[ignore]
+// #[test]
+// async fn validation_on_dependent_value(ctx: &mut DalContext) -> Result<()> {
+//     let output_component =
+//         create_component_for_default_schema_name_in_default_view(ctx, "ValidatedOutput", "Output")
+//             .await?;
+//     let input_component =
+//         create_component_for_default_schema_name_in_default_view(ctx, "ValidatedInput", "Input")
+//             .await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+//     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    connect_components_with_socket_names(
-        ctx,
-        output_component.id(),
-        "number",
-        input_component.id(),
-        "number",
-    )
-    .await?;
+//     connect_components_with_socket_names(
+//         ctx,
+//         output_component.id(),
+//         "number",
+//         input_component.id(),
+//         "number",
+//     )
+//     .await?;
 
-    let prop_path = &["root", "domain", "a_number"];
-    let av_id = output_component
-        .attribute_values_for_prop(ctx, prop_path)
-        .await?
-        .pop()
-        .expect("there should only be one value id");
+//     let prop_path = &["root", "domain", "a_number"];
+//     let av_id = output_component
+//         .attribute_values_for_prop(ctx, prop_path)
+//         .await?
+//         .pop()
+//         .expect("there should only be one value id");
 
-    AttributeValue::update(ctx, av_id, Some(json!(1))).await?;
+//     AttributeValue::update(ctx, av_id, Some(json!(1))).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+//     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let source_prop_view = PropEditorTestView::for_component_id(ctx, output_component.id())
-        .await?
-        .get_value(prop_path)?;
-    let destination_prop_view = PropEditorTestView::for_component_id(ctx, input_component.id())
-        .await?
-        .get_value(prop_path)?;
+//     let source_prop_view = PropEditorTestView::for_component_id(ctx, output_component.id())
+//         .await?
+//         .get_value(prop_path)?;
+//     let destination_prop_view = PropEditorTestView::for_component_id(ctx, input_component.id())
+//         .await?
+//         .get_value(prop_path)?;
 
-    // Check validations and values
-    let source_result = extract_value_and_validation(source_prop_view)?;
-    assert_eq!(
-        json!({
-            "value": 1,
-            "validation": {
-                "status": "Success",
-                "message": null
-            }
+//     // Check validations and values
+//     let source_result = extract_value_and_validation(source_prop_view)?;
+//     assert_eq!(
+//         json!({
+//             "value": 1,
+//             "validation": {
+//                 "status": "Success",
+//                 "message": null
+//             }
 
-        }),
-        source_result
-    );
+//         }),
+//         source_result
+//     );
 
-    let destination_result = extract_value_and_validation(destination_prop_view)?;
-    assert_eq!(source_result, destination_result,);
+//     let destination_result = extract_value_and_validation(destination_prop_view)?;
+//     assert_eq!(source_result, destination_result,);
 
-    AttributeValue::update(ctx, av_id, Some(json!(3))).await?;
+//     AttributeValue::update(ctx, av_id, Some(json!(3))).await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+//     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let source_prop_view = PropEditorTestView::for_component_id(ctx, input_component.id())
-        .await?
-        .get_value(prop_path)?;
-    let destination_prop_view = PropEditorTestView::for_component_id(ctx, output_component.id())
-        .await?
-        .get_value(prop_path)?;
+//     let source_prop_view = PropEditorTestView::for_component_id(ctx, input_component.id())
+//         .await?
+//         .get_value(prop_path)?;
+//     let destination_prop_view = PropEditorTestView::for_component_id(ctx, output_component.id())
+//         .await?
+//         .get_value(prop_path)?;
 
-    let source_result = extract_value_and_validation(source_prop_view)?;
-    assert_eq!(
-        json!({
-            "value": 3,
-            "validation": {
-                "status": "Failure",
-                "message": "\"value\" must be less than or equal to 2"
-            }
+//     let source_result = extract_value_and_validation(source_prop_view)?;
+//     assert_eq!(
+//         json!({
+//             "value": 3,
+//             "validation": {
+//                 "status": "Failure",
+//                 "message": "\"value\" must be less than or equal to 2"
+//             }
 
-        }),
-        source_result
-    );
+//         }),
+//         source_result
+//     );
 
-    let destination_result = extract_value_and_validation(destination_prop_view)?;
-    assert_eq!(source_result, destination_result,);
+//     let destination_result = extract_value_and_validation(destination_prop_view)?;
+//     assert_eq!(source_result, destination_result,);
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 #[test]
 async fn multiple_changes_single_validation(ctx: &mut DalContext) -> Result<()> {

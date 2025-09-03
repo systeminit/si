@@ -112,26 +112,10 @@ impl ActionDependencyGraph {
         // feed data into other things must have their actions run before the actions for the
         // things they are feeding data into.
         while let Some(component_id) = components_to_process.pop_front() {
-            let component = Component::get_by_id(ctx, component_id).await?;
             let component_index = component_dependencies_index_by_id
                 .entry(component_id)
                 .or_insert_with(|| component_dependencies.add_node(component_id))
                 .to_owned();
-            for incoming_connection in component.incoming_connections(ctx).await? {
-                // The edges of this graph go `output_socket_component (source) ->
-                // input_socket_component (target)`, matching the flow of the data between
-                // components.
-                let source_component_index = component_dependencies_index_by_id
-                    .entry(incoming_connection.from_component_id)
-                    .or_insert_with(|| {
-                        component_dependencies.add_node(incoming_connection.from_component_id)
-                    })
-                    .to_owned();
-                component_dependencies.update_edge(source_component_index, component_index, ());
-                if seen_list.insert(incoming_connection.from_component_id) {
-                    components_to_process.push_back(incoming_connection.from_component_id);
-                }
-            }
             for inferred_connection in component_tree
                 .inferred_incoming_connections_for_component(ctx, component_id)
                 .await?

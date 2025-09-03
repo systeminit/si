@@ -5,7 +5,6 @@ use dal::{
     AttributePrototypeId,
     DalContext,
     Func,
-    FuncBackendKind,
     InputSocket,
     OutputSocket,
     Prop,
@@ -34,18 +33,9 @@ use dal::{
     schema::variant::authoring::VariantAuthoringClient,
 };
 use dal_test::{
-    helpers::{
-        ChangeSetTestHelpers,
-        connect_components_with_socket_names,
-        create_component_for_default_schema_name_in_default_view,
-        get_attribute_value_for_component,
-        get_attribute_value_for_component_opt,
-        get_component_output_socket_value,
-        update_attribute_value_for_component,
-    },
+    helpers::ChangeSetTestHelpers,
     test,
 };
-use itertools::Itertools;
 pub use si_frontend_types;
 
 use crate::integration_test::func::authoring::save_func::save_func_setup;
@@ -256,322 +246,323 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
     assert_eq!(Some(FuncArgumentKind::Object), argument.element_kind);
 }
 
-#[test]
-async fn create_intrinsic_binding_then_unset(ctx: &mut DalContext) {
-    // Let's create a new asset
-    let asset_name = "paulsTestAsset".to_string();
-    let description = None;
-    let link = None;
-    let category = "Integration Tests".to_string();
-    let color = "#00b0b0".to_string();
-    let first_variant = VariantAuthoringClient::create_schema_and_variant(
-        ctx,
-        asset_name.clone(),
-        description.clone(),
-        link.clone(),
-        category.clone(),
-        color.clone(),
-    )
-    .await
-    .expect("Unable to create new asset");
+// TODO restore this using subscriptions!
+// #[test]
+// async fn create_intrinsic_binding_then_unset(ctx: &mut DalContext) {
+//     // Let's create a new asset
+//     let asset_name = "paulsTestAsset".to_string();
+//     let description = None;
+//     let link = None;
+//     let category = "Integration Tests".to_string();
+//     let color = "#00b0b0".to_string();
+//     let first_variant = VariantAuthoringClient::create_schema_and_variant(
+//         ctx,
+//         asset_name.clone(),
+//         description.clone(),
+//         link.clone(),
+//         category.clone(),
+//         color.clone(),
+//     )
+//     .await
+//     .expect("Unable to create new asset");
 
-    let schema = first_variant
-        .schema(ctx)
-        .await
-        .expect("Unable to get the schema for the variant");
+//     let schema = first_variant
+//         .schema(ctx)
+//         .await
+//         .expect("Unable to get the schema for the variant");
 
-    let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
-        .await
-        .expect("unable to get the default schema variant id");
-    assert_eq!(default_schema_variant, first_variant.id());
+//     let default_schema_variant = Schema::default_variant_id(ctx, schema.id())
+//         .await
+//         .expect("unable to get the default schema variant id");
+//     assert_eq!(default_schema_variant, first_variant.id());
 
-    // Now let's update the asset and create two props, an input socket, and an output socket
-    let new_code = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n const inputSocket = new SocketDefinitionBuilder()
-    .setName(\"one\")
-    .setArity(\"many\")
-    .build();\n const outputSocket = new SocketDefinitionBuilder()
-    .setName(\"output\")
-    .setArity(\"many\")
-    .build();\n const anotherProp = new PropBuilder().setName(\"anotherProp\").setKind(\"integer\").build();\n  return new AssetBuilder().addProp(myProp).addInputSocket(inputSocket).addOutputSocket(outputSocket).addProp(anotherProp).build()\n}".to_string();
+//     // Now let's update the asset and create two props, an input socket, and an output socket
+//     let new_code = "function main() {\n const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").build();\n const inputSocket = new SocketDefinitionBuilder()
+//     .setName(\"one\")
+//     .setArity(\"many\")
+//     .build();\n const outputSocket = new SocketDefinitionBuilder()
+//     .setName(\"output\")
+//     .setArity(\"many\")
+//     .build();\n const anotherProp = new PropBuilder().setName(\"anotherProp\").setKind(\"integer\").build();\n  return new AssetBuilder().addProp(myProp).addInputSocket(inputSocket).addOutputSocket(outputSocket).addProp(anotherProp).build()\n}".to_string();
 
-    VariantAuthoringClient::save_variant_content(
-        ctx,
-        first_variant.id(),
-        &schema.name,
-        first_variant.display_name(),
-        first_variant.category(),
-        first_variant.description(),
-        first_variant.link(),
-        first_variant
-            .get_color(ctx)
-            .await
-            .expect("get color from schema variant"),
-        first_variant.component_type(),
-        Some(new_code),
-    )
-    .await
-    .expect("save variant contents");
+//     VariantAuthoringClient::save_variant_content(
+//         ctx,
+//         first_variant.id(),
+//         &schema.name,
+//         first_variant.display_name(),
+//         first_variant.category(),
+//         first_variant.description(),
+//         first_variant.link(),
+//         first_variant
+//             .get_color(ctx)
+//             .await
+//             .expect("get color from schema variant"),
+//         first_variant.component_type(),
+//         Some(new_code),
+//     )
+//     .await
+//     .expect("save variant contents");
 
-    let updated_sv_id = VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
-        .await
-        .expect("regenerate asset");
+//     let updated_sv_id = VariantAuthoringClient::regenerate_variant(ctx, first_variant.id())
+//         .await
+//         .expect("regenerate asset");
 
-    let another_prop = Prop::find_prop_id_by_path(
-        ctx,
-        updated_sv_id,
-        &PropPath::new(["root", "domain", "anotherProp"]),
-    )
-    .await
-    .expect("able to find anotherProp prop");
-    let test_prop = Prop::find_prop_id_by_path(
-        ctx,
-        updated_sv_id,
-        &PropPath::new(["root", "domain", "testProp"]),
-    )
-    .await
-    .expect("able to find anotherProp prop");
-    let input_socket = InputSocket::find_with_name_or_error(ctx, "one", updated_sv_id)
-        .await
-        .expect("couldn't find input socket");
-    let output_socket = OutputSocket::find_with_name_or_error(ctx, "output", updated_sv_id)
-        .await
-        .expect("could not find output socket");
+//     let another_prop = Prop::find_prop_id_by_path(
+//         ctx,
+//         updated_sv_id,
+//         &PropPath::new(["root", "domain", "anotherProp"]),
+//     )
+//     .await
+//     .expect("able to find anotherProp prop");
+//     let test_prop = Prop::find_prop_id_by_path(
+//         ctx,
+//         updated_sv_id,
+//         &PropPath::new(["root", "domain", "testProp"]),
+//     )
+//     .await
+//     .expect("able to find anotherProp prop");
+//     let input_socket = InputSocket::find_with_name_or_error(ctx, "one", updated_sv_id)
+//         .await
+//         .expect("couldn't find input socket");
+//     let output_socket = OutputSocket::find_with_name_or_error(ctx, "output", updated_sv_id)
+//         .await
+//         .expect("could not find output socket");
 
-    // let's set another prop to identity of test prop
-    let output_location = AttributeFuncDestination::Prop(another_prop);
-    let input_location = AttributeFuncArgumentSource::Prop(test_prop);
-    // find the func for si:identity
-    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
-        .await
-        .expect("could not find identity func");
-    let intrinsic_arg = FuncArgument::list_for_func(ctx, identity_func_id)
-        .await
-        .expect("could not get args");
-    assert_eq!(intrinsic_arg.len(), 1);
-    let func_arg_id = intrinsic_arg.first().expect("is some");
-    let arguments: Vec<AttributeArgumentBinding> = vec![
-        (AttributeArgumentBinding {
-            func_argument_id: func_arg_id.id,
-            attribute_func_input_location: input_location,
-            attribute_prototype_argument_id: None,
-        }),
-    ];
+//     // let's set another prop to identity of test prop
+//     let output_location = AttributeFuncDestination::Prop(another_prop);
+//     let input_location = AttributeFuncArgumentSource::Prop(test_prop);
+//     // find the func for si:identity
+//     let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
+//         .await
+//         .expect("could not find identity func");
+//     let intrinsic_arg = FuncArgument::list_for_func(ctx, identity_func_id)
+//         .await
+//         .expect("could not get args");
+//     assert_eq!(intrinsic_arg.len(), 1);
+//     let func_arg_id = intrinsic_arg.first().expect("is some");
+//     let arguments: Vec<AttributeArgumentBinding> = vec![
+//         (AttributeArgumentBinding {
+//             func_argument_id: func_arg_id.id,
+//             attribute_func_input_location: input_location,
+//             attribute_prototype_argument_id: None,
+//         }),
+//     ];
 
-    AttributeBinding::upsert_attribute_binding(
-        ctx,
-        identity_func_id,
-        Some(EventualParent::SchemaVariant(updated_sv_id)),
-        output_location,
-        arguments,
-    )
-    .await
-    .expect("could not upsert identity func");
+//     AttributeBinding::upsert_attribute_binding(
+//         ctx,
+//         identity_func_id,
+//         Some(EventualParent::SchemaVariant(updated_sv_id)),
+//         output_location,
+//         arguments,
+//     )
+//     .await
+//     .expect("could not upsert identity func");
 
-    // let's set test prop to identity of input socket
-    let output_location = AttributeFuncDestination::Prop(test_prop);
-    let input_location = AttributeFuncArgumentSource::InputSocket(input_socket.id());
-    // find the func for si:identity
-    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
-        .await
-        .expect("could not find identity func");
-    let intrinsic_arg = FuncArgument::list_for_func(ctx, identity_func_id)
-        .await
-        .expect("could not get args");
-    assert_eq!(intrinsic_arg.len(), 1);
-    let func_arg_id = intrinsic_arg.first().expect("is some");
-    let arguments: Vec<AttributeArgumentBinding> = vec![
-        (AttributeArgumentBinding {
-            func_argument_id: func_arg_id.id,
-            attribute_func_input_location: input_location,
-            attribute_prototype_argument_id: None,
-        }),
-    ];
+//     // let's set test prop to identity of input socket
+//     let output_location = AttributeFuncDestination::Prop(test_prop);
+//     let input_location = AttributeFuncArgumentSource::InputSocket(input_socket.id());
+//     // find the func for si:identity
+//     let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
+//         .await
+//         .expect("could not find identity func");
+//     let intrinsic_arg = FuncArgument::list_for_func(ctx, identity_func_id)
+//         .await
+//         .expect("could not get args");
+//     assert_eq!(intrinsic_arg.len(), 1);
+//     let func_arg_id = intrinsic_arg.first().expect("is some");
+//     let arguments: Vec<AttributeArgumentBinding> = vec![
+//         (AttributeArgumentBinding {
+//             func_argument_id: func_arg_id.id,
+//             attribute_func_input_location: input_location,
+//             attribute_prototype_argument_id: None,
+//         }),
+//     ];
 
-    AttributeBinding::upsert_attribute_binding(
-        ctx,
-        identity_func_id,
-        Some(EventualParent::SchemaVariant(updated_sv_id)),
-        output_location,
-        arguments,
-    )
-    .await
-    .expect("could not upsert identity func");
+//     AttributeBinding::upsert_attribute_binding(
+//         ctx,
+//         identity_func_id,
+//         Some(EventualParent::SchemaVariant(updated_sv_id)),
+//         output_location,
+//         arguments,
+//     )
+//     .await
+//     .expect("could not upsert identity func");
 
-    // let's set output socket to identity of another prop
-    let output_location = AttributeFuncDestination::OutputSocket(output_socket.id());
-    let input_location = AttributeFuncArgumentSource::Prop(another_prop);
-    // find the func for si:identity
-    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
-        .await
-        .expect("could not find identity func");
-    let intrinsic_arg = FuncArgument::list_for_func(ctx, identity_func_id)
-        .await
-        .expect("could not get args");
-    assert_eq!(intrinsic_arg.len(), 1);
-    let func_arg_id = intrinsic_arg.first().expect("is some");
-    let arguments: Vec<AttributeArgumentBinding> = vec![
-        (AttributeArgumentBinding {
-            func_argument_id: func_arg_id.id,
-            attribute_func_input_location: input_location,
-            attribute_prototype_argument_id: None,
-        }),
-    ];
+//     // let's set output socket to identity of another prop
+//     let output_location = AttributeFuncDestination::OutputSocket(output_socket.id());
+//     let input_location = AttributeFuncArgumentSource::Prop(another_prop);
+//     // find the func for si:identity
+//     let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
+//         .await
+//         .expect("could not find identity func");
+//     let intrinsic_arg = FuncArgument::list_for_func(ctx, identity_func_id)
+//         .await
+//         .expect("could not get args");
+//     assert_eq!(intrinsic_arg.len(), 1);
+//     let func_arg_id = intrinsic_arg.first().expect("is some");
+//     let arguments: Vec<AttributeArgumentBinding> = vec![
+//         (AttributeArgumentBinding {
+//             func_argument_id: func_arg_id.id,
+//             attribute_func_input_location: input_location,
+//             attribute_prototype_argument_id: None,
+//         }),
+//     ];
 
-    AttributeBinding::upsert_attribute_binding(
-        ctx,
-        identity_func_id,
-        Some(EventualParent::SchemaVariant(updated_sv_id)),
-        output_location,
-        arguments,
-    )
-    .await
-    .expect("could not upsert identity func");
+//     AttributeBinding::upsert_attribute_binding(
+//         ctx,
+//         identity_func_id,
+//         Some(EventualParent::SchemaVariant(updated_sv_id)),
+//         output_location,
+//         arguments,
+//     )
+//     .await
+//     .expect("could not upsert identity func");
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not update");
+//     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+//         .await
+//         .expect("could not update");
 
-    // Let's ensure that our latest props/sockets are visible in the component
-    let component = create_component_for_default_schema_name_in_default_view(
-        ctx,
-        schema.name.clone(),
-        "demo component 2",
-    )
-    .await
-    .expect("could not create component");
-    let connected_component =
-        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "lego")
-            .await
-            .expect("could not create component");
-    // connect the two components
-    connect_components_with_socket_names(
-        ctx,
-        connected_component.id(),
-        "one",
-        component.id(),
-        "one",
-    )
-    .await
-    .expect("could not create connection");
+//     // Let's ensure that our latest props/sockets are visible in the component
+//     let component = create_component_for_default_schema_name_in_default_view(
+//         ctx,
+//         schema.name.clone(),
+//         "demo component 2",
+//     )
+//     .await
+//     .expect("could not create component");
+//     let connected_component =
+//         create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "lego")
+//             .await
+//             .expect("could not create component");
+//     // connect the two components
+//     connect_components_with_socket_names(
+//         ctx,
+//         connected_component.id(),
+//         "one",
+//         component.id(),
+//         "one",
+//     )
+//     .await
+//     .expect("could not create connection");
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not update");
+//     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+//         .await
+//         .expect("could not update");
 
-    // let's make sure we can see the identity func for this schema variant
-    let maybe_funcs = SchemaVariant::all_funcs(ctx, updated_sv_id)
-        .await
-        .expect("could not get all funcs for sv");
-    let intrinsic = maybe_funcs
-        .into_iter()
-        .find(|func| func.is_intrinsic() && (func.backend_kind == FuncBackendKind::Identity))
-        .expect("is some");
-    let attributes = FuncBinding::get_attribute_bindings_for_func_id(ctx, intrinsic.id)
-        .await
-        .expect("could not get bindings");
-    let prototypes = attributes
-        .into_iter()
-        .filter(|p| p.eventual_parent == EventualParent::SchemaVariant(updated_sv_id))
-        .collect_vec();
-    assert_eq!(prototypes.len(), 3);
-    assert!(prototypes.into_iter().any(|binding| {
-        binding.output_location == AttributeFuncDestination::Prop(another_prop)
-            || binding.output_location == AttributeFuncDestination::Prop(test_prop)
-            || binding.output_location == AttributeFuncDestination::OutputSocket(output_socket.id())
-    }));
+//     // let's make sure we can see the identity func for this schema variant
+//     let maybe_funcs = SchemaVariant::all_funcs(ctx, updated_sv_id)
+//         .await
+//         .expect("could not get all funcs for sv");
+//     let intrinsic = maybe_funcs
+//         .into_iter()
+//         .find(|func| func.is_intrinsic() && (func.backend_kind == FuncBackendKind::Identity))
+//         .expect("is some");
+//     let attributes = FuncBinding::get_attribute_bindings_for_func_id(ctx, intrinsic.id)
+//         .await
+//         .expect("could not get bindings");
+//     let prototypes = attributes
+//         .into_iter()
+//         .filter(|p| p.eventual_parent == EventualParent::SchemaVariant(updated_sv_id))
+//         .collect_vec();
+//     assert_eq!(prototypes.len(), 3);
+//     assert!(prototypes.into_iter().any(|binding| {
+//         binding.output_location == AttributeFuncDestination::Prop(another_prop)
+//             || binding.output_location == AttributeFuncDestination::Prop(test_prop)
+//             || binding.output_location == AttributeFuncDestination::OutputSocket(output_socket.id())
+//     }));
 
-    // Change attribute value for one on the component
-    update_attribute_value_for_component(
-        ctx,
-        connected_component.id(),
-        &["root", "domain", "one"],
-        serde_json::Value::String("test".to_string()),
-    )
-    .await
-    .expect("could not update attribute value");
+//     // Change attribute value for one on the component
+//     update_attribute_value_for_component(
+//         ctx,
+//         connected_component.id(),
+//         &["root", "domain", "one"],
+//         serde_json::Value::String("test".to_string()),
+//     )
+//     .await
+//     .expect("could not update attribute value");
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not update");
-    // check the other prop to make sure the value propagated
+//     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+//         .await
+//         .expect("could not update");
+//     // check the other prop to make sure the value propagated
 
-    let test_prop_path = &["root", "domain", "testProp"];
-    let another_test_prop_path = &["root", "domain", "anotherProp"];
+//     let test_prop_path = &["root", "domain", "testProp"];
+//     let another_test_prop_path = &["root", "domain", "anotherProp"];
 
-    // check test prop to make sure the value propagated
-    let value = get_attribute_value_for_component(ctx, component.id(), test_prop_path)
-        .await
-        .expect("could not get attribute value");
-    assert_eq!(serde_json::Value::String("test".to_string()), value);
+//     // check test prop to make sure the value propagated
+//     let value = get_attribute_value_for_component(ctx, component.id(), test_prop_path)
+//         .await
+//         .expect("could not get attribute value");
+//     assert_eq!(serde_json::Value::String("test".to_string()), value);
 
-    // check another prop too
-    let value = get_attribute_value_for_component(ctx, component.id(), another_test_prop_path)
-        .await
-        .expect("could not get attribute value");
-    assert_eq!(serde_json::Value::String("test".to_string()), value);
+//     // check another prop too
+//     let value = get_attribute_value_for_component(ctx, component.id(), another_test_prop_path)
+//         .await
+//         .expect("could not get attribute value");
+//     assert_eq!(serde_json::Value::String("test".to_string()), value);
 
-    // check output socket
-    let value = get_component_output_socket_value(ctx, component.id(), "output")
-        .await
-        .expect("could not get attribute value")
-        .expect("value is empty");
+//     // check output socket
+//     let value = get_component_output_socket_value(ctx, component.id(), "output")
+//         .await
+//         .expect("could not get attribute value")
+//         .expect("value is empty");
 
-    assert_eq!(serde_json::Value::String("test".to_string()), value);
+//     assert_eq!(serde_json::Value::String("test".to_string()), value);
 
-    // let's set another_prop to unset now - which should clear the value fot that component
-    // and the output socket
-    let output_location = AttributeFuncDestination::Prop(another_prop);
+//     // let's set another_prop to unset now - which should clear the value fot that component
+//     // and the output socket
+//     let output_location = AttributeFuncDestination::Prop(another_prop);
 
-    let unset_func = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)
-        .await
-        .expect("could not find unset func");
-    AttributeBinding::upsert_attribute_binding(
-        ctx,
-        unset_func,
-        Some(EventualParent::SchemaVariant(updated_sv_id)),
-        output_location,
-        vec![],
-    )
-    .await
-    .expect("could not upsert unset func");
+//     let unset_func = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)
+//         .await
+//         .expect("could not find unset func");
+//     AttributeBinding::upsert_attribute_binding(
+//         ctx,
+//         unset_func,
+//         Some(EventualParent::SchemaVariant(updated_sv_id)),
+//         output_location,
+//         vec![],
+//     )
+//     .await
+//     .expect("could not upsert unset func");
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
-    // let's make sure we can see the identity func for this schema variant
-    let maybe_funcs = SchemaVariant::all_funcs(ctx, updated_sv_id)
-        .await
-        .expect("could not get all funcs for sv");
-    let intrinsic = maybe_funcs
-        .into_iter()
-        .find(|func| func.is_intrinsic() && (func.backend_kind == FuncBackendKind::Unset))
-        .expect("is some");
-    let attributes = FuncBinding::get_attribute_bindings_for_func_id(ctx, intrinsic.id)
-        .await
-        .expect("could not get bindings");
-    let prototypes = attributes
-        .into_iter()
-        .filter(|p| p.eventual_parent == EventualParent::SchemaVariant(updated_sv_id))
-        .collect_vec();
-    assert!(
-        prototypes
-            .into_iter()
-            .any(|binding| binding.output_location == AttributeFuncDestination::Prop(another_prop))
-    );
+//     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+//         .await
+//         .expect("could not commit");
+//     // let's make sure we can see the identity func for this schema variant
+//     let maybe_funcs = SchemaVariant::all_funcs(ctx, updated_sv_id)
+//         .await
+//         .expect("could not get all funcs for sv");
+//     let intrinsic = maybe_funcs
+//         .into_iter()
+//         .find(|func| func.is_intrinsic() && (func.backend_kind == FuncBackendKind::Unset))
+//         .expect("is some");
+//     let attributes = FuncBinding::get_attribute_bindings_for_func_id(ctx, intrinsic.id)
+//         .await
+//         .expect("could not get bindings");
+//     let prototypes = attributes
+//         .into_iter()
+//         .filter(|p| p.eventual_parent == EventualParent::SchemaVariant(updated_sv_id))
+//         .collect_vec();
+//     assert!(
+//         prototypes
+//             .into_iter()
+//             .any(|binding| binding.output_location == AttributeFuncDestination::Prop(another_prop))
+//     );
 
-    // let's make sure another_prop was cleared!
-    let value = get_attribute_value_for_component_opt(ctx, component.id(), another_test_prop_path)
-        .await
-        .expect("could not get attribute value");
+//     // let's make sure another_prop was cleared!
+//     let value = get_attribute_value_for_component_opt(ctx, component.id(), another_test_prop_path)
+//         .await
+//         .expect("could not get attribute value");
 
-    assert!(value.is_none());
+//     assert!(value.is_none());
 
-    // check the output socket too
-    let value = get_component_output_socket_value(ctx, component.id(), "output")
-        .await
-        .expect("could not get attribute value");
-    assert!(value.is_none());
-}
+//     // check the output socket too
+//     let value = get_component_output_socket_value(ctx, component.id(), "output")
+//         .await
+//         .expect("could not get attribute value");
+//     assert!(value.is_none());
+// }
 
 #[test]
 async fn invalid_identity_bindings(ctx: &mut DalContext) {

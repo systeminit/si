@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use dal::{
-    AttributeValue,
     Component,
     DalContext,
     Func,
@@ -12,36 +11,22 @@ use dal::{
         Action,
         prototype::ActionPrototype,
     },
-    attribute::{
-        path::AttributePath,
-        prototype::argument::AttributePrototypeArgument,
-        value::subscription::ValueSubscription,
-    },
     prop::PropPath,
     qualification::QualificationSummary,
-    workspace_snapshot::{
-        graph::validator::connections::PropConnection,
-        node_weight::reason_node_weight::Reason,
-    },
 };
 use dal_materialized_views::component::map_diff_status;
 use dal_test::{
     Result,
     helpers::{
-        attribute::value,
         change_set,
         component::{
             self,
             ComponentKey,
         },
-        connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
         schema::variant,
     },
-    prelude::{
-        ChangeSetTestHelpers,
-        OptionExt,
-    },
+    prelude::OptionExt,
     test,
 };
 use itertools::Itertools;
@@ -59,10 +44,8 @@ use si_frontend_mv_types::{
         ComponentList,
         ComponentTextDiff,
     },
-    incoming_connections::Connection,
     reference::ReferenceKind,
 };
-use si_id::AttributePrototypeArgumentId;
 
 #[test]
 async fn actions(ctx: &DalContext) -> Result<()> {
@@ -659,392 +642,393 @@ async fn component(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-// FIXME(nick): this test used to handle socket-to-socket connections, but now that sockets are dead, it has
-// become much simpler. We should do two things to make this test better: 1) make the original connections with
-// the eventual replacement to sockets (alpha "two" to beta "two" and beta "one" to charlie "one") and 2) use
-// management functions provided by the lego schemas.
-#[test]
-async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
-    // Create all components.
-    let alpha =
-        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "alpha")
-            .await?;
-    let beta =
-        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "beta")
-            .await?;
-    let charlie =
-        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "charlie")
-            .await?;
-    let echo =
-        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "echo")
-            .await?;
+// TODO reformulate, but only test subscriptions and not connections
+// // FIXME(nick): this test used to handle socket-to-socket connections, but now that sockets are dead, it has
+// // become much simpler. We should do two things to make this test better: 1) make the original connections with
+// // the eventual replacement to sockets (alpha "two" to beta "two" and beta "one" to charlie "one") and 2) use
+// // management functions provided by the lego schemas.
+// #[test]
+// async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
+//     // Create all components.
+//     let alpha =
+//         create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "alpha")
+//             .await?;
+//     let beta =
+//         create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "beta")
+//             .await?;
+//     let charlie =
+//         create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "charlie")
+//             .await?;
+//     let echo =
+//         create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "echo")
+//             .await?;
 
-    // Cache everything with need for making subscriptions (as well as for assertions later).
-    let alpha_schema_variant_id = Component::schema_variant_id(ctx, alpha.id()).await?;
-    let beta_schema_variant_id = Component::schema_variant_id(ctx, beta.id()).await?;
-    let charlie_schema_variant_id = alpha_schema_variant_id;
+//     // Cache everything with need for making subscriptions (as well as for assertions later).
+//     let alpha_schema_variant_id = Component::schema_variant_id(ctx, alpha.id()).await?;
+//     let beta_schema_variant_id = Component::schema_variant_id(ctx, beta.id()).await?;
+//     let charlie_schema_variant_id = alpha_schema_variant_id;
 
-    let alpha_si_name_prop_path = PropPath::new(["root", "si", "name"]);
-    let charlie_si_name_prop_path = alpha_si_name_prop_path.clone();
-    let beta_domain_name_prop_path = PropPath::new(["root", "domain", "name"]);
-    let charlie_domain_name_prop_path = beta_domain_name_prop_path.clone();
+//     let alpha_si_name_prop_path = PropPath::new(["root", "si", "name"]);
+//     let charlie_si_name_prop_path = alpha_si_name_prop_path.clone();
+//     let beta_domain_name_prop_path = PropPath::new(["root", "domain", "name"]);
+//     let charlie_domain_name_prop_path = beta_domain_name_prop_path.clone();
 
-    let alpha_si_name_prop_id =
-        Prop::find_prop_id_by_path(ctx, alpha_schema_variant_id, &alpha_si_name_prop_path).await?;
-    let charlie_si_name_prop_id =
-        Prop::find_prop_id_by_path(ctx, charlie_schema_variant_id, &charlie_si_name_prop_path)
-            .await?;
-    let beta_domain_name_prop_id =
-        Prop::find_prop_id_by_path(ctx, beta_schema_variant_id, &beta_domain_name_prop_path)
-            .await?;
-    let charlie_domain_name_prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        charlie_schema_variant_id,
-        &charlie_domain_name_prop_path,
-    )
-    .await?;
+//     let alpha_si_name_prop_id =
+//         Prop::find_prop_id_by_path(ctx, alpha_schema_variant_id, &alpha_si_name_prop_path).await?;
+//     let charlie_si_name_prop_id =
+//         Prop::find_prop_id_by_path(ctx, charlie_schema_variant_id, &charlie_si_name_prop_path)
+//             .await?;
+//     let beta_domain_name_prop_id =
+//         Prop::find_prop_id_by_path(ctx, beta_schema_variant_id, &beta_domain_name_prop_path)
+//             .await?;
+//     let charlie_domain_name_prop_id = Prop::find_prop_id_by_path(
+//         ctx,
+//         charlie_schema_variant_id,
+//         &charlie_domain_name_prop_path,
+//     )
+//     .await?;
 
-    let alpha_si_name_attribute_value_id =
-        Component::attribute_value_for_prop_id(ctx, alpha.id(), alpha_si_name_prop_id).await?;
-    let charlie_si_name_attribute_value_id =
-        Component::attribute_value_for_prop_id(ctx, charlie.id(), charlie_si_name_prop_id).await?;
-    let beta_domain_name_attribute_value_id =
-        Component::attribute_value_for_prop_id(ctx, beta.id(), beta_domain_name_prop_id).await?;
-    let charlie_domain_name_attribute_value_id =
-        Component::attribute_value_for_prop_id(ctx, charlie.id(), charlie_domain_name_prop_id)
-            .await?;
+//     let alpha_si_name_attribute_value_id =
+//         Component::attribute_value_for_prop_id(ctx, alpha.id(), alpha_si_name_prop_id).await?;
+//     let charlie_si_name_attribute_value_id =
+//         Component::attribute_value_for_prop_id(ctx, charlie.id(), charlie_si_name_prop_id).await?;
+//     let beta_domain_name_attribute_value_id =
+//         Component::attribute_value_for_prop_id(ctx, beta.id(), beta_domain_name_prop_id).await?;
+//     let charlie_domain_name_attribute_value_id =
+//         Component::attribute_value_for_prop_id(ctx, charlie.id(), charlie_domain_name_prop_id)
+//             .await?;
 
-    let (_, alpha_si_name_attribute_value_path) =
-        AttributeValue::path_from_root(ctx, alpha_si_name_attribute_value_id).await?;
-    let (_, charlie_si_name_attribute_value_path) =
-        AttributeValue::path_from_root(ctx, charlie_si_name_attribute_value_id).await?;
-    let (_, beta_domain_name_attribute_value_path) =
-        AttributeValue::path_from_root(ctx, beta_domain_name_attribute_value_id).await?;
-    let (_, charlie_domain_name_attribute_value_path) =
-        AttributeValue::path_from_root(ctx, charlie_domain_name_attribute_value_id).await?;
+//     let (_, alpha_si_name_attribute_value_path) =
+//         AttributeValue::path_from_root(ctx, alpha_si_name_attribute_value_id).await?;
+//     let (_, charlie_si_name_attribute_value_path) =
+//         AttributeValue::path_from_root(ctx, charlie_si_name_attribute_value_id).await?;
+//     let (_, beta_domain_name_attribute_value_path) =
+//         AttributeValue::path_from_root(ctx, beta_domain_name_attribute_value_id).await?;
+//     let (_, charlie_domain_name_attribute_value_path) =
+//         AttributeValue::path_from_root(ctx, charlie_domain_name_attribute_value_id).await?;
 
-    // Check that the attribue value paths look as we expect for the subscriptions.
-    {
-        assert_eq!(
-            "/si/name",                                  // expected
-            alpha_si_name_attribute_value_path.as_str()  // actual
-        );
-        assert_eq!(
-            "/si/name",                                    // expected
-            charlie_si_name_attribute_value_path.as_str()  // actual
-        );
-        assert_eq!(
-            "/domain/name",                                 // expected
-            beta_domain_name_attribute_value_path.as_str()  // actual
-        );
-        assert_eq!(
-            "/domain/name",                                    // expected
-            charlie_domain_name_attribute_value_path.as_str()  // actual
-        );
-    }
-    // First let's connect these using socket connections - simple case
-    {
-        connect_components_with_socket_names(ctx, alpha.id(), "two", beta.id(), "two").await?;
-        connect_components_with_socket_names(ctx, alpha.id(), "two", echo.id(), "two").await?;
-        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    }
+//     // Check that the attribue value paths look as we expect for the subscriptions.
+//     {
+//         assert_eq!(
+//             "/si/name",                                  // expected
+//             alpha_si_name_attribute_value_path.as_str()  // actual
+//         );
+//         assert_eq!(
+//             "/si/name",                                    // expected
+//             charlie_si_name_attribute_value_path.as_str()  // actual
+//         );
+//         assert_eq!(
+//             "/domain/name",                                 // expected
+//             beta_domain_name_attribute_value_path.as_str()  // actual
+//         );
+//         assert_eq!(
+//             "/domain/name",                                    // expected
+//             charlie_domain_name_attribute_value_path.as_str()  // actual
+//         );
+//     }
+//     // First let's connect these using socket connections - simple case
+//     {
+//         connect_components_with_socket_names(ctx, alpha.id(), "two", beta.id(), "two").await?;
+//         connect_components_with_socket_names(ctx, alpha.id(), "two", echo.id(), "two").await?;
+//         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+//     }
 
-    // check alpha mv
-    {
-        let alpha_av_tree_mv =
-            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), alpha.id())
-                .await?;
+//     // check alpha mv
+//     {
+//         let alpha_av_tree_mv =
+//             dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), alpha.id())
+//                 .await?;
 
-        let alpha_avs_with_sockets = alpha_av_tree_mv
-            .attribute_values
-            .values()
-            .filter(|av| av.has_socket_connection)
-            .collect_vec();
-        assert!(alpha_avs_with_sockets.is_empty());
-    }
+//         let alpha_avs_with_sockets = alpha_av_tree_mv
+//             .attribute_values
+//             .values()
+//             .filter(|av| av.has_socket_connection)
+//             .collect_vec();
+//         assert!(alpha_avs_with_sockets.is_empty());
+//     }
 
-    // check beta mv
-    {
-        let beta_av_tree_mv =
-            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), beta.id())
-                .await?;
+//     // check beta mv
+//     {
+//         let beta_av_tree_mv =
+//             dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), beta.id())
+//                 .await?;
 
-        let beta_avs_with_sockets = beta_av_tree_mv
-            .attribute_values
-            .values()
-            .filter(|av| av.has_socket_connection)
-            .collect_vec();
-        // beta has exactly one av with a socket connection
-        assert!(beta_avs_with_sockets.iter().exactly_one().is_ok());
+//         let beta_avs_with_sockets = beta_av_tree_mv
+//             .attribute_values
+//             .values()
+//             .filter(|av| av.has_socket_connection)
+//             .collect_vec();
+//         // beta has exactly one av with a socket connection
+//         assert!(beta_avs_with_sockets.iter().exactly_one().is_ok());
 
-        let beta_component_in_list =
-            dal_materialized_views::component::assemble_in_list(ctx.clone(), beta.id()).await?;
+//         let beta_component_in_list =
+//             dal_materialized_views::component::assemble_in_list(ctx.clone(), beta.id()).await?;
 
-        assert!(beta_component_in_list.has_socket_connections);
-    }
+//         assert!(beta_component_in_list.has_socket_connections);
+//     }
 
-    // check echo mv
-    {
-        let echo_av_tree_mv =
-            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), echo.id())
-                .await?;
-        // mostly concerned with the values for the "two" paths
-        let echo_avs_with_sockets = echo_av_tree_mv
-            .attribute_values
-            .values()
-            .filter(|av| av.has_socket_connection)
-            .collect_vec();
-        // echo has one socket connection too
-        assert!(echo_avs_with_sockets.iter().exactly_one().is_ok());
-        let echo_component_in_list =
-            dal_materialized_views::component::assemble_in_list(ctx.clone(), echo.id()).await?;
-        assert!(echo_component_in_list.has_socket_connections);
-    }
+//     // check echo mv
+//     {
+//         let echo_av_tree_mv =
+//             dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), echo.id())
+//                 .await?;
+//         // mostly concerned with the values for the "two" paths
+//         let echo_avs_with_sockets = echo_av_tree_mv
+//             .attribute_values
+//             .values()
+//             .filter(|av| av.has_socket_connection)
+//             .collect_vec();
+//         // echo has one socket connection too
+//         assert!(echo_avs_with_sockets.iter().exactly_one().is_ok());
+//         let echo_component_in_list =
+//             dal_materialized_views::component::assemble_in_list(ctx.clone(), echo.id()).await?;
+//         assert!(echo_component_in_list.has_socket_connections);
+//     }
 
-    // Then let's migrate:
-    {
-        let snapshot = ctx.workspace_snapshot()?.as_legacy_snapshot()?;
+//     // Then let's migrate:
+//     {
+//         let snapshot = ctx.workspace_snapshot()?.as_legacy_snapshot()?;
 
-        let inferred_connections = snapshot
-            .inferred_connection_graph(ctx)
-            .await?
-            .inferred_connections_for_all_components(ctx)
-            .await?
-            .into_iter()
-            .map(|connection| {
-                dal::workspace_snapshot::graph::validator::connections::SocketConnection {
-                    from: (connection.source_component_id, connection.output_socket_id),
-                    to: (
-                        connection.destination_component_id,
-                        connection.input_socket_id,
-                    ),
-                }
-            });
+//         let inferred_connections = snapshot
+//             .inferred_connection_graph(ctx)
+//             .await?
+//             .inferred_connections_for_all_components(ctx)
+//             .await?
+//             .into_iter()
+//             .map(|connection| {
+//                 dal::workspace_snapshot::graph::validator::connections::SocketConnection {
+//                     from: (connection.source_component_id, connection.output_socket_id),
+//                     to: (
+//                         connection.destination_component_id,
+//                         connection.input_socket_id,
+//                     ),
+//                 }
+//             });
 
-        let connection_migrations = snapshot.connection_migrations(inferred_connections).await?;
-        for migration in connection_migrations {
-            match &migration.issue {
-                // If there's no issue, we can migrate.
-                None => {}
-                // If there's an issue, we can't migrate it.
-                Some(_) => panic!("These should migrate cleanly"),
-            }
+//         let connection_migrations = snapshot.connection_migrations(inferred_connections).await?;
+//         for migration in connection_migrations {
+//             match &migration.issue {
+//                 // If there's no issue, we can migrate.
+//                 None => {}
+//                 // If there's an issue, we can't migrate it.
+//                 Some(_) => panic!("These should migrate cleanly"),
+//             }
 
-            let mut did_something = false;
-            for prop_connection in &migration.prop_connections {
-                if add_prop_connection(ctx, prop_connection).await? {
-                    did_something = true;
-                }
-            }
+//             let mut did_something = false;
+//             for prop_connection in &migration.prop_connections {
+//                 if add_prop_connection(ctx, prop_connection).await? {
+//                     did_something = true;
+//                 }
+//             }
 
-            if remove_socket_connection(ctx, migration.explicit_connection_id).await? {
-                did_something = true;
-            }
-            assert!(did_something);
-        }
-        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    }
-    // Post migration, prop subscriptions should have replaced socket connections and the MVs update accordingly
+//             if remove_socket_connection(ctx, migration.explicit_connection_id).await? {
+//                 did_something = true;
+//             }
+//             assert!(did_something);
+//         }
+//         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+//     }
+//     // Post migration, prop subscriptions should have replaced socket connections and the MVs update accordingly
 
-    // Check the alpha MV.
-    {
-        let alpha_mv =
-            dal_materialized_views::incoming_connections::assemble(ctx.clone(), alpha.id()).await?;
-        assert_eq!(
-            alpha.id(),  // expected
-            alpha_mv.id  // actual
-        );
-        assert!(alpha_mv.connections.is_empty());
-        let alpha_av_tree_mv =
-            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), alpha.id())
-                .await?;
-        // mostly concerned with the values for the "two" paths
-        let alpha_avs_with_sockets = alpha_av_tree_mv
-            .attribute_values
-            .values()
-            .filter(|av| av.has_socket_connection)
-            .collect_vec();
-        assert!(alpha_avs_with_sockets.is_empty());
-    }
+//     // Check the alpha MV.
+//     {
+//         let alpha_mv =
+//             dal_materialized_views::incoming_connections::assemble(ctx.clone(), alpha.id()).await?;
+//         assert_eq!(
+//             alpha.id(),  // expected
+//             alpha_mv.id  // actual
+//         );
+//         assert!(alpha_mv.connections.is_empty());
+//         let alpha_av_tree_mv =
+//             dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), alpha.id())
+//                 .await?;
+//         // mostly concerned with the values for the "two" paths
+//         let alpha_avs_with_sockets = alpha_av_tree_mv
+//             .attribute_values
+//             .values()
+//             .filter(|av| av.has_socket_connection)
+//             .collect_vec();
+//         assert!(alpha_avs_with_sockets.is_empty());
+//     }
 
-    // Check the beta MV.
-    {
-        let beta_mv =
-            dal_materialized_views::incoming_connections::assemble(ctx.clone(), beta.id()).await?;
-        assert_eq!(
-            beta.id(),  // expected
-            beta_mv.id  // actual
-        );
-        assert!(beta_mv.connections.iter().exactly_one().is_ok());
+//     // Check the beta MV.
+//     {
+//         let beta_mv =
+//             dal_materialized_views::incoming_connections::assemble(ctx.clone(), beta.id()).await?;
+//         assert_eq!(
+//             beta.id(),  // expected
+//             beta_mv.id  // actual
+//         );
+//         assert!(beta_mv.connections.iter().exactly_one().is_ok());
 
-        let beta_av_tree_mv =
-            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), beta.id())
-                .await?;
-        let beta_avs_with_sockets = beta_av_tree_mv
-            .attribute_values
-            .values()
-            .filter(|av| av.has_socket_connection)
-            .collect_vec();
-        assert!(beta_avs_with_sockets.is_empty());
+//         let beta_av_tree_mv =
+//             dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), beta.id())
+//                 .await?;
+//         let beta_avs_with_sockets = beta_av_tree_mv
+//             .attribute_values
+//             .values()
+//             .filter(|av| av.has_socket_connection)
+//             .collect_vec();
+//         assert!(beta_avs_with_sockets.is_empty());
 
-        let beta_avs_with_subs = beta_av_tree_mv
-            .attribute_values
-            .values()
-            .filter(
-                |av: &&si_frontend_mv_types::component::attribute_tree::AttributeValue| {
-                    av.external_sources.is_some()
-                },
-            )
-            .collect_vec();
-        assert!(beta_avs_with_subs.iter().exactly_one().is_ok());
+//         let beta_avs_with_subs = beta_av_tree_mv
+//             .attribute_values
+//             .values()
+//             .filter(
+//                 |av: &&si_frontend_mv_types::component::attribute_tree::AttributeValue| {
+//                     av.external_sources.is_some()
+//                 },
+//             )
+//             .collect_vec();
+//         assert!(beta_avs_with_subs.iter().exactly_one().is_ok());
 
-        let beta_component_in_list =
-            dal_materialized_views::component::assemble_in_list(ctx.clone(), beta.id()).await?;
-        assert!(!beta_component_in_list.has_socket_connections);
-    }
-    // Check the echo MV.
-    {
-        let echo_mv =
-            dal_materialized_views::incoming_connections::assemble(ctx.clone(), echo.id()).await?;
-        assert_eq!(
-            echo.id(),  // expected
-            echo_mv.id  // actual
-        );
-        assert!(echo_mv.connections.iter().exactly_one().is_ok());
+//         let beta_component_in_list =
+//             dal_materialized_views::component::assemble_in_list(ctx.clone(), beta.id()).await?;
+//         assert!(!beta_component_in_list.has_socket_connections);
+//     }
+//     // Check the echo MV.
+//     {
+//         let echo_mv =
+//             dal_materialized_views::incoming_connections::assemble(ctx.clone(), echo.id()).await?;
+//         assert_eq!(
+//             echo.id(),  // expected
+//             echo_mv.id  // actual
+//         );
+//         assert!(echo_mv.connections.iter().exactly_one().is_ok());
 
-        let echo_av_tree_mv =
-            dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), echo.id())
-                .await?;
-        let echo_avs_with_sockets = echo_av_tree_mv
-            .attribute_values
-            .values()
-            .filter(|av| av.has_socket_connection)
-            .collect_vec();
-        assert!(echo_avs_with_sockets.is_empty());
-        let echo_avs_with_subs = echo_av_tree_mv
-            .attribute_values
-            .values()
-            .filter(
-                |av: &&si_frontend_mv_types::component::attribute_tree::AttributeValue| {
-                    av.external_sources.is_some()
-                },
-            )
-            .collect_vec();
+//         let echo_av_tree_mv =
+//             dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), echo.id())
+//                 .await?;
+//         let echo_avs_with_sockets = echo_av_tree_mv
+//             .attribute_values
+//             .values()
+//             .filter(|av| av.has_socket_connection)
+//             .collect_vec();
+//         assert!(echo_avs_with_sockets.is_empty());
+//         let echo_avs_with_subs = echo_av_tree_mv
+//             .attribute_values
+//             .values()
+//             .filter(
+//                 |av: &&si_frontend_mv_types::component::attribute_tree::AttributeValue| {
+//                     av.external_sources.is_some()
+//                 },
+//             )
+//             .collect_vec();
 
-        assert!(echo_avs_with_subs.iter().exactly_one().is_ok());
-        let echo_component_in_list =
-            dal_materialized_views::component::assemble_in_list(ctx.clone(), echo.id()).await?;
-        assert!(!echo_component_in_list.has_socket_connections);
-    }
+//         assert!(echo_avs_with_subs.iter().exactly_one().is_ok());
+//         let echo_component_in_list =
+//             dal_materialized_views::component::assemble_in_list(ctx.clone(), echo.id()).await?;
+//         assert!(!echo_component_in_list.has_socket_connections);
+//     }
 
-    // but also add some manual prop connections for fun
-    {
-        value::subscribe(
-            ctx,
-            charlie_si_name_attribute_value_id,
-            (alpha.id(), alpha_si_name_attribute_value_path.as_str()),
-        )
-        .await?;
-        value::subscribe(
-            ctx,
-            charlie_domain_name_attribute_value_id,
-            (beta.id(), beta_domain_name_attribute_value_path.as_str()),
-        )
-        .await?;
-        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    }
+//     // but also add some manual prop connections for fun
+//     {
+//         value::subscribe(
+//             ctx,
+//             charlie_si_name_attribute_value_id,
+//             (alpha.id(), alpha_si_name_attribute_value_path.as_str()),
+//         )
+//         .await?;
+//         value::subscribe(
+//             ctx,
+//             charlie_domain_name_attribute_value_id,
+//             (beta.id(), beta_domain_name_attribute_value_path.as_str()),
+//         )
+//         .await?;
+//         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+//     }
 
-    // Check the charlie MV.
-    {
-        let charlie_mv =
-            dal_materialized_views::incoming_connections::assemble(ctx.clone(), charlie.id())
-                .await?;
-        assert_eq!(
-            charlie.id(),  // expected
-            charlie_mv.id  // actual
-        );
-        assert_eq!(
-            vec![
-                Connection::Prop {
-                    from_component_id: alpha.id(),
-                    from_attribute_value_id: alpha_si_name_attribute_value_id,
-                    from_attribute_value_path: alpha_si_name_attribute_value_path,
-                    from_prop_id: alpha_si_name_prop_id,
-                    from_prop_path: alpha_si_name_prop_path.with_replaced_sep_and_prefix("/"),
-                    to_component_id: charlie.id(),
-                    to_attribute_value_id: charlie_si_name_attribute_value_id,
-                    to_attribute_value_path: charlie_si_name_attribute_value_path,
-                    to_prop_id: charlie_si_name_prop_id,
-                    to_prop_path: charlie_si_name_prop_path.with_replaced_sep_and_prefix("/"),
-                },
-                Connection::Prop {
-                    from_component_id: beta.id(),
-                    from_attribute_value_id: beta_domain_name_attribute_value_id,
-                    from_attribute_value_path: beta_domain_name_attribute_value_path,
-                    from_prop_id: beta_domain_name_prop_id,
-                    from_prop_path: beta_domain_name_prop_path.with_replaced_sep_and_prefix("/"),
-                    to_component_id: charlie.id(),
-                    to_attribute_value_id: charlie_domain_name_attribute_value_id,
-                    to_attribute_value_path: charlie_domain_name_attribute_value_path,
-                    to_prop_id: charlie_domain_name_prop_id,
-                    to_prop_path: charlie_domain_name_prop_path.with_replaced_sep_and_prefix("/"),
-                },
-            ], // expected
-            charlie_mv.connections // actual
-        );
-    }
+//     // Check the charlie MV.
+//     {
+//         let charlie_mv =
+//             dal_materialized_views::incoming_connections::assemble(ctx.clone(), charlie.id())
+//                 .await?;
+//         assert_eq!(
+//             charlie.id(),  // expected
+//             charlie_mv.id  // actual
+//         );
+//         assert_eq!(
+//             vec![
+//                 Connection::Prop {
+//                     from_component_id: alpha.id(),
+//                     from_attribute_value_id: alpha_si_name_attribute_value_id,
+//                     from_attribute_value_path: alpha_si_name_attribute_value_path,
+//                     from_prop_id: alpha_si_name_prop_id,
+//                     from_prop_path: alpha_si_name_prop_path.with_replaced_sep_and_prefix("/"),
+//                     to_component_id: charlie.id(),
+//                     to_attribute_value_id: charlie_si_name_attribute_value_id,
+//                     to_attribute_value_path: charlie_si_name_attribute_value_path,
+//                     to_prop_id: charlie_si_name_prop_id,
+//                     to_prop_path: charlie_si_name_prop_path.with_replaced_sep_and_prefix("/"),
+//                 },
+//                 Connection::Prop {
+//                     from_component_id: beta.id(),
+//                     from_attribute_value_id: beta_domain_name_attribute_value_id,
+//                     from_attribute_value_path: beta_domain_name_attribute_value_path,
+//                     from_prop_id: beta_domain_name_prop_id,
+//                     from_prop_path: beta_domain_name_prop_path.with_replaced_sep_and_prefix("/"),
+//                     to_component_id: charlie.id(),
+//                     to_attribute_value_id: charlie_domain_name_attribute_value_id,
+//                     to_attribute_value_path: charlie_domain_name_attribute_value_path,
+//                     to_prop_id: charlie_domain_name_prop_id,
+//                     to_prop_path: charlie_domain_name_prop_path.with_replaced_sep_and_prefix("/"),
+//                 },
+//             ], // expected
+//             charlie_mv.connections // actual
+//         );
+//     }
 
-    Ok(())
-}
-async fn add_prop_connection(
-    ctx: &DalContext,
-    &PropConnection {
-        from: (from_component_id, ref from_path),
-        to: (to_component_id, ref to_path),
-        func_id,
-    }: &PropConnection,
-) -> Result<bool> {
-    // If the destination already has an explicit value, we keep it instead of replacing it!
-    let to_root_av_id = Component::root_attribute_value_id(ctx, to_component_id).await?;
-    let to_path = AttributePath::from_json_pointer(to_path.to_string());
-    let to_av_id = to_path.vivify(ctx, to_root_av_id).await?;
-    if AttributeValue::component_prototype_id(ctx, to_av_id)
-        .await?
-        .is_some()
-    {
-        return Ok(false);
-    }
+//     Ok(())
+// }
+// async fn add_prop_connection(
+//     ctx: &DalContext,
+//     &PropConnection {
+//         from: (from_component_id, ref from_path),
+//         to: (to_component_id, ref to_path),
+//         func_id,
+//     }: &PropConnection,
+// ) -> Result<bool> {
+//     // If the destination already has an explicit value, we keep it instead of replacing it!
+//     let to_root_av_id = Component::root_attribute_value_id(ctx, to_component_id).await?;
+//     let to_path = AttributePath::from_json_pointer(to_path.to_string());
+//     let to_av_id = to_path.vivify(ctx, to_root_av_id).await?;
+//     if AttributeValue::component_prototype_id(ctx, to_av_id)
+//         .await?
+//         .is_some()
+//     {
+//         return Ok(false);
+//     }
 
-    // Create the subscription
-    let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
-    let from_path = AttributePath::from_json_pointer(from_path.to_string());
-    AttributeValue::set_to_subscription(
-        ctx,
-        to_av_id,
-        ValueSubscription {
-            attribute_value_id: from_root_av_id,
-            path: from_path,
-        },
-        Some(func_id),
-        Reason::new_user_added(ctx),
-    )
-    .await?;
+//     // Create the subscription
+//     let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
+//     let from_path = AttributePath::from_json_pointer(from_path.to_string());
+//     AttributeValue::set_to_subscription(
+//         ctx,
+//         to_av_id,
+//         ValueSubscription {
+//             attribute_value_id: from_root_av_id,
+//             path: from_path,
+//         },
+//         Some(func_id),
+//         Reason::new_user_added(ctx),
+//     )
+//     .await?;
 
-    Ok(true)
-}
+//     Ok(true)
+// }
 
-/// Remove the existing socket connection (unless it was inferred, in which case there isn't one)
-async fn remove_socket_connection(
-    ctx: &DalContext,
-    explicit_connection_id: Option<AttributePrototypeArgumentId>,
-) -> Result<bool> {
-    // We don't remove inferred connections
-    let Some(explicit_connection_id) = explicit_connection_id else {
-        return Ok(false);
-    };
+// /// Remove the existing socket connection (unless it was inferred, in which case there isn't one)
+// async fn remove_socket_connection(
+//     ctx: &DalContext,
+//     explicit_connection_id: Option<AttributePrototypeArgumentId>,
+// ) -> Result<bool> {
+//     // We don't remove inferred connections
+//     let Some(explicit_connection_id) = explicit_connection_id else {
+//         return Ok(false);
+//     };
 
-    // Remove the connection
-    AttributePrototypeArgument::remove(ctx, explicit_connection_id).await?;
+//     // Remove the connection
+//     AttributePrototypeArgument::remove(ctx, explicit_connection_id).await?;
 
-    Ok(true)
-}
+//     Ok(true)
+// }

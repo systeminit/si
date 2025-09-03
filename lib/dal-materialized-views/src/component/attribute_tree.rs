@@ -1,6 +1,5 @@
 use std::collections::{
     HashMap,
-    HashSet,
     VecDeque,
 };
 
@@ -9,15 +8,11 @@ use dal::{
     AttributeValue,
     Component,
     DalContext,
-    InputSocketId,
     Prop,
     Secret,
     component::ControllingFuncData,
     validation::ValidationOutputNode,
-    workspace_snapshot::traits::{
-        component::ComponentExt,
-        func::FuncExt as _,
-    },
+    workspace_snapshot::traits::func::FuncExt as _,
 };
 use si_frontend_mv_types::component::attribute_tree::{
     self,
@@ -46,19 +41,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         Component::attribute_value_for_prop(ctx, component_id, &["root", "secrets"]).await?;
     let secret_ids_by_key = Secret::list_ids_by_key(ctx).await?;
 
-    let component_has_socket_connection = ctx
-        .workspace_snapshot()?
-        .has_socket_connections(component_id)
-        .await?;
-    let sockets_on_component: HashSet<InputSocketId> = if component_has_socket_connection {
-        Component::incoming_connections_for_id(ctx, component_id)
-            .await?
-            .into_iter()
-            .map(|c| c.to_input_socket_id)
-            .collect()
-    } else {
-        HashSet::new()
-    };
     let mut attribute_values = HashMap::new();
     let mut props = HashMap::new();
     let mut tree_info = HashMap::new();
@@ -163,17 +145,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             av_id,
             is_dynamic_func,
         };
-        // could probably also convert list_input_socket_sources_for_id into a dfs graph walk but
-        // we shouldn't need to maintain this and it's at least guarded by whether it's worth the work or not
-        let has_socket_connection = if component_has_socket_connection {
-            let sockets_for_av =
-                AttributeValue::list_input_socket_sources_for_id(ctx, av_id).await?;
-            sockets_for_av
-                .into_iter()
-                .any(|s| sockets_on_component.contains(&s))
-        } else {
-            false
-        };
 
         // NOTE(nick): I ported Victor's comment.
         //
@@ -221,7 +192,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             overridden,
             validation,
             secret: maybe_secret,
-            has_socket_connection,
+            has_socket_connection: false,
             is_default_source: AttributeValue::is_default_subscription_source(ctx, av_id).await?,
         };
         attribute_values.insert(av_id, av_mv);

@@ -6,16 +6,14 @@ use dal::{
     Secret,
     SecretAlgorithm,
     SecretVersion,
-    diagram::{
-        geometry::RawGeometry,
-        view::View,
-    },
+    diagram::view::View,
     prop::PropPath,
     property_editor::values::PropertyEditorValues,
     qualification::QualificationSubCheckStatus,
     secret::DecryptedSecret,
 };
 use dal_test::{
+    Result,
     WorkspaceSignup,
     expected::{
         self,
@@ -24,7 +22,8 @@ use dal_test::{
     helpers::{
         ChangeSetTestHelpers,
         attribute::value,
-        connect_components_with_socket_names,
+        change_set,
+        component,
         create_component_for_default_schema_name_in_default_view,
         encrypt_message,
         generate_fake_name,
@@ -282,23 +281,24 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
 }
 
 #[test]
-async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: &WorkspaceSignup) {
+async fn copy_paste_component_with_secrets_being_used(
+    ctx: &mut DalContext,
+    nw: &WorkspaceSignup,
+) -> Result<()> {
     // Create a component and commit.
-    let secret_component = ExpectComponent::create(ctx, "dummy-secret").await;
-    let user_component = ExpectComponent::create(ctx, "fallout").await;
-    secret_component
-        .connect(ctx, "dummy", user_component, "dummy")
-        .await;
-    let secret_prop = secret_component
-        .prop(ctx, ["root", "secrets", "dummy"])
-        .await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    component::create(ctx, "dummy-secret", "secret").await?;
+    component::create(ctx, "fallout", "user").await?;
+    value::subscribe(
+        ctx,
+        ("user", "/secrets/dummy"),
+        ("secret", "/secrets/dummy"),
+    )
+    .await?;
+    change_set::commit(ctx).await?;
 
     // Create a secret with a value that will pass the qualification and commit.
     let secret_message =
-        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
-            .await
-            .expect("could not encrypt message");
+        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}]).await?;
     let secret = Secret::new(
         ctx,
         "secret that will pass the qualification",
@@ -309,93 +309,58 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
         Default::default(),
         Default::default(),
     )
-    .await
-    .expect("cannot create secret");
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    .await?;
+    change_set::commit(ctx).await?;
 
     // Set the secret on the component and commit
-    let dummy_secret_attribute_value_id = secret_prop.attribute_value(ctx).await.id();
-    Secret::attach_for_attribute_value(ctx, dummy_secret_attribute_value_id, Some(secret.id()))
-        .await
-        .expect("could not attach secret");
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
-
-    let default_view_id = View::get_id_for_default(ctx)
-        .await
-        .expect("get default view");
+    let secret_av_id = value::id(ctx, ("secret", "/secrets/dummy")).await?;
+    Secret::attach_for_attribute_value(ctx, secret_av_id, Some(secret.id())).await?;
+    change_set::commit(ctx).await?;
 
     // Copy and paste the secret component
-    {
-        let component = secret_component.component(ctx).await;
-
-        let geometry = component
-            .geometry(ctx, default_view_id)
-            .await
-            .expect("couldn't get geometry");
-
-        component
-            .duplicate_without_connections(
-                ctx,
-                default_view_id,
-                RawGeometry {
-                    x: geometry.x(),
-                    y: geometry.y(),
-                    width: None,
-                    height: None,
-                },
-                None,
-            )
-            .await
-            .expect("paste");
-    }
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    Component::duplicate(
+        ctx,
+        View::get_id_for_default(ctx).await?,
+        vec![component::id(ctx, "secret").await?],
+        "dup-",
+    )
+    .await?;
+    change_set::commit(ctx).await?;
 
     // Copy and paste the user component
-    let user_component_geometry = user_component
-        .component(ctx)
-        .await
-        .geometry(ctx, default_view_id)
-        .await
-        .expect("couldn't get geometry");
+    Component::duplicate(
+        ctx,
+        View::get_id_for_default(ctx).await?,
+        vec![component::id(ctx, "user").await?],
+        "dup-",
+    )
+    .await?;
+    change_set::commit(ctx).await?;
 
-    user_component
-        .component(ctx)
-        .await
-        .duplicate_without_connections(
-            ctx,
-            default_view_id,
-            RawGeometry {
-                x: user_component_geometry.x(),
-                y: user_component_geometry.y(),
-                width: None,
-                height: None,
-            },
-            None,
-        )
-        .await
-        .expect("paste");
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    Ok(())
 }
 
+// TODO it's unclear how / whether this should work this way with subscriptions
+#[ignore]
 #[test]
-async fn consumed_secrets_work_when_dvu_not_up_to_date(ctx: &mut DalContext, nw: &WorkspaceSignup) {
+async fn consumed_secrets_work_when_dvu_not_up_to_date(
+    ctx: &mut DalContext,
+    nw: &WorkspaceSignup,
+) -> Result<()> {
     // Create a secret and consumer component.
-    let secret_component = ExpectComponent::create(ctx, "dummy-secret").await;
-    let user_component = ExpectComponent::create(ctx, "fallout").await;
-    secret_component
-        .connect(ctx, "dummy", user_component, "dummy")
-        .await;
-    let secret_prop = secret_component
-        .prop(ctx, ["root", "secrets", "dummy"])
-        .await;
-    let user_secret_prop = user_component.prop(ctx, ["root", "secrets", "dummy"]).await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    component::create(ctx, "dummy-secret", "secret").await?;
+    component::create(ctx, "fallout", "user").await?;
+    value::subscribe(
+        ctx,
+        ("user", "/secrets/dummy"),
+        ("secret", "/secrets/dummy"),
+    )
+    .await?;
+    change_set::commit(ctx).await?;
 
     // Create a secret with a value and commit.
     let secret_message =
-        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
-            .await
-            .expect("could not encrypt message");
+        encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}]).await?;
     let secret = Secret::new(
         ctx,
         "secret",
@@ -406,37 +371,28 @@ async fn consumed_secrets_work_when_dvu_not_up_to_date(ctx: &mut DalContext, nw:
         Default::default(),
         Default::default(),
     )
-    .await
-    .expect("cannot create secret");
+    .await?;
     let secret_message = secret.encrypted_secret_key();
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    change_set::commit(ctx).await?;
 
     // Set the secret on the component and commit
-    let dummy_secret_attribute_value_id = secret_prop.attribute_value(ctx).await.id();
+    let dummy_secret_attribute_value_id = value::id(ctx, ("secret", "/secrets/dummy")).await?;
     Secret::attach_for_attribute_value(ctx, dummy_secret_attribute_value_id, Some(secret.id()))
-        .await
-        .expect("could not attach secret");
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+        .await?;
+    change_set::commit(ctx).await?;
 
-    let found_secret = Secret::get_by_id(ctx, secret.id())
-        .await
-        .expect("could not perform get by id or secret not found");
+    let found_secret = Secret::get_by_id(ctx, secret.id()).await?;
     assert_eq!(secret_message, found_secret.encrypted_secret_key());
 
-    // Check the property editor values.
-    let (value, _) = PropertyEditorValues::assemble(ctx, secret_component.id())
-        .await
-        .expect("able to list prop values")
-        .find_with_value_by_prop_id(secret_prop.prop().id())
-        .expect("secret prop");
-    assert_eq!(Value::from(secret.id().to_string()), value);
-
-    let (value, _) = PropertyEditorValues::assemble(ctx, user_component.id())
-        .await
-        .expect("able to list prop values")
-        .find_with_value_by_prop_id(user_secret_prop.prop().id())
-        .expect("secret prop");
-    assert_eq!(Value::from(secret.id().to_string()), value);
+    // Check the secret values.
+    assert_eq!(
+        found_secret.encrypted_secret_key().to_string(),
+        value::get(ctx, ("secret", "/secrets/dummy")).await?
+    );
+    assert_eq!(
+        found_secret.encrypted_secret_key().to_string(),
+        value::get(ctx, ("user", "/secrets/dummy")).await?
+    );
 
     // Update the secret.
     let updated_secret_message = encrypt_message(
@@ -444,11 +400,9 @@ async fn consumed_secrets_work_when_dvu_not_up_to_date(ctx: &mut DalContext, nw:
         nw.key_pair.pk(),
         &serde_json::json![{"value": "sweeney"}],
     )
-    .await
-    .expect("could not encrypt message");
+    .await?;
     let updated_secret = Secret::get_by_id(ctx, secret.id())
-        .await
-        .expect("no secret")
+        .await?
         .update_encrypted_contents(
             ctx,
             updated_secret_message.as_slice(),
@@ -456,49 +410,35 @@ async fn consumed_secrets_work_when_dvu_not_up_to_date(ctx: &mut DalContext, nw:
             Default::default(),
             Default::default(),
         )
-        .await
-        .expect("could not update encrypted contents");
+        .await?;
     let updated_secret_message = updated_secret.encrypted_secret_key();
 
     // Validate that the secret has the new value.
-    let found_secret = Secret::get_by_id(ctx, secret.id())
-        .await
-        .expect("could not perform get by id or secret not found");
+    let found_secret = Secret::get_by_id(ctx, secret.id()).await?;
     assert_eq!(updated_secret_message, found_secret.encrypted_secret_key());
 
-    // Check the property editor values. Since the DVU is not up to date, we expect the value
-    // yielded to be null.
-    let (value, _) = PropertyEditorValues::assemble(ctx, secret_component.id())
-        .await
-        .expect("able to list prop values")
-        .find_with_value_by_prop_id(secret_prop.prop().id())
-        .expect("secret prop");
-    assert_eq!(Value::Null, value);
+    // Check the secret values again *before* running DVU.
+    assert_eq!(
+        Value::Null,
+        value::get(ctx, ("secret", "/secrets/dummy")).await?
+    );
+    assert_eq!(
+        Value::Null,
+        value::get(ctx, ("user", "/secrets/dummy")).await?
+    );
+    change_set::commit(ctx).await?;
 
-    let (value, _) = PropertyEditorValues::assemble(ctx, user_component.id())
-        .await
-        .expect("able to list prop values")
-        .find_with_value_by_prop_id(user_secret_prop.prop().id())
-        .expect("secret prop");
-    assert_eq!(Value::Null, value);
+    // Check the secret values *after* running DVU.
+    assert_eq!(
+        found_secret.encrypted_secret_key().to_string(),
+        value::get(ctx, ("secret", "/secrets/dummy")).await?
+    );
+    assert_eq!(
+        found_secret.encrypted_secret_key().to_string(),
+        value::get(ctx, ("user", "/secrets/dummy")).await?
+    );
 
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
-
-    // Check the property editor values again after committing.
-    let (value, _) = PropertyEditorValues::assemble(ctx, secret_component.id())
-        .await
-        .expect("able to list prop values")
-        .find_with_value_by_prop_id(secret_prop.prop().id())
-        .expect("secret prop");
-    assert_eq!(Value::from(secret.id().to_string()), value);
-
-    // Check the property editor values.
-    let (value, _) = PropertyEditorValues::assemble(ctx, user_component.id())
-        .await
-        .expect("able to list prop values")
-        .find_with_value_by_prop_id(user_secret_prop.prop().id())
-        .expect("secret prop");
-    assert_eq!(Value::from(secret.id().to_string()), value);
+    Ok(())
 }
 
 #[test]
@@ -837,14 +777,17 @@ async fn secret_definition_daisy_chain_subscriptions(ctx: &mut DalContext, nw: &
     let double_dummy_secret_prop = double
         .prop(ctx, ["root", "secrets", dummy_secret_name])
         .await;
-    let double_input_socket = double.input_socket(ctx, dummy_secret_name).await;
 
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    // first create a socket connection between the two components
-    connect_components_with_socket_names(ctx, dummy.id(), "dummy", double.id(), "dummy")
-        .await
-        .expect("couldn't connect components");
+    // Subscribe to the dummy secret from the double component
+    value::subscribe(
+        ctx,
+        double_dummy_secret_prop.attribute_value(ctx).await.id(),
+        (dummy.id(), "/secrets/dummy"),
+    )
+    .await
+    .expect("could not subscribe");
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     // First scenario: create and use secrets that will fail the qualification.
@@ -1018,54 +961,6 @@ async fn secret_definition_daisy_chain_subscriptions(ctx: &mut DalContext, nw: &
             double_output_socket.get(ctx).await // actual
         );
 
-        // Check that the qualification passes.
-        let qualifications = Component::list_qualifications(ctx, double.id())
-            .await
-            .expect("could not list qualifications");
-        let qualification = qualifications
-            .into_iter()
-            .find(|q| q.qualification_name == "test:qualificationDummyDoubleSecretStringIsTodd")
-            .expect("could not find qualification");
-        assert_eq!(
-            QualificationSubCheckStatus::Success, // expected
-            qualification.result.expect("no result found").status  // actual
-        );
-    }
-    // Third scenario: remove the socket connection and create an AV subscription, all should work as it does!
-    {
-        Component::remove_connection(
-            ctx,
-            dummy.id(),
-            dummy_output_socket.output_socket().id(),
-            double.id(),
-            double_input_socket.input_socket().id(),
-        )
-        .await
-        .expect("able to remove connection");
-        expected::commit_and_update_snapshot_to_visibility(ctx).await;
-
-        // Check that the qualification fails now.
-        let qualifications = Component::list_qualifications(ctx, double.id())
-            .await
-            .expect("could not list qualifications");
-        let qualification = qualifications
-            .into_iter()
-            .find(|q| q.qualification_name == "test:qualificationDummyDoubleSecretStringIsTodd")
-            .expect("could not find qualification");
-        assert_eq!(
-            QualificationSubCheckStatus::Failure, // expected
-            qualification.result.expect("no result found").status  // actual
-        );
-
-        // Subscribe to the dummy secret from the double component
-        value::subscribe(
-            ctx,
-            double_dummy_secret_prop.attribute_value(ctx).await.id(),
-            (dummy.id(), "/secrets/dummy"),
-        )
-        .await
-        .expect("could not subscribe");
-        expected::commit_and_update_snapshot_to_visibility(ctx).await;
         // Check that the qualification passes.
         let qualifications = Component::list_qualifications(ctx, double.id())
             .await

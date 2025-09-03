@@ -21,7 +21,6 @@ use dal::{
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
-    component::socket::ComponentInputSocket,
     diagram::{
         geometry::RawGeometry,
         view::View,
@@ -487,18 +486,6 @@ impl ExpectComponent {
         self.prop(ctx, ["root", "domain"]).await.get(ctx).await
     }
 
-    pub async fn connect(
-        self,
-        ctx: &DalContext,
-        socket: impl OutputSocketKey,
-        dest_component: ExpectComponent,
-        dest_socket: impl InputSocketKey,
-    ) {
-        let src = self.output_socket(ctx, socket).await;
-        let dest = dest_component.input_socket(ctx, dest_socket).await;
-        src.connect(ctx, dest).await
-    }
-
     pub async fn input_socket(
         self,
         ctx: &DalContext,
@@ -509,17 +496,6 @@ impl ExpectComponent {
             .lookup_input_socket(ctx, schema_variant.id())
             .await;
         ExpectComponentInputSocket(self.0, input_socket_id)
-    }
-
-    pub async fn input_connections(
-        self,
-        ctx: &DalContext,
-        input_socket_id: impl InputSocketKey,
-    ) -> Vec<ExpectComponentOutputSocket> {
-        self.input_socket(ctx, input_socket_id)
-            .await
-            .connections(ctx)
-            .await
     }
 
     pub async fn output_socket(
@@ -642,27 +618,6 @@ impl ExpectComponentInputSocket {
         ExpectInputSocket(self.1)
     }
 
-    pub async fn connect(self, ctx: &DalContext, dest: ExpectComponentOutputSocket) {
-        dest.connect(ctx, self).await
-    }
-
-    pub async fn connections(self, ctx: &DalContext) -> Vec<ExpectComponentOutputSocket> {
-        let component_input_socket = ComponentInputSocket {
-            component_id: self.0,
-            input_socket_id: self.1,
-            attribute_value_id: self.attribute_value(ctx).await.id(),
-        };
-        component_input_socket
-            .connections(ctx)
-            .await
-            .expect("get connections")
-            .into_iter()
-            .map(|(component_id, output_socket_id, _)| {
-                ExpectComponentOutputSocket(component_id, output_socket_id)
-            })
-            .collect()
-    }
-
     pub async fn attribute_value(self, ctx: &DalContext) -> ExpectAttributeValue {
         InputSocket::component_attribute_value_id(ctx, self.1, self.0)
             .await
@@ -722,12 +677,6 @@ impl ExpectComponentOutputSocket {
     }
     pub fn output_socket(self) -> ExpectOutputSocket {
         ExpectOutputSocket(self.1)
-    }
-
-    pub async fn connect(self, ctx: &DalContext, dest: ExpectComponentInputSocket) {
-        Component::connect_for_tests(ctx, self.0, self.1, dest.0, dest.1)
-            .await
-            .expect("could not connect components");
     }
 
     pub async fn attribute_value(self, ctx: &DalContext) -> ExpectAttributeValue {

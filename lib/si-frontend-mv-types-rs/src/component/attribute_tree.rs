@@ -80,6 +80,7 @@ pub struct AttributeValue {
     pub overridden: bool, // true if this prop has a different controlling func id than the default for this asset
     pub validation: Option<ValidationOutput>,
     pub secret: Option<Secret>,
+    // TODO remove from here and frontend. Always false right now.
     pub has_socket_connection: bool,
     pub is_default_source: bool,
 }
