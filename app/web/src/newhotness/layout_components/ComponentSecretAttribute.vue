@@ -109,7 +109,11 @@
     :validation="attributeTree.attributeValue.validation"
     :component="component"
     :externalSources="attributeTree.attributeValue.externalSources"
-    :value="attributeTree.secret?.name?.toString() ?? ''"
+    :value="
+      interstitialSpinner
+        ? 'subscribing...'
+        : attributeTree.secret?.name?.toString() ?? ''
+    "
     :canDelete="false"
     :disableInputWindow="attributeTree.prop?.isOriginSecret"
     isSecret
@@ -258,8 +262,6 @@ const keyApi = useApi();
 
 const wForm = useWatchedForm<Record<string, string>>(
   `component.av.secret.${props.attributeTree.prop?.id}`,
-  false,
-  true,
 );
 const secretForm = wForm.newForm({
   data: secretFormData,
@@ -327,7 +329,8 @@ const secretForm = wForm.newForm({
       return undefined; // Return undefined for successful validation
     },
   },
-  watchFn: () => props.attributeTree.secret,
+  // this is the actual value set by the API call, so this is what we watch
+  watchFn: () => props.attributeTree.attributeValue.isControlledByDynamicFunc,
 });
 
 const getPlaceholder = (fieldname: string) => {
@@ -341,8 +344,16 @@ const getPlaceholder = (fieldname: string) => {
 };
 
 const secretFormOpen = ref(false);
+const interstitialSpinner = computed(
+  () =>
+    !props.attributeTree.secret &&
+    props.attributeTree.attributeValue.isControlledByDynamicFunc,
+);
 const showSecretForm = computed(
-  () => !props.attributeTree.secret || secretFormOpen.value,
+  () =>
+    (!props.attributeTree.secret && // this is filled in after DVU finishes
+      !props.attributeTree.attributeValue.isControlledByDynamicFunc) || // this is filled in by the API call
+    secretFormOpen.value, // this is controlled by user activity
 );
 const openSecretForm = () => {
   secretFormOpen.value = true;

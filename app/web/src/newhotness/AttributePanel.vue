@@ -753,7 +753,7 @@ const required = ({ value }: { value: string | undefined }) => {
 
 const resetNameInput = () => {
   if (nameForm.state.isSubmitted || nameForm.state.isDirty) {
-    nameForm.reset(nameFormData.value);
+    wForm.reset(nameForm, nameFormData.value);
   }
   nameInputRef.value?.blur();
 };
@@ -817,6 +817,7 @@ const nameForm = wForm.newForm({
       }
     }
   },
+  watchFn: () => props.component.name,
 });
 
 defineExpose({

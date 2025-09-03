@@ -188,6 +188,8 @@ const nameForm = wForm.newForm({
       name: value.name,
     });
     if (updateViewApi.ok(req)) {
+      // manually triggering the watcher to close the loop
+      nameOnOpen.value = value.name;
       close();
       if (newChangeSetId) {
         // TODO(nick): when we make editing a view not require switching to that view, make sure that
@@ -210,12 +212,14 @@ const nameForm = wForm.newForm({
     onSubmit: ({ value }) =>
       value.name.length === 0 ? "View name is required" : undefined,
   },
+  watchFn: () => nameOnOpen.value,
 });
 
 const emit = defineEmits<{
   (e: "deleted"): void;
 }>();
 
+const nameOnOpen = ref("");
 const open = (
   openViewId: string,
   openViewName: string,
@@ -225,6 +229,7 @@ const open = (
   isDefaultView.value = openIsDefaultView;
   modalRef.value?.open();
   nameForm.reset();
+  nameOnOpen.value = openViewName;
   nameForm.setFieldValue("name", openViewName);
 };
 const close = () => {
