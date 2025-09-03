@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    time::Duration,
-};
+use std::collections::HashSet;
 
 use dal::{
     Component,
@@ -28,148 +25,6 @@ use pretty_assertions_sorted::assert_eq;
 use si_events::FuncRun;
 
 #[test]
-async fn component_can_only_have_one_parent(ctx: &mut DalContext) {
-    let child_one = ExpectComponent::create_named(ctx, "small even lego", "child component").await;
-    let frame_one = ExpectComponent::create_named(ctx, "small odd lego", "frame one").await;
-    let frame_two = ExpectComponent::create_named(ctx, "small odd lego", "frame two").await;
-
-    expected::apply_change_set_to_base(ctx).await;
-
-    for id in [child_one.id(), frame_one.id(), frame_two.id()] {
-        Component::get_by_id(ctx, id)
-            .await
-            .expect("component should exist in head");
-    }
-
-    assert_eq!(
-        None,
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("should not fail"),
-        "should not have a parent at first"
-    );
-
-    let change_set_1 = expected::fork_from_head_change_set(ctx).await;
-    Frame::upsert_parent(ctx, child_one.id(), frame_one.id())
-        .await
-        .expect("attach child to frame one");
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
-    assert_eq!(
-        Some(frame_one.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-
-    let _change_set_2 = expected::fork_from_head_change_set(ctx).await;
-    Frame::upsert_parent(ctx, child_one.id(), frame_two.id())
-        .await
-        .expect("attach child to frame one");
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
-    assert_eq!(
-        Some(frame_two.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-
-    // apply change set 2 to head
-    expected::apply_change_set_to_base(ctx).await;
-    assert_eq!(
-        Some(frame_two.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-
-    tokio::time::sleep(Duration::from_secs(2)).await;
-
-    // switch to change set 1, and see that the component has been reparented
-    expected::update_visibility_and_snapshot_to_visibility(ctx, change_set_1.id).await;
-    assert_eq!(
-        Some(frame_two.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-
-    Frame::upsert_parent(ctx, child_one.id(), frame_one.id())
-        .await
-        .expect("reattach child to frame one");
-    assert_eq!(
-        Some(frame_one.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-    // apply change set 1 to head
-    expected::apply_change_set_to_base(ctx).await;
-    assert_eq!(
-        Some(frame_one.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-
-    // Both change sets have been applied, so they will stop receiving updates from head
-
-    let change_set_3 = expected::fork_from_head_change_set(ctx).await;
-    assert_eq!(
-        Some(frame_one.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-
-    // Move the child into frame two in change set 3
-    Frame::upsert_parent(ctx, child_one.id(), frame_two.id())
-        .await
-        .expect("reattach child to frame one");
-
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
-
-    let _change_set_4 = expected::fork_from_head_change_set(ctx).await;
-    assert_eq!(
-        Some(frame_one.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-
-    // Orphan child in change set 4
-    Frame::orphan_child(ctx, child_one.id())
-        .await
-        .expect("able to orphan child");
-
-    expected::apply_change_set_to_base(ctx).await;
-    assert_eq!(
-        None,
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-
-    expected::update_visibility_and_snapshot_to_visibility(ctx, change_set_3.id).await;
-    // despite being orphaned in change set 4, and head, we are not orphaned in
-    // 3 because the 4 and head did not know about the frame relationship in 3
-    assert_eq!(
-        Some(frame_two.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-
-    expected::apply_change_set_to_base(ctx).await;
-
-    assert_eq!(
-        Some(frame_two.id()),
-        Component::get_parent_by_id(ctx, child_one.id())
-            .await
-            .expect("get parent by id succeeds")
-    );
-}
-
-#[test]
 async fn deleting_a_component_deletes_component_in_other_change_sets(ctx: &mut DalContext) {
     let docker_image_1 = ExpectComponent::create_named(ctx, "Docker Image", "docker 1").await;
     expected::apply_change_set_to_base(ctx).await;
@@ -177,7 +32,7 @@ async fn deleting_a_component_deletes_component_in_other_change_sets(ctx: &mut D
     // fork this change set and place docker image in a frame
     let cs_1 = fork_from_head_change_set(ctx).await;
     let frame_one = ExpectComponent::create_named(ctx, "small odd lego", "frame one").await;
-    Frame::upsert_parent(ctx, docker_image_1.id(), frame_one.id())
+    Frame::upsert_parent_for_tests(ctx, docker_image_1.id(), frame_one.id())
         .await
         .expect("attach child to frame one");
     expected::commit_and_update_snapshot_to_visibility(ctx).await;

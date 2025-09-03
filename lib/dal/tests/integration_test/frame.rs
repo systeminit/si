@@ -112,7 +112,7 @@ async fn frames_and_connections(ctx: &mut DalContext) {
     )
     .await
     .expect("could not create component");
-    Frame::upsert_parent(ctx, third_component.id(), fourth_component.id())
+    Frame::upsert_parent_for_tests(ctx, third_component.id(), fourth_component.id())
         .await
         .expect("upserted parent");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -177,7 +177,9 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
     .expect("could not create component");
 
     // Attempt to attach a child to a parent that is a not a frame.
-    match Frame::upsert_parent(ctx, fallout_component.id(), starfield_component.id()).await {
+    match Frame::upsert_parent_for_tests(ctx, fallout_component.id(), starfield_component.id())
+        .await
+    {
         Ok(_) => panic!("attaching child to parent should fail if parent is not a frame"),
         Err(FrameError::ParentIsNotAFrame(..)) => {}
         Err(other_error) => panic!("unexpected error: {other_error}"),
@@ -205,7 +207,7 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
         .expect("could not commit");
 
     // Now that the parent is a frame, attempt to attach the child.
-    Frame::upsert_parent(ctx, fallout_component.id(), starfield_component.id())
+    Frame::upsert_parent_for_tests(ctx, fallout_component.id(), starfield_component.id())
         .await
         .expect("could not attach child to parent");
 
@@ -265,7 +267,7 @@ async fn up_frames_take_inputs_from_down_frames_too(ctx: &mut DalContext) {
     .expect("could not create component");
 
     // upsert even frame into odd frame
-    Frame::upsert_parent(ctx, level_two.id(), level_one.id())
+    Frame::upsert_parent_for_tests(ctx, level_two.id(), level_one.id())
         .await
         .expect("could not upsert frame");
 
@@ -280,7 +282,7 @@ async fn up_frames_take_inputs_from_down_frames_too(ctx: &mut DalContext) {
     .expect("could not create component");
 
     // upsert component into up frame
-    Frame::upsert_parent(ctx, level_three.id(), level_two.id())
+    Frame::upsert_parent_for_tests(ctx, level_three.id(), level_two.id())
         .await
         .expect("could not upsert parent");
 
@@ -355,7 +357,7 @@ async fn orphan_frames_deeply_nested(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    Frame::upsert_parent(ctx, even_level_two.id(), even_level_one.id())
+    Frame::upsert_parent_for_tests(ctx, even_level_two.id(), even_level_one.id())
         .await
         .expect("could not upsert parent");
 
@@ -369,7 +371,7 @@ async fn orphan_frames_deeply_nested(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    Frame::upsert_parent(ctx, odd_level_three.id(), even_level_two.id())
+    Frame::upsert_parent_for_tests(ctx, odd_level_three.id(), even_level_two.id())
         .await
         .expect("could not create upsert frame");
 
@@ -383,7 +385,7 @@ async fn orphan_frames_deeply_nested(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    Frame::upsert_parent(ctx, odd_level_four.id(), odd_level_three.id())
+    Frame::upsert_parent_for_tests(ctx, odd_level_four.id(), odd_level_three.id())
         .await
         .expect("could not upsert parent");
 
@@ -396,7 +398,7 @@ async fn orphan_frames_deeply_nested(ctx: &mut DalContext) {
     )
     .await
     .expect("could not create component");
-    Frame::upsert_parent(ctx, even_level_four.id(), odd_level_three.id())
+    Frame::upsert_parent_for_tests(ctx, even_level_four.id(), odd_level_three.id())
         .await
         .expect("could not upsert parent");
 
@@ -537,7 +539,7 @@ async fn simple_down_frames_no_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    Frame::upsert_parent(ctx, odd_component.id(), even_frame.id())
+    Frame::upsert_parent_for_tests(ctx, odd_component.id(), even_frame.id())
         .await
         .expect("could not upsert parent");
 
@@ -629,16 +631,16 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
     .expect("could not create component");
 
     // upsert child into parent, parent into grandparent, grandparent into great grandparent and child into grandparent
-    Frame::upsert_parent(ctx, first_child_component.id(), parent_frame.id())
+    Frame::upsert_parent_for_tests(ctx, first_child_component.id(), parent_frame.id())
         .await
         .expect("can upsert parent");
-    Frame::upsert_parent(ctx, parent_frame.id(), first_grand_parent_frame.id())
+    Frame::upsert_parent_for_tests(ctx, parent_frame.id(), first_grand_parent_frame.id())
         .await
         .expect("can upsert parent");
-    Frame::upsert_parent(ctx, second_child_component.id(), parent_frame.id())
+    Frame::upsert_parent_for_tests(ctx, second_child_component.id(), parent_frame.id())
         .await
         .expect("can upsert parent");
-    Frame::upsert_parent(
+    Frame::upsert_parent_for_tests(
         ctx,
         first_grand_parent_frame.id(),
         first_greatgrandparent_frame.id(),
@@ -734,7 +736,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    Frame::upsert_parent(
+    Frame::upsert_parent_for_tests(
         ctx,
         second_grand_parent_frame.id(),
         second_greatgrandparent_frame.id(),
@@ -742,7 +744,7 @@ async fn down_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
     .await
     .expect("can upsert parent");
 
-    Frame::upsert_parent(ctx, parent_frame.id(), second_grand_parent_frame.id())
+    Frame::upsert_parent_for_tests(ctx, parent_frame.id(), second_grand_parent_frame.id())
         .await
         .expect("can upsert parent");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -864,14 +866,14 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
     .expect("could not create component");
 
     // upsert child into parent, parent into grandparent, grandparent into great grandparent and child into grandparent
-    Frame::upsert_parent(ctx, parent_frame.id(), first_child_component.id())
+    Frame::upsert_parent_for_tests(ctx, parent_frame.id(), first_child_component.id())
         .await
         .expect("can upsert parent");
-    Frame::upsert_parent(ctx, first_grand_parent_frame.id(), parent_frame.id())
+    Frame::upsert_parent_for_tests(ctx, first_grand_parent_frame.id(), parent_frame.id())
         .await
         .expect("can upsert parent");
 
-    Frame::upsert_parent(
+    Frame::upsert_parent_for_tests(
         ctx,
         first_greatgrandparent_frame.id(),
         first_grand_parent_frame.id(),
@@ -962,7 +964,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    Frame::upsert_parent(
+    Frame::upsert_parent_for_tests(
         ctx,
         second_greatgrandparent_frame.id(),
         second_grand_parent_frame.id(),
@@ -974,7 +976,7 @@ async fn up_frames_moving_deeply_nested_frames(ctx: &mut DalContext) {
         .await
         .expect("can detach frame");
 
-    Frame::upsert_parent(ctx, second_grand_parent_frame.id(), parent_frame.id())
+    Frame::upsert_parent_for_tests(ctx, second_grand_parent_frame.id(), parent_frame.id())
         .await
         .expect("can upsert parent");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -1063,7 +1065,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     .expect("could not create component");
 
     // insert child frame into parent frame
-    Frame::upsert_parent(ctx, even_child_frame.id(), even_parent_frame.id())
+    Frame::upsert_parent_for_tests(ctx, even_child_frame.id(), even_parent_frame.id())
         .await
         .expect("can upsert parent");
     // create component
@@ -1077,7 +1079,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     .expect("could not create component");
 
     // insert component into CHILD frame
-    Frame::upsert_parent(ctx, odd_component.id(), even_child_frame.id())
+    Frame::upsert_parent_for_tests(ctx, odd_component.id(), even_child_frame.id())
         .await
         .expect("can upsert to child frame");
     update_attribute_value_for_component(
@@ -1149,7 +1151,7 @@ async fn simple_down_frames_nesting(ctx: &mut DalContext) {
     assert_eq!(input_value, serde_json::json!("3"));
 
     // now let's pop the component to the parent frame and make sure it gets the new socket value
-    Frame::upsert_parent(ctx, odd_component.id(), even_parent_frame.id())
+    Frame::upsert_parent_for_tests(ctx, odd_component.id(), even_parent_frame.id())
         .await
         .expect("could not upsert parent");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -1193,7 +1195,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    Frame::upsert_parent(ctx, even_component.id(), odd_up_frame.id())
+    Frame::upsert_parent_for_tests(ctx, even_component.id(), odd_up_frame.id())
         .await
         .expect("could not upsert parent");
     // Change attribute value for one on the component
@@ -1234,7 +1236,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    Frame::upsert_parent(ctx, another_even_component.id(), odd_up_frame.id())
+    Frame::upsert_parent_for_tests(ctx, another_even_component.id(), odd_up_frame.id())
         .await
         .expect("could not upsert parent");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -1277,7 +1279,7 @@ async fn simple_up_frames_some_nesting(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
 
-    Frame::upsert_parent(ctx, odd_up_frame.id(), even_up_frame.id())
+    Frame::upsert_parent_for_tests(ctx, odd_up_frame.id(), even_up_frame.id())
         .await
         .expect("could not upsert parent frame");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -1345,10 +1347,10 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     let second_component_id = second_component.id();
     let first_up_frame_id = first_up_frame.id();
 
-    Frame::upsert_parent(ctx, first_component_id, first_up_frame_id)
+    Frame::upsert_parent_for_tests(ctx, first_component_id, first_up_frame_id)
         .await
         .expect("upserted");
-    Frame::upsert_parent(ctx, second_component_id, first_up_frame_id)
+    Frame::upsert_parent_for_tests(ctx, second_component_id, first_up_frame_id)
         .await
         .expect("upserted");
 
@@ -1418,10 +1420,10 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     let fourth_component_id = fourth_component.id();
     let second_up_frame_id = second_up_frame.id();
 
-    Frame::upsert_parent(ctx, third_component_id, second_up_frame_id)
+    Frame::upsert_parent_for_tests(ctx, third_component_id, second_up_frame_id)
         .await
         .expect("upserted");
-    Frame::upsert_parent(ctx, fourth_component_id, second_up_frame_id)
+    Frame::upsert_parent_for_tests(ctx, fourth_component_id, second_up_frame_id)
         .await
         .expect("upserted");
 
@@ -1473,10 +1475,10 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     .await
     .expect("could not create component");
     let parent_up_frame_id = parent_up_frame.id();
-    Frame::upsert_parent(ctx, first_up_frame_id, parent_up_frame_id)
+    Frame::upsert_parent_for_tests(ctx, first_up_frame_id, parent_up_frame_id)
         .await
         .expect("upserted");
-    Frame::upsert_parent(ctx, second_up_frame_id, parent_up_frame_id)
+    Frame::upsert_parent_for_tests(ctx, second_up_frame_id, parent_up_frame_id)
         .await
         .expect("upserted");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -1533,7 +1535,7 @@ async fn up_frames_multiple_children_moves_and_deletes(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
-    Frame::upsert_parent(ctx, third_component_id, first_up_frame_id)
+    Frame::upsert_parent_for_tests(ctx, third_component_id, first_up_frame_id)
         .await
         .expect("upserted");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
@@ -1586,13 +1588,13 @@ async fn orphan_frames_multiple_parents(ctx: &mut DalContext) {
     .expect("created frame");
 
     // Insert the child into "parent A"
-    Frame::upsert_parent(ctx, child.id(), parent_a.id())
+    Frame::upsert_parent_for_tests(ctx, child.id(), parent_a.id())
         .await
         .expect("could not upsert parent");
     // We have to manually add this connection from "parent B" to "child", as our "normal"
     // interface for putting "child" inside of "parent B" would (correctly) remove the association
     // between "parent A" and "child".
-    Component::add_edge_to_frame(
+    Component::add_edge_to_frame_for_tests(
         ctx,
         parent_b.id(),
         child.id(),
@@ -1723,7 +1725,7 @@ async fn frames_and_secrets(ctx: &mut DalContext, nw: &WorkspaceSignup) {
         create_component_for_schema_variant_on_default_view(ctx, new_comp_variant)
             .await
             .expect("could not create component");
-    Frame::upsert_parent(ctx, child_component.id(), secret_definition_component_id)
+    Frame::upsert_parent_for_tests(ctx, child_component.id(), secret_definition_component_id)
         .await
         .expect("could not upsert frame");
     // commit for propagation
@@ -1960,7 +1962,7 @@ async fn change_type_frames(ctx: &mut DalContext) {
     .expect("could not create component");
 
     // insert child into parent
-    Frame::upsert_parent(ctx, child.id(), parent.id())
+    Frame::upsert_parent_for_tests(ctx, child.id(), parent.id())
         .await
         .expect("could not upsert parent");
     // set values for component
