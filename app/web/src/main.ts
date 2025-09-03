@@ -2,7 +2,6 @@
 import { Buffer } from "buffer";
 import { HoneycombWebSDK } from "@honeycombio/opentelemetry-web";
 import { DocumentLoadInstrumentation } from "@opentelemetry/instrumentation-document-load";
-import { UserInteractionInstrumentation } from "@opentelemetry/instrumentation-user-interaction";
 import { LongTaskInstrumentation } from "@opentelemetry/instrumentation-long-task";
 import opentelemetry, { Span } from "@opentelemetry/api";
 import { mapStackTrace } from "sourcemapped-stacktrace";
@@ -37,12 +36,6 @@ const sdk = new HoneycombWebSDK({
   instrumentations: [
     // we're not auto-instrumenting XMLHttpRequest, we're instrumenting that in pinia_tools.APIRequest
     new DocumentLoadInstrumentation(),
-    new UserInteractionInstrumentation({
-      shouldPreventSpanCreation: (eventType, element, span) => {
-        span.setAttribute("target.tagName", element.tagName);
-        span.setAttribute("target.html", element.outerHTML);
-      },
-    }), // just click events for now
     new LongTaskInstrumentation({
       observerCallback: (span, _longtaskEvent) => {
         span.setAttribute("location.pathname", window.location.pathname);
