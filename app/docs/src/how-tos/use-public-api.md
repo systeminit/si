@@ -562,7 +562,7 @@ def main():
                 }
             }
         }
-        template_component_data = create_component(change_set_id, "AWS  VPC Template", "demo-template", template_options)
+        template_component_data = create_component(change_set_id, "AWS VPC Template", "demo-template", template_options)
         template_component_id = template_component_data["component"]["id"]
         print(f'Template Component created with ID: {template_component_id}')
 
