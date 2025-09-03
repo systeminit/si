@@ -47,7 +47,7 @@ export async function create_variant_inner(
     schemaVariantId,
     (mv) => mv.id === schemaVariantId,
     "SchemaVariant MV should exist and have matching id",
-    90000, // give it 90 seconds to appear as we'll have to rebuild SchemaVariantCategories as well
+    180000, // give it 120 seconds to appear as we'll have to rebuild SchemaVariantCategories as well
   );
   // create new variant as a component
   let createInstancePayload = {

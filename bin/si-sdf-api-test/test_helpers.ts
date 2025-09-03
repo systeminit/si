@@ -94,6 +94,9 @@ export async function runWithTemporaryChangeset(
     `Changeset name should be ${changeSetName}`,
   );
   const changeSetId = changeSet.id;
+  console.log(`Created temporary changeset ${changeSetId}`);
+  await sleepBetween(1000, 5000);
+  console.log("Fetching changeset index before running fn");
   // FETCH CHANGESET INDEX before running fn so we ensure the index has been built
   await sdf.fetchChangeSetIndex(changeSetId);
   // RUN FN
@@ -482,7 +485,7 @@ export async function eventualMVAssert(
   id: string,
   assertFn: (mv: any) => boolean,
   message: string,
-  timeoutMs: number = 60000, // 60 seconds
+  timeoutMs: number = 90000, // 90 seconds which should be plenty of time, but we're seeing some timing issues in crons so bumping it up dramatically
 ): Promise<void> {
   // update this to use sdf.mjolnir and retryUntil
   if (!sdf || !changeSetId || !kind || !id) {
