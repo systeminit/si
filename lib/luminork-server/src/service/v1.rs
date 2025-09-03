@@ -108,6 +108,10 @@ pub use funcs::{
     FuncsResult,
     get_func::GetFuncV1Response,
     get_func_run::GetFuncRunV1Response,
+    update_func::{
+        UpdateFuncV1Request,
+        UpdateFuncV1Response,
+    },
 };
 pub use management_funcs::{
     ManagementFuncJobStateV1RequestPath,
@@ -122,11 +126,38 @@ pub use schemas::{
     SchemaError,
     SchemaV1RequestPath,
     SchemaVariantV1RequestPath,
+    create_action::{
+        CreateVariantActionFuncV1Request,
+        CreateVariantActionFuncV1Response,
+    },
+    // create_attribute::{
+    //     CreateVariantAttributeFuncV1Request,
+    //     CreateVariantAttributeFuncV1Response,
+    // },
+    create_authentication::{
+        CreateVariantAuthenticationFuncV1Request,
+        CreateVariantAuthenticationFuncV1Response,
+    },
+    create_codegen::{
+        CreateVariantCodegenFuncV1Request,
+        CreateVariantCodegenFuncV1Response,
+    },
+    create_management::{
+        CreateVariantManagementFuncV1Request,
+        CreateVariantManagementFuncV1Response,
+    },
+    create_qualification::{
+        CreateVariantQualificationFuncV1Request,
+        CreateVariantQualificationFuncV1Response,
+    },
+    create_schema::CreateSchemaV1Request,
     find_schema::{
         FindSchemaV1Params,
         FindSchemaV1Response,
     },
     list_schemas::ListSchemaV1Response,
+    unlock_schema::UnlockedSchemaV1Response,
+    // update_schema_variant::UpdateSchemaVariantV1Request,
 };
 pub use workspaces::WorkspaceError;
 
@@ -176,8 +207,18 @@ pub use crate::api_types::func_run::v1::{
         schemas::get_schema::get_schema,
         schemas::get_variant::get_variant,
         schemas::get_default_variant::get_default_variant,
+        schemas::create_schema::create_schema,
+        schemas::unlock_schema::unlock_schema,
+        schemas::create_action::create_variant_action,
+        // schemas::create_attribute::create_variant_attribute,
+        schemas::create_authentication::create_variant_authentication,
+        schemas::create_qualification::create_variant_qualification,
+        schemas::create_codegen::create_variant_codegen,
+        schemas::create_management::create_variant_management,
+        // schemas::update_schema_variant::update_schema_variant,
         funcs::get_func_run::get_func_run,
         funcs::get_func::get_func,
+        funcs::update_func::update_func,
         management_funcs::get_management_func_run_state::get_management_func_run_state,
         actions::cancel_action::cancel_action,
         actions::retry_action::retry_action,
@@ -248,6 +289,8 @@ pub use crate::api_types::func_run::v1::{
             OutputLineViewV1,
             GetFuncV1Response,
             GetFuncRunV1Response,
+            UpdateFuncV1Request,
+            UpdateFuncV1Response,
             PropSchemaV1,
             CancelActionV1Response,
             RetryActionV1Response,
@@ -258,6 +301,21 @@ pub use crate::api_types::func_run::v1::{
             FindSchemaV1Response,
             GetManagementFuncJobStateV1Response,
             ManagementFuncJobStateV1RequestPath,
+            CreateVariantActionFuncV1Request,
+            CreateVariantActionFuncV1Response,
+            // CreateVariantAttributeFuncV1Request,
+            // CreateVariantActionFuncV1Response,
+            CreateVariantAuthenticationFuncV1Request,
+            CreateVariantAuthenticationFuncV1Response,
+            CreateVariantQualificationFuncV1Request,
+            CreateVariantQualificationFuncV1Response,
+            CreateSchemaV1Request,
+            UnlockedSchemaV1Response,
+            CreateVariantCodegenFuncV1Request,
+            CreateVariantCodegenFuncV1Response,
+            CreateVariantManagementFuncV1Request,
+            CreateVariantManagementFuncV1Response,
+            // UpdateSchemaVariantV1Request,
         )
     ),
     tags(
