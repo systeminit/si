@@ -97,14 +97,11 @@
         />
         <VormInput
           id="componentType"
-          v-model="editingAsset.componentType"
-          :disabled="editingAsset.isLocked"
-          :options="componentTypeOptions"
+          disabled
           compact
           label="Component Type"
-          type="dropdown"
-          @change="updateAsset"
-          @focus="focus"
+          type="text"
+          :modelValue="'Component'"
         />
         <VormInput
           id="description"
@@ -282,7 +279,6 @@ import {
 } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import {
-  ComponentType,
   InputSocketId,
   SchemaVariant,
   SchemaVariantId,
@@ -629,18 +625,6 @@ const openAttachModal = (warning: { kind?: FuncKind; funcId?: FuncId }) => {
   if (!warning.kind) return;
   attachModalRef.value?.open(true, warning.kind, warning.funcId);
 };
-
-const componentTypeOptions = [
-  { label: "Component", value: ComponentType.Component },
-  {
-    label: "Configuration Frame (down)",
-    value: ComponentType.ConfigurationFrameDown,
-  },
-  {
-    label: "Configuration Frame (up)",
-    value: ComponentType.ConfigurationFrameUp,
-  },
-];
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
 
