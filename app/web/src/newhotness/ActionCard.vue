@@ -110,7 +110,8 @@
       </DropdownMenu>
       <DetailsPanelMenuIcon
         v-if="!noInteraction"
-        @click.stop="(e) => contextMenuRef?.open(e, false)"
+        :selected="contextMenuRef?.isOpen"
+        @click.stop="(e: MouseEvent) => contextMenuRef?.open(e, false)"
       />
     </template>
   </ActionCardLayout>

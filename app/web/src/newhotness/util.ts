@@ -51,7 +51,7 @@ export const getAssetIcon = (name: string) => {
  * When its open use the fractional unit so it grows to the available size, sharing the remaining space with other open grid items
  */
 export const gridCollapseStyle = (open: boolean | Ref<boolean, boolean>) =>
-  unref(open) ? "1fr" : "1.75em";
+  unref(open) ? "1fr" : "2.5em";
 
 /**
  * Generates the styles for a vertical grid of collapsing panels

@@ -66,7 +66,7 @@
         changeSet.status === ChangeSetStatus.NeedsApproval
       "
       icon="trash"
-      tone="action"
+      tone="destructive"
       class="flex-none"
       @click="openAbandonConfirmationModal"
     />

@@ -19,6 +19,7 @@
     :hasSocketConnection="hasSocketConnections"
     @close="closeSubscriptionInput"
     @save="(...args) => emit('save', ...args)"
+    @handleTab="handleTab"
   />
   <li
     v-else-if="showingChildren || !attributeTree.prop?.hidden"
@@ -88,13 +89,20 @@
                   attributeTree.attributeValue.externalSources[0]?.path
                 }}</span
               >
-
-              <IconButton
-                v-tooltip="'Remove subscription'"
+              <NewButton
+                tooltip="Remove subscription"
+                tooltipPlacement="top"
                 icon="x"
-                size="sm"
-                iconTone="destructive"
-                iconIdleTone="shade"
+                tone="empty"
+                :class="
+                  clsx(
+                    'active:bg-white active:text-black',
+                    themeClasses(
+                      'hover:bg-neutral-200',
+                      'hover:bg-neutral-600',
+                    ),
+                  )
+                "
                 @click="removeSubscription"
               />
             </div>
@@ -108,7 +116,7 @@
                 !attributeTree.attributeValue.externalSources?.length
               "
               ref="connectButtonRef"
-              v-tooltip="'Create subscription'"
+              tooltip="Create subscription"
               :tabIndex="
                 attributeTree.isBuildable && !component.toDelete ? 0 : undefined
               "
@@ -125,7 +133,7 @@
               @click.stop.prevent="createSubscription"
               @keydown.tab.stop.prevent="onConnectButtonTab"
             />
-            <IconButton
+            <NewButton
               v-if="
                 attributeTree.isBuildable &&
                 !component.toDelete &&
@@ -134,15 +142,15 @@
                 !attributeTree.attributeValue.externalSources?.length
               "
               ref="deleteButtonRef"
-              v-tooltip="'Delete'"
+              tooltip="Delete"
+              tooltipPlacement="top"
               :tabIndex="
                 attributeTree.isBuildable && !component.toDelete ? 0 : undefined
               "
               icon="trash"
-              size="sm"
-              iconTone="destructive"
-              iconIdleTone="shade"
+              tone="destructive"
               loadingIcon="loader"
+              loadingText=""
               :loading="bifrostingTrash"
               class="focus:outline focus:outline-action-500"
               @click="remove"
@@ -232,7 +240,7 @@
               :loading="addButtonBifrosting"
               :disabled="addButtonBifrosting"
               loadingIcon="loader"
-              :tabindex="0"
+              :tabIndex="0"
               @click="add"
               @keydown.tab.stop.prevent="onAddButtonTab"
             >
@@ -270,6 +278,7 @@
         "
         @remove-subscription="(...args) => emit('removeSubscription', ...args)"
         @add="(...args) => add(...args)"
+        @handleTab="handleTab"
       />
     </template>
   </li>
@@ -277,7 +286,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
-import { IconButton, themeClasses, NewButton } from "@si/vue-lib/design-system";
+import { themeClasses, NewButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import {
@@ -527,7 +536,7 @@ const showingChildren = computed(
 const headerRef = ref<HTMLDivElement>();
 const addButtonRef = ref<InstanceType<typeof NewButton>>();
 const connectButtonRef = ref<InstanceType<typeof NewButton>>();
-const deleteButtonRef = ref<InstanceType<typeof IconButton>>();
+const deleteButtonRef = ref<InstanceType<typeof NewButton>>();
 
 const handleTab = (e: KeyboardEvent, currentFocus?: HTMLElement) => {
   const focusable = Array.from(
@@ -571,6 +580,6 @@ const onConnectButtonTab = (e: KeyboardEvent) => {
   handleTab(e, connectButtonRef.value?.$el);
 };
 const onDeleteButtonTab = (e: KeyboardEvent) => {
-  handleTab(e, deleteButtonRef.value?.mainDivRef);
+  handleTab(e, deleteButtonRef.value?.mainElRef);
 };
 </script>

@@ -36,17 +36,28 @@
             :showAsterisk="validationStatus === 'missingRequiredValue'"
           />
           <div class="flex flex-row items-center ml-auto gap-2xs">
-            <IconButton
+            <NewButton
               v-if="canDelete && !component.toDelete"
+              ref="deleteButtonRef"
               tooltip="Delete"
               tooltipPlacement="top"
               icon="trash"
-              iconTone="destructive"
-              iconIdleTone="shade"
-              size="sm"
+              tone="destructive"
               loadingIcon="loader"
               :loading="bifrostingTrash"
+              loadingText=""
+              :tabIndex="0"
+              :class="
+                clsx(
+                  'focus:outline',
+                  themeClasses(
+                    'focus:outline-action-500',
+                    'focus:outline-action-300',
+                  ),
+                )
+              "
               @click.left="remove"
+              @keydown.tab.stop.prevent="onDeleteButtonTab"
             />
           </div>
         </div>
@@ -268,17 +279,25 @@
                 :text="displayName"
                 :showAsterisk="validationStatus === 'missingRequiredValue'"
               />
-              <IconButton
+              <NewButton
                 v-if="canDelete && !component.toDelete"
                 tooltip="Delete (⌘⌫)"
                 tooltipPlacement="top"
                 icon="trash"
-                iconTone="destructive"
-                iconIdleTone="shade"
-                size="sm"
-                class="ml-auto"
+                tone="destructive"
                 loadingIcon="loader"
                 :loading="bifrostingTrash"
+                loadingText=""
+                :tabIndex="-1"
+                :class="
+                  clsx(
+                    'ml-auto focus:outline',
+                    themeClasses(
+                      'focus:outline-action-500',
+                      'focus:outline-action-300',
+                    ),
+                  )
+                "
                 @click.left="remove"
               />
             </div>
@@ -737,10 +756,10 @@ import { debounce } from "lodash-es";
 import clsx from "clsx";
 import {
   Icon,
-  IconButton,
   themeClasses,
   TruncateWithTooltip,
   TextPill,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import { Fzf } from "fzf";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
@@ -1192,6 +1211,7 @@ const emit = defineEmits<{
   (e: "add", key?: string): void;
   (e: "selected"): void;
   (e: "close"): void;
+  (e: "handleTab", event: KeyboardEvent, currentFocus?: HTMLElement): void;
 }>();
 
 // INPUT WINDOW LOGIC
@@ -1704,6 +1724,12 @@ const discardString = computed(() => {
 
   return "Discard edits";
 });
+
+const deleteButtonRef = ref<InstanceType<typeof NewButton>>();
+
+const onDeleteButtonTab = (e: KeyboardEvent) => {
+  emit("handleTab", e, deleteButtonRef.value?.mainElRef);
+};
 
 defineExpose({
   openInput,

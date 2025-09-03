@@ -18,14 +18,17 @@
         )
       "
     >
-      <IconButton
+      <NewButton
         tooltip="Close (Esc)"
         tooltipPlacement="top"
-        class="border-0 mr-2em"
         icon="x"
-        size="sm"
-        iconIdleTone="shade"
-        iconTone="shade"
+        tone="empty"
+        :class="
+          clsx(
+            'active:bg-white active:text-black',
+            themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
+          )
+        "
         @click="navigateBack"
       />
 
@@ -147,7 +150,7 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
-import { Icon, themeClasses, IconButton } from "@si/vue-lib/design-system";
+import { Icon, themeClasses, NewButton } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import CodeViewer from "@/components/CodeViewer.vue";

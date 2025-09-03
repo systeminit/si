@@ -10,14 +10,17 @@
         )
       "
     >
-      <IconButton
+      <NewButton
         tooltip="Close (Esc)"
         tooltipPlacement="top"
-        class="border-0 mr-2em"
         icon="x"
-        size="sm"
-        iconIdleTone="shade"
-        iconTone="shade"
+        tone="empty"
+        :class="
+          clsx(
+            'active:bg-white active:text-black',
+            themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
+          )
+        "
         @click="() => emit('close')"
       />
       <div class="flex-none text-sm">Edit selected components</div>
@@ -279,9 +282,9 @@ import {
 } from "vue";
 import {
   themeClasses,
-  IconButton,
   TruncateWithTooltip,
   TextPill,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {

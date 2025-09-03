@@ -11,14 +11,17 @@
         )
       "
     >
-      <IconButton
+      <NewButton
         tooltip="Close (Esc)"
         tooltipPlacement="top"
-        class="border-0 mr-2em"
         icon="x"
-        size="sm"
-        iconIdleTone="shade"
-        iconTone="shade"
+        tone="empty"
+        :class="
+          clsx(
+            'active:bg-white active:text-black',
+            themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
+          )
+        "
         @click="exitReview"
       />
       <div class="flex-1 text-sm font-medium">Review Changes</div>
@@ -393,7 +396,6 @@ import {
   Icon,
   SiSearch,
   themeClasses,
-  IconButton,
   TruncateWithTooltip,
   NewButton,
 } from "@si/vue-lib/design-system";
