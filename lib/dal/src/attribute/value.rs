@@ -2145,6 +2145,25 @@ impl AttributeValue {
             });
         }
 
+        Self::set_to_subscription_unchecked(ctx, subscriber_av_id, subscription, func_id, reason)
+            .await
+    }
+
+    /// Set the source of this attribute value to one or more subscriptions.
+    ///
+    /// Does NOT check if the subscription has the right type. This should only be used
+    /// for migration, and removed after it is no longer used there.
+    ///
+    /// This overwrites or overrides any existing value; if your intent is to append
+    /// subscriptions, you should first call AttributeValue::subscriptions() and append to that
+    /// list.
+    pub(crate) async fn set_to_subscription_unchecked(
+        ctx: &DalContext,
+        subscriber_av_id: AttributeValueId,
+        subscription: ValueSubscription,
+        func_id: Option<FuncId>,
+        reason: Reason,
+    ) -> AttributeValueResult<()> {
         let func_id = match func_id {
             Some(func_id) => func_id,
             None => Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?,
