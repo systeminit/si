@@ -97,6 +97,7 @@ const COMPRESSED_ROUTES: readonly routes[] = [
 ] as const;
 
 const _routes: Record<routes, string> = {
+  AbandonChangeSet: "/abandon",
   ActionAdd: "/action/add",
   ActionCancel: "/action/<id>/cancel",
   ActionFuncRunId: "/action/<id>/func_run_id",
@@ -141,7 +142,6 @@ const _routes: Record<routes, string> = {
   ViewAddComponents: "/views/<viewId>/add_components",
   ViewEraseComponents: "/views/<viewId>/erase_components",
 
-  AbandonChangeSet: "/change_set/abandon_change_set",
   // URLs without the default `change-set/:id` section
   ChangeSets: "/change-sets",
   CreateChangeSet: "/change-sets/create_change_set",
@@ -254,7 +254,6 @@ export class APICall<Response, Args> {
     if (
       [
         _routes.Workspaces,
-        _routes.AbandonChangeSet,
         _routes.CheckDismissedOnboarding,
         _routes.DismissOnboarding,
       ].includes(this.path)
