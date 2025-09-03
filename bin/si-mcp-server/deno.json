@@ -2,9 +2,7 @@
   "tasks": {
     "dev": "deno run -A --watch main.ts stdio",
     "inspector": "npx @modelcontextprotocol/inspector deno run -A ./main.ts stdio",
-    "build": "deno compile --allow-env --allow-net main.ts",
-    "docker:build": "docker build -t si-mcp-server .",
-    "docker:run": "docker run --rm -i si-mcp-server"
+    "build": "deno compile --allow-env --allow-net main.ts"
   },
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
