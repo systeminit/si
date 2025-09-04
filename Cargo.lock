@@ -4950,6 +4950,7 @@ dependencies = [
  "clap",
  "convert_case 0.6.0",
  "dal",
+ "dal-materialized-views",
  "derive_builder",
  "derive_more",
  "edda-client",

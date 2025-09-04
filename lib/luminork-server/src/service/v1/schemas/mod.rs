@@ -7,6 +7,7 @@ use axum::{
     routing::{
         get,
         post,
+        put,
     },
 };
 use dal::{
@@ -51,7 +52,7 @@ pub mod get_schema;
 pub mod get_variant;
 pub mod list_schemas;
 pub mod unlock_schema;
-// pub mod update_schema_variant;
+pub mod update_schema_variant;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -64,8 +65,12 @@ pub enum SchemaError {
     Frigg(#[from] FriggError),
     #[error("func authoring error: {0}")]
     FuncAuthoring(#[from] FuncAuthoringError),
+    #[error("join error: {0}")]
+    Join(#[from] tokio::task::JoinError),
     #[error("trying to modify locked variant: {0}")]
     LockedVariant(SchemaVariantId),
+    #[error("materialized views error: {0}")]
+    MaterializedViews(#[from] dal_materialized_views::Error),
     #[error("schema missing asset func id: {0}")]
     MissingVariantFunc(SchemaVariantId),
     #[error("changes not permitted on HEAD change set")]
@@ -84,6 +89,8 @@ pub enum SchemaError {
     SchemaVariantNotFound(SchemaVariantId),
     #[error("schema variant {0} not a variant for the schema {1} error")]
     SchemaVariantNotMemberOfSchema(SchemaId, SchemaVariantId),
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] dal::slow_rt::SlowRuntimeError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("validation error: {0}")]
@@ -173,6 +180,7 @@ pub fn routes() -> Router<AppState> {
                             "/:schema_variant_id",
                             Router::new()
                                 .route("/", get(get_variant::get_variant))
+                                .route("/", put(update_schema_variant::update_schema_variant))
                                 .nest(
                                 "/funcs",
                                 Router::new()

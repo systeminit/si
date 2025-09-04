@@ -6,6 +6,7 @@ use dal::{
     Schema,
     SchemaVariant,
     schema::variant::authoring::VariantAuthoringClient,
+    slow_rt,
 };
 use sdf_extract::{
     PosthogEventTracker,
@@ -114,28 +115,6 @@ pub async fn update_schema_variant(
         }),
     );
 
-    let variant_func_ids: Vec<_> = SchemaVariant::all_func_ids(ctx, default_variant_id)
-        .await?
-        .into_iter()
-        .collect();
-
-    let domain =
-        Prop::find_prop_by_path(ctx, default_variant_id, &RootPropChild::Domain.prop_path())
-            .await
-            .map_err(Box::new)?;
-    let domain_prop_schema = build_prop_schema_tree(ctx, domain.id).await?;
-
-    let response = GetSchemaVariantV1Response {
-        variant_id: variant.id(),
-        display_name: variant.display_name().to_owned(),
-        category: variant.category().to_owned(),
-        color: variant.color().to_owned(),
-        is_locked: variant.is_locked(),
-        description: variant.description(),
-        link: variant.link(),
-        is_default_variant: variant.is_default(ctx).await?,
-    };
-
     ctx.write_audit_log(
         AuditLogKind::RegenerateSchemaVariant { schema_variant_id },
         variant.display_name().to_string(),
@@ -144,9 +123,26 @@ pub async fn update_schema_variant(
 
     ctx.commit().await?;
 
-    Ok(Json(
-        GetSchemaVariantV1Response::assemble(ctx, variant.clone()).await?,
-    ))
+    let luminork_variant = slow_rt::spawn(
+        dal_materialized_views::luminork::schema::variant::assemble(ctx.clone(), variant.id()),
+    )?
+    .await??;
+
+    let response = GetSchemaVariantV1Response {
+        variant_id: luminork_variant.variant_id,
+        display_name: luminork_variant.display_name,
+        category: luminork_variant.category,
+        color: luminork_variant.color,
+        is_locked: luminork_variant.is_locked,
+        description: luminork_variant.description,
+        link: luminork_variant.link,
+        asset_func_id: luminork_variant.asset_func_id,
+        variant_func_ids: luminork_variant.variant_func_ids,
+        is_default_variant: luminork_variant.is_default_variant,
+        domain_props: luminork_variant.domain_props.map(Into::into),
+    };
+
+    Ok(Json(response))
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
