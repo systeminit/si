@@ -119,6 +119,9 @@ Cypress.Commands.add('basicLogin', () => {
   cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
   // cy.appModelPageLoaded();
   cy.wait(5000);
+  // check to confirm that we have reached either the lobby or the app itself
+  cy.get("#app-layout").should("exist", { timeout: 60000 });
+  cy.url().should("contain", SI_WORKSPACE_ID);
 });
 
 Cypress.Commands.add('createChangeSet', (changeSetName: string, immediatelyAbandon = false) => {
