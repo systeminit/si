@@ -9538,6 +9538,9 @@
   "The ID of the Availability Zone in which to create the volume. For example, ``us-east-1a``.": {
     "enum": null
   },
+  "The ID of the Availability Zone in which to create the volume. For example, ``us-east-1a``.\n Either ``AvailabilityZone`` or ``AvailabilityZoneId`` must be specified, but not both.": {
+    "enum": null
+  },
   "The ID of the Capacity Reservation in which to run the instance.": {
     "enum": null
   },
