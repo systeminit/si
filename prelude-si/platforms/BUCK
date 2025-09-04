@@ -11,7 +11,7 @@ load(":defs.bzl", "execution_platform", "host_configuration")
 
 prelude = native
 
-_rust_build_mode = read_root_config("rustc", "mode", "build_debug")
+_rust_build_mode = read_root_config("rustc", "mode", "build_release")
 _rust_build_mode_constraint = "root//config:" + _rust_build_mode
 
 execution_platform(
