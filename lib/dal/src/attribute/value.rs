@@ -2157,7 +2157,7 @@ impl AttributeValue {
     /// This overwrites or overrides any existing value; if your intent is to append
     /// subscriptions, you should first call AttributeValue::subscriptions() and append to that
     /// list.
-    pub(crate) async fn set_to_subscription_unchecked(
+    pub async fn set_to_subscription_unchecked(
         ctx: &DalContext,
         subscriber_av_id: AttributeValueId,
         subscription: ValueSubscription,

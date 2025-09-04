@@ -312,7 +312,7 @@ async fn add_prop_connection(
     // Create the subscription
     let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
     let from_path = AttributePath::from_json_pointer(from_path.to_string());
-    AttributeValue::set_to_subscription(
+    AttributeValue::set_to_subscription_unchecked(
         ctx,
         to_av_id,
         ValueSubscription {
