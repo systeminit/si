@@ -1,5 +1,6 @@
+<!-- THIS COMPONENT IS DEPRECATED, DO NOT USE IT ANYMORE!-->
+
 <template>
-  <!-- TODO(Wendy) - probably at some point IconButton should be merged with VButton -->
   <div
     ref="mainDivRef"
     v-tooltip="{

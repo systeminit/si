@@ -7,12 +7,13 @@
   <component
     :is="htmlTagOrComponentType"
     v-bind="dynamicAttrs"
-    ref="component"
-    v-tooltip="truncateRef?.tooltipActive ? truncateRef.tooltip : undefined"
+    ref="mainElRef"
+    v-tooltip="truncateRef?.tooltipActive ? truncateRef.tooltip : tooltipObject"
     :tabindex="tabIndex"
     :class="
       clsx(
-        'flex flex-row items-center gap-xs transition-all justify-center px-xs py-2xs whitespace-nowrap leading-none font-medium rounded-sm',
+        'flex flex-row items-center gap-xs transition-all justify-center whitespace-nowrap leading-none font-medium rounded-sm',
+        hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs',
         tone !== 'empty' && 'border',
         computedTextSize,
         truncateText && 'min-w-0',
@@ -59,7 +60,7 @@
         :class="iconClasses"
         :name="loadingIcon"
       />
-      <span>{{ loadingText }}</span>
+      <span v-if="loadingText">{{ loadingText }}</span>
     </template>
     <template v-else-if="showSuccess">
       <Icon
@@ -68,7 +69,7 @@
         :name="successIcon"
       />
       <span>
-        <slot name="success">{{ successText }}</slot>
+        <slot v-if="successText" name="success">{{ successText }}</slot>
       </span>
     </template>
     <template v-else>
@@ -91,7 +92,7 @@
         </slot>
         <slot v-else>{{ label }}</slot>
       </TruncateWithTooltip>
-      <span v-else-if="label || $slots.default">
+      <span v-else-if="hasLabel">
         <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
           |
           {{
@@ -135,10 +136,11 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onBeforeUnmount, watch, PropType } from "vue";
+import { ref, computed, onBeforeUnmount, watch, PropType, useSlots } from "vue";
 import { RouterLink } from "vue-router";
 import * as _ from "lodash-es";
 import clsx from "clsx";
+import { Placement } from "floating-vue";
 import { ApiRequestStatus } from "../../pinia";
 import Icon, { IconSizes } from "../icons/Icon.vue";
 import { IconNames } from "../icons/icon_set";
@@ -185,6 +187,8 @@ const props = defineProps({
   pill: { type: String, required: false },
   truncateText: { type: Boolean },
   tabIndex: Number,
+  tooltip: { type: String },
+  tooltipPlacement: { type: String as PropType<Placement>, default: "left" },
 });
 
 const truncateRef = ref<InstanceType<typeof TruncateWithTooltip>>();
@@ -308,13 +312,14 @@ function clickHandler(e: MouseEvent) {
   }
 }
 
-const component = ref<InstanceType<typeof HTMLElement>>();
+const mainElRef = ref<InstanceType<typeof HTMLElement>>();
 const focus = () => {
-  component.value?.focus();
+  mainElRef.value?.focus();
 };
 
 defineExpose({
   focus,
+  mainElRef,
 });
 
 onBeforeUnmount(() => {
@@ -342,4 +347,17 @@ const computedTextSize = computed(() => {
     }[props.size];
   }
 });
+
+const tooltipObject = computed(() =>
+  props.tooltip
+    ? {
+        content: props.tooltip,
+        placement: props.tooltipPlacement,
+      }
+    : undefined,
+);
+
+const slots = useSlots();
+
+const hasLabel = computed(() => !!(props.label || slots.default));
 </script>

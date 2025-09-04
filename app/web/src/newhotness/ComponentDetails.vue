@@ -96,14 +96,17 @@
             )
           "
         >
-          <IconButton
+          <NewButton
             tooltip="Close (Esc)"
             tooltipPlacement="top"
-            class="border-0 mr-2em"
             icon="x"
-            size="sm"
-            iconIdleTone="shade"
-            iconTone="shade"
+            tone="empty"
+            :class="
+              clsx(
+                'active:bg-white active:text-black',
+                themeClasses('hover:bg-neutral-400', 'hover:bg-neutral-500'),
+              )
+            "
             @click="close"
           />
           <TruncateWithTooltip class="py-xs text-sm">
@@ -126,14 +129,17 @@
           )
         "
       >
-        <IconButton
+        <NewButton
           tooltip="Close (Esc)"
           tooltipPlacement="top"
-          class="border-0 mr-2em"
           icon="x"
-          size="sm"
-          iconIdleTone="shade"
-          iconTone="shade"
+          tone="empty"
+          :class="
+            clsx(
+              'active:bg-white active:text-black',
+              themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
+            )
+          "
           @click="close"
         />
         <div class="flex-none text-sm">{{ component.schemaVariantName }}</div>
@@ -408,7 +414,6 @@ import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import {
   Icon,
   themeClasses,
-  IconButton,
   TruncateWithTooltip,
   NewButton,
 } from "@si/vue-lib/design-system";

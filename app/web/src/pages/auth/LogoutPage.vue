@@ -2,7 +2,6 @@
   <AppLayout pageMode="modal" class="font-medium">
     <Stack spacing="lg" class="max-w-md">
       <AuthPageHeader title="Logging out"></AuthPageHeader>
-
       <Card rounded> See ya later!</Card>
     </Stack>
   </AppLayout>

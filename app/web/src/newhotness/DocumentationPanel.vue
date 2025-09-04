@@ -48,13 +48,17 @@
               {{ component.schemaVariantName }}
             </a>
           </div>
-          <IconButton
-            class="ml-auto"
-            icon="x"
+          <NewButton
             tooltip="Close"
             tooltipPlacement="top"
-            size="sm"
-            iconTone="shade"
+            icon="x"
+            tone="empty"
+            :class="
+              clsx(
+                'ml-auto active:bg-white active:text-black',
+                themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
+              )
+            "
             @click="emit('cleardocs')"
           />
         </div>
@@ -65,7 +69,7 @@
 </template>
 
 <script lang="ts" setup>
-import { themeClasses, IconButton } from "@si/vue-lib/design-system";
+import { themeClasses, NewButton } from "@si/vue-lib/design-system";
 import { PropType } from "vue";
 import clsx from "clsx";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";

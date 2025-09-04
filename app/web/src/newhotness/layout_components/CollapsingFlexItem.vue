@@ -46,13 +46,19 @@
       <slot name="header" />
       <div v-if="$slots.headerIcons || showExpandButton" class="ml-auto" />
       <slot name="headerIcons" />
-      <IconButton
+      <NewButton
         v-if="showExpandButton"
         tooltip="Expand"
         tooltipPlacement="top"
-        size="xs"
         icon="maximize"
-        iconTone="shade"
+        tone="empty"
+        size="xs"
+        :class="
+          clsx(
+            'active:bg-white active:text-black',
+            themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
+          )
+        "
         @click.prevent.stop="expand"
       />
     </h3>
@@ -78,10 +84,10 @@
 <script lang="ts" setup>
 import {
   themeClasses,
-  IconButton,
   Modal,
   Icon,
   SpacingSizes,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, onMounted, ref } from "vue";
