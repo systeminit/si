@@ -1,10 +1,10 @@
 /**
  * Components API Client
- * 
+ *
  * Client for interacting with Components endpoints
  */
 
-import { LuminorkClient, ApiResponse } from '../client.ts';
+import { LuminorkClient, ApiResponse } from "../client.ts";
 
 // Type definitions for Components API
 export interface ComponentView {
@@ -50,7 +50,7 @@ export interface CreateComponentResponse {
     sockets?: Array<unknown>;
     domainProps?: Array<unknown>;
     resourceProps?: Array<unknown>;
-  }
+  };
 }
 
 export interface UpdateComponentResponse {
@@ -69,11 +69,17 @@ export interface UpdateComponentResponse {
     sockets?: Array<unknown>;
     domainProps?: Array<unknown>;
     resourceProps?: Array<unknown>;
-  }
+  };
+}
+
+export interface ComponentDetails {
+  componentId: string;
+  name: string;
+  schemaName: string;
 }
 
 export interface ListComponentsResponse {
-  components: string[];
+  componentDetails: ComponentDetails[];
   nextCursor: string | null;
 }
 
@@ -95,7 +101,7 @@ export interface GetComponentResponse {
     resourceProps?: Array<unknown>;
     action_functions?: Array<unknown>;
     management_functions?: Array<unknown>;
-  }
+  };
 }
 
 export interface FindComponentParams {
@@ -128,81 +134,86 @@ export interface AddActionResponse {
  */
 export class ComponentsApi {
   private client: LuminorkClient;
-  
+
   constructor(client: LuminorkClient) {
     this.client = client;
   }
-  
+
   /**
    * Build the full path with workspace and changeset IDs
    */
-  private buildPath(workspaceId: string, changeSetId: string, path: string): string {
+  private buildPath(
+    workspaceId: string,
+    changeSetId: string,
+    path: string,
+  ): string {
     return `/v1/w/${workspaceId}/change-sets/${changeSetId}/components${path}`;
   }
-  
+
   /**
    * Create a new component
    */
   async createComponent(
     workspaceId: string,
     changeSetId: string,
-    data: CreateComponentRequest
+    data: CreateComponentRequest,
   ): Promise<ApiResponse<CreateComponentResponse>> {
     return this.client.post<CreateComponentResponse>(
-      this.buildPath(workspaceId, changeSetId, ''),
-      data
+      this.buildPath(workspaceId, changeSetId, ""),
+      data,
     );
   }
-  
+
   /**
    * List all components in a change set
    */
   async listComponents(
     workspaceId: string,
-    changeSetId: string
+    changeSetId: string,
   ): Promise<ApiResponse<ListComponentsResponse>> {
     return this.client.get<ListComponentsResponse>(
-      this.buildPath(workspaceId, changeSetId, '')
+      this.buildPath(workspaceId, changeSetId, ""),
     );
   }
-  
+
   /**
    * Find components by name or schema
    */
   async findComponent(
     workspaceId: string,
     changeSetId: string,
-    params: FindComponentParams
+    params: FindComponentParams,
   ): Promise<ApiResponse<GetComponentResponse>> {
-    const url = new URL(this.buildPath(workspaceId, changeSetId, '/find'), this.client.getBaseUrl());
-    
+    const url = new URL(
+      this.buildPath(workspaceId, changeSetId, "/find"),
+      this.client.getBaseUrl(),
+    );
+
     // Add search parameters
     if (params.name) {
-      url.searchParams.append('component', params.name);
+      url.searchParams.append("component", params.name);
     }
-    
+
     if (params.schema_id) {
-      url.searchParams.append('schema_id', params.schema_id);
+      url.searchParams.append("schema_id", params.schema_id);
     }
-    
-    return this.client.get<GetComponentResponse>(
-      url.toString()
-    );
+
+    return this.client.get<GetComponentResponse>(url.toString());
   }
-  
+
   /**
    * Get a specific component
    */
   async getComponent(
     workspaceId: string,
     changeSetId: string,
-    componentId: string
+    componentId: string,
   ): Promise<ApiResponse<GetComponentResponse>> {
     return this.client.get<GetComponentResponse>(
-      this.buildPath(workspaceId, changeSetId, `/${componentId}`)
+      this.buildPath(workspaceId, changeSetId, `/${componentId}`),
     );
   }
-  
+
   /**
    * Update a component
    */
@@ -210,27 +221,27 @@ export class ComponentsApi {
     workspaceId: string,
     changeSetId: string,
     componentId: string,
-    data: UpdateComponentRequest
+    data: UpdateComponentRequest,
   ): Promise<ApiResponse<UpdateComponentResponse>> {
     return this.client.put<UpdateComponentResponse>(
       this.buildPath(workspaceId, changeSetId, `/${componentId}`),
-      data
+      data,
     );
   }
-  
+
   /**
    * Delete a component
    */
   async deleteComponent(
     workspaceId: string,
     changeSetId: string,
-    componentId: string
+    componentId: string,
   ): Promise<ApiResponse<{ success: boolean }>> {
     return this.client.delete(
-      this.buildPath(workspaceId, changeSetId, `/${componentId}`)
+      this.buildPath(workspaceId, changeSetId, `/${componentId}`),
     );
   }
-  
+
   /**
    * Execute a management function on a component
    */
@@ -238,14 +249,18 @@ export class ComponentsApi {
     workspaceId: string,
     changeSetId: string,
     componentId: string,
-    data: ExecuteManagementFunctionRequest
+    data: ExecuteManagementFunctionRequest,
   ): Promise<ApiResponse<ExecuteManagementFunctionResponse>> {
     return this.client.post<ExecuteManagementFunctionResponse>(
-      this.buildPath(workspaceId, changeSetId, `/${componentId}/execute-management-function`),
-      data
+      this.buildPath(
+        workspaceId,
+        changeSetId,
+        `/${componentId}/execute-management-function`,
+      ),
+      data,
     );
   }
-  
+
   /**
    * Add an action to a component
    */
@@ -253,11 +268,11 @@ export class ComponentsApi {
     workspaceId: string,
     changeSetId: string,
     componentId: string,
-    data: AddActionRequest
+    data: AddActionRequest,
   ): Promise<ApiResponse<AddActionResponse>> {
     return this.client.post<AddActionResponse>(
       this.buildPath(workspaceId, changeSetId, `/${componentId}/action`),
-      data
+      data,
     );
   }
 }

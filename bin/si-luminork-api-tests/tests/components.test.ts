@@ -99,11 +99,13 @@ Deno.test("Components API - Create and Update Components", async () => {
       );
 
       assertEquals(listComponentsResponse.status, 200);
-      assertExists(listComponentsResponse.data.components);
+      assertExists(listComponentsResponse.data.componentDetails);
 
       // Verify our component is in the list
       const isComponentInList =
-        listComponentsResponse.data.components.includes(componentId);
+        listComponentsResponse.data.componentDetails.some((c) => {
+          return c.componentId === componentId;
+        });
       assertEquals(
         isComponentInList,
         true,
