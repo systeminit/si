@@ -1,4 +1,5 @@
 {
+  "nodeModulesDir": "auto",
   "tasks": {
     "dev": "deno run -A --watch main.ts stdio",
     "inspector": "npx @modelcontextprotocol/inspector deno run -A ./main.ts stdio",
