@@ -14,7 +14,8 @@ import { isValid } from "ulid";
 
 const name = "schema-find";
 const title = "Find component schemas";
-const description = `<description>Finds component schemas by name or Schema ID. Returns the Schema ID, Name, Description, and external documentation Link. On failure, returns error details. When looking for AWS Schemas, you can use the AWS Cloudformation Resource name (examples: AWS::EC2::Instance, AWS::Bedrock::Agent, or AWS::ControlTower::EnabledBaseline)</description><usage>Use this tool to find if a schema exists in System Initiative, to look up the Schema Name or Schema ID if you need it, or to display high level information about the schema.</usage>`;
+const description =
+  `<description>Finds component schemas by name or Schema ID. Returns the Schema ID, Name, Description, and external documentation Link. On failure, returns error details. When looking for AWS Schemas, you can use the AWS Cloudformation Resource name (examples: AWS::EC2::Instance, AWS::Bedrock::Agent, or AWS::ControlTower::EnabledBaseline)</description><usage>Use this tool to find if a schema exists in System Initiative, to look up the Schema Name or Schema ID if you need it, or to display high level information about the schema.</usage>`;
 
 const FindSchemaInputSchemaRaw = {
   changeSetId: z
@@ -38,6 +39,7 @@ const FindSchemaOutputSchemaRaw = {
     ),
   data: z
     .object({
+      // FIXME(nick,aaron): allow this type to be used in "component-generate-template".
       schemaId: z.string().describe("the schema id"),
       schemaName: z.string().describe("the name of the schema"),
       description: z
@@ -95,10 +97,12 @@ export function schemaFindTool(server: McpServer) {
             }
             changeSetId = head.id;
           } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
+            const errorMessage = error instanceof Error
+              ? error.message
+              : String(error);
             return errorResponse({
-              message: `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${errorMessage}`,
+              message:
+                `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${errorMessage}`,
             });
           }
         }
@@ -132,10 +136,12 @@ export function schemaFindTool(server: McpServer) {
               });
               schemaId = response.data.schemaId;
             } catch (error) {
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
+              const errorMessage = error instanceof Error
+                ? error.message
+                : String(error);
               return errorResponse({
-                message: `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
+                message:
+                  `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
               });
             }
           } else {

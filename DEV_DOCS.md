@@ -361,6 +361,13 @@ Here is an example:
 buck2 targets //lib/dal:
 ```
 
+You can do it locally within a package as well.
+
+```shell
+cd lib/dal
+buck2 targets :
+```
+
 ## Why isn't this new file I added available during builds?
 
 Expanding on the terminology section, "buildable" targets only use files that are explicitly provided.

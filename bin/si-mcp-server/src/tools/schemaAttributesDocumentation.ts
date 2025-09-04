@@ -17,7 +17,8 @@ import {
 
 const name = "schema-attributes-documentation";
 const title = "Schema Attributes Documentation";
-const description = `<description>Look up the documentation for Schema Attributes - you can look up many at once for a single schema. Returns an object with the schemaName and an array of documentation and path attribute objects. (if any). On failure, returns error details. Only supports AWS schemas.</description><usage>Use this tool to understand how to use a particular attribute, or what values it accepts. Use attribute paths that mirror those returned from the schema-attributes-list tool. In addition, you can ask for the documentation for paths *earlier* than those returned by the attributes-list tool - for example, the tool might return '/domain/Tags/[array]/Key', but the user wants documentation for '/domain/Tags' - both are valid.</usage>`;
+const description =
+  `<description>Look up the documentation for Schema Attributes - you can look up many at once for a single schema. Returns an object with the schemaName and an array of documentation and path attribute objects. (if any). On failure, returns error details. Only supports AWS schemas.</description><usage>Use this tool to understand how to use a particular attribute, or what values it accepts. Use attribute paths that mirror those returned from the schema-attributes-list tool. In addition, you can ask for the documentation for paths *earlier* than those returned by the attributes-list tool - for example, the tool might return '/domain/Tags/[array]/Key', but the user wants documentation for '/domain/Tags' - both are valid.</usage>`;
 
 const DocumentSchemaAttributesInputSchemaRaw = {
   schemaName: z
@@ -112,10 +113,12 @@ export function schemaAttributesDocumentationTool(server: McpServer) {
           }
           changeSetId = head.id;
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           return errorResponse({
-            message: `We could not find the HEAD change set; this is a bug! Tell the user we are sorry: ${errorMessage}`,
+            message:
+              `We could not find the HEAD change set; this is a bug! Tell the user we are sorry: ${errorMessage}`,
           });
         }
 
@@ -148,10 +151,12 @@ export function schemaAttributesDocumentationTool(server: McpServer) {
             });
             schemaId = response.data.schemaId;
           } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
+            const errorMessage = error instanceof Error
+              ? error.message
+              : String(error);
             return errorResponse({
-              message: `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
+              message:
+                `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
             });
           }
 
@@ -178,7 +183,7 @@ export function schemaAttributesDocumentationTool(server: McpServer) {
             (schemaAttributePath: string) => {
               const documentation =
                 formatDocumentation(docsIndex, schemaAttributePath) ??
-                "There is no documentation for this attribute; if it is an AWS schema, consider looking up the data for the corresponding cloudformation resource";
+                  "There is no documentation for this attribute; if it is an AWS schema, consider looking up the data for the corresponding cloudformation resource";
 
               return { schemaAttributePath, documentation };
             },

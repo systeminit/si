@@ -14,7 +14,8 @@ import { buildAttributesStructure } from "../data/schemaAttributes.ts";
 
 const name = "schema-attributes-list";
 const title = "List all the attributes of a schema";
-const description = `<description>Lists all the attributes of a schema. Returns the schema name and an array of attribute objects that contain the Attribute Name, Path, and if it is Required. On failure, returns error details. Only supports AWS schemas.</description><usage>Use this tool to discover what attributes (sometimes called properties) are available for a schema.</usage>`;
+const description =
+  `<description>Lists all the attributes of a schema. Returns the schema name and an array of attribute objects that contain the Attribute Name, Path, and if it is Required. On failure, returns error details. Only supports AWS schemas.</description><usage>Use this tool to discover what attributes (sometimes called properties) are available for a schema.</usage>`;
 
 const ListSchemaAttributesInputSchemaRaw = {
   schemaName: z
@@ -96,10 +97,12 @@ export function schemaAttributesListTool(server: McpServer) {
           }
           changeSetId = head.id;
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           return errorResponse({
-            message: `We could not find the HEAD change set; this is a bug! Tell the user we are sorry: ${errorMessage}`,
+            message:
+              `We could not find the HEAD change set; this is a bug! Tell the user we are sorry: ${errorMessage}`,
           });
         }
 
@@ -132,10 +135,12 @@ export function schemaAttributesListTool(server: McpServer) {
             });
             schemaId = response.data.schemaId;
           } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
+            const errorMessage = error instanceof Error
+              ? error.message
+              : String(error);
             return errorResponse({
-              message: `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
+              message:
+                `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
             });
           }
 

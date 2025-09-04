@@ -12,7 +12,8 @@ import {
 
 const name = "component-delete";
 const title = "Delete a component";
-const description = `<description>Delete a component and the resource for a given componentId. Returns the deletion status on successful deletion. On failure, returns error details.</description><usage>Use this tool to delete a component and its resource in a change set. The component and resource will be marked for deletion and the component removed from the workspace.</usage>`;
+const description =
+  `<description>Delete a component and the resource for a given componentId. Returns the deletion status on successful deletion. On failure, returns error details.</description><usage>Use this tool to delete a component and its resource in a change set. The component and resource will be marked for deletion and the component removed from the workspace.</usage>`;
 
 const DeleteComponentInputSchemaRaw = {
   changeSetId: z
@@ -60,21 +61,21 @@ export function componentDeleteTool(server: McpServer) {
     },
     async ({ changeSetId, componentId }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      const siApi = new ComponentsApi(apiConfig);
-      try {
-        await siApi.deleteComponent({
-          workspaceId: WORKSPACE_ID,
-          changeSetId: changeSetId,
-          componentId,
-        });
-        const result: DeleteComponentResult = {
-          success: true,
-        };
+        const siApi = new ComponentsApi(apiConfig);
+        try {
+          await siApi.deleteComponent({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            componentId,
+          });
+          const result: DeleteComponentResult = {
+            success: true,
+          };
 
-        return successResponse(result);
-      } catch (error) {
-        return errorResponse(error);
-      }
+          return successResponse(result);
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

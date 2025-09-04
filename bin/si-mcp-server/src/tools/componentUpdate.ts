@@ -58,26 +58,26 @@ export function componentUpdateTool(server: McpServer) {
       { changeSetId, attributes, componentId },
     ): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      const siApi = new ComponentsApi(apiConfig);
-      try {
-        await siApi.updateComponent({
-          workspaceId: WORKSPACE_ID,
-          changeSetId: changeSetId,
-          componentId,
-          updateComponentV1Request: {
-            attributes,
-          },
-        });
-        const result: UpdateComponentResult = {
-          success: true,
-        };
+        const siApi = new ComponentsApi(apiConfig);
+        try {
+          await siApi.updateComponent({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            componentId,
+            updateComponentV1Request: {
+              attributes,
+            },
+          });
+          const result: UpdateComponentResult = {
+            success: true,
+          };
 
-        return successResponse(
-          result,
-        );
-      } catch (error) {
-        return errorResponse(error);
-      }
+          return successResponse(
+            result,
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

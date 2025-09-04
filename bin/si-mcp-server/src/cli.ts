@@ -58,10 +58,9 @@ export async function run() {
         await start_stdio(server);
         await shutdown("transport_closed", null);
       } catch (err: unknown) {
-        const name =
-          err instanceof Error
-            ? err.name
-            : ((err as { name?: string })?.name ?? "unknown");
+        const name = err instanceof Error
+          ? err.name
+          : ((err as { name?: string })?.name ?? "unknown");
         await shutdown(`uncaught_error:${name}`, 1);
       } finally {
         Deno.removeSignalListener("SIGINT", onSigInt);

@@ -12,7 +12,8 @@ import {
 
 const name = "component-erase";
 const title = "Erase a component";
-const description = `<description>Erase a component, removing it completely from System Initiative without enqueuing a delete action or ensuring that downstream components aren't impacted by the removal. This can leave upstream provider resources orphaned (no longer managed by System Initiative) and can negatively impact downstream components if not used carefully. Returns true when successfully erased. On failure, returns error details. This cannot be undone within the change set!</description><usage>Use this tool to remove a component from System Initiative in a change set. You can use this tool to immediately cleanup any components from the model without needing to enqueue a delete action. The component will be immediately removed from the change set and the real world resource will be left intact. If you erase a component that has subscriptions to downstream components, the subscriptions will be removed and the values will no longer be propagated. Only use this tool if it's acceptable to sever the connection with the real world resource, or you no longer need data to propagate to downstream components, otherwise you should prefer to use Delete. This cannot be undone within this change set!</usage>`;
+const description =
+  `<description>Erase a component, removing it completely from System Initiative without enqueuing a delete action or ensuring that downstream components aren't impacted by the removal. This can leave upstream provider resources orphaned (no longer managed by System Initiative) and can negatively impact downstream components if not used carefully. Returns true when successfully erased. On failure, returns error details. This cannot be undone within the change set!</description><usage>Use this tool to remove a component from System Initiative in a change set. You can use this tool to immediately cleanup any components from the model without needing to enqueue a delete action. The component will be immediately removed from the change set and the real world resource will be left intact. If you erase a component that has subscriptions to downstream components, the subscriptions will be removed and the values will no longer be propagated. Only use this tool if it's acceptable to sever the connection with the real world resource, or you no longer need data to propagate to downstream components, otherwise you should prefer to use Delete. This cannot be undone within this change set!</usage>`;
 
 const EraseComponentInputSchemaRaw = {
   changeSetId: z
@@ -58,21 +59,21 @@ export function componentEraseTool(server: McpServer) {
     },
     async ({ changeSetId, componentId }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      const siApi = new ComponentsApi(apiConfig);
-      try {
-        await siApi.eraseComponent({
-          workspaceId: WORKSPACE_ID,
-          changeSetId: changeSetId,
-          componentId,
-        });
-        const result: EraseComponentResult = {
-          success: true,
-        };
+        const siApi = new ComponentsApi(apiConfig);
+        try {
+          await siApi.eraseComponent({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            componentId,
+          });
+          const result: EraseComponentResult = {
+            success: true,
+          };
 
-        return successResponse(result);
-      } catch (error) {
-        return errorResponse(error);
-      }
+          return successResponse(result);
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

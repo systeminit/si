@@ -11,7 +11,8 @@ import {
 
 const name = "component-restore";
 const title = "Restore a component that is marked for deletion";
-const description = `<description>Restores a component that is marked for deletion in a change set. Returns success if the component is restored. On failure, returns error details</description><usage>Use this tool when the user wants to restore a component that they marked for deletion. You can use the component-get tool to check if a component is set toDelete. A component will only be set toDelete if it exists on the HEAD change set and has an associated resource or has a dependent component. This will restore the component immediately and all of it's data and subscriptions. This will not work if the component has been erased!</usage>`;
+const description =
+  `<description>Restores a component that is marked for deletion in a change set. Returns success if the component is restored. On failure, returns error details</description><usage>Use this tool when the user wants to restore a component that they marked for deletion. You can use the component-get tool to check if a component is set toDelete. A component will only be set toDelete if it exists on the HEAD change set and has an associated resource or has a dependent component. This will restore the component immediately and all of it's data and subscriptions. This will not work if the component has been erased!</usage>`;
 
 const RestoreComponentInputSchemaRaw = {
   changeSetId: z

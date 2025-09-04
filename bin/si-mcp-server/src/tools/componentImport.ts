@@ -68,108 +68,108 @@ export function componentImportTool(server: McpServer) {
       { changeSetId, schemaName, resourceId, attributes },
     ): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      if (schemaName.startsWith("AWS")) {
-        let hasCredential = false;
-        let hasRegion = false;
-        for (const path of Object.keys(attributes)) {
-          if (path == "/domain/extra/Region") {
-            hasRegion = true;
+        if (schemaName.startsWith("AWS")) {
+          let hasCredential = false;
+          let hasRegion = false;
+          for (const path of Object.keys(attributes)) {
+            if (path == "/domain/extra/Region") {
+              hasRegion = true;
+            }
+            if (path == "/secrets/AWS Credential") {
+              hasCredential = true;
+            }
           }
-          if (path == "/secrets/AWS Credential") {
-            hasCredential = true;
+          if (!hasCredential || !hasRegion) {
+            return errorResponse({
+              response: { status: "bad prereq", data: {} },
+              message:
+                `This is an AWS resource, and to import it we must have /domain/extra/Region set to a valid value or subscription, and /secrets/AWS Credential set to a subscription.`,
+            });
           }
         }
-        if (!hasCredential || !hasRegion) {
-          return errorResponse({
-            response: { status: "bad prereq", data: {} },
-            message:
-              `This is an AWS resource, and to import it we must have /domain/extra/Region set to a valid value or subscription, and /secrets/AWS Credential set to a subscription.`,
-          });
-        }
-      }
-      const siApi = new ComponentsApi(apiConfig);
-      try {
-        const response = await siApi.createComponent({
-          workspaceId: WORKSPACE_ID,
-          changeSetId: changeSetId,
-          createComponentV1Request: {
-            name: resourceId,
-            resourceId,
-            schemaName,
-            attributes,
-          },
-        });
-        const result: Record<string, string> = {
-          componentId: response.data.component.id,
-          componentName: response.data.component.name,
-          schemaName: schemaName,
-        };
+        const siApi = new ComponentsApi(apiConfig);
         try {
-          const importResponse = await siApi.executeManagementFunction({
+          const response = await siApi.createComponent({
             workspaceId: WORKSPACE_ID,
-            changeSetId,
-            componentId: result["componentId"],
-            executeManagementFunctionV1Request: {
-              managementFunction: { function: "Import from AWS" },
+            changeSetId: changeSetId,
+            createComponentV1Request: {
+              name: resourceId,
+              resourceId,
+              schemaName,
+              attributes,
             },
           });
-
-          let importState = "Pending";
-          const retrySleepInMs = 1000;
-          const retryMaxCount = 120;
-          let currentCount = 0;
-
-          const mgmtApi = new ManagementFuncsApi(apiConfig);
-          while (
-            (importState == "Pending" || importState == "Executing" ||
-              importState == "Operating") && currentCount <= retryMaxCount
-          ) {
-            if (currentCount != 0) {
-              sleep(retrySleepInMs);
-            }
-            try {
-              const status = await mgmtApi.getManagementFuncRunState({
-                workspaceId: WORKSPACE_ID,
-                changeSetId,
-                managementFuncJobStateId:
-                  importResponse.data.managementFuncJobStateId,
-              });
-              importState = status.data.state;
-              result["funcRunId"] = status.data.funcRunId;
-              currentCount += 1;
-            } catch (error) {
-              return errorResponse({
-                message: `error fetching management function state: ${
-                  JSON.stringify(error, null, 2)
-                }`,
-              });
-            }
-          }
-          if (currentCount > retryMaxCount) {
-            return successResponse(
-              result,
-              "The import function is still in progress; use the funcRunId to find out more",
-            );
-          } else if (importState == "Failure") {
-            return errorResponse({
-              response: {
-                status: "failed",
-                data: result,
+          const result: Record<string, string> = {
+            componentId: response.data.component.id,
+            componentName: response.data.component.name,
+            schemaName: schemaName,
+          };
+          try {
+            const importResponse = await siApi.executeManagementFunction({
+              workspaceId: WORKSPACE_ID,
+              changeSetId,
+              componentId: result["componentId"],
+              executeManagementFunctionV1Request: {
+                managementFunction: { function: "Import from AWS" },
               },
-              message:
-                `failed to import ${schemaName} with resourceId ${resourceId}; see funcRunId ${
-                  result["funcRunId"]
-                } with the func-run-get tool for more information`,
             });
-          } else {
-            return successResponse(result);
+
+            let importState = "Pending";
+            const retrySleepInMs = 1000;
+            const retryMaxCount = 120;
+            let currentCount = 0;
+
+            const mgmtApi = new ManagementFuncsApi(apiConfig);
+            while (
+              (importState == "Pending" || importState == "Executing" ||
+                importState == "Operating") && currentCount <= retryMaxCount
+            ) {
+              if (currentCount != 0) {
+                sleep(retrySleepInMs);
+              }
+              try {
+                const status = await mgmtApi.getManagementFuncRunState({
+                  workspaceId: WORKSPACE_ID,
+                  changeSetId,
+                  managementFuncJobStateId:
+                    importResponse.data.managementFuncJobStateId,
+                });
+                importState = status.data.state;
+                result["funcRunId"] = status.data.funcRunId;
+                currentCount += 1;
+              } catch (error) {
+                return errorResponse({
+                  message: `error fetching management function state: ${
+                    JSON.stringify(error, null, 2)
+                  }`,
+                });
+              }
+            }
+            if (currentCount > retryMaxCount) {
+              return successResponse(
+                result,
+                "The import function is still in progress; use the funcRunId to find out more",
+              );
+            } else if (importState == "Failure") {
+              return errorResponse({
+                response: {
+                  status: "failed",
+                  data: result,
+                },
+                message:
+                  `failed to import ${schemaName} with resourceId ${resourceId}; see funcRunId ${
+                    result["funcRunId"]
+                  } with the func-run-get tool for more information`,
+              });
+            } else {
+              return successResponse(result);
+            }
+          } catch (error) {
+            return errorResponse(error);
           }
         } catch (error) {
           return errorResponse(error);
         }
-      } catch (error) {
-        return errorResponse(error);
-      }
       });
     },
   );
