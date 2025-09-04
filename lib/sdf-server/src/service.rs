@@ -5,5 +5,3 @@ pub mod whoami;
 /// A module containing dev routes for local development only.
 #[cfg(debug_assertions)]
 pub mod dev;
-
-pub(crate) use sdf_core::impl_default_error_into_response;

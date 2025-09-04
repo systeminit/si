@@ -186,7 +186,6 @@
         extraBuildInputs ? [],
         stdBuildPhase ? ''
           buck2 build \
-            @//mode/release \
             "$buck2_target" \
             --verbose 8 \
             --out "build/$name-$system"
