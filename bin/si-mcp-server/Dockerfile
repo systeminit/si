@@ -8,6 +8,8 @@ COPY . .
 
 WORKDIR /app/bin/si-mcp-server
 
+RUN deno install
+
 # Compile the application
 RUN deno compile --allow-env --allow-net --output=si-mcp-server main.ts
 
