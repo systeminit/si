@@ -1,14 +1,6 @@
 import _ from "npm:lodash";
 import _logger from "../logger.ts";
-import {
-  createInputSocketFromProp,
-  createOutputSocketFromProp,
-  createSocketFromPropInner,
-  ExpandedSocketSpec,
-  propPathToString,
-  removeInputSockets,
-  setAnnotationOnSocket,
-} from "../spec/sockets.ts";
+import { propPathToString } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import {
   addPropSuggestSource,
@@ -55,326 +47,220 @@ export function assetSpecificOverrides(
 type OverrideFn = (spec: ExpandedPkgSpec) => void;
 
 const overrides = new Map<string, OverrideFn>([
-  ["ContainerDefinitions Secrets", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  // TODO prop suggestion ValueFrom <- Id
+  // ["ContainerDefinitions Secrets", (spec: ExpandedPkgSpec) => {
+  //   const variant = spec.schemas[0].variants[0];
 
-    const prop = propForOverride(variant.domain, "ValueFrom");
-    if (!prop) return;
-    const socket = createInputSocketFromProp(prop);
-    setAnnotationOnSocket(socket, { tokens: ["Id"] });
-    variant.sockets.push(socket);
-  }],
-  ["AWS::EC2::Instance", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  //   const prop = propForOverride(variant.domain, "ValueFrom");
+  //   if (!prop) return;
+  //   const socket = createInputSocketFromProp(prop);
+  //   setAnnotationOnSocket(socket, { tokens: ["Id"] });
+  //   variant.sockets.push(socket);
+  // }],
 
-    const overrideUserDataAttributeFuncCode = Deno.readTextFileSync(
-      "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/attribute/base64EncodeUserData.ts",
-    );
-    const overrideUserDataAttributeFuncArgs: FuncArgumentSpec[] = [
-      {
-        name: "data",
-        kind: "string",
-        elementKind: null,
-        uniqueId: ulid(),
-        deleted: false,
-      },
-    ];
+  [
+    "AWS::EC2::Instance",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    const base64EncodedUserDataFunc = createFunc(
-      "Set UserData prop and base64 encode if needed",
-      "jsAttribute",
-      "json",
-      strippedBase64(overrideUserDataAttributeFuncCode),
-      "5a5b8c9d6e7f8a5b0c1d2e3f4a5b6c7d8e9f0a1b2c3d8e5f6a7b8c9d0e1f2a3b",
-      overrideUserDataAttributeFuncArgs,
-    );
-    spec.funcs.push(base64EncodedUserDataFunc);
-
-    const userDataProp = propForOverride(variant.domain, "UserData");
-    if (!userDataProp) return;
-    userDataProp!.data.widgetKind = "CodeEditor";
-
-    const userDataSocket = createSocketFromPropInner(
-      userDataProp,
-      "input",
-      "one",
-      "User Data",
-      [{ tokens: ["UserData"] }, { tokens: ["User Data"] }],
-    );
-    userDataProp.data.inputs = [
-      {
-        unique_id: ulid(),
-        kind: "inputSocket",
-        name: "data",
-        deleted: false,
-        socket_name: "User Data",
-      },
-    ];
-    userDataProp.data.funcUniqueId =
-      "5a5b8c9d6e7f8a5b0c1d2e3f4a5b6c7d8e9f0a1b2c3d8e5f6a7b8c9d0e1f2a3b";
-    variant.sockets.push(userDataSocket);
-
-    const launchTemplateProp = propForOverride(
-      variant.domain,
-      "LaunchTemplate",
-    );
-    if (!launchTemplateProp || launchTemplateProp.kind !== "object") return;
-
-    const launchTemplateNameProp = propForOverride(
-      launchTemplateProp,
-      "LaunchTemplateName",
-    );
-    if (!launchTemplateNameProp) return;
-
-    const launchTemplateNameSocket = createInputSocketFromProp(
-      launchTemplateNameProp,
-      [
-        { tokens: ["Launch Template Name"] },
-        { tokens: ["LaunchTemplateName"] },
-        { tokens: ["LaunchTemplateName<string<scalar>>"] },
-      ],
-      "Launch Template Name",
-    );
-    variant.sockets.push(launchTemplateNameSocket);
-
-    const launchTemplateIdProp = propForOverride(
-      launchTemplateProp,
-      "LaunchTemplateId",
-    );
-    if (!launchTemplateIdProp) return;
-
-    const launchTemplateIdSocket = createInputSocketFromProp(
-      launchTemplateIdProp,
-      [
-        { tokens: ["LaunchTemplateId"] },
-        { tokens: ["LaunchTemplateId<string<scalar>>"] },
-        { tokens: ["Launch Template Id"] },
-      ],
-      "Launch Template Id",
-    );
-    variant.sockets.push(launchTemplateIdSocket);
-
-    const iamInstanceProfileProp = propForOverride(
-      variant.domain,
-      "IamInstanceProfile",
-    );
-    if (!iamInstanceProfileProp) return;
-
-    const iamInstanceProfileSocket = createInputSocketFromProp(
-      iamInstanceProfileProp,
-    );
-    setAnnotationOnSocket(iamInstanceProfileSocket, {
-      tokens: ["instance profile name"],
-    });
-    variant.sockets.push(iamInstanceProfileSocket);
-
-    // Create the Reboot Action
-    const { func: rebootFunc, actionFuncSpec: rebootActionFuncSpec } =
-      attachExtraActionFunction(
-        "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/reboot.ts",
-        "Reboot Ec2 Instance",
-        "other",
-        "5e38470604abb5c3ccc2ab60b31c5c0a05e9b381a2db73a15f4f8d55ec441bbd",
+      const overrideUserDataAttributeFuncCode = Deno.readTextFileSync(
+        "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/attribute/base64EncodeUserData.ts",
       );
-    spec.funcs.push(rebootFunc);
-    variant.actionFuncs.push(rebootActionFuncSpec);
+      const overrideUserDataAttributeFuncArgs: FuncArgumentSpec[] = [
+        {
+          name: "data",
+          kind: "string",
+          elementKind: null,
+          uniqueId: ulid(),
+          deleted: false,
+        },
+      ];
 
-    // Create the Stop Action
-    const { func: stopFunc, actionFuncSpec: stopActionFuncSpec } =
-      attachExtraActionFunction(
-        "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/stop.ts",
-        "Stop Ec2 Instance",
-        "other",
-        "de2c03b1caff5e7a1011a8c0ac6dc6dc99af77d15d0bc1f93e7c4eb9d7307f22",
+      const base64EncodedUserDataFunc = createFunc(
+        "Set UserData prop and base64 encode if needed",
+        "jsAttribute",
+        "json",
+        strippedBase64(overrideUserDataAttributeFuncCode),
+        "5a5b8c9d6e7f8a5b0c1d2e3f4a5b6c7d8e9f0a1b2c3d8e5f6a7b8c9d0e1f2a3b",
+        overrideUserDataAttributeFuncArgs,
       );
-    spec.funcs.push(stopFunc);
-    variant.actionFuncs.push(stopActionFuncSpec);
+      spec.funcs.push(base64EncodedUserDataFunc);
 
-    // Create the Start Action
-    const { func: startFunc, actionFuncSpec: startActionFuncSpec } =
-      attachExtraActionFunction(
-        "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/start.ts",
-        "Start Ec2 Instance",
-        "other",
-        "f78a129cebfdb45c688df8622056e5ee2b81a41d8896c2ce7b24d0a709102d1f",
+      const userDataProp = propForOverride(variant.domain, "UserData");
+      userDataProp.data.widgetKind = "CodeEditor";
+
+      // Create the Reboot Action
+      const { func: rebootFunc, actionFuncSpec: rebootActionFuncSpec } =
+        attachExtraActionFunction(
+          "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/reboot.ts",
+          "Reboot Ec2 Instance",
+          "other",
+          "5e38470604abb5c3ccc2ab60b31c5c0a05e9b381a2db73a15f4f8d55ec441bbd",
+        );
+      spec.funcs.push(rebootFunc);
+      variant.actionFuncs.push(rebootActionFuncSpec);
+
+      // Create the Stop Action
+      const { func: stopFunc, actionFuncSpec: stopActionFuncSpec } =
+        attachExtraActionFunction(
+          "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/stop.ts",
+          "Stop Ec2 Instance",
+          "other",
+          "de2c03b1caff5e7a1011a8c0ac6dc6dc99af77d15d0bc1f93e7c4eb9d7307f22",
+        );
+      spec.funcs.push(stopFunc);
+      variant.actionFuncs.push(stopActionFuncSpec);
+
+      // Create the Start Action
+      const { func: startFunc, actionFuncSpec: startActionFuncSpec } =
+        attachExtraActionFunction(
+          "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/start.ts",
+          "Start Ec2 Instance",
+          "other",
+          "f78a129cebfdb45c688df8622056e5ee2b81a41d8896c2ce7b24d0a709102d1f",
+        );
+      spec.funcs.push(startFunc);
+      variant.actionFuncs.push(startActionFuncSpec);
+    },
+  ],
+  [
+    "AWS::EC2::LaunchTemplate",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      // TODO prop suggestions
+      // ensure we can connect to the Version input for the EC2 Instance and AutoScaling Group Assets
+      // const defaultVersionSocket = variant.sockets.find(
+      //   (s: ExpandedSocketSpec) =>
+      //     s.name === "Default Version Number" && s.data.kind === "output",
+      // );
+      // if (!defaultVersionSocket) return;
+      // setAnnotationOnSocket(defaultVersionSocket, { tokens: ["Version"] });
+
+      // const latestVersionSocket = variant.sockets.find(
+      //   (s: ExpandedSocketSpec) =>
+      //     s.name === "Latest Version Number" && s.data.kind === "output",
+      // );
+      // if (!latestVersionSocket) return;
+      // setAnnotationOnSocket(latestVersionSocket, { tokens: ["Version"] });
+
+      const ltData = objectPropForOverride(
+        variant.domain,
+        "LaunchTemplateData",
       );
-    spec.funcs.push(startFunc);
-    variant.actionFuncs.push(startActionFuncSpec);
-  }],
-  ["AWS::EC2::LaunchTemplate", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
 
-    // Ensures we can connect to the Version input for the EC2 Instance and AutoScaling Group Assets
-    const defaultVersionSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Default Version Number" && s.data.kind === "output",
-    );
-    if (!defaultVersionSocket) return;
-    setAnnotationOnSocket(defaultVersionSocket, { tokens: ["Version"] });
+      const prop = propForOverride(ltData, "UserData");
+      prop.data.widgetKind = "CodeEditor";
 
-    const latestVersionSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Latest Version Number" && s.data.kind === "output",
-    );
-    if (!latestVersionSocket) return;
-    setAnnotationOnSocket(latestVersionSocket, { tokens: ["Version"] });
+      const importTargetId = MANAGEMENT_FUNCS["Import from AWS"].id;
+      const newImportId =
+        "0583c411a5b41594706ae8af473ed6d881357a1e692fb53981417f625f99374b";
+      const importPath =
+        "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/import.ts";
 
-    const ltData = propForOverride(variant.domain, "LaunchTemplateData");
-    if (!ltData || ltData.kind !== "object") return;
+      modifyFunc(spec, importTargetId, newImportId, importPath);
 
-    // KeyName Socket
-    const keyNameProp = propForOverride(ltData, "KeyName");
-    if (!keyNameProp) return;
-    const keyNameSocket = createInputSocketFromProp(keyNameProp);
-    variant.sockets.push(keyNameSocket);
+      const discoverTargetId = MANAGEMENT_FUNCS["Discover on AWS"].id;
+      const newDiscoverId =
+        "cfebba8fc2d7cd88e5fc2b0c47a777b3737b8c2bcb88fbbb143be48018f22836";
+      const discoverPath =
+        "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/discover.ts";
 
-    // ImageId Socket
-    const imageIdProp = propForOverride(ltData, "ImageId");
-    if (!imageIdProp) return;
-    const imageIdSocket = createInputSocketFromProp(imageIdProp);
-    setAnnotationOnSocket(imageIdSocket, { tokens: ["Image Id"] });
-    variant.sockets.push(imageIdSocket);
+      modifyFunc(spec, discoverTargetId, newDiscoverId, discoverPath);
+    },
+  ],
+  // TODO prop suggestion
+  // [
+  //   "AWS::EC2::NetworkInterface",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
+  //     // Add an annotation for the Id output socket to connect to HostedZoneId
+  //     const socket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+  //     );
+  //     if (!socket) return;
+  //     setAnnotationOnSocket(socket, { tokens: ["NetworkInterfaceId"] });
+  //     const prop = propForOverride(variant.domain, "GroupSet");
+  //     const groupSocket = createInputSocketFromProp(prop);
+  //     setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
+  //     variant.sockets.push(groupSocket);
+  //   },
+  // ],
+  [
+    "AWS::EC2::Route",
+    (_spec: ExpandedPkgSpec) => {
+      // TODO prop suggestions for GatewayId <- InternetGatewayId/VPNGatewayId
+      // const variant = spec.schemas[0].variants[0];
+      // const prop = propForOverride(variant.domain, "GatewayId");
+      // const socket = createInputSocketFromProp(prop);
+      // setAnnotationOnSocket(socket, { tokens: ["InternetGatewayId"] });
+      // setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
+      // setAnnotationOnSocket(socket, { tokens: ["Gateway Id"] });
+      // TODO prop suggestion for EgressOnlyInternetGatewayId <- Id
+      // const egressOnlyIgwProp = propForOverride(
+      //   variant.domain,
+      //   "EgressOnlyInternetGatewayId",
+      // );
+      // const egressOnlyIgwInputSocket =
+      //   createInputSocketFromProp(egressOnlyIgwProp);
+      // setAnnotationOnSocket(egressOnlyIgwInputSocket, { tokens: ["Id"] });
+      // setAnnotationOnSocket(egressOnlyIgwInputSocket, {
+      //   tokens: ["Id<string<scalar>>"],
+      // });
+    },
+  ],
+  [
+    "AWS::EC2::VPCEndpoint",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    const prop = propForOverride(ltData, "UserData");
-    if (!prop) return;
+      const prop = propForOverride(variant.domain, "PolicyDocument");
+      prop.kind = "json";
+      prop!.data.widgetKind = "CodeEditor";
+    },
+  ],
+  [
+    "AWS::KMS::Key",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    const socket = createInputSocketFromProp(prop);
-    variant.sockets.push(socket);
-    prop!.data.widgetKind = "CodeEditor";
+      const prop = propForOverride(variant.domain, "KeyPolicy");
+      prop.kind = "json";
+      prop!.data.widgetKind = "CodeEditor";
+    },
+  ],
+  [
+    "AWS::Logs::LogGroup",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    const importTargetId = MANAGEMENT_FUNCS["Import from AWS"].id;
-    const newImportId =
-      "0583c411a5b41594706ae8af473ed6d881357a1e692fb53981417f625f99374b";
-    const importPath =
-      "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/import.ts";
+      const prop = propForOverride(variant.domain, "DataProtectionPolicy");
+      prop.kind = "json";
+      prop!.data.widgetKind = "CodeEditor";
+    },
+  ],
+  [
+    "AWS::RDS::DBParameterGroup",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    modifyFunc(spec, importTargetId, newImportId, importPath);
+      const prop = propForOverride(variant.domain, "Parameters");
+      prop.kind = "map";
 
-    const discoverTargetId = MANAGEMENT_FUNCS["Discover on AWS"].id;
-    const newDiscoverId =
-      "cfebba8fc2d7cd88e5fc2b0c47a777b3737b8c2bcb88fbbb143be48018f22836";
-    const discoverPath =
-      "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/discover.ts";
-
-    modifyFunc(spec, discoverTargetId, newDiscoverId, discoverPath);
-  }],
-  ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    // Add an annotation for the Id output socket to connect to HostedZoneId
-    const socket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-    );
-    if (!socket) return;
-
-    setAnnotationOnSocket(socket, { tokens: ["NetworkInterfaceId"] });
-
-    const prop = propForOverride(variant.domain, "GroupSet");
-    if (!prop) return;
-    const groupSocket = createInputSocketFromProp(prop);
-
-    setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
-    variant.sockets.push(groupSocket);
-  }],
-  ["AWS::EC2::Route", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    removeInputSockets(variant, ["Gateway Id"]);
-
-    const prop = propForOverride(variant.domain, "GatewayId");
-    if (!prop) return;
-    const socket = createInputSocketFromProp(prop);
-
-    setAnnotationOnSocket(socket, { tokens: ["InternetGatewayId"] });
-    setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
-    setAnnotationOnSocket(socket, { tokens: ["Gateway Id"] });
-
-    variant.sockets.push(socket);
-
-    const egressOnlyIgwProp = propForOverride(
-      variant.domain,
-      "EgressOnlyInternetGatewayId",
-    );
-    if (!egressOnlyIgwProp) return;
-    const egressOnlyIgwInputSocket = createInputSocketFromProp(
-      egressOnlyIgwProp,
-    );
-
-    setAnnotationOnSocket(egressOnlyIgwInputSocket, { tokens: ["Id"] });
-    setAnnotationOnSocket(egressOnlyIgwInputSocket, {
-      tokens: ["Id<string<scalar>>"],
-    });
-
-    variant.sockets.push(egressOnlyIgwInputSocket);
-  }],
-  ["AWS::EC2::VPCEndpoint", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const prop = propForOverride(variant.domain, "PolicyDocument");
-    if (!prop) return;
-    prop.kind = "json";
-    prop!.data.widgetKind = "CodeEditor";
-  }],
-  ["AWS::KMS::Key", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const prop = propForOverride(variant.domain, "KeyPolicy");
-    if (!prop) return;
-    prop.kind = "json";
-    prop!.data.widgetKind = "CodeEditor";
-  }],
-  ["AWS::Logs::LogGroup", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const prop = propForOverride(variant.domain, "DataProtectionPolicy");
-    if (!prop) return;
-    prop.kind = "json";
-    prop!.data.widgetKind = "CodeEditor";
-  }],
-  ["AWS::RDS::DBParameterGroup", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const prop = propForOverride(variant.domain, "Parameters");
-    if (!prop) return;
-    prop.kind = "map";
-
-    if (prop.kind === "map") {
-      prop.typeProp = createScalarProp(
-        "parameter",
-        "string",
-        prop.metadata.propPath,
-        false,
-      );
-    }
-  }],
+      if (prop.kind === "map") {
+        prop.typeProp = createScalarProp(
+          "parameter",
+          "string",
+          prop.metadata.propPath,
+          false,
+        );
+      }
+    },
+  ],
   [
     "AWS::SecretsManager::Secret",
     (spec: ExpandedPkgSpec) => {
       addSecretProp("Secret String", "secretString", ["SecretString"])(spec);
-      const variant = spec.schemas[0].variants[0];
-
-      const nameProp = propForOverride(variant.domain, "Name");
-      if (!nameProp) {
-        console.log("Name property not found in variant.domain");
-        return;
-      }
-
-      const nameSocket = createOutputSocketFromProp(nameProp);
-      variant.sockets.push(nameSocket);
-
-      const nameOutputSocket = variant.sockets.find(
-        (s: ExpandedSocketSpec) =>
-          s.name === "Name" && s.data.kind === "output",
-      );
-      if (!nameOutputSocket) {
-        console.log("Name output socket not found");
-        return;
-      }
-
-      setAnnotationOnSocket(nameOutputSocket, { tokens: ["Name"] });
-      setAnnotationOnSocket(nameOutputSocket, {
-        tokens: ["Name<string<scalar>>"],
-      });
     },
   ],
   [
@@ -388,662 +274,692 @@ const overrides = new Map<string, OverrideFn>([
         spec,
       );
 
-      const variant = spec.schemas[0].variants[0];
+      // TODO prop suggestions
+      // const variant = spec.schemas[0].variants[0];
 
-      const securityGroupsSocket = variant.sockets.find(
-        (s: ExpandedSocketSpec) =>
-          s.name === "VPC Security Groups" && s.data.kind === "input",
-      );
-      if (!securityGroupsSocket) return;
+      // const securityGroupsSocket = variant.sockets.find(
+      //   (s: ExpandedSocketSpec) =>
+      //     s.name === "VPC Security Groups" && s.data.kind === "input",
+      // );
+      // if (!securityGroupsSocket) return;
 
-      setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
+      // setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
     },
   ],
-  ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  // TODO duplicate with other prop suggestion override
+  // [
+  //   "AWS::EC2::NetworkInterface",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    const prop = propForOverride(variant.domain, "GroupSet");
-    if (!prop) return;
-    const groupSocket = createInputSocketFromProp(prop);
+  //     const prop = propForOverride(variant.domain, "GroupSet");
+  //     const groupSocket = createInputSocketFromProp(prop);
 
-    setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
-    variant.sockets.push(groupSocket);
-  }],
-  ["AWS::EC2::SecurityGroupIngress", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-    const domainId = variant.domain.uniqueId;
+  //     setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
+  //   },
+  // ],
+  [
+    "AWS::EC2::SecurityGroupIngress",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+      const domainId = variant.domain.uniqueId;
 
-    if (!domainId) return;
+      if (!domainId) return;
 
-    // Add Source SG ID to an input socket
-    const idProp = propForOverride(variant.domain, "SourceSecurityGroupId");
-    if (!idProp) return;
-    const groupIdSocket = createInputSocketFromProp(idProp);
+      // TODO prop suggestions
+      // // Add Source SG ID to an input socket
+      // const idProp = propForOverride(variant.domain, "SourceSecurityGroupId");
+      // const groupIdSocket = createInputSocketFromProp(idProp);
 
-    setAnnotationOnSocket(groupIdSocket, {
-      tokens: ["SourceSecurityGroupId", "GroupId"],
-    });
-    setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
-    variant.sockets.push(groupIdSocket);
+      // setAnnotationOnSocket(groupIdSocket, {
+      //   tokens: ["SourceSecurityGroupId", "GroupId"],
+      // });
+      // setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
+      // variant.sockets.push(groupIdSocket);
 
-    // Add Source SG Name to an input socket
-    const nameProp = propForOverride(variant.domain, "SourceSecurityGroupName");
-    if (!nameProp) return;
-    const groupSocket = createInputSocketFromProp(nameProp);
+      // // Add Source SG Name to an input socket
+      // const nameProp = propForOverride(
+      //   variant.domain,
+      //   "SourceSecurityGroupName",
+      // );
+      // const groupSocket = createInputSocketFromProp(nameProp);
 
-    setAnnotationOnSocket(groupSocket, {
-      tokens: ["SourceSecurityGroupName", "GroupName"],
-    });
-    variant.sockets.push(groupSocket);
+      // setAnnotationOnSocket(groupSocket, {
+      //   tokens: ["SourceSecurityGroupName", "GroupName"],
+      // });
+      // variant.sockets.push(groupSocket);
 
-    const { func, leafFuncSpec } = attachQualificationFunction(
-      "./src/cloud-control-funcs/overrides/AWS::EC2::SecurityGroupIngress/qualifications/checkForEitherGroupIdOrGroupName.ts",
-      "GroupId OR GroupName",
-      "23f026310223509f053b55bfa386772eecc2d00e3090dbeb65766ac63f8c53a2",
-      domainId,
-    );
+      const { func, leafFuncSpec } = attachQualificationFunction(
+        "./src/cloud-control-funcs/overrides/AWS::EC2::SecurityGroupIngress/qualifications/checkForEitherGroupIdOrGroupName.ts",
+        "GroupId OR GroupName",
+        "23f026310223509f053b55bfa386772eecc2d00e3090dbeb65766ac63f8c53a2",
+        domainId,
+      );
 
-    spec.funcs.push(func);
-    variant.leafFunctions.push(leafFuncSpec);
-  }],
-  ["AWS::EC2::SecurityGroup", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+      spec.funcs.push(func);
+      variant.leafFunctions.push(leafFuncSpec);
+    },
+  ],
+  // TODO prop suggestions
+  // [
+  //   "AWS::EC2::SecurityGroup",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    // Add SG GroupName to an output socket
-    const nameProp = propForOverride(variant.domain, "GroupName");
-    if (!nameProp) return;
-    const groupSocket = createOutputSocketFromProp(nameProp);
-    variant.sockets.push(groupSocket);
+  //     // Add SG GroupName to an output socket
+  //     const nameProp = propForOverride(variant.domain, "GroupName");
+  //     const groupSocket = createOutputSocketFromProp(nameProp);
+  //     variant.sockets.push(groupSocket);
 
-    // Add annotations to Group Id output socket
-    const groupIdSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Group Id" && s.data.kind === "output",
-    );
-    if (!groupIdSocket) return;
+  //     // Add annotations to Group Id output socket
+  //     const groupIdSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Group Id" && s.data.kind === "output",
+  //     );
+  //     if (!groupIdSocket) return;
 
-    setAnnotationOnSocket(groupIdSocket, { tokens: ["Security Group Ids"] });
-    setAnnotationOnSocket(groupIdSocket, { tokens: ["Security Group Id"] });
-    setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
-  }],
-  ["AWS::EC2::SecurityGroupEgress", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  //     setAnnotationOnSocket(groupIdSocket, { tokens: ["Security Group Ids"] });
+  //     setAnnotationOnSocket(groupIdSocket, { tokens: ["Security Group Id"] });
+  //     setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
+  //   },
+  // ],
+  // TODO prop suggestions
+  // [
+  //   "AWS::EC2::SecurityGroupEgress",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    // Add Destination SG ID to an input socket
-    const idProp = propForOverride(
-      variant.domain,
-      "DestinationSecurityGroupId",
-    );
-    if (!idProp) return;
-    const groupIdSocket = createInputSocketFromProp(idProp);
+  //     // Add Destination SG ID to an input socket
+  //     const idProp = propForOverride(
+  //       variant.domain,
+  //       "DestinationSecurityGroupId",
+  //     );
+  //     const groupIdSocket = createInputSocketFromProp(idProp);
 
-    setAnnotationOnSocket(groupIdSocket, {
-      tokens: ["DestinationSecurityGroupId", "GroupId"],
-    });
-    setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
-    variant.sockets.push(groupIdSocket);
-  }],
+  //     setAnnotationOnSocket(groupIdSocket, {
+  //       tokens: ["DestinationSecurityGroupId", "GroupId"],
+  //     });
+  //     setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
+  //     variant.sockets.push(groupIdSocket);
+  //   },
+  // ],
 
-  ["AWS::AutoScaling::AutoScalingGroup", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-    const launchTemplateProp = propForOverride(
-      variant.domain,
-      "LaunchTemplate",
-    );
-    if (!launchTemplateProp || launchTemplateProp.kind !== "object") return;
+  [
+    "AWS::AutoScaling::AutoScalingGroup",
+    (spec: ExpandedPkgSpec) => {
+      // TODO prop suggestions
+      // const variant = spec.schemas[0].variants[0];
+      // const launchTemplateVersionSocket = variant.sockets.find(
+      //   (s: ExpandedSocketSpec) =>
+      //     s.name === "Launch Template Version" && s.data.kind === "input",
+      // );
+      // if (!launchTemplateVersionSocket) return;
 
-    const launchTemplateName = propForOverride(
-      launchTemplateProp,
-      "LaunchTemplateName",
-    );
-    if (!launchTemplateName) return;
-    const launchTemplateNameSocket = createInputSocketFromProp(
-      launchTemplateName,
-      [
-        { tokens: ["Launch Template Name"] },
-        { tokens: ["LaunchTemplateName"] },
-        { tokens: ["LaunchTemplateName<string<scalar>>"] },
-      ],
-      "Launch Template Name",
-    );
-    variant.sockets.push(launchTemplateNameSocket);
+      // setAnnotationOnSocket(launchTemplateVersionSocket, {
+      //   tokens: ["DefaultVersionNumber"],
+      // });
+      // setAnnotationOnSocket(launchTemplateVersionSocket, {
+      //   tokens: ["LatestVersionNumber"],
+      // });
+      // setAnnotationOnSocket(launchTemplateVersionSocket, {
+      //   tokens: ["LaunchTemplateVersion<string<scalar>>"],
+      // });
 
-    const launchTemplateId = propForOverride(
-      launchTemplateProp,
-      "LaunchTemplateId",
-    );
-    if (!launchTemplateId) return;
+      // Modify the existing update function instead of replacing it
+      const updateTargetId = ACTION_FUNC_SPECS["Update Asset"].id;
+      const newUpdateId =
+        "c7e6bf82e9d7fa438f6a9151a1b1f4c6f4b18ae50eacf462bc81d2b31278e1c5";
+      const updatePath =
+        "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/awsCloudControlUpdate.ts";
+      modifyFunc(spec, updateTargetId, newUpdateId, updatePath);
+    },
+  ],
+  // TODO prop suggestions
+  // [
+  //   "TargetGroup Targets",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    const launchTemplateIdSocket = createInputSocketFromProp(launchTemplateId, [
-      { tokens: ["Launch Template Id"] },
-      { tokens: ["LaunchTemplateId"] },
-      { tokens: ["LaunchTemplateId<string<scalar>>"] },
-    ], "Launch Template Id");
-    variant.sockets.push(launchTemplateIdSocket);
+  //     // Add an annotation for the Id output socket to connect to HostedZoneId
+  //     const socket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "input",
+  //     );
+  //     if (!socket) return;
 
-    const launchTemplateVersionSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Launch Template Version" && s.data.kind === "input",
-    );
-    if (!launchTemplateVersionSocket) return;
+  //     setAnnotationOnSocket(socket, { tokens: ["InstanceId"] });
+  //     setAnnotationOnSocket(socket, { tokens: ["arn", "string"] });
+  //     setAnnotationOnSocket(socket, { tokens: ["arn"] });
+  //   },
+  // ],
+  [
+    "AWS::ImageBuilder::Component",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    setAnnotationOnSocket(launchTemplateVersionSocket, {
-      tokens: ["DefaultVersionNumber"],
-    });
-    setAnnotationOnSocket(launchTemplateVersionSocket, {
-      tokens: ["LatestVersionNumber"],
-    });
-    setAnnotationOnSocket(launchTemplateVersionSocket, {
-      tokens: ["LaunchTemplateVersion<string<scalar>>"],
-    });
+      const prop = propForOverride(variant.domain, "Data");
+      prop!.data.widgetKind = "CodeEditor";
+    },
+  ],
+  [
+    "AWS::S3::BucketPolicy",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    // Modify the existing update function instead of replacing it
-    const updateTargetId = ACTION_FUNC_SPECS["Update Asset"].id;
-    const newUpdateId =
-      "c7e6bf82e9d7fa438f6a9151a1b1f4c6f4b18ae50eacf462bc81d2b31278e1c5";
-    const updatePath =
-      "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/awsCloudControlUpdate.ts";
-    modifyFunc(spec, updateTargetId, newUpdateId, updatePath);
-  }],
-  ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+      const prop = propForOverride(variant.domain, "PolicyDocument");
+      prop.kind = "json";
+      prop!.data.widgetKind = "CodeEditor";
+    },
+  ],
+  // TODO prop suggestions
+  // [
+  //   "AWS::EC2::VPCCidrBlock",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    // Add an annotation for the Id output socket to connect to HostedZoneId
-    const socket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "input",
-    );
-    if (!socket) return;
+  //     const ipv6IpamProp = propForOverride(variant.domain, "Ipv6IpamPoolId");
 
-    setAnnotationOnSocket(socket, { tokens: ["InstanceId"] });
-    setAnnotationOnSocket(socket, { tokens: ["arn", "string"] });
-    setAnnotationOnSocket(socket, { tokens: ["arn"] });
-  }],
-  ["AWS::ImageBuilder::Component", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  //     const ipv6IpamSocket = createInputSocketFromProp(ipv6IpamProp, [
+  //       { tokens: ["Ipam Pool Id"] },
+  //       { tokens: ["IpamPoolId"] },
+  //       { tokens: ["IpamPoolId", "string", "scalar"] },
+  //     ]);
+  //     const ipv4IpamProp = propForOverride(variant.domain, "Ipv4IpamPoolId");
 
-    const prop = propForOverride(variant.domain, "Data");
-    if (!prop) return;
-    prop!.data.widgetKind = "CodeEditor";
-  }],
-  ["AWS::S3::BucketPolicy", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  //     const ipv4IpamSocket = createInputSocketFromProp(ipv4IpamProp, [
+  //       { tokens: ["Ipam Pool Id"] },
+  //       { tokens: ["IpamPoolId"] },
+  //       { tokens: ["IpamPoolId", "string", "scalar"] },
+  //     ]);
+  //   },
+  // ],
+  [
+    "AWS::ECS::Cluster",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+      const configurationProp = objectPropForOverride(
+        variant.domain,
+        "Configuration",
+      );
 
-    const prop = propForOverride(variant.domain, "PolicyDocument");
-    if (!prop) return;
-    prop.kind = "json";
-    prop!.data.widgetKind = "CodeEditor";
-  }],
-  ["AWS::EC2::VPCCidrBlock", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+      const managedStorageConfigurationProp = objectPropForOverride(
+        configurationProp,
+        "ManagedStorageConfiguration",
+      );
 
-    const ipv6IpamProp = propForOverride(variant.domain, "Ipv6IpamPoolId");
-    if (!ipv6IpamProp) return;
+      const fargateKmsProp = propForOverride(
+        managedStorageConfigurationProp,
+        "FargateEphemeralStorageKmsKeyId",
+      );
 
-    const ipv6IpamSocket = createInputSocketFromProp(ipv6IpamProp, [
-      { tokens: ["Ipam Pool Id"] },
-      { tokens: ["IpamPoolId"] },
-      { tokens: ["IpamPoolId", "string", "scalar"] },
-    ]);
-    variant.sockets.push(ipv6IpamSocket);
-    const ipv4IpamProp = propForOverride(variant.domain, "Ipv4IpamPoolId");
-    if (!ipv4IpamProp) return;
+      addPropSuggestSource(fargateKmsProp, {
+        schema: "AWS:KMS:Key",
+        prop: "/resource_value/KeyId",
+      });
 
-    const ipv4IpamSocket = createInputSocketFromProp(ipv4IpamProp, [
-      { tokens: ["Ipam Pool Id"] },
-      { tokens: ["IpamPoolId"] },
-      { tokens: ["IpamPoolId", "string", "scalar"] },
-    ]);
-    variant.sockets.push(ipv4IpamSocket);
-  }],
-  ["AWS::ECS::Cluster", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-    const configurationProp = propForOverride(variant.domain, "Configuration");
-    if (!configurationProp || configurationProp.kind !== "object") return;
+      const kmsKeyIdProp = propForOverride(
+        managedStorageConfigurationProp,
+        "KmsKeyId",
+      );
 
-    const managedStorageConfigurationProp = propForOverride(
-      configurationProp,
-      "ManagedStorageConfiguration",
-    );
-    if (
-      !managedStorageConfigurationProp ||
-      managedStorageConfigurationProp.kind !== "object"
-    ) return;
+      addPropSuggestSource(kmsKeyIdProp, {
+        schema: "AWS:KMS:Key",
+        prop: "/resource_value/KeyId",
+      });
+    },
+  ],
+  // TODO prop suggestions
+  // [
+  //   "AWS::EC2::VPCPeeringConnection",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    const fargateKmsProp = propForOverride(
-      managedStorageConfigurationProp,
-      "FargateEphemeralStorageKmsKeyId",
-    );
-    if (!fargateKmsProp) return;
+  //     const peerVpcIdProp = propForOverride(variant.domain, "PeerVpcId");
 
-    const fargateKmsSocket = createInputSocketFromProp(fargateKmsProp, [
-      { tokens: ["Key Id"] },
-      { tokens: ["KeyId"] },
-      { tokens: ["KeyId", "string", "scalar"] },
-    ], "Fargate Storage KMS Key Id");
-    variant.sockets.push(fargateKmsSocket);
+  //     const peerVpcIdSocket = createInputSocketFromProp(
+  //       peerVpcIdProp,
+  //       [
+  //         { tokens: ["VPC Id"] },
+  //         { tokens: ["VpcId"] },
+  //         { tokens: ["VpcId", "string", "scalar"] },
+  //       ],
+  //       "Peer Vpc Id",
+  //     );
 
-    addPropSuggestSource(fargateKmsProp, {
-      schema: "AWS:KMS:Key",
-      prop: "/resource_value/KeyId",
-    });
+  //     const peerOwnerIdProp = propForOverride(variant.domain, "PeerOwnerId");
 
-    const kmsKeyIdProp = propForOverride(
-      managedStorageConfigurationProp,
-      "KmsKeyId",
-    );
-    if (!kmsKeyIdProp) return;
+  //     const peerOwnerIdSocket = createInputSocketFromProp(
+  //       peerOwnerIdProp,
+  //       [
+  //         { tokens: ["Account Id"] },
+  //         { tokens: ["AccountId"] },
+  //         { tokens: ["AccountId", "string", "scalar"] },
+  //       ],
+  //       "Peer Owner Id",
+  //     );
+  //   },
+  // ],
+  [
+    "AWS::ApiGatewayV2::Route",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    const kmsKeyIdSocket = createInputSocketFromProp(kmsKeyIdProp, [
-      { tokens: ["Key Id"] },
-      { tokens: ["KeyId"] },
-      { tokens: ["KeyId", "string", "scalar"] },
-    ], "Storage KMS Key Id");
-    variant.sockets.push(kmsKeyIdSocket);
+      const requestModelsProp = propForOverride(
+        variant.domain,
+        "RequestModels",
+      );
+      requestModelsProp.kind = "json";
+      requestModelsProp!.data.widgetKind = "CodeEditor";
 
-    addPropSuggestSource(kmsKeyIdProp, {
-      schema: "AWS:KMS:Key",
-      prop: "/resource_value/KeyId",
-    });
-  }],
-  ["AWS::EC2::VPCPeeringConnection", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+      const requestParametersProp = propForOverride(
+        variant.domain,
+        "RequestParameters",
+      );
+      requestParametersProp.kind = "json";
+      requestParametersProp!.data.widgetKind = "CodeEditor";
+    },
+  ],
+  // TODO prop suggestions HostedZoneId -> Id
+  // [
+  //   "Certificate DomainValidationOptions",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    const peerVpcIdProp = propForOverride(
-      variant.domain,
-      "PeerVpcId",
-    );
-    if (!peerVpcIdProp) return;
+  //     const socket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Hosted Zone Id" && s.data.kind === "input",
+  //     );
+  //     if (!socket) return;
 
-    const peerVpcIdSocket = createInputSocketFromProp(peerVpcIdProp, [
-      { tokens: ["VPC Id"] },
-      { tokens: ["VpcId"] },
-      { tokens: ["VpcId", "string", "scalar"] },
-    ], "Peer Vpc Id");
-    variant.sockets.push(peerVpcIdSocket);
+  //     setAnnotationOnSocket(socket, { tokens: ["Id"] });
+  //   },
+  // ],
+  // TODO prop suggestions SecurityGroups -> GroupId
+  // [
+  //   "AWS::ElasticLoadBalancingV2::LoadBalancer",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    const peerOwnerIdProp = propForOverride(
-      variant.domain,
-      "PeerOwnerId",
-    );
-    if (!peerOwnerIdProp) return;
+  //     // Add annotations to Security Groups input socket
+  //     const securityGroupsSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Security Groups" && s.data.kind === "input",
+  //     );
+  //     if (!securityGroupsSocket) return;
 
-    const peerOwnerIdSocket = createInputSocketFromProp(peerOwnerIdProp, [
-      { tokens: ["Account Id"] },
-      { tokens: ["AccountId"] },
-      { tokens: ["AccountId", "string", "scalar"] },
-    ], "Peer Owner Id");
-    variant.sockets.push(peerOwnerIdSocket);
-  }],
-  ["AWS::ApiGatewayV2::Route", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  //     setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
+  //   },
+  // ],
+  [
+    "Listener DefaultActions",
+    (spec: ExpandedPkgSpec) => {
+      const targetGroupArnToListAttributeFunc = Deno.readTextFileSync(
+        "./src/cloud-control-funcs/overrides/Listener DefaultActions/attribute/setTargetGroupArns.ts",
+      );
+      const targetGroupArnToListFuncArgs: FuncArgumentSpec[] = [
+        {
+          name: "targetGroupArn",
+          kind: "string",
+          elementKind: null,
+          uniqueId: ulid(),
+          deleted: false,
+        },
+        {
+          name: "type",
+          kind: "string",
+          elementKind: null,
+          uniqueId: ulid(),
+          deleted: false,
+        },
+      ];
 
-    const requestModelsProp = propForOverride(variant.domain, "RequestModels");
-    if (!requestModelsProp) return;
-    requestModelsProp.kind = "json";
-    requestModelsProp!.data.widgetKind = "CodeEditor";
+      const attrFuncId =
+        "2930eb8752c80c973163b3dec9cc2465b98d6257a49469c823429da4031a1c32";
+      const targetGroupArnToListFunc = createFunc(
+        "Set Forward Config if Target Group Arn is set",
+        "jsAttribute",
+        "json",
+        strippedBase64(targetGroupArnToListAttributeFunc),
+        attrFuncId,
+        targetGroupArnToListFuncArgs,
+      );
+      spec.funcs.push(targetGroupArnToListFunc);
 
-    const requestParametersProp = propForOverride(
-      variant.domain,
-      "RequestParameters",
-    );
-    if (!requestParametersProp) return;
-    requestParametersProp.kind = "json";
-    requestParametersProp!.data.widgetKind = "CodeEditor";
-  }],
-  ["Certificate DomainValidationOptions", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+      const variant = spec.schemas[0].variants[0];
+      const forwardConfigProp = objectPropForOverride(
+        variant.domain,
+        "ForwardConfig",
+      );
 
-    const socket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Hosted Zone Id" && s.data.kind === "input",
-    );
-    if (!socket) return;
+      const targetGroupsProp = propForOverride(
+        forwardConfigProp,
+        "TargetGroups",
+      );
+      targetGroupsProp.data.funcUniqueId = attrFuncId;
+      targetGroupsProp.data.inputs = [
+        {
+          kind: "prop",
+          name: "type",
+          prop_path: propPathToString(["root", "domain", "Type"]),
+          unique_id: ulid(),
+          deleted: false,
+        },
+        {
+          kind: "prop",
+          name: "targetGroupArn",
+          prop_path: propPathToString(["root", "domain", "TargetGroupArn"]),
+          unique_id: ulid(),
+          deleted: false,
+        },
+      ];
+    },
+  ],
+  // TODO prop suggestions Image -> RepositoryUri
+  // [
+  //   "TaskDefinition ContainerDefinitions",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    setAnnotationOnSocket(socket, { tokens: ["Id"] });
-  }],
-  ["AWS::ElasticLoadBalancingV2::LoadBalancer", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  //     const imageSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Image" && s.data.kind === "input",
+  //     );
+  //     if (!imageSocket) return;
 
-    // Add annotations to Security Groups input socket
-    const securityGroupsSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Security Groups" && s.data.kind === "input",
-    );
-    if (!securityGroupsSocket) return;
+  //     setAnnotationOnSocket(imageSocket, { tokens: ["repositoryuri"] });
+  //     setAnnotationOnSocket(imageSocket, { tokens: ["repository uri"] });
+  //   },
+  // ],
 
-    setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
-  }],
-  ["Listener DefaultActions", (spec: ExpandedPkgSpec) => {
-    const targetGroupArnToListAttributeFunc = Deno.readTextFileSync(
-      "./src/cloud-control-funcs/overrides/Listener DefaultActions/attribute/setTargetGroupArns.ts",
-    );
-    const targetGroupArnToListFuncArgs: FuncArgumentSpec[] = [
-      {
-        name: "targetGroupArn",
-        kind: "string",
-        elementKind: null,
-        uniqueId: ulid(),
-        deleted: false,
-      },
-      {
-        name: "type",
-        kind: "string",
-        elementKind: null,
-        uniqueId: ulid(),
-        deleted: false,
-      },
-    ];
+  // TODO prop suggestions Role -> Arn
+  // [
+  //   "AWS::Lambda::Function",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    const attrFuncId =
-      "2930eb8752c80c973163b3dec9cc2465b98d6257a49469c823429da4031a1c32";
-    const targetGroupArnToListFunc = createFunc(
-      "Set Forward Config if Target Group Arn is set",
-      "jsAttribute",
-      "json",
-      strippedBase64(targetGroupArnToListAttributeFunc),
-      attrFuncId,
-      targetGroupArnToListFuncArgs,
-    );
-    spec.funcs.push(targetGroupArnToListFunc);
+  //     const roleSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) => s.name === "Role" && s.data.kind === "input",
+  //     );
+  //     if (!roleSocket) return;
 
-    const variant = spec.schemas[0].variants[0];
-    const forwardConfigProp = propForOverride(variant.domain, "ForwardConfig");
-    if (!forwardConfigProp || forwardConfigProp.kind !== "object") return;
+  //     setAnnotationOnSocket(roleSocket, { tokens: ["arn", "string"] });
+  //     setAnnotationOnSocket(roleSocket, { tokens: ["arn"] });
+  //   },
+  // ],
+  [
+    "AWS::ECS::TaskDefinition",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    const targetGroupsProp = propForOverride(forwardConfigProp, "TargetGroups");
-    if (!targetGroupsProp) return;
-    targetGroupsProp.data.funcUniqueId = attrFuncId;
-    targetGroupsProp.data.inputs = [
-      {
-        kind: "prop",
-        name: "type",
-        prop_path: propPathToString(["root", "domain", "Type"]),
-        unique_id: ulid(),
-        deleted: false,
-      },
-      {
-        kind: "prop",
-        name: "targetGroupArn",
-        prop_path: propPathToString(["root", "domain", "TargetGroupArn"]),
-        unique_id: ulid(),
-        deleted: false,
-      },
-    ];
-  }],
-  ["TaskDefinition ContainerDefinitions", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+      // List of props to remove read-only
+      const propsToRemove = [
+        "ContainerDefinitions",
+        "Cpu",
+        "EnableFaultInjection",
+        "ExecutionRoleArn",
+        "InferenceAccelerators",
+        "Memory",
+        "NetworkMode",
+        "PlacementConstraints",
+        "ProxyConfiguration",
+        "RequiresCompatibilities",
+        "RuntimePlatform",
+        "TaskRoleArn",
+        "Volumes",
+        "PidMode",
+        "IpcMode",
+        "EphemeralStorage",
+      ];
 
-    const imageSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Image" && s.data.kind === "input",
-    );
-    if (!imageSocket) return;
-
-    setAnnotationOnSocket(imageSocket, { tokens: ["repositoryuri"] });
-    setAnnotationOnSocket(imageSocket, { tokens: ["repository uri"] });
-  }],
-  ["AWS::Lambda::Function", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const roleSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Role" && s.data.kind === "input",
-    );
-    if (!roleSocket) return;
-
-    setAnnotationOnSocket(roleSocket, { tokens: ["arn", "string"] });
-    setAnnotationOnSocket(roleSocket, { tokens: ["arn"] });
-  }],
-  ["AWS::ECS::TaskDefinition", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    // List of props to remove read-only
-    const propsToRemove = [
-      "ContainerDefinitions",
-      "Cpu",
-      "EnableFaultInjection",
-      "ExecutionRoleArn",
-      "InferenceAccelerators",
-      "Memory",
-      "NetworkMode",
-      "PlacementConstraints",
-      "ProxyConfiguration",
-      "RequiresCompatibilities",
-      "RuntimePlatform",
-      "TaskRoleArn",
-      "Volumes",
-      "PidMode",
-      "IpcMode",
-      "EphemeralStorage",
-    ];
-    
-    const containerDefsProp = propForOverride(variant.domain, "ContainerDefinitions");
-    if (containerDefsProp && containerDefsProp.kind === "array") {
+      const containerDefsProp = arrayPropForOverride(
+        variant.domain,
+        "ContainerDefinitions",
+      );
       let itemProp = containerDefsProp.typeProp;
       itemProp = addPropSuggestSource(itemProp, {
         schema: "TaskDefinition ContainerDefinitions",
-        prop: "/domain"
-      })
-    }
-    
-    const extraProp = propForOverride(variant.domain, "extra");
-    if (!extraProp || extraProp.kind !== "object") return;
+        prop: "/domain",
+      });
 
-    const propUsageMapProp = propForOverride(extraProp, "PropUsageMap");
-    if (!propUsageMapProp || !propUsageMapProp.data?.defaultValue) return;
+      const extraProp = objectPropForOverride(variant.domain, "extra");
 
-    const defaultValue = JSON.parse(
-      propUsageMapProp.data.defaultValue as string,
-    );
-    let createOnly = defaultValue["createOnly"];
-    const updatable = defaultValue["updatable"];
+      const propUsageMapProp = propForOverride(extraProp, "PropUsageMap");
+      if (!propUsageMapProp.data?.defaultValue)
+        throw new Error("Prop has no default value");
 
-    propsToRemove.forEach((propName) => {
-      const prop = propForOverride(variant.domain, propName);
-      if (!prop) return;
+      const defaultValue = JSON.parse(
+        propUsageMapProp.data.defaultValue as string,
+      );
+      let createOnly = defaultValue["createOnly"];
+      const updatable = defaultValue["updatable"];
 
-      const currentWidgetOptions = prop.data.widgetOptions;
-      prop.data.widgetOptions = currentWidgetOptions?.filter((w) =>
-        w.label !== "si_create_only_prop"
-      ) ?? null;
+      propsToRemove.forEach((propName) => {
+        const prop = propForOverride(variant.domain, propName);
 
-      createOnly = createOnly?.filter((p: string) =>
-        p !== propName
+        const currentWidgetOptions = prop.data.widgetOptions;
+        prop.data.widgetOptions =
+          currentWidgetOptions?.filter(
+            (w) => w.label !== "si_create_only_prop",
+          ) ?? null;
+
+        createOnly = createOnly?.filter((p: string) => p !== propName);
+
+        updatable.push(propName);
+      });
+
+      defaultValue["createOnly"] = createOnly;
+      defaultValue["updatable"] = updatable;
+      propUsageMapProp!.data.defaultValue = JSON.stringify(defaultValue);
+
+      const updateTargetId = ACTION_FUNC_SPECS["Update Asset"].id;
+      const newUpdateId =
+        "7eb4e58626f9fd7ee003bb9a1de814ab31cbb8ea2ae87d844864058bc4296c63";
+      const newUpdatePath =
+        "./src/cloud-control-funcs/overrides/AWS::ECS::TaskDefinition/actions/update.ts";
+      modifyFunc(spec, updateTargetId, newUpdateId, newUpdatePath);
+    },
+  ],
+  [
+    "AWS::ECR::RegistryPolicy",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      const policyTextProp = propForOverride(variant.domain, "PolicyText");
+
+      // PolicyText needs to be prop kind json and widgetkind CodeEditor
+      policyTextProp.kind = "json";
+      policyTextProp.data.widgetKind = "CodeEditor";
+
+      // TODO prop suggestion PolicyText -> PolicyDocument
+      // // Create an input socket that connects PolicyDocument
+      // const policyDocumentSocket = createInputSocketFromProp(
+      //   policyTextProp,
+      //   [{ tokens: ["policydocument"] }],
+      //   "Policy Document",
+      // );
+      // variant.sockets.push(policyDocumentSocket);
+    },
+  ],
+  // TODO prop suggestion Name -> ClusterName
+  // [
+  //   "AWS::EKS::Cluster",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
+
+  //     const nameOutputSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Name" && s.data.kind === "output",
+  //     );
+  //     if (!nameOutputSocket) return;
+
+  //     setAnnotationOnSocket(nameOutputSocket, { tokens: ["Cluster Name"] });
+  //     setAnnotationOnSocket(nameOutputSocket, { tokens: ["ClusterName"] });
+  //   },
+  // ],
+
+  // TODO prop suggestion ResourceArn -> LoadBalancerArn
+  // [
+  //   "AWS::WAFv2::WebACLAssociation",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
+
+  //     const resourceArnSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Resource Arn" && s.data.kind === "output",
+  //     );
+  //     if (!resourceArnSocket) return;
+  //     setAnnotationOnSocket(resourceArnSocket, { tokens: ["LoadBalancerArn"] });
+  //   },
+  // ],
+
+  [
+    "AWS::EKS::Nodegroup",
+    (_spec: ExpandedPkgSpec) => {
+      // TODO prop suggestion RemoteAccess.Ec2SshKey <- KeyName/KeyPair/SshKey
+      // const variant = spec.schemas[0].variants[0];
+      // const domain = variant.domain;
+      // const remoteAccessProp = objectPropForOverride(domain, "RemoteAccess");
+      // const ec2SshKeyProp = propForOverride(remoteAccessProp, "Ec2SshKey");
+      // const sshKeySocket = createInputSocketFromProp(
+      //   ec2SshKeyProp,
+      //   [
+      //     { tokens: ["KeyName"] },
+      //     { tokens: ["Key Name"] },
+      //     { tokens: ["KeyPair"] },
+      //     { tokens: ["ssh key"] },
+      //   ],
+      //   "Key Name",
+      // );
+      // TODO prop suggestion NodeRole <- RoleArn/Role ARN/IAM Role/Arn/Role
+      // const nodeRoleProp = propForOverride(domain, "NodeRole");
+      // const nodeRoleSocket = createInputSocketFromProp(
+      //   nodeRoleProp,
+      //   [
+      //     { tokens: ["RoleArn"] },
+      //     { tokens: ["Role ARN"] },
+      //     { tokens: ["IAM Role"] },
+      //     { tokens: ["arn"] },
+      //     { tokens: ["role"] },
+      //   ],
+      //   "Node Role",
+      // );
+    },
+  ],
+  // TODO prop suggestion SubnetIds -> SubnetId
+  // [
+  //   "AWS::RDS::DBSubnetGroup",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
+
+  //     const subnetIdSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Subnet Ids" && s.data.kind === "input",
+  //     );
+  //     if (!subnetIdSocket) return;
+  //     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
+  //   },
+  // ],
+  [
+    "VPNConnection VpnTunnelOptionsSpecifications",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+      const domainId = variant.domain.uniqueId;
+
+      if (!domainId) return;
+
+      const { func, leafFuncSpec } = attachQualificationFunction(
+        "./src/cloud-control-funcs/overrides/VPNConnection VpnTunnelOptionsSpecifications/qualifications/presharedKeyValidations.ts",
+        "Validate PresharedKey",
+        "4e1243bd22c67dd61b0a4c86e9f3c89c84baf7b37a45f93ee4e5ed8a9d7f1c2f",
+        domainId,
       );
 
-      updatable.push(propName);
-    });
+      spec.funcs.push(func);
+      variant.leafFunctions.push(leafFuncSpec);
 
-    defaultValue["createOnly"] = createOnly;
-    defaultValue["updatable"] = updatable;
-    propUsageMapProp!.data.defaultValue = JSON.stringify(defaultValue);
+      const propsToFix = [
+        "IKEVersions",
+        "Phase1DHGroupNumbers",
+        "Phase1EncryptionAlgorithms",
+        "Phase1IntegrityAlgorithms",
+        "Phase2DHGroupNumbers",
+        "Phase2EncryptionAlgorithms",
+        "Phase2IntegrityAlgorithms",
+      ];
 
-    const updateTargetId = ACTION_FUNC_SPECS["Update Asset"].id;
-    const newUpdateId =
-      "7eb4e58626f9fd7ee003bb9a1de814ab31cbb8ea2ae87d844864058bc4296c63";
-    const newUpdatePath =
-      "./src/cloud-control-funcs/overrides/AWS::ECS::TaskDefinition/actions/update.ts";
-    modifyFunc(spec, updateTargetId, newUpdateId, newUpdatePath);
-  }],
-  ["AWS::ECR::RegistryPolicy", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+      for (const propName of propsToFix) {
+        const arrayProp = arrayPropForOverride(variant.domain, propName);
 
-    const policyTextProp = propForOverride(variant.domain, "PolicyText");
-    if (!policyTextProp) return;
+        arrayProp.data.widgetKind = "Array";
+        arrayProp.data.inputs = [];
+        arrayProp.data.funcUniqueId = null;
 
-    // PolicyText needs to be prop kind json and widgetkind CodeEditor
-    policyTextProp.kind = "json";
-    policyTextProp.data.widgetKind = "CodeEditor";
-
-    // Create an input socket that connects PolicyDocument
-    const policyDocumentSocket = createInputSocketFromProp(policyTextProp, [
-      { tokens: ["policydocument"] },
-    ], "Policy Document");
-    variant.sockets.push(policyDocumentSocket);
-  }],
-  ["AWS::EKS::Cluster", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const nameOutputSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Name" && s.data.kind === "output",
-    );
-    if (!nameOutputSocket) return;
-
-    setAnnotationOnSocket(nameOutputSocket, { tokens: ["Cluster Name"] });
-    setAnnotationOnSocket(nameOutputSocket, { tokens: ["ClusterName"] });
-  }],
-  ["AWS::WAFv2::WebACLAssociation", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const resourceArnSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Resource Arn" && s.data.kind === "output",
-    );
-    if (!resourceArnSocket) return;
-    setAnnotationOnSocket(resourceArnSocket, { tokens: ["LoadBalancerArn"] });
-  }],
-  ["AWS::EKS::Nodegroup", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-    const domain = variant.domain;
-
-    const remoteAccessProp = findPropByName(domain, "RemoteAccess");
-    if (!remoteAccessProp || remoteAccessProp.kind !== "object") return;
-
-    const ec2SshKeyProp = findPropByName(remoteAccessProp, "Ec2SshKey");
-    if (!ec2SshKeyProp) return;
-
-    const sshKeySocket = createInputSocketFromProp(ec2SshKeyProp, [
-      { tokens: ["KeyName"] },
-      { tokens: ["Key Name"] },
-      { tokens: ["KeyPair"] },
-      { tokens: ["ssh key"] },
-    ], "Key Name");
-    variant.sockets.push(sshKeySocket);
-
-    const nodeRoleProp = findPropByName(domain, "NodeRole");
-    if (!nodeRoleProp) return;
-
-    const nodeRoleSocket = createInputSocketFromProp(nodeRoleProp, [
-      { tokens: ["RoleArn"] },
-      { tokens: ["Role ARN"] },
-      { tokens: ["IAM Role"] },
-      { tokens: ["arn"] },
-      { tokens: ["role"] },
-    ], "Node Role");
-    variant.sockets.push(nodeRoleSocket);
-  }],
-  ["AWS::RDS::DBSubnetGroup", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-
-    const subnetIdSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Subnet Ids" && s.data.kind === "input",
-    );
-    if (!subnetIdSocket) return;
-    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
-  }],
-  ["VPNConnection VpnTunnelOptionsSpecifications", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-    const domainId = variant.domain.uniqueId;
-
-    if (!domainId) return;
-
-    const { func, leafFuncSpec } = attachQualificationFunction(
-      "./src/cloud-control-funcs/overrides/VPNConnection VpnTunnelOptionsSpecifications/qualifications/presharedKeyValidations.ts",
-      "Validate PresharedKey",
-      "4e1243bd22c67dd61b0a4c86e9f3c89c84baf7b37a45f93ee4e5ed8a9d7f1c2f",
-      domainId,
-    );
-
-    spec.funcs.push(func);
-    variant.leafFunctions.push(leafFuncSpec);
-
-    // Remove unnecessary input sockets
-    const removedCount = removeInputSockets(variant, [
-      "IKE Versions",
-      "Phase1DHGroup Numbers",
-      "Phase1Encryption Algorithms",
-      "Phase1Integrity Algorithms",
-      "Phase2DHGroup Numbers",
-      "Phase2Encryption Algorithms",
-      "Phase2Integrity Algorithms",
-    ]);
-    logger.debug(
-      `Removed ${removedCount} input sockets from VpnTunnelOptionsSpecifications`,
-    );
-
-    const propsToFix = [
-      "IKEVersions",
-      "Phase1DHGroupNumbers",
-      "Phase1EncryptionAlgorithms",
-      "Phase1IntegrityAlgorithms",
-      "Phase2DHGroupNumbers",
-      "Phase2EncryptionAlgorithms",
-      "Phase2IntegrityAlgorithms",
-    ];
-
-    for (const propName of propsToFix) {
-      const arrayProp = propForOverride(variant.domain, propName);
-      if (!arrayProp || arrayProp.kind !== "array") continue;
-
-      arrayProp.data.widgetKind = "Array";
-      arrayProp.data.inputs = [];
-      arrayProp.data.funcUniqueId = null;
-
-      if (arrayProp.typeProp.kind === "object") {
-        const valueProp = arrayProp.typeProp.entries.find((p) =>
-          p.name === "Value"
-        );
-        if (valueProp) {
-          valueProp.data.widgetKind = "ComboBox";
+        if (arrayProp.typeProp.kind === "object") {
+          const valueProp = arrayProp.typeProp.entries.find(
+            (p) => p.name === "Value",
+          );
+          if (valueProp) {
+            valueProp.data.widgetKind = "ComboBox";
+          }
         }
       }
-    }
-  }],
-  ["AWS::ElastiCache::ServerlessCache", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+    },
+  ],
 
-    const subnetIdSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Subnet Ids" && s.data.kind === "input",
-    );
-    if (!subnetIdSocket) return;
-    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
-    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnetid"] });
-    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnets"] });
-  }],
-  ["AWS::ElastiCache::SubnetGroup", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  // TODO prop suggestion SubnetIds <- SubnetId/Subnets
+  // [
+  //   "AWS::ElastiCache::ServerlessCache",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
+  //     const subnetIdSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Subnet Ids" && s.data.kind === "input",
+  //     );
+  //     if (!subnetIdSocket) return;
+  //     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
+  //     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnetid"] });
+  //     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnets"] });
+  //   },
+  // ],
 
-    const subnetIdSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Subnet Ids" && s.data.kind === "input",
-    );
-    if (!subnetIdSocket) return;
-    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
-    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnetid"] });
-    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnets"] });
-  }],
-  ["AWS::EC2::TransitGateway", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  // TODO prop suggestion SubnetIds <- SubnetId/Subnets
+  // [
+  //   "AWS::ElastiCache::SubnetGroup",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
+  //     const subnetIdSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Subnet Ids" && s.data.kind === "input",
+  //     );
+  //     if (!subnetIdSocket) return;
+  //     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
+  //     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnetid"] });
+  //     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnets"] });
+  //   },
+  // ],
 
-    const idSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-    );
-    if (!idSocket) return;
-    setAnnotationOnSocket(idSocket, { tokens: ["TransitGatewayId"] });
-    setAnnotationOnSocket(idSocket, { tokens: ["TransitGatewayId"] });
-    setAnnotationOnSocket(idSocket, { tokens: ["Transit Gateway Id"] });
-  }],
-  ["AWS::EC2::VPNConnection", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-    const resource_value = variant.resourceValue;
-    const domain = variant.domain;
+  // TODO prop suggestion Id -> TransitGatewayId
+  // [
+  //   "AWS::EC2::TransitGateway",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
 
-    removeInputSockets(variant, [
-      "Type",
-    ]);
+  //     const idSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+  //     );
+  //     if (!idSocket) return;
+  //     setAnnotationOnSocket(idSocket, { tokens: ["TransitGatewayId"] });
+  //     setAnnotationOnSocket(idSocket, { tokens: ["TransitGatewayId"] });
+  //     setAnnotationOnSocket(idSocket, { tokens: ["Transit Gateway Id"] });
+  //   },
+  // ],
 
-    const typeProp = propForOverride(variant.domain, "Type");
-    if (typeProp && typeProp.kind === "string") {
+  [
+    "AWS::EC2::VPNConnection",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+      const resource_value = variant.resourceValue;
+
+      const typeProp = stringPropForOverride(variant.domain, "Type");
       typeProp.data.widgetKind = "ComboBox";
       typeProp.data.defaultValue = "ipsec.1";
       typeProp.data.inputs = [];
@@ -1051,62 +967,45 @@ const overrides = new Map<string, OverrideFn>([
       typeProp.data.widgetOptions = [
         { label: "si_create_only_prop", value: "true" },
       ];
-    }
 
-    const transitGatewayAttachmentIdProp = createScalarProp(
-      "TransitGatewayAttachmentId",
-      "string",
-      ["root", "resource_value"],
-      false,
-    );
-    transitGatewayAttachmentIdProp.data.widgetKind = "Text";
-    resource_value.entries.push(transitGatewayAttachmentIdProp);
+      const transitGatewayAttachmentIdProp = createScalarProp(
+        "TransitGatewayAttachmentId",
+        "string",
+        ["root", "resource_value"],
+        false,
+      );
+      transitGatewayAttachmentIdProp.data.widgetKind = "Text";
+      resource_value.entries.push(transitGatewayAttachmentIdProp);
 
-    const tgwaIdOutputSocket = createOutputSocketFromProp(
-      transitGatewayAttachmentIdProp,
-      "Transit Gateway Attachment Id",
-    );
-    variant.sockets.push(tgwaIdOutputSocket);
+      const refreshTargetId = ACTION_FUNC_SPECS["Refresh Asset"].id;
+      const newRefreshId =
+        "fd3706e543528a703c674f42c07d3f2443b2e3c40bfc88a81a7f4501af5e7122";
+      const refreshPath =
+        "./src/cloud-control-funcs/overrides/AWS::EC2::VPNConnection/actions/refresh.ts";
+      modifyFunc(spec, refreshTargetId, newRefreshId, refreshPath);
+    },
+  ],
 
-    const tgwaIdSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Transit Gateway Attachment Id" && s.data.kind === "output",
-    );
-    if (!tgwaIdSocket) return;
-    setAnnotationOnSocket(tgwaIdSocket, {
-      tokens: ["TransitGatewayAttachmentId"],
-    });
-    setAnnotationOnSocket(tgwaIdSocket, {
-      tokens: ["Transit Gateway Attachment Id"],
-    });
+  // TODO prop suggestion SubnetIds <- Subnets
+  // [
+  //   "AWS::EC2::TransitGatewayAttachment",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
+  //     const subnetInputSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Subnet Ids" && s.data.kind === "input",
+  //     );
+  //     if (!subnetInputSocket) return;
+  //     setAnnotationOnSocket(subnetInputSocket, { tokens: ["subnets"] });
+  //   },
+  // ],
 
-    const refreshTargetId = ACTION_FUNC_SPECS["Refresh Asset"].id;
-    const newRefreshId =
-      "fd3706e543528a703c674f42c07d3f2443b2e3c40bfc88a81a7f4501af5e7122";
-    const refreshPath =
-      "./src/cloud-control-funcs/overrides/AWS::EC2::VPNConnection/actions/refresh.ts";
-    modifyFunc(spec, refreshTargetId, newRefreshId, refreshPath);
-  }],
-  ["AWS::EC2::TransitGatewayAttachment", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+  [
+    "AWS::EC2::CustomerGateway",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
 
-    const subnetInputSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Subnet Ids" && s.data.kind === "input",
-    );
-    if (!subnetInputSocket) return;
-    setAnnotationOnSocket(subnetInputSocket, { tokens: ["subnets"] });
-  }],
-  ["AWS::EC2::CustomerGateway", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-    const domain = variant.domain;
-
-    removeInputSockets(variant, [
-      "Type",
-    ]);
-
-    const typeProp = propForOverride(variant.domain, "Type");
-    if (typeProp && typeProp.kind === "string") {
+      const typeProp = stringPropForOverride(variant.domain, "Type");
       typeProp.data.widgetKind = "ComboBox";
       typeProp.data.defaultValue = "ipsec.1";
       typeProp.data.inputs = [];
@@ -1114,39 +1013,41 @@ const overrides = new Map<string, OverrideFn>([
       typeProp.data.widgetOptions = [
         { label: "si_create_only_prop", value: "true" },
       ];
-    }
-  }],
-  ["AWS::S3::Bucket", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
-    const domain = variant.domain;
+    },
+  ],
+  [
+    "AWS::S3::Bucket",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+      const domain = variant.domain;
 
-    removeInputSockets(variant, [
-      "Bucket Name",
-    ]);
-
-    const bucketNameProp = propForOverride(domain, "BucketName");
-    if (bucketNameProp && bucketNameProp.kind === "string") {
+      const bucketNameProp = stringPropForOverride(domain, "BucketName");
       bucketNameProp.data.widgetKind = "Text";
       bucketNameProp.data.inputs = [];
       bucketNameProp.data.funcUniqueId = null;
       bucketNameProp.data.widgetOptions = [
         { label: "si_create_only_prop", value: "true" },
       ];
-    }
-  }],
-  ["AWS::CloudFront::Distribution", (spec: ExpandedPkgSpec) => {
-    const variant = spec.schemas[0].variants[0];
+    },
+  ],
 
-    const certificateInputSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) =>
-        s.name === "Distribution Viewer Certificate Acm Certificate Arn" &&
-        s.data.kind === "input",
-    );
-    if (!certificateInputSocket) return;
-    setAnnotationOnSocket(certificateInputSocket, {
-      tokens: ["certificate arn"],
-    });
-  }],
+  // TODO prop suggestion DistributionViewerCertificate.AcmCertificateArn <- CertificateArn
+  // [
+  //   "AWS::CloudFront::Distribution",
+  //   (spec: ExpandedPkgSpec) => {
+  //     const variant = spec.schemas[0].variants[0];
+
+  //     const certificateInputSocket = variant.sockets.find(
+  //       (s: ExpandedSocketSpec) =>
+  //         s.name === "Distribution Viewer Certificate Acm Certificate Arn" &&
+  //         s.data.kind === "input",
+  //     );
+  //     if (!certificateInputSocket) return;
+  //     setAnnotationOnSocket(certificateInputSocket, {
+  //       tokens: ["certificate arn"],
+  //     });
+  //   },
+  // ],
 ]);
 
 function attachExtraActionFunction(
@@ -1197,11 +1098,9 @@ function attachQualificationFunction(
   );
   func.data!.displayName = name;
 
-  const leafFuncSpec = createLeafFuncSpec(
-    "qualification",
-    func.uniqueId,
-    ["domain"],
-  );
+  const leafFuncSpec = createLeafFuncSpec("qualification", func.uniqueId, [
+    "domain",
+  ]);
 
   return { func, leafFuncSpec };
 }
@@ -1252,8 +1151,8 @@ function addSecretProp(
     if (extraProp?.kind !== "object") {
       return;
     }
-    const propUsageMapProp = extraProp.entries.find((p) =>
-      p.name === "PropUsageMap"
+    const propUsageMapProp = extraProp.entries.find(
+      (p) => p.name === "PropUsageMap",
     );
     const propUsageMap = JSON.parse(
       propUsageMapProp?.data.defaultValue,
@@ -1264,24 +1163,27 @@ function addSecretProp(
     }
 
     // Remove secret from the domain tree
-    secretParent.entries = secretParent.entries.filter((
-      p: ExpandedPropSpec,
-    ) => p.name !== secretName);
+    secretParent.entries = secretParent.entries.filter(
+      (p: ExpandedPropSpec) => p.name !== secretName,
+    );
 
     // Add prop to secrets tree
     secretProp.data.widgetKind = "Secret";
-    secretProp.data.widgetOptions = [{
-      "label": "secretKind",
-      "value": secretKind,
-    }];
+    secretProp.data.widgetOptions = [
+      {
+        label: "secretKind",
+        value: secretKind,
+      },
+    ];
     variant.secrets.entries.push(secretProp);
     // Replace "domain" with "secrets" on propPath
     secretProp.metadata.propPath[1] = "secrets";
 
-    // Add socket for secret prop
-    const secretStringProp = createInputSocketFromProp(secretProp);
-    variant.sockets.push(secretStringProp);
-    setAnnotationOnSocket(secretStringProp, { tokens: [secretKind] });
+    // TODO prop suggestion?
+    // // Add socket for secret prop
+    // const secretStringProp = createInputSocketFromProp(secretProp);
+    // variant.sockets.push(secretStringProp);
+    // setAnnotationOnSocket(secretStringProp, { tokens: [secretKind] });
 
     // add secret to the propUsageMap
     propUsageMap.secrets.push({
@@ -1295,10 +1197,45 @@ function addSecretProp(
 function propForOverride(
   objPropSpec: ExpandedPropSpecFor["object"],
   propName: string,
-): ExpandedPropSpec | undefined {
+): ExpandedPropSpec {
   const prop = findPropByName(objPropSpec, propName);
   if (!prop) {
-    logger.warn(`Prop not found for override ${propName}!`);
+    throw new Error(
+      `Prop ${propName} not found under ${objPropSpec.name} for override!`,
+    );
+  }
+  return prop;
+}
+
+function arrayPropForOverride(
+  objPropSpec: ExpandedPropSpecFor["object"],
+  propName: string,
+): ExpandedPropSpecFor["array"] {
+  const prop = propForOverride(objPropSpec, propName);
+  if (prop?.kind !== "array") {
+    throw new Error(`Prop ${propName} is not an array!`);
+  }
+  return prop;
+}
+
+function objectPropForOverride(
+  objPropSpec: ExpandedPropSpecFor["object"],
+  propName: string,
+): ExpandedPropSpecFor["object"] {
+  const prop = propForOverride(objPropSpec, propName);
+  if (prop?.kind !== "object") {
+    throw new Error(`Prop ${propName} is not an object!`);
+  }
+  return prop;
+}
+
+function stringPropForOverride(
+  objPropSpec: ExpandedPropSpecFor["object"],
+  propName: string,
+): ExpandedPropSpecFor["string"] {
+  const prop = propForOverride(objPropSpec, propName);
+  if (prop?.kind !== "string") {
+    throw new Error(`Prop ${propName} is not a string!`);
   }
   return prop;
 }

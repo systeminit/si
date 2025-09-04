@@ -77,10 +77,10 @@ interface PropSpecOverrides {
   };
   joiValidation?: string;
   cfProp:
-    | CfProperty & {
-      // The name of the definition this property lives under
-      defName?: string;
-    }
+    | (CfProperty & {
+        // The name of the definition this property lives under
+        defName?: string;
+      })
     | undefined;
 }
 
@@ -111,8 +111,8 @@ export function findPropByName(
     throw Error("findPropByName must be used on objects");
   }
 
-  return objPropSpec.entries.find((p) =>
-    p.name.toLowerCase() === propName.toLowerCase()
+  return objPropSpec.entries.find(
+    (p) => p.name.toLowerCase() === propName.toLowerCase(),
   );
 }
 
@@ -227,9 +227,10 @@ function createPropFromCf(
     widgetKind: null,
     widgetOptions: [],
     hidden: false,
-    docLink: parentProp?.kind === "object"
-      ? createDocLink(cfSchema, cfProp.defName, name)
-      : null,
+    docLink:
+      parentProp?.kind === "object"
+        ? createDocLink(cfSchema, cfProp.defName, name)
+        : null,
     documentation: cfProp.description ?? null,
     uiOptionals: null,
   };
@@ -259,7 +260,8 @@ function createPropFromCf(
   const normalizedCfProp = normalizeProperty(cfProp);
 
   if (
-    normalizedCfProp.type === "integer" || normalizedCfProp.type === "number"
+    normalizedCfProp.type === "integer" ||
+    normalizedCfProp.type === "number"
   ) {
     let prop;
     if (normalizedCfProp.type === "integer") {
@@ -370,11 +372,9 @@ function createPropFromCf(
           break;
         // This is a special case (and seems likely wrong), but may as well support it
         case "(^arn:[a-z\\d-]+:rekognition:[a-z\\d-]+:\\d{12}:collection\\/([a-zA-Z0-9_.\\-]+){1,255})":
-          validation += `.pattern(new RegExp(${
-            JSON.stringify(
-              normalizedCfProp.format,
-            )
-          }))`;
+          validation += `.pattern(new RegExp(${JSON.stringify(
+            normalizedCfProp.format,
+          )}))`;
           break;
         case undefined:
           break;
@@ -390,9 +390,9 @@ function createPropFromCf(
       if (normalizedCfProp.pattern !== undefined) {
         const toRegexp = cfPcreToRegexp(normalizedCfProp.pattern);
         if (toRegexp) {
-          validation += `.pattern(new RegExp(${
-            JSON.stringify(toRegexp.pattern)
-          }${toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""}))`;
+          validation += `.pattern(new RegExp(${JSON.stringify(
+            toRegexp.pattern,
+          )}${toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""}))`;
         }
       }
       if (required) validation += ".required()";
@@ -467,11 +467,9 @@ function createPropFromCf(
       prop.kind = "object";
       prop.data.widgetKind = "Header";
       prop.entries = [];
-      for (
-        const [name, childCfProp] of Object.entries(
-          normalizedCfProp.properties,
-        )
-      ) {
+      for (const [name, childCfProp] of Object.entries(
+        normalizedCfProp.properties,
+      )) {
         queue.push({
           cfProp: childCfProp,
           propPath: [...propPath, name],
@@ -653,7 +651,7 @@ export function bfsPropTree(
     return;
   }
 
-  const queue = [{ prop, parents: [] }];
+  const queue = [{ prop, parents: [] as ExpandedPropSpec[] }];
 
   while (queue.length > 0) {
     const queueItem = queue.pop();
@@ -695,12 +693,23 @@ export function addPropSuggestSource(
   prop: ExpandedPropSpec,
   suggestion: PropSuggestion,
 ): ExpandedPropSpec {
-  if (!prop.data.uiOptionals) {
-    prop.data.uiOptionals = {};
-  }
+  prop.data.uiOptionals ??= {};
 
   prop.data.uiOptionals.suggestSources = [
     ...(prop.data.uiOptionals.suggestSources ?? []),
+    suggestion,
+  ];
+  return prop;
+}
+
+export function addPropSuggestAsSourceFor(
+  prop: ExpandedPropSpec,
+  suggestion: PropSuggestion,
+): ExpandedPropSpec {
+  prop.data.uiOptionals ??= {};
+
+  prop.data.uiOptionals.suggestAsSourceFor = [
+    ...(prop.data.uiOptionals.suggestAsSourceFor ?? []),
     suggestion,
   ];
   return prop;
