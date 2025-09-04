@@ -5,11 +5,11 @@ const AUTH0_USERNAME =
   Cypress.env("VITE_AUTH0_USERNAME") || import.meta.env.VITE_AUTH0_USERNAME;
 const AUTH0_PASSWORD =
   Cypress.env("VITE_AUTH0_PASSWORD") || import.meta.env.VITE_AUTH0_PASSWORD;
-const SI_WORKSPACE_URL =
-  Cypress.env("VITE_SI_WORKSPACE_URL") || import.meta.env.VITE_SI_WORKSPACE_URL;
 const SI_WORKSPACE_ID =
   Cypress.env("VITE_SI_WORKSPACE_ID") || import.meta.env.VITE_SI_WORKSPACE_ID;
 const UUID = Cypress.env("VITE_UUID") || import.meta.env.VITE_UUID || "local";
+const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
+const AUTH_PORTAL_URL = Cypress.env('VITE_AUTH_PORTAL_URL') || import.meta.env.VITE_AUTH_PORTAL_URL;
 
 describe("web", () => {
   beforeEach(function () {
@@ -17,12 +17,18 @@ describe("web", () => {
   });
 
   it("get_ptlw_tiles", () => {
-    // Go to the Synthetic Workspace
-    cy.visit({
-      url: SI_WORKSPACE_URL + "/n/" + SI_WORKSPACE_ID + "/auto",
-      failOnStatusCode: false,
-    });
-    cy.on("uncaught:exception", (e) => {
+    // Go to the Synthetic User's Dashboard
+    cy.visit(AUTH_PORTAL_URL + '/dashboard')
+    cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
+
+    cy.wait(5000);
+
+    // Find the URL for the synthetic workspace and go there
+    cy.get('a[href="' + AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go"]')
+      .should('be.visible')
+      .invoke('removeAttr', 'target')
+      .click();
+    cy.on('uncaught:exception', (e) => {
       console.log(e);
       return false;
     });
@@ -32,14 +38,7 @@ describe("web", () => {
       UUID,
     );
 
-    cy.wait(30000);
-
-    cy.visit({
-      url: SI_WORKSPACE_URL + "/n/" + SI_WORKSPACE_ID + "/auto",
-      failOnStatusCode: false,
-    });
-
-    cy.wait(60000);
+    cy.wait(3000);
 
     let attempt = 0;
     let maxAttempts = 10;
