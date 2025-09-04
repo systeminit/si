@@ -85,6 +85,11 @@
       buck2BuildInputs = with pkgs;
         []
         ++ lib.optionals pkgs.stdenv.isLinux [
+          clang
+          glibc
+          glibc.libgcc
+          lvm2
+          llvmPackages.libclang.lib
         ]
         ++ lib.optionals pkgs.stdenv.isDarwin [
           libiconv
@@ -385,6 +390,17 @@
         };
 
         devShells.default = mkShell {
+          shellHook = with pkgs; if pkgs.stdenv.isLinux then ''
+            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
+            export BINDGEN_EXTRA_CLANG_ARGS="\
+              $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
+              $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
+              $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
+              $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
+              $NIX_CFLAGS_COMPILE"
+            export OUT=${placeholder "out"}
+            echo $OUT
+          '' else "";
           packages =
             [
               alejandra
