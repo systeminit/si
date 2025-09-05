@@ -112,10 +112,16 @@
       />
     </main>
     <template v-else-if="!lobby">
-      <Onboarding
-        v-if="showOnboarding"
-        @completed="onboardingCompleted = true"
-      />
+      <template v-if="showOnboarding">
+        <Onboarding2
+          v-if="featureFlagsStore.INITIALIZER_ONBOARD_FORCE_AGENT"
+          @completed="onboardingCompleted = true"
+        />
+        <Onboarding
+          v-else
+          @completed="onboardingCompleted = true"
+        />
+      </template>
       <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
            min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
       <main v-else class="grow min-h-0">
@@ -187,6 +193,7 @@ import { routes, useApi } from "./api_composables";
 import Review from "./Review.vue";
 import EmptyState from "./EmptyState.vue";
 import NavbarPanelCenter from "./nav/NavbarPanelCenter.vue";
+import Onboarding2 from "@/newhotness/Onboarding2.vue";
 
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
