@@ -424,6 +424,43 @@ In other words, you build the same buildable target with two different modes and
 
 If you are looking to find other `buck2` users and/or ask questions, share ideas and share experiences related to `buck2`, check out the unofficial ["Buck2 Fans" Discord server](https://discord.gg/P5Tbrt735m).
 
+# Updating Rust Dependencies
+
+This section contains all information related to updating crates and `buck2` Rust dependencies.
+
+## Update All Crates
+
+You can update all crates by executing the following commands:
+
+```shell
+# Updates all crates
+cargo update
+
+# Syncs the root `Cargo.toml` and `Cargo.lock` with the third party `BUCK` file
+buck2 run //support/buck2:sync-cargo-deps
+```
+
+> [!TIP]
+> If a crate didn't update beyond its patch or minor version, you will need to update its version in the root `Cargo.toml` file.
+> Note that all crates in the workspace use `workspace = true` for versioning.
+> As a result, changing the version there will change it for all crates using that crate.
+
+## Update a Single Crate
+
+You can update a single crate using the `--precise` flag.
+
+```shell
+cargo update -p <CRATE> --precise <VERSION>
+buck2 run //support/buck2:sync-cargo-deps
+```
+
+Here is an example from [PR #7226](https://github.com/systeminit/si/pull/7226):
+
+```shell
+cargo update -p slab --precise 0.4.11
+buck2 run //support/buck2:sync-cargo-deps
+```
+
 # Reading and Writing Rust-based Code Documentation
 
 This section contains all information related to developer documentation for this repository's source code.
