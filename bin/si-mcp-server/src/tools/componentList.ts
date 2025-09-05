@@ -88,37 +88,37 @@ export function componentListTool(server: McpServer) {
     async ({ changeSetId, filters }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
         if (!changeSetId) {
-        const changeSetsApi = new ChangeSetsApi(apiConfig);
-        try {
-          const changeSetList = await changeSetsApi.listChangeSets({
-            workspaceId: WORKSPACE_ID,
-          });
-          const changeSets = changeSetList.data.changeSets as ChangeSet[];
-          const head = changeSets.find((cs) => cs.isHead);
-          if (!head) {
+          const changeSetsApi = new ChangeSetsApi(apiConfig);
+          try {
+            const changeSetList = await changeSetsApi.listChangeSets({
+              workspaceId: WORKSPACE_ID,
+            });
+            const changeSets = changeSetList.data.changeSets as ChangeSet[];
+            const head = changeSets.find((cs) => cs.isHead);
+            if (!head) {
+              return errorResponse({
+                message: "Could not find HEAD change set",
+              });
+            }
+            changeSetId = head.id;
+          } catch (error) {
             return errorResponse({
-              message: "Could not find HEAD change set",
+              message:
+                `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
             });
           }
-          changeSetId = head.id;
-        } catch (error) {
-          return errorResponse({
-            message:
-              `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-          });
         }
-      }
-      try {
-        const response = await listAllComponents(apiConfig, changeSetId);
-        const filteredResponse = applyFilters(response, filters);
-        return successResponse(
-          filteredResponse,
-        );
-      } catch (error) {
-        return errorResponse(error);
-      }
+        try {
+          const response = await listAllComponents(apiConfig, changeSetId);
+          const filteredResponse = applyFilters(response, filters);
+          return successResponse(
+            filteredResponse,
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

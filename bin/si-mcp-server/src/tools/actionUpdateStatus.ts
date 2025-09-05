@@ -55,58 +55,58 @@ export function actionUpdateTool(server: McpServer) {
     },
     async ({ changeSetId, newStatus, actionId }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      if (!changeSetId) {
-        return errorResponse({
-          message:
-            "Must provide a change set id; ensure you get one from the user!",
-        });
-      }
-      if (!newStatus) {
-        return errorResponse({
-          message:
-            "Must provide a new status for the action; ensure you get one from the user!",
-        });
-      }
-
-      const siApi = new ActionsApi(apiConfig);
-      try {
-        // Confirm the change set you want to manipulate isn't HEAD
-        if (newStatus == "on-hold") {
-          const response = await siApi.putOnHold({
-            workspaceId: WORKSPACE_ID,
-            changeSetId,
-            actionId,
-          });
-          return successResponse(
-            response.data,
-          );
-        } else if (newStatus == "off-hold" || newStatus == "retry") {
-          const response = await siApi.retryAction({
-            workspaceId: WORKSPACE_ID,
-            changeSetId,
-            actionId,
-          });
-          return successResponse(
-            response.data,
-          );
-        } else if (newStatus == "remove") {
-          const response = await siApi.cancelAction({
-            workspaceId: WORKSPACE_ID,
-            changeSetId,
-            actionId,
-          });
-          return successResponse(
-            response.data,
-          );
-        } else {
+        if (!changeSetId) {
           return errorResponse({
             message:
-              `Invalid status '${newStatus}'. Must be one of: on-hold, off-hold, retry, remove`,
+              "Must provide a change set id; ensure you get one from the user!",
           });
         }
-      } catch (error) {
-        return errorResponse(error);
-      }
+        if (!newStatus) {
+          return errorResponse({
+            message:
+              "Must provide a new status for the action; ensure you get one from the user!",
+          });
+        }
+
+        const siApi = new ActionsApi(apiConfig);
+        try {
+          // Confirm the change set you want to manipulate isn't HEAD
+          if (newStatus == "on-hold") {
+            const response = await siApi.putOnHold({
+              workspaceId: WORKSPACE_ID,
+              changeSetId,
+              actionId,
+            });
+            return successResponse(
+              response.data,
+            );
+          } else if (newStatus == "off-hold" || newStatus == "retry") {
+            const response = await siApi.retryAction({
+              workspaceId: WORKSPACE_ID,
+              changeSetId,
+              actionId,
+            });
+            return successResponse(
+              response.data,
+            );
+          } else if (newStatus == "remove") {
+            const response = await siApi.cancelAction({
+              workspaceId: WORKSPACE_ID,
+              changeSetId,
+              actionId,
+            });
+            return successResponse(
+              response.data,
+            );
+          } else {
+            return errorResponse({
+              message:
+                `Invalid status '${newStatus}'. Must be one of: on-hold, off-hold, retry, remove`,
+            });
+          }
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

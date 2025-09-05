@@ -11,7 +11,8 @@ import {
 } from "./commonBehavior.ts";
 import { ChangeSet } from "../data/changeSets.ts";
 
-const description = `<description>Generates a URL for a component details page, the change set review screen, the change set map view or the default link for the workspace.</description><usage>Use this tool to generate a url to a component details page, change set review screen, the change set map view or the default change set page in the System Initiative web application. You should never try and create a component to match the users request. You should never offer to link the user to another component and you should never try and find a matching component in a different change set once a change set has been specified.</usage>`;
+const description =
+  `<description>Generates a URL for a component details page, the change set review screen, the change set map view or the default link for the workspace.</description><usage>Use this tool to generate a url to a component details page, change set review screen, the change set map view or the default change set page in the System Initiative web application. You should never try and create a component to match the users request. You should never offer to link the user to another component and you should never try and find a matching component in a different change set once a change set has been specified.</usage>`;
 
 const GenerateSiUrlInputSchemaRaw = {
   changeSetId: z
@@ -95,9 +96,10 @@ export function generateSiUrlTool(server: McpServer) {
           changeSetId = head.id;
         } catch (error) {
           return errorResponse({
-            message: `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
+            message:
+              `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
           });
         }
       }
@@ -136,7 +138,8 @@ export function generateSiUrlTool(server: McpServer) {
           result.url = generateComponentLink(changeSetId, componentId);
         } catch {
           return errorResponse({
-            message: `No component found in that change set. Tell the user to ensure they are using the correct change set.`,
+            message:
+              `No component found in that change set. Tell the user to ensure they are using the correct change set.`,
           });
         }
       }

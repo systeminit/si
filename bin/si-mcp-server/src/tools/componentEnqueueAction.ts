@@ -58,24 +58,24 @@ export function componentEnqueueActionTool(server: McpServer) {
       { changeSetId, componentId, actionName },
     ): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      const siApi = new ComponentsApi(apiConfig);
-      try {
-        const response = await siApi.addAction({
-          workspaceId: WORKSPACE_ID,
-          changeSetId: changeSetId,
-          componentId,
-          addActionV1Request: {
-            action: {
-              function: actionName,
+        const siApi = new ComponentsApi(apiConfig);
+        try {
+          const response = await siApi.addAction({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            componentId,
+            addActionV1Request: {
+              action: {
+                function: actionName,
+              },
             },
-          },
-        });
-        return successResponse(
-          response.data,
-        );
-      } catch (error) {
-        return errorResponse(error);
-      }
+          });
+          return successResponse(
+            response.data,
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

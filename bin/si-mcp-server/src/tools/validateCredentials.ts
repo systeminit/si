@@ -64,15 +64,15 @@ export function validateCredentialsTool(server: McpServer) {
     },
     async (): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      const siApi = new WhoamiApi(apiConfig);
-      try {
-        const response = await siApi.whoami();
-        return successResponse(
-          response.data,
-        );
-      } catch (error) {
-        return errorResponse(error);
-      }
+        const siApi = new WhoamiApi(apiConfig);
+        try {
+          const response = await siApi.whoami();
+          return successResponse(
+            response.data,
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

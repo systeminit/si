@@ -61,29 +61,29 @@ export function componentCreateTool(server: McpServer) {
       { changeSetId, componentName, schemaName, attributes },
     ): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      const siApi = new ComponentsApi(apiConfig);
-      try {
-        const response = await siApi.createComponent({
-          workspaceId: WORKSPACE_ID,
-          changeSetId: changeSetId,
-          createComponentV1Request: {
-            name: componentName,
-            schemaName,
-            attributes,
-          },
-        });
-        const result: CreateComponentResult = {
-          componentId: response.data.component.id,
-          componentName: response.data.component.name,
-          schemaName: schemaName,
-        };
+        const siApi = new ComponentsApi(apiConfig);
+        try {
+          const response = await siApi.createComponent({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            createComponentV1Request: {
+              name: componentName,
+              schemaName,
+              attributes,
+            },
+          });
+          const result: CreateComponentResult = {
+            componentId: response.data.component.id,
+            componentName: response.data.component.name,
+            schemaName: schemaName,
+          };
 
-        return successResponse(
-          result,
-        );
-      } catch (error) {
-        return errorResponse(error);
-      }
+          return successResponse(
+            result,
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

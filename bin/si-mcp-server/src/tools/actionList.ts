@@ -57,86 +57,86 @@ export function actionListTool(server: McpServer) {
     },
     async ({ changeSetId }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      if (!changeSetId) {
-        const changeSetsApi = new ChangeSetsApi(apiConfig);
-        try {
-          const changeSetList = await changeSetsApi.listChangeSets({
-            workspaceId: WORKSPACE_ID,
-          });
-          const changeSets = changeSetList.data.changeSets as ChangeSet[];
-          const head = changeSets.find((cs) => cs.isHead);
-          if (!head) {
-            return errorResponse({
-              message: "Could not find HEAD change set",
-            });
-          }
-          changeSetId = head.id;
-        } catch (error) {
-          return errorResponse({
-            message:
-              `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-          });
-        }
-      }
-      const siApi = new ActionsApi(apiConfig);
-      try {
-        const response = await siApi.getActions({
-          workspaceId: WORKSPACE_ID,
-          changeSetId: changeSetId,
-        });
-        const actionList: Array<ActionList> = [];
-        for (const action of response.data.actions) {
-          let compName: string;
-          let compSchemaName: string;
+        if (!changeSetId) {
+          const changeSetsApi = new ChangeSetsApi(apiConfig);
           try {
-            const compApi = new ComponentsApi(apiConfig);
-            const comp = await compApi.getComponent({
+            const changeSetList = await changeSetsApi.listChangeSets({
               workspaceId: WORKSPACE_ID,
-              changeSetId,
-              componentId: action.componentId,
             });
-            compName = comp.data.component.name;
-            const compSchemaId = comp.data.component.schemaId;
-            try {
-              const schemaApi = new SchemasApi(apiConfig);
-              const schema = await schemaApi.getSchema({
-                workspaceId: WORKSPACE_ID,
-                changeSetId,
-                schemaId: compSchemaId,
-              });
-              compSchemaName = schema.data.name;
-            } catch (error) {
+            const changeSets = changeSetList.data.changeSets as ChangeSet[];
+            const head = changeSets.find((cs) => cs.isHead);
+            if (!head) {
               return errorResponse({
-                message:
-                  `Error getting schema for extra details while listing actions; bug! ${error}`,
+                message: "Could not find HEAD change set",
               });
             }
+            changeSetId = head.id;
           } catch (error) {
             return errorResponse({
               message:
-                `Error getting component for extra details while listing actions; bug! ${error}`,
+                `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
             });
           }
-          actionList.push({
-            actionId: action.id,
-            componentId: action.componentId,
-            componentName: compName,
-            schemaName: compSchemaName,
-            name: action.name,
-            kind: action.kind,
-            funcRunId: action.funcRunId,
-            state: action.state as ActionList["state"],
-          });
         }
-        return successResponse(
-          actionList,
-          "'Failed' actions can be retried, and you can learn more about the function execution ysing the func-run-get tool with the funcRunId",
-        );
-      } catch (error) {
-        return errorResponse(error);
-      }
+        const siApi = new ActionsApi(apiConfig);
+        try {
+          const response = await siApi.getActions({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+          });
+          const actionList: Array<ActionList> = [];
+          for (const action of response.data.actions) {
+            let compName: string;
+            let compSchemaName: string;
+            try {
+              const compApi = new ComponentsApi(apiConfig);
+              const comp = await compApi.getComponent({
+                workspaceId: WORKSPACE_ID,
+                changeSetId,
+                componentId: action.componentId,
+              });
+              compName = comp.data.component.name;
+              const compSchemaId = comp.data.component.schemaId;
+              try {
+                const schemaApi = new SchemasApi(apiConfig);
+                const schema = await schemaApi.getSchema({
+                  workspaceId: WORKSPACE_ID,
+                  changeSetId,
+                  schemaId: compSchemaId,
+                });
+                compSchemaName = schema.data.name;
+              } catch (error) {
+                return errorResponse({
+                  message:
+                    `Error getting schema for extra details while listing actions; bug! ${error}`,
+                });
+              }
+            } catch (error) {
+              return errorResponse({
+                message:
+                  `Error getting component for extra details while listing actions; bug! ${error}`,
+              });
+            }
+            actionList.push({
+              actionId: action.id,
+              componentId: action.componentId,
+              componentName: compName,
+              schemaName: compSchemaName,
+              name: action.name,
+              kind: action.kind,
+              funcRunId: action.funcRunId,
+              state: action.state as ActionList["state"],
+            });
+          }
+          return successResponse(
+            actionList,
+            "'Failed' actions can be retried, and you can learn more about the function execution ysing the func-run-get tool with the funcRunId",
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

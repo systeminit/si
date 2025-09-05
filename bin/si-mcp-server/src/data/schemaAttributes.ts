@@ -92,8 +92,8 @@ function collectFlatAttributes(
 
     switch (node.propType) {
       case "object": {
-        const hasChildren =
-          Array.isArray(node.children) && node.children.length > 0;
+        const hasChildren = Array.isArray(node.children) &&
+          node.children.length > 0;
         if (hasChildren) {
           collectFlatAttributes(node.children!, nodePath, outAttrs, outDocs);
         } else {
@@ -104,8 +104,8 @@ function collectFlatAttributes(
 
       case "array": {
         const arrayPath = `${nodePath}/[array]`;
-        const hasChildren =
-          Array.isArray(node.children) && node.children.length > 0;
+        const hasChildren = Array.isArray(node.children) &&
+          node.children.length > 0;
 
         if (!hasChildren) {
           addLeaf(outAttrs, outDocs, node, arrayPath);
@@ -114,8 +114,8 @@ function collectFlatAttributes(
 
         for (const item of node.children!) {
           if (item.propType === "object") {
-            const itemHasChildren =
-              Array.isArray(item.children) && item.children.length > 0;
+            const itemHasChildren = Array.isArray(item.children) &&
+              item.children.length > 0;
             if (itemHasChildren) {
               collectFlatAttributes(
                 item.children!,
@@ -139,7 +139,6 @@ function collectFlatAttributes(
     }
   }
 }
-
 
 export function buildAttributesStructure(
   input: GetSchemaVariantV1Response,
@@ -193,7 +192,6 @@ export function formatDocumentation(
   return parts.length > 0 ? parts.join("\n\n") : undefined;
 }
 
-
 export type SchemaAttributeDocumentation = {
   schemaAttributePath: string;
   documentation: string;
@@ -215,8 +213,7 @@ export function buildDocumentationForPaths(
 ): SchemaDocumentationData {
   const docsIndex = buildAttributeDocsIndex(variant);
   const attributes = schemaAttributePaths.map((p) => {
-    const documentation =
-      formatDocumentation(docsIndex, p) ??
+    const documentation = formatDocumentation(docsIndex, p) ??
       "There is no documentation for this attribute; if it is an AWS schema, consider looking up the data for the corresponding cloudformation resource";
     return { schemaAttributePath: p, documentation };
   });

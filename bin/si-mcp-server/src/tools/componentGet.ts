@@ -111,113 +111,114 @@ export function componentGetTool(server: McpServer) {
       { changeSetId, componentId, code, qualifications },
     ): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      const siApi = new ComponentsApi(apiConfig);
-      try {
-        const response = await siApi.getComponent({
-          workspaceId: WORKSPACE_ID,
-          changeSetId: changeSetId,
-          componentId,
-        });
-        // _.pickBy(response.data.component.attributes, (_value, key) => key.includes('/code'))
-        const attributes = _.pickBy(
-          response.data.component.attributes,
-          (_value: unknown, key: string) =>
-            key.startsWith("/domain") || key.startsWith("/si/name") ||
-            key.startsWith("/resource_value") || key.startsWith("/secrets"),
-        );
-        const result: GetComponentResult = {
-          componentId: response.data.component.id,
-          componentName: response.data.component.name,
-          resourceId: response.data.component.resourceId,
-          attributes: attributes as GetComponentResult["attributes"],
-          actions: response.data.actionFunctions.map((af) => {
-            return { actionName: af.funcName };
-          }),
-          management: response.data.managementFunctions.map((mf) => {
-            return { managementName: mf.funcName };
-          }),
-        };
-        if (code) {
-          const codeAttributes = _.pickBy(
+        const siApi = new ComponentsApi(apiConfig);
+        try {
+          const response = await siApi.getComponent({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            componentId,
+          });
+          // _.pickBy(response.data.component.attributes, (_value, key) => key.includes('/code'))
+          const attributes = _.pickBy(
             response.data.component.attributes,
-            (_value: unknown, key: string) => key.startsWith("/code"),
+            (_value: unknown, key: string) =>
+              key.startsWith("/domain") || key.startsWith("/si/name") ||
+              key.startsWith("/resource_value") || key.startsWith("/secrets"),
           );
-          const code: NonNullable<GetComponentResult["code"]> = {};
-          for (const [path, codeValue] of Object.entries(codeAttributes)) {
-            const match = path.match(/^\/code\/([^\/]+)\/([^\/]+)/);
-            if (match) {
-              if (!code[match[1]]) {
-                code[match[1]] = { code: "", format: "" };
-              }
-              if (match[2] === "code" || match[2] === "format") {
-                code[match[1]][match[2] as "code" | "format"] =
-                  codeValue as string;
-              }
-            }
-          }
-          result["code"] = code;
-        }
-        if (qualifications) {
-          const qualAttributes = _.pickBy(
-            response.data.component.attributes,
-            (_value: unknown, key: string) => key.startsWith("/qualification"),
-          );
-          const qualifications: NonNullable<
-            GetComponentResult["qualifications"]
-          > = {};
-          for (const [path, qualValue] of Object.entries(qualAttributes)) {
-            const match = path.match(/^\/qualification\/([^\/]+)\/([^\/]+)/);
-            if (match) {
-              if (!qualifications[match[1]]) {
-                qualifications[match[1]] = { result: "unknown", message: "" };
-              }
-              if (match[2] === "result") {
-                qualifications[match[1]]["result"] = qualValue as
-                  | "failure"
-                  | "success"
-                  | "unknown"
-                  | "warning";
-              } else if (match[2] === "message") {
-                qualifications[match[1]]["message"] = qualValue as string;
-              }
-            }
-          }
-          result["qualifications"] = qualifications;
-        }
-        const resourceAttributes = _.pickBy(
-          response.data.component.attributes,
-          (_value: unknown, key: string) => key.startsWith("/resource/"),
-        );
-        const resource: {
-          status?: "ok" | "error" | "warning";
-          resourceData?: unknown;
-          lastSynced?: string;
-        } = {};
-        for (
-          const [path, resourceValue] of Object.entries(resourceAttributes)
-        ) {
-          if (path == "/resource/status") {
-            resource["status"] = resourceValue as "ok" | "error" | "warning";
-          } else if (path == "/resource/payload") {
-            resource["resourceData"] = resourceValue;
-          } else if (path == "/resource/last_synced") {
-            resource["lastSynced"] = resourceValue as string;
-          }
-        }
-        if (!_.isEmpty(resource) && resource.status && resource.lastSynced) {
-          result["resource"] = resource as {
-            status: "ok" | "error" | "warning";
-            lastSynced: string;
-            resourceData?: unknown;
+          const result: GetComponentResult = {
+            componentId: response.data.component.id,
+            componentName: response.data.component.name,
+            resourceId: response.data.component.resourceId,
+            attributes: attributes as GetComponentResult["attributes"],
+            actions: response.data.actionFunctions.map((af) => {
+              return { actionName: af.funcName };
+            }),
+            management: response.data.managementFunctions.map((mf) => {
+              return { managementName: mf.funcName };
+            }),
           };
-        }
+          if (code) {
+            const codeAttributes = _.pickBy(
+              response.data.component.attributes,
+              (_value: unknown, key: string) => key.startsWith("/code"),
+            );
+            const code: NonNullable<GetComponentResult["code"]> = {};
+            for (const [path, codeValue] of Object.entries(codeAttributes)) {
+              const match = path.match(/^\/code\/([^\/]+)\/([^\/]+)/);
+              if (match) {
+                if (!code[match[1]]) {
+                  code[match[1]] = { code: "", format: "" };
+                }
+                if (match[2] === "code" || match[2] === "format") {
+                  code[match[1]][match[2] as "code" | "format"] =
+                    codeValue as string;
+                }
+              }
+            }
+            result["code"] = code;
+          }
+          if (qualifications) {
+            const qualAttributes = _.pickBy(
+              response.data.component.attributes,
+              (_value: unknown, key: string) =>
+                key.startsWith("/qualification"),
+            );
+            const qualifications: NonNullable<
+              GetComponentResult["qualifications"]
+            > = {};
+            for (const [path, qualValue] of Object.entries(qualAttributes)) {
+              const match = path.match(/^\/qualification\/([^\/]+)\/([^\/]+)/);
+              if (match) {
+                if (!qualifications[match[1]]) {
+                  qualifications[match[1]] = { result: "unknown", message: "" };
+                }
+                if (match[2] === "result") {
+                  qualifications[match[1]]["result"] = qualValue as
+                    | "failure"
+                    | "success"
+                    | "unknown"
+                    | "warning";
+                } else if (match[2] === "message") {
+                  qualifications[match[1]]["message"] = qualValue as string;
+                }
+              }
+            }
+            result["qualifications"] = qualifications;
+          }
+          const resourceAttributes = _.pickBy(
+            response.data.component.attributes,
+            (_value: unknown, key: string) => key.startsWith("/resource/"),
+          );
+          const resource: {
+            status?: "ok" | "error" | "warning";
+            resourceData?: unknown;
+            lastSynced?: string;
+          } = {};
+          for (
+            const [path, resourceValue] of Object.entries(resourceAttributes)
+          ) {
+            if (path == "/resource/status") {
+              resource["status"] = resourceValue as "ok" | "error" | "warning";
+            } else if (path == "/resource/payload") {
+              resource["resourceData"] = resourceValue;
+            } else if (path == "/resource/last_synced") {
+              resource["lastSynced"] = resourceValue as string;
+            }
+          }
+          if (!_.isEmpty(resource) && resource.status && resource.lastSynced) {
+            result["resource"] = resource as {
+              status: "ok" | "error" | "warning";
+              lastSynced: string;
+              resourceData?: unknown;
+            };
+          }
 
-        return successResponse(
-          result,
-        );
-      } catch (error) {
-        return errorResponse(error);
-      }
+          return successResponse(
+            result,
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

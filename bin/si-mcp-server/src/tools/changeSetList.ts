@@ -46,18 +46,18 @@ export function changeSetListTool(server: McpServer) {
     },
     async (): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      const siApi = new ChangeSetsApi(apiConfig);
-      try {
-        const response = await siApi.listChangeSets({
-          workspaceId: WORKSPACE_ID,
-        });
-        return successResponse(
-          response.data.changeSets,
-          hints,
-        );
-      } catch (error) {
-        return errorResponse(error);
-      }
+        const siApi = new ChangeSetsApi(apiConfig);
+        try {
+          const response = await siApi.listChangeSets({
+            workspaceId: WORKSPACE_ID,
+          });
+          return successResponse(
+            response.data.changeSets,
+            hints,
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );

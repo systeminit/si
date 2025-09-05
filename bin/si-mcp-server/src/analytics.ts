@@ -11,8 +11,7 @@ export class Analytics {
   }
 
   private initializePostHog() {
-    const apiKey =
-      Deno.env.get("POSTHOG_API_KEY") ||
+    const apiKey = Deno.env.get("POSTHOG_API_KEY") ||
       "phc_KpehlXOqtU44B2MeW6WjqR09NxRJCYEiUReA58QcAYK"; // Prod Posthog
     const host = Deno.env.get("POSTHOG_HOST") || "https://e.systeminit.com";
 

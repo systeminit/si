@@ -48,24 +48,24 @@ export function changeSetCreateTool(server: McpServer) {
     },
     async ({ changeSetName }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-      if (!changeSetName) {
-        return errorResponse({
-          message:
-            "Must provide a change set name; ensure you get one from the user!",
-        });
-      }
-      const siApi = new ChangeSetsApi(apiConfig);
-      try {
-        const response = await siApi.createChangeSet({
-          workspaceId: WORKSPACE_ID,
-          createChangeSetV1Request: { changeSetName },
-        });
-        return successResponse(
-          response.data.changeSet,
-        );
-      } catch (error) {
-        return errorResponse(error);
-      }
+        if (!changeSetName) {
+          return errorResponse({
+            message:
+              "Must provide a change set name; ensure you get one from the user!",
+          });
+        }
+        const siApi = new ChangeSetsApi(apiConfig);
+        try {
+          const response = await siApi.createChangeSet({
+            workspaceId: WORKSPACE_ID,
+            createChangeSetV1Request: { changeSetName },
+          });
+          return successResponse(
+            response.data.changeSet,
+          );
+        } catch (error) {
+          return errorResponse(error);
+        }
       });
     },
   );
