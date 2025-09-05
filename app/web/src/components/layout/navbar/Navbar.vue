@@ -9,23 +9,34 @@
     "
   >
     <!-- Left side -->
-    <NavbarPanelLeft />
+    <NavbarPanelLeft :invalidWorkspace="invalidWorkspace" />
 
     <!-- Center -->
-    <NavbarPanelCenter />
+    <NavbarPanelCenter v-if="!invalidWorkspace" />
 
     <!-- Right -->
-    <NavbarPanelRight />
+    <NavbarPanelRight :invalidWorkspace="invalidWorkspace" />
   </nav>
 </template>
 
 <script setup lang="ts">
 import { useThemeContainer } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import NavbarPanelCenter from "./NavbarPanelCenter.vue";
 import NavbarPanelRight from "./NavbarPanelRight.vue";
 import NavbarPanelLeft from "./NavbarPanelLeft.vue";
+
+const workspacesStore = useWorkspacesStore();
+
+const invalidWorkspace = computed(
+  () =>
+    !!(
+      workspacesStore.urlSelectedWorkspaceId &&
+      !workspacesStore.selectedWorkspace
+    ),
+);
 
 // top bar is always dark, so this keeps the workspace and change set dropdowns looking correct
 useThemeContainer("dark");

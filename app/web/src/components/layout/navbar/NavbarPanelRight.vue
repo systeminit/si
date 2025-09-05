@@ -2,8 +2,10 @@
   <div
     class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end"
   >
-    <Collaborators />
-    <Notifications />
+    <template v-if="!invalidWorkspace">
+      <Collaborators />
+      <Notifications />
+    </template>
 
     <template v-if="!collapse">
       <NavbarButton
@@ -32,6 +34,10 @@ import Collaborators from "./Collaborators.vue";
 import Notifications from "./Notifications.vue";
 import WorkspaceSettingsMenu from "./WorkspaceSettingsMenu.vue";
 import ProfileButton from "./ProfileButton.vue";
+
+defineProps({
+  invalidWorkspace: { type: Boolean },
+});
 
 const windowWidth = ref(window.innerWidth);
 const collapse = computed(() => windowWidth.value < 1200);

@@ -42,22 +42,22 @@
       </DropdownMenuButton>
     </label>
 
-    <VButton
+    <NewButton
       v-tooltip="{
         content: 'Create Change Set',
       }"
+      data-testid="create-change-set-button"
       icon="git-branch-plus"
-      size="sm"
       tone="action"
-      variant="ghost"
       class="flex-none"
       @click="openCreateModal"
     />
 
-    <VButton
+    <NewButton
       v-tooltip="{
         content: 'Abandon Change Set',
       }"
+      data-testid="abandon-change-set-button"
       :disabled="
         !selectedChangeSetName ||
         changeSetsStore.headSelected ||
@@ -66,9 +66,7 @@
           ChangeSetStatus.NeedsApproval
       "
       icon="trash"
-      size="sm"
-      tone="action"
-      variant="ghost"
+      tone="destructive"
       class="flex-none"
       @click="openAbandonConfirmationModal"
     />
@@ -128,6 +126,7 @@ import {
   DropdownMenuButton,
   DropdownMenuItem,
   DEFAULT_DROPDOWN_SEARCH_THRESHOLD,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import { tw } from "@si/vue-lib";
 import { useChangeSetsStore } from "@/store/change_sets.store";

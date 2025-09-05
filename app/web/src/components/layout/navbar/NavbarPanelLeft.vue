@@ -30,14 +30,16 @@
       </DropdownMenuButton>
     </label>
 
-    <Icon
-      name="chevron--right"
-      size="xs"
-      tone="neutral"
-      class="mt-[14px] flex-none"
-    />
+    <template v-if="!invalidWorkspace">
+      <Icon
+        name="chevron--right"
+        size="xs"
+        tone="neutral"
+        class="mt-[14px] flex-none"
+      />
 
-    <ChangeSetPanel ref="changeSetPanelRef" />
+      <ChangeSetPanel ref="changeSetPanelRef" />
+    </template>
 
     <StatusPanel v-if="useNewUI" />
   </div>
@@ -57,6 +59,10 @@ import { useRoute } from "vue-router";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import StatusPanel from "@/newhotness/StatusPanel.vue";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
+
+defineProps({
+  invalidWorkspace: { type: Boolean },
+});
 
 // Determine if we're in the new experience
 const route = useRoute();
