@@ -6,6 +6,7 @@ use axum::{
 };
 use dal::{
     Schema,
+    SchemaVariant,
     cached_module::CachedModule,
 };
 use serde::{
@@ -77,39 +78,73 @@ pub async fn find_schema(
         ));
     };
 
-    let module = match schema_ref {
-        SchemaReference::ById { schema_id } => {
-            if let Some(module) = CachedModule::find_latest_for_schema_id(ctx, schema_id).await? {
-                module
-            } else {
-                return Err(SchemaError::SchemaNotFound(schema_id));
+    let (schema_name, schema_id, category, installed) = match schema_ref {
+        SchemaReference::ById { schema_id } => match Schema::get_by_id_opt(ctx, schema_id).await? {
+            Some(schema) => {
+                let default_variant_id = Schema::default_variant_id(ctx, schema_id).await?;
+                let default_variant = SchemaVariant::get_by_id(ctx, default_variant_id).await?;
+                (
+                    schema.name,
+                    schema_id,
+                    Some(default_variant.category().to_string()),
+                    true,
+                )
             }
-        }
-        SchemaReference::ByName { schema } => {
-            if let Some(module) =
-                CachedModule::find_latest_for_schema_name(ctx, schema.as_str()).await?
-            {
-                module
-            } else {
-                return Err(SchemaError::SchemaNameNotFound(schema));
+            None => match CachedModule::find_latest_for_schema_id(ctx, schema_id).await? {
+                Some(module) => {
+                    let installed = Schema::exists_locally(ctx, module.schema_id).await?;
+                    (
+                        module.schema_name,
+                        module.schema_id,
+                        module.category,
+                        installed,
+                    )
+                }
+                None => return Err(SchemaError::SchemaNotFound(schema_id)),
+            },
+        },
+        SchemaReference::ByName {
+            schema: schema_name,
+        } => match Schema::get_by_name_opt(ctx, schema_name.as_str()).await? {
+            Some(schema) => {
+                let default_variant_id = Schema::default_variant_id(ctx, schema.id()).await?;
+                let default_variant = SchemaVariant::get_by_id(ctx, default_variant_id).await?;
+                (
+                    schema_name,
+                    schema.id(),
+                    Some(default_variant.category().to_string()),
+                    true,
+                )
             }
-        }
+            None => {
+                match CachedModule::find_latest_for_schema_name(ctx, schema_name.as_str()).await? {
+                    Some(module) => {
+                        let installed = Schema::exists_locally(ctx, module.schema_id).await?;
+                        (
+                            module.schema_name,
+                            module.schema_id,
+                            module.category,
+                            installed,
+                        )
+                    }
+                    None => return Err(SchemaError::SchemaNotFoundByName(schema_name)),
+                }
+            }
+        },
     };
-
-    let installed = Schema::exists_locally(ctx, module.schema_id).await?;
 
     tracker.track(
         ctx,
         "api_find_schema",
         json!({
-            "schema_id": module.schema_id
+            "schema_id": schema_id
         }),
     );
 
     Ok(Json(FindSchemaV1Response {
-        schema_name: module.schema_name,
-        schema_id: module.schema_id,
-        category: module.category,
+        schema_name,
+        schema_id,
+        category,
         installed,
     }))
 }

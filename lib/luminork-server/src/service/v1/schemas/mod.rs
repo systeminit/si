@@ -79,10 +79,10 @@ pub enum SchemaError {
     Prop(#[from] Box<PropError>),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
-    #[error("schema not found by name: {0}")]
-    SchemaNameNotFound(String),
     #[error("schema not found error: {0}")]
     SchemaNotFound(SchemaId),
+    #[error("schema not found by name: {0}")]
+    SchemaNotFoundByName(String),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("schema variant not found error: {0}")]
@@ -128,7 +128,7 @@ impl crate::service::v1::common::ErrorIntoResponse for SchemaError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
             SchemaError::SchemaNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
-            SchemaError::SchemaNameNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            SchemaError::SchemaNotFoundByName(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaError::SchemaVariantNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaError::SchemaVariantNotMemberOfSchema(_, _) => {
                 (StatusCode::PRECONDITION_REQUIRED, self.to_string())
