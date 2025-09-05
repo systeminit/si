@@ -41,8 +41,8 @@
                   clsx(
                     'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-[#207E65]',
-                      'bg-neutral-900 border-neutral-600 text-[#AAFEC7]',
+                      'bg-neutral-100 border-neutral-300 text-newhotness-greenlight',
+                      'bg-neutral-900 border-neutral-600 text-newhotness-greendark',
                     ),
                   )
                 "
@@ -57,8 +57,8 @@
                   clsx(
                     'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-[#631AC2]',
-                      'bg-neutral-900 border-neutral-600 text-[#D4B4FE]',
+                      'bg-neutral-100 border-neutral-300 text-newhotness-purplelight',
+                      'bg-neutral-900 border-neutral-600 text-newhotness-purpledark',
                     ),
                   )
                 "
@@ -139,8 +139,8 @@
                   clsx(
                     'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-[#207E65]',
-                      'bg-neutral-900 border-neutral-600 text-[#AAFEC7]',
+                      'bg-neutral-100 border-neutral-300 text-newhotness-greenlight',
+                      'bg-neutral-900 border-neutral-600 text-newhotness-greendark',
                     ),
                   )
                 "
@@ -155,8 +155,8 @@
                   clsx(
                     'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-[#631AC2]',
-                      'bg-neutral-900 border-neutral-600 text-[#D4B4FE]',
+                      'bg-neutral-100 border-neutral-300 text-newhotness-purplelight',
+                      'bg-neutral-900 border-neutral-600 text-newhotness-purpledark',
                     ),
                   )
                 "
