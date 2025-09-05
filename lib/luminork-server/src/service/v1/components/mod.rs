@@ -136,6 +136,10 @@ pub enum ComponentsError {
     ManagementPrototype(#[from] dal::management::prototype::ManagementPrototypeError),
     #[error("changes not permitted on HEAD change set")]
     NotPermittedOnHead,
+    #[error(
+        "Cannot set secrets directly on a non-secret defining component, use attributes instead"
+    )]
+    NotSecretDefiningComponent(ComponentId),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] dal::socket::output::OutputSocketError),
     #[error("prop error: {0}")]
@@ -236,6 +240,9 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             }
             ComponentsError::NotPermittedOnHead => (StatusCode::BAD_REQUEST, self.to_string()),
             ComponentsError::ViewNotFound(_) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
+            ComponentsError::NotSecretDefiningComponent(_) => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
             ComponentsError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             ComponentsError::InvalidSecretValue(_) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
@@ -310,29 +317,6 @@ impl ComponentPropKey {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
-#[serde(untagged)]
-pub enum SecretPropKey {
-    #[schema(value_type = String)]
-    PropId(PropId),
-    PropPath(SecretPropPath),
-}
-
-impl SecretPropKey {
-    pub async fn prop_id(
-        &self,
-        ctx: &dal::DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> PropResult<PropId> {
-        match self {
-            SecretPropKey::PropId(prop_id) => Ok(*prop_id),
-            SecretPropKey::PropPath(path) => {
-                dal::Prop::find_prop_id_by_path(ctx, schema_variant_id, &path.to_prop_path()).await
-            }
-        }
-    }
-}
-
 /// A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as its separator
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
 pub struct DomainPropPath(pub String);
@@ -340,15 +324,6 @@ pub struct DomainPropPath(pub String);
 impl DomainPropPath {
     pub fn to_prop_path(&self) -> PropPath {
         PropPath::new(["root", "domain"]).join(&self.0.replace("/", PROP_PATH_SEPARATOR).into())
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
-pub struct SecretPropPath(pub String);
-
-impl SecretPropPath {
-    pub fn to_prop_path(&self) -> PropPath {
-        PropPath::new(["root", "secrets"]).join(&self.0.replace("/", PROP_PATH_SEPARATOR).into())
     }
 }
 
