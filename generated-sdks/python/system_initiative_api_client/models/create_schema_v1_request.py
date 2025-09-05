@@ -17,19 +17,22 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from system_initiative_api_client.models.connection import Connection
 from typing import Optional, Set
 from typing_extensions import Self
 
-class ConnectionDetails(BaseModel):
+class CreateSchemaV1Request(BaseModel):
     """
-    ConnectionDetails
+    CreateSchemaV1Request
     """ # noqa: E501
-    add: Optional[List[Connection]] = None
-    remove: Optional[List[Connection]] = None
-    __properties: ClassVar[List[str]] = ["add", "remove"]
+    category: Optional[StrictStr] = None
+    code: StrictStr
+    color: Optional[StrictStr] = None
+    description: Optional[StrictStr] = None
+    link: Optional[StrictStr] = None
+    name: StrictStr
+    __properties: ClassVar[List[str]] = ["category", "code", "color", "description", "link", "name"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -49,7 +52,7 @@ class ConnectionDetails(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of ConnectionDetails from a JSON string"""
+        """Create an instance of CreateSchemaV1Request from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -70,25 +73,31 @@ class ConnectionDetails(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of each item in add (list)
-        _items = []
-        if self.add:
-            for _item_add in self.add:
-                if _item_add:
-                    _items.append(_item_add.to_dict())
-            _dict['add'] = _items
-        # override the default output from pydantic by calling `to_dict()` of each item in remove (list)
-        _items = []
-        if self.remove:
-            for _item_remove in self.remove:
-                if _item_remove:
-                    _items.append(_item_remove.to_dict())
-            _dict['remove'] = _items
+        # set to None if category (nullable) is None
+        # and model_fields_set contains the field
+        if self.category is None and "category" in self.model_fields_set:
+            _dict['category'] = None
+
+        # set to None if color (nullable) is None
+        # and model_fields_set contains the field
+        if self.color is None and "color" in self.model_fields_set:
+            _dict['color'] = None
+
+        # set to None if description (nullable) is None
+        # and model_fields_set contains the field
+        if self.description is None and "description" in self.model_fields_set:
+            _dict['description'] = None
+
+        # set to None if link (nullable) is None
+        # and model_fields_set contains the field
+        if self.link is None and "link" in self.model_fields_set:
+            _dict['link'] = None
+
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of ConnectionDetails from a dict"""
+        """Create an instance of CreateSchemaV1Request from a dict"""
         if obj is None:
             return None
 
@@ -96,8 +105,12 @@ class ConnectionDetails(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "add": [Connection.from_dict(_item) for _item in obj["add"]] if obj.get("add") is not None else None,
-            "remove": [Connection.from_dict(_item) for _item in obj["remove"]] if obj.get("remove") is not None else None
+            "category": obj.get("category"),
+            "code": obj.get("code"),
+            "color": obj.get("color"),
+            "description": obj.get("description"),
+            "link": obj.get("link"),
+            "name": obj.get("name")
         })
         return _obj
 

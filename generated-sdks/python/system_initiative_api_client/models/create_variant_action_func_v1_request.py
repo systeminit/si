@@ -17,22 +17,29 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List
-from system_initiative_api_client.models.socket_direction import SocketDirection
+from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
 
-class SocketViewV1(BaseModel):
+class CreateVariantActionFuncV1Request(BaseModel):
     """
-    SocketViewV1
+    CreateVariantActionFuncV1Request
     """ # noqa: E501
-    arity: StrictStr
-    direction: SocketDirection
-    id: StrictStr
+    code: StrictStr
+    description: StrictStr
+    display_name: StrictStr = Field(alias="displayName")
+    kind: Annotated[str, Field(strict=True)]
     name: StrictStr
-    value: Dict[str, Any]
-    __properties: ClassVar[List[str]] = ["arity", "direction", "id", "name", "value"]
+    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "kind", "name"]
+
+    @field_validator('kind')
+    def kind_validate_regular_expression(cls, value):
+        """Validates the regular expression"""
+        if not re.match(r"^(Create|Destroy|Manual|Refresh|Update)$", value):
+            raise ValueError(r"must validate the regular expression /^(Create|Destroy|Manual|Refresh|Update)$/")
+        return value
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -52,7 +59,7 @@ class SocketViewV1(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of SocketViewV1 from a JSON string"""
+        """Create an instance of CreateVariantActionFuncV1Request from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -77,7 +84,7 @@ class SocketViewV1(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of SocketViewV1 from a dict"""
+        """Create an instance of CreateVariantActionFuncV1Request from a dict"""
         if obj is None:
             return None
 
@@ -85,11 +92,11 @@ class SocketViewV1(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "arity": obj.get("arity"),
-            "direction": obj.get("direction"),
-            "id": obj.get("id"),
-            "name": obj.get("name"),
-            "value": obj.get("value")
+            "code": obj.get("code"),
+            "description": obj.get("description"),
+            "displayName": obj.get("displayName"),
+            "kind": obj.get("kind"),
+            "name": obj.get("name")
         })
         return _obj
 

@@ -22,15 +22,13 @@ from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 
-class IncomingConnectionViewV1(BaseModel):
+class UnlockedSchemaV1Response(BaseModel):
     """
-    IncomingConnectionViewV1
+    UnlockedSchemaV1Response
     """ # noqa: E501
-    var_from: StrictStr = Field(alias="from")
-    from_component_id: StrictStr = Field(alias="fromComponentId")
-    from_component_name: StrictStr = Field(alias="fromComponentName")
-    to: StrictStr
-    __properties: ClassVar[List[str]] = ["from", "fromComponentId", "fromComponentName", "to"]
+    schema_id: StrictStr = Field(alias="schemaId")
+    unlocked_variant_id: StrictStr = Field(alias="unlockedVariantId")
+    __properties: ClassVar[List[str]] = ["schemaId", "unlockedVariantId"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -50,7 +48,7 @@ class IncomingConnectionViewV1(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of IncomingConnectionViewV1 from a JSON string"""
+        """Create an instance of UnlockedSchemaV1Response from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -75,7 +73,7 @@ class IncomingConnectionViewV1(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of IncomingConnectionViewV1 from a dict"""
+        """Create an instance of UnlockedSchemaV1Response from a dict"""
         if obj is None:
             return None
 
@@ -83,10 +81,8 @@ class IncomingConnectionViewV1(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "from": obj.get("from"),
-            "fromComponentId": obj.get("fromComponentId"),
-            "fromComponentName": obj.get("fromComponentName"),
-            "to": obj.get("to")
+            "schemaId": obj.get("schemaId"),
+            "unlockedVariantId": obj.get("unlockedVariantId")
         })
         return _obj
 

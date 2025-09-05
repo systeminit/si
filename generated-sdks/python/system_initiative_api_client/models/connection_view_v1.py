@@ -19,13 +19,11 @@ from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError, f
 from typing import Any, List, Optional
 from system_initiative_api_client.models.connection_view_v1_one_of import ConnectionViewV1OneOf
 from system_initiative_api_client.models.connection_view_v1_one_of1 import ConnectionViewV1OneOf1
-from system_initiative_api_client.models.connection_view_v1_one_of2 import ConnectionViewV1OneOf2
-from system_initiative_api_client.models.connection_view_v1_one_of3 import ConnectionViewV1OneOf3
 from pydantic import StrictStr, Field
 from typing import Union, List, Set, Optional, Dict
 from typing_extensions import Literal, Self
 
-CONNECTIONVIEWV1_ONE_OF_SCHEMAS = ["ConnectionViewV1OneOf", "ConnectionViewV1OneOf1", "ConnectionViewV1OneOf2", "ConnectionViewV1OneOf3"]
+CONNECTIONVIEWV1_ONE_OF_SCHEMAS = ["ConnectionViewV1OneOf", "ConnectionViewV1OneOf1"]
 
 class ConnectionViewV1(BaseModel):
     """
@@ -35,12 +33,8 @@ class ConnectionViewV1(BaseModel):
     oneof_schema_1_validator: Optional[ConnectionViewV1OneOf] = None
     # data type: ConnectionViewV1OneOf1
     oneof_schema_2_validator: Optional[ConnectionViewV1OneOf1] = None
-    # data type: ConnectionViewV1OneOf2
-    oneof_schema_3_validator: Optional[ConnectionViewV1OneOf2] = None
-    # data type: ConnectionViewV1OneOf3
-    oneof_schema_4_validator: Optional[ConnectionViewV1OneOf3] = None
-    actual_instance: Optional[Union[ConnectionViewV1OneOf, ConnectionViewV1OneOf1, ConnectionViewV1OneOf2, ConnectionViewV1OneOf3]] = None
-    one_of_schemas: Set[str] = { "ConnectionViewV1OneOf", "ConnectionViewV1OneOf1", "ConnectionViewV1OneOf2", "ConnectionViewV1OneOf3" }
+    actual_instance: Optional[Union[ConnectionViewV1OneOf, ConnectionViewV1OneOf1]] = None
+    one_of_schemas: Set[str] = { "ConnectionViewV1OneOf", "ConnectionViewV1OneOf1" }
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -73,22 +67,12 @@ class ConnectionViewV1(BaseModel):
             error_messages.append(f"Error! Input type `{type(v)}` is not `ConnectionViewV1OneOf1`")
         else:
             match += 1
-        # validate data type: ConnectionViewV1OneOf2
-        if not isinstance(v, ConnectionViewV1OneOf2):
-            error_messages.append(f"Error! Input type `{type(v)}` is not `ConnectionViewV1OneOf2`")
-        else:
-            match += 1
-        # validate data type: ConnectionViewV1OneOf3
-        if not isinstance(v, ConnectionViewV1OneOf3):
-            error_messages.append(f"Error! Input type `{type(v)}` is not `ConnectionViewV1OneOf3`")
-        else:
-            match += 1
         if match > 1:
             # more than 1 match
-            raise ValueError("Multiple matches found when setting `actual_instance` in ConnectionViewV1 with oneOf schemas: ConnectionViewV1OneOf, ConnectionViewV1OneOf1, ConnectionViewV1OneOf2, ConnectionViewV1OneOf3. Details: " + ", ".join(error_messages))
+            raise ValueError("Multiple matches found when setting `actual_instance` in ConnectionViewV1 with oneOf schemas: ConnectionViewV1OneOf, ConnectionViewV1OneOf1. Details: " + ", ".join(error_messages))
         elif match == 0:
             # no match
-            raise ValueError("No match found when setting `actual_instance` in ConnectionViewV1 with oneOf schemas: ConnectionViewV1OneOf, ConnectionViewV1OneOf1, ConnectionViewV1OneOf2, ConnectionViewV1OneOf3. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when setting `actual_instance` in ConnectionViewV1 with oneOf schemas: ConnectionViewV1OneOf, ConnectionViewV1OneOf1. Details: " + ", ".join(error_messages))
         else:
             return v
 
@@ -115,25 +99,13 @@ class ConnectionViewV1(BaseModel):
             match += 1
         except (ValidationError, ValueError) as e:
             error_messages.append(str(e))
-        # deserialize data into ConnectionViewV1OneOf2
-        try:
-            instance.actual_instance = ConnectionViewV1OneOf2.from_json(json_str)
-            match += 1
-        except (ValidationError, ValueError) as e:
-            error_messages.append(str(e))
-        # deserialize data into ConnectionViewV1OneOf3
-        try:
-            instance.actual_instance = ConnectionViewV1OneOf3.from_json(json_str)
-            match += 1
-        except (ValidationError, ValueError) as e:
-            error_messages.append(str(e))
 
         if match > 1:
             # more than 1 match
-            raise ValueError("Multiple matches found when deserializing the JSON string into ConnectionViewV1 with oneOf schemas: ConnectionViewV1OneOf, ConnectionViewV1OneOf1, ConnectionViewV1OneOf2, ConnectionViewV1OneOf3. Details: " + ", ".join(error_messages))
+            raise ValueError("Multiple matches found when deserializing the JSON string into ConnectionViewV1 with oneOf schemas: ConnectionViewV1OneOf, ConnectionViewV1OneOf1. Details: " + ", ".join(error_messages))
         elif match == 0:
             # no match
-            raise ValueError("No match found when deserializing the JSON string into ConnectionViewV1 with oneOf schemas: ConnectionViewV1OneOf, ConnectionViewV1OneOf1, ConnectionViewV1OneOf2, ConnectionViewV1OneOf3. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when deserializing the JSON string into ConnectionViewV1 with oneOf schemas: ConnectionViewV1OneOf, ConnectionViewV1OneOf1. Details: " + ", ".join(error_messages))
         else:
             return instance
 
@@ -147,7 +119,7 @@ class ConnectionViewV1(BaseModel):
         else:
             return json.dumps(self.actual_instance)
 
-    def to_dict(self) -> Optional[Union[Dict[str, Any], ConnectionViewV1OneOf, ConnectionViewV1OneOf1, ConnectionViewV1OneOf2, ConnectionViewV1OneOf3]]:
+    def to_dict(self) -> Optional[Union[Dict[str, Any], ConnectionViewV1OneOf, ConnectionViewV1OneOf1]]:
         """Returns the dict representation of the actual instance"""
         if self.actual_instance is None:
             return None

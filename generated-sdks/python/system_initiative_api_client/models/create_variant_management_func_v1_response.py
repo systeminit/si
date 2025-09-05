@@ -22,14 +22,12 @@ from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 
-class ConnectionPoint(BaseModel):
+class CreateVariantManagementFuncV1Response(BaseModel):
     """
-    ConnectionPoint
+    CreateVariantManagementFuncV1Response
     """ # noqa: E501
-    component: StrictStr
-    component_id: StrictStr = Field(alias="componentId")
-    socket_name: StrictStr = Field(alias="socketName")
-    __properties: ClassVar[List[str]] = ["component", "componentId", "socketName"]
+    func_id: StrictStr = Field(alias="funcId")
+    __properties: ClassVar[List[str]] = ["funcId"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -49,7 +47,7 @@ class ConnectionPoint(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of ConnectionPoint from a JSON string"""
+        """Create an instance of CreateVariantManagementFuncV1Response from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -74,7 +72,7 @@ class ConnectionPoint(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of ConnectionPoint from a dict"""
+        """Create an instance of CreateVariantManagementFuncV1Response from a dict"""
         if obj is None:
             return None
 
@@ -82,9 +80,7 @@ class ConnectionPoint(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "component": obj.get("component"),
-            "componentId": obj.get("componentId"),
-            "socketName": obj.get("socketName")
+            "funcId": obj.get("funcId")
         })
         return _obj
 

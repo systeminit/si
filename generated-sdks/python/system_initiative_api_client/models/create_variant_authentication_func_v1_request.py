@@ -17,18 +17,20 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List
-from system_initiative_api_client.models.managing_connection_view_v1 import ManagingConnectionViewV1
 from typing import Optional, Set
 from typing_extensions import Self
 
-class ConnectionViewV1OneOf2(BaseModel):
+class CreateVariantAuthenticationFuncV1Request(BaseModel):
     """
-    ConnectionViewV1OneOf2
+    CreateVariantAuthenticationFuncV1Request
     """ # noqa: E501
-    managing: ManagingConnectionViewV1
-    __properties: ClassVar[List[str]] = ["managing"]
+    code: StrictStr
+    description: StrictStr
+    display_name: StrictStr = Field(alias="displayName")
+    name: StrictStr
+    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "name"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -48,7 +50,7 @@ class ConnectionViewV1OneOf2(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of ConnectionViewV1OneOf2 from a JSON string"""
+        """Create an instance of CreateVariantAuthenticationFuncV1Request from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -69,14 +71,11 @@ class ConnectionViewV1OneOf2(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of managing
-        if self.managing:
-            _dict['managing'] = self.managing.to_dict()
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of ConnectionViewV1OneOf2 from a dict"""
+        """Create an instance of CreateVariantAuthenticationFuncV1Request from a dict"""
         if obj is None:
             return None
 
@@ -84,7 +83,10 @@ class ConnectionViewV1OneOf2(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "managing": ManagingConnectionViewV1.from_dict(obj["managing"]) if obj.get("managing") is not None else None
+            "code": obj.get("code"),
+            "description": obj.get("description"),
+            "displayName": obj.get("displayName"),
+            "name": obj.get("name")
         })
         return _obj
 

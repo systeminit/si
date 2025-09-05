@@ -444,12 +444,6 @@ export interface ComponentViewV1 {
     'schemaVariantId': string;
     /**
      * 
-     * @type {Array<SocketViewV1>}
-     * @memberof ComponentViewV1
-     */
-    'sockets': Array<SocketViewV1>;
-    /**
-     * 
      * @type {boolean}
      * @memberof ComponentViewV1
      */
@@ -462,98 +456,10 @@ export interface ComponentViewV1 {
     'views': Array<ViewV1>;
 }
 /**
- * @type Connection
- * @export
- */
-export type Connection = ConnectionOneOf | ConnectionOneOf1;
-
-/**
- * 
- * @export
- * @interface ConnectionDetails
- */
-export interface ConnectionDetails {
-    /**
-     * 
-     * @type {Array<Connection>}
-     * @memberof ConnectionDetails
-     */
-    'add'?: Array<Connection>;
-    /**
-     * 
-     * @type {Array<Connection>}
-     * @memberof ConnectionDetails
-     */
-    'remove'?: Array<Connection>;
-}
-/**
- * 
- * @export
- * @interface ConnectionOneOf
- */
-export interface ConnectionOneOf {
-    /**
-     * 
-     * @type {ConnectionPoint}
-     * @memberof ConnectionOneOf
-     */
-    'from': ConnectionPoint;
-    /**
-     * 
-     * @type {string}
-     * @memberof ConnectionOneOf
-     */
-    'to': string;
-}
-/**
- * 
- * @export
- * @interface ConnectionOneOf1
- */
-export interface ConnectionOneOf1 {
-    /**
-     * 
-     * @type {string}
-     * @memberof ConnectionOneOf1
-     */
-    'from': string;
-    /**
-     * 
-     * @type {ConnectionPoint}
-     * @memberof ConnectionOneOf1
-     */
-    'to': ConnectionPoint;
-}
-/**
- * 
- * @export
- * @interface ConnectionPoint
- */
-export interface ConnectionPoint {
-    /**
-     * 
-     * @type {string}
-     * @memberof ConnectionPoint
-     */
-    'component': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof ConnectionPoint
-     */
-    'componentId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof ConnectionPoint
-     */
-    'socketName': string;
-}
-/**
  * @type ConnectionViewV1
  * @export
  */
-export type ConnectionViewV1 = ConnectionViewV1OneOf | ConnectionViewV1OneOf1 | ConnectionViewV1OneOf2 | ConnectionViewV1OneOf3;
+export type ConnectionViewV1 = ConnectionViewV1OneOf | ConnectionViewV1OneOf1;
 
 /**
  * 
@@ -563,10 +469,10 @@ export type ConnectionViewV1 = ConnectionViewV1OneOf | ConnectionViewV1OneOf1 | 
 export interface ConnectionViewV1OneOf {
     /**
      * 
-     * @type {IncomingConnectionViewV1}
+     * @type {ManagingConnectionViewV1}
      * @memberof ConnectionViewV1OneOf
      */
-    'incoming': IncomingConnectionViewV1;
+    'managing': ManagingConnectionViewV1;
 }
 /**
  * 
@@ -576,34 +482,8 @@ export interface ConnectionViewV1OneOf {
 export interface ConnectionViewV1OneOf1 {
     /**
      * 
-     * @type {OutgoingConnectionViewV1}
-     * @memberof ConnectionViewV1OneOf1
-     */
-    'outgoing': OutgoingConnectionViewV1;
-}
-/**
- * 
- * @export
- * @interface ConnectionViewV1OneOf2
- */
-export interface ConnectionViewV1OneOf2 {
-    /**
-     * 
-     * @type {ManagingConnectionViewV1}
-     * @memberof ConnectionViewV1OneOf2
-     */
-    'managing': ManagingConnectionViewV1;
-}
-/**
- * 
- * @export
- * @interface ConnectionViewV1OneOf3
- */
-export interface ConnectionViewV1OneOf3 {
-    /**
-     * 
      * @type {ManagedByConnectionViewV1}
-     * @memberof ConnectionViewV1OneOf3
+     * @memberof ConnectionViewV1OneOf1
      */
     'managedBy': ManagedByConnectionViewV1;
 }
@@ -647,19 +527,6 @@ export interface CreateComponentV1Request {
     'attributes'?: { [key: string]: any; };
     /**
      * 
-     * @type {Array<Connection>}
-     * @memberof CreateComponentV1Request
-     */
-    'connections'?: Array<Connection>;
-    /**
-     * 
-     * @type {{ [key: string]: any; }}
-     * @memberof CreateComponentV1Request
-     * @deprecated
-     */
-    'domain'?: { [key: string]: any; };
-    /**
-     * 
      * @type {ComponentReference}
      * @memberof CreateComponentV1Request
      */
@@ -684,20 +551,6 @@ export interface CreateComponentV1Request {
     'schemaName': string;
     /**
      * 
-     * @type {{ [key: string]: any; }}
-     * @memberof CreateComponentV1Request
-     * @deprecated
-     */
-    'secrets'?: { [key: string]: any; };
-    /**
-     * 
-     * @type {{ [key: string]: Subscription; }}
-     * @memberof CreateComponentV1Request
-     * @deprecated
-     */
-    'subscriptions'?: { [key: string]: Subscription; };
-    /**
-     * 
      * @type {string}
      * @memberof CreateComponentV1Request
      */
@@ -715,6 +568,49 @@ export interface CreateComponentV1Response {
      * @memberof CreateComponentV1Response
      */
     'component': ComponentViewV1;
+}
+/**
+ * 
+ * @export
+ * @interface CreateSchemaV1Request
+ */
+export interface CreateSchemaV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateSchemaV1Request
+     */
+    'category'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateSchemaV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateSchemaV1Request
+     */
+    'color'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateSchemaV1Request
+     */
+    'description'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateSchemaV1Request
+     */
+    'link'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateSchemaV1Request
+     */
+    'name': string;
 }
 /**
  * 
@@ -759,6 +655,270 @@ export interface CreateSecretV1Response {
      * @memberof CreateSecretV1Response
      */
     'secret': SecretV1;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantActionFuncV1Request
+ */
+export interface CreateVariantActionFuncV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantActionFuncV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantActionFuncV1Request
+     */
+    'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantActionFuncV1Request
+     */
+    'displayName': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantActionFuncV1Request
+     */
+    'kind': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantActionFuncV1Request
+     */
+    'name': string;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantActionFuncV1Response
+ */
+export interface CreateVariantActionFuncV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantActionFuncV1Response
+     */
+    'funcId': string;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantAuthenticationFuncV1Request
+ */
+export interface CreateVariantAuthenticationFuncV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantAuthenticationFuncV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantAuthenticationFuncV1Request
+     */
+    'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantAuthenticationFuncV1Request
+     */
+    'displayName': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantAuthenticationFuncV1Request
+     */
+    'name': string;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantAuthenticationFuncV1Response
+ */
+export interface CreateVariantAuthenticationFuncV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantAuthenticationFuncV1Response
+     */
+    'funcId': string;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantCodegenFuncV1Request
+ */
+export interface CreateVariantCodegenFuncV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantCodegenFuncV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantCodegenFuncV1Request
+     */
+    'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantCodegenFuncV1Request
+     */
+    'displayName': string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof CreateVariantCodegenFuncV1Request
+     */
+    'locations': Array<CreateVariantCodegenFuncV1RequestLocationsEnum>;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantCodegenFuncV1Request
+     */
+    'name': string;
+}
+
+/**
+    * @export
+    * @enum {string}
+    */
+export enum CreateVariantCodegenFuncV1RequestLocationsEnum {
+    CODE = 'code',
+    DELETED_AT = 'deletedAt',
+    DOMAIN = 'domain',
+    RESOURCE = 'resource',
+    SECRETS = 'secrets'
+}
+
+/**
+ * 
+ * @export
+ * @interface CreateVariantCodegenFuncV1Response
+ */
+export interface CreateVariantCodegenFuncV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantCodegenFuncV1Response
+     */
+    'funcId': string;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantManagementFuncV1Request
+ */
+export interface CreateVariantManagementFuncV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantManagementFuncV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantManagementFuncV1Request
+     */
+    'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantManagementFuncV1Request
+     */
+    'displayName': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantManagementFuncV1Request
+     */
+    'name': string;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantManagementFuncV1Response
+ */
+export interface CreateVariantManagementFuncV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantManagementFuncV1Response
+     */
+    'funcId': string;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantQualificationFuncV1Request
+ */
+export interface CreateVariantQualificationFuncV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantQualificationFuncV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantQualificationFuncV1Request
+     */
+    'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantQualificationFuncV1Request
+     */
+    'displayName': string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof CreateVariantQualificationFuncV1Request
+     */
+    'locations': Array<CreateVariantQualificationFuncV1RequestLocationsEnum>;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantQualificationFuncV1Request
+     */
+    'name': string;
+}
+
+/**
+    * @export
+    * @enum {string}
+    */
+export enum CreateVariantQualificationFuncV1RequestLocationsEnum {
+    CODE = 'code',
+    DELETED_AT = 'deletedAt',
+    DOMAIN = 'domain',
+    RESOURCE = 'resource',
+    SECRETS = 'secrets'
+}
+
+/**
+ * 
+ * @export
+ * @interface CreateVariantQualificationFuncV1Response
+ */
+export interface CreateVariantQualificationFuncV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantQualificationFuncV1Response
+     */
+    'funcId': string;
 }
 /**
  * 
@@ -1288,6 +1448,12 @@ export interface GenerateTemplateV1Response {
      * @type {string}
      * @memberof GenerateTemplateV1Response
      */
+    'schemaId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GenerateTemplateV1Response
+     */
     'schemaVariantId': string;
 }
 /**
@@ -1580,37 +1746,6 @@ export interface HashMapValue {
 /**
  * 
  * @export
- * @interface IncomingConnectionViewV1
- */
-export interface IncomingConnectionViewV1 {
-    /**
-     * 
-     * @type {string}
-     * @memberof IncomingConnectionViewV1
-     */
-    'from': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof IncomingConnectionViewV1
-     */
-    'fromComponentId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof IncomingConnectionViewV1
-     */
-    'fromComponentName': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof IncomingConnectionViewV1
-     */
-    'to': string;
-}
-/**
- * 
- * @export
  * @interface ListChangeSetV1Response
  */
 export interface ListChangeSetV1Response {
@@ -1633,12 +1768,6 @@ export interface ListComponentsV1Response {
      * @memberof ListComponentsV1Response
      */
     'componentDetails': Array<ComponentDetailsV1>;
-    /**
-     * 
-     * @type {Array<Array<string>>}
-     * @memberof ListComponentsV1Response
-     */
-    'components': Array<Array<string>>;
     /**
      * 
      * @type {string}
@@ -1849,31 +1978,6 @@ export interface MergeStatusV1ResponseActionComponent {
      * @memberof MergeStatusV1ResponseActionComponent
      */
     'name': string;
-}
-/**
- * 
- * @export
- * @interface OutgoingConnectionViewV1
- */
-export interface OutgoingConnectionViewV1 {
-    /**
-     * 
-     * @type {string}
-     * @memberof OutgoingConnectionViewV1
-     */
-    'from': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof OutgoingConnectionViewV1
-     */
-    'toComponentId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof OutgoingConnectionViewV1
-     */
-    'toComponentName': string;
 }
 /**
  * 
@@ -2211,57 +2315,6 @@ export interface SecretV1 {
 /**
  * 
  * @export
- * @enum {string}
- */
-
-export enum SocketDirection {
-    INPUT = 'input',
-    OUTPUT = 'output'
-}
-
-
-/**
- * 
- * @export
- * @interface SocketViewV1
- */
-export interface SocketViewV1 {
-    /**
-     * 
-     * @type {string}
-     * @memberof SocketViewV1
-     */
-    'arity': string;
-    /**
-     * 
-     * @type {SocketDirection}
-     * @memberof SocketViewV1
-     */
-    'direction': SocketDirection;
-    /**
-     * 
-     * @type {string}
-     * @memberof SocketViewV1
-     */
-    'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SocketViewV1
-     */
-    'name': string;
-    /**
-     * 
-     * @type {object}
-     * @memberof SocketViewV1
-     */
-    'value': object;
-}
-
-
-/**
- * 
- * @export
  * @interface SourceViewV1
  */
 export interface SourceViewV1 {
@@ -2281,37 +2334,6 @@ export interface SourceViewV1 {
 /**
  * 
  * @export
- * @interface Subscription
- */
-export interface Subscription {
-    /**
-     * 
-     * @type {string}
-     * @memberof Subscription
-     */
-    'component': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Subscription
-     */
-    'componentId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Subscription
-     */
-    'function'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Subscription
-     */
-    'propPath': string;
-}
-/**
- * 
- * @export
  * @interface SystemStatusResponse
  */
 export interface SystemStatusResponse {
@@ -2325,6 +2347,25 @@ export interface SystemStatusResponse {
 /**
  * 
  * @export
+ * @interface UnlockedSchemaV1Response
+ */
+export interface UnlockedSchemaV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof UnlockedSchemaV1Response
+     */
+    'schemaId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UnlockedSchemaV1Response
+     */
+    'unlockedVariantId': string;
+}
+/**
+ * 
+ * @export
  * @interface UpdateComponentV1Request
  */
 export interface UpdateComponentV1Request {
@@ -2334,19 +2375,6 @@ export interface UpdateComponentV1Request {
      * @memberof UpdateComponentV1Request
      */
     'attributes'?: { [key: string]: any; };
-    /**
-     * 
-     * @type {ConnectionDetails}
-     * @memberof UpdateComponentV1Request
-     */
-    'connectionChanges'?: ConnectionDetails;
-    /**
-     * 
-     * @type {{ [key: string]: any; }}
-     * @memberof UpdateComponentV1Request
-     * @deprecated
-     */
-    'domain'?: { [key: string]: any; };
     /**
      * 
      * @type {string}
@@ -2363,22 +2391,8 @@ export interface UpdateComponentV1Request {
      * 
      * @type {{ [key: string]: any; }}
      * @memberof UpdateComponentV1Request
-     * @deprecated
      */
     'secrets'?: { [key: string]: any; };
-    /**
-     * 
-     * @type {{ [key: string]: Subscription; }}
-     * @memberof UpdateComponentV1Request
-     * @deprecated
-     */
-    'subscriptions'?: { [key: string]: Subscription; };
-    /**
-     * 
-     * @type {Array<ComponentPropKey>}
-     * @memberof UpdateComponentV1Request
-     */
-    'unset'?: Array<ComponentPropKey>;
 }
 /**
  * 
@@ -2392,6 +2406,87 @@ export interface UpdateComponentV1Response {
      * @memberof UpdateComponentV1Response
      */
     'component': ComponentViewV1;
+}
+/**
+ * 
+ * @export
+ * @interface UpdateFuncV1Request
+ */
+export interface UpdateFuncV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateFuncV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateFuncV1Request
+     */
+    'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateFuncV1Request
+     */
+    'displayName': string;
+}
+/**
+ * 
+ * @export
+ * @interface UpdateFuncV1Response
+ */
+export interface UpdateFuncV1Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UpdateFuncV1Response
+     */
+    'success': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface UpdateSchemaVariantV1Request
+ */
+export interface UpdateSchemaVariantV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateSchemaVariantV1Request
+     */
+    'category': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateSchemaVariantV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateSchemaVariantV1Request
+     */
+    'color': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateSchemaVariantV1Request
+     */
+    'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateSchemaVariantV1Request
+     */
+    'link': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateSchemaVariantV1Request
+     */
+    'name': string;
 }
 /**
  * 
@@ -5859,6 +5954,54 @@ export const FuncsApiAxiosParamCreator = function (configuration?: Configuration
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * 
+         * @summary Update a func
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} funcId Func identifier
+         * @param {UpdateFuncV1Request} updateFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateFunc: async (workspaceId: string, changeSetId: string, funcId: string, updateFuncV1Request: UpdateFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('updateFunc', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('updateFunc', 'changeSetId', changeSetId)
+            // verify required parameter 'funcId' is not null or undefined
+            assertParamExists('updateFunc', 'funcId', funcId)
+            // verify required parameter 'updateFuncV1Request' is not null or undefined
+            assertParamExists('updateFunc', 'updateFuncV1Request', updateFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"func_id"}}`, encodeURIComponent(String(funcId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(updateFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -5899,6 +6042,22 @@ export const FuncsApiFp = function(configuration?: Configuration) {
             const localVarOperationServerBasePath = operationServerMap['FuncsApi.getFuncRun']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * 
+         * @summary Update a func
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} funcId Func identifier
+         * @param {UpdateFuncV1Request} updateFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async updateFunc(workspaceId: string, changeSetId: string, funcId: string, updateFuncV1Request: UpdateFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UpdateFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.updateFunc(workspaceId, changeSetId, funcId, updateFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['FuncsApi.updateFunc']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -5929,6 +6088,16 @@ export const FuncsApiFactory = function (configuration?: Configuration, basePath
         getFuncRun(requestParameters: FuncsApiGetFuncRunRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetFuncRunV1Response> {
             return localVarFp.getFuncRun(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.funcRunId, options).then((request) => request(axios, basePath));
         },
+        /**
+         * 
+         * @summary Update a func
+         * @param {FuncsApiUpdateFuncRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateFunc(requestParameters: FuncsApiUpdateFuncRequest, options?: RawAxiosRequestConfig): AxiosPromise<UpdateFuncV1Response> {
+            return localVarFp.updateFunc(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.funcId, requestParameters.updateFuncV1Request, options).then((request) => request(axios, basePath));
+        },
     };
 };
 
@@ -5957,6 +6126,16 @@ export interface FuncsApiInterface {
      * @memberof FuncsApiInterface
      */
     getFuncRun(requestParameters: FuncsApiGetFuncRunRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetFuncRunV1Response>;
+
+    /**
+     * 
+     * @summary Update a func
+     * @param {FuncsApiUpdateFuncRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FuncsApiInterface
+     */
+    updateFunc(requestParameters: FuncsApiUpdateFuncRequest, options?: RawAxiosRequestConfig): AxiosPromise<UpdateFuncV1Response>;
 
 }
 
@@ -6017,6 +6196,41 @@ export interface FuncsApiGetFuncRunRequest {
 }
 
 /**
+ * Request parameters for updateFunc operation in FuncsApi.
+ * @export
+ * @interface FuncsApiUpdateFuncRequest
+ */
+export interface FuncsApiUpdateFuncRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof FuncsApiUpdateFunc
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof FuncsApiUpdateFunc
+     */
+    readonly changeSetId: string
+
+    /**
+     * Func identifier
+     * @type {string}
+     * @memberof FuncsApiUpdateFunc
+     */
+    readonly funcId: string
+
+    /**
+     * 
+     * @type {UpdateFuncV1Request}
+     * @memberof FuncsApiUpdateFunc
+     */
+    readonly updateFuncV1Request: UpdateFuncV1Request
+}
+
+/**
  * FuncsApi - object-oriented interface
  * @export
  * @class FuncsApi
@@ -6045,6 +6259,18 @@ export class FuncsApi extends BaseAPI implements FuncsApiInterface {
      */
     public getFuncRun(requestParameters: FuncsApiGetFuncRunRequest, options?: RawAxiosRequestConfig) {
         return FuncsApiFp(this.configuration).getFuncRun(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.funcRunId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Update a func
+     * @param {FuncsApiUpdateFuncRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FuncsApi
+     */
+    public updateFunc(requestParameters: FuncsApiUpdateFuncRequest, options?: RawAxiosRequestConfig) {
+        return FuncsApiFp(this.configuration).updateFunc(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.funcId, requestParameters.updateFuncV1Request, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -6335,6 +6561,310 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
     return {
         /**
          * 
+         * @summary Create a schema and it\'s default variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {CreateSchemaV1Request} createSchemaV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createSchema: async (workspaceId: string, changeSetId: string, createSchemaV1Request: CreateSchemaV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('createSchema', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('createSchema', 'changeSetId', changeSetId)
+            // verify required parameter 'createSchemaV1Request' is not null or undefined
+            assertParamExists('createSchema', 'createSchemaV1Request', createSchemaV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createSchemaV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Create an action function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantActionFuncV1Request} createVariantActionFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantAction: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantActionFuncV1Request: CreateVariantActionFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('createVariantAction', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('createVariantAction', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('createVariantAction', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('createVariantAction', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'createVariantActionFuncV1Request' is not null or undefined
+            assertParamExists('createVariantAction', 'createVariantActionFuncV1Request', createVariantActionFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/action`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createVariantActionFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Create an authentication function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantAuthenticationFuncV1Request} createVariantAuthenticationFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantAuthentication: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantAuthenticationFuncV1Request: CreateVariantAuthenticationFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('createVariantAuthentication', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('createVariantAuthentication', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('createVariantAuthentication', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('createVariantAuthentication', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'createVariantAuthenticationFuncV1Request' is not null or undefined
+            assertParamExists('createVariantAuthentication', 'createVariantAuthenticationFuncV1Request', createVariantAuthenticationFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/authentication`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createVariantAuthenticationFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Create a codegen function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantCodegenFuncV1Request} createVariantCodegenFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantCodegen: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantCodegenFuncV1Request: CreateVariantCodegenFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('createVariantCodegen', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('createVariantCodegen', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('createVariantCodegen', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('createVariantCodegen', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'createVariantCodegenFuncV1Request' is not null or undefined
+            assertParamExists('createVariantCodegen', 'createVariantCodegenFuncV1Request', createVariantCodegenFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/codegen`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createVariantCodegenFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Create a management function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantManagementFuncV1Request} createVariantManagementFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantManagement: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantManagementFuncV1Request: CreateVariantManagementFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('createVariantManagement', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('createVariantManagement', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('createVariantManagement', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('createVariantManagement', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'createVariantManagementFuncV1Request' is not null or undefined
+            assertParamExists('createVariantManagement', 'createVariantManagementFuncV1Request', createVariantManagementFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/management`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createVariantManagementFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Create a qualification and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantQualificationFuncV1Request} createVariantQualificationFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantQualification: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantQualificationFuncV1Request: CreateVariantQualificationFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('createVariantQualification', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('createVariantQualification', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('createVariantQualification', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('createVariantQualification', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'createVariantQualificationFuncV1Request' is not null or undefined
+            assertParamExists('createVariantQualification', 'createVariantQualificationFuncV1Request', createVariantQualificationFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/qualification`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createVariantQualificationFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Find schema by name or schema id
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -6559,6 +7089,100 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * 
+         * @summary Unlocks a schema - if there\'s already an unlocked variant, then we return that
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        unlockSchema: async (workspaceId: string, changeSetId: string, schemaId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('unlockSchema', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('unlockSchema', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('unlockSchema', 'schemaId', schemaId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/unlock`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Update the schema variant and regenerate
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {UpdateSchemaVariantV1Request} updateSchemaVariantV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateSchemaVariant: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, updateSchemaVariantV1Request: UpdateSchemaVariantV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('updateSchemaVariant', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('updateSchemaVariant', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('updateSchemaVariant', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('updateSchemaVariant', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'updateSchemaVariantV1Request' is not null or undefined
+            assertParamExists('updateSchemaVariant', 'updateSchemaVariantV1Request', updateSchemaVariantV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(updateSchemaVariantV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -6569,6 +7193,106 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
 export const SchemasApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = SchemasApiAxiosParamCreator(configuration)
     return {
+        /**
+         * 
+         * @summary Create a schema and it\'s default variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {CreateSchemaV1Request} createSchemaV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createSchema(workspaceId: string, changeSetId: string, createSchemaV1Request: CreateSchemaV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSchemaV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createSchema(workspaceId, changeSetId, createSchemaV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.createSchema']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Create an action function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantActionFuncV1Request} createVariantActionFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createVariantAction(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantActionFuncV1Request: CreateVariantActionFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreateVariantActionFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createVariantAction(workspaceId, changeSetId, schemaId, schemaVariantId, createVariantActionFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.createVariantAction']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Create an authentication function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantAuthenticationFuncV1Request} createVariantAuthenticationFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createVariantAuthentication(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantAuthenticationFuncV1Request: CreateVariantAuthenticationFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreateVariantAuthenticationFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createVariantAuthentication(workspaceId, changeSetId, schemaId, schemaVariantId, createVariantAuthenticationFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.createVariantAuthentication']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Create a codegen function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantCodegenFuncV1Request} createVariantCodegenFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createVariantCodegen(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantCodegenFuncV1Request: CreateVariantCodegenFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreateVariantCodegenFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createVariantCodegen(workspaceId, changeSetId, schemaId, schemaVariantId, createVariantCodegenFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.createVariantCodegen']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Create a management function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantManagementFuncV1Request} createVariantManagementFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createVariantManagement(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantManagementFuncV1Request: CreateVariantManagementFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreateVariantManagementFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createVariantManagement(workspaceId, changeSetId, schemaId, schemaVariantId, createVariantManagementFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.createVariantManagement']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Create a qualification and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantQualificationFuncV1Request} createVariantQualificationFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createVariantQualification(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantQualificationFuncV1Request: CreateVariantQualificationFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreateVariantQualificationFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createVariantQualification(workspaceId, changeSetId, schemaId, schemaVariantId, createVariantQualificationFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.createVariantQualification']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
         /**
          * 
          * @summary Find schema by name or schema id
@@ -6647,6 +7371,38 @@ export const SchemasApiFp = function(configuration?: Configuration) {
             const localVarOperationServerBasePath = operationServerMap['SchemasApi.listSchemas']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * 
+         * @summary Unlocks a schema - if there\'s already an unlocked variant, then we return that
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async unlockSchema(workspaceId: string, changeSetId: string, schemaId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnlockedSchemaV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.unlockSchema(workspaceId, changeSetId, schemaId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.unlockSchema']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Update the schema variant and regenerate
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {UpdateSchemaVariantV1Request} updateSchemaVariantV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async updateSchemaVariant(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, updateSchemaVariantV1Request: UpdateSchemaVariantV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSchemaVariantV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.updateSchemaVariant(workspaceId, changeSetId, schemaId, schemaVariantId, updateSchemaVariantV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.updateSchemaVariant']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -6657,6 +7413,66 @@ export const SchemasApiFp = function(configuration?: Configuration) {
 export const SchemasApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = SchemasApiFp(configuration)
     return {
+        /**
+         * 
+         * @summary Create a schema and it\'s default variant
+         * @param {SchemasApiCreateSchemaRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createSchema(requestParameters: SchemasApiCreateSchemaRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaV1Response> {
+            return localVarFp.createSchema(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.createSchemaV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Create an action function and attach to a schema variant
+         * @param {SchemasApiCreateVariantActionRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantAction(requestParameters: SchemasApiCreateVariantActionRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantActionFuncV1Response> {
+            return localVarFp.createVariantAction(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantActionFuncV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Create an authentication function and attach to a schema variant
+         * @param {SchemasApiCreateVariantAuthenticationRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantAuthentication(requestParameters: SchemasApiCreateVariantAuthenticationRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantAuthenticationFuncV1Response> {
+            return localVarFp.createVariantAuthentication(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantAuthenticationFuncV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Create a codegen function and attach to a schema variant
+         * @param {SchemasApiCreateVariantCodegenRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantCodegen(requestParameters: SchemasApiCreateVariantCodegenRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantCodegenFuncV1Response> {
+            return localVarFp.createVariantCodegen(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantCodegenFuncV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Create a management function and attach to a schema variant
+         * @param {SchemasApiCreateVariantManagementRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantManagement(requestParameters: SchemasApiCreateVariantManagementRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantManagementFuncV1Response> {
+            return localVarFp.createVariantManagement(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantManagementFuncV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Create a qualification and attach to a schema variant
+         * @param {SchemasApiCreateVariantQualificationRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantQualification(requestParameters: SchemasApiCreateVariantQualificationRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantQualificationFuncV1Response> {
+            return localVarFp.createVariantQualification(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantQualificationFuncV1Request, options).then((request) => request(axios, basePath));
+        },
         /**
          * 
          * @summary Find schema by name or schema id
@@ -6707,6 +7523,26 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
         listSchemas(requestParameters: SchemasApiListSchemasRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListSchemaV1Response> {
             return localVarFp.listSchemas(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(axios, basePath));
         },
+        /**
+         * 
+         * @summary Unlocks a schema - if there\'s already an unlocked variant, then we return that
+         * @param {SchemasApiUnlockSchemaRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        unlockSchema(requestParameters: SchemasApiUnlockSchemaRequest, options?: RawAxiosRequestConfig): AxiosPromise<UnlockedSchemaV1Response> {
+            return localVarFp.unlockSchema(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Update the schema variant and regenerate
+         * @param {SchemasApiUpdateSchemaVariantRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateSchemaVariant(requestParameters: SchemasApiUpdateSchemaVariantRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaVariantV1Response> {
+            return localVarFp.updateSchemaVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.updateSchemaVariantV1Request, options).then((request) => request(axios, basePath));
+        },
     };
 };
 
@@ -6716,6 +7552,66 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
  * @interface SchemasApi
  */
 export interface SchemasApiInterface {
+    /**
+     * 
+     * @summary Create a schema and it\'s default variant
+     * @param {SchemasApiCreateSchemaRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    createSchema(requestParameters: SchemasApiCreateSchemaRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaV1Response>;
+
+    /**
+     * 
+     * @summary Create an action function and attach to a schema variant
+     * @param {SchemasApiCreateVariantActionRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    createVariantAction(requestParameters: SchemasApiCreateVariantActionRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantActionFuncV1Response>;
+
+    /**
+     * 
+     * @summary Create an authentication function and attach to a schema variant
+     * @param {SchemasApiCreateVariantAuthenticationRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    createVariantAuthentication(requestParameters: SchemasApiCreateVariantAuthenticationRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantAuthenticationFuncV1Response>;
+
+    /**
+     * 
+     * @summary Create a codegen function and attach to a schema variant
+     * @param {SchemasApiCreateVariantCodegenRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    createVariantCodegen(requestParameters: SchemasApiCreateVariantCodegenRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantCodegenFuncV1Response>;
+
+    /**
+     * 
+     * @summary Create a management function and attach to a schema variant
+     * @param {SchemasApiCreateVariantManagementRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    createVariantManagement(requestParameters: SchemasApiCreateVariantManagementRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantManagementFuncV1Response>;
+
+    /**
+     * 
+     * @summary Create a qualification and attach to a schema variant
+     * @param {SchemasApiCreateVariantQualificationRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    createVariantQualification(requestParameters: SchemasApiCreateVariantQualificationRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantQualificationFuncV1Response>;
+
     /**
      * 
      * @summary Find schema by name or schema id
@@ -6766,6 +7662,264 @@ export interface SchemasApiInterface {
      */
     listSchemas(requestParameters: SchemasApiListSchemasRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListSchemaV1Response>;
 
+    /**
+     * 
+     * @summary Unlocks a schema - if there\'s already an unlocked variant, then we return that
+     * @param {SchemasApiUnlockSchemaRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    unlockSchema(requestParameters: SchemasApiUnlockSchemaRequest, options?: RawAxiosRequestConfig): AxiosPromise<UnlockedSchemaV1Response>;
+
+    /**
+     * 
+     * @summary Update the schema variant and regenerate
+     * @param {SchemasApiUpdateSchemaVariantRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    updateSchemaVariant(requestParameters: SchemasApiUpdateSchemaVariantRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaVariantV1Response>;
+
+}
+
+/**
+ * Request parameters for createSchema operation in SchemasApi.
+ * @export
+ * @interface SchemasApiCreateSchemaRequest
+ */
+export interface SchemasApiCreateSchemaRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiCreateSchema
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiCreateSchema
+     */
+    readonly changeSetId: string
+
+    /**
+     * 
+     * @type {CreateSchemaV1Request}
+     * @memberof SchemasApiCreateSchema
+     */
+    readonly createSchemaV1Request: CreateSchemaV1Request
+}
+
+/**
+ * Request parameters for createVariantAction operation in SchemasApi.
+ * @export
+ * @interface SchemasApiCreateVariantActionRequest
+ */
+export interface SchemasApiCreateVariantActionRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAction
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAction
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAction
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAction
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * 
+     * @type {CreateVariantActionFuncV1Request}
+     * @memberof SchemasApiCreateVariantAction
+     */
+    readonly createVariantActionFuncV1Request: CreateVariantActionFuncV1Request
+}
+
+/**
+ * Request parameters for createVariantAuthentication operation in SchemasApi.
+ * @export
+ * @interface SchemasApiCreateVariantAuthenticationRequest
+ */
+export interface SchemasApiCreateVariantAuthenticationRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAuthentication
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAuthentication
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAuthentication
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAuthentication
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * 
+     * @type {CreateVariantAuthenticationFuncV1Request}
+     * @memberof SchemasApiCreateVariantAuthentication
+     */
+    readonly createVariantAuthenticationFuncV1Request: CreateVariantAuthenticationFuncV1Request
+}
+
+/**
+ * Request parameters for createVariantCodegen operation in SchemasApi.
+ * @export
+ * @interface SchemasApiCreateVariantCodegenRequest
+ */
+export interface SchemasApiCreateVariantCodegenRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantCodegen
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantCodegen
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantCodegen
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantCodegen
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * 
+     * @type {CreateVariantCodegenFuncV1Request}
+     * @memberof SchemasApiCreateVariantCodegen
+     */
+    readonly createVariantCodegenFuncV1Request: CreateVariantCodegenFuncV1Request
+}
+
+/**
+ * Request parameters for createVariantManagement operation in SchemasApi.
+ * @export
+ * @interface SchemasApiCreateVariantManagementRequest
+ */
+export interface SchemasApiCreateVariantManagementRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantManagement
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantManagement
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantManagement
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantManagement
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * 
+     * @type {CreateVariantManagementFuncV1Request}
+     * @memberof SchemasApiCreateVariantManagement
+     */
+    readonly createVariantManagementFuncV1Request: CreateVariantManagementFuncV1Request
+}
+
+/**
+ * Request parameters for createVariantQualification operation in SchemasApi.
+ * @export
+ * @interface SchemasApiCreateVariantQualificationRequest
+ */
+export interface SchemasApiCreateVariantQualificationRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantQualification
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantQualification
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantQualification
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantQualification
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * 
+     * @type {CreateVariantQualificationFuncV1Request}
+     * @memberof SchemasApiCreateVariantQualification
+     */
+    readonly createVariantQualificationFuncV1Request: CreateVariantQualificationFuncV1Request
 }
 
 /**
@@ -6930,12 +8084,154 @@ export interface SchemasApiListSchemasRequest {
 }
 
 /**
+ * Request parameters for unlockSchema operation in SchemasApi.
+ * @export
+ * @interface SchemasApiUnlockSchemaRequest
+ */
+export interface SchemasApiUnlockSchemaRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiUnlockSchema
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiUnlockSchema
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiUnlockSchema
+     */
+    readonly schemaId: string
+}
+
+/**
+ * Request parameters for updateSchemaVariant operation in SchemasApi.
+ * @export
+ * @interface SchemasApiUpdateSchemaVariantRequest
+ */
+export interface SchemasApiUpdateSchemaVariantRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiUpdateSchemaVariant
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiUpdateSchemaVariant
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiUpdateSchemaVariant
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiUpdateSchemaVariant
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * 
+     * @type {UpdateSchemaVariantV1Request}
+     * @memberof SchemasApiUpdateSchemaVariant
+     */
+    readonly updateSchemaVariantV1Request: UpdateSchemaVariantV1Request
+}
+
+/**
  * SchemasApi - object-oriented interface
  * @export
  * @class SchemasApi
  * @extends {BaseAPI}
  */
 export class SchemasApi extends BaseAPI implements SchemasApiInterface {
+    /**
+     * 
+     * @summary Create a schema and it\'s default variant
+     * @param {SchemasApiCreateSchemaRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public createSchema(requestParameters: SchemasApiCreateSchemaRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).createSchema(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.createSchemaV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Create an action function and attach to a schema variant
+     * @param {SchemasApiCreateVariantActionRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public createVariantAction(requestParameters: SchemasApiCreateVariantActionRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).createVariantAction(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantActionFuncV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Create an authentication function and attach to a schema variant
+     * @param {SchemasApiCreateVariantAuthenticationRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public createVariantAuthentication(requestParameters: SchemasApiCreateVariantAuthenticationRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).createVariantAuthentication(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantAuthenticationFuncV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Create a codegen function and attach to a schema variant
+     * @param {SchemasApiCreateVariantCodegenRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public createVariantCodegen(requestParameters: SchemasApiCreateVariantCodegenRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).createVariantCodegen(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantCodegenFuncV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Create a management function and attach to a schema variant
+     * @param {SchemasApiCreateVariantManagementRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public createVariantManagement(requestParameters: SchemasApiCreateVariantManagementRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).createVariantManagement(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantManagementFuncV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Create a qualification and attach to a schema variant
+     * @param {SchemasApiCreateVariantQualificationRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public createVariantQualification(requestParameters: SchemasApiCreateVariantQualificationRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).createVariantQualification(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantQualificationFuncV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
     /**
      * 
      * @summary Find schema by name or schema id
@@ -6994,6 +8290,30 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
      */
     public listSchemas(requestParameters: SchemasApiListSchemasRequest, options?: RawAxiosRequestConfig) {
         return SchemasApiFp(this.configuration).listSchemas(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Unlocks a schema - if there\'s already an unlocked variant, then we return that
+     * @param {SchemasApiUnlockSchemaRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public unlockSchema(requestParameters: SchemasApiUnlockSchemaRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).unlockSchema(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Update the schema variant and regenerate
+     * @param {SchemasApiUpdateSchemaVariantRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public updateSchemaVariant(requestParameters: SchemasApiUpdateSchemaVariantRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).updateSchemaVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.updateSchemaVariantV1Request, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

@@ -35,15 +35,6 @@ class TestConnectionViewV1(unittest.TestCase):
         model = ConnectionViewV1()
         if include_optional:
             return ConnectionViewV1(
-                incoming = system_initiative_api_client.models.incoming_connection_view_v1.IncomingConnectionViewV1(
-                    from = '', 
-                    from_component_id = '', 
-                    from_component_name = '', 
-                    to = '', ),
-                outgoing = system_initiative_api_client.models.outgoing_connection_view_v1.OutgoingConnectionViewV1(
-                    from = '', 
-                    to_component_id = '', 
-                    to_component_name = '', ),
                 managing = system_initiative_api_client.models.managing_connection_view_v1.ManagingConnectionViewV1(
                     component_id = '', 
                     component_name = '', ),
@@ -53,15 +44,6 @@ class TestConnectionViewV1(unittest.TestCase):
             )
         else:
             return ConnectionViewV1(
-                incoming = system_initiative_api_client.models.incoming_connection_view_v1.IncomingConnectionViewV1(
-                    from = '', 
-                    from_component_id = '', 
-                    from_component_name = '', 
-                    to = '', ),
-                outgoing = system_initiative_api_client.models.outgoing_connection_view_v1.OutgoingConnectionViewV1(
-                    from = '', 
-                    to_component_id = '', 
-                    to_component_name = '', ),
                 managing = system_initiative_api_client.models.managing_connection_view_v1.ManagingConnectionViewV1(
                     component_id = '', 
                     component_name = '', ),

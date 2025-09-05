@@ -18,19 +18,16 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 
-class Subscription(BaseModel):
+class CreateVariantActionFuncV1Response(BaseModel):
     """
-    Subscription
+    CreateVariantActionFuncV1Response
     """ # noqa: E501
-    component: StrictStr
-    component_id: StrictStr = Field(alias="componentId")
-    function: Optional[StrictStr] = None
-    prop_path: StrictStr = Field(alias="propPath")
-    __properties: ClassVar[List[str]] = ["component", "componentId", "function", "propPath"]
+    func_id: StrictStr = Field(alias="funcId")
+    __properties: ClassVar[List[str]] = ["funcId"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -50,7 +47,7 @@ class Subscription(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of Subscription from a JSON string"""
+        """Create an instance of CreateVariantActionFuncV1Response from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -75,7 +72,7 @@ class Subscription(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of Subscription from a dict"""
+        """Create an instance of CreateVariantActionFuncV1Response from a dict"""
         if obj is None:
             return None
 
@@ -83,10 +80,7 @@ class Subscription(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "component": obj.get("component"),
-            "componentId": obj.get("componentId"),
-            "function": obj.get("function"),
-            "propPath": obj.get("propPath")
+            "funcId": obj.get("funcId")
         })
         return _obj
 

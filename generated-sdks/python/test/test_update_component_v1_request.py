@@ -36,15 +36,9 @@ class TestUpdateComponentV1Request(unittest.TestCase):
         if include_optional:
             return UpdateComponentV1Request(
                 attributes = {/domain/VpcId={$source={component=01K0WRC69ZPEMD6SMTKC84FBWC, path=/resource_value/VpcId}}, /domain/SubnetId={$source={component=01K0WRC69ZPEMD6SMTKC84FBWD, path=/resource_value/SubnetId}}, /domain/Version={$source=null}},
-                connection_changes = system_initiative_api_client.models.connection_details.ConnectionDetails(
-                    add = {}, 
-                    remove = {}, ),
-                domain = {},
                 name = 'MyUpdatedComponentName',
                 resource_id = 'i-12345678',
-                secrets = {},
-                subscriptions = {},
-                unset = {}
+                secrets = {secretDefinitionName=secretName}
             )
         else:
             return UpdateComponentV1Request(

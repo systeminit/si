@@ -40,6 +40,13 @@ class TestFuncsApi(unittest.TestCase):
         """
         pass
 
+    def test_update_func(self) -> None:
+        """Test case for update_func
+
+        Update a func
+        """
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()

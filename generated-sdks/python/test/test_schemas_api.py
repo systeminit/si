@@ -26,6 +26,48 @@ class TestSchemasApi(unittest.TestCase):
     def tearDown(self) -> None:
         pass
 
+    def test_create_schema(self) -> None:
+        """Test case for create_schema
+
+        Create a schema and it's default variant
+        """
+        pass
+
+    def test_create_variant_action(self) -> None:
+        """Test case for create_variant_action
+
+        Create an action function and attach to a schema variant
+        """
+        pass
+
+    def test_create_variant_authentication(self) -> None:
+        """Test case for create_variant_authentication
+
+        Create an authentication function and attach to a schema variant
+        """
+        pass
+
+    def test_create_variant_codegen(self) -> None:
+        """Test case for create_variant_codegen
+
+        Create a codegen function and attach to a schema variant
+        """
+        pass
+
+    def test_create_variant_management(self) -> None:
+        """Test case for create_variant_management
+
+        Create a management function and attach to a schema variant
+        """
+        pass
+
+    def test_create_variant_qualification(self) -> None:
+        """Test case for create_variant_qualification
+
+        Create a qualification and attach to a schema variant
+        """
+        pass
+
     def test_find_schema(self) -> None:
         """Test case for find_schema
 
@@ -58,6 +100,20 @@ class TestSchemasApi(unittest.TestCase):
         """Test case for list_schemas
 
         List all schemas (paginated endpoint)
+        """
+        pass
+
+    def test_unlock_schema(self) -> None:
+        """Test case for unlock_schema
+
+        Unlocks a schema - if there's already an unlocked variant, then we return that
+        """
+        pass
+
+    def test_update_schema_variant(self) -> None:
+        """Test case for update_schema_variant
+
+        Update the schema variant and regenerate
         """
         pass
 
