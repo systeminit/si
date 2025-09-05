@@ -11,7 +11,7 @@ const UUID = Cypress.env("VITE_UUID") || import.meta.env.VITE_UUID || "local";
 const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
 const AUTH_PORTAL_URL = Cypress.env('VITE_AUTH_PORTAL_URL') || import.meta.env.VITE_AUTH_PORTAL_URL;
 
-describe("web", () => {
+describe("get_tiles", () => {
   beforeEach(function () {
     cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
   });

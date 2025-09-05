@@ -100,7 +100,7 @@ Cypress.Commands.add('clickButtonByIdIfExists', (id: string) => {
   });
 });
 
-Cypress.Commands.add('basicLogin', () => {
+Cypress.Commands.add('basicLogin', (needToPassLobby=false) => {
   const AUTH0_USERNAME = Cypress.env('VITE_AUTH0_USERNAME') || import.meta.env.VITE_AUTH0_USERNAME;
   const AUTH0_PASSWORD = Cypress.env('VITE_AUTH0_PASSWORD') || import.meta.env.VITE_AUTH0_PASSWORD;
   const AUTH_API_URL = Cypress.env('VITE_AUTH_API_URL') || import.meta.env.VITE_AUTH_API_URL;
@@ -117,11 +117,14 @@ Cypress.Commands.add('basicLogin', () => {
     return false;
   });
   cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
-  // cy.appModelPageLoaded();
+  if (needToPassLobby) {
+    cy.appModelPageLoaded();
+  } else {
   cy.wait(5000);
   // check to confirm that we have reached either the lobby or the app itself
   cy.get("#app-layout").should("exist", { timeout: 60000 });
   cy.url().should("contain", SI_WORKSPACE_ID);
+  }
 });
 
 Cypress.Commands.add('createChangeSet', (changeSetName: string, immediatelyAbandon = false) => {

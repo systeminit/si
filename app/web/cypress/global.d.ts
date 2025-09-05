@@ -24,7 +24,7 @@ declare namespace Cypress {
      *  fires off the standard Posthog event and
      *  makes sure you reached the new UI successfully
      */
-    basicLogin(): void;
+    basicLogin(needToPassLobby?: boolean): void;
 
     /**
      * Sends Posthog Event for User Identification/Test Identification in Posthog
