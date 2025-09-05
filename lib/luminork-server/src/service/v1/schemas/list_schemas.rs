@@ -24,13 +24,21 @@ use utoipa::{
 };
 
 use super::SchemaError;
-use crate::{
-    extract::{
-        PosthogEventTracker,
-        change_set::ChangeSetDalContext,
-    },
-    service::v1::common::PaginationParams,
+use crate::extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
 };
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ListSchemaParams {
+    #[schema(example = "50", nullable = true, value_type = Option<String>)]
+    pub limit: Option<u32>,
+    #[schema(example = "01H9ZQD35JPMBGHH69BT0Q79VY", nullable = true, value_type = Option<String>)]
+    pub cursor: Option<String>,
+    #[schema(example = "Templates", nullable = true, value_type = Option<String>)]
+    pub category: Option<String>,
+}
 
 #[utoipa::path(
     get,
@@ -40,6 +48,7 @@ use crate::{
         ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("limit" = Option<String>, Query, description = "Maximum number of results to return (default: 50, max: 300)"),
         ("cursor" = Option<String>, Query, description = "Cursor for pagination (SchemaId of the last item from previous page)"),
+        ("category" = Option<String>, Query, description = "Category filter for schemas"),
     ),
     summary = "List all schemas (paginated endpoint)",
     tag = "schemas",
@@ -51,12 +60,14 @@ use crate::{
 )]
 pub async fn list_schemas(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
-    Query(params): Query<PaginationParams>,
+    Query(params): Query<ListSchemaParams>,
     tracker: PosthogEventTracker,
 ) -> Result<Json<ListSchemaV1Response>, SchemaError> {
     // Set default limit and enforce a max limit
     let limit = params.limit.unwrap_or(50).min(300) as usize;
     let cursor = params.cursor;
+    let maybe_category_filter = params.category;
+
     // Get all installed schema IDs
     let schema_ids = Schema::list_ids(ctx).await?;
     let installed_schema_ids: HashSet<_> = schema_ids.iter().collect();
@@ -74,6 +85,12 @@ pub async fn list_schemas(
     // First add installed schemas from Schema::list_ids
     for schema_id in &schema_ids {
         if let Some(module) = cached_module_map.get(schema_id) {
+            match (maybe_category_filter.as_deref(), module.category.as_deref()) {
+                (Some(category_filter), Some(module_category))
+                    if category_filter == module_category => {}
+                (None, _) => {}
+                _ => continue,
+            }
             // Schema is both installed and in cache
             all_schemas.push(SchemaResponse {
                 schema_name: module.schema_name.clone(),
@@ -85,6 +102,12 @@ pub async fn list_schemas(
             // Schema is installed but not in cache - this is a local only schema
             if let Ok(schema) = Schema::get_by_id(ctx, *schema_id).await {
                 let default_variant = SchemaVariant::default_for_schema(ctx, *schema_id).await?;
+                match (maybe_category_filter.as_deref(), default_variant.category()) {
+                    (Some(category_filter), default_variant_category)
+                        if category_filter == default_variant_category => {}
+                    (None, _) => {}
+                    _ => continue,
+                }
                 all_schemas.push(SchemaResponse {
                     schema_name: schema.name,
                     schema_id: *schema_id,
