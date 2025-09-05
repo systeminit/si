@@ -76,7 +76,11 @@ use crate::{
             },
             geometry_node_weight::GeometryNodeWeight,
             secret_node_weight::SecretNodeWeight,
-            traits::SiVersionedNodeWeight,
+            traits::{
+                ExclusiveOutgoingEdges,
+                SiVersionedNodeWeight,
+                SplitCorrectExclusiveOutgoingEdge,
+            },
             view_node_weight::ViewNodeWeight,
         },
     },
@@ -1324,8 +1328,9 @@ impl CorrectTransforms for NodeWeight {
         Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))
     }
 }
-
-impl CorrectExclusiveOutgoingEdge for NodeWeight {
+impl CorrectExclusiveOutgoingEdge for NodeWeight {}
+impl SplitCorrectExclusiveOutgoingEdge for NodeWeight {}
+impl ExclusiveOutgoingEdges for NodeWeight {
     fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         match self {
             NodeWeight::Action(weight) => weight.exclusive_outgoing_edges(),
