@@ -1,3 +1,8 @@
+use std::collections::{
+    HashMap,
+    HashSet,
+};
+
 use axum::{
     Json,
     Router,
@@ -11,11 +16,14 @@ use axum::{
     },
 };
 use dal::{
+    DalContext,
     FuncId,
     PropId,
     SchemaId,
+    SchemaVariant,
     SchemaVariantId,
     TransactionsError,
+    cached_module::CachedModule,
     func::authoring::FuncAuthoringError,
     prop::PropError,
     schema::variant::authoring::VariantAuthoringError,
@@ -51,6 +59,7 @@ pub mod get_default_variant;
 pub mod get_schema;
 pub mod get_variant;
 pub mod list_schemas;
+pub mod search_schemas;
 pub mod unlock_schema;
 pub mod update_schema_variant;
 
@@ -167,6 +176,7 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(list_schemas::list_schemas))
         .route("/", post(create_schema::create_schema))
         .route("/find", get(find_schema::find_schema))
+        .route("/search", post(search_schemas::search_schemas))
         .nest(
             "/:schema_id",
             Router::new()
@@ -621,4 +631,71 @@ pub fn leaf_input_locations_schema() -> Schema {
             )
             .build(),
     )
+}
+
+#[derive(Deserialize, Serialize, Debug, ToSchema, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaResponse {
+    #[schema(example = "AWS::EC2::Instance")]
+    pub schema_name: String,
+    #[schema(example = "AWS::EC2")]
+    pub category: Option<String>,
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
+    pub schema_id: SchemaId,
+    #[schema(value_type = bool, example = "false")]
+    pub installed: bool,
+}
+
+pub async fn get_full_schema_list(ctx: &DalContext) -> SchemaResult<Vec<SchemaResponse>> {
+    let schema_ids = dal::Schema::list_ids(ctx).await?;
+    let installed_schema_ids: HashSet<_> = schema_ids.iter().collect();
+
+    // Get cached modules with their metadata
+    let cached_modules = CachedModule::latest_modules(ctx).await?;
+    // Create a map of schema ID to cached module data
+    let mut cached_module_map: HashMap<SchemaId, CachedModule> = HashMap::new();
+    for module in cached_modules {
+        cached_module_map.insert(module.schema_id, module);
+    }
+
+    // Combine both sources to create a complete list
+    let mut all_schemas: Vec<SchemaResponse> = Vec::new();
+    // First add installed schemas from Schema::list_ids
+    for schema_id in &schema_ids {
+        if let Some(module) = cached_module_map.get(schema_id) {
+            // Schema is both installed and in cache
+            all_schemas.push(SchemaResponse {
+                schema_name: module.schema_name.clone(),
+                schema_id: *schema_id,
+                category: module.category.clone(),
+                installed: true,
+            });
+        } else {
+            // Schema is installed but not in cache - this is a local only schema
+            if let Ok(schema) = dal::Schema::get_by_id(ctx, *schema_id).await {
+                let default_variant = SchemaVariant::default_for_schema(ctx, *schema_id).await?;
+                all_schemas.push(SchemaResponse {
+                    schema_name: schema.name,
+                    schema_id: *schema_id,
+                    category: Some(default_variant.category().to_owned()),
+                    installed: true,
+                });
+            }
+        }
+
+        cached_module_map.remove(schema_id);
+    }
+
+    // Now add remaining cached modules (uninstalled ones)
+    for (schema_id, module) in cached_module_map {
+        let is_installed = installed_schema_ids.contains(&schema_id);
+        all_schemas.push(SchemaResponse {
+            schema_name: module.schema_name,
+            schema_id,
+            category: module.category,
+            installed: is_installed,
+        });
+    }
+
+    Ok(all_schemas)
 }
