@@ -7,6 +7,7 @@ rust_library(
         "//lib/dal:dal",
         "//lib/nats-std:nats-std",
         "//lib/nats-subscriber:nats-subscriber",
+        "//lib/naxum-extractor-acceptable:naxum-extractor-acceptable",
         "//lib/naxum:naxum",
         "//lib/pinga-core:pinga-core",
         "//lib/rebaser-client:rebaser-client",

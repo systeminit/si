@@ -1,4 +1,7 @@
-use naxum_api_types::RequestId;
+use acceptable::{
+    RequestId,
+    Versioned,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -10,8 +13,9 @@ use si_events::{
     WorkspacePk,
 };
 
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq, Versioned)]
 #[serde(rename_all = "camelCase")]
+#[acceptable(version = 3)]
 pub struct EnqueueUpdatesRequestV3 {
     pub id: RequestId,
     pub workspace_id: WorkspacePk,

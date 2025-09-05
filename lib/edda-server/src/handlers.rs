@@ -146,6 +146,9 @@ async fn run_deployment_processor_task(state: AppState, subject_str: &str) -> Re
     let quiesced_token = CancellationToken::new();
     let quiesced_notify = Arc::new(Notify::new());
 
+    let (last_compressing_heartbeat_tx, last_compressing_heartbeat_rx) =
+        watch::channel(Instant::now());
+
     let incoming = requests_stream
         .create_consumer(edda_requests_per_change_set_consumer_config(
             &nats,
@@ -156,6 +159,11 @@ async fn run_deployment_processor_task(state: AppState, subject_str: &str) -> Re
         .messages()
         .await
         .map_err(Error::Subscribe)?;
+    let incoming = CompressingStream::new(
+        incoming,
+        requests_stream.clone(),
+        last_compressing_heartbeat_tx,
+    );
 
     let processor_task = DeploymentProcessorTask::create(
         metadata.clone(),
@@ -168,6 +176,7 @@ async fn run_deployment_processor_task(state: AppState, subject_str: &str) -> Re
         quiescent_period,
         quiesced_notify.clone(),
         quiesced_token.clone(),
+        last_compressing_heartbeat_rx,
         tasks_token.clone(),
         server_tracker,
     );

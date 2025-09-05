@@ -1,4 +1,7 @@
-use naxum_api_types::RequestId;
+use acceptable::{
+    RequestId,
+    Versioned,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -8,8 +11,9 @@ use si_events::{
     WorkspaceSnapshotAddress,
 };
 
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq, Versioned)]
 #[serde(rename_all = "camelCase")]
+#[acceptable(version = 1)]
 // NOTE: **do not modify this datatype--it represents a historically stable, versioned request**
 pub struct NewChangeSetRequestV1 {
     pub id: RequestId,
@@ -21,16 +25,12 @@ pub struct NewChangeSetRequestV1 {
 #[cfg(test)]
 mod tests {
     use super::{
-        super::{
-            NewChangeSetRequestVersionsDiscriminants,
-            NewChangeSetRequestVersionsDiscriminants::*,
-            test::*,
-        },
+        super::test::*,
         *,
     };
 
     const SNAPSHOT_NAME: &str = "serialized";
-    const VERSION: NewChangeSetRequestVersionsDiscriminants = V1;
+    const VERSION: u64 = 1;
 
     fn msg() -> NewChangeSetRequestV1 {
         NewChangeSetRequestV1 {

@@ -1,119 +1,43 @@
+use acceptable::{
+    AllVersions,
+    Container,
+    CurrentContainer,
+    IntoContainer,
+    UpgradeError,
+};
+use serde::Deserialize;
+
 mod v1;
 mod v2;
 
-use std::{
-    fmt,
-    ops::{
-        Deref,
-        DerefMut,
+pub use self::{
+    v1::{
+        JobArgsV1,
+        JobExecutionRequestV1,
+    },
+    v2::{
+        JobArgsV2,
+        JobExecutionRequestV2,
     },
 };
 
-use naxum_api_types::{
-    ApiVersionsWrapper,
-    ApiWrapper,
-    RequestId,
-    UpgradeError,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use strum::{
-    AsRefStr,
-    EnumDiscriminants,
-    EnumIs,
-    EnumString,
-    VariantNames,
-};
-pub use v1::{
-    JobArgsV1,
-    JobExecutionRequestV1,
-};
-use v2::JobArgsV2Discriminants;
-pub use v2::{
-    JobArgsV2,
-    JobExecutionRequestV2,
-};
-
-pub type JobExecutionRequestVCurrent = JobExecutionRequestV2;
-
 pub type JobArgsVCurrent = JobArgsV2;
-pub type JobArgsVCurrentDiscriminants = JobArgsV2Discriminants;
-
-#[derive(Clone, Eq, Serialize, PartialEq, VariantNames)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum JobExecutionRequest {
-    V2(JobExecutionRequestV2),
-}
-
-impl ApiWrapper for JobExecutionRequest {
-    type VersionsTarget = JobExecutionRequestVersions;
-    type Current = JobExecutionRequestVCurrent;
-
-    const MESSAGE_TYPE: &'static str = "JobExecutionRequest";
-
-    fn id(&self) -> naxum_api_types::RequestId {
-        match self {
-            Self::V2(JobExecutionRequestVCurrent { id, .. }) => *id,
-        }
-    }
-
-    fn new_current(current: Self::Current) -> Self {
-        Self::V2(current)
-    }
-}
-
-impl fmt::Debug for JobExecutionRequest {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::V2(inner) => inner.fmt(f),
-        }
-    }
-}
-
-impl Deref for JobExecutionRequest {
-    type Target = JobExecutionRequestVCurrent;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::V2(inner) => inner,
-        }
-    }
-}
-
-impl DerefMut for JobExecutionRequest {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            Self::V2(inner) => inner,
-        }
-    }
-}
 
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, EnumDiscriminants, EnumIs, Eq, PartialEq, VariantNames)]
+#[derive(AllVersions, CurrentContainer, Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-#[strum_discriminants(strum(serialize_all = "camelCase"), derive(AsRefStr, EnumString))]
-pub enum JobExecutionRequestVersions {
+pub enum JobExecutionRequestAllVersions {
     V1(JobExecutionRequestV1),
+    #[acceptable(current)]
     V2(JobExecutionRequestV2),
 }
 
-impl ApiVersionsWrapper for JobExecutionRequestVersions {
-    type Target = JobExecutionRequest;
+impl IntoContainer for JobExecutionRequestAllVersions {
+    type Container = JobExecutionRequest;
 
-    fn id(&self) -> RequestId {
+    fn into_container(self) -> Result<Self::Container, UpgradeError> {
         match self {
-            Self::V1(JobExecutionRequestV1 { id, .. }) => *id,
-            Self::V2(JobExecutionRequestV2 { id, .. }) => *id,
-        }
-    }
-
-    fn into_current_version(self) -> Result<Self::Target, UpgradeError> {
-        match self {
-            Self::V1(inner) => Ok(Self::Target::V2(JobExecutionRequestV2 {
+            Self::V1(inner) => Ok(Self::Container::V2(JobExecutionRequestV2 {
                 id: inner.id,
                 workspace_id: inner.workspace_id,
                 change_set_id: inner.change_set_id,
@@ -128,7 +52,7 @@ impl ApiVersionsWrapper for JobExecutionRequestVersions {
                 },
                 is_job_blocking: inner.is_job_blocking,
             })),
-            Self::V2(inner) => Ok(Self::Target::V2(inner)),
+            Self::V2(inner) => Ok(Self::Container::new(inner)),
         }
     }
 }
@@ -153,8 +77,6 @@ mod test {
         de::DeserializeOwned,
     };
 
-    use super::JobExecutionRequestVersionsDiscriminants;
-
     /// Tests that a versioned object will always serialize to the same representation, no matter
     /// what future versions or changes to the object.
     ///
@@ -163,13 +85,9 @@ mod test {
     /// commiteed `.snap` file, this should be considered a failed refactoring. The remediation is
     /// to *not* update the `.snap` file but rather to fix the code so that the `.snap` format is
     /// 100% preserved.
-    pub fn assert_serialize(
-        name: &str,
-        version: JobExecutionRequestVersionsDiscriminants,
-        serialize: impl Serialize,
-    ) {
+    pub fn assert_serialize(name: &str, version: u64, serialize: impl Serialize) {
         insta::with_settings!({
-            snapshot_path => format!("job_execution_request/snapshots-{}", version.as_ref()),
+            snapshot_path => format!("job_execution_request/snapshots-v{version}"),
             prepend_module_to_snapshot => false,
             omit_expression => true,
             description => concat!(
@@ -197,16 +115,13 @@ mod test {
         });
     }
 
-    pub fn assert_deserialize<T>(
-        snapshot_name: &str,
-        version: JobExecutionRequestVersionsDiscriminants,
-        expected: T,
-    ) where
+    pub fn assert_deserialize<T>(snapshot_name: &str, version: u64, expected: T)
+    where
         T: fmt::Debug + DeserializeOwned + PartialEq,
     {
         let actual: T = read_from_snapshot(
             snapshot_name,
-            &format!("job_execution_request/snapshots-{}", version.as_ref()),
+            &format!("job_execution_request/snapshots-v{version}"),
         )
         .expect("failed to deserialize from snapshot");
 

@@ -16,6 +16,7 @@ futures = { workspace = true }
 nats-std = { path = "../../lib/nats-std" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 naxum = { path = "../../lib/naxum" }
+naxum-extractor-acceptable = { path = "../../lib/naxum-extractor-acceptable" }
 pinga-core = { path = "../../lib/pinga-core" }
 rebaser-client = { path = "../../lib/rebaser-client" }
 remain = { workspace = true }

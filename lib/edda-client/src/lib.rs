@@ -3,13 +3,11 @@ use std::result;
 use bytes::Bytes;
 use edda_core::{
     api_types::{
-        ApiWrapper,
+        Container,
         ContentInfo,
-        DeserializeError,
-        HeaderMapParseMessageInfoError,
         RequestId,
+        SerializeContainer,
         SerializeError,
-        UpgradeError,
         new_change_set_request::{
             NewChangeSetRequest,
             NewChangeSetRequestVCurrent,
@@ -55,24 +53,8 @@ pub enum ClientError {
     CreateStream(#[source] async_nats::jetstream::context::CreateStreamError),
     #[error("request publish error: {0}")]
     Publish(#[from] PublishError),
-    #[error("error deserializing reply: {0}")]
-    ReplyDeserialize(#[from] DeserializeError),
-    #[error("error parsing reply headers: {0}")]
-    ReplyHeadersParse(#[from] HeaderMapParseMessageInfoError),
-    #[error("reply subscription closed before receiving reply message")]
-    ReplySubscriptionClosed,
-    #[error("reply message has unsupported content type")]
-    ReplyUnsupportedContentType,
-    #[error("reply message has unsupported message type")]
-    ReplyUnsupportedMessageType,
-    #[error("reply message has unsupported message version")]
-    ReplyUnsupportedMessageVersion,
-    #[error("error upgrading reply message: {0}")]
-    ReplyUpgrade(#[from] UpgradeError),
     #[error("error serializing request: {0}")]
     Serialize(#[from] SerializeError),
-    #[error("reply subscribe error: {0}")]
-    Subscribe(#[source] si_data_nats::Error),
 }
 
 type Error = ClientError;
@@ -84,20 +66,6 @@ pub type EddaClient = Client;
 #[derive(Clone, Debug)]
 pub struct Client {
     context: Context,
-}
-
-pub struct ChangeSetLocator {
-    workspace_pk: WorkspacePk,
-    change_set_id: ChangeSetId,
-}
-
-impl ChangeSetLocator {
-    pub fn new(workspace_pk: WorkspacePk, change_set_id: ChangeSetId) -> Self {
-        Self {
-            workspace_pk,
-            change_set_id,
-        }
-    }
 }
 
 impl Client {
@@ -138,18 +106,20 @@ impl Client {
         change_batch_address: ChangeBatchAddress,
     ) -> Result<RequestId> {
         let id = RequestId::new();
-        let request = UpdateRequest::new_current(UpdateRequestVCurrent {
+        let request = UpdateRequest::new(UpdateRequestVCurrent {
             id,
             from_snapshot_address,
             to_snapshot_address,
             change_batch_address,
         });
-        let info = ContentInfo::from(&request);
+        let mut info = ContentInfo::from(&request);
+        let (content_type, payload) = request.to_vec()?;
+        info.content_type = content_type.into();
 
         self.publish_inner(
             Some(ChangeSetLocator::new(workspace_id, change_set_id)),
             id,
-            request.to_vec()?.into(),
+            payload.into(),
             info,
         )
         .await
@@ -170,13 +140,15 @@ impl Client {
         change_set_id: ChangeSetId,
     ) -> Result<RequestId> {
         let id = RequestId::new();
-        let request = RebuildRequest::new_current(RebuildRequestVCurrent { id });
-        let info = ContentInfo::from(&request);
+        let request = RebuildRequest::new(RebuildRequestVCurrent { id });
+        let mut info = ContentInfo::from(&request);
+        let (content_type, payload) = request.to_vec()?;
+        info.content_type = content_type.into();
 
         self.publish_inner(
             Some(ChangeSetLocator::new(workspace_id, change_set_id)),
             id,
-            request.to_vec()?.into(),
+            payload.into(),
             info,
         )
         .await
@@ -199,18 +171,20 @@ impl Client {
         to_snapshot_address: WorkspaceSnapshotAddress,
     ) -> Result<RequestId> {
         let id = RequestId::new();
-        let request = NewChangeSetRequest::new_current(NewChangeSetRequestVCurrent {
+        let request = NewChangeSetRequest::new(NewChangeSetRequestVCurrent {
             id,
             base_change_set_id,
             new_change_set_id,
             to_snapshot_address,
         });
-        let info = ContentInfo::from(&request);
+        let mut info = ContentInfo::from(&request);
+        let (content_type, payload) = request.to_vec()?;
+        info.content_type = content_type.into();
 
         self.publish_inner(
             Some(ChangeSetLocator::new(workspace_id, new_change_set_id)),
             id,
-            request.to_vec()?.into(),
+            payload.into(),
             info,
         )
         .await
@@ -218,11 +192,12 @@ impl Client {
 
     pub async fn rebuild_for_deployment(&self) -> Result<RequestId> {
         let id = RequestId::new();
-        let request = RebuildRequest::new_current(RebuildRequestVCurrent { id });
-        let info = ContentInfo::from(&request);
+        let request = RebuildRequest::new(RebuildRequestVCurrent { id });
+        let mut info = ContentInfo::from(&request);
+        let (content_type, payload) = request.to_vec()?;
+        info.content_type = content_type.into();
 
-        self.publish_inner(None, id, request.to_vec()?.into(), info)
-            .await
+        self.publish_inner(None, id, payload.into(), info).await
     }
 
     async fn publish_inner(
@@ -287,4 +262,18 @@ impl Client {
     // TODO(fnichol): add method to be called from SDF where we get either a NATS k/v watch or some
     // `impl Future` that resolves when the index is updated (still using a k/v watch under the
     // hood)
+}
+
+struct ChangeSetLocator {
+    workspace_pk: WorkspacePk,
+    change_set_id: ChangeSetId,
+}
+
+impl ChangeSetLocator {
+    fn new(workspace_pk: WorkspacePk, change_set_id: ChangeSetId) -> Self {
+        Self {
+            workspace_pk,
+            change_set_id,
+        }
+    }
 }

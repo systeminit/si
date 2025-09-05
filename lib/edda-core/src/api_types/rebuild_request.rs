@@ -1,106 +1,30 @@
-mod v1;
-
-use std::{
-    fmt,
-    ops::{
-        Deref,
-        DerefMut,
-    },
-};
-
-use naxum_api_types::{
-    ApiVersionsWrapper,
-    ApiWrapper,
-    RequestId,
+use acceptable::{
+    AllVersions,
+    Container,
+    CurrentContainer,
+    IntoContainer,
     UpgradeError,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use strum::{
-    AsRefStr,
-    EnumDiscriminants,
-    EnumIs,
-    EnumString,
-    VariantNames,
-};
+use serde::Deserialize;
+
+mod v1;
 
 pub use self::v1::RebuildRequestV1;
 
-pub type RebuildRequestVCurrent = RebuildRequestV1;
-
-#[derive(Clone, Eq, Serialize, PartialEq, VariantNames)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum RebuildRequest {
-    V1(RebuildRequestV1),
-}
-
-impl ApiWrapper for RebuildRequest {
-    type VersionsTarget = RebuildRequestVersions;
-    type Current = RebuildRequestVCurrent;
-
-    const MESSAGE_TYPE: &'static str = "RebuildRequest";
-
-    fn id(&self) -> RequestId {
-        match self {
-            Self::V1(RebuildRequestVCurrent { id, .. }) => *id,
-        }
-    }
-
-    fn new_current(current: Self::Current) -> Self {
-        Self::V1(current)
-    }
-}
-
-impl fmt::Debug for RebuildRequest {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::V1(inner) => inner.fmt(f),
-        }
-    }
-}
-
-impl Deref for RebuildRequest {
-    type Target = RebuildRequestVCurrent;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::V1(inner) => inner,
-        }
-    }
-}
-
-impl DerefMut for RebuildRequest {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            Self::V1(inner) => inner,
-        }
-    }
-}
-
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, EnumDiscriminants, EnumIs, Eq, PartialEq, VariantNames)]
+#[derive(AllVersions, CurrentContainer, Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-#[strum_discriminants(strum(serialize_all = "camelCase"), derive(AsRefStr, EnumString))]
-pub enum RebuildRequestVersions {
+pub enum RebuildRequestAllVersions {
+    #[acceptable(current)]
     V1(RebuildRequestV1),
 }
 
-impl ApiVersionsWrapper for RebuildRequestVersions {
-    type Target = RebuildRequest;
+impl IntoContainer for RebuildRequestAllVersions {
+    type Container = RebuildRequest;
 
-    fn id(&self) -> RequestId {
+    fn into_container(self) -> Result<Self::Container, UpgradeError> {
         match self {
-            Self::V1(RebuildRequestV1 { id, .. }) => *id,
-        }
-    }
-
-    fn into_current_version(self) -> Result<Self::Target, UpgradeError> {
-        match self {
-            Self::V1(inner) => Ok(Self::Target::V1(inner)),
+            Self::V1(inner) => Ok(Self::Container::new(inner)),
         }
     }
 }
@@ -125,8 +49,6 @@ mod test {
         de::DeserializeOwned,
     };
 
-    use super::RebuildRequestVersionsDiscriminants;
-
     /// Tests that a versioned object will always serialize to the same representation, no matter
     /// what future versions or changes to the object.
     ///
@@ -135,13 +57,9 @@ mod test {
     /// commiteed `.snap` file, this should be considered a failed refactoring. The remediation is
     /// to *not* update the `.snap` file but rather to fix the code so that the `.snap` format is
     /// 100% preserved.
-    pub fn assert_serialize(
-        name: &str,
-        version: RebuildRequestVersionsDiscriminants,
-        serialize: impl Serialize,
-    ) {
+    pub fn assert_serialize(name: &str, version: u64, serialize: impl Serialize) {
         insta::with_settings!({
-            snapshot_path => format!("rebuild_request/snapshots-{}", version.as_ref()),
+            snapshot_path => format!("rebuild_request/snapshots-v{version}"),
             prepend_module_to_snapshot => false,
             omit_expression => true,
             description => concat!(
@@ -169,16 +87,13 @@ mod test {
         });
     }
 
-    pub fn assert_deserialize<T>(
-        snapshot_name: &str,
-        version: RebuildRequestVersionsDiscriminants,
-        expected: T,
-    ) where
+    pub fn assert_deserialize<T>(snapshot_name: &str, version: u64, expected: T)
+    where
         T: fmt::Debug + DeserializeOwned + PartialEq,
     {
         let actual: T = read_from_snapshot(
             snapshot_name,
-            &format!("rebuild_request/snapshots-{}", version.as_ref()),
+            &format!("rebuild_request/snapshots-v{version}"),
         )
         .expect("failed to deserialize from snapshot");
 

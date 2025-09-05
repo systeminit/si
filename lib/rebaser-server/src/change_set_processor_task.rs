@@ -418,15 +418,22 @@ mod handlers {
             Response,
         },
     };
+    use naxum_extractor_acceptable::{
+        HeaderReply,
+        Negotiate,
+    };
+    use pinga_client::api_types::{
+        Container,
+        SerializeContainer,
+    };
     use rebaser_core::api_types::{
-        ApiWrapper,
         ContentInfo,
         SerializeError,
         enqueue_updates_request::EnqueueUpdatesRequest,
         enqueue_updates_response::{
             EnqueueUpdatesResponse,
             EnqueueUpdatesResponseVCurrent,
-            v1::RebaseStatus,
+            RebaseStatus,
         },
     };
     use si_data_nats::HeaderMap;
@@ -439,17 +446,11 @@ mod handlers {
         DEFAULT_ACTION_CONCURRENCY_LIMIT,
         app_state::AppState,
     };
-    use crate::{
-        extract::{
-            ApiTypesNegotiate,
-            HeaderReply,
-        },
-        rebase::{
-            RebaseError,
-            perform_rebase,
-            send_updates_to_edda_legacy_snapshot,
-            send_updates_to_edda_split_snapshot,
-        },
+    use crate::rebase::{
+        RebaseError,
+        perform_rebase,
+        send_updates_to_edda_legacy_snapshot,
+        send_updates_to_edda_split_snapshot,
     };
 
     #[remain::sorted]
@@ -502,7 +503,7 @@ mod handlers {
     pub(crate) async fn default(
         State(state): State<AppState>,
         HeaderReply(maybe_reply): HeaderReply,
-        ApiTypesNegotiate(request): ApiTypesNegotiate<EnqueueUpdatesRequest>,
+        Negotiate(request): Negotiate<EnqueueUpdatesRequest>,
     ) -> Result<()> {
         let AppState {
             workspace_id,
@@ -555,20 +556,22 @@ mod handlers {
 
         // If a reply was requested, send it
         if let Some(reply) = maybe_reply {
-            let response = EnqueueUpdatesResponse::new_current(EnqueueUpdatesResponseVCurrent {
+            let response = EnqueueUpdatesResponse::new(EnqueueUpdatesResponseVCurrent {
                 id: request.id,
                 workspace_id: request.workspace_id,
                 change_set_id: request.change_set_id,
                 status: rebase_status,
             });
 
-            let info = ContentInfo::from(&response);
+            let mut info = ContentInfo::from(&response);
+            let (content_type, payload) = response.to_vec()?;
+            info.content_type = content_type.into();
 
             let mut headers = HeaderMap::new();
             propagation::inject_headers(&mut headers);
             info.inject_into_headers(&mut headers);
 
-            nats.publish_with_headers(reply, headers, response.to_vec()?.into())
+            nats.publish_with_headers(reply, headers, payload.into())
                 .await
                 .map_err(Error::PublishReply)?;
         }
