@@ -2,6 +2,7 @@ use axum::response::Json;
 use dal::{
     ComponentId,
     FuncId,
+    SchemaId,
     SchemaVariantId,
 };
 use serde::{
@@ -45,15 +46,16 @@ pub async fn generate_template(
 ) -> Result<Json<GenerateTemplateV1Response>, ComponentsError> {
     let Json(payload) = payload?;
 
-    let (new_variant, _, func, prototype_id) = sdf_core::generate_template::prepare_and_generate(
-        ctx,
-        payload.component_ids,
-        payload.asset_name.clone(),
-        payload.func_name.clone(),
-        payload.category.unwrap_or("Templates".to_string()),
-        "#aaaaaa".to_string(),
-    )
-    .await?;
+    let (new_variant, schema_id, func, prototype_id) =
+        sdf_core::generate_template::prepare_and_generate(
+            ctx,
+            payload.component_ids,
+            payload.asset_name.clone(),
+            payload.func_name.clone(),
+            payload.category.unwrap_or("Templates".to_string()),
+            "#aaaaaa".to_string(),
+        )
+        .await?;
 
     tracker.track(
         ctx,
@@ -80,6 +82,7 @@ pub async fn generate_template(
     ctx.commit().await?;
 
     Ok(Json(GenerateTemplateV1Response {
+        schema_id,
         schema_variant_id: new_variant.id,
         func_id: func.id,
     }))
@@ -102,7 +105,9 @@ pub struct GenerateTemplateV1Request {
 #[serde(rename_all = "camelCase")]
 pub struct GenerateTemplateV1Response {
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79AA")]
-    pub schema_variant_id: SchemaVariantId,
+    pub schema_id: SchemaId,
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79BB")]
+    pub schema_variant_id: SchemaVariantId,
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79CC")]
     pub func_id: FuncId,
 }
