@@ -347,7 +347,10 @@ const secretFormOpen = ref(false);
 const interstitialSpinner = computed(
   () =>
     !props.attributeTree.secret &&
-    props.attributeTree.attributeValue.isControlledByDynamicFunc,
+    props.attributeTree.attributeValue.isControlledByDynamicFunc &&
+    (props.attributeTree.prop?.isOriginSecret ||
+      (props.attributeTree.attributeValue.externalSources &&
+        props.attributeTree.attributeValue.externalSources.length > 0)),
 );
 const showSecretForm = computed(
   () =>
