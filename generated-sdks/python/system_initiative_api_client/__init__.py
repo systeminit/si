@@ -56,22 +56,26 @@ __all__ = [
     "ComponentReferenceOneOf1",
     "ComponentV1RequestPath",
     "ComponentViewV1",
-    "Connection",
-    "ConnectionDetails",
-    "ConnectionOneOf",
-    "ConnectionOneOf1",
-    "ConnectionPoint",
     "ConnectionViewV1",
     "ConnectionViewV1OneOf",
     "ConnectionViewV1OneOf1",
-    "ConnectionViewV1OneOf2",
-    "ConnectionViewV1OneOf3",
     "CreateChangeSetV1Request",
     "CreateChangeSetV1Response",
     "CreateComponentV1Request",
     "CreateComponentV1Response",
+    "CreateSchemaV1Request",
     "CreateSecretV1Request",
     "CreateSecretV1Response",
+    "CreateVariantActionFuncV1Request",
+    "CreateVariantActionFuncV1Response",
+    "CreateVariantAuthenticationFuncV1Request",
+    "CreateVariantAuthenticationFuncV1Response",
+    "CreateVariantCodegenFuncV1Request",
+    "CreateVariantCodegenFuncV1Response",
+    "CreateVariantManagementFuncV1Request",
+    "CreateVariantManagementFuncV1Response",
+    "CreateVariantQualificationFuncV1Request",
+    "CreateVariantQualificationFuncV1Response",
     "DeleteChangeSetV1Response",
     "DeleteComponentV1Response",
     "DeleteSecretV1Response",
@@ -102,7 +106,6 @@ __all__ = [
     "GetSchemaV1Response",
     "GetSchemaVariantV1Response",
     "HashMapValue",
-    "IncomingConnectionViewV1",
     "ListChangeSetV1Response",
     "ListComponentsV1Response",
     "ListSchemaV1Response",
@@ -117,7 +120,6 @@ __all__ = [
     "MergeStatusV1Response",
     "MergeStatusV1ResponseAction",
     "MergeStatusV1ResponseActionComponent",
-    "OutgoingConnectionViewV1",
     "OutputLineViewV1",
     "PropSchemaV1",
     "PurgeOpenChangeSetsV1Response",
@@ -134,13 +136,14 @@ __all__ = [
     "SecretFormDataV1",
     "SecretPropKey",
     "SecretV1",
-    "SocketDirection",
-    "SocketViewV1",
     "SourceViewV1",
-    "Subscription",
     "SystemStatusResponse",
+    "UnlockedSchemaV1Response",
     "UpdateComponentV1Request",
     "UpdateComponentV1Response",
+    "UpdateFuncV1Request",
+    "UpdateFuncV1Response",
+    "UpdateSchemaVariantV1Request",
     "UpdateSecretV1Request",
     "UpdateSecretV1Response",
     "UpgradeComponentV1Response",
@@ -191,22 +194,26 @@ from system_initiative_api_client.models.component_reference_one_of import Compo
 from system_initiative_api_client.models.component_reference_one_of1 import ComponentReferenceOneOf1 as ComponentReferenceOneOf1
 from system_initiative_api_client.models.component_v1_request_path import ComponentV1RequestPath as ComponentV1RequestPath
 from system_initiative_api_client.models.component_view_v1 import ComponentViewV1 as ComponentViewV1
-from system_initiative_api_client.models.connection import Connection as Connection
-from system_initiative_api_client.models.connection_details import ConnectionDetails as ConnectionDetails
-from system_initiative_api_client.models.connection_one_of import ConnectionOneOf as ConnectionOneOf
-from system_initiative_api_client.models.connection_one_of1 import ConnectionOneOf1 as ConnectionOneOf1
-from system_initiative_api_client.models.connection_point import ConnectionPoint as ConnectionPoint
 from system_initiative_api_client.models.connection_view_v1 import ConnectionViewV1 as ConnectionViewV1
 from system_initiative_api_client.models.connection_view_v1_one_of import ConnectionViewV1OneOf as ConnectionViewV1OneOf
 from system_initiative_api_client.models.connection_view_v1_one_of1 import ConnectionViewV1OneOf1 as ConnectionViewV1OneOf1
-from system_initiative_api_client.models.connection_view_v1_one_of2 import ConnectionViewV1OneOf2 as ConnectionViewV1OneOf2
-from system_initiative_api_client.models.connection_view_v1_one_of3 import ConnectionViewV1OneOf3 as ConnectionViewV1OneOf3
 from system_initiative_api_client.models.create_change_set_v1_request import CreateChangeSetV1Request as CreateChangeSetV1Request
 from system_initiative_api_client.models.create_change_set_v1_response import CreateChangeSetV1Response as CreateChangeSetV1Response
 from system_initiative_api_client.models.create_component_v1_request import CreateComponentV1Request as CreateComponentV1Request
 from system_initiative_api_client.models.create_component_v1_response import CreateComponentV1Response as CreateComponentV1Response
+from system_initiative_api_client.models.create_schema_v1_request import CreateSchemaV1Request as CreateSchemaV1Request
 from system_initiative_api_client.models.create_secret_v1_request import CreateSecretV1Request as CreateSecretV1Request
 from system_initiative_api_client.models.create_secret_v1_response import CreateSecretV1Response as CreateSecretV1Response
+from system_initiative_api_client.models.create_variant_action_func_v1_request import CreateVariantActionFuncV1Request as CreateVariantActionFuncV1Request
+from system_initiative_api_client.models.create_variant_action_func_v1_response import CreateVariantActionFuncV1Response as CreateVariantActionFuncV1Response
+from system_initiative_api_client.models.create_variant_authentication_func_v1_request import CreateVariantAuthenticationFuncV1Request as CreateVariantAuthenticationFuncV1Request
+from system_initiative_api_client.models.create_variant_authentication_func_v1_response import CreateVariantAuthenticationFuncV1Response as CreateVariantAuthenticationFuncV1Response
+from system_initiative_api_client.models.create_variant_codegen_func_v1_request import CreateVariantCodegenFuncV1Request as CreateVariantCodegenFuncV1Request
+from system_initiative_api_client.models.create_variant_codegen_func_v1_response import CreateVariantCodegenFuncV1Response as CreateVariantCodegenFuncV1Response
+from system_initiative_api_client.models.create_variant_management_func_v1_request import CreateVariantManagementFuncV1Request as CreateVariantManagementFuncV1Request
+from system_initiative_api_client.models.create_variant_management_func_v1_response import CreateVariantManagementFuncV1Response as CreateVariantManagementFuncV1Response
+from system_initiative_api_client.models.create_variant_qualification_func_v1_request import CreateVariantQualificationFuncV1Request as CreateVariantQualificationFuncV1Request
+from system_initiative_api_client.models.create_variant_qualification_func_v1_response import CreateVariantQualificationFuncV1Response as CreateVariantQualificationFuncV1Response
 from system_initiative_api_client.models.delete_change_set_v1_response import DeleteChangeSetV1Response as DeleteChangeSetV1Response
 from system_initiative_api_client.models.delete_component_v1_response import DeleteComponentV1Response as DeleteComponentV1Response
 from system_initiative_api_client.models.delete_secret_v1_response import DeleteSecretV1Response as DeleteSecretV1Response
@@ -237,7 +244,6 @@ from system_initiative_api_client.models.get_management_func_job_state_v1_respon
 from system_initiative_api_client.models.get_schema_v1_response import GetSchemaV1Response as GetSchemaV1Response
 from system_initiative_api_client.models.get_schema_variant_v1_response import GetSchemaVariantV1Response as GetSchemaVariantV1Response
 from system_initiative_api_client.models.hash_map_value import HashMapValue as HashMapValue
-from system_initiative_api_client.models.incoming_connection_view_v1 import IncomingConnectionViewV1 as IncomingConnectionViewV1
 from system_initiative_api_client.models.list_change_set_v1_response import ListChangeSetV1Response as ListChangeSetV1Response
 from system_initiative_api_client.models.list_components_v1_response import ListComponentsV1Response as ListComponentsV1Response
 from system_initiative_api_client.models.list_schema_v1_response import ListSchemaV1Response as ListSchemaV1Response
@@ -252,7 +258,6 @@ from system_initiative_api_client.models.managing_connection_view_v1 import Mana
 from system_initiative_api_client.models.merge_status_v1_response import MergeStatusV1Response as MergeStatusV1Response
 from system_initiative_api_client.models.merge_status_v1_response_action import MergeStatusV1ResponseAction as MergeStatusV1ResponseAction
 from system_initiative_api_client.models.merge_status_v1_response_action_component import MergeStatusV1ResponseActionComponent as MergeStatusV1ResponseActionComponent
-from system_initiative_api_client.models.outgoing_connection_view_v1 import OutgoingConnectionViewV1 as OutgoingConnectionViewV1
 from system_initiative_api_client.models.output_line_view_v1 import OutputLineViewV1 as OutputLineViewV1
 from system_initiative_api_client.models.prop_schema_v1 import PropSchemaV1 as PropSchemaV1
 from system_initiative_api_client.models.purge_open_change_sets_v1_response import PurgeOpenChangeSetsV1Response as PurgeOpenChangeSetsV1Response
@@ -269,13 +274,14 @@ from system_initiative_api_client.models.secret_definition_v1 import SecretDefin
 from system_initiative_api_client.models.secret_form_data_v1 import SecretFormDataV1 as SecretFormDataV1
 from system_initiative_api_client.models.secret_prop_key import SecretPropKey as SecretPropKey
 from system_initiative_api_client.models.secret_v1 import SecretV1 as SecretV1
-from system_initiative_api_client.models.socket_direction import SocketDirection as SocketDirection
-from system_initiative_api_client.models.socket_view_v1 import SocketViewV1 as SocketViewV1
 from system_initiative_api_client.models.source_view_v1 import SourceViewV1 as SourceViewV1
-from system_initiative_api_client.models.subscription import Subscription as Subscription
 from system_initiative_api_client.models.system_status_response import SystemStatusResponse as SystemStatusResponse
+from system_initiative_api_client.models.unlocked_schema_v1_response import UnlockedSchemaV1Response as UnlockedSchemaV1Response
 from system_initiative_api_client.models.update_component_v1_request import UpdateComponentV1Request as UpdateComponentV1Request
 from system_initiative_api_client.models.update_component_v1_response import UpdateComponentV1Response as UpdateComponentV1Response
+from system_initiative_api_client.models.update_func_v1_request import UpdateFuncV1Request as UpdateFuncV1Request
+from system_initiative_api_client.models.update_func_v1_response import UpdateFuncV1Response as UpdateFuncV1Response
+from system_initiative_api_client.models.update_schema_variant_v1_request import UpdateSchemaVariantV1Request as UpdateSchemaVariantV1Request
 from system_initiative_api_client.models.update_secret_v1_request import UpdateSecretV1Request as UpdateSecretV1Request
 from system_initiative_api_client.models.update_secret_v1_response import UpdateSecretV1Response as UpdateSecretV1Response
 from system_initiative_api_client.models.upgrade_component_v1_response import UpgradeComponentV1Response as UpgradeComponentV1Response

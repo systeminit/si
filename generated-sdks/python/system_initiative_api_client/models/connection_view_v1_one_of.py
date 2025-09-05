@@ -19,7 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict
 from typing import Any, ClassVar, Dict, List
-from system_initiative_api_client.models.incoming_connection_view_v1 import IncomingConnectionViewV1
+from system_initiative_api_client.models.managing_connection_view_v1 import ManagingConnectionViewV1
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -27,8 +27,8 @@ class ConnectionViewV1OneOf(BaseModel):
     """
     ConnectionViewV1OneOf
     """ # noqa: E501
-    incoming: IncomingConnectionViewV1
-    __properties: ClassVar[List[str]] = ["incoming"]
+    managing: ManagingConnectionViewV1
+    __properties: ClassVar[List[str]] = ["managing"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -69,9 +69,9 @@ class ConnectionViewV1OneOf(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of incoming
-        if self.incoming:
-            _dict['incoming'] = self.incoming.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of managing
+        if self.managing:
+            _dict['managing'] = self.managing.to_dict()
         return _dict
 
     @classmethod
@@ -84,7 +84,7 @@ class ConnectionViewV1OneOf(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "incoming": IncomingConnectionViewV1.from_dict(obj["incoming"]) if obj.get("incoming") is not None else None
+            "managing": ManagingConnectionViewV1.from_dict(obj["managing"]) if obj.get("managing") is not None else None
         })
         return _obj
 

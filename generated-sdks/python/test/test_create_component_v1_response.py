@@ -60,14 +60,6 @@ class TestCreateComponentV1Response(unittest.TestCase):
                         ], 
                     schema_id = '', 
                     schema_variant_id = '', 
-                    sockets = [
-                        system_initiative_api_client.models.socket_view_v1.SocketViewV1(
-                            arity = 'one', 
-                            direction = 'input', 
-                            id = '', 
-                            name = '', 
-                            value = system_initiative_api_client.models.value.value(), )
-                        ], 
                     to_delete = True, 
                     views = [
                         system_initiative_api_client.models.view_v1.ViewV1(
@@ -103,14 +95,6 @@ class TestCreateComponentV1Response(unittest.TestCase):
                         ], 
                     schema_id = '', 
                     schema_variant_id = '', 
-                    sockets = [
-                        system_initiative_api_client.models.socket_view_v1.SocketViewV1(
-                            arity = 'one', 
-                            direction = 'input', 
-                            id = '', 
-                            name = '', 
-                            value = system_initiative_api_client.models.value.value(), )
-                        ], 
                     to_delete = True, 
                     views = [
                         system_initiative_api_client.models.view_v1.ViewV1(

@@ -14,10 +14,10 @@
 
 import unittest
 
-from system_initiative_api_client.models.connection_details import ConnectionDetails
+from system_initiative_api_client.models.update_func_v1_response import UpdateFuncV1Response
 
-class TestConnectionDetails(unittest.TestCase):
-    """ConnectionDetails unit test stubs"""
+class TestUpdateFuncV1Response(unittest.TestCase):
+    """UpdateFuncV1Response unit test stubs"""
 
     def setUp(self):
         pass
@@ -25,26 +25,26 @@ class TestConnectionDetails(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> ConnectionDetails:
-        """Test ConnectionDetails
+    def make_instance(self, include_optional) -> UpdateFuncV1Response:
+        """Test UpdateFuncV1Response
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `ConnectionDetails`
+        # uncomment below to create an instance of `UpdateFuncV1Response`
         """
-        model = ConnectionDetails()
+        model = UpdateFuncV1Response()
         if include_optional:
-            return ConnectionDetails(
-                add = {},
-                remove = {}
+            return UpdateFuncV1Response(
+                success = True
             )
         else:
-            return ConnectionDetails(
+            return UpdateFuncV1Response(
+                success = True,
         )
         """
 
-    def testConnectionDetails(self):
-        """Test ConnectionDetails"""
+    def testUpdateFuncV1Response(self):
+        """Test UpdateFuncV1Response"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 

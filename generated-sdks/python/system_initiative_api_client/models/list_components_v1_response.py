@@ -28,9 +28,8 @@ class ListComponentsV1Response(BaseModel):
     ListComponentsV1Response
     """ # noqa: E501
     component_details: List[ComponentDetailsV1] = Field(alias="componentDetails")
-    components: List[List[StrictStr]]
     next_cursor: Optional[StrictStr] = Field(default=None, alias="nextCursor")
-    __properties: ClassVar[List[str]] = ["componentDetails", "components", "nextCursor"]
+    __properties: ClassVar[List[str]] = ["componentDetails", "nextCursor"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -96,7 +95,6 @@ class ListComponentsV1Response(BaseModel):
 
         _obj = cls.model_validate({
             "componentDetails": [ComponentDetailsV1.from_dict(_item) for _item in obj["componentDetails"]] if obj.get("componentDetails") is not None else None,
-            "components": obj.get("components"),
             "nextCursor": obj.get("nextCursor")
         })
         return _obj

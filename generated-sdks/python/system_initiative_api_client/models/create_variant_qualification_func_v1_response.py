@@ -22,14 +22,12 @@ from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 
-class GenerateTemplateV1Response(BaseModel):
+class CreateVariantQualificationFuncV1Response(BaseModel):
     """
-    GenerateTemplateV1Response
+    CreateVariantQualificationFuncV1Response
     """ # noqa: E501
     func_id: StrictStr = Field(alias="funcId")
-    schema_id: StrictStr = Field(alias="schemaId")
-    schema_variant_id: StrictStr = Field(alias="schemaVariantId")
-    __properties: ClassVar[List[str]] = ["funcId", "schemaId", "schemaVariantId"]
+    __properties: ClassVar[List[str]] = ["funcId"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -49,7 +47,7 @@ class GenerateTemplateV1Response(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of GenerateTemplateV1Response from a JSON string"""
+        """Create an instance of CreateVariantQualificationFuncV1Response from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -74,7 +72,7 @@ class GenerateTemplateV1Response(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of GenerateTemplateV1Response from a dict"""
+        """Create an instance of CreateVariantQualificationFuncV1Response from a dict"""
         if obj is None:
             return None
 
@@ -82,9 +80,7 @@ class GenerateTemplateV1Response(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "funcId": obj.get("funcId"),
-            "schemaId": obj.get("schemaId"),
-            "schemaVariantId": obj.get("schemaVariantId")
+            "funcId": obj.get("funcId")
         })
         return _obj
 

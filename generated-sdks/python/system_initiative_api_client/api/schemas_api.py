@@ -19,10 +19,23 @@ from typing_extensions import Annotated
 from pydantic import Field, StrictStr
 from typing import Optional
 from typing_extensions import Annotated
+from system_initiative_api_client.models.create_schema_v1_request import CreateSchemaV1Request
+from system_initiative_api_client.models.create_variant_action_func_v1_request import CreateVariantActionFuncV1Request
+from system_initiative_api_client.models.create_variant_action_func_v1_response import CreateVariantActionFuncV1Response
+from system_initiative_api_client.models.create_variant_authentication_func_v1_request import CreateVariantAuthenticationFuncV1Request
+from system_initiative_api_client.models.create_variant_authentication_func_v1_response import CreateVariantAuthenticationFuncV1Response
+from system_initiative_api_client.models.create_variant_codegen_func_v1_request import CreateVariantCodegenFuncV1Request
+from system_initiative_api_client.models.create_variant_codegen_func_v1_response import CreateVariantCodegenFuncV1Response
+from system_initiative_api_client.models.create_variant_management_func_v1_request import CreateVariantManagementFuncV1Request
+from system_initiative_api_client.models.create_variant_management_func_v1_response import CreateVariantManagementFuncV1Response
+from system_initiative_api_client.models.create_variant_qualification_func_v1_request import CreateVariantQualificationFuncV1Request
+from system_initiative_api_client.models.create_variant_qualification_func_v1_response import CreateVariantQualificationFuncV1Response
 from system_initiative_api_client.models.find_schema_v1_response import FindSchemaV1Response
 from system_initiative_api_client.models.get_schema_v1_response import GetSchemaV1Response
 from system_initiative_api_client.models.get_schema_variant_v1_response import GetSchemaVariantV1Response
 from system_initiative_api_client.models.list_schema_v1_response import ListSchemaV1Response
+from system_initiative_api_client.models.unlocked_schema_v1_response import UnlockedSchemaV1Response
+from system_initiative_api_client.models.update_schema_variant_v1_request import UpdateSchemaVariantV1Request
 
 from system_initiative_api_client.api_client import ApiClient, RequestSerialized
 from system_initiative_api_client.api_response import ApiResponse
@@ -40,6 +53,2025 @@ class SchemasApi:
         if api_client is None:
             api_client = ApiClient.get_default()
         self.api_client = api_client
+
+
+    @validate_call
+    def create_schema(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        create_schema_v1_request: CreateSchemaV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> GetSchemaV1Response:
+        """Create a schema and it's default variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param create_schema_v1_request: (required)
+        :type create_schema_v1_request: CreateSchemaV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_schema_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            create_schema_v1_request=create_schema_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "GetSchemaV1Response",
+            '401': None,
+            '422': "ApiError",
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def create_schema_with_http_info(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        create_schema_v1_request: CreateSchemaV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[GetSchemaV1Response]:
+        """Create a schema and it's default variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param create_schema_v1_request: (required)
+        :type create_schema_v1_request: CreateSchemaV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_schema_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            create_schema_v1_request=create_schema_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "GetSchemaV1Response",
+            '401': None,
+            '422': "ApiError",
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def create_schema_without_preload_content(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        create_schema_v1_request: CreateSchemaV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Create a schema and it's default variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param create_schema_v1_request: (required)
+        :type create_schema_v1_request: CreateSchemaV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_schema_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            create_schema_v1_request=create_schema_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "GetSchemaV1Response",
+            '401': None,
+            '422': "ApiError",
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _create_schema_serialize(
+        self,
+        workspace_id,
+        change_set_id,
+        create_schema_v1_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if workspace_id is not None:
+            _path_params['workspace_id'] = workspace_id
+        if change_set_id is not None:
+            _path_params['change_set_id'] = change_set_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if create_schema_v1_request is not None:
+            _body_params = create_schema_v1_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def create_variant_action(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_action_func_v1_request: CreateVariantActionFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> CreateVariantActionFuncV1Response:
+        """Create an action function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_action_func_v1_request: (required)
+        :type create_variant_action_func_v1_request: CreateVariantActionFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_action_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_action_func_v1_request=create_variant_action_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantActionFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def create_variant_action_with_http_info(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_action_func_v1_request: CreateVariantActionFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[CreateVariantActionFuncV1Response]:
+        """Create an action function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_action_func_v1_request: (required)
+        :type create_variant_action_func_v1_request: CreateVariantActionFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_action_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_action_func_v1_request=create_variant_action_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantActionFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def create_variant_action_without_preload_content(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_action_func_v1_request: CreateVariantActionFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Create an action function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_action_func_v1_request: (required)
+        :type create_variant_action_func_v1_request: CreateVariantActionFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_action_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_action_func_v1_request=create_variant_action_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantActionFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _create_variant_action_serialize(
+        self,
+        workspace_id,
+        change_set_id,
+        schema_id,
+        schema_variant_id,
+        create_variant_action_func_v1_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if workspace_id is not None:
+            _path_params['workspace_id'] = workspace_id
+        if change_set_id is not None:
+            _path_params['change_set_id'] = change_set_id
+        if schema_id is not None:
+            _path_params['schema_id'] = schema_id
+        if schema_variant_id is not None:
+            _path_params['schema_variant_id'] = schema_variant_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if create_variant_action_func_v1_request is not None:
+            _body_params = create_variant_action_func_v1_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/action',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def create_variant_authentication(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_authentication_func_v1_request: CreateVariantAuthenticationFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> CreateVariantAuthenticationFuncV1Response:
+        """Create an authentication function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_authentication_func_v1_request: (required)
+        :type create_variant_authentication_func_v1_request: CreateVariantAuthenticationFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_authentication_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_authentication_func_v1_request=create_variant_authentication_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantAuthenticationFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def create_variant_authentication_with_http_info(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_authentication_func_v1_request: CreateVariantAuthenticationFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[CreateVariantAuthenticationFuncV1Response]:
+        """Create an authentication function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_authentication_func_v1_request: (required)
+        :type create_variant_authentication_func_v1_request: CreateVariantAuthenticationFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_authentication_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_authentication_func_v1_request=create_variant_authentication_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantAuthenticationFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def create_variant_authentication_without_preload_content(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_authentication_func_v1_request: CreateVariantAuthenticationFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Create an authentication function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_authentication_func_v1_request: (required)
+        :type create_variant_authentication_func_v1_request: CreateVariantAuthenticationFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_authentication_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_authentication_func_v1_request=create_variant_authentication_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantAuthenticationFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _create_variant_authentication_serialize(
+        self,
+        workspace_id,
+        change_set_id,
+        schema_id,
+        schema_variant_id,
+        create_variant_authentication_func_v1_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if workspace_id is not None:
+            _path_params['workspace_id'] = workspace_id
+        if change_set_id is not None:
+            _path_params['change_set_id'] = change_set_id
+        if schema_id is not None:
+            _path_params['schema_id'] = schema_id
+        if schema_variant_id is not None:
+            _path_params['schema_variant_id'] = schema_variant_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if create_variant_authentication_func_v1_request is not None:
+            _body_params = create_variant_authentication_func_v1_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/authentication',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def create_variant_codegen(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_codegen_func_v1_request: CreateVariantCodegenFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> CreateVariantCodegenFuncV1Response:
+        """Create a codegen function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_codegen_func_v1_request: (required)
+        :type create_variant_codegen_func_v1_request: CreateVariantCodegenFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_codegen_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_codegen_func_v1_request=create_variant_codegen_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantCodegenFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def create_variant_codegen_with_http_info(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_codegen_func_v1_request: CreateVariantCodegenFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[CreateVariantCodegenFuncV1Response]:
+        """Create a codegen function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_codegen_func_v1_request: (required)
+        :type create_variant_codegen_func_v1_request: CreateVariantCodegenFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_codegen_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_codegen_func_v1_request=create_variant_codegen_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantCodegenFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def create_variant_codegen_without_preload_content(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_codegen_func_v1_request: CreateVariantCodegenFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Create a codegen function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_codegen_func_v1_request: (required)
+        :type create_variant_codegen_func_v1_request: CreateVariantCodegenFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_codegen_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_codegen_func_v1_request=create_variant_codegen_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantCodegenFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _create_variant_codegen_serialize(
+        self,
+        workspace_id,
+        change_set_id,
+        schema_id,
+        schema_variant_id,
+        create_variant_codegen_func_v1_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if workspace_id is not None:
+            _path_params['workspace_id'] = workspace_id
+        if change_set_id is not None:
+            _path_params['change_set_id'] = change_set_id
+        if schema_id is not None:
+            _path_params['schema_id'] = schema_id
+        if schema_variant_id is not None:
+            _path_params['schema_variant_id'] = schema_variant_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if create_variant_codegen_func_v1_request is not None:
+            _body_params = create_variant_codegen_func_v1_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/codegen',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def create_variant_management(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_management_func_v1_request: CreateVariantManagementFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> CreateVariantManagementFuncV1Response:
+        """Create a management function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_management_func_v1_request: (required)
+        :type create_variant_management_func_v1_request: CreateVariantManagementFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_management_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_management_func_v1_request=create_variant_management_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantManagementFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def create_variant_management_with_http_info(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_management_func_v1_request: CreateVariantManagementFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[CreateVariantManagementFuncV1Response]:
+        """Create a management function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_management_func_v1_request: (required)
+        :type create_variant_management_func_v1_request: CreateVariantManagementFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_management_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_management_func_v1_request=create_variant_management_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantManagementFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def create_variant_management_without_preload_content(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_management_func_v1_request: CreateVariantManagementFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Create a management function and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_management_func_v1_request: (required)
+        :type create_variant_management_func_v1_request: CreateVariantManagementFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_management_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_management_func_v1_request=create_variant_management_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantManagementFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _create_variant_management_serialize(
+        self,
+        workspace_id,
+        change_set_id,
+        schema_id,
+        schema_variant_id,
+        create_variant_management_func_v1_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if workspace_id is not None:
+            _path_params['workspace_id'] = workspace_id
+        if change_set_id is not None:
+            _path_params['change_set_id'] = change_set_id
+        if schema_id is not None:
+            _path_params['schema_id'] = schema_id
+        if schema_variant_id is not None:
+            _path_params['schema_variant_id'] = schema_variant_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if create_variant_management_func_v1_request is not None:
+            _body_params = create_variant_management_func_v1_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/management',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def create_variant_qualification(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_qualification_func_v1_request: CreateVariantQualificationFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> CreateVariantQualificationFuncV1Response:
+        """Create a qualification and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_qualification_func_v1_request: (required)
+        :type create_variant_qualification_func_v1_request: CreateVariantQualificationFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_qualification_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_qualification_func_v1_request=create_variant_qualification_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantQualificationFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def create_variant_qualification_with_http_info(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_qualification_func_v1_request: CreateVariantQualificationFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[CreateVariantQualificationFuncV1Response]:
+        """Create a qualification and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_qualification_func_v1_request: (required)
+        :type create_variant_qualification_func_v1_request: CreateVariantQualificationFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_qualification_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_qualification_func_v1_request=create_variant_qualification_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantQualificationFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def create_variant_qualification_without_preload_content(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        create_variant_qualification_func_v1_request: CreateVariantQualificationFuncV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Create a qualification and attach to a schema variant
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param create_variant_qualification_func_v1_request: (required)
+        :type create_variant_qualification_func_v1_request: CreateVariantQualificationFuncV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_variant_qualification_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            create_variant_qualification_func_v1_request=create_variant_qualification_func_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "CreateVariantQualificationFuncV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _create_variant_qualification_serialize(
+        self,
+        workspace_id,
+        change_set_id,
+        schema_id,
+        schema_variant_id,
+        create_variant_qualification_func_v1_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if workspace_id is not None:
+            _path_params['workspace_id'] = workspace_id
+        if change_set_id is not None:
+            _path_params['change_set_id'] = change_set_id
+        if schema_id is not None:
+            _path_params['schema_id'] = schema_id
+        if schema_variant_id is not None:
+            _path_params['schema_variant_id'] = schema_variant_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if create_variant_qualification_func_v1_request is not None:
+            _body_params = create_variant_qualification_func_v1_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/qualification',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
 
 
     @validate_call
@@ -1569,6 +3601,644 @@ class SchemasApi:
         return self.api_client.param_serialize(
             method='GET',
             resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def unlock_schema(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> UnlockedSchemaV1Response:
+        """Unlocks a schema - if there's already an unlocked variant, then we return that
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._unlock_schema_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "UnlockedSchemaV1Response",
+            '401': None,
+            '422': "ApiError",
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def unlock_schema_with_http_info(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[UnlockedSchemaV1Response]:
+        """Unlocks a schema - if there's already an unlocked variant, then we return that
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._unlock_schema_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "UnlockedSchemaV1Response",
+            '401': None,
+            '422': "ApiError",
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def unlock_schema_without_preload_content(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Unlocks a schema - if there's already an unlocked variant, then we return that
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._unlock_schema_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "UnlockedSchemaV1Response",
+            '401': None,
+            '422': "ApiError",
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _unlock_schema_serialize(
+        self,
+        workspace_id,
+        change_set_id,
+        schema_id,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if workspace_id is not None:
+            _path_params['workspace_id'] = workspace_id
+        if change_set_id is not None:
+            _path_params['change_set_id'] = change_set_id
+        if schema_id is not None:
+            _path_params['schema_id'] = schema_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/unlock',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def update_schema_variant(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        update_schema_variant_v1_request: UpdateSchemaVariantV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> GetSchemaVariantV1Response:
+        """Update the schema variant and regenerate
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param update_schema_variant_v1_request: (required)
+        :type update_schema_variant_v1_request: UpdateSchemaVariantV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._update_schema_variant_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            update_schema_variant_v1_request=update_schema_variant_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "GetSchemaVariantV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def update_schema_variant_with_http_info(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        update_schema_variant_v1_request: UpdateSchemaVariantV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[GetSchemaVariantV1Response]:
+        """Update the schema variant and regenerate
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param update_schema_variant_v1_request: (required)
+        :type update_schema_variant_v1_request: UpdateSchemaVariantV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._update_schema_variant_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            update_schema_variant_v1_request=update_schema_variant_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "GetSchemaVariantV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def update_schema_variant_without_preload_content(
+        self,
+        workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
+        schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
+        update_schema_variant_v1_request: UpdateSchemaVariantV1Request,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Update the schema variant and regenerate
+
+
+        :param workspace_id: Workspace identifier (required)
+        :type workspace_id: str
+        :param change_set_id: Change Set identifier (required)
+        :type change_set_id: str
+        :param schema_id: Schema identifier (required)
+        :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
+        :param update_schema_variant_v1_request: (required)
+        :type update_schema_variant_v1_request: UpdateSchemaVariantV1Request
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._update_schema_variant_serialize(
+            workspace_id=workspace_id,
+            change_set_id=change_set_id,
+            schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
+            update_schema_variant_v1_request=update_schema_variant_v1_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "GetSchemaVariantV1Response",
+            '401': None,
+            '404': None,
+            '412': None,
+            '500': "ApiError",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _update_schema_variant_serialize(
+        self,
+        workspace_id,
+        change_set_id,
+        schema_id,
+        schema_variant_id,
+        update_schema_variant_v1_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if workspace_id is not None:
+            _path_params['workspace_id'] = workspace_id
+        if change_set_id is not None:
+            _path_params['change_set_id'] = change_set_id
+        if schema_id is not None:
+            _path_params['schema_id'] = schema_id
+        if schema_variant_id is not None:
+            _path_params['schema_variant_id'] = schema_variant_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if update_schema_variant_v1_request is not None:
+            _body_params = update_schema_variant_v1_request
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            _header_params['Content-Type'] = _content_type
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                _header_params['Content-Type'] = _default_content_type
+
+        # authentication setting
+        _auth_settings: List[str] = [
+        ]
+
+        return self.api_client.param_serialize(
+            method='PUT',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,

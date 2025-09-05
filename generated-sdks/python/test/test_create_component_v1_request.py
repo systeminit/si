@@ -36,14 +36,10 @@ class TestCreateComponentV1Request(unittest.TestCase):
         if include_optional:
             return CreateComponentV1Request(
                 attributes = {/domain/VpcId={$source={component=01K0WRC69ZPEMD6SMTKC84FBWC, path=/resource_value/VpcId}}, /domain/SubnetId={$source={component=01K0WRC69ZPEMD6SMTKC84FBWD, path=/resource_value/SubnetId}}, /domain/Version={$source=null}},
-                connections = {},
-                domain = {},
                 managed_by = {component=ComponentName},
                 name = 'MyComponentName',
                 resource_id = 'i-12345678',
                 schema_name = 'AWS::EC2::Instance',
-                secrets = {},
-                subscriptions = {},
                 view_name = 'MyView'
             )
         else:

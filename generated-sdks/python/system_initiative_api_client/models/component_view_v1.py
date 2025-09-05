@@ -21,7 +21,6 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List
 from system_initiative_api_client.models.component_prop_view_v1 import ComponentPropViewV1
 from system_initiative_api_client.models.connection_view_v1 import ConnectionViewV1
-from system_initiative_api_client.models.socket_view_v1 import SocketViewV1
 from system_initiative_api_client.models.view_v1 import ViewV1
 from typing import Optional, Set
 from typing_extensions import Self
@@ -40,10 +39,9 @@ class ComponentViewV1(BaseModel):
     resource_props: List[ComponentPropViewV1] = Field(alias="resourceProps")
     schema_id: StrictStr = Field(alias="schemaId")
     schema_variant_id: StrictStr = Field(alias="schemaVariantId")
-    sockets: List[SocketViewV1]
     to_delete: StrictBool = Field(alias="toDelete")
     views: List[ViewV1]
-    __properties: ClassVar[List[str]] = ["attributes", "canBeUpgraded", "connections", "domainProps", "id", "name", "resourceId", "resourceProps", "schemaId", "schemaVariantId", "sockets", "toDelete", "views"]
+    __properties: ClassVar[List[str]] = ["attributes", "canBeUpgraded", "connections", "domainProps", "id", "name", "resourceId", "resourceProps", "schemaId", "schemaVariantId", "toDelete", "views"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -105,13 +103,6 @@ class ComponentViewV1(BaseModel):
                 if _item_resource_props:
                     _items.append(_item_resource_props.to_dict())
             _dict['resourceProps'] = _items
-        # override the default output from pydantic by calling `to_dict()` of each item in sockets (list)
-        _items = []
-        if self.sockets:
-            for _item_sockets in self.sockets:
-                if _item_sockets:
-                    _items.append(_item_sockets.to_dict())
-            _dict['sockets'] = _items
         # override the default output from pydantic by calling `to_dict()` of each item in views (list)
         _items = []
         if self.views:
@@ -141,7 +132,6 @@ class ComponentViewV1(BaseModel):
             "resourceProps": [ComponentPropViewV1.from_dict(_item) for _item in obj["resourceProps"]] if obj.get("resourceProps") is not None else None,
             "schemaId": obj.get("schemaId"),
             "schemaVariantId": obj.get("schemaVariantId"),
-            "sockets": [SocketViewV1.from_dict(_item) for _item in obj["sockets"]] if obj.get("sockets") is not None else None,
             "toDelete": obj.get("toDelete"),
             "views": [ViewV1.from_dict(_item) for _item in obj["views"]] if obj.get("views") is not None else None
         })

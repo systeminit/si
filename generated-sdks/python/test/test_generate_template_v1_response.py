@@ -35,13 +35,15 @@ class TestGenerateTemplateV1Response(unittest.TestCase):
         model = GenerateTemplateV1Response()
         if include_optional:
             return GenerateTemplateV1Response(
-                func_id = '01H9ZQD35JPMBGHH69BT0Q79BB',
-                schema_variant_id = '01H9ZQD35JPMBGHH69BT0Q79AA'
+                func_id = '01H9ZQD35JPMBGHH69BT0Q79CC',
+                schema_id = '01H9ZQD35JPMBGHH69BT0Q79AA',
+                schema_variant_id = '01H9ZQD35JPMBGHH69BT0Q79BB'
             )
         else:
             return GenerateTemplateV1Response(
-                func_id = '01H9ZQD35JPMBGHH69BT0Q79BB',
-                schema_variant_id = '01H9ZQD35JPMBGHH69BT0Q79AA',
+                func_id = '01H9ZQD35JPMBGHH69BT0Q79CC',
+                schema_id = '01H9ZQD35JPMBGHH69BT0Q79AA',
+                schema_variant_id = '01H9ZQD35JPMBGHH69BT0Q79BB',
         )
         """
 

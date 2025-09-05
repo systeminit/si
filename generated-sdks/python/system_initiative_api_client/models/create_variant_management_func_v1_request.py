@@ -22,14 +22,15 @@ from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 
-class OutgoingConnectionViewV1(BaseModel):
+class CreateVariantManagementFuncV1Request(BaseModel):
     """
-    OutgoingConnectionViewV1
+    CreateVariantManagementFuncV1Request
     """ # noqa: E501
-    var_from: StrictStr = Field(alias="from")
-    to_component_id: StrictStr = Field(alias="toComponentId")
-    to_component_name: StrictStr = Field(alias="toComponentName")
-    __properties: ClassVar[List[str]] = ["from", "toComponentId", "toComponentName"]
+    code: StrictStr
+    description: StrictStr
+    display_name: StrictStr = Field(alias="displayName")
+    name: StrictStr
+    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "name"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -49,7 +50,7 @@ class OutgoingConnectionViewV1(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of OutgoingConnectionViewV1 from a JSON string"""
+        """Create an instance of CreateVariantManagementFuncV1Request from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -74,7 +75,7 @@ class OutgoingConnectionViewV1(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of OutgoingConnectionViewV1 from a dict"""
+        """Create an instance of CreateVariantManagementFuncV1Request from a dict"""
         if obj is None:
             return None
 
@@ -82,9 +83,10 @@ class OutgoingConnectionViewV1(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "from": obj.get("from"),
-            "toComponentId": obj.get("toComponentId"),
-            "toComponentName": obj.get("toComponentName")
+            "code": obj.get("code"),
+            "description": obj.get("description"),
+            "displayName": obj.get("displayName"),
+            "name": obj.get("name")
         })
         return _obj
 

@@ -402,10 +402,6 @@ Components management endpoints
 
 ```json
 {
-  "components": [
-    "01H9ZQD35JPMBGHH69BT0Q79AA",
-    "01H9ZQD35JPMBGHH69BT0Q79BB"
-  ],
   "componentDetails": [
     {
       "component_id": "01H9ZQD35JPMBGHH69BT0Q79AA",
@@ -469,16 +465,12 @@ Components management endpoints
       "$source": null
     }
   },
-  "connections": {},
-  "domain": {},
   "managedBy": {
     "component": "ComponentName"
   },
   "name": "MyComponentName",
   "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
-  "secrets": {},
-  "subscriptions": {},
   "viewName": "MyView"
 }
 ```
@@ -510,11 +502,9 @@ Components management endpoints
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -539,15 +529,6 @@ Components management endpoints
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -665,11 +646,9 @@ Components management endpoints
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -694,15 +673,6 @@ Components management endpoints
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -767,8 +737,9 @@ Components management endpoints
 
 ```json
 {
-  "funcId": "01H9ZQD35JPMBGHH69BT0Q79BB",
-  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79AA"
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79CC",
+  "schemaId": "01H9ZQD35JPMBGHH69BT0Q79AA",
+  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79BB"
 }
 ```
 
@@ -868,11 +839,9 @@ Components management endpoints
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -897,15 +866,6 @@ Components management endpoints
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -962,16 +922,11 @@ Components management endpoints
       "$source": null
     }
   },
-  "connectionChanges": {
-    "add": {},
-    "remove": {}
-  },
-  "domain": {},
   "name": "MyUpdatedComponentName",
   "resourceId": "i-12345678",
-  "secrets": {},
-  "subscriptions": {},
-  "unset": {}
+  "secrets": {
+    "secretDefinitionName": "secretName"
+  }
 }
 ```
 
@@ -1003,11 +958,9 @@ Components management endpoints
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -1032,15 +985,6 @@ Components management endpoints
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -1279,11 +1223,9 @@ Components management endpoints
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -1308,15 +1250,6 @@ Components management endpoints
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -1409,11 +1342,9 @@ Components management endpoints
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -1438,15 +1369,6 @@ Components management endpoints
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -1513,6 +1435,59 @@ Schemas management endpoints
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schemas listed successfully|[ListSchemaV1Response](#schemalistschemav1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Create a schema and it's default variant
+
+<a id="opIdcreate_schema"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas`
+
+> Body parameter
+
+```json
+{
+  "category": "string",
+  "code": "string",
+  "color": "string",
+  "description": "string",
+  "link": "string",
+  "name": "string"
+}
+```
+
+<h3 id="create-a-schema-and-it's-default-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|body|body|[CreateSchemaV1Request](#schemacreateschemav1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "defaultVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "name": "AWS::EC2::Instance",
+  "variantIds": [
+    "01H9ZQD35JPMBGHH69BT0Q79VZ",
+    "01H9ZQD35JPMBGHH69BT0Q79VY"
+  ]
+}
+```
+
+<h3 id="create-a-schema-and-it's-default-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema created successfully|[GetSchemaV1Response](#schemagetschemav1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## Find schema by name or schema id
@@ -1593,6 +1568,42 @@ Schemas management endpoints
 |202|[Accepted](https://tools.ietf.org/html/rfc7231#section-6.3.3)|Schema data is being generated from cached modules|[BuildingResponseV1](#schemabuildingresponsev1)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Unlocks a schema - if there's already an unlocked variant, then we return that
+
+<a id="opIdunlock_schema"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/unlock`
+
+<h3 id="unlocks-a-schema---if-there's-already-an-unlocked-variant,-then-we-return-that-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "unlockedVariantId": "01H9ZQD35JPMBGHH69BT0Q75XY"
+}
+```
+
+<h3 id="unlocks-a-schema---if-there's-already-an-unlocked-variant,-then-we-return-that-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema unlocked successfully|[UnlockedSchemaV1Response](#schemaunlockedschemav1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## Get the default variant for a schema id
@@ -1690,6 +1701,322 @@ Schemas management endpoints
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema variant retrieved successfully|[GetSchemaVariantV1Response](#schemagetschemavariantv1response)|
 |202|[Accepted](https://tools.ietf.org/html/rfc7231#section-6.3.3)|Schema variant building, try again later|[BuildingResponseV1](#schemabuildingresponsev1)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Update the schema variant and regenerate
+
+<a id="opIdupdate_schema_variant"></a>
+
+> Request format
+
+`PUT /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}`
+
+> Body parameter
+
+```json
+{
+  "category": "AWS::EC2",
+  "code": "async function main(input: Input): Promise < Output > {\n    if (!input.domain?.region) {\n        return {\n            result: \"failure\",\n            message: \"No Region Name to validate\",\n        };\n    }\n\n    const child = await siExec.waitUntilEnd(\"aws\", [\n        \"ec2\",\n        \"describe-regions\",\n        \"--region-names\",\n        input.domain?.region!,\n        \"--region\",\n        \"us-east-1\",\n    ]);\n\n    if (child.exitCode !== 0) {\n        console.error(child.stderr);\n        return {\n            result: \"failure\",\n            message: \"Error from API\"\n        }\n    }\n\n    const regionDetails = JSON.parse(child.stdout).Regions;\n    if (regionDetails.length === 0 || regionDetails.length > 1) {\n        return {\n            result: \"failure\",\n            message: \"Unable to find Region\"\n        }\n    }\n\n    if (regionDetails[0].OptInStatus === \"not-opted-in\") {\n        return {\n            result: \"failure\",\n            message: \"Region not-opted-in for use\"\n        }\n    }\n\n    return {\n        result: \"success\",\n        message: \"Region is available to use\",\n    };\n}",
+  "color": "#FF5733",
+  "description": "Validates if an AWS region exists and is available for use",
+  "link": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html",
+  "name": "AWS Region Validator"
+}
+```
+
+<h3 id="update-the-schema-variant-and-regenerate-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|body|body|[UpdateSchemaVariantV1Request](#schemaupdateschemavariantv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "assetFuncId": "01H9ZQD35JPMBGHH69BT0Q75XY",
+  "category": "AWS::EC2",
+  "color": "#FF5733",
+  "description": "Amazon EC2 Instance resource type",
+  "displayName": "AWS EC2 Instance",
+  "domainProps": {},
+  "isDefaultVariant": true,
+  "isLocked": false,
+  "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
+  "variantFuncIds": [
+    "01H9ZQD35JPMBGHH69BT0Q75AA",
+    "01H9ZQD35JPMBGHH69BT0Q75BB"
+  ],
+  "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+```
+
+<h3 id="update-the-schema-variant-and-regenerate-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema variant successfully updated|[GetSchemaVariantV1Response](#schemagetschemavariantv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Create an action function and attach to a schema variant
+
+<a id="opIdcreate_variant_action"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/action`
+
+> Body parameter
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Creates an EC2 Instance",
+  "displayName": "Create EC2 Instance",
+  "kind": "Create",
+  "name": "awsEC2InstanceCreate"
+}
+```
+
+<h3 id="create-an-action-function-and-attach-to-a-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|body|body|[CreateVariantActionFuncV1Request](#schemacreatevariantactionfuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+```
+
+<h3 id="create-an-action-function-and-attach-to-a-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Action function successfully created and attached to the variant|[CreateVariantActionFuncV1Response](#schemacreatevariantactionfuncv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Create an authentication function and attach to a schema variant
+
+<a id="opIdcreate_variant_authentication"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/authentication`
+
+> Body parameter
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Function to manage AWS Credentials",
+  "displayName": "Set AWS credentials",
+  "name": "awsSetCredentials"
+}
+```
+
+<h3 id="create-an-authentication-function-and-attach-to-a-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|body|body|[CreateVariantAuthenticationFuncV1Request](#schemacreatevariantauthenticationfuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+```
+
+<h3 id="create-an-authentication-function-and-attach-to-a-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Authentication function successfully created and attached to the variant|[CreateVariantAuthenticationFuncV1Response](#schemacreatevariantauthenticationfuncv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Create a codegen function and attach to a schema variant
+
+<a id="opIdcreate_variant_codegen"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/codegen`
+
+> Body parameter
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Generates the payload required for creating an EC2 instance",
+  "displayName": "Generate EC2 Instance Create Payload",
+  "locations": [
+    "code"
+  ],
+  "name": "awsEC2InstanceGenerateCode"
+}
+```
+
+<h3 id="create-a-codegen-function-and-attach-to-a-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|body|body|[CreateVariantCodegenFuncV1Request](#schemacreatevariantcodegenfuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+```
+
+<h3 id="create-a-codegen-function-and-attach-to-a-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Codegen function successfully created and attached to the variant|[CreateVariantCodegenFuncV1Response](#schemacreatevariantcodegenfuncv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Create a management function and attach to a schema variant
+
+<a id="opIdcreate_variant_management"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/management`
+
+> Body parameter
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Manages a collection of VPC components and their relationships",
+  "displayName": "Manage my VPC Components",
+  "name": "awsCreateMyVpc"
+}
+```
+
+<h3 id="create-a-management-function-and-attach-to-a-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|body|body|[CreateVariantManagementFuncV1Request](#schemacreatevariantmanagementfuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+```
+
+<h3 id="create-a-management-function-and-attach-to-a-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Management function successfully created and attached to the variant|[CreateVariantManagementFuncV1Response](#schemacreatevariantmanagementfuncv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Create a qualification and attach to a schema variant
+
+<a id="opIdcreate_variant_qualification"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/qualification`
+
+> Body parameter
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Creates an EC2 Instance",
+  "displayName": "Create EC2 Instance",
+  "locations": [
+    "code"
+  ],
+  "name": "awsEC2InstanceCreate"
+}
+```
+
+<h3 id="create-a-qualification-and-attach-to-a-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|body|body|[CreateVariantQualificationFuncV1Request](#schemacreatevariantqualificationfuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+```
+
+<h3 id="create-a-qualification-and-attach-to-a-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Qualification successfully created and attached to the variant|[CreateVariantQualificationFuncV1Response](#schemacreatevariantqualificationfuncv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
@@ -2286,6 +2613,52 @@ Functions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Update a func
+
+<a id="opIdupdate_func"></a>
+
+> Request format
+
+`PUT /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id}`
+
+> Body parameter
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Updated Description",
+  "displayName": "Updated Display Name"
+}
+```
+
+<h3 id="update-a-func-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|func_id|path|string|true|Func identifier|
+|body|body|[UpdateFuncV1Request](#schemaupdatefuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="update-a-func-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Function successfully updated|[UpdateFuncV1Response](#schemaupdatefuncv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Function not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 # [management_funcs](#system-initiative-api-management_funcs)
 
 Management functions endpoints
@@ -2727,11 +3100,9 @@ xor
   "canBeUpgraded": true,
   "connections": [
     {
-      "incoming": {
-        "from": "string",
-        "fromComponentId": "string",
-        "fromComponentName": "string",
-        "to": "string"
+      "managing": {
+        "componentId": "string",
+        "componentName": "string"
       }
     }
   ],
@@ -2756,15 +3127,6 @@ xor
   ],
   "schemaId": "string",
   "schemaVariantId": "string",
-  "sockets": [
-    {
-      "arity": "one",
-      "direction": "input",
-      "id": "string",
-      "name": "string",
-      "value": {}
-    }
-  ],
   "toDelete": true,
   "views": [
     {
@@ -2792,97 +3154,8 @@ xor
 |resourceProps|[[ComponentPropViewV1](#schemacomponentpropviewv1)]|true|none|none|
 |schemaId|string|true|none|none|
 |schemaVariantId|string|true|none|none|
-|sockets|[[SocketViewV1](#schemasocketviewv1)]|true|none|none|
 |toDelete|boolean|true|none|none|
 |views|[[ViewV1](#schemaviewv1)]|true|none|none|
-
-## [Connection](#tocS_Connection)
-
-<a id="schemaconnection"></a>
-<a id="schema_Connection"></a>
-<a id="tocSconnection"></a>
-<a id="tocsconnection"></a>
-
-```json
-{
-  "from": {
-    "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-    "socketName": "output"
-  },
-  "to": "ThisComponentInputSocketName"
-}
-
-```
-
-### [Properties](#connection-properties)
-
-oneOf
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|*anonymous*|object|false|none|none|
-|» from|[ConnectionPoint](#schemaconnectionpoint)|true|none|none|
-|» to|string|true|none|none|
-
-xor
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|*anonymous*|object|false|none|none|
-|» from|string|true|none|none|
-|» to|[ConnectionPoint](#schemaconnectionpoint)|true|none|none|
-
-## [ConnectionDetails](#tocS_ConnectionDetails)
-
-<a id="schemaconnectiondetails"></a>
-<a id="schema_ConnectionDetails"></a>
-<a id="tocSconnectiondetails"></a>
-<a id="tocsconnectiondetails"></a>
-
-```json
-{
-  "add": {},
-  "remove": {}
-}
-
-```
-
-### [Properties](#connectiondetails-properties)
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|add|[[Connection](#schemaconnection)]|false|none|none|
-|remove|[[Connection](#schemaconnection)]|false|none|none|
-
-## [ConnectionPoint](#tocS_ConnectionPoint)
-
-<a id="schemaconnectionpoint"></a>
-<a id="schema_ConnectionPoint"></a>
-<a id="tocSconnectionpoint"></a>
-<a id="tocsconnectionpoint"></a>
-
-```json
-{
-  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-  "socketName": "OutputSocketName"
-}
-
-```
-
-### [Properties](#connectionpoint-properties)
-
-allOf
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|*anonymous*|[ComponentReference](#schemacomponentreference)|false|none|none|
-
-and
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|*anonymous*|object|false|none|none|
-|» socketName|string|true|none|none|
 
 ## [ConnectionViewV1](#tocS_ConnectionViewV1)
 
@@ -2893,11 +3166,9 @@ and
 
 ```json
 {
-  "incoming": {
-    "from": "string",
-    "fromComponentId": "string",
-    "fromComponentName": "string",
-    "to": "string"
+  "managing": {
+    "componentId": "string",
+    "componentName": "string"
   }
 }
 
@@ -2906,20 +3177,6 @@ and
 ### [Properties](#connectionviewv1-properties)
 
 oneOf
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|*anonymous*|object|false|none|none|
-|» incoming|[IncomingConnectionViewV1](#schemaincomingconnectionviewv1)|true|none|none|
-
-xor
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|*anonymous*|object|false|none|none|
-|» outgoing|[OutgoingConnectionViewV1](#schemaoutgoingconnectionviewv1)|true|none|none|
-
-xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
@@ -3004,16 +3261,12 @@ xor
       "$source": null
     }
   },
-  "connections": {},
-  "domain": {},
   "managedBy": {
     "component": "ComponentName"
   },
   "name": "MyComponentName",
   "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
-  "secrets": {},
-  "subscriptions": {},
   "viewName": "MyView"
 }
 
@@ -3025,17 +3278,10 @@ xor
 |---|---|---|---|---|
 |attributes|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
-|connections|[[Connection](#schemaconnection)]|false|none|none|
-|domain|object|false|none|none|
-|» **additionalProperties**|any|false|none|none|
 |managedBy|[ComponentReference](#schemacomponentreference)|false|none|none|
 |name|string|true|none|none|
 |resourceId|string,null|false|none|none|
 |schemaName|string|true|none|none|
-|secrets|object|false|none|none|
-|» **additionalProperties**|any|false|none|none|
-|subscriptions|object|false|none|none|
-|» **additionalProperties**|[Subscription](#schemasubscription)|false|none|none|
 |viewName|string,null|false|none|none|
 
 ## [CreateComponentV1Response](#tocS_CreateComponentV1Response)
@@ -3060,11 +3306,9 @@ xor
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -3089,15 +3333,6 @@ xor
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -3116,6 +3351,36 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |component|[ComponentViewV1](#schemacomponentviewv1)|true|none|none|
+
+## [CreateSchemaV1Request](#tocS_CreateSchemaV1Request)
+
+<a id="schemacreateschemav1request"></a>
+<a id="schema_CreateSchemaV1Request"></a>
+<a id="tocScreateschemav1request"></a>
+<a id="tocscreateschemav1request"></a>
+
+```json
+{
+  "category": "string",
+  "code": "string",
+  "color": "string",
+  "description": "string",
+  "link": "string",
+  "name": "string"
+}
+
+```
+
+### [Properties](#createschemav1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|category|string,null|false|none|none|
+|code|string|true|none|none|
+|color|string,null|false|none|none|
+|description|string,null|false|none|none|
+|link|string,null|false|none|none|
+|name|string|true|none|none|
 
 ## [CreateSecretV1Request](#tocS_CreateSecretV1Request)
 
@@ -3173,6 +3438,246 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |secret|[SecretV1](#schemasecretv1)|true|none|none|
+
+## [CreateVariantActionFuncV1Request](#tocS_CreateVariantActionFuncV1Request)
+
+<a id="schemacreatevariantactionfuncv1request"></a>
+<a id="schema_CreateVariantActionFuncV1Request"></a>
+<a id="tocScreatevariantactionfuncv1request"></a>
+<a id="tocscreatevariantactionfuncv1request"></a>
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Creates an EC2 Instance",
+  "displayName": "Create EC2 Instance",
+  "kind": "Create",
+  "name": "awsEC2InstanceCreate"
+}
+
+```
+
+### [Properties](#createvariantactionfuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|code|string|true|none|none|
+|description|string|true|none|none|
+|displayName|string|true|none|none|
+|kind|string|true|none|none|
+|name|string|true|none|none|
+
+## [CreateVariantActionFuncV1Response](#tocS_CreateVariantActionFuncV1Response)
+
+<a id="schemacreatevariantactionfuncv1response"></a>
+<a id="schema_CreateVariantActionFuncV1Response"></a>
+<a id="tocScreatevariantactionfuncv1response"></a>
+<a id="tocscreatevariantactionfuncv1response"></a>
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+
+```
+
+### [Properties](#createvariantactionfuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcId|string|true|none|none|
+
+## [CreateVariantAuthenticationFuncV1Request](#tocS_CreateVariantAuthenticationFuncV1Request)
+
+<a id="schemacreatevariantauthenticationfuncv1request"></a>
+<a id="schema_CreateVariantAuthenticationFuncV1Request"></a>
+<a id="tocScreatevariantauthenticationfuncv1request"></a>
+<a id="tocscreatevariantauthenticationfuncv1request"></a>
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Function to manage AWS Credentials",
+  "displayName": "Set AWS credentials",
+  "name": "awsSetCredentials"
+}
+
+```
+
+### [Properties](#createvariantauthenticationfuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|code|string|true|none|none|
+|description|string|true|none|none|
+|displayName|string|true|none|none|
+|name|string|true|none|none|
+
+## [CreateVariantAuthenticationFuncV1Response](#tocS_CreateVariantAuthenticationFuncV1Response)
+
+<a id="schemacreatevariantauthenticationfuncv1response"></a>
+<a id="schema_CreateVariantAuthenticationFuncV1Response"></a>
+<a id="tocScreatevariantauthenticationfuncv1response"></a>
+<a id="tocscreatevariantauthenticationfuncv1response"></a>
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+
+```
+
+### [Properties](#createvariantauthenticationfuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcId|string|true|none|none|
+
+## [CreateVariantCodegenFuncV1Request](#tocS_CreateVariantCodegenFuncV1Request)
+
+<a id="schemacreatevariantcodegenfuncv1request"></a>
+<a id="schema_CreateVariantCodegenFuncV1Request"></a>
+<a id="tocScreatevariantcodegenfuncv1request"></a>
+<a id="tocscreatevariantcodegenfuncv1request"></a>
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Generates the payload required for creating an EC2 instance",
+  "displayName": "Generate EC2 Instance Create Payload",
+  "locations": [
+    "code"
+  ],
+  "name": "awsEC2InstanceGenerateCode"
+}
+
+```
+
+### [Properties](#createvariantcodegenfuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|code|string|true|none|none|
+|description|string|true|none|none|
+|displayName|string|true|none|none|
+|locations|[string]|true|none|none|
+|name|string|true|none|none|
+
+## [CreateVariantCodegenFuncV1Response](#tocS_CreateVariantCodegenFuncV1Response)
+
+<a id="schemacreatevariantcodegenfuncv1response"></a>
+<a id="schema_CreateVariantCodegenFuncV1Response"></a>
+<a id="tocScreatevariantcodegenfuncv1response"></a>
+<a id="tocscreatevariantcodegenfuncv1response"></a>
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+
+```
+
+### [Properties](#createvariantcodegenfuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcId|string|true|none|none|
+
+## [CreateVariantManagementFuncV1Request](#tocS_CreateVariantManagementFuncV1Request)
+
+<a id="schemacreatevariantmanagementfuncv1request"></a>
+<a id="schema_CreateVariantManagementFuncV1Request"></a>
+<a id="tocScreatevariantmanagementfuncv1request"></a>
+<a id="tocscreatevariantmanagementfuncv1request"></a>
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Manages a collection of VPC components and their relationships",
+  "displayName": "Manage my VPC Components",
+  "name": "awsCreateMyVpc"
+}
+
+```
+
+### [Properties](#createvariantmanagementfuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|code|string|true|none|none|
+|description|string|true|none|none|
+|displayName|string|true|none|none|
+|name|string|true|none|none|
+
+## [CreateVariantManagementFuncV1Response](#tocS_CreateVariantManagementFuncV1Response)
+
+<a id="schemacreatevariantmanagementfuncv1response"></a>
+<a id="schema_CreateVariantManagementFuncV1Response"></a>
+<a id="tocScreatevariantmanagementfuncv1response"></a>
+<a id="tocscreatevariantmanagementfuncv1response"></a>
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+
+```
+
+### [Properties](#createvariantmanagementfuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcId|string|true|none|none|
+
+## [CreateVariantQualificationFuncV1Request](#tocS_CreateVariantQualificationFuncV1Request)
+
+<a id="schemacreatevariantqualificationfuncv1request"></a>
+<a id="schema_CreateVariantQualificationFuncV1Request"></a>
+<a id="tocScreatevariantqualificationfuncv1request"></a>
+<a id="tocscreatevariantqualificationfuncv1request"></a>
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Creates an EC2 Instance",
+  "displayName": "Create EC2 Instance",
+  "locations": [
+    "code"
+  ],
+  "name": "awsEC2InstanceCreate"
+}
+
+```
+
+### [Properties](#createvariantqualificationfuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|code|string|true|none|none|
+|description|string|true|none|none|
+|displayName|string|true|none|none|
+|locations|[string]|true|none|none|
+|name|string|true|none|none|
+
+## [CreateVariantQualificationFuncV1Response](#tocS_CreateVariantQualificationFuncV1Response)
+
+<a id="schemacreatevariantqualificationfuncv1response"></a>
+<a id="schema_CreateVariantQualificationFuncV1Response"></a>
+<a id="tocScreatevariantqualificationfuncv1response"></a>
+<a id="tocscreatevariantqualificationfuncv1response"></a>
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+
+```
+
+### [Properties](#createvariantqualificationfuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcId|string|true|none|none|
 
 ## [DeleteChangeSetV1Response](#tocS_DeleteChangeSetV1Response)
 
@@ -3707,8 +4212,9 @@ continued
 
 ```json
 {
-  "funcId": "01H9ZQD35JPMBGHH69BT0Q79BB",
-  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79AA"
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79CC",
+  "schemaId": "01H9ZQD35JPMBGHH69BT0Q79AA",
+  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79BB"
 }
 
 ```
@@ -3718,6 +4224,7 @@ continued
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |funcId|string|true|none|none|
+|schemaId|string|true|none|none|
 |schemaVariantId|string|true|none|none|
 
 ## [GetActionsV1Response](#tocS_GetActionsV1Response)
@@ -3805,11 +4312,9 @@ continued
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -3834,15 +4339,6 @@ continued
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -4181,32 +4677,6 @@ continued
 |» definition|[SecretDefinitionV1](#schemasecretdefinitionv1)|true|none|none|
 |» secrets|[[SecretV1](#schemasecretv1)]|true|none|none|
 
-## [IncomingConnectionViewV1](#tocS_IncomingConnectionViewV1)
-
-<a id="schemaincomingconnectionviewv1"></a>
-<a id="schema_IncomingConnectionViewV1"></a>
-<a id="tocSincomingconnectionviewv1"></a>
-<a id="tocsincomingconnectionviewv1"></a>
-
-```json
-{
-  "from": "string",
-  "fromComponentId": "string",
-  "fromComponentName": "string",
-  "to": "string"
-}
-
-```
-
-### [Properties](#incomingconnectionviewv1-properties)
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|from|string|true|none|none|
-|fromComponentId|string|true|none|none|
-|fromComponentName|string|true|none|none|
-|to|string|true|none|none|
-
 ## [ListChangeSetV1Response](#tocS_ListChangeSetV1Response)
 
 <a id="schemalistchangesetv1response"></a>
@@ -4248,11 +4718,6 @@ continued
       "schema_name": "AWS::EC2::Subnet"
     }
   ],
-  "components": [
-    "01H9ZQD35JPMBGHH69BT0Q79AA",
-    "01H9ZQD35JPMBGHH69BT0Q79BB",
-    "01H9ZQD35JPMBGHH69BT0Q79CC"
-  ],
   "nextCursor": "string"
 }
 
@@ -4263,7 +4728,6 @@ continued
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |componentDetails|[[ComponentDetailsV1](#schemacomponentdetailsv1)]|true|none|none|
-|components|[array]|true|none|none|
 |nextCursor|string,null|false|none|none|
 
 ## [ListSchemaV1Response](#tocS_ListSchemaV1Response)
@@ -4337,11 +4801,9 @@ continued
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -4366,15 +4828,6 @@ continued
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -4604,30 +5057,6 @@ Component details in action response
 |---|---|---|---|---|
 |id|string|true|none|none|
 |name|string|true|none|none|
-
-## [OutgoingConnectionViewV1](#tocS_OutgoingConnectionViewV1)
-
-<a id="schemaoutgoingconnectionviewv1"></a>
-<a id="schema_OutgoingConnectionViewV1"></a>
-<a id="tocSoutgoingconnectionviewv1"></a>
-<a id="tocsoutgoingconnectionviewv1"></a>
-
-```json
-{
-  "from": "string",
-  "toComponentId": "string",
-  "toComponentName": "string"
-}
-
-```
-
-### [Properties](#outgoingconnectionviewv1-properties)
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|from|string|true|none|none|
-|toComponentId|string|true|none|none|
-|toComponentName|string|true|none|none|
 
 ## [OutputLineViewV1](#tocS_OutputLineViewV1)
 
@@ -5044,59 +5473,6 @@ xor
 |id|string|true|none|none|
 |name|string|true|none|none|
 
-## [SocketDirection](#tocS_SocketDirection)
-
-<a id="schemasocketdirection"></a>
-<a id="schema_SocketDirection"></a>
-<a id="tocSsocketdirection"></a>
-<a id="tocssocketdirection"></a>
-
-```json
-"input"
-
-```
-
-### [Properties](#socketdirection-properties)
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|*anonymous*|string|false|none|none|
-
-#### [Enumerated Values](#socketdirection-enumerated-values)
-
-|Property|Value|
-|---|---|
-|*anonymous*|input|
-|*anonymous*|output|
-
-## [SocketViewV1](#tocS_SocketViewV1)
-
-<a id="schemasocketviewv1"></a>
-<a id="schema_SocketViewV1"></a>
-<a id="tocSsocketviewv1"></a>
-<a id="tocssocketviewv1"></a>
-
-```json
-{
-  "arity": "one",
-  "direction": "input",
-  "id": "string",
-  "name": "string",
-  "value": {}
-}
-
-```
-
-### [Properties](#socketviewv1-properties)
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|arity|string|true|none|none|
-|direction|[SocketDirection](#schemasocketdirection)|true|none|none|
-|id|string|true|none|none|
-|name|string|true|none|none|
-|value|object|true|none|none|
-
 ## [SourceViewV1](#tocS_SourceViewV1)
 
 <a id="schemasourceviewv1"></a>
@@ -5119,38 +5495,6 @@ xor
 |component|string|true|none|none|
 |propPath|string|true|none|none|
 
-## [Subscription](#tocS_Subscription)
-
-<a id="schemasubscription"></a>
-<a id="schema_Subscription"></a>
-<a id="tocSsubscription"></a>
-<a id="tocssubscription"></a>
-
-```json
-{
-  "component": "ComponentName",
-  "function": "string",
-  "propPath": "string"
-}
-
-```
-
-### [Properties](#subscription-properties)
-
-allOf
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|*anonymous*|[ComponentReference](#schemacomponentreference)|false|none|none|
-
-and
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|*anonymous*|object|false|none|none|
-|» function|string|false|none|none|
-|» propPath|string|true|none|none|
-
 ## [SystemStatusResponse](#tocS_SystemStatusResponse)
 
 <a id="schemasystemstatusresponse"></a>
@@ -5170,6 +5514,28 @@ and
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |API Documentation|string|true|none|none|
+
+## [UnlockedSchemaV1Response](#tocS_UnlockedSchemaV1Response)
+
+<a id="schemaunlockedschemav1response"></a>
+<a id="schema_UnlockedSchemaV1Response"></a>
+<a id="tocSunlockedschemav1response"></a>
+<a id="tocsunlockedschemav1response"></a>
+
+```json
+{
+  "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "unlockedVariantId": "01H9ZQD35JPMBGHH69BT0Q75XY"
+}
+
+```
+
+### [Properties](#unlockedschemav1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|schemaId|string|true|none|none|
+|unlockedVariantId|string|true|none|none|
 
 ## [UpdateComponentV1Request](#tocS_UpdateComponentV1Request)
 
@@ -5197,16 +5563,11 @@ and
       "$source": null
     }
   },
-  "connectionChanges": {
-    "add": {},
-    "remove": {}
-  },
-  "domain": {},
   "name": "MyUpdatedComponentName",
   "resourceId": "i-12345678",
-  "secrets": {},
-  "subscriptions": {},
-  "unset": {}
+  "secrets": {
+    "secretDefinitionName": "secretName"
+  }
 }
 
 ```
@@ -5217,16 +5578,10 @@ and
 |---|---|---|---|---|
 |attributes|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
-|connectionChanges|[ConnectionDetails](#schemaconnectiondetails)|false|none|none|
-|domain|object|false|none|none|
-|» **additionalProperties**|any|false|none|none|
 |name|string,null|false|none|none|
 |resourceId|string,null|false|none|none|
 |secrets|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
-|subscriptions|object|false|none|none|
-|» **additionalProperties**|[Subscription](#schemasubscription)|false|none|none|
-|unset|[[ComponentPropKey](#schemacomponentpropkey)]|false|none|none|
 
 ## [UpdateComponentV1Response](#tocS_UpdateComponentV1Response)
 
@@ -5250,11 +5605,9 @@ and
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -5279,15 +5632,6 @@ and
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {
@@ -5306,6 +5650,80 @@ and
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |component|[ComponentViewV1](#schemacomponentviewv1)|true|none|none|
+
+## [UpdateFuncV1Request](#tocS_UpdateFuncV1Request)
+
+<a id="schemaupdatefuncv1request"></a>
+<a id="schema_UpdateFuncV1Request"></a>
+<a id="tocSupdatefuncv1request"></a>
+<a id="tocsupdatefuncv1request"></a>
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "Updated Description",
+  "displayName": "Updated Display Name"
+}
+
+```
+
+### [Properties](#updatefuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|code|string|true|none|none|
+|description|string|true|none|none|
+|displayName|string|true|none|none|
+
+## [UpdateFuncV1Response](#tocS_UpdateFuncV1Response)
+
+<a id="schemaupdatefuncv1response"></a>
+<a id="schema_UpdateFuncV1Response"></a>
+<a id="tocSupdatefuncv1response"></a>
+<a id="tocsupdatefuncv1response"></a>
+
+```json
+{
+  "success": true
+}
+
+```
+
+### [Properties](#updatefuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|success|boolean|true|none|none|
+
+## [UpdateSchemaVariantV1Request](#tocS_UpdateSchemaVariantV1Request)
+
+<a id="schemaupdateschemavariantv1request"></a>
+<a id="schema_UpdateSchemaVariantV1Request"></a>
+<a id="tocSupdateschemavariantv1request"></a>
+<a id="tocsupdateschemavariantv1request"></a>
+
+```json
+{
+  "category": "AWS::EC2",
+  "code": "async function main(input: Input): Promise < Output > {\n    if (!input.domain?.region) {\n        return {\n            result: \"failure\",\n            message: \"No Region Name to validate\",\n        };\n    }\n\n    const child = await siExec.waitUntilEnd(\"aws\", [\n        \"ec2\",\n        \"describe-regions\",\n        \"--region-names\",\n        input.domain?.region!,\n        \"--region\",\n        \"us-east-1\",\n    ]);\n\n    if (child.exitCode !== 0) {\n        console.error(child.stderr);\n        return {\n            result: \"failure\",\n            message: \"Error from API\"\n        }\n    }\n\n    const regionDetails = JSON.parse(child.stdout).Regions;\n    if (regionDetails.length === 0 || regionDetails.length > 1) {\n        return {\n            result: \"failure\",\n            message: \"Unable to find Region\"\n        }\n    }\n\n    if (regionDetails[0].OptInStatus === \"not-opted-in\") {\n        return {\n            result: \"failure\",\n            message: \"Region not-opted-in for use\"\n        }\n    }\n\n    return {\n        result: \"success\",\n        message: \"Region is available to use\",\n    };\n}",
+  "color": "#FF5733",
+  "description": "Validates if an AWS region exists and is available for use",
+  "link": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html",
+  "name": "AWS Region Validator"
+}
+
+```
+
+### [Properties](#updateschemavariantv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|category|string|true|none|none|
+|code|string|true|none|none|
+|color|string|true|none|none|
+|description|string|true|none|none|
+|link|string|true|none|none|
+|name|string|true|none|none|
 
 ## [UpdateSecretV1Request](#tocS_UpdateSecretV1Request)
 
@@ -5386,11 +5804,9 @@ and
     "canBeUpgraded": true,
     "connections": [
       {
-        "incoming": {
-          "from": "string",
-          "fromComponentId": "string",
-          "fromComponentName": "string",
-          "to": "string"
+        "managing": {
+          "componentId": "string",
+          "componentName": "string"
         }
       }
     ],
@@ -5415,15 +5831,6 @@ and
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
-    "sockets": [
-      {
-        "arity": "one",
-        "direction": "input",
-        "id": "string",
-        "name": "string",
-        "value": {}
-      }
-    ],
     "toDelete": true,
     "views": [
       {

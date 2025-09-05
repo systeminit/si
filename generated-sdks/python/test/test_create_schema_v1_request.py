@@ -14,10 +14,10 @@
 
 import unittest
 
-from system_initiative_api_client.models.connection_one_of1 import ConnectionOneOf1
+from system_initiative_api_client.models.create_schema_v1_request import CreateSchemaV1Request
 
-class TestConnectionOneOf1(unittest.TestCase):
-    """ConnectionOneOf1 unit test stubs"""
+class TestCreateSchemaV1Request(unittest.TestCase):
+    """CreateSchemaV1Request unit test stubs"""
 
     def setUp(self):
         pass
@@ -25,28 +25,32 @@ class TestConnectionOneOf1(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> ConnectionOneOf1:
-        """Test ConnectionOneOf1
+    def make_instance(self, include_optional) -> CreateSchemaV1Request:
+        """Test CreateSchemaV1Request
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `ConnectionOneOf1`
+        # uncomment below to create an instance of `CreateSchemaV1Request`
         """
-        model = ConnectionOneOf1()
+        model = CreateSchemaV1Request()
         if include_optional:
-            return ConnectionOneOf1(
-                var_from = '',
-                to = {componentId=01H9ZQD35JPMBGHH69BT0Q79VY, socketName=OutputSocketName}
+            return CreateSchemaV1Request(
+                category = '',
+                code = '',
+                color = '',
+                description = '',
+                link = '',
+                name = ''
             )
         else:
-            return ConnectionOneOf1(
-                var_from = '',
-                to = {componentId=01H9ZQD35JPMBGHH69BT0Q79VY, socketName=OutputSocketName},
+            return CreateSchemaV1Request(
+                code = '',
+                name = '',
         )
         """
 
-    def testConnectionOneOf1(self):
-        """Test ConnectionOneOf1"""
+    def testCreateSchemaV1Request(self):
+        """Test CreateSchemaV1Request"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 

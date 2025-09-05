@@ -36,13 +36,11 @@ class TestListComponentsV1Response(unittest.TestCase):
         if include_optional:
             return ListComponentsV1Response(
                 component_details = [{component_id=01H9ZQD35JPMBGHH69BT0Q79AA, name=my-vpc, schema_name=AWS::EC2::VPC}, {component_id=01H9ZQD35JPMBGHH69BT0Q79BB, name=Public 1, schema_name=AWS::EC2::Subnet}],
-                components = [01H9ZQD35JPMBGHH69BT0Q79AA, 01H9ZQD35JPMBGHH69BT0Q79BB, 01H9ZQD35JPMBGHH69BT0Q79CC],
                 next_cursor = ''
             )
         else:
             return ListComponentsV1Response(
                 component_details = [{component_id=01H9ZQD35JPMBGHH69BT0Q79AA, name=my-vpc, schema_name=AWS::EC2::VPC}, {component_id=01H9ZQD35JPMBGHH69BT0Q79BB, name=Public 1, schema_name=AWS::EC2::Subnet}],
-                components = [01H9ZQD35JPMBGHH69BT0Q79AA, 01H9ZQD35JPMBGHH69BT0Q79BB, 01H9ZQD35JPMBGHH69BT0Q79CC],
         )
         """
 

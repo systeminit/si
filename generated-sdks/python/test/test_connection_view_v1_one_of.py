@@ -35,19 +35,15 @@ class TestConnectionViewV1OneOf(unittest.TestCase):
         model = ConnectionViewV1OneOf()
         if include_optional:
             return ConnectionViewV1OneOf(
-                incoming = system_initiative_api_client.models.incoming_connection_view_v1.IncomingConnectionViewV1(
-                    from = '', 
-                    from_component_id = '', 
-                    from_component_name = '', 
-                    to = '', )
+                managing = system_initiative_api_client.models.managing_connection_view_v1.ManagingConnectionViewV1(
+                    component_id = '', 
+                    component_name = '', )
             )
         else:
             return ConnectionViewV1OneOf(
-                incoming = system_initiative_api_client.models.incoming_connection_view_v1.IncomingConnectionViewV1(
-                    from = '', 
-                    from_component_id = '', 
-                    from_component_name = '', 
-                    to = '', ),
+                managing = system_initiative_api_client.models.managing_connection_view_v1.ManagingConnectionViewV1(
+                    component_id = '', 
+                    component_name = '', ),
         )
         """
 

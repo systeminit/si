@@ -19,17 +19,15 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List
-from system_initiative_api_client.models.connection_point import ConnectionPoint
 from typing import Optional, Set
 from typing_extensions import Self
 
-class ConnectionOneOf(BaseModel):
+class CreateVariantAuthenticationFuncV1Response(BaseModel):
     """
-    ConnectionOneOf
+    CreateVariantAuthenticationFuncV1Response
     """ # noqa: E501
-    var_from: ConnectionPoint = Field(alias="from")
-    to: StrictStr
-    __properties: ClassVar[List[str]] = ["from", "to"]
+    func_id: StrictStr = Field(alias="funcId")
+    __properties: ClassVar[List[str]] = ["funcId"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -49,7 +47,7 @@ class ConnectionOneOf(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of ConnectionOneOf from a JSON string"""
+        """Create an instance of CreateVariantAuthenticationFuncV1Response from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -70,14 +68,11 @@ class ConnectionOneOf(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of var_from
-        if self.var_from:
-            _dict['from'] = self.var_from.to_dict()
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of ConnectionOneOf from a dict"""
+        """Create an instance of CreateVariantAuthenticationFuncV1Response from a dict"""
         if obj is None:
             return None
 
@@ -85,8 +80,7 @@ class ConnectionOneOf(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "from": ConnectionPoint.from_dict(obj["from"]) if obj.get("from") is not None else None,
-            "to": obj.get("to")
+            "funcId": obj.get("funcId")
         })
         return _obj
 
