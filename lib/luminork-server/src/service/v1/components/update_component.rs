@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     extract::Path,
     response::Json,
@@ -6,9 +8,16 @@ use dal::{
     AttributeValue,
     Component,
     Prop,
+    PropId,
+    SchemaVariant,
+    SchemaVariantId,
     WsEvent,
     attribute::attributes::AttributeSources,
-    prop::PropPath,
+    prop::{
+        PROP_PATH_SEPARATOR,
+        PropPath,
+        PropResult,
+    },
 };
 use serde::{
     Deserialize,
@@ -24,6 +33,7 @@ use utoipa::{
 use super::{
     ComponentV1RequestPath,
     ComponentViewV1,
+    ComponentsResult,
 };
 use crate::{
     extract::{
@@ -56,7 +66,6 @@ use crate::{
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
-#[allow(deprecated)]
 pub async fn update_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
@@ -99,9 +108,30 @@ pub async fn update_component(
 
     let schema_variant = component.schema_variant(ctx).await?;
     let variant_id = schema_variant.id;
+    let is_secret_defining = SchemaVariant::is_secret_defining(ctx, variant_id).await?;
 
     if !payload.attributes.is_empty() {
         dal::update_attributes(ctx, component_id, payload.attributes.clone()).await?;
+    }
+
+    if !is_secret_defining && !payload.secrets.is_empty() {
+        return Err(ComponentsError::NotSecretDefiningComponent(component_id));
+    }
+
+    // For secrets, if the user needs to attach a secret to the component, the attributes API would require them to know what the secretId
+    // is, so we create a convenience method that allows them to attach a secret definition directly by name. Ideally, this would be
+    // guarded so that we could only do this on secret defining components.
+    if is_secret_defining {
+        for (key, value) in payload.secrets.clone().into_iter() {
+            let prop_id = key.prop_id(ctx, variant_id).await?;
+
+            let secret_id = resolve_secret_id(ctx, &value).await?;
+
+            let attribute_value_id =
+                Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
+            dal::Secret::attach_for_attribute_value(ctx, attribute_value_id, Some(secret_id))
+                .await?;
+        }
     }
 
     if let Some(resource_id) = payload.resource_id {
@@ -166,6 +196,10 @@ pub struct UpdateComponentV1Request {
     pub resource_id: Option<String>,
 
     #[serde(default)]
+    #[schema(example = json!({"secretDefinitionName": "secretId", "secretDefinitionName": "secretName"}))]
+    pub secrets: HashMap<SecretPropKey, serde_json::Value>,
+
+    #[serde(default)]
     #[schema(
         value_type = std::collections::BTreeMap<String, serde_json::Value>,
         example = json!({
@@ -224,4 +258,75 @@ pub struct UpdateComponentV1Response {
         ]
     }))]
     pub component: ComponentViewV1,
+}
+
+/// Resolves a secret value (ID or name) to a SecretId
+async fn resolve_secret_id(
+    ctx: &dal::DalContext,
+    value: &serde_json::Value,
+) -> ComponentsResult<dal::SecretId> {
+    match value {
+        serde_json::Value::String(value_str) => {
+            if let Ok(id) = value_str.parse() {
+                if dal::Secret::get_by_id(ctx, id).await.is_ok() {
+                    Ok(id)
+                } else {
+                    let secrets = dal::Secret::list(ctx).await?;
+                    let found_secret = secrets
+                        .into_iter()
+                        .find(|s| s.name() == value_str)
+                        .ok_or_else(|| {
+                            ComponentsError::SecretNotFound(format!(
+                                "Secret '{value_str}' not found"
+                            ))
+                        })?;
+                    Ok(found_secret.id())
+                }
+            } else {
+                let secrets = dal::Secret::list(ctx).await?;
+                let found_secret = secrets
+                    .into_iter()
+                    .find(|s| s.name() == value_str)
+                    .ok_or_else(|| {
+                        ComponentsError::SecretNotFound(format!("Secret '{value_str}' not found"))
+                    })?;
+                Ok(found_secret.id())
+            }
+        }
+        _ => Err(ComponentsError::InvalidSecretValue(format!(
+            "Secret value must be a string containing ID or name, got: {value}"
+        ))),
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
+#[serde(untagged)]
+pub enum SecretPropKey {
+    #[schema(value_type = String)]
+    PropId(PropId),
+    PropPath(SecretPropPath),
+}
+
+impl SecretPropKey {
+    pub async fn prop_id(
+        &self,
+        ctx: &dal::DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropResult<PropId> {
+        match self {
+            SecretPropKey::PropId(prop_id) => Ok(*prop_id),
+            SecretPropKey::PropPath(path) => {
+                dal::Prop::find_prop_id_by_path(ctx, schema_variant_id, &path.to_prop_path()).await
+            }
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
+pub struct SecretPropPath(pub String);
+
+impl SecretPropPath {
+    pub fn to_prop_path(&self) -> PropPath {
+        PropPath::new(["root", "secrets"]).join(&self.0.replace("/", PROP_PATH_SEPARATOR).into())
+    }
 }

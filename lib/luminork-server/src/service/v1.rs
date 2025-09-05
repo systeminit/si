@@ -47,8 +47,6 @@ pub use components::{
     ComponentsResult,
     ConnectionViewV1,
     DomainPropPath,
-    SecretPropKey,
-    SecretPropPath,
     SourceViewV1,
     add_action::{
         ActionReference,
@@ -93,6 +91,8 @@ pub use components::{
         SearchComponentsV1Response,
     },
     update_component::{
+        SecretPropKey,
+        SecretPropPath,
         UpdateComponentV1Request,
         UpdateComponentV1Response,
     },
