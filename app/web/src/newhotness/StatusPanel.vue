@@ -1,5 +1,5 @@
 <template>
-  <div class="mt-xs ml-xs relative">
+  <div class="mt-[14px] ml-xs relative">
     <StatusPanelIcon
       :status="status[changeSetId]"
       @faded="() => delete status[changeSetId]"

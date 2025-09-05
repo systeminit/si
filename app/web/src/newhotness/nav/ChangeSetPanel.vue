@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-row gap-xs items-end flex-1 min-w-[172px] max-w-fit">
+  <div class="flex flex-row gap-xs items-end flex-1 min-w-[156px] max-w-fit">
     <label class="flex flex-col flex-1 min-w-0 max-w-fit">
       <div
         class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300 whitespace-nowrap"
