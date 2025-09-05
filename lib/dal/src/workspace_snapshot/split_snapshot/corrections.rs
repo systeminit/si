@@ -39,7 +39,10 @@ use crate::{
     workspace_snapshot::node_weight::{
         NodeWeight,
         category_node_weight::CategoryNodeKind,
-        traits::SiVersionedNodeWeight,
+        traits::{
+            SiVersionedNodeWeight,
+            SplitCorrectExclusiveOutgoingEdge,
+        },
     },
 };
 
@@ -102,34 +105,37 @@ impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants> for 
         from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>>
     {
-        match self {
+        let corrected = match self {
             NodeWeight::Action(action_node_weight) => {
-                action_node_weight.correct_transforms(graph, updates, from_different_change_set)
+                action_node_weight.correct_transforms(graph, updates, from_different_change_set)?
             }
             NodeWeight::AttributeValue(av_node_weight) => {
-                av_node_weight.correct_transforms(graph, updates, from_different_change_set)
+                av_node_weight.correct_transforms(graph, updates, from_different_change_set)?
             }
             NodeWeight::Content(content_node_weight) => {
-                content_node_weight.correct_transforms(graph, updates, from_different_change_set)
+                content_node_weight.correct_transforms(graph, updates, from_different_change_set)?
             }
-            NodeWeight::Component(component_node_weight) => {
-                component_node_weight.correct_transforms(graph, updates, from_different_change_set)
-            }
+            NodeWeight::Component(component_node_weight) => component_node_weight
+                .correct_transforms(graph, updates, from_different_change_set)?,
             NodeWeight::DiagramObject(diagram_object_node_weight) => diagram_object_node_weight
-                .correct_transforms(graph, updates, from_different_change_set),
-            NodeWeight::Geometry(geometry_node_weight) => {
-                geometry_node_weight.correct_transforms(graph, updates, from_different_change_set)
-            }
+                .correct_transforms(graph, updates, from_different_change_set)?,
+            NodeWeight::Geometry(geometry_node_weight) => geometry_node_weight.correct_transforms(
+                graph,
+                updates,
+                from_different_change_set,
+            )?,
             NodeWeight::View(view_node_weight) => {
-                view_node_weight.correct_transforms(graph, updates, from_different_change_set)
+                view_node_weight.correct_transforms(graph, updates, from_different_change_set)?
             }
             NodeWeight::Secret(secret_node_weight) => {
-                secret_node_weight.correct_transforms(graph, updates, from_different_change_set)
+                secret_node_weight.correct_transforms(graph, updates, from_different_change_set)?
             }
             NodeWeight::SchemaVariant(schema_variant_node_weight) => schema_variant_node_weight
-                .correct_transforms(graph, updates, from_different_change_set),
-            _ => Ok(updates),
-        }
+                .correct_transforms(graph, updates, from_different_change_set)?,
+            _ => updates,
+        };
+
+        Ok(self.correct_exclusive_outgoing_edges_split(graph, corrected))
     }
 }
 

@@ -23,7 +23,11 @@ use crate::{
 
 pub mod correct_exclusive_outgoing_edge;
 
-pub use correct_exclusive_outgoing_edge::CorrectExclusiveOutgoingEdge;
+pub use correct_exclusive_outgoing_edge::{
+    CorrectExclusiveOutgoingEdge,
+    ExclusiveOutgoingEdges,
+    SplitCorrectExclusiveOutgoingEdge,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -51,7 +55,9 @@ pub trait CorrectTransforms {
     }
 }
 
-pub trait SiNodeWeight: CorrectTransforms + CorrectExclusiveOutgoingEdge + Sized {
+pub trait SiNodeWeight:
+    CorrectTransforms + CorrectExclusiveOutgoingEdge + ExclusiveOutgoingEdges + Sized
+{
     fn content_hash(&self) -> ContentHash;
     fn id(&self) -> Ulid;
     fn lineage_id(&self) -> Ulid;
@@ -184,6 +190,12 @@ impl<T> CorrectExclusiveOutgoingEdge for T
 where
     T: SiVersionedNodeWeight,
     NodeInformation: for<'a> From<&'a T>,
+{
+}
+
+impl<T> ExclusiveOutgoingEdges for T
+where
+    T: SiVersionedNodeWeight,
 {
     fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         self.inner().exclusive_outgoing_edges()

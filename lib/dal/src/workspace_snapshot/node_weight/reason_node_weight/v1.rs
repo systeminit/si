@@ -17,6 +17,7 @@ use crate::{
         node_weight::traits::{
             CorrectExclusiveOutgoingEdge,
             CorrectTransforms,
+            ExclusiveOutgoingEdges,
             SiNodeWeight,
         },
     },
@@ -45,8 +46,8 @@ impl ReasonNodeWeightV1 {
 }
 
 impl CorrectTransforms for ReasonNodeWeightV1 {}
-
-impl CorrectExclusiveOutgoingEdge for ReasonNodeWeightV1 {
+impl CorrectExclusiveOutgoingEdge for ReasonNodeWeightV1 {}
+impl ExclusiveOutgoingEdges for ReasonNodeWeightV1 {
     fn exclusive_outgoing_edges(&self) -> &[crate::EdgeWeightKindDiscriminants] {
         &[]
     }

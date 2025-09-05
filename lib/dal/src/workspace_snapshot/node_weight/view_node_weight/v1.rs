@@ -36,6 +36,7 @@ use crate::{
             traits::{
                 CorrectExclusiveOutgoingEdge,
                 CorrectTransforms,
+                ExclusiveOutgoingEdges,
                 SiNodeWeight,
             },
         },
@@ -239,8 +240,8 @@ impl CorrectTransforms for ViewNodeWeightV1 {
         Ok(updates)
     }
 }
-
-impl CorrectExclusiveOutgoingEdge for ViewNodeWeightV1 {
+impl CorrectExclusiveOutgoingEdge for ViewNodeWeightV1 {}
+impl ExclusiveOutgoingEdges for ViewNodeWeightV1 {
     fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
     }
