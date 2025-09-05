@@ -23,6 +23,8 @@ import { componentEraseTool } from "./tools/componentErase.ts";
 import { componentRestoreTool } from "./tools/componentRestore.ts";
 import { generateSiUrlTool } from "./tools/generateSiUrl.ts";
 import { componentGenerateTemplateTool } from "./tools/componentGenerateTemplate.ts";
+import { componentRunTemplateTool } from "./tools/componentRunTemplate.ts";
+import { templateListTool } from "./tools/templateList.ts";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -50,6 +52,8 @@ export function createServer(): McpServer {
   componentEraseTool(server);
   componentRestoreTool(server);
   componentGenerateTemplateTool(server);
+  componentRunTemplateTool(server);
+  templateListTool(server);
   generateSiUrlTool(server);
   importPrompt(server);
   discoverPrompt(server);
