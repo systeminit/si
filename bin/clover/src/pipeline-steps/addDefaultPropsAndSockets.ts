@@ -4,7 +4,6 @@ import {
   createScalarProp,
   ExpandedPropSpec,
 } from "../spec/props.ts";
-import { createInputSocketFromProp } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 
 export interface PropUsageMap {
@@ -70,7 +69,7 @@ export function addDefaultPropsAndSockets(
       extraProp.entries.push(propUsageMapProp);
     }
 
-    // Create Region prop and socket
+    // Create Region prop
     {
       const regionProp = createScalarProp(
         "Region",
@@ -79,7 +78,6 @@ export function addDefaultPropsAndSockets(
         true,
       );
 
-      schemaVariant.sockets.push(createInputSocketFromProp(regionProp));
       extraProp.entries.push(regionProp);
     }
 
@@ -115,7 +113,7 @@ export function addDefaultPropsAndSockets(
       extraProp.entries.push(permissionsMapProp);
     }
 
-    // Create Credential prop and socket under root/secrets
+    // Create Credential prop under root/secrets
     {
       const credProp = createScalarProp(
         "AWS Credential",
@@ -124,12 +122,12 @@ export function addDefaultPropsAndSockets(
         true,
       );
       credProp.data.widgetKind = "Secret";
-      credProp.data.widgetOptions = [{
-        "label": "secretKind",
-        "value": "AWS Credential",
-      }];
-
-      schemaVariant.sockets.push(createInputSocketFromProp(credProp));
+      credProp.data.widgetOptions = [
+        {
+          label: "secretKind",
+          value: "AWS Credential",
+        },
+      ];
 
       if (schemaVariant.secrets.kind !== "object") {
         console.log(

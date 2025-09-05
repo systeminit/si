@@ -8,21 +8,17 @@ import { attachDefaultManagementFuncs } from "../pipeline-steps/attachDefaultMan
 import { addDefaultPropsAndSockets } from "../pipeline-steps/addDefaultPropsAndSockets.ts";
 import { generateSubAssets } from "../pipeline-steps/generateSubAssets.ts";
 import { generateIntrinsicFuncs } from "../pipeline-steps/generateIntrinsicFuncs.ts";
-import { createInputSocketsBasedOnOutputSockets } from "../pipeline-steps/createInputSocketsAcrossAssets.ts";
 import { emptyDirectory } from "../util.ts";
 import { updateSchemaIdsForExistingSpecs } from "../pipeline-steps/updateSchemaIdsForExistingSpecs.ts";
 import { getExistingSpecs } from "../specUpdates.ts";
 
 import _logger from "../logger.ts";
 import { assetSpecificOverrides } from "../pipeline-steps/assetSpecificOverrides.ts";
-import { generateOutputSocketsFromProps } from "../pipeline-steps/generateOutputSocketsFromProps.ts";
 import {
   ExpandedPkgSpec,
   ExpandedSchemaSpec,
   ExpandedSchemaVariantSpec,
 } from "../spec/pkgs.ts";
-import { createPolicyDocumentInputSockets } from "../pipeline-steps/createPolicyDocumentInputSockets.ts";
-import { annotateCommonOutputSockets } from "../pipeline-steps/annotateCommonOutputSockets.ts";
 import { prettifySocketNames } from "../pipeline-steps/prettifySocketNames.ts";
 import { loadInferred } from "../spec/inferred.ts";
 import { addInferredEnums } from "../pipeline-steps/addInferredEnums.ts";
@@ -50,15 +46,13 @@ export function generateSiSpecForService(serviceName: string) {
   return pkgSpecFromCf(cf);
 }
 
-export async function generateSiSpecs(
-  options: {
-    forceUpdateExistingPackages?: boolean;
-    moduleIndexUrl: string;
-    docLinkCache: string;
-    inferred: string;
-    services?: string[];
-  },
-) {
+export async function generateSiSpecs(options: {
+  forceUpdateExistingPackages?: boolean;
+  moduleIndexUrl: string;
+  docLinkCache: string;
+  inferred: string;
+  services?: string[];
+}) {
   const db = await loadCfDatabase(options);
   const existing_specs = await getExistingSpecs(options);
   const inferred = await loadInferred(options.inferred);
@@ -82,8 +76,8 @@ export async function generateSiSpecs(
   // EXECUTE PIPELINE STEPS
   specs = await removeBadDocLinks(specs, options.docLinkCache);
   specs = addInferredEnums(specs, inferred);
-  specs = generateOutputSocketsFromProps(specs);
-  specs = annotateCommonOutputSockets(specs);
+  // TODO prop suggestions for props ending in Arn
+  // specs = generateOutputSocketsFromProps(specs);
   specs = addDefaultPropsAndSockets(specs);
   specs = attachDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
@@ -93,9 +87,9 @@ export async function generateSiSpecs(
   // intrinsics
   specs = generateSubAssets(specs);
   specs = generateIntrinsicFuncs(specs);
-  specs = createPolicyDocumentInputSockets(specs);
+  // TODO prop suggestions and CodeEditor widget for PolicyDocuments
+  // specs = createPolicyDocumentInputSockets(specs);
   // don't generate input sockets until we have all of the output sockets
-  specs = createInputSocketsBasedOnOutputSockets(specs);
   specs = prettifySocketNames(specs);
   // remove these after socket generation so we can still connect to their
   // alternatives
@@ -161,9 +155,7 @@ function unexpandPackageSpec(expandedSpec: ExpandedPkgSpec): PkgSpec {
   };
 }
 
-function unexpandSchema(
-  expanded: ExpandedSchemaSpec,
-): SchemaSpec {
+function unexpandSchema(expanded: ExpandedSchemaSpec): SchemaSpec {
   return {
     ...expanded,
     variants: expanded.variants.map(unexpandVariant),
@@ -174,13 +166,16 @@ function unexpandVariant(
   expanded: ExpandedSchemaVariantSpec,
 ): SchemaVariantSpec {
   const { cfSchema: _, ...variant } = expanded;
-  bfsPropTree([
-    variant.domain,
-    variant.resourceValue,
-    variant.secrets,
-    variant.secretDefinition,
-  ], unexpandProperty);
-  return variant;
+  bfsPropTree(
+    [
+      variant.domain,
+      variant.resourceValue,
+      variant.secrets,
+      variant.secretDefinition,
+    ],
+    unexpandProperty,
+  );
+  return { ...variant, sockets: [] };
 }
 
 function unexpandProperty(expanded: ExpandedPropSpec): PropSpec {

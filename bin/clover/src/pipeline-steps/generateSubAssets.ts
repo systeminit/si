@@ -6,11 +6,6 @@ import {
   generatePropHash,
 } from "../spec/props.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import {
-  createInputSocketFromProp,
-  createOutputSocketFromProp,
-} from "../spec/sockets.ts";
-import { attrFuncInputSpecFromProp } from "../spec/sockets.ts";
 import _logger from "../logger.ts";
 import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
 
@@ -52,10 +47,6 @@ export function generateSubAssets(
 
         const hash = generatePropHash(newDomain);
 
-        // set the parent prop to have an input socket for this new asset
-        const propInputSocket = createInputSocketFromProp(prop);
-        schemaVariant.sockets.push(propInputSocket);
-
         // reuse existing assets so we don't recreate the same asset over and
         // over again
         const maybeExistingSubAsset = newSpecsByHash[hash];
@@ -64,10 +55,6 @@ export function generateSubAssets(
           maybeExistingSubAsset.names.push(name);
           continue;
         }
-
-        // output the domain of this new spec
-        const newSpecOutputSocket = createOutputSocketFromProp(prop, objName);
-        newSpecOutputSocket.inputs = [attrFuncInputSpecFromProp(newDomain)];
 
         const variantData = _.cloneDeep(schemaVariant.data);
         const variant: ExpandedSchemaVariantSpec = {
@@ -84,7 +71,6 @@ export function generateSubAssets(
           leafFunctions: [],
           managementFuncs: [],
           resourceValue: createDefaultProp("resource_value", undefined, false),
-          sockets: [newSpecOutputSocket],
           secrets: createDefaultProp("secrets", undefined, false),
           uniqueId: variantId,
         };
@@ -96,17 +82,19 @@ export function generateSubAssets(
           name,
           description: prop.typeProp.data?.documentation ?? "",
           funcs: [],
-          schemas: [{
-            ...schema,
-            name,
-            data: {
-              ...schemaData,
+          schemas: [
+            {
+              ...schema,
               name,
-              defaultSchemaVariant: variantId,
+              data: {
+                ...schemaData,
+                name,
+                defaultSchemaVariant: variantId,
+              },
+              uniqueId: ulid(),
+              variants: [variant],
             },
-            uniqueId: ulid(),
-            variants: [variant],
-          }],
+          ],
         };
 
         // Push the generated asset into the original array so we can extract subAssets from it too
@@ -122,12 +110,10 @@ export function generateSubAssets(
   }
 
   // Select best name and category for each subAsset
-  for (
-    const { spec, names } of _.values(newSpecsByHash) as {
-      spec: ExpandedPkgSpec;
-      names: string[];
-    }[]
-  ) {
+  for (const { spec, names } of _.values(newSpecsByHash) as {
+    spec: ExpandedPkgSpec;
+    names: string[];
+  }[]) {
     let finalObjName: string | null | undefined = undefined;
     let finalAwsCategory: string | null | undefined = undefined;
     let finalParent: string | null | undefined = undefined;
@@ -147,7 +133,8 @@ export function generateSubAssets(
       if (finalAwsCategory === undefined) {
         finalAwsCategory = awsCategory;
       } else if (
-        finalAwsCategory !== null && finalAwsCategory !== awsCategory
+        finalAwsCategory !== null &&
+        finalAwsCategory !== awsCategory
       ) {
         finalAwsCategory = null;
         // Category being null also short circuits the parent to null

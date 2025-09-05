@@ -43,6 +43,7 @@
     "npm:@sideway/pinpoint@2.0.0": "2.0.0",
     "npm:@types/lodash-es@^4.17.12": "4.17.12",
     "npm:@types/lodash@^4.17.15": "4.17.20",
+    "npm:@types/node@*": "22.12.0",
     "npm:adze@*": "2.2.1",
     "npm:adze@2.2.1": "2.2.1",
     "npm:adze@^2.2.0": "2.2.5",

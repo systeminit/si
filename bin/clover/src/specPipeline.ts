@@ -63,7 +63,6 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
     actionFuncs: [],
     authFuncs: [],
     leafFunctions: [],
-    sockets: [],
     siPropFuncs: [],
     managementFuncs: [],
     domain,
@@ -106,7 +105,10 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
 }
 
 function versionFromDate(): string {
-  return new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+  return new Date()
+    .toISOString()
+    .replace(/[-:T.Z]/g, "")
+    .slice(0, 14);
 }
 
 // Remove all read only props from this list, since readonly props go on the
@@ -123,8 +125,9 @@ function pruneDomainValues(
   return Object.fromEntries(
     Object.entries(properties)
       // Include properties that either have a type OR have oneOf/anyOf
-      .filter(([name, prop]) =>
-        (prop.type || prop.oneOf || prop.anyOf) && !readOnlySet.has(name)
+      .filter(
+        ([name, prop]) =>
+          (prop.type || prop.oneOf || prop.anyOf) && !readOnlySet.has(name),
       ),
   );
 }
@@ -141,8 +144,9 @@ function pruneResourceValues(
   return Object.fromEntries(
     Object.entries(properties)
       // Include properties that either have a type OR have oneOf/anyOf
-      .filter(([name, prop]) =>
-        (prop.type || prop.oneOf || prop.anyOf) && readOnlySet.has(name)
+      .filter(
+        ([name, prop]) =>
+          (prop.type || prop.oneOf || prop.anyOf) && readOnlySet.has(name),
       ),
   );
 }

@@ -1,6 +1,5 @@
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { bfsPropTree } from "../spec/props.ts";
-import { setAnnotationOnSocket } from "../spec/sockets.ts";
 
 export function prettifySocketNames(
   specs: ExpandedPkgSpec[],
@@ -9,16 +8,6 @@ export function prettifySocketNames(
 
   for (const spec of specs) {
     const { variants: [variant] } = spec.schemas[0];
-    const sockets = variant.sockets;
-
-    for (const socket of sockets) {
-      const newName = toSpaceCase(socket.name);
-
-      socket.name = newName;
-      socket.data.name = newName;
-
-      setAnnotationOnSocket(socket, newName);
-    }
 
     bfsPropTree([variant.domain, variant.resourceValue], (prop) => {
       if (prop.data.inputs) {

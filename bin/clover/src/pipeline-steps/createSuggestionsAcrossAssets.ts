@@ -5,7 +5,6 @@ import pluralize from "npm:pluralize";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { addPropSuggestSource } from "../spec/props.ts";
 import _logger from "../logger.ts";
-import { SI_SEPARATOR } from "../spec/sockets.ts";
 const logger = _logger.ns("test").seal();
 
 export function createSuggestionsForPrimaryIdentifiers(
@@ -23,55 +22,56 @@ export function createSuggestionsForPrimaryIdentifiers(
     const category = schema.data.category.split("::")[1];
     const variantName = specName.split("::")[2];
 
-    bfsPropTree(resource, (prop) => {
-      if (!prop.metadata?.primaryIdentifier) return;
-      const propName = prop.name;
-      const possibleNames = new Set<string>();
+    bfsPropTree(
+      resource,
+      (prop) => {
+        if (!prop.metadata?.primaryIdentifier) return;
+        const propName = prop.name;
+        const possibleNames = new Set<string>();
 
-      if (propName !== "Id") possibleNames.add(propName);
+        if (propName !== "Id") possibleNames.add(propName);
 
-      [
-        variantName,
-        `${variantName}${propName}`,
-        `${category}${variantName}${propName}`,
-        `${variantName} ${propName}`,
-        `${category} ${variantName} ${propName}`,
-      ].forEach((i) => possibleNames.add(i));
-
-      if (propName.endsWith("Id")) {
         [
-          `${variantName}${propName}entifier`,
-          `${variantName}${propName}entifier`,
-          `${category}${variantName}${propName}entifer`,
-          `${variantName} ${propName}entifier`,
-          `${variantName} ${propName}entifier`,
-          `${category} ${variantName} ${propName}entifer`,
+          variantName,
+          `${variantName}${propName}`,
+          `${category}${variantName}${propName}`,
+          `${variantName} ${propName}`,
+          `${category} ${variantName} ${propName}`,
         ].forEach((i) => possibleNames.add(i));
-      }
 
-      const nameVariants = new Set<string>();
-      for (const name of possibleNames) {
-        const plural = pluralize(name);
-        const spaced = camelToSpaced(name);
-        const pluralSpaced = pluralize(spaced);
+        if (propName.endsWith("Id")) {
+          [
+            `${variantName}${propName}entifier`,
+            `${variantName}${propName}entifier`,
+            `${category}${variantName}${propName}entifer`,
+            `${variantName} ${propName}entifier`,
+            `${variantName} ${propName}entifier`,
+            `${category} ${variantName} ${propName}entifer`,
+          ].forEach((i) => possibleNames.add(i));
+        }
 
-        nameVariants.add(name);
-        nameVariants.add(plural);
-        nameVariants.add(spaced);
-        nameVariants.add(pluralSpaced);
-        nameVariants.add(`${name}Item`);
-        nameVariants.add(`${plural}Item`);
-        nameVariants.add(`${spaced}Item`);
-        nameVariants.add(`${pluralSpaced}Item`);
-      }
+        const nameVariants = new Set<string>();
+        for (const name of possibleNames) {
+          const plural = pluralize(name);
+          const spaced = camelToSpaced(name);
+          const pluralSpaced = pluralize(spaced);
 
-      // stripping /root out
-      const propPath = "/" + prop.metadata.propPath.slice(1).join("/");
-      schemasToPrimaryIdents.set(specName, [
-        propPath,
-        nameVariants,
-      ]);
-    }, { skipTypeProps: true });
+          nameVariants.add(name);
+          nameVariants.add(plural);
+          nameVariants.add(spaced);
+          nameVariants.add(pluralSpaced);
+          nameVariants.add(`${name}Item`);
+          nameVariants.add(`${plural}Item`);
+          nameVariants.add(`${spaced}Item`);
+          nameVariants.add(`${pluralSpaced}Item`);
+        }
+
+        // stripping /root out
+        const propPath = "/" + prop.metadata.propPath.slice(1).join("/");
+        schemasToPrimaryIdents.set(specName, [propPath, nameVariants]);
+      },
+      { skipTypeProps: true },
+    );
   }
 
   // iterate through every prop an create a suggestion if the names match
@@ -80,22 +80,26 @@ export function createSuggestionsForPrimaryIdentifiers(
     const [schemaVariant] = schema.variants;
     const domain = schemaVariant.domain;
 
-    bfsPropTree(domain, (prop) => {
-      for (
-        const [specName, [propName, possibleNames]] of schemasToPrimaryIdents
-          .entries()
-      ) {
-        if (spec.name != specName && possibleNames.has(prop.name)) {
-          logger.debug(
-            `suggest {schema:${specName}, prop:${propName}} for prop ${prop.name} on ${spec.name}`,
-          );
-          prop = addPropSuggestSource(prop, {
-            schema: specName,
-            prop: propName,
-          });
+    bfsPropTree(
+      domain,
+      (prop) => {
+        for (const [
+          specName,
+          [propName, possibleNames],
+        ] of schemasToPrimaryIdents.entries()) {
+          if (spec.name != specName && possibleNames.has(prop.name)) {
+            logger.debug(
+              `suggest {schema:${specName}, prop:${propName}} for prop ${prop.name} on ${spec.name}`,
+            );
+            prop = addPropSuggestSource(prop, {
+              schema: specName,
+              prop: propName,
+            });
+          }
         }
-      }
-    }, { skipTypeProps: false });
+      },
+      { skipTypeProps: false },
+    );
 
     newSpecs.push(spec);
   }
