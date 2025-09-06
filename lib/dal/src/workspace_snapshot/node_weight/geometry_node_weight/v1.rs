@@ -45,6 +45,7 @@ use crate::{
                 CorrectTransforms,
                 CorrectTransformsError,
                 CorrectTransformsResult,
+                ExclusiveOutgoingEdges,
                 SiNodeWeight,
             },
         },
@@ -280,7 +281,9 @@ impl CorrectTransforms for GeometryNodeWeightV1 {
     }
 }
 
-impl CorrectExclusiveOutgoingEdge for GeometryNodeWeightV1 {
+impl CorrectExclusiveOutgoingEdge for GeometryNodeWeightV1 {}
+
+impl ExclusiveOutgoingEdges for GeometryNodeWeightV1 {
     fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[EdgeWeightKindDiscriminants::Represents]
     }

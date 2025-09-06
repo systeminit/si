@@ -765,7 +765,7 @@ where
         let subgraph_index = if let Some((index, _)) =
             self.subgraphs.iter().enumerate().find(|(_, sub)| {
                 // We add one to the max so that the root node is not part of the count
-                sub.node_index_by_id.len() < (self.supergraph.split_max + 1)
+                sub.node_index_by_id.len() < (self.supergraph.split_max.saturating_add(1))
             }) {
             index
         } else {
