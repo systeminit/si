@@ -1,17 +1,6 @@
-use std::collections::{
-    HashMap,
-    HashSet,
-};
-
 use axum::{
     extract::Query,
     response::Json,
-};
-use dal::{
-    Schema,
-    SchemaId,
-    SchemaVariant,
-    cached_module::CachedModule,
 };
 use serde::{
     Deserialize,
@@ -23,7 +12,11 @@ use utoipa::{
     ToSchema,
 };
 
-use super::SchemaError;
+use super::{
+    SchemaError,
+    SchemaResponse,
+    get_full_schema_list,
+};
 use crate::{
     extract::{
         PosthogEventTracker,
@@ -55,58 +48,11 @@ pub async fn list_schemas(
     tracker: PosthogEventTracker,
 ) -> Result<Json<ListSchemaV1Response>, SchemaError> {
     // Set default limit and enforce a max limit
-    let limit = params.limit.unwrap_or(50).min(300) as usize;
+    let min = params.limit.unwrap_or(50).min(300) as usize;
+    let limit = min;
     let cursor = params.cursor;
-    // Get all installed schema IDs
-    let schema_ids = Schema::list_ids(ctx).await?;
-    let installed_schema_ids: HashSet<_> = schema_ids.iter().collect();
 
-    // Get cached modules with their metadata
-    let cached_modules = CachedModule::latest_modules(ctx).await?;
-    // Create a map of schema ID to cached module data
-    let mut cached_module_map: HashMap<SchemaId, CachedModule> = HashMap::new();
-    for module in cached_modules {
-        cached_module_map.insert(module.schema_id, module);
-    }
-
-    // Combine both sources to create a complete list
-    let mut all_schemas: Vec<SchemaResponse> = Vec::new();
-    // First add installed schemas from Schema::list_ids
-    for schema_id in &schema_ids {
-        if let Some(module) = cached_module_map.get(schema_id) {
-            // Schema is both installed and in cache
-            all_schemas.push(SchemaResponse {
-                schema_name: module.schema_name.clone(),
-                schema_id: *schema_id,
-                category: module.category.clone(),
-                installed: true,
-            });
-        } else {
-            // Schema is installed but not in cache - this is a local only schema
-            if let Ok(schema) = Schema::get_by_id(ctx, *schema_id).await {
-                let default_variant = SchemaVariant::default_for_schema(ctx, *schema_id).await?;
-                all_schemas.push(SchemaResponse {
-                    schema_name: schema.name,
-                    schema_id: *schema_id,
-                    category: Some(default_variant.category().to_owned()),
-                    installed: true,
-                });
-            }
-        }
-
-        cached_module_map.remove(schema_id);
-    }
-
-    // Now add remaining cached modules (uninstalled ones)
-    for (schema_id, module) in cached_module_map {
-        let is_installed = installed_schema_ids.contains(&schema_id);
-        all_schemas.push(SchemaResponse {
-            schema_name: module.schema_name,
-            schema_id,
-            category: module.category,
-            installed: is_installed,
-        });
-    }
+    let mut all_schemas = get_full_schema_list(ctx).await?;
 
     // Sort schemas by schema_id for consistent pagination
     all_schemas.sort_by(|a, b| a.schema_id.cmp(&b.schema_id));
@@ -149,19 +95,4 @@ pub async fn list_schemas(
 pub struct ListSchemaV1Response {
     pub schemas: Vec<SchemaResponse>,
     pub next_cursor: Option<String>,
-}
-
-// Removed OpenAPI schema to fix stack overflow
-
-#[derive(Deserialize, Serialize, Debug, ToSchema, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct SchemaResponse {
-    #[schema(example = "AWS::EC2::Instance")]
-    pub schema_name: String,
-    #[schema(example = "AWS::EC2")]
-    pub category: Option<String>,
-    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
-    pub schema_id: SchemaId,
-    #[schema(value_type = bool, example = "false")]
-    pub installed: bool,
 }
