@@ -15,6 +15,7 @@ use strum::Display;
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -36,6 +37,7 @@ pub struct MgmtPrototypeView {
     PartialEq,
     Eq,
     Display,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
