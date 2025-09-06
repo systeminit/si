@@ -4,7 +4,6 @@ use dal::{
     ComponentType,
     DalContext,
     FuncId,
-    InputSocket,
     OutputSocket,
     OutputSocketId,
     SchemaVariant,
@@ -127,18 +126,7 @@ impl ConnectableTest {
         })
     }
 
-    pub async fn create_connectable(
-        self,
-        ctx: &DalContext,
-        name: &str,
-        connect_one: Option<Connectable>,
-        connect_many: impl IntoIterator<Item = Connectable>,
-    ) -> Result<Connectable> {
-        let one =
-            InputSocket::find_with_name_or_error(ctx, "One", self.connectable_variant_id).await?;
-        let many =
-            InputSocket::find_with_name_or_error(ctx, "Many", self.connectable_variant_id).await?;
-
+    pub async fn create_connectable(self, ctx: &DalContext, name: &str) -> Result<Connectable> {
         let connectable = {
             let component = create_component_for_schema_variant_on_default_view(
                 ctx,
@@ -152,27 +140,6 @@ impl ConnectableTest {
         };
 
         connectable.set_value(ctx, name).await?;
-
-        if let Some(from) = connect_one {
-            Component::connect_for_tests(
-                ctx,
-                from.id,
-                from.value_output_socket_id(ctx).await?,
-                connectable.id,
-                one.id(),
-            )
-            .await?;
-        }
-        for from in connect_many {
-            Component::connect_for_tests(
-                ctx,
-                from.id,
-                from.value_output_socket_id(ctx).await?,
-                connectable.id,
-                many.id(),
-            )
-            .await?;
-        }
 
         Ok(connectable)
     }

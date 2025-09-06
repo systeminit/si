@@ -25,13 +25,9 @@ use crate::{
     OutputSocket,
     OutputSocketId,
     attribute::{
-        prototype::argument::{
-            AttributePrototypeArgument,
-            value_source::ValueSource,
-        },
+        prototype::argument::AttributePrototypeArgument,
         value::ValueIsFor,
     },
-    workspace_snapshot::node_weight::ArgumentTargets,
 };
 
 /// Represents a given [`Component`]'s [`crate::InputSocket`], identified by its
@@ -257,38 +253,6 @@ impl ComponentInputSocket {
         Ok(connections)
     }
 
-    pub async fn connections(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<(ComponentId, OutputSocketId, AttributePrototypeArgument)>> {
-        let mut result = vec![];
-
-        let prototype_id = AttributeValue::prototype_id(ctx, self.attribute_value_id).await?;
-        for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
-            ctx,
-            prototype_id,
-            self.component_id,
-        )
-        .await?
-        {
-            let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
-
-            if let Some(ArgumentTargets {
-                source_component_id,
-                ..
-            }) = apa.targets()
-            {
-                if let Some(ValueSource::OutputSocket(from_output_socket_id)) =
-                    AttributePrototypeArgument::value_source_opt(ctx, apa_id).await?
-                {
-                    result.push((source_component_id, from_output_socket_id, apa));
-                }
-            }
-        }
-
-        Ok(result)
-    }
-
     /// List all [`ComponentInputSocket`]s for a given [`ComponentId`]
     pub async fn list_for_component_id(
         ctx: &DalContext,
@@ -391,23 +355,6 @@ impl ComponentInputSocket {
         self,
         ctx: &DalContext,
     ) -> ComponentResult<Option<ComponentId>> {
-        let maybe_explicit_connection_source = {
-            let explicit_connections =
-                Component::incoming_connections_for_id(ctx, self.component_id).await?;
-            let filtered_explicit_connection_sources: Vec<ComponentId> = explicit_connections
-                .iter()
-                .filter(|c| c.to_input_socket_id == self.input_socket_id)
-                .map(|c| c.from_component_id)
-                .collect();
-            if filtered_explicit_connection_sources.len() > 1 {
-                return Err(ComponentError::TooManyExplicitConnectionSources(
-                    filtered_explicit_connection_sources,
-                    self.component_id,
-                    self.input_socket_id,
-                ));
-            }
-            filtered_explicit_connection_sources.first().copied()
-        };
         let maybe_inferred_connection_source = {
             let inferred_connections = match self.find_inferred_connections(ctx).await {
                 Ok(inferred_connections) => inferred_connections,
@@ -429,21 +376,7 @@ impl ComponentInputSocket {
             inferred_connections.first().map(|c| c.component_id)
         };
 
-        match (
-            maybe_explicit_connection_source,
-            maybe_inferred_connection_source,
-        ) {
-            (Some(explicit_source), Some(inferred_source)) => {
-                Err(ComponentError::UnexpectedExplicitAndInferredSources(
-                    explicit_source,
-                    inferred_source,
-                    self,
-                ))
-            }
-            (Some(explicit_source), None) => Ok(Some(explicit_source)),
-            (None, Some(inferred_source)) => Ok(Some(inferred_source)),
-            (None, None) => Ok(None),
-        }
+        Ok(maybe_inferred_connection_source)
     }
 
     pub async fn value_for_input_socket_id_for_component_id_opt(

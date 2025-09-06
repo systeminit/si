@@ -20,10 +20,6 @@ use dal::{
 };
 use dal_test::{
     Result,
-    expected::{
-        self,
-        ExpectComponent,
-    },
     helpers::{
         ChangeSetTestHelpers,
         create_component_for_default_schema_name_in_default_view,
@@ -32,7 +28,6 @@ use dal_test::{
     test,
 };
 use pretty_assertions_sorted::assert_eq;
-use serde_json::json;
 
 mod autosubscribe;
 mod connectable_test;
@@ -511,63 +506,6 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) -> R
         ),
         root_view
     );
-
-    Ok(())
-}
-
-#[test]
-async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalContext) -> Result<()> {
-    let etoiles = ExpectComponent::create(ctx, "etoiles").await;
-    let morningstar = ExpectComponent::create(ctx, "morningstar").await;
-    let possible_world_a = etoiles
-        .prop(ctx, ["root", "domain", "possible_world_a"])
-        .await;
-    let possible_world_b = etoiles
-        .prop(ctx, ["root", "domain", "possible_world_b"])
-        .await;
-    let stars = morningstar.prop(ctx, ["root", "domain", "stars"]).await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
-
-    possible_world_a
-        .set(
-            ctx,
-            json!({
-                "wormhole_1": {
-                    "wormhole_2": {
-                        "wormhole_3": {
-                            "rigid_designator": "hesperus"
-                        }
-                    }
-                }
-            }),
-        )
-        .await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
-
-    assert_eq!(
-        json!({
-            "wormhole_1": {
-                "wormhole_2": {
-                    "wormhole_3": {
-                        "rigid_designator": "phosphorus"
-                    }
-                }
-            }
-        }),
-        possible_world_b.get(ctx).await
-    );
-
-    etoiles
-        .connect(
-            ctx,
-            "naming_and_necessity",
-            morningstar,
-            "naming_and_necessity",
-        )
-        .await;
-    expected::commit_and_update_snapshot_to_visibility(ctx).await;
-
-    assert_eq!(json!("phosphorus"), stars.get(ctx).await);
 
     Ok(())
 }

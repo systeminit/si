@@ -3,8 +3,6 @@
 //! value. It defines source of the value for the function argument in the
 //! context of the prototype.
 
-use std::collections::HashSet;
-
 use petgraph::Direction;
 use serde::{
     Deserialize,
@@ -30,8 +28,6 @@ use value_source::ValueSource;
 use super::AttributePrototypeError;
 use crate::{
     AttributePrototype,
-    AttributeValue,
-    Component,
     DalContext,
     HelperError,
     TransactionsError,
@@ -127,7 +123,6 @@ pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgum
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototypeArgument {
     id: AttributePrototypeArgumentId,
-    targets: Option<ArgumentTargets>,
     timestamp: Timestamp,
 }
 
@@ -136,7 +131,6 @@ impl From<AttributePrototypeArgumentNodeWeight> for AttributePrototypeArgument {
         Self {
             timestamp: value.timestamp().to_owned(),
             id: value.id().into(),
-            targets: value.targets(),
         }
     }
 }
@@ -144,10 +138,6 @@ impl From<AttributePrototypeArgumentNodeWeight> for AttributePrototypeArgument {
 impl AttributePrototypeArgument {
     pub fn id(&self) -> AttributePrototypeArgumentId {
         self.id
-    }
-
-    pub fn targets(&self) -> Option<ArgumentTargets> {
-        self.targets
     }
 
     pub fn timestamp(&self) -> &Timestamp {
@@ -322,75 +312,6 @@ impl AttributePrototypeArgument {
     ) -> AttributePrototypeArgumentResult<Self> {
         let static_value = StaticArgumentValue::new(ctx, value).await?;
         Self::new(ctx, prototype_id, arg_id, static_value.id()).await
-    }
-
-    // Only for use in tests (and called by other test-only functions)
-    #[instrument(level = "info", skip(ctx))]
-    pub(crate) async fn new_inter_component_for_tests(
-        ctx: &DalContext,
-        source_component_id: ComponentId,
-        source_output_socket_id: OutputSocketId,
-        destination_component_id: ComponentId,
-        destination_attribute_prototype_id: AttributePrototypeId,
-    ) -> AttributePrototypeArgumentResult<Self> {
-        let id = ctx.workspace_snapshot()?.generate_ulid().await?;
-        let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
-        let node_weight = NodeWeight::new_attribute_prototype_argument_with_targets_for_tests(
-            id,
-            lineage_id,
-            Some(ArgumentTargets {
-                source_component_id,
-                destination_component_id,
-            }),
-        );
-
-        let prototype_func_id =
-            AttributePrototype::func_id(ctx, destination_attribute_prototype_id).await?;
-        let func_arg_ids = FuncArgument::list_ids_for_func(ctx, prototype_func_id).await?;
-
-        if func_arg_ids.len() > 1 {
-            return Err(AttributePrototypeArgumentError::InterComponentDestinationPrototypeHasTooManyFuncArgs(destination_attribute_prototype_id));
-        }
-
-        let func_arg_id = func_arg_ids.first().ok_or(
-            AttributePrototypeArgumentError::InterComponentDestinationPrototypeHasNoFuncArgs(
-                destination_attribute_prototype_id,
-            ),
-        )?;
-
-        let prototype_arg: Self = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
-
-            workspace_snapshot
-                .add_or_replace_node(node_weight.clone())
-                .await?;
-
-            AttributePrototype::add_edge_to_argument(
-                ctx,
-                destination_attribute_prototype_id,
-                id.into(),
-                EdgeWeightKind::PrototypeArgument,
-            )
-            .await?;
-
-            let prototype_arg: Self = node_weight
-                .get_attribute_prototype_argument_node_weight()?
-                .into();
-
-            Self::add_edge_to_func_argument(
-                ctx,
-                prototype_arg.id,
-                *func_arg_id,
-                EdgeWeightKind::new_use(),
-            )
-            .await?;
-
-            prototype_arg
-        };
-
-        Self::attach_value_source(ctx, prototype_arg.id, source_output_socket_id).await?;
-
-        Ok(prototype_arg)
     }
 
     pub async fn func_argument(
@@ -768,19 +689,7 @@ impl AttributePrototypeArgument {
     async fn remove_inner(self, ctx: &DalContext) -> AttributePrototypeArgumentResult<()> {
         let prototype_id = Self::prototype_id(ctx, self.id).await?;
         // Find all of the "destination" attribute values.
-        let mut avs_to_update = AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
-        // If the argument has targets, then we only care about AVs that are for the same
-        // destination component.
-        if let Some(targets) = self.targets() {
-            let mut av_ids_to_keep = HashSet::new();
-            for av_id in &avs_to_update {
-                let component_id = AttributeValue::component_id(ctx, *av_id).await?;
-                if component_id == targets.destination_component_id {
-                    av_ids_to_keep.insert(*av_id);
-                }
-            }
-            avs_to_update.retain(|av_id| av_ids_to_keep.contains(av_id));
-        }
+        let avs_to_update = AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
 
         // Remove the argument
         ctx.workspace_snapshot()?.remove_node_by_id(self.id).await?;
@@ -794,12 +703,8 @@ impl AttributePrototypeArgument {
     /// Get the value, formatted for debugging/display.
     /// Pass component_id to get a more concise title if this APA is for a socket connection
     /// (i.e. is on the prototype in the schema, but is for a specific component).
-    pub async fn fmt_title(
-        ctx: &DalContext,
-        apa_id: AttributePrototypeArgumentId,
-        component_id: Option<ComponentId>,
-    ) -> String {
-        Self::fmt_title_fallible(ctx, apa_id, component_id)
+    pub async fn fmt_title(ctx: &DalContext, apa_id: AttributePrototypeArgumentId) -> String {
+        Self::fmt_title_fallible(ctx, apa_id)
             .await
             .unwrap_or_else(|e| e.to_string())
     }
@@ -807,27 +712,11 @@ impl AttributePrototypeArgument {
     async fn fmt_title_fallible(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
-        component_id: Option<ComponentId>,
     ) -> AttributePrototypeArgumentResult<String> {
-        let mut title = match Self::value_source_opt(ctx, apa_id).await? {
+        let title = match Self::value_source_opt(ctx, apa_id).await? {
             Some(value_source) => value_source.fmt_title(ctx).await,
             None => "<no value source>".to_string(),
         };
-        let apa = Self::get_by_id(ctx, apa_id).await?;
-        if let Some(ArgumentTargets {
-            source_component_id,
-            destination_component_id,
-        }) = apa.targets()
-        {
-            if Some(source_component_id) != component_id {
-                title.push_str(" on ");
-                title.push_str(&Component::fmt_title(ctx, source_component_id).await);
-            }
-            if Some(destination_component_id) != component_id {
-                title.push_str(" (only for ");
-                title.push_str(&Component::fmt_title(ctx, destination_component_id).await);
-            }
-        }
         Ok(title)
     }
 }

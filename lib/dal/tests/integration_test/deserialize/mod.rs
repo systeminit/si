@@ -74,6 +74,7 @@ use dal::{
         content_address::ContentAddress,
         node_weight::{
             ArgumentTargets,
+            AttributePrototypeArgumentNodeWeight,
             CategoryNodeWeight,
             NodeWeight,
             OrderingNodeWeight,
@@ -91,6 +92,7 @@ use si_events::{
     CasValue,
     EncryptedSecretKey,
     Timestamp,
+    merkle_tree_hash::MerkleTreeHash,
 };
 use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
@@ -124,14 +126,16 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
                 None,
             ),
             NodeWeightDiscriminants::AttributePrototypeArgument => {
-                NodeWeight::new_attribute_prototype_argument_with_targets_for_tests(
-                    Ulid::new(),
-                    Ulid::new(),
-                    Some(ArgumentTargets {
+                NodeWeight::AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight {
+                    id: Ulid::new(),
+                    lineage_id: Ulid::new(),
+                    merkle_tree_hash: MerkleTreeHash::default(),
+                    targets: Some(ArgumentTargets {
                         source_component_id: Ulid::new().into(),
                         destination_component_id: Ulid::new().into(),
                     }),
-                )
+                    timestamp: Timestamp::now(),
+                })
             }
             NodeWeightDiscriminants::AttributeValue => NodeWeight::new_attribute_value(
                 Ulid::new(),

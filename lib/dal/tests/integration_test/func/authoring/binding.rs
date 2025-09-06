@@ -4,7 +4,6 @@ use dal::{
     DalContext,
     Func,
     InputSocket,
-    OutputSocket,
     Prop,
     Schema,
     SchemaVariant,
@@ -44,6 +43,7 @@ use dal_test::{
     WorkspaceSignup,
     helpers::{
         ChangeSetTestHelpers,
+        attribute::value,
         create_component_for_default_schema_name_in_default_view,
         create_unlocked_variant_copy_for_schema_name,
         encrypt_message,
@@ -752,14 +752,10 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
     let source_schema_variant_id = Component::schema_variant_id(ctx, source_component.id())
         .await
         .expect("could not get schema variant id for component");
-    let destination_component =
+    let _destination_component =
         create_component_for_default_schema_name_in_default_view(ctx, "fallout", "destination")
             .await
             .expect("could not create component");
-    let destination_schema_variant_id =
-        Component::schema_variant_id(ctx, destination_component.id())
-            .await
-            .expect("could not get schema variant id for component");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -776,24 +772,13 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
     .expect("could not find prop by path");
 
     // Connect the two components to propagate the secret value and commit.
-    let source_output_socket = OutputSocket::find_with_name(ctx, "dummy", source_schema_variant_id)
-        .await
-        .expect("could not perform find with name")
-        .expect("output socket not found by name");
-    let destination_input_socket =
-        InputSocket::find_with_name(ctx, "dummy", destination_schema_variant_id)
-            .await
-            .expect("could not perform find with name")
-            .expect("input socket not found by name");
-    Component::connect_for_tests(
+    value::subscribe(
         ctx,
-        source_component.id(),
-        source_output_socket.id(),
-        destination_component.id(),
-        destination_input_socket.id(),
+        ("destination", "/secrets/dummy"),
+        ("source", "/secrets/dummy"),
     )
     .await
-    .expect("could not connect");
+    .expect("could not subscribe secret");
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

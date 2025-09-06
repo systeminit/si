@@ -67,99 +67,11 @@ async fn paste_component_with_value(ctx: &mut DalContext) -> Result<()> {
 }
 
 #[test]
-async fn paste_component_with_dependent_value(ctx: &mut DalContext) -> Result<()> {
-    let source = ExpectComponent::create_named(ctx, "pet_shop", "Petopia").await;
-    let downstream = ExpectComponent::create_named(ctx, "pirate", "Long John Silver").await;
-    let source_parrots = source.prop(ctx, ["root", "domain", "parrot_names"]).await;
-    let downstream_parrots = downstream
-        .prop(ctx, ["root", "domain", "parrot_names"])
-        .await;
-
-    // set value on source component
-    source_parrots.push(ctx, "Captain Flint").await;
-    source
-        .connect(ctx, "parrot_names", downstream, "parrot_names")
-        .await;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    // Check that downstream has the parrots value, and that it is not explicitly set
-    assert!(downstream_parrots.has_value(ctx).await);
-    assert_eq!(
-        Some(json!(["Captain Flint"])),
-        downstream_parrots.view(ctx).await
-    );
-
-    let default_view_id = View::get_id_for_default(ctx).await?;
-
-    // Copy/paste the downstream component
-    let downstream_copy = ExpectComponent(
-        downstream
-            .component(ctx)
-            .await
-            .duplicate_without_connections(
-                ctx,
-                default_view_id,
-                downstream.geometry_for_default(ctx).await,
-                None,
-            )
-            .await?
-            .id(),
-    );
-    let downstream_copy_parrots = downstream_copy.prop(ctx, downstream_parrots).await;
-
-    assert_ne!(downstream.id(), downstream_copy.id());
-
-    // Check that the copy does *not* have the parrots value, because it is not explicitly set
-    // (because it has no link)
-    assert!(!downstream_copy_parrots.has_value(ctx).await);
-    assert_eq!(None, downstream_copy_parrots.view(ctx).await);
-
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    // Check that the copy does *not* have the parrots value, because it is not explicitly set
-    // (because it has no link)
-    assert!(!downstream_copy_parrots.has_value(ctx).await);
-    assert_eq!(None, downstream_copy_parrots.view(ctx).await);
-
-    assert!(downstream_parrots.has_value(ctx).await);
-    assert_eq!(
-        Some(json!(["Captain Flint"])),
-        downstream_parrots.view(ctx).await
-    );
-
-    assert_eq!(
-        Some(json!({
-            "domain": {
-                // Propagated from /si/name, which means the attribute prototype has been copied
-                // from the copied component (since we manually set all values, which removes the
-                // default attribute prototype for the slot
-                "name": "Long John Silver - Copy",
-
-                // The connection is not copied
-                // "parrot_names": [
-                //     "Captain Flint",
-                // ],
-            },
-            "resource_value": {},
-            "resource": {},
-            "si": {
-                "color": "#ff00ff",
-                "name": "Long John Silver - Copy",
-                "type": "component",
-            },
-        })),
-        downstream_copy.view(ctx).await,
-    );
-
-    Ok(())
-}
-
-#[test]
 async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
 
     // input1
-    let input1 = test.create_connectable(ctx, "input1", None, []).await?;
+    let input1 = test.create_connectable(ctx, "input1").await?;
     assert_eq!(
         json!({
             "Value": "input1"
@@ -168,7 +80,7 @@ async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()>
     );
 
     // input2
-    let input2 = test.create_connectable(ctx, "input2", None, []).await?;
+    let input2 = test.create_connectable(ctx, "input2").await?;
     assert_eq!(
         json!({
             "Value": "input2"
@@ -177,7 +89,7 @@ async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()>
     );
 
     // input1 -> original1
-    let original1 = test.create_connectable(ctx, "original1", None, []).await?;
+    let original1 = test.create_connectable(ctx, "original1").await?;
     value::subscribe(
         ctx,
         ("original1", "/domain/One"),
@@ -207,7 +119,7 @@ async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()>
     );
 
     // original1 -> original2
-    let original2 = test.create_connectable(ctx, "original2", None, []).await?;
+    let original2 = test.create_connectable(ctx, "original2").await?;
     value::subscribe(
         ctx,
         ("original2", "/domain/One"),
@@ -243,7 +155,7 @@ async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()>
     );
 
     // original1 -> output
-    let output = test.create_connectable(ctx, "output", None, []).await?;
+    let output = test.create_connectable(ctx, "output").await?;
     value::subscribe(
         ctx,
         ("output", "/domain/One"),
@@ -364,7 +276,7 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
     let test = ConnectableTest::setup(ctx).await?;
 
     // input1
-    let input1 = test.create_connectable(ctx, "input1", None, []).await?;
+    let input1 = test.create_connectable(ctx, "input1").await?;
     assert_eq!(
         json!({
             "Value": "input1"
@@ -373,7 +285,7 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
     );
 
     // input2
-    let input2 = test.create_connectable(ctx, "input2", None, []).await?;
+    let input2 = test.create_connectable(ctx, "input2").await?;
     assert_eq!(
         json!({
             "Value": "input2"
@@ -382,7 +294,7 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
     );
 
     // input1 -> original1
-    let original1 = test.create_connectable(ctx, "original1", None, []).await?;
+    let original1 = test.create_connectable(ctx, "original1").await?;
     value::subscribe(
         ctx,
         ("original1", "/domain/One"),
@@ -412,7 +324,7 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
     );
 
     // original1 -> original2
-    let original2 = test.create_connectable(ctx, "original2", None, []).await?;
+    let original2 = test.create_connectable(ctx, "original2").await?;
     value::subscribe(
         ctx,
         ("original2", "/domain/One"),
@@ -448,7 +360,7 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
     );
 
     // original1 -> output
-    let output = test.create_connectable(ctx, "output", None, []).await?;
+    let output = test.create_connectable(ctx, "output").await?;
     value::subscribe(
         ctx,
         ("output", "/domain/One"),
@@ -570,7 +482,7 @@ async fn paste_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
 
     // manager and original
     let manager = test.create_manager(ctx, "manager").await?;
-    let original = test.create_connectable(ctx, "original", None, []).await?;
+    let original = test.create_connectable(ctx, "original").await?;
     Component::manage_component(ctx, manager.id, original.id).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
@@ -612,7 +524,7 @@ async fn paste_manager_and_managed_opposite_order(ctx: &mut DalContext) -> Resul
 
     // manager and original
     let manager = test.create_manager(ctx, "manager").await?;
-    let original = test.create_connectable(ctx, "original", None, []).await?;
+    let original = test.create_connectable(ctx, "original").await?;
     Component::manage_component(ctx, manager.id, original.id).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
@@ -654,7 +566,7 @@ async fn paste_manager(ctx: &mut DalContext) -> Result<()> {
 
     // manager and original
     let manager = test.create_manager(ctx, "manager").await?;
-    let original = test.create_connectable(ctx, "original", None, []).await?;
+    let original = test.create_connectable(ctx, "original").await?;
     Component::manage_component(ctx, manager.id, original.id).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
@@ -689,7 +601,7 @@ async fn paste_managed(ctx: &mut DalContext) -> Result<()> {
 
     // manager and original
     let manager = test.create_manager(ctx, "manager").await?;
-    let original = test.create_connectable(ctx, "original", None, []).await?;
+    let original = test.create_connectable(ctx, "original").await?;
     Component::manage_component(ctx, manager.id, original.id).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 

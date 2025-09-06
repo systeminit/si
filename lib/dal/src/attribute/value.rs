@@ -793,7 +793,7 @@ impl AttributeValue {
         // Cache the values we need for preparing arguments for execution.
         let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
         let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-        let destination_component_id = Self::component_id(ctx, attribute_value_id).await?;
+        let component_id = Self::component_id(ctx, attribute_value_id).await?;
 
         // Collect metadata for which attribute values are used to execute the prototype function for this one.
         let mut input_attribute_value_ids = Vec::new();
@@ -802,81 +802,58 @@ impl AttributeValue {
         let mut func_binding_args: HashMap<String, Vec<Value>> = HashMap::new();
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
         for apa_id in apa_ids {
-            let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
-            let expected_source_component_id = apa
-                .targets()
-                .map(|targets| targets.source_component_id)
-                .unwrap_or(destination_component_id);
-
-            if apa
-                .targets()
-                .is_none_or(|targets| targets.destination_component_id == destination_component_id)
+            let func_arg_id = AttributePrototypeArgument::func_argument_id(ctx, apa_id).await?;
+            let func_arg_name = ctx
+                .workspace_snapshot()?
+                .get_node_weight(func_arg_id)
+                .await?
+                .get_func_argument_node_weight()?
+                .name()
+                .to_owned();
+            let values_for_arg = match AttributePrototypeArgument::value_source(ctx, apa_id).await?
             {
-                // If the "source" Component is marked for deletion, and we (the destination) are
-                // *NOT*, then we should ignore the argument as data should not flow from things
-                // that are marked for deletion to ones that are not.
-                let destination_component =
-                    Component::get_by_id(ctx, destination_component_id).await?;
-                let source_component =
-                    Component::get_by_id(ctx, expected_source_component_id).await?;
-                if source_component.to_delete() && !destination_component.to_delete() {
-                    continue;
+                ValueSource::ValueSubscription(subscription) => {
+                    let value = match subscription.resolve(ctx).await? {
+                        Some(av_id) => Self::view(ctx, av_id).await?,
+                        None => None,
+                    };
+
+                    vec![value.unwrap_or(Value::Null)]
                 }
-
-                let func_arg_id = AttributePrototypeArgument::func_argument_id(ctx, apa_id).await?;
-                let func_arg_name = ctx
-                    .workspace_snapshot()?
-                    .get_node_weight(func_arg_id)
-                    .await?
-                    .get_func_argument_node_weight()?
-                    .name()
-                    .to_owned();
-                let values_for_arg = match AttributePrototypeArgument::value_source(ctx, apa_id)
-                    .await?
-                {
-                    ValueSource::ValueSubscription(subscription) => {
-                        let value = match subscription.resolve(ctx).await? {
-                            Some(av_id) => Self::view(ctx, av_id).await?,
-                            None => None,
-                        };
-
-                        vec![value.unwrap_or(Value::Null)]
-                    }
-                    ValueSource::StaticArgumentValue(static_argument_value_id) => {
-                        vec![
-                            StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
-                                .await?
-                                .value,
-                        ]
-                    }
-                    ValueSource::Secret(secret_id) => {
-                        vec![Secret::payload_for_prototype_execution(ctx, secret_id).await?]
-                    }
-                    other_source @ ValueSource::InputSocket(..)
-                    | other_source @ ValueSource::OutputSocket(..)
-                    | other_source @ ValueSource::Prop(..) => {
-                        let mut values = vec![];
-
-                        for av_id in other_source
-                            .attribute_values_for_component_id(ctx, expected_source_component_id)
+                ValueSource::StaticArgumentValue(static_argument_value_id) => {
+                    vec![
+                        StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
                             .await?
-                        {
-                            input_attribute_value_ids.push(av_id);
-                            // XXX: We need to properly handle the difference between "there is
-                            // XXX: no value" vs "the value is null", but right now we collapse
-                            // XXX: the two to just be "null" when passing these to a function.
-                            values.push(Self::view(ctx, av_id).await?.unwrap_or(Value::Null));
-                        }
+                            .value,
+                    ]
+                }
+                ValueSource::Secret(secret_id) => {
+                    vec![Secret::payload_for_prototype_execution(ctx, secret_id).await?]
+                }
+                other_source @ ValueSource::InputSocket(..)
+                | other_source @ ValueSource::OutputSocket(..)
+                | other_source @ ValueSource::Prop(..) => {
+                    let mut values = vec![];
 
-                        values
+                    for av_id in other_source
+                        .attribute_values_for_component_id(ctx, component_id)
+                        .await?
+                    {
+                        input_attribute_value_ids.push(av_id);
+                        // XXX: We need to properly handle the difference between "there is
+                        // XXX: no value" vs "the value is null", but right now we collapse
+                        // XXX: the two to just be "null" when passing these to a function.
+                        values.push(Self::view(ctx, av_id).await?.unwrap_or(Value::Null));
                     }
-                };
 
-                func_binding_args
-                    .entry(func_arg_name)
-                    .and_modify(|values| values.extend(values_for_arg.clone()))
-                    .or_insert(values_for_arg);
-            }
+                    values
+                }
+            };
+
+            func_binding_args
+                .entry(func_arg_name)
+                .and_modify(|values| values.extend(values_for_arg.clone()))
+                .or_insert(values_for_arg);
         }
         // if we haven't found func binding args by now, let's see if there are any inferred inputs
         // Note: a given input only takes args through inferences (i.e. frames) if it doesn't have any

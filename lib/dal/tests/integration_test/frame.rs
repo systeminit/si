@@ -30,7 +30,6 @@ use dal_test::{
     WorkspaceSignup,
     helpers::{
         ChangeSetTestHelpers,
-        connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
         create_component_for_schema_name_with_type_on_default_view,
         create_component_for_schema_variant_on_default_view,
@@ -45,101 +44,6 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 
 mod omega_nesting;
-
-#[test]
-async fn frames_and_connections(ctx: &mut DalContext) {
-    //create a component and draw edges to another one
-    let first_component = create_component_for_default_schema_name_in_default_view(
-        ctx,
-        "small even lego",
-        "first_component",
-    )
-    .await
-    .expect("could not create component");
-    let second_component = create_component_for_default_schema_name_in_default_view(
-        ctx,
-        "small odd lego",
-        "second_component",
-    )
-    .await
-    .expect("could not create component");
-
-    //connect them
-    connect_components_with_socket_names(
-        ctx,
-        first_component.id(),
-        "one",
-        second_component.id(),
-        "one",
-    )
-    .await
-    .expect("could not connect components with socket names");
-    update_attribute_value_for_component(
-        ctx,
-        first_component.id(),
-        &["root", "domain", "one"],
-        serde_json::json!["1"],
-    )
-    .await
-    .expect("could not update attribute value");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
-
-    // make sure the value propagates
-    let input_value = get_component_input_socket_value(ctx, second_component.id(), "one")
-        .await
-        .expect("could not get component input socket value")
-        .expect("has value");
-    assert_eq!(
-        "1",         // expected
-        input_value, // actual
-    );
-    //create 2 of the same schema variant, only use frames to connect them
-    //create 1 component and draw edges to another 1
-    let third_component = create_component_for_default_schema_name_in_default_view(
-        ctx,
-        "small even lego",
-        "third_component",
-    )
-    .await
-    .expect("could not create component");
-    let fourth_component = create_component_for_schema_name_with_type_on_default_view(
-        ctx,
-        "small odd lego",
-        "fourth_component",
-        ComponentType::ConfigurationFrameUp,
-    )
-    .await
-    .expect("could not create component");
-    Frame::upsert_parent_for_tests(ctx, third_component.id(), fourth_component.id())
-        .await
-        .expect("upserted parent");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
-    // set a value
-    update_attribute_value_for_component(
-        ctx,
-        third_component.id(),
-        &["root", "domain", "one"],
-        serde_json::json!["2"],
-    )
-    .await
-    .expect("could not update attribute value");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
-    // values should propagate
-    let input_value = get_component_input_socket_value(ctx, fourth_component.id(), "one")
-        .await
-        .expect("could not get input socket value")
-        .expect("has value");
-    assert_eq!(
-        "2",         // expected
-        input_value, // actual
-    );
-}
 
 #[test]
 async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) {

@@ -170,6 +170,7 @@ export type ConnectionMenuData = {
 
 export type ComponentsAndEdges = {
   components: RawComponent[];
+  // TODO REMOVE this is empty now
   edges: RawSocketEdge[];
   inferredEdges: RawSocketEdge[];
   managementEdges: RawSocketEdge[];

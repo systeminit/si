@@ -2,13 +2,9 @@ use std::collections::VecDeque;
 
 use dal::{
     AttributeValue,
-    ChangeSet,
     Component,
-    ComponentId,
     ComponentType,
     DalContext,
-    InputSocket,
-    OutputSocket,
     Prop,
     Schema,
     SchemaVariant,
@@ -19,7 +15,6 @@ use dal::{
             ActionPrototype,
         },
     },
-    component::frame::Frame,
     diagram::Diagram,
     func::authoring::FuncAuthoringClient,
     prop::PropPath,
@@ -33,7 +28,6 @@ use dal_test::{
         ExpectSchemaVariant,
     },
     helpers::{
-        ChangeSetTestHelpers,
         PropEditorTestView,
         attribute::value,
         change_set,
@@ -625,139 +619,10 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) -> Result<()> {
 }
 
 #[test]
-async fn upgrade_component_multiplayer_new_and_removed_sockets(ctx: &mut DalContext) -> Result<()> {
-    // Set up connectables with multiple inputs
-    let test = ConnectableTest::setup(ctx).await?;
-    let parent = test.create_parent(ctx, "parent").await?;
-    let manager = test.create_manager(ctx, "manager").await?;
-    let input1 = test.create_connectable(ctx, "input1", None, []).await?;
-    let input2 = test.create_connectable(ctx, "input2", None, []).await?;
-    let component = test
-        .create_connectable(ctx, "component", Some(input1), [input1, input2])
-        .await?;
-    let output1 = test
-        .create_connectable(ctx, "output1", Some(component), [])
-        .await?;
-    let output2 = test
-        .create_connectable(ctx, "output2", Some(component), [])
-        .await?;
-    let managed = test.create_connectable(ctx, "managed", None, []).await?;
-    Frame::upsert_parent_for_tests(ctx, component.id, parent.id).await?;
-    Component::manage_component(ctx, manager.id, component.id).await?;
-    Component::manage_component(ctx, component.id, managed.id).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    let expect_domain = json!({
-        "Value": "component",
-        "One": "input1",
-        "Many": [ "input1", "input2" ],
-        "Inferred": "parent",
-    });
-    let expect_conns = vec![
-        "[in] Many <- input1.Value",
-        "[in] Many <- input2.Value",
-        "[in] One <- input1.Value",
-        "[inferred] Inferred <- parent.Inferred",
-        "[managed] managed",
-        "[manager] manager",
-        "[out] Value -> output1.One",
-        "[out] Value -> output2.One",
-    ];
-    assert_eq!(expect_domain, component.domain(ctx).await?);
-    assert_eq!(expect_conns, connections(ctx, component.id).await?);
-    assert_eq!(
-        json!({
-            "Value": "output1",
-            "One": "component",
-        }),
-        output1.domain(ctx).await?
-    );
-    assert_eq!(
-        json!({
-            "Value": "output2",
-            "One": "component",
-        }),
-        output2.domain(ctx).await?
-    );
-
-    // Create an unlocked, updated component with all existing sockets removed and new ones added
-    SchemaVariant::get_by_id(ctx, test.connectable_variant_id)
-        .await?
-        .lock(ctx)
-        .await?;
-    let updated_variant_id =
-        VariantAuthoringClient::create_unlocked_variant_copy(ctx, test.connectable_variant_id)
-            .await?
-            .id();
-    assert_ne!(updated_variant_id, test.connectable_variant_id);
-    variant::update_asset_func(ctx,
-        updated_variant_id,
-        r#"
-            function main() {
-                return {
-                    props: [
-                        { name: "NewValue", kind: "string" },
-                        { name: "NewOne", kind: "string", valueFrom: { kind: "inputSocket", socket_name: "NewOne" } },
-                        { name: "NewMany", kind: "array",
-                            entry: { name: "ManyItem", kind: "string" },
-                            valueFrom: { kind: "inputSocket", socket_name: "NewMany" },
-                        },
-                    ],
-                    inputSockets: [
-                        { name: "NewOne", arity: "one", connectionAnnotations: "[\"Value\"]" },
-                        { name: "NewMany", arity: "many", connectionAnnotations: "[\"Value\"]" },
-                    ],
-                    outputSockets: [
-                        { name: "NewValue", arity: "one", valueFrom: { kind: "prop", prop_path: [ "root", "domain", "NewValue" ] }, connectionAnnotations: "[\"Value\"]" },
-                    ],
-                };
-            }
-        "#,
-    )
-    .await?;
-
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    // Update the component simultaneously in two multiplayer sessions
-    let (player1, player2) = (ctx.clone(), ctx.clone());
-    {
-        Component::upgrade_to_new_variant(&player1, component.id, updated_variant_id).await?;
-        player1.commit().await?;
-    }
-    {
-        Component::upgrade_to_new_variant(&player2, component.id, updated_variant_id).await?;
-        player2.commit().await?;
-    }
-
-    // Find out how the changeset ended up
-    ChangeSet::wait_for_dvu(ctx, false).await?;
-    // Make absolutely sure the socket AVs were not duplicated
-    assert_eq!(
-        3,
-        Component::attribute_values_for_all_sockets(ctx, component.id)
-            .await?
-            .len()
-    );
-    assert_eq!(
-        vec!["[managed] managed", "[manager] manager",],
-        connections(ctx, component.id).await?
-    );
-    assert_eq!(json!({}), component.domain(ctx).await?);
-
-    // Make sure output connections are still there
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    assert!(connections(ctx, output1.id).await?.is_empty());
-    assert!(connections(ctx, output2.id).await?.is_empty());
-    assert_eq!(json!({ "Value": "output1" }), output1.domain(ctx).await?);
-    assert_eq!(json!({ "Value": "output2" }), output2.domain(ctx).await?);
-
-    Ok(())
-}
-
-#[test]
 async fn upgrade_component_with_subscriptions(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
-    test.create_connectable(ctx, "in", None, []).await?;
-    let out = test.create_connectable(ctx, "out", None, []).await?;
+    test.create_connectable(ctx, "in").await?;
+    let out = test.create_connectable(ctx, "out").await?;
     value::subscribe(ctx, ("out", "/domain/Value"), ("in", "/domain/Value")).await?;
     value::set(ctx, ("in", "/domain/Value"), "old").await?;
     change_set::commit(ctx).await?;
@@ -816,52 +681,4 @@ async fn update_schema_variant_description(
     )
     .await?;
     Ok(SchemaVariant::get_by_id(ctx, variant.id).await?.into())
-}
-
-async fn connections(ctx: &DalContext, component_id: ComponentId) -> Result<Vec<String>> {
-    let mut result = vec![];
-    for connection in Component::incoming_connections_for_id(ctx, component_id).await? {
-        let from_component = Component::name_by_id(ctx, connection.from_component_id).await?;
-        let from = OutputSocket::get_by_id(ctx, connection.from_output_socket_id).await?;
-        let to = InputSocket::get_by_id(ctx, connection.to_input_socket_id).await?;
-        result.push(format!(
-            "[in] {} <- {}.{}",
-            to.name(),
-            from_component,
-            from.name(),
-        ));
-    }
-    for connection in Component::inferred_incoming_connections(ctx, component_id).await? {
-        let from_component = Component::name_by_id(ctx, connection.from_component_id).await?;
-        let from = OutputSocket::get_by_id(ctx, connection.from_output_socket_id).await?;
-        let to = InputSocket::get_by_id(ctx, connection.to_input_socket_id).await?;
-        result.push(format!(
-            "[inferred] {} <- {}.{}",
-            to.name(),
-            from_component,
-            from.name(),
-        ));
-    }
-    for connection in Component::outgoing_connections_for_id(ctx, component_id).await? {
-        let from = OutputSocket::get_by_id(ctx, connection.from_output_socket_id).await?;
-        let to_component = Component::name_by_id(ctx, connection.to_component_id).await?;
-        let to = InputSocket::get_by_id(ctx, connection.to_input_socket_id).await?;
-        result.push(format!(
-            "[out] {} -> {}.{}",
-            from.name(),
-            to_component,
-            to.name(),
-        ));
-    }
-    for manager_id in Component::managers_by_id(ctx, component_id).await? {
-        let manager = Component::name_by_id(ctx, manager_id).await?;
-        result.push(format!("[manager] {manager}",));
-    }
-    let component = Component::get_by_id(ctx, component_id).await?;
-    for managed_id in component.get_managed(ctx).await? {
-        let managed = Component::name_by_id(ctx, managed_id).await?;
-        result.push(format!("[managed] {managed}"));
-    }
-    result.sort();
-    Ok(result)
 }

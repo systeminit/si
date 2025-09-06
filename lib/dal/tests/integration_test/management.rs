@@ -1108,38 +1108,6 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
 }
 
 #[test]
-async fn component_incoming_connections(ctx: DalContext) -> Result<()> {
-    // Create a manager with inferred connection to parent value
-    let mut test = connection_test::setup(ctx).await?;
-    let input = test.create_input("input", None).await?;
-    test.set(input, "Value", "input").await;
-    let component = test.create_output("component", None).await?;
-    input.connect(&test.ctx, "Value", component, "Value").await;
-    let manager = test.create_output("manager", None).await?;
-    Component::manage_component(&test.ctx, manager.id(), component.id()).await?;
-    test.commit().await?;
-    // Check that value propagated from input to component
-    assert_eq!(
-        component.domain(&test.ctx).await,
-        json!({ "Value": "input" })
-    );
-
-    // Call management function to count and delete component incoming connections.
-    test.count_connections(manager).await;
-    test.commit().await?;
-
-    // Check that the connection was passed and removed
-    test.set(input, "Value", "new_input").await;
-    test.commit().await?;
-    assert_eq!(
-        json!({ "Value": "new_input", "IncomingConnectionsCount": 1 }),
-        component.domain(&test.ctx).await
-    );
-
-    Ok(())
-}
-
-#[test]
 async fn component_incoming_connections_inferred_from_parent(ctx: DalContext) -> Result<()> {
     // Create a manager with inferred connection to parent value
     let mut test = connection_test::setup(ctx).await?;

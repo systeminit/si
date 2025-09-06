@@ -806,12 +806,8 @@ impl AttributePrototype {
     /// Get a short, human-readable title suitable for debugging/display.
     /// Pass component_id if this is a prototype on the schema and you want to print only
     /// values for the given component.
-    pub async fn fmt_title(
-        ctx: &DalContext,
-        ap_id: AttributePrototypeId,
-        component_id: Option<ComponentId>,
-    ) -> String {
-        Self::fmt_title_fallible(ctx, ap_id, component_id)
+    pub async fn fmt_title(ctx: &DalContext, ap_id: AttributePrototypeId) -> String {
+        Self::fmt_title_fallible(ctx, ap_id)
             .await
             .unwrap_or_else(|e| e.to_string())
     }
@@ -819,7 +815,6 @@ impl AttributePrototype {
     pub async fn fmt_title_fallible(
         ctx: &DalContext,
         ap_id: AttributePrototypeId,
-        component_id: Option<ComponentId>,
     ) -> AttributePrototypeResult<String> {
         let func_id = Self::func_id(ctx, ap_id).await?;
         let args = AttributePrototype::list_arguments(ctx, ap_id).await?;
@@ -843,9 +838,7 @@ impl AttributePrototype {
                     _ => false,
                 };
                 if omit_function {
-                    return Ok(
-                        AttributePrototypeArgument::fmt_title(ctx, apa_id, component_id).await,
-                    );
+                    return Ok(AttributePrototypeArgument::fmt_title(ctx, apa_id).await);
                 }
             }
         }
@@ -860,7 +853,7 @@ impl AttributePrototype {
                 title.push_str(", ");
             }
             is_first = false;
-            title.push_str(&AttributePrototypeArgument::fmt_title(ctx, apa_id, component_id).await);
+            title.push_str(&AttributePrototypeArgument::fmt_title(ctx, apa_id).await);
         }
         title.push(')');
         Ok(title)

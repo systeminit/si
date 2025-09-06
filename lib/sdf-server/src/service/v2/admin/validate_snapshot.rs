@@ -3,15 +3,11 @@ use axum::{
     extract::Path,
 };
 use dal::{
-    AttributePrototype,
     AttributeValue,
     ChangeSetId,
     DalContext,
     WorkspacePk,
-    attribute::prototype::{
-        AttributePrototypeSource,
-        argument::AttributePrototypeArgument,
-    },
+    attribute::prototype::argument::AttributePrototypeArgument,
     workspace_snapshot::graph::validator::ValidationIssue,
 };
 use si_db::Tenancy;
@@ -88,28 +84,10 @@ async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> AdminAPIResult<
             AttributePrototypeArgument::remove(ctx, apa).await?;
             true
         }
-        &ValidationIssue::MissingValue { apa } => {
+        &ValidationIssue::MissingValue { .. } => {
             // We can only remove this if it is a connection from an input socket, meaning it has
             // targets and is hanging off an input socket.
-            if AttributePrototypeArgument::get_by_id(ctx, apa)
-                .await?
-                .targets()
-                .is_none()
-            {
-                return Ok(false);
-            }
-            let prototype_id = AttributePrototypeArgument::prototype_id(ctx, apa).await?;
-            if !AttributePrototype::input_sources(ctx, prototype_id)
-                .await?
-                .into_iter()
-                .all(|input_source| {
-                    matches!(input_source, AttributePrototypeSource::InputSocket(..))
-                })
-            {
-                return Ok(false);
-            }
-            AttributePrototypeArgument::remove(ctx, apa).await?;
-            true
+            false
         }
         &ValidationIssue::DuplicateAttributeValue { duplicate, .. }
         | &ValidationIssue::DuplicateAttributeValueWithDifferentValues { duplicate, .. } => {

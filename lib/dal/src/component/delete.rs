@@ -14,7 +14,6 @@ use crate::{
     DalContext,
     WsEvent,
     change_status::ChangeStatus,
-    diagram::SummaryDiagramEdge,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -45,9 +44,6 @@ pub async fn delete_components(
     for &component_id in component_ids {
         let component = Component::get_by_id(ctx, component_id).await?;
 
-        let incoming_connections = component.incoming_connections(ctx).await?;
-        let outgoing_connections = component.outgoing_connections(ctx).await?;
-
         let status = delete_component(ctx, &component, force_erase, &head_components).await?;
 
         process_delete(
@@ -57,8 +53,6 @@ pub async fn delete_components(
             &base_change_set_ctx,
             component_id,
             component,
-            incoming_connections,
-            outgoing_connections,
             status,
         )
         .await?;
@@ -81,8 +75,6 @@ pub async fn delete_and_process(
     component_id: ComponentId,
 ) -> ComponentResult<ComponentDeletionStatus> {
     let component = Component::get_by_id(ctx, component_id).await?;
-    let incoming_connections = component.incoming_connections(ctx).await?;
-    let outgoing_connections = component.outgoing_connections(ctx).await?;
     let status = delete_component(ctx, &component, force_erase, head_components).await?;
     process_delete(
         ctx,
@@ -91,8 +83,6 @@ pub async fn delete_and_process(
         base_change_set_ctx,
         component_id,
         component,
-        incoming_connections,
-        outgoing_connections,
         status,
     )
     .await?;
@@ -107,44 +97,8 @@ async fn process_delete(
     base_change_set_ctx: &DalContext,
     component_id: ComponentId,
     component: Component,
-    incoming_connections: Vec<super::Connection>,
-    outgoing_connections: Vec<super::Connection>,
     status: ComponentDeletionStatus,
 ) -> ComponentResult<ComponentDeletionStatus> {
-    for incoming_connection in incoming_connections {
-        let payload = SummaryDiagramEdge {
-            from_component_id: incoming_connection.from_component_id,
-            from_socket_id: incoming_connection.from_output_socket_id,
-            to_component_id: incoming_connection.to_component_id,
-            to_socket_id: incoming_connection.to_input_socket_id,
-            change_status: ChangeStatus::Deleted,
-            created_info: serde_json::to_value(incoming_connection.created_info)?,
-            deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
-            to_delete: true,
-            from_base_change_set: false,
-        };
-        WsEvent::connection_upserted(ctx, payload.into())
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-    }
-    for outgoing_connection in outgoing_connections {
-        let payload = SummaryDiagramEdge {
-            from_component_id: outgoing_connection.from_component_id,
-            from_socket_id: outgoing_connection.from_output_socket_id,
-            to_component_id: outgoing_connection.to_component_id,
-            to_socket_id: outgoing_connection.to_input_socket_id,
-            change_status: ChangeStatus::Deleted,
-            created_info: serde_json::to_value(outgoing_connection.created_info)?,
-            deleted_info: serde_json::to_value(outgoing_connection.deleted_info)?,
-            to_delete: true,
-            from_base_change_set: false,
-        };
-        WsEvent::connection_upserted(ctx, payload.into())
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-    }
     match status {
         ComponentDeletionStatus::MarkedForDeletion => {
             let payload = component

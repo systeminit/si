@@ -326,14 +326,8 @@ async fn build_incoming_connections(
 ) -> ManagementPrototypeResult<HashMap<String, SocketRefsAndValues>> {
     let mut incoming_connections = HashMap::new();
     for input_socket in ComponentInputSocket::list_for_component_id(ctx, component_id).await? {
-        // Collect explicit connections for this input socket
-        let mut socket_connections = Vec::new();
-        for (from_component_id, from_socket_id, _) in input_socket.connections(ctx).await? {
-            socket_connections
-                .push(build_connection(ctx, from_component_id, from_socket_id).await?);
-        }
-
         // Collect inferred connections for this input socket
+        let mut socket_connections = Vec::new();
         for from in input_socket.find_inferred_connections(ctx).await? {
             socket_connections
                 .push(build_connection(ctx, from.component_id, from.output_socket_id).await?);
