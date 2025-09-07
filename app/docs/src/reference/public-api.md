@@ -1529,6 +1529,56 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Complex search for shemas
+
+<a id="opIdsearch_schemas"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/search`
+
+> Body parameter
+
+```json
+{
+  "category": "AWS::EC2"
+}
+```
+
+<h3 id="complex-search-for-shemas-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|body|body|[SearchSchemasV1Request](#schemasearchschemasv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "schemas": [
+    {
+      "category": "AWS::EC2",
+      "installed": "false",
+      "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+      "schemaName": "AWS::EC2::Instance"
+    }
+  ]
+}
+```
+
+<h3 id="complex-search-for-shemas-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schemas retrieved successfully|[SearchSchemasV1Response](#schemasearchschemasv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Get a schema by schema id
 
 <a id="opIdget_schema"></a>
@@ -5349,6 +5399,53 @@ Component details in action response
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |components|[array]|true|none|none|
+
+## [SearchSchemasV1Request](#tocS_SearchSchemasV1Request)
+
+<a id="schemasearchschemasv1request"></a>
+<a id="schema_SearchSchemasV1Request"></a>
+<a id="tocSsearchschemasv1request"></a>
+<a id="tocssearchschemasv1request"></a>
+
+```json
+{
+  "category": "AWS::EC2"
+}
+
+```
+
+### [Properties](#searchschemasv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|category|string,null|false|none|none|
+
+## [SearchSchemasV1Response](#tocS_SearchSchemasV1Response)
+
+<a id="schemasearchschemasv1response"></a>
+<a id="schema_SearchSchemasV1Response"></a>
+<a id="tocSsearchschemasv1response"></a>
+<a id="tocssearchschemasv1response"></a>
+
+```json
+{
+  "schemas": [
+    {
+      "category": "AWS::EC2",
+      "installed": "false",
+      "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+      "schemaName": "AWS::EC2::Instance"
+    }
+  ]
+}
+
+```
+
+### [Properties](#searchschemasv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|schemas|[[SchemaResponse](#schemaschemaresponse)]|true|none|none|
 
 ## [SecretDefinitionV1](#tocS_SecretDefinitionV1)
 

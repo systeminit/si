@@ -2240,6 +2240,32 @@ export interface SearchComponentsV1Response {
 /**
  * 
  * @export
+ * @interface SearchSchemasV1Request
+ */
+export interface SearchSchemasV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof SearchSchemasV1Request
+     */
+    'category'?: string | null;
+}
+/**
+ * 
+ * @export
+ * @interface SearchSchemasV1Response
+ */
+export interface SearchSchemasV1Response {
+    /**
+     * 
+     * @type {Array<SchemaResponse>}
+     * @memberof SearchSchemasV1Response
+     */
+    'schemas': Array<SchemaResponse>;
+}
+/**
+ * 
+ * @export
  * @interface SecretDefinitionV1
  */
 export interface SecretDefinitionV1 {
@@ -7091,6 +7117,50 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Complex search for shemas
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {SearchSchemasV1Request} searchSchemasV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        searchSchemas: async (workspaceId: string, changeSetId: string, searchSchemasV1Request: SearchSchemasV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('searchSchemas', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('searchSchemas', 'changeSetId', changeSetId)
+            // verify required parameter 'searchSchemasV1Request' is not null or undefined
+            assertParamExists('searchSchemas', 'searchSchemasV1Request', searchSchemasV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/search`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(searchSchemasV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Unlocks a schema - if there\'s already an unlocked variant, then we return that
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -7373,6 +7443,21 @@ export const SchemasApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Complex search for shemas
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {SearchSchemasV1Request} searchSchemasV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async searchSchemas(workspaceId: string, changeSetId: string, searchSchemasV1Request: SearchSchemasV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SearchSchemasV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.searchSchemas(workspaceId, changeSetId, searchSchemasV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.searchSchemas']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Unlocks a schema - if there\'s already an unlocked variant, then we return that
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -7525,6 +7610,16 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Complex search for shemas
+         * @param {SchemasApiSearchSchemasRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        searchSchemas(requestParameters: SchemasApiSearchSchemasRequest, options?: RawAxiosRequestConfig): AxiosPromise<SearchSchemasV1Response> {
+            return localVarFp.searchSchemas(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.searchSchemasV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Unlocks a schema - if there\'s already an unlocked variant, then we return that
          * @param {SchemasApiUnlockSchemaRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -7661,6 +7756,16 @@ export interface SchemasApiInterface {
      * @memberof SchemasApiInterface
      */
     listSchemas(requestParameters: SchemasApiListSchemasRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListSchemaV1Response>;
+
+    /**
+     * 
+     * @summary Complex search for shemas
+     * @param {SchemasApiSearchSchemasRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    searchSchemas(requestParameters: SchemasApiSearchSchemasRequest, options?: RawAxiosRequestConfig): AxiosPromise<SearchSchemasV1Response>;
 
     /**
      * 
@@ -8084,6 +8189,34 @@ export interface SchemasApiListSchemasRequest {
 }
 
 /**
+ * Request parameters for searchSchemas operation in SchemasApi.
+ * @export
+ * @interface SchemasApiSearchSchemasRequest
+ */
+export interface SchemasApiSearchSchemasRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiSearchSchemas
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiSearchSchemas
+     */
+    readonly changeSetId: string
+
+    /**
+     * 
+     * @type {SearchSchemasV1Request}
+     * @memberof SchemasApiSearchSchemas
+     */
+    readonly searchSchemasV1Request: SearchSchemasV1Request
+}
+
+/**
  * Request parameters for unlockSchema operation in SchemasApi.
  * @export
  * @interface SchemasApiUnlockSchemaRequest
@@ -8290,6 +8423,18 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
      */
     public listSchemas(requestParameters: SchemasApiListSchemasRequest, options?: RawAxiosRequestConfig) {
         return SchemasApiFp(this.configuration).listSchemas(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Complex search for shemas
+     * @param {SchemasApiSearchSchemasRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public searchSchemas(requestParameters: SchemasApiSearchSchemasRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).searchSchemas(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.searchSchemasV1Request, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

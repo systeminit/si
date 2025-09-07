@@ -103,6 +103,13 @@ class TestSchemasApi(unittest.TestCase):
         """
         pass
 
+    def test_search_schemas(self) -> None:
+        """Test case for search_schemas
+
+        Complex search for shemas
+        """
+        pass
+
     def test_unlock_schema(self) -> None:
         """Test case for unlock_schema
 
