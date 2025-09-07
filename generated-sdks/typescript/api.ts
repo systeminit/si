@@ -2223,6 +2223,12 @@ export interface SearchComponentsV1Request {
      * @memberof SearchComponentsV1Request
      */
     'schemaName'?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SearchComponentsV1Request
+     */
+    'upgradable'?: boolean | null;
 }
 /**
  * 

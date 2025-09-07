@@ -763,7 +763,8 @@ Components management endpoints
 
 ```json
 {
-  "schemaName": "AWS::EC2::Instance"
+  "schemaName": "AWS::EC2::Instance",
+  "upgradable": true
 }
 ```
 
@@ -5365,7 +5366,8 @@ Component details in action response
 
 ```json
 {
-  "schemaName": "AWS::EC2::Instance"
+  "schemaName": "AWS::EC2::Instance",
+  "upgradable": true
 }
 
 ```
@@ -5375,6 +5377,7 @@ Component details in action response
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |schemaName|string,null|false|none|none|
+|upgradable|boolean,null|false|none|none|
 
 ## [SearchComponentsV1Response](#tocS_SearchComponentsV1Response)
 
