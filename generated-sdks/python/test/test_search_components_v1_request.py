@@ -35,7 +35,8 @@ class TestSearchComponentsV1Request(unittest.TestCase):
         model = SearchComponentsV1Request()
         if include_optional:
             return SearchComponentsV1Request(
-                schema_name = 'AWS::EC2::Instance'
+                schema_name = 'AWS::EC2::Instance',
+                upgradable = True
             )
         else:
             return SearchComponentsV1Request(

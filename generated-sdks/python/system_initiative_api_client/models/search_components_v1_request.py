@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -27,7 +27,8 @@ class SearchComponentsV1Request(BaseModel):
     SearchComponentsV1Request
     """ # noqa: E501
     schema_name: Optional[StrictStr] = Field(default=None, alias="schemaName")
-    __properties: ClassVar[List[str]] = ["schemaName"]
+    upgradable: Optional[StrictBool] = None
+    __properties: ClassVar[List[str]] = ["schemaName", "upgradable"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -73,6 +74,11 @@ class SearchComponentsV1Request(BaseModel):
         if self.schema_name is None and "schema_name" in self.model_fields_set:
             _dict['schemaName'] = None
 
+        # set to None if upgradable (nullable) is None
+        # and model_fields_set contains the field
+        if self.upgradable is None and "upgradable" in self.model_fields_set:
+            _dict['upgradable'] = None
+
         return _dict
 
     @classmethod
@@ -85,7 +91,8 @@ class SearchComponentsV1Request(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "schemaName": obj.get("schemaName")
+            "schemaName": obj.get("schemaName"),
+            "upgradable": obj.get("upgradable")
         })
         return _obj
 
