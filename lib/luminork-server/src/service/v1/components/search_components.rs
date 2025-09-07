@@ -57,6 +57,10 @@ pub async fn search_components(
         component_ids = apply_schema_filter(ctx, component_ids, schema_name).await?;
     }
 
+    if let Some(upgradable) = payload.upgradable {
+        component_ids = apply_upgradable_filter(ctx, component_ids, upgradable).await?;
+    }
+
     tracker.track(
         ctx,
         "api_search_components",
@@ -68,6 +72,26 @@ pub async fn search_components(
     Ok(Json(SearchComponentsV1Response {
         components: component_ids,
     }))
+}
+
+async fn apply_upgradable_filter(
+    ctx: &DalContext,
+    component_ids: Vec<ComponentId>,
+    upgrade_filter: bool,
+) -> ComponentsResult<Vec<ComponentId>> {
+    let mut upgradable_filtered_components = Vec::new();
+
+    for component_id in component_ids {
+        let is_upgradable = Component::can_be_upgraded_by_id(ctx, component_id).await?;
+        if is_upgradable == upgrade_filter {
+            upgradable_filtered_components.push(component_id);
+        }
+    }
+
+    upgradable_filtered_components.sort();
+    upgradable_filtered_components.dedup();
+
+    Ok(upgradable_filtered_components)
 }
 
 async fn apply_schema_filter(
@@ -105,6 +129,7 @@ async fn apply_schema_filter(
 pub struct SearchComponentsV1Request {
     #[schema(example = "AWS::EC2::Instance", required = false)]
     pub schema_name: Option<String>,
+    pub upgradable: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
