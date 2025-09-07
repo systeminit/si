@@ -132,6 +132,8 @@ __all__ = [
     "SchemaVariantV1RequestPath",
     "SearchComponentsV1Request",
     "SearchComponentsV1Response",
+    "SearchSchemasV1Request",
+    "SearchSchemasV1Response",
     "SecretDefinitionV1",
     "SecretFormDataV1",
     "SecretPropKey",
@@ -270,6 +272,8 @@ from system_initiative_api_client.models.schema_v1_request_path import SchemaV1R
 from system_initiative_api_client.models.schema_variant_v1_request_path import SchemaVariantV1RequestPath as SchemaVariantV1RequestPath
 from system_initiative_api_client.models.search_components_v1_request import SearchComponentsV1Request as SearchComponentsV1Request
 from system_initiative_api_client.models.search_components_v1_response import SearchComponentsV1Response as SearchComponentsV1Response
+from system_initiative_api_client.models.search_schemas_v1_request import SearchSchemasV1Request as SearchSchemasV1Request
+from system_initiative_api_client.models.search_schemas_v1_response import SearchSchemasV1Response as SearchSchemasV1Response
 from system_initiative_api_client.models.secret_definition_v1 import SecretDefinitionV1 as SecretDefinitionV1
 from system_initiative_api_client.models.secret_form_data_v1 import SecretFormDataV1 as SecretFormDataV1
 from system_initiative_api_client.models.secret_prop_key import SecretPropKey as SecretPropKey
