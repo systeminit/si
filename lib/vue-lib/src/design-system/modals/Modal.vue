@@ -7,7 +7,7 @@
   >
     <Dialog
       as="div"
-      class="relative z-100"
+      :class="clsx('relative', onboardingModal ? 'z-[2000]' : 'z-100')"
       @close="exitHandler"
       @mousedown.stop
     >
@@ -83,30 +83,34 @@
               >
                 <slot />
 
-                <div
-                  v-if="type === 'save' && !noWrapper"
-                  class="py-3 flex flex-row justify-between gap-sm"
-                >
-                  <slot name="leftButton" />
-                  <VButton
-                    buttonRank="tertiary"
-                    icon="x"
-                    label="Cancel"
-                    size="xs"
-                    tone="destructive"
-                    variant="ghost"
-                    @click="close"
-                  />
-                  <VButton
-                    :disabled="disableSave"
-                    :label="saveLabel"
-                    class="grow"
-                    icon="check"
-                    size="xs"
-                    tone="success"
-                    @click="emit('save')"
-                  />
-                </div>
+                <template v-if="!noWrapper">
+                  <div
+                    v-if="type === 'save'"
+                    class="flex flex-row justify-between gap-sm pt-xs"
+                  >
+                    <slot name="leftButton" />
+                    <NewButton
+                      icon="x"
+                      label="Cancel"
+                      tone="destructive"
+                      @click="close"
+                    />
+                    <NewButton
+                      :disabled="disableSave"
+                      :label="saveLabel"
+                      class="grow"
+                      icon="check"
+                      tone="action"
+                      @click="emit('save')"
+                    />
+                  </div>
+                  <div
+                    v-else-if="type === 'done'"
+                    class="flex flex-row justify-end pt-xs"
+                  >
+                    <NewButton label="Done" tone="action" @click="close" />
+                  </div>
+                </template>
               </div>
 
               <div
@@ -168,7 +172,7 @@ import {
 } from "@headlessui/vue";
 import { PropType, toRef, ref } from "vue";
 import clsx from "clsx";
-import { Icon, VButton } from "..";
+import { Icon, NewButton } from "..";
 import { useThemeContainer } from "../utils/theme_tools";
 
 const props = defineProps({
@@ -184,7 +188,7 @@ const props = defineProps({
   noExit: { type: Boolean },
   hideExitButton: { type: Boolean },
   type: {
-    type: String as PropType<"save" | "custom">,
+    type: String as PropType<"save" | "done" | "custom">,
   },
   disableSave: {
     type: Boolean,
@@ -200,6 +204,7 @@ const props = defineProps({
   noWrapper: Boolean,
   titleClasses: String,
   noInnerPadding: Boolean,
+  onboardingModal: Boolean,
 });
 
 // make modal a new "theme container" but by passing no value, we reset the theme back to the root theme
@@ -235,7 +240,7 @@ function fixAutoFocusElement() {
 
   if (
     focusedEl?.classList.contains("modal-close-button") ||
-    focusedEl?.classList.contains("vbutton") ||
+    focusedEl?.classList.contains("newbutton") ||
     focusTrapRef.value === focusedEl
   ) {
     // if we just blur focus, that first element will then be skipped in the tab order
