@@ -38,12 +38,6 @@ use thiserror::Error;
 use utoipa::{
     self,
     ToSchema,
-    openapi::schema::{
-        ArrayBuilder,
-        ObjectBuilder,
-        Schema,
-        Type,
-    },
 };
 
 use crate::AppState;
@@ -617,20 +611,6 @@ impl IntoResponse for SchemaResponseV1 {
             }
         }
     }
-}
-
-#[allow(dead_code)]
-pub fn leaf_input_locations_schema() -> Schema {
-    Schema::Array(
-        ArrayBuilder::new()
-            .items(
-                ObjectBuilder::new()
-                    .schema_type(Type::String)
-                    .enum_values(Some(["code", "deletedAt", "domain", "resource", "secrets"]))
-                    .build(),
-            )
-            .build(),
-    )
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema, Clone)]

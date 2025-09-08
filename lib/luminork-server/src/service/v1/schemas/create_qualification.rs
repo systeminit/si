@@ -32,7 +32,6 @@ use super::{
     SchemaError,
     SchemaResult,
     SchemaVariantV1RequestPath,
-    leaf_input_locations_schema,
 };
 
 #[utoipa::path(
@@ -78,11 +77,11 @@ pub async fn create_variant_qualification(
         return Err(SchemaError::LockedVariant(schema_variant_id));
     }
 
-    let mut locations = payload.locations;
-    if locations.is_empty() {
-        locations.push(LeafInputLocation::Domain);
-        locations.push(LeafInputLocation::Code);
-    }
+    let locations: Vec<LeafInputLocation> = vec![
+        LeafInputLocation::Domain,
+        LeafInputLocation::Code,
+        LeafInputLocation::Resource,
+    ];
 
     let func = FuncAuthoringClient::create_new_leaf_func(
         ctx,
@@ -144,11 +143,6 @@ pub struct CreateVariantQualificationFuncV1Request {
     pub display_name: Option<String>,
     #[schema(value_type = String, example = "Creates an EC2 Instance")]
     pub description: Option<String>,
-    #[schema(
-            example = json!(["code", "resource"]),
-            schema_with = leaf_input_locations_schema
-        )]
-    pub locations: Vec<LeafInputLocation>,
     #[schema(value_type = String, example = "<!-- String escaped Typescript code here -->")]
     pub code: String,
 }
