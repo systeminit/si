@@ -12,7 +12,10 @@ use serde::{
     Serialize,
 };
 use serde_json::json;
-use si_events::ActionState;
+use si_events::{
+    ActionState,
+    audit_log::AuditLogKind,
+};
 use utoipa::{
     self,
     ToSchema,
@@ -83,8 +86,7 @@ pub async fn upgrade_component(
 
     Component::upgrade_to_new_variant(ctx, component_id, upgrade_target_variant.id()).await?;
 
-    ctx.commit().await?;
-
+    let comp_name = current_component.name(ctx).await?;
     tracker.track(
         ctx,
         "api_upgrade_component",
@@ -94,6 +96,22 @@ pub async fn upgrade_component(
             "new_schema_variant_id": upgrade_target_variant.id(),
         }),
     );
+
+    ctx.write_audit_log(
+        AuditLogKind::UpgradeComponent {
+            name: comp_name.clone(),
+            component_id: current_component.id(),
+            schema_id: schema.id(),
+            old_schema_variant_id: current_schema_variant.id(),
+            old_schema_variant_name: current_schema_variant.display_name().to_owned(),
+            new_schema_variant_id: upgrade_target_variant.id(),
+            new_schema_variant_name: upgrade_target_variant.display_name().to_owned(),
+        },
+        comp_name,
+    )
+    .await?;
+
+    ctx.commit().await?;
 
     Ok(Json(UpgradeComponentV1Response {
         component: ComponentViewV1::assemble(ctx, component_id).await?,
