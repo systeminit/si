@@ -26,9 +26,14 @@ use naxum::{
         Response,
     },
 };
+use naxum_extractor_acceptable::{
+    HeaderReply,
+    Negotiate,
+};
 use pinga_core::api_types::{
-    ApiWrapper,
+    Container,
     ContentInfo,
+    SerializeContainer,
     job_execution_request::{
         JobArgsVCurrent,
         JobExecutionRequest,
@@ -51,10 +56,6 @@ use thiserror::Error;
 
 use crate::{
     app_state::AppState,
-    extract::{
-        ApiTypesNegotiate,
-        HeaderReply,
-    },
     server::ServerMetadata,
 };
 
@@ -80,7 +81,7 @@ pub async fn process_request(
     State(state): State<AppState>,
     subject: Subject,
     HeaderReply(maybe_reply): HeaderReply,
-    ApiTypesNegotiate(request): ApiTypesNegotiate<JobExecutionRequest>,
+    Negotiate(request): Negotiate<JobExecutionRequest>,
 ) -> Result<()> {
     let AppState {
         metadata,
@@ -193,7 +194,7 @@ async fn execute_job(
 
     // If a reply was requested, send it
     if let Some(reply) = maybe_reply {
-        let response = JobExecutionResponse::new_current(JobExecutionResponseVCurrent {
+        let response = JobExecutionResponse::new(JobExecutionResponseVCurrent {
             id: request.id,
             workspace_id: request.workspace_id,
             change_set_id: request.change_set_id,
@@ -205,19 +206,19 @@ async fn execute_job(
             },
         });
 
-        let info = ContentInfo::from(&response);
-
-        let mut headers = HeaderMap::new();
-        propagation::inject_headers(&mut headers);
-        info.inject_into_headers(&mut headers);
-
-        let payload = match response.to_vec() {
+        let mut info = ContentInfo::from(&response);
+        let (content_type, payload) = match response.to_vec() {
             Ok(p) => p,
             Err(err) => {
                 error!(si.error.message = ?err, "failed to serialize response body");
                 return;
             }
         };
+        info.content_type = content_type.into();
+
+        let mut headers = HeaderMap::new();
+        propagation::inject_headers(&mut headers);
+        info.inject_into_headers(&mut headers);
 
         if let Err(err) = nats
             .publish_with_headers(reply, headers, payload.into())

@@ -1,9 +1,9 @@
-//! Naxum extractors used by the Pinga server.
-//!
-//! TODO(fnichol): these should be extracted to an external crate to be used by other services.
-//! These should not be extracted into Naxum itself as the extractors related to custom ways we are
-//! using headers.
-
+use acceptable::{
+    ContentInfoError,
+    HeaderMapParseMessageInfoError,
+    NegotiateError,
+};
+use async_nats::Subject;
 use nats_std::header;
 use naxum::{
     Head,
@@ -17,12 +17,6 @@ use naxum::{
         FromMessageHead,
     },
 };
-use pinga_core::api_types::{
-    ApiVersionsWrapper,
-    ApiWrapper,
-};
-use si_data_nats::Subject;
-use telemetry::prelude::*;
 
 define_rejection! {
     #[status_code = 400]
@@ -61,7 +55,16 @@ impl<S> FromMessageHead<S> for HeaderReply {
 
 define_rejection! {
     #[status_code = 400]
-    #[body = "Headers are required for content info but none was found"]
+    #[body = "Custom error, bad request"]
+    /// Rejection type for [`ContentInfo`].
+    ///
+    /// This rejection is used other errors are found unrelated to parsing NATS headers.
+    pub struct CustomError(Error);
+}
+
+define_rejection! {
+    #[status_code = 400]
+    #[body = "Headers are required for content info but none were found"]
     /// Rejection type for [`ContentInfo`].
     ///
     /// This rejection is used if no headers were found.
@@ -82,14 +85,15 @@ composite_rejection! {
     ///
     /// Contains one variant for each way the [`ContentInfo`] extractor can fail.
     pub enum ContentInfoRejection {
+        CustomError,
         HeadersMissing,
         HeadersParseError,
     }
 }
 
-/// An extractor for [`pinga_core::api_types::ContentInfo`].
+/// An extractor for [`rebaser_core::api_types::ContentInfo`].
 #[derive(Debug)]
-pub struct ContentInfo(pub pinga_core::api_types::ContentInfo<'static>);
+pub struct ContentInfo(pub acceptable::ContentInfo<'static>);
 
 #[async_trait]
 impl<S> FromMessageHead<S> for ContentInfo {
@@ -97,8 +101,8 @@ impl<S> FromMessageHead<S> for ContentInfo {
 
     async fn from_message_head(head: &mut Head, _state: &S) -> Result<Self, Self::Rejection> {
         let headers = head.headers.as_ref().ok_or(HeadersMissing)?;
-        let content_info = pinga_core::api_types::ContentInfo::try_from(headers)
-            .map_err(HeadersParseError::from_err)?;
+        let content_info =
+            acceptable::ContentInfo::try_from(headers).map_err(HeadersParseError::from_err)?;
 
         Ok(Self(content_info))
     }
@@ -107,7 +111,7 @@ impl<S> FromMessageHead<S> for ContentInfo {
 define_rejection! {
     #[status_code = 400]
     #[body = "failed to deserialize message payload"]
-    /// Rejection type for [`ApiTypesNegotiate`].
+    /// Rejection type for [`Negotiate`].
     ///
     /// This rejection is used if the message fails to deserialize.
     pub struct DeserializeError(Error);
@@ -116,7 +120,7 @@ define_rejection! {
 define_rejection! {
     #[status_code = 400]
     #[body = "failed to upgrade message to current version"]
-    /// Rejection type for [`ApiTypesNegotiate`].
+    /// Rejection type for [`Negotiate`].
     ///
     /// This rejection is used if the message fails to be upgraded the current known version.
     pub struct MessageUpgradeError(Error);
@@ -125,7 +129,7 @@ define_rejection! {
 define_rejection! {
     #[status_code = 415]
     #[body = "unsupported content type"]
-    /// Rejection type for [`ApiTypesNegotiate`].
+    /// Rejection type for [`Negotiate`].
     ///
     /// This rejection is used if the content type (i.e. serialization format) is not supported.
     pub struct UnsupportedContentTypeError;
@@ -134,7 +138,7 @@ define_rejection! {
 define_rejection! {
     #[status_code = 406]
     #[body = "unsupported message type"]
-    /// Rejection type for [`ApiTypesNegotiate`].
+    /// Rejection type for [`Negotiate`].
     ///
     /// This rejection is used if the message type is not supported.
     pub struct UnsupportedMessageTypeError;
@@ -143,17 +147,17 @@ define_rejection! {
 define_rejection! {
     #[status_code = 406]
     #[body = "unsupported message version"]
-    /// Rejection type for [`ApiTypesNegotiate`].
+    /// Rejection type for [`Negotiate`].
     ///
     /// This rejection is used if the message version is not supported.
     pub struct UnsupportedMessageVersionError;
 }
 
 composite_rejection! {
-    /// Rejection for [`ApiTypesNegotiate`].
+    /// Rejection for [`Negotiate`].
     ///
-    /// Contains one variant for each way the [`ApiTypesNegotiate`] extractor can fail.
-    pub enum ApiTypesNegotiateRejection {
+    /// Contains one variant for each way the [`Negotiate`] extractor can fail.
+    pub enum NegotiateRejection {
         ContentInfoRejection,
         DeserializeError,
         MessageUpgradeError,
@@ -163,40 +167,66 @@ composite_rejection! {
     }
 }
 
+impl From<NegotiateError> for NegotiateRejection {
+    fn from(value: NegotiateError) -> Self {
+        match value {
+            NegotiateError::ContentInfo(ContentInfoError(err)) => {
+                match err
+                    .downcast_ref::<HeaderMapParseMessageInfoError>()
+                    .as_ref()
+                {
+                    // Error is from parsing NATS headers
+                    Some(&HeaderMapParseMessageInfoError::MissingHeader(_))
+                    | Some(&HeaderMapParseMessageInfoError::MissingHeaders) => {
+                        ContentInfoRejection::HeadersMissing(HeadersMissing).into()
+                    }
+                    // Error is from parsing NATS headers
+                    Some(&HeaderMapParseMessageInfoError::ParseVersion(err)) => {
+                        ContentInfoRejection::HeadersParseError(HeadersParseError::from_err(
+                            err.clone(),
+                        ))
+                        .into()
+                    }
+                    // Any other boxed error
+                    None => ContentInfoRejection::CustomError(CustomError::from_err(err)).into(),
+                }
+            }
+            NegotiateError::Deserialize(acceptable::DeserializeError::UnsupportedContentType(
+                _,
+            ))
+            | NegotiateError::UnsupportedContentType(_) => UnsupportedContentTypeError.into(),
+            NegotiateError::Deserialize(acceptable::DeserializeError::Deserialize(err)) => {
+                DeserializeError::from_err(err).into()
+            }
+            NegotiateError::Deserialize(acceptable::DeserializeError::Upgrade(err)) => {
+                MessageUpgradeError::from_err(err).into()
+            }
+            NegotiateError::UnsupportedMessageType(_) => UnsupportedMessageTypeError.into(),
+            NegotiateError::UnsupportedMessageVersion(_) => UnsupportedMessageVersionError.into(),
+        }
+    }
+}
+
 /// An extractor which determines the type, versioning, and serialization of a API message.
 #[derive(Clone, Copy, Debug, Default)]
 #[must_use]
-pub struct ApiTypesNegotiate<T>(pub T);
+pub struct Negotiate<T>(pub T);
 
 #[async_trait]
-impl<T, S, R> FromMessage<S, R> for ApiTypesNegotiate<T>
+impl<T, S, R> FromMessage<S, R> for Negotiate<T>
 where
-    T: ApiWrapper,
+    T: acceptable::Negotiate,
     R: MessageHead + Send + 'static,
     S: Send + Sync,
 {
-    type Rejection = ApiTypesNegotiateRejection;
+    type Rejection = NegotiateRejection;
 
     async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection> {
         let (mut head, payload) = req.into_parts();
         let ContentInfo(content_info) = ContentInfo::from_message_head(&mut head, state).await?;
 
-        if !T::is_content_type_supported(content_info.content_type.as_str()) {
-            return Err(UnsupportedContentTypeError.into());
-        }
-        if !T::is_message_type_supported(content_info.message_type.as_str()) {
-            return Err(UnsupportedMessageTypeError.into());
-        }
-        if !T::is_message_version_supported(content_info.message_version.as_u64()) {
-            return Err(UnsupportedMessageVersionError.into());
-        }
-
-        let deserialized_versions = T::from_slice(content_info.content_type.as_str(), &payload)
-            .map_err(DeserializeError::from_err)?;
-        let current_version = deserialized_versions
-            .into_current_version()
-            .map_err(MessageUpgradeError::from_err)?;
-
-        Ok(Self(current_version))
+        Ok(Self(
+            T::negotiate(&content_info, &payload).map_err(Self::Rejection::from)?,
+        ))
     }
 }

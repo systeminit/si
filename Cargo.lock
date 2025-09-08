@@ -3,6 +3,40 @@
 version = 4
 
 [[package]]
+name = "acceptable"
+version = "0.1.0"
+dependencies = [
+ "acceptable-macros",
+ "async-nats",
+ "ciborium",
+ "nats-std",
+ "remain",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "ulid",
+]
+
+[[package]]
+name = "acceptable-macros"
+version = "0.1.0"
+dependencies = [
+ "darling 0.20.11",
+ "manyhow",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
+name = "acceptable-tests"
+version = "0.1.0"
+dependencies = [
+ "acceptable",
+ "serde",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2888,9 +2922,9 @@ dependencies = [
 name = "edda-core"
 version = "0.1.0"
 dependencies = [
+ "acceptable",
  "insta",
  "nats-std",
- "naxum-api-types",
  "remain",
  "serde",
  "serde_json",
@@ -5458,20 +5492,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "naxum-api-types"
+name = "naxum-extractor-acceptable"
 version = "0.1.0"
 dependencies = [
- "ciborium",
- "derive_more",
+ "acceptable",
+ "async-nats",
  "nats-std",
- "remain",
- "serde",
- "serde_json",
- "si-data-nats",
- "si-id",
- "strum",
- "thiserror 2.0.12",
- "ulid",
+ "naxum",
+ "tracing",
 ]
 
 [[package]]
@@ -6159,9 +6187,9 @@ dependencies = [
 name = "pinga-core"
 version = "0.1.0"
 dependencies = [
+ "acceptable",
  "insta",
  "nats-std",
- "naxum-api-types",
  "rand 0.8.5",
  "remain",
  "serde",
@@ -6184,6 +6212,7 @@ dependencies = [
  "nats-std",
  "nats-subscriber",
  "naxum",
+ "naxum-extractor-acceptable",
  "pinga-core",
  "rebaser-client",
  "remain",
@@ -6773,8 +6802,8 @@ dependencies = [
 name = "rebaser-core"
 version = "0.1.0"
 dependencies = [
+ "acceptable",
  "nats-std",
- "naxum-api-types",
  "remain",
  "serde",
  "si-data-nats",
@@ -6796,6 +6825,7 @@ dependencies = [
  "nats-dead-letter-queue",
  "nats-std",
  "naxum",
+ "naxum-extractor-acceptable",
  "pending-events",
  "pinga-client",
  "rebaser-client",

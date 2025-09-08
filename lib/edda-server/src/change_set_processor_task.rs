@@ -62,6 +62,10 @@ use tokio_util::{
 use self::app_state::AppState;
 use crate::{
     ServerMetadata,
+    api_types::change_set_request::{
+        ChangeSetRequest,
+        CompressedChangeSetRequest,
+    },
     compressing_stream::CompressingStream,
     updates::EddaUpdates,
 };
@@ -92,7 +96,7 @@ impl ChangeSetProcessorTask {
     pub(crate) fn create(
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
-        incoming: CompressingStream<push::Ordered>,
+        incoming: CompressingStream<push::Ordered, ChangeSetRequest, CompressedChangeSetRequest>,
         frigg: FriggStore,
         edda_updates: EddaUpdates,
         parallel_build_limit: usize,
@@ -332,7 +336,7 @@ mod handlers {
 
     use super::app_state::AppState;
     use crate::{
-        compressed_request::CompressedRequest,
+        api_types::change_set_request::CompressedChangeSetRequest,
         materialized_view,
         updates::EddaUpdates,
     };
@@ -381,7 +385,7 @@ mod handlers {
     pub(crate) async fn default(
         State(state): State<AppState>,
         subject: Subject,
-        Json(request): Json<CompressedRequest>,
+        Json(request): Json<CompressedChangeSetRequest>,
     ) -> Result<()> {
         let AppState {
             workspace_id,
@@ -449,7 +453,7 @@ mod handlers {
         subject: Subject,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        request: CompressedRequest,
+        request: CompressedChangeSetRequest,
     ) -> Result<()> {
         let span = current_span_for_instrument_at!("info");
 
@@ -474,7 +478,7 @@ mod handlers {
         span.record("otel.name", otel_name.as_str());
 
         match request {
-            CompressedRequest::NewChangeSet {
+            CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count: _,
                 base_change_set_id: _,
                 new_change_set_id: _,
@@ -517,7 +521,7 @@ mod handlers {
                     .map_err(Into::into)
                 }
             }
-            CompressedRequest::Rebuild { .. } => {
+            CompressedChangeSetRequest::Rebuild { .. } => {
                 // Rebuild
                 materialized_view::build_all_mv_for_change_set(
                     ctx,
@@ -530,7 +534,7 @@ mod handlers {
                 .await
                 .map_err(Into::into)
             }
-            CompressedRequest::Update {
+            CompressedChangeSetRequest::Update {
                 src_requests_count: _,
                 from_snapshot_address,
                 to_snapshot_address,

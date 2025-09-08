@@ -1,109 +1,34 @@
-use std::{
-    fmt,
-    ops::{
-        Deref,
-        DerefMut,
-    },
-};
-
-use naxum_api_types::{
-    ApiVersionsWrapper,
-    ApiWrapper,
-    RequestId,
+use acceptable::{
+    AllVersions,
+    Container,
+    CurrentContainer,
+    IntoContainer,
     UpgradeError,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use strum::{
-    AsRefStr,
-    EnumDiscriminants,
-    EnumIs,
-    EnumString,
-    VariantNames,
-};
-use v1::JobExecutionResultV1;
+use serde::Deserialize;
 
-pub mod v1;
+use self::v1::JobExecutionResultV1;
+
+mod v1;
 
 pub use self::v1::JobExecutionResponseV1;
 
-pub type JobExecutionResponseVCurrent = JobExecutionResponseV1;
-
 pub type JobExecutionResultVCurrent = JobExecutionResultV1;
 
-#[derive(Clone, Eq, Serialize, PartialEq, VariantNames)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum JobExecutionResponse {
-    V1(JobExecutionResponseV1),
-}
-
-impl ApiWrapper for JobExecutionResponse {
-    type VersionsTarget = JobExecutionResponseVersions;
-    type Current = JobExecutionResponseVCurrent;
-
-    const MESSAGE_TYPE: &'static str = "JobExecutionResponse";
-
-    fn id(&self) -> RequestId {
-        match self {
-            Self::V1(JobExecutionResponseVCurrent { id, .. }) => *id,
-        }
-    }
-
-    fn new_current(current: Self::Current) -> Self {
-        Self::V1(current)
-    }
-}
-
-impl fmt::Debug for JobExecutionResponse {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::V1(inner) => inner.fmt(f),
-        }
-    }
-}
-
-impl Deref for JobExecutionResponse {
-    type Target = JobExecutionResponseVCurrent;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::V1(inner) => inner,
-        }
-    }
-}
-
-impl DerefMut for JobExecutionResponse {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            JobExecutionResponse::V1(inner) => inner,
-        }
-    }
-}
-
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, EnumDiscriminants, EnumIs, Eq, PartialEq, VariantNames)]
+#[derive(AllVersions, CurrentContainer, Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-#[strum_discriminants(strum(serialize_all = "camelCase"), derive(AsRefStr, EnumString))]
-pub enum JobExecutionResponseVersions {
+pub enum JobExecutionResponseAllVersions {
+    #[acceptable(current)]
     V1(JobExecutionResponseV1),
 }
 
-impl ApiVersionsWrapper for JobExecutionResponseVersions {
-    type Target = JobExecutionResponse;
+impl IntoContainer for JobExecutionResponseAllVersions {
+    type Container = JobExecutionResponse;
 
-    fn id(&self) -> RequestId {
+    fn into_container(self) -> Result<Self::Container, UpgradeError> {
         match self {
-            Self::V1(JobExecutionResponseV1 { id, .. }) => *id,
-        }
-    }
-
-    fn into_current_version(self) -> Result<Self::Target, UpgradeError> {
-        match self {
-            Self::V1(inner) => Ok(Self::Target::V1(inner)),
+            Self::V1(inner) => Ok(Self::Container::new(inner)),
         }
     }
 }
@@ -128,8 +53,6 @@ mod test {
         de::DeserializeOwned,
     };
 
-    use super::JobExecutionResponseVersionsDiscriminants;
-
     /// Tests that a versioned object will always serialize to the same representation, no matter
     /// what future versions or changes to the object.
     ///
@@ -138,13 +61,9 @@ mod test {
     /// commiteed `.snap` file, this should be considered a failed refactoring. The remediation is
     /// to *not* update the `.snap` file but rather to fix the code so that the `.snap` format is
     /// 100% preserved.
-    pub fn assert_serialize(
-        name: &str,
-        version: JobExecutionResponseVersionsDiscriminants,
-        serialize: impl Serialize,
-    ) {
+    pub fn assert_serialize(name: &str, version: u64, serialize: impl Serialize) {
         insta::with_settings!({
-            snapshot_path => format!("job_execution_response/snapshots-{}", version.as_ref()),
+            snapshot_path => format!("job_execution_response/snapshots-v{version}"),
             prepend_module_to_snapshot => false,
             omit_expression => true,
             description => concat!(
@@ -172,16 +91,13 @@ mod test {
         });
     }
 
-    pub fn assert_deserialize<T>(
-        snapshot_name: &str,
-        version: JobExecutionResponseVersionsDiscriminants,
-        expected: T,
-    ) where
+    pub fn assert_deserialize<T>(snapshot_name: &str, version: u64, expected: T)
+    where
         T: fmt::Debug + DeserializeOwned + PartialEq,
     {
         let actual: T = read_from_snapshot(
             snapshot_name,
-            &format!("job_execution_response/snapshots-{}", version.as_ref()),
+            &format!("job_execution_response/snapshots-v{version}"),
         )
         .expect("failed to deserialize from snapshot");
 

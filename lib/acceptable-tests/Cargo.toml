@@ -1,0 +1,13 @@
+[package]
+name = "acceptable-tests"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+acceptable = { path = "../../lib/acceptable" }
+serde = { workspace = true }

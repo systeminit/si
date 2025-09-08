@@ -18,7 +18,7 @@ use rebaser_client::{
     RequestId,
     api_types::enqueue_updates_response::{
         EnqueueUpdatesResponse,
-        v1::RebaseStatus,
+        RebaseStatus,
     },
 };
 use serde::{

@@ -1,9 +1,3 @@
-mod app_state;
-mod config;
-pub mod extract;
-mod handlers;
-pub mod server;
-
 use std::io;
 
 use dal::{
@@ -16,11 +10,17 @@ use si_data_nats::{
     async_nats,
 };
 use si_data_pg::PgPoolError;
+use thiserror::Error;
+
+mod app_state;
+mod config;
+mod handlers;
+pub mod server;
+
 pub use si_settings::{
     ConfigMap,
     ParameterProvider,
 };
-use thiserror::Error;
 
 pub use crate::{
     config::{

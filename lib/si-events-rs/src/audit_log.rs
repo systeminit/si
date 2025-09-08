@@ -22,7 +22,7 @@ pub use v1::PropValueSource;
 pub type AuditLogKind = AuditLogKindV1;
 pub type AuditLogMetadata = AuditLogMetadataV1;
 
-// TODO(nick): switch to something like "naxum-api-types" crate to avoid sizing issues.
+// TODO(nick): switch to something like "acceptable" crate to avoid sizing issues.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum AuditLog {
     V1(Box<AuditLogV1>),

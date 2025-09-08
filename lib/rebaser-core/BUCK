@@ -3,8 +3,8 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "rebaser-core",
     deps = [
+        "//lib/acceptable:acceptable",
         "//lib/nats-std:nats-std",
-        "//lib/naxum-api-types:naxum-api-types",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-events-rs:si-events",
         "//third-party/rust:remain",

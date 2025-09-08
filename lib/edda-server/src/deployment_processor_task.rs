@@ -2,7 +2,10 @@ use std::{
     io,
     result,
     sync::Arc,
-    time::Duration,
+    time::{
+        Duration,
+        Instant,
+    },
 };
 
 use dal::DalContextBuilder;
@@ -35,8 +38,14 @@ use si_data_nats::{
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
-use tokio::sync::Notify;
-use tokio_stream::StreamExt as _;
+use tokio::{
+    sync::{
+        Notify,
+        watch,
+    },
+    time,
+};
+use tokio_stream::StreamExt;
 use tokio_util::{
     sync::CancellationToken,
     task::TaskTracker,
@@ -45,6 +54,11 @@ use tokio_util::{
 use self::app_state::AppState;
 use crate::{
     ServerMetadata,
+    api_types::deployment_request::{
+        CompressedDeploymentRequest,
+        DeploymentRequest,
+    },
+    compressing_stream::CompressingStream,
     updates::EddaUpdates,
 };
 
@@ -72,7 +86,7 @@ impl DeploymentProcessorTask {
     pub(crate) fn create(
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
-        incoming: push::Ordered,
+        incoming: CompressingStream<push::Ordered, DeploymentRequest, CompressedDeploymentRequest>,
         frigg: FriggStore,
         edda_updates: EddaUpdates,
         parallel_build_limit: usize,
@@ -80,6 +94,7 @@ impl DeploymentProcessorTask {
         quiescent_period: Duration,
         quiesced_notify: Arc<Notify>,
         quiesced_token: CancellationToken,
+        last_compressing_heartbeat_rx: watch::Receiver<Instant>,
         task_token: CancellationToken,
         server_tracker: TaskTracker,
     ) -> Self {
@@ -96,26 +111,43 @@ impl DeploymentProcessorTask {
             server_tracker,
         );
 
+        // Set up a check interval that ideally fires more often than the quiescent period
+        let check_interval =
+            time::interval(quiescent_period.checked_div(10).unwrap_or(quiescent_period));
+
         let captured = QuiescedCaptured {
             instance_id_str: metadata.instance_id().to_string().into_boxed_str(),
             quiesced_notify: quiesced_notify.clone(),
+            last_compressing_heartbeat_rx,
         };
         let inactive_aware_incoming = incoming
-            // Looks for a gap between incoming messages greater than the duration
-            .timeout(quiescent_period)
+            // Frequency at which we check for a quiet period
+            .timeout_repeating(check_interval)
             // Fire quiesced_notify which triggers a specific shutdown of the serial dvu task where
             // we *know* we want to remove the task from the set of work.
             .inspect_err(move |_elapsed| {
                 let QuiescedCaptured {
                     instance_id_str,
                     quiesced_notify,
+                    last_compressing_heartbeat_rx,
                 } = &captured;
+
+                let last_heartbeat_elapsed = last_compressing_heartbeat_rx.borrow().elapsed();
+
                 debug!(
                     service.instance.id = instance_id_str,
-                    "rate of requests has become inactive, triggering a quiesced shutdown",
+                    last_heartbeat_elapsed = last_heartbeat_elapsed.as_secs(),
+                    quiescent_period = quiescent_period.as_secs(),
                 );
-                // Notify the serial dvu task that we want to shutdown due to a quiet period
-                quiesced_notify.notify_one();
+
+                if last_heartbeat_elapsed > quiescent_period {
+                    debug!(
+                        service.instance.id = instance_id_str,
+                        "rate of requests has become inactive, triggering a quiesced shutdown",
+                    );
+                    // Notify the serial dvu task that we want to shutdown due to a quiet period
+                    quiesced_notify.notify_one();
+                }
             })
             // Continue processing messages as normal until the Naxum app's graceful shutdown is
             // triggered. This means we turn the stream back from a stream of
@@ -161,6 +193,7 @@ impl DeploymentProcessorTask {
 struct QuiescedCaptured {
     instance_id_str: Box<str>,
     quiesced_notify: Arc<Notify>,
+    last_compressing_heartbeat_rx: watch::Receiver<Instant>,
 }
 
 #[derive(Clone, Debug)]
@@ -225,6 +258,7 @@ mod handlers {
     use dal::DalContext;
     use frigg::FriggStore;
     use naxum::{
+        Json,
         extract::State,
         response::{
             IntoResponse,
@@ -238,6 +272,7 @@ mod handlers {
 
     use super::app_state::AppState;
     use crate::{
+        api_types::deployment_request::CompressedDeploymentRequest,
         materialized_view,
         updates::EddaUpdates,
     };
@@ -266,10 +301,8 @@ mod handlers {
     pub(crate) async fn default(
         State(state): State<AppState>,
         subject: Subject,
-        // TODO uncommenting this causes naxum to not call this function an just error out
-        // Json(request): Json<String>,
+        Json(request): Json<CompressedDeploymentRequest>,
     ) -> Result<()> {
-        info!("deployment processor task for subject: {}", subject);
         let AppState {
             nats: _,
             frigg,
@@ -280,18 +313,28 @@ mod handlers {
         } = state;
         let ctx = ctx_builder.build_default(None).await?;
 
-        process_request(&ctx, &frigg, &edda_updates, parallel_build_limit, subject).await
+        process_request(
+            &ctx,
+            &frigg,
+            &edda_updates,
+            parallel_build_limit,
+            subject,
+            request,
+        )
+        .await
     }
 
     #[instrument(
         // Will be renamed to: `edda.requests.deployment process`
-        name = "edda.deployment_processor_task.process_request",
+        name = "edda.requests.deployment.process",
         level = "info",
         skip_all,
         fields(
             otel.name = Empty,
             otel.status_code = Empty,
             otel.status_message = Empty,
+            si.edda.compressed_request.kind = request.as_ref(),
+            si.edda.src_requests.count = request.src_requests_count(),
         )
     )]
     async fn process_request(
@@ -300,7 +343,7 @@ mod handlers {
         edda_updates: &EddaUpdates,
         parallel_build_limit: usize,
         subject: Subject,
-        // request: String,
+        request: CompressedDeploymentRequest,
     ) -> Result<()> {
         let span = current_span_for_instrument_at!("info");
 
@@ -317,17 +360,22 @@ mod handlers {
         span.record("messaging.destination", subject.as_str());
         span.record("otel.name", otel_name.as_str());
 
-        debug!("processing deployment request");
-
-        materialized_view::build_all_mvs_for_deployment(
-            ctx,
-            frigg,
-            edda_updates,
-            parallel_build_limit,
-            "explicit rebuild",
-        )
-        .await
-        .map_err(Into::into)
+        match request {
+            CompressedDeploymentRequest::Rebuild { .. } => {
+                // Rebuild
+                materialized_view::build_all_mvs_for_deployment(
+                    ctx,
+                    frigg,
+                    edda_updates,
+                    parallel_build_limit,
+                    "explicit rebuild",
+                )
+                .await
+                .map_err(Into::into)
+            }
+        }
+        .inspect(|_| span.record_ok())
+        .map_err(|err| span.record_err(err))
     }
 }
 
