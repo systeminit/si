@@ -210,11 +210,15 @@ class SIAdminReporter:
         except Exception as e:
             print(f"❌ WebSocket listener error: {e}")
 
-    async def trigger_migration(self, workspace_id: str, changeset_id: str) -> bool:
+    async def trigger_migration(self, workspace_id: str, changeset_id: str, *, dry_run: bool):
         """Trigger a dry run migration for a specific changeset."""
         migration_url = f"{self.sdf_api_url}/v2/admin/workspaces/{workspace_id}/change_sets/{changeset_id}/migrate_connections"
 
-        async with self.session.post(migration_url) as response:
+        if dry_run:
+            response = await self.session.get(migration_url)
+        else:
+            response = await self.session.post(migration_url)
+        async with response:
             response.raise_for_status()
 
     async def trigger_dry_run_migration(self, workspace_id: str, changeset_id: str) -> bool:
@@ -502,7 +506,7 @@ class SIAdminReporter:
         print(f"CSV file: {csv_file}")
         print("=" * 60)
 
-    async def run_migrations(self, workspaces_file: Optional[str] = None) -> None:
+    async def run_migrations(self, workspaces_file: Optional[str] = None, *, dry_run = True, batch_size = 5, all_changesets = False, pause_between_batches = 3) -> None:
         if not workspaces_file:
             raise ValueError("Must specify --workspaces-file")
 
@@ -520,40 +524,58 @@ class SIAdminReporter:
                 continue
             workspace = workspaces[0]
             workspace_name = workspace['name']
-            change_set_num = 0
-            change_sets = [change_set for change_set in await self.list_change_sets_for_workspace(workspace_id) if not (change_set['status'] == 'Abandoned' or change_set['status'] == 'Applied') and change_set['name'] == 'HEAD']
-            for change_set in change_sets:
-                change_set_num += 1
-                change_set_id = change_set['id']
+            head_change_set_id = workspace['defaultChangeSetId']
+
+            def filter_change_set(change_set):
                 change_set_name = change_set['name']
+                change_set_id = change_set['id']
+                if change_set['id'] != head_change_set_id and not all_changesets:
+                    return False
+                if change_set_id == "01JMJ0RZBPMDEGXWBZREFM68VX" or change_set_id == "01JPX0MFJ67VBC1GEV713CXD68" or change_set_id == "01JQCMEH58S1V5X8QJCZXH86HZ" or change_set_id == "01JM0RZVTTEMMYZ6X7XBNKTAEF":
+                    print(f"❌ Skipping known bad {workspace_name} ({workspace_id}) changeset {change_set_name} ({change_set_id}) ...")
+                    return False
                 if change_set['status'] == 'Abandoned' or change_set['status'] == 'Applied':
                     print(f"❌ Skipping {change_set['status']} changeset {change_set_name} ({change_set_id}) in workspace {workspace_id} ...")
-                    continue
+                    return False
+                return True
 
-                if change_set_id == "01JMJ0RZBPMDEGXWBZREFM68VX" or change_set_id == "01JPX0MFJ67VBC1GEV713CXD68":
-                    print(f"❌ Skipping known bad {workspace_name} ({workspace_id}) changeset {change_set_name} ({change_set_id}) ...")
-                    continue
+            change_sets = [
+                change_set
+                for change_set in await self.list_change_sets_for_workspace(workspace_id)
+                if filter_change_set(change_set)
+            ]
 
-                # Save the current snapshot
-                snapshot_filename = f"{results_dir}/{workspace_id}.{change_set_id}.snapshot"
-                if pathlib.Path(snapshot_filename).exists():
-                    print(f"⚠️ Snapshot file {snapshot_filename} already exists, skipping upload")
-                    continue
-                snapshot = await self.download_snapshot(workspace_id, change_set_id)
-                with open(snapshot_filename, 'xb') as f:
-                    f.write(snapshot)
+            if len(change_sets) == 0:
+                print(f"⚠️ {workspace_num}/{len(workspace_ids)} No applicable change sets to process for workspace {workspace_name} ({workspace_id})")
+                continue
+            for change_set_num, change_set in enumerate(change_sets, 1):
+                change_set_id = change_set['id']
+                change_set_name = change_set['name']
+
+                if not dry_run:
+                    # Save the current snapshot
+                    snapshot_filename = f"{results_dir}/{workspace_id}.{change_set_id}.snapshot"
+                    if pathlib.Path(snapshot_filename).exists():
+                        print(f"⚠️ {workspace_num}/{len(workspace_ids)} Snapshot file {snapshot_filename} already exists, skipping upload of {change_set['status']} changeset {change_set_num}/{len(change_sets)} {change_set_name} ({change_set_id})")
+                        continue
+                    snapshot = await self.download_snapshot(workspace_id, change_set_id)
+                    with open(snapshot_filename, 'xb') as f:
+                        f.write(snapshot)
 
                 # Trigger the migration
-                await self.trigger_dry_run_migration(workspace_id, change_set_id)
-                print(f"🎯 {workspace_num}/{len(workspace_ids)} Triggered migration for workspace {workspace_name} ({workspace_id}), {change_set['status']} changeset {change_set_num}/{len(change_sets)} {change_set_name} ({change_set_id}) ...")
+                await self.trigger_migration(workspace_id, change_set_id, dry_run=dry_run)
+                print(f"🎯 {workspace_num}/{len(workspace_ids)} Triggered {'dry run' if dry_run else 'migration'} for workspace {workspace_name} ({workspace_id}), {change_set['status']} changeset {change_set_num}/{len(change_sets)} {change_set_name} ({change_set_id}) ...")
 
-                # Give the system 10 seconds to settle after every 5 migrations
+                # Give the system 10 seconds to settle after every N migrations
                 batch_count += 1
-                if batch_count >= 5:
-                    await asyncio.sleep(10)
+                if batch_count >= batch_size:
+                    print(f"😴 Pausing {pause_between_batches}s ...")
+                    await asyncio.sleep(pause_between_batches)
+                    print()
+                    print(f"⏰ {datetime.now()}")
                     batch_count = 0
 
-    async def run_migration_dry_runs(self, csv_file: str, *, workspaces_file: Optional[str] = None, batch_size: int = 1, in_changeset: Optional[tuple[str, str]] = None) -> None:
+    async def run_migrations_with_results(self, csv_file: str, *, workspaces_file: Optional[str] = None, batch_size: int = 1, in_changeset: Optional[tuple[str, str]] = None, dry_run = True) -> None:
         """Run dry run migrations for users in batches, testing only HEAD changesets."""
         print("🎯 Running Migration Dry Runs (User-based batches)")
         print("=" * 60)
@@ -678,7 +700,7 @@ class SIAdminReporter:
                     
                     print(f"  👤 User: {user_email}")
                     print(f"     🏢 Workspace: {workspace_name} ({workspace_id})")
-                    print(f"     🎯 HEAD Changeset: {changeset_name} ({changeset_id})")
+                    print(f"     🎯 Changeset: {changeset_name} ({changeset_id})")
                     
                     if in_changeset:
                         assert batch_size == 1
@@ -688,7 +710,10 @@ class SIAdminReporter:
                     else:
                         in_workspace_id = workspace_id
                         in_changeset_id = changeset_id
-                    success = await self.trigger_dry_run_migration(in_workspace_id, in_changeset_id)
+                    if dry_run:
+                        success = await self.trigger_dry_run_migration(in_workspace_id, in_changeset_id)
+                    else:
+                        success = await self.trigger_migration(in_workspace_id, in_changeset_id)
                     if success:
                         batch_changeset_ids.append(in_changeset_id)
                     else:
@@ -1025,7 +1050,28 @@ Examples:
         '--in-changeset-id',
         type=str,
     )
-    
+    parser.add_argument(
+        '--no-dry-run',
+        action='store_false',
+        dest='dry_run',
+        help='Perform real migrations instead of dry runs'
+    )
+    parser.add_argument(
+        '--all-changesets',
+        action='store_true',
+        help='Run against all changesets, not just HEAD'
+    )
+    parser.add_argument(
+        '--list-workspaces',
+        action='store_true',
+        help='List all workspaces and exit'
+    )
+    parser.add_argument(
+        '--email',
+        type=str,
+        help='Email address to send report to'
+    )
+
     args = parser.parse_args()
     
     # Get configuration from environment variables
@@ -1042,14 +1088,17 @@ Examples:
     print(f"  - Bearer Token: {'*' * len(bearer_token[:-4]) + bearer_token[-4:] if len(bearer_token) > 4 else '****'}")
     
     async with SIAdminReporter(bearer_token, sdf_api_url) as reporter:
-        if args.csv_mode:
+        if args.list_workspaces:
+            for workspace in await reporter.list_all_workspaces(args.email):
+                print(workspace['id'])
+        elif args.csv_mode:
             # Generate CSV for migration tracking
             await reporter.generate_migration_csv(args.users_file, args.csv_file)
         elif args.migrate:
             # Run dry run migrations
-            await reporter.run_migrations(workspaces_file=args.workspaces_file)
-            # in_changeset = (args.in_workspace_id, args.in_changeset_id) if args.in_workspace_id and args.in_changeset_id else None
-            # await reporter.run_migration_dry_runs(args.csv_file, workspaces_file=args.workspaces_file, batch_size=args.batch_size, in_changeset=in_changeset)
+            await reporter.run_migrations(workspaces_file=args.workspaces_file, batch_size=args.batch_size, dry_run=args.dry_run, all_changesets=args.all_changesets)
+            in_changeset = (args.in_workspace_id, args.in_changeset_id) if args.in_workspace_id and args.in_changeset_id else None
+            # await reporter.run_migrations(args.csv_file, workspaces_file=args.workspaces_file, batch_size=args.batch_size, in_changeset=in_changeset, dry_run=args.dry_run)
         else:
             # Generate the workspace report
             await reporter.generate_workspace_report(
