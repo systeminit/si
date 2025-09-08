@@ -210,6 +210,10 @@ impl From<AttributePrototypeArgumentError> for FsError {
 
 pub type FsResult<T> = Result<T, FsError>;
 
+// Use different paths for buck2 vs cargo check
+#[cfg(not(feature = "buck2_build"))]
+const ASSET_EDITOR_TYPES: &str = include_str!("./fs/editor_typescript.txt");
+#[cfg(feature = "buck2_build")]
 const ASSET_EDITOR_TYPES: &str = include_str!("../../../editor_typescript.txt");
 
 impl IntoResponse for FsError {

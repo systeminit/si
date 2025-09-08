@@ -84,6 +84,7 @@ def rust_binary(
             resources = test_unit_resources,
             env = env | test_unit_env,
             visibility = visibility,
+            **kwargs
         )
 
         _clippy_check(
@@ -239,6 +240,7 @@ def rust_library(
             resources = test_unit_resources,
             env = env | test_unit_env,
             visibility = visibility,
+            **kwargs
         )
 
         _clippy_check(
