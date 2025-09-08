@@ -28,6 +28,11 @@ A-auth:
     - any-glob-to-any-file:
       - bin/auth-api/**/*
 
+A-ai-agent:
+  - changed-files:
+    - any-glob-to-any-file:
+      - bin/si-mcp-server/**/*
+
 #
 # System Initiative bins (i.e. services/programs/binaries)
 #
