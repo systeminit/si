@@ -89,6 +89,9 @@ url = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 y-sync = { workspace = true }
 
+[features]
+buck2_build = []
+
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }
 indoc = { workspace = true }

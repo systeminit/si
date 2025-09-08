@@ -86,6 +86,7 @@ rust_library(
         "//third-party/rust:y-sync",
     ],
     srcs = glob(["src/**/*.rs"]) + ["//app/web:editor_typescript.txt"],
+    features = ["buck2_build"],
     env = {
         "CARGO_MANIFEST_DIR": ".",
     },
