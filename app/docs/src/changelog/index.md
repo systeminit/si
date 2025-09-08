@@ -33,6 +33,8 @@ All notable changes to System Initiative will be documented in this file.
   workspace instead of a production one.
 - Fixed an issue where adding **secrets via Luminork** was unnecessarily
   difficult.
+- Fixed an issue where **multi-select showed the context menu** attached to the
+  incorrect component.
 
 ## August 25th to 30th 2025
 
