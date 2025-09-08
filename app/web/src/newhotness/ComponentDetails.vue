@@ -109,8 +109,12 @@
             "
             @click="close"
           />
-          <TruncateWithTooltip class="py-xs text-sm">
+          <TruncateWithTooltip v-if="!componentExists" class="py-xs text-sm">
             No component with id "{{ componentId }}" exists on this change set.
+          </TruncateWithTooltip>
+          <TruncateWithTooltip v-else class="py-xs text-sm">
+            Component data is being retrieved...
+            <Icon size="sm" name="loader" />
           </TruncateWithTooltip>
         </div>
       </template>
@@ -420,7 +424,12 @@ import {
 import { computed, ref, onMounted, onBeforeUnmount, inject, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import {
+  bifrost,
+  bifrostExists,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import {
   AttributeTree,
   BifrostComponent,
@@ -499,6 +508,17 @@ const componentQuery = useQuery<BifrostComponent | undefined>({
       key(EntityKind.Component, componentId).value,
     ),
 });
+
+const componentExistsInIndexQuery = useQuery<boolean>({
+  queryKey: key(EntityKind.Component, componentId, "exists"),
+  queryFn: async () =>
+    await bifrostExists(args(EntityKind.Component, componentId.value)),
+  enabled: computed(() => componentQuery.isFetched && !componentQuery.data),
+});
+
+const componentExists = computed(
+  () => componentExistsInIndexQuery.data.value ?? false,
+);
 
 const attributeTreeQuery = useQuery<AttributeTree | undefined>({
   queryKey: key(EntityKind.AttributeTree, componentId),
