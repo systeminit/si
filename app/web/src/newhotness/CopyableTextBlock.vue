@@ -1,24 +1,62 @@
 <template>
   <div class="flex flex-col gap-2xs">
     <div
-      class="bg-neutral-900 rounded-sm border border-neutral-600 flex flex-row p-xs items-center text-sm gap-2"
+      v-tooltip="{
+        content: 'Copied!',
+        triggers: [],
+        shown: showTooltip,
+        autoHide: true,
+        theme: 'instant-show',
+      }"
+      :class="
+        clsx(
+          'flex flex-row gap-sm items-center justify-between border rounded-sm cursor-pointer active:bg-neutral-700 select-none',
+          !expandable && 'h-full',
+          prompt ? 'p-sm italic' : 'p-xs',
+          themeClasses(
+            'border-neutral-400 bg-neutral-300',
+            'bg-neutral-900 border border-neutral-600',
+          ),
+          !hoverSubIcon &&
+            themeClasses(
+              'hover:bg-neutral-400 active:bg-neutral-500',
+              'hover:bg-neutral-600 active:bg-neutral-700',
+            ),
+        )
+      "
+      @click="copyText(text)"
     >
       <Icon
         v-if="expandable"
+        v-tooltip="expanded ? 'Collapse' : 'Expand'"
         :name="expanded ? 'chevron-down' : 'chevron-right'"
-        class="cursor-pointer text-neutral-500 hover:bg-neutral-600 active:bg-neutral-700"
-        @click="expanded = !expanded"
+        :class="
+          clsx(
+            'flex-none',
+            themeClasses(
+              'hover:bg-neutral-400 active:bg-neutral-500',
+              'hover:bg-neutral-600 active:bg-neutral-700',
+            ),
+          )
+        "
+        @click.stop.prevent="onClickExpand"
+        @mouseenter="onMouseEnterSubIcon"
+        @mouseleave="onMouseLeaveSubIcon"
       />
-      <span
-        class="grow text-sm overflow-hidden text-ellipsis whitespace-nowrap"
-        >{{ text }}</span
+      <Icon v-else-if="prompt" name="sparkles" class="flex-none" />
+      <div
+        :class="
+          clsx(
+            'flex-grow',
+            breakWords && 'break-all',
+            !prompt &&
+              'overflow-hidden text-ellipsis whitespace-nowrap text-sm py-2xs font-mono',
+          )
+        "
       >
-      <Icon
-        name="copy"
-        size="sm"
-        class="cursor-pointer hover:bg-neutral-600 active:bg-neutral-700"
-        @click="copyText"
-      />
+        {{ text }}
+      </div>
+      <Icon v-tooltip="'Copy'" name="copy" class="flex-none" />
     </div>
     <div
       v-if="expandable && expanded"
@@ -29,20 +67,42 @@
   </div>
 </template>
 
-<script lang="ts" setup>
-import { Icon } from "@si/vue-lib/design-system";
+<script setup lang="ts">
+import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { ref } from "vue";
 
-const props = defineProps<{
-  text: string;
-  expandable?: boolean;
-}>();
+defineProps({
+  text: { type: String, required: true },
+  prompt: Boolean,
+  expandable: Boolean,
+  breakWords: Boolean,
+});
 
 const expanded = ref(false);
+const showTooltip = ref(false);
+const hoverSubIcon = ref(false);
 
-const copyText = () => {
-  navigator.clipboard.writeText(props.text);
+const copyText = (text: string) => {
+  navigator.clipboard.writeText(text);
+  showTooltip.value = true;
+  setTimeout(() => {
+    showTooltip.value = false;
+  }, 300);
   emit("copied");
+};
+
+const onMouseEnterSubIcon = () => {
+  hoverSubIcon.value = true;
+};
+
+const onMouseLeaveSubIcon = () => {
+  hoverSubIcon.value = false;
+};
+
+const onClickExpand = () => {
+  expanded.value = !expanded.value;
+  onMouseLeaveSubIcon();
 };
 
 const emit = defineEmits<{

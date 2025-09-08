@@ -312,8 +312,11 @@
             <div
               :class="
                 clsx(
-                  'shrink-0 flex flex-col items-center py-md px-lg w-full max-w-6xl mb-sm gap-3  text-center',
-                  themeClasses('bg-neutral-300', 'bg-neutral-800'),
+                  'shrink-0 flex flex-col items-center py-md px-lg w-full max-w-6xl mb-sm gap-3 border text-center rounded-sm',
+                  themeClasses(
+                    'bg-neutral-200 border-neutral-400',
+                    'bg-neutral-800 border-neutral-600',
+                  ),
                 )
               "
             >
@@ -362,6 +365,7 @@
           >
             <WelcomeBanner
               v-if="featureFlagsStore.INITIALIZER_ONBOARD && ctx.onHead.value"
+              class="mb-sm"
             />
             <ExploreGrid
               ref="exploreGridRef"

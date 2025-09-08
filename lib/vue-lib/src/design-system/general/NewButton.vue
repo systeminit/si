@@ -12,6 +12,7 @@
     :tabindex="tabIndex"
     :class="
       clsx(
+        'newbutton',
         'flex flex-row items-center gap-xs transition-all justify-center whitespace-nowrap leading-none font-medium rounded-sm',
         hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs',
         tone !== 'empty' && 'border',
@@ -26,7 +27,9 @@
               ),
             ]
           : [
-              'cursor-pointer hover:scale-105 active:scale-100',
+              computedLoading
+                ? 'cursor-not-allowed'
+                : 'cursor-pointer hover:scale-105 active:scale-100',
               {
                 neutral: themeClasses(
                   'text-neutral-900 bg-neutral-200 border-neutral-400 hover:bg-neutral-100',
@@ -277,7 +280,7 @@ const confirmFirstClickAt = ref<Date | null>(null);
 let confirmClickTimeout: Timeout;
 let successClickTimeout: Timeout;
 function clickHandler(e: MouseEvent) {
-  if (props.disabled) {
+  if (props.disabled || computedLoading.value) {
     e.stopPropagation();
     e.preventDefault();
     return;

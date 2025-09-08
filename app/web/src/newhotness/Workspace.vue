@@ -112,10 +112,13 @@
       />
     </main>
     <template v-else-if="!lobby">
-      <Onboarding
-        v-if="showOnboarding"
-        @completed="onboardingCompleted = true"
-      />
+      <template v-if="showOnboarding">
+        <Onboarding2
+          v-if="featureFlagsStore.INITIALIZER_ONBOARD_FORCE_AGENT"
+          @completed="onboardingCompleted = true"
+        />
+        <Onboarding v-else @completed="onboardingCompleted = true" />
+      </template>
       <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
            min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
       <main v-else class="grow min-h-0">
@@ -167,6 +170,7 @@ import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { muspelheimStatuses } from "@/store/realtime/heimdall";
 import Onboarding from "@/newhotness/Onboarding.vue";
 import { trackEvent } from "@/utils/tracking";
+import Onboarding2 from "@/newhotness/Onboarding2.vue";
 import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
