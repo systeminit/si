@@ -1933,6 +1933,20 @@ const deselectComponent = (componentIdx: number | string) => {
   // PSA: componentIdx coming through emits is typed as number, but at execution is a string
   if (typeof componentIdx === "string") componentIdx = parseInt(componentIdx);
   selectedComponentIndexes.delete(componentIdx);
+
+  // If we're deselecting the currently focused component and there are still other selections,
+  // we need to transfer focus to another selected component
+  if (
+    focusedComponentIdx.value === componentIdx &&
+    selectedComponentIndexes.size > 0
+  ) {
+    // Find the highest index from remaining selections to focus on
+    const remainingIndexes = Array.from(selectedComponentIndexes);
+    const newFocusedIdx = Math.max(...remainingIndexes);
+    setFocusedComponentIdx(newFocusedIdx);
+    // The fixContextMenu will be called by the watcher on focusedComponent
+  }
+
   // Clear selection entirely if no more selections remain
   if (selectedComponentIndexes.size === 0) {
     clearSelection();
