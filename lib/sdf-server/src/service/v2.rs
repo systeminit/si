@@ -31,6 +31,7 @@ pub mod index;
 pub mod integrations;
 pub mod management;
 pub mod module;
+pub mod remote_shell;
 pub mod variant;
 pub mod view;
 pub mod workspace;
@@ -54,6 +55,7 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                 .nest("/modules", module::v2_routes())
                 .nest("/schema-variants", variant::v2_routes())
                 .nest("/management", management::v2_routes())
+                .nest("/remote-shell", remote_shell::v2_routes())
                 .nest("/views", view::v2_routes())
                 .nest("/action", action::v2_routes())
                 .nest(

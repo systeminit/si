@@ -55,6 +55,9 @@ pub struct Config {
     #[builder(default = "true")]
     enable_management: bool,
 
+    #[builder(default = "false")]
+    enable_remote_shell: bool,
+
     #[builder(default = "IncomingStream::default()")]
     incoming_stream: IncomingStream,
 
@@ -120,10 +123,16 @@ impl Config {
         self.enable_schema_variant_definition
     }
 
-    /// Gets the config's enable schema_variant_definition
+    /// Gets the config's enable management
     #[must_use]
     pub fn enable_management(&self) -> bool {
         self.enable_management
+    }
+
+    /// Gets the config's enable remote shell
+    #[must_use]
+    pub fn enable_remote_shell(&self) -> bool {
+        self.enable_remote_shell
     }
 
     /// Gets a reference to the config's incoming stream.

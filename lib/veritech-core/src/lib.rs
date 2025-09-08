@@ -15,6 +15,7 @@ use cyclone_core::{
     ActionRunRequest,
     KillExecutionRequest,
     ManagementRequest,
+    RemoteShellRequest,
     ResolverFunctionRequest,
     SchemaVariantDefinitionRequest,
     ValidationRequest,
@@ -42,6 +43,7 @@ const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX: &str = "resolverfunction";
 const NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX: &str = "schemavariantdefinition";
 const NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX: &str = "validation";
 const NATS_MANAGEMENT_DEFAULT_SUBJECT_SUFFIX: &str = "management";
+const NATS_REMOTE_SHELL_DEFAULT_SUBJECT_SUFFIX: &str = "remoteshell";
 
 const NATS_KILL_EXECUTION_DEFAULT_SUBJECT: &str = "veritech.meta.killexecution";
 
@@ -132,6 +134,12 @@ impl GetNatsSubjectFor for ManagementRequest {
     }
 }
 
+impl GetNatsSubjectFor for RemoteShellRequest {
+    fn subject_suffix(&self) -> &str {
+        NATS_REMOTE_SHELL_DEFAULT_SUBJECT_SUFFIX
+    }
+}
+
 impl GetNatsSubjectFor for ResolverFunctionRequest {
     fn subject_suffix(&self) -> &str {
         NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX
@@ -155,6 +163,7 @@ pub enum VeritechRequest {
     ActionRun(ActionRunRequest),
     KillExecution(KillExecutionRequest),
     Management(Box<ManagementRequest>),
+    RemoteShell(RemoteShellRequest),
     Resolver(ResolverFunctionRequest), // Resolvers are JsAttribute functions
     SchemaVariantDefinition(SchemaVariantDefinitionRequest),
     Validation(ValidationRequest),
@@ -192,6 +201,9 @@ impl VeritechRequest {
             NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX => {
                 Self::Validation(serde_json::from_slice(payload)?)
             }
+            NATS_REMOTE_SHELL_DEFAULT_SUBJECT_SUFFIX => {
+                Self::RemoteShell(serde_json::from_slice(payload)?)
+            }
             _ => {
                 return Err(VeritechRequestError::UnknownSubjectSuffix(
                     subject.to_string(),
@@ -207,6 +219,9 @@ impl VeritechRequest {
                 kill_execution_request.subject_suffix()
             }
             VeritechRequest::Management(management_request) => management_request.subject_suffix(),
+            VeritechRequest::RemoteShell(remote_shell_request) => {
+                remote_shell_request.subject_suffix()
+            }
             VeritechRequest::Resolver(resolver_function_request) => {
                 resolver_function_request.subject_suffix()
             }
@@ -224,6 +239,9 @@ impl VeritechRequest {
                 &kill_execution_request.execution_id
             }
             VeritechRequest::Management(management_request) => &management_request.execution_id,
+            VeritechRequest::RemoteShell(remote_shell_request) => {
+                &remote_shell_request.execution_id
+            }
             VeritechRequest::Resolver(resolver_function_request) => {
                 &resolver_function_request.execution_id
             }

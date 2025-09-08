@@ -342,6 +342,10 @@ pub struct LocalUdsInstanceSpec {
     #[builder(private, setter(name = "_action"), default = "false")]
     action: bool,
 
+    /// Enables the `remote_shell` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_remote_shell"), default = "false")]
+    remote_shell: bool,
+
     /// Size of the pool to configure for the spec.
     #[builder(setter(into), default = "500")]
     pub pool_size: u32,
@@ -489,9 +493,14 @@ impl LocalUdsInstanceSpecBuilder {
         self._action(true)
     }
 
+    /// Enables the `remote_shell` execution endpoint for a spawned Cyclone server.
+    pub fn remote_shell(&mut self) -> &mut Self {
+        self._remote_shell(true)
+    }
+
     /// Enables all available endpoints for a spawned Cyclone server
     pub fn all_endpoints(&mut self) -> &mut Self {
-        self.action().resolver()
+        self.action().resolver().remote_shell()
     }
 }
 
@@ -621,6 +630,9 @@ impl LocalProcessRuntime {
         if spec.action {
             cmd.arg("--enable-action-run");
         }
+        if spec.remote_shell {
+            cmd.arg("--enable-remote-shell");
+        }
 
         Ok(Box::new(LocalProcessRuntime {
             cmd,
@@ -693,6 +705,9 @@ impl LocalDockerRuntime {
         }
         if spec.action {
             cmd.push(String::from("--enable-action-run"));
+        }
+        if spec.remote_shell {
+            cmd.push(String::from("--enable-remote-shell"));
         }
 
         let docker = Docker::connect_with_local_defaults()?;

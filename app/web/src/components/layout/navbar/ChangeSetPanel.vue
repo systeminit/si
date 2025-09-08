@@ -71,6 +71,24 @@
       @click="openAbandonConfirmationModal"
     />
 
+    <NewButton
+      v-tooltip="{
+        content: 'Open Remote Shell',
+      }"
+      data-testid="remote-shell-button"
+      :disabled="
+        !selectedChangeSetName ||
+        changeSetsStore.headSelected ||
+        changeSetsStore.creatingChangeSet ||
+        changeSetsStore.selectedChangeSet?.status ===
+          ChangeSetStatus.NeedsApproval
+      "
+      icon="command"
+      tone="action"
+      class="flex-none"
+      @click="openRemoteShellModal"
+    />
+
     <Modal ref="createModalRef" title="Create Change Set">
       <form @submit.prevent="onCreateChangeSet">
         <Stack>
@@ -110,6 +128,7 @@
     </Modal>
     <AbandonChangeSetModal ref="abandonModalRef" />
     <ChangesetRenameModal v-if="enableChangesetRename" ref="renameModalRef" />
+    <RemoteShellTerminal ref="remoteShellModalRef" />
   </div>
 </template>
 
@@ -132,6 +151,7 @@ import { tw } from "@si/vue-lib";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import AbandonChangeSetModal from "@/components/AbandonChangeSetModal.vue";
+import RemoteShellTerminal from "@/components/RemoteShellTerminal.vue";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
 import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
 import * as heimdall from "../../../store/realtime/heimdall";
@@ -187,6 +207,13 @@ const abandonModalRef = ref<InstanceType<typeof AbandonChangeSetModal> | null>(
 );
 const openAbandonConfirmationModal = () => {
   abandonModalRef.value?.open();
+};
+
+const remoteShellModalRef = ref<InstanceType<typeof RemoteShellTerminal> | null>(
+  null,
+);
+const openRemoteShellModal = () => {
+  remoteShellModalRef.value?.open();
 };
 
 const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(

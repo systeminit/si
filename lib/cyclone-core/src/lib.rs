@@ -21,6 +21,7 @@ mod management;
 pub mod process;
 mod progress;
 mod readiness;
+mod remote_shell;
 mod request;
 mod resolver_function;
 mod schema_variant_definition;
@@ -64,6 +65,12 @@ pub use progress::{
 pub use readiness::{
     ReadinessStatus,
     ReadinessStatusParseError,
+};
+pub use remote_shell::{
+    RemoteShellConnectionInfo,
+    RemoteShellRequest,
+    RemoteShellResultSuccess,
+    RemoteShellStatus,
 };
 pub use request::{
     CycloneRequest,

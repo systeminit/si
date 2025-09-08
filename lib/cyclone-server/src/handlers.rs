@@ -23,11 +23,16 @@ use cyclone_core::{
     ActionRunRequest,
     ActionRunResultSuccess,
     CycloneRequestable,
+    FunctionResult,
     LivenessStatus,
     ManagementRequest,
     ManagementResultSuccess,
     Message,
     ReadinessStatus,
+    RemoteShellConnectionInfo,
+    RemoteShellRequest,
+    RemoteShellResultSuccess,
+    RemoteShellStatus,
     ResolverFunctionRequest,
     ResolverFunctionResultSuccess,
     SchemaVariantDefinitionRequest,
@@ -314,6 +319,112 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     }
 
     request_span.record_ok();
+}
+
+pub async fn ws_execute_remote_shell(
+    wsu: WebSocketUpgrade,
+    limit_request_guard: LimitRequestGuard,
+    Extension(request_span): Extension<ParentSpan>,
+) -> impl IntoResponse {
+    async fn handle_socket(
+        mut socket: WebSocket,
+        request_span: Span,
+        _limit_request_guard: LimitRequestGuard,
+    ) {
+        let mut has_errored = false;
+
+        // Read the RemoteShellRequest from the websocket
+        let request = match socket.recv().await {
+            Some(Ok(ws::Message::Text(text))) => {
+                match serde_json::from_str::<RemoteShellRequest>(&text) {
+                    Ok(req) => req,
+                    Err(err) => {
+                        request_span.record_err(&err);
+                        warn!("failed to parse remote shell request; error={}", err);
+                        has_errored = true;
+                        let _ = socket.send(ws::Message::Text(
+                            serde_json::to_string(&Message::<RemoteShellResultSuccess>::fail(
+                                "failed to parse remote shell request"
+                            )).unwrap_or_else(|_| "{}".to_string())
+                        )).await;
+                        let _ = socket.close().await;
+                        return;
+                    }
+                }
+            }
+            Some(Ok(_)) => {
+                warn!("received non-text message for remote shell request");
+                has_errored = true;
+                let _ = socket.send(ws::Message::Text(
+                    serde_json::to_string(&Message::<RemoteShellResultSuccess>::fail(
+                        "expected text message"
+                    )).unwrap_or_else(|_| "{}".to_string())
+                )).await;
+                let _ = socket.close().await;
+                return;
+            }
+            Some(Err(err)) => {
+                request_span.record_err(&err);
+                warn!("websocket error receiving remote shell request; error={}", err);
+                has_errored = true;
+                let _ = socket.close().await;
+                return;
+            }
+            None => {
+                warn!("websocket closed before receiving remote shell request");
+                has_errored = true;
+                return;
+            }
+        };
+
+        // For now, return a placeholder response indicating that remote shell
+        // functionality is not yet fully implemented
+        let result = RemoteShellResultSuccess {
+            execution_id: request.execution_id.clone(),
+            session_id: format!("session_{}", request.execution_id),
+            container_id: format!("container_{}", request.execution_id),
+            connection_info: RemoteShellConnectionInfo {
+                nats_subject: format!("remote_shell.{}.control", request.execution_id),
+                stdin_subject: format!("remote_shell.{}.stdin", request.execution_id),
+                stdout_subject: format!("remote_shell.{}.stdout", request.execution_id),
+                stderr_subject: format!("remote_shell.{}.stderr", request.execution_id),
+                control_subject: format!("remote_shell.{}.control", request.execution_id),
+            },
+            status: RemoteShellStatus::Active,
+            message: Some("Remote shell session placeholder - not yet fully implemented".to_string()),
+        };
+
+        let response_message = Message::Result(FunctionResult::Success(result));
+        let response_text = match serde_json::to_string(&response_message) {
+            Ok(text) => text,
+            Err(err) => {
+                request_span.record_err(&err);
+                warn!("failed to serialize remote shell response; error={}", err);
+                has_errored = true;
+                let _ = socket.close().await;
+                return;
+            }
+        };
+
+        if let Err(ref err) = socket.send(ws::Message::Text(response_text)).await {
+            request_span.record_err(err);
+            warn!("client disconnected; error={}", err);
+            has_errored = true;
+        }
+        if let Err(ref err) = socket.close().await {
+            request_span.record_err(err);
+            warn!("server failed to close websocket; error={}", err);
+            has_errored = true;
+        }
+
+        if !has_errored {
+            request_span.record_ok();
+        }
+    }
+
+    wsu.on_upgrade(move |socket| {
+        handle_socket(socket, request_span.into_inner(), limit_request_guard)
+    })
 }
 
 async fn fail_to_process<Success: Serialize>(
