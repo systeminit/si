@@ -388,7 +388,7 @@ const overrides = new Map<string, OverrideFn>([
     "AWS::AutoScaling::AutoScalingGroup",
     (spec: ExpandedPkgSpec) => {
       // TODO prop suggestions
-      // const variant = spec.schemas[0].variants[0];
+      const variant = spec.schemas[0].variants[0];
       // const launchTemplateVersionSocket = variant.sockets.find(
       //   (s: ExpandedSocketSpec) =>
       //     s.name === "Launch Template Version" && s.data.kind === "input",
@@ -412,6 +412,18 @@ const overrides = new Map<string, OverrideFn>([
       const updatePath =
         "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/awsCloudControlUpdate.ts";
       modifyFunc(spec, updateTargetId, newUpdateId, updatePath);
+
+      const {
+        func: refreshInstancesFunc,
+        actionFuncSpec: refreshInstancesFuncSpec,
+      } = attachExtraActionFunction(
+        "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/instanceRefresh.ts",
+        "Refresh Autoscaling Group Instances",
+        "other",
+        "300d62f40cb1268e6f4cd2320be8c373da7f148d0d9e6e69d1b2879202794b5f",
+      );
+      spec.funcs.push(refreshInstancesFunc);
+      variant.actionFuncs.push(refreshInstancesFuncSpec);
     },
   ],
   // TODO prop suggestions
