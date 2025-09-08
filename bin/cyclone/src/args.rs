@@ -145,6 +145,30 @@ pub(crate) struct Args {
     #[arg(long, group = "configuration")]
     pub(crate) disable_configuration: bool,
 
+    /// Enables remote shell endpoint.
+    #[arg(long, group = "remote_shell")]
+    pub(crate) enable_remote_shell: bool,
+
+    /// Disables remote shell endpoint.
+    #[arg(long, group = "remote_shell")]
+    pub(crate) disable_remote_shell: bool,
+
+    /// Enables management endpoint.
+    #[arg(long, group = "management")]
+    pub(crate) enable_management: bool,
+
+    /// Disables management endpoint.
+    #[arg(long, group = "management")]
+    pub(crate) disable_management: bool,
+
+    /// Enables validation endpoint.
+    #[arg(long, group = "validation")]
+    pub(crate) enable_validation: bool,
+
+    /// Disables validation endpoint.
+    #[arg(long, group = "validation")]
+    pub(crate) disable_validation: bool,
+
     /// Path to the lang server program.
     #[arg(long, env = "SI_LANG_SERVER", hide_env = true)]
     pub(crate) lang_server: PathBuf,
@@ -222,6 +246,36 @@ impl TryFrom<Args> for Config {
             builder.enable_resolver(true);
         } else if args.disable_resolver {
             builder.enable_resolver(false);
+        }
+
+        if args.enable_action_run {
+            builder.enable_action_run(true);
+        } else if args.disable_action_run {
+            builder.enable_action_run(false);
+        }
+
+        if args.enable_configuration {
+            builder.enable_schema_variant_definition(true);
+        } else if args.disable_configuration {
+            builder.enable_schema_variant_definition(false);
+        }
+
+        if args.enable_remote_shell {
+            builder.enable_remote_shell(true);
+        } else if args.disable_remote_shell {
+            builder.enable_remote_shell(false);
+        }
+
+        if args.enable_management {
+            builder.enable_management(true);
+        } else if args.disable_management {
+            builder.enable_management(false);
+        }
+
+        if args.enable_validation {
+            builder.enable_validation(true);
+        } else if args.disable_validation {
+            builder.enable_validation(false);
         }
 
         if args.oneshot {

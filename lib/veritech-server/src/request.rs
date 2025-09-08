@@ -3,6 +3,7 @@ use si_pool_noodle::{
     ActionRunRequest,
     BeforeFunction,
     ManagementRequest,
+    RemoteShellRequest,
     ResolverFunctionRequest,
     SchemaVariantDefinitionRequest,
     SensitiveStrings,
@@ -69,6 +70,17 @@ impl DecryptRequest for ManagementRequest {
         decryption_key: &VeritechDecryptionKey,
     ) -> Result<(), VeritechValueDecryptError> {
         decrypt_before_func_args(&mut self.before, sensitive_strings, decryption_key)
+    }
+}
+
+impl DecryptRequest for RemoteShellRequest {
+    fn decrypt(
+        &mut self,
+        _sensitive_strings: &mut SensitiveStrings,
+        _decryption_key: &VeritechDecryptionKey,
+    ) -> Result<(), VeritechValueDecryptError> {
+        // No sensitive data to decrypt in RemoteShellRequest
+        Ok(())
     }
 }
 

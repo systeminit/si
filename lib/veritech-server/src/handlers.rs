@@ -41,6 +41,7 @@ use si_pool_noodle::{
     FunctionResultFailureError,
     ManagementResultSuccess,
     ProgressMessage,
+    RemoteShellResultSuccess,
     ResolverFunctionResultSuccess,
     SchemaVariantDefinitionResultSuccess,
     SensitiveStrings,
@@ -93,6 +94,10 @@ pub enum HandlerError {
     PoolNoodleExecutionActionRun(#[from] si_pool_noodle::ExecutionError<ActionRunResultSuccess>),
     #[error("pool noodle execution management: {0}")]
     PoolNoodleExecutionManagement(#[from] si_pool_noodle::ExecutionError<ManagementResultSuccess>),
+    #[error("pool noodle execution remote shell: {0}")]
+    PoolNoodleExecutionRemoteShell(
+        #[from] si_pool_noodle::ExecutionError<RemoteShellResultSuccess>,
+    ),
     #[error("pool noodle execution resovler function: {0}")]
     PoolNoodleExecutionResolverFunction(
         #[from] si_pool_noodle::ExecutionError<ResolverFunctionResultSuccess>,
@@ -196,6 +201,9 @@ pub async fn process_request_inner(
         }
         VeritechRequest::Management(request) => {
             dispatch_request(state, *request, reply_subject).await?
+        }
+        VeritechRequest::RemoteShell(request) => {
+            dispatch_request(state, request, reply_subject).await?
         }
         VeritechRequest::Resolver(request) => {
             dispatch_request(state, request, reply_subject).await?

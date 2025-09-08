@@ -236,7 +236,7 @@ si_buck2_resource(
 # Locally build and run `veritech`
 si_buck2_resource(
     "//bin/veritech:veritech",
-    # buck2_serve_args = "--cyclone-local-firecracker --cyclone-pool-size 10",
+    buck2_serve_args = "--cyclone-local-process --cyclone-pool-size 10",
     # This ^ is the serve command you might need if you want to execute on firecracker for 10
     # function executions.
     #

@@ -14,6 +14,10 @@ pub use cyclone_core::{
     ManagementRequest,
     ManagementResultSuccess,
     OutputStream,
+    RemoteShellConnectionInfo,
+    RemoteShellRequest,
+    RemoteShellResultSuccess,
+    RemoteShellStatus,
     ResolverFunctionComponent,
     ResolverFunctionRequest,
     ResolverFunctionResponseType,
@@ -202,6 +206,26 @@ impl Client {
         workspace_id: &str,
         change_set_id: &str,
     ) -> ClientResult<FunctionResult<ManagementResultSuccess>> {
+        self.execute_jetstream_request(output_tx, request, workspace_id, change_set_id)
+            .await
+    }
+
+    #[instrument(
+        name = "veritech_client.execute_remote_shell",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = change_set_id,
+            si.workspace.id = workspace_id,
+        ),
+    )]
+    pub async fn execute_remote_shell(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &RemoteShellRequest,
+        workspace_id: &str,
+        change_set_id: &str,
+    ) -> ClientResult<FunctionResult<RemoteShellResultSuccess>> {
         self.execute_jetstream_request(output_tx, request, workspace_id, change_set_id)
             .await
     }
