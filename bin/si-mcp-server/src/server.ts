@@ -23,6 +23,7 @@ import { componentEraseTool } from "./tools/componentErase.ts";
 import { componentRestoreTool } from "./tools/componentRestore.ts";
 import { generateSiUrlTool } from "./tools/generateSiUrl.ts";
 import { componentGenerateTemplateTool } from "./tools/componentGenerateTemplate.ts";
+import { upgradeComponentsTool } from "./tools/upgradeComponents.ts";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -51,6 +52,7 @@ export function createServer(): McpServer {
   componentRestoreTool(server);
   componentGenerateTemplateTool(server);
   generateSiUrlTool(server);
+  upgradeComponentsTool(server);
   importPrompt(server);
   discoverPrompt(server);
 

@@ -13,29 +13,36 @@ import { AttributesSchema } from "../data/components.ts";
 
 const name = "component-update";
 const title = "Update a component";
-const description =
-  `<description>Update a component for a given componentId. Update only the attributes that need to be changed; existing attributes will remain. Returns the 'success' on successful update. On failure, returns error details. Always break attribute values down to their end path - *always* prefer /domain/Foo/Bar with a value 'Baz' to setting /domain/Foo to the object '{ Bar: baz }'.</description><usage>Use this tool to update a in a change set. Use the schema-find tool to understand the paths that are available for setting attributes. For array attributes, replace the [array] in the schema path with a 0 indexed array position - ensure all array entries are accounted for in order (no gaps). For [map], do the same with the string key for the map. To see all of its information after it has been updated, use the component-get tool.</usage>`;
+const description = `<description>Update a component for a given componentId. Update only the attributes that need to be changed; existing attributes will remain. You can use this to trigger an upgrade on a component if the component has an upgrade available. Returns the 'success' on successful update. On failure, returns error details. Always break attribute values down to their end path - *always* prefer /domain/Foo/Bar with a value 'Baz' to setting /domain/Foo to the object '{ Bar: baz }'.</description><usage>Use this tool to update a in a change set. Use the schema-find tool to understand the paths that are available for setting attributes. For array attributes, replace the [array] in the schema path with a 0 indexed array position - ensure all array entries are accounted for in order (no gaps). For [map], do the same with the string key for the map. You can trigger an upgrade for the component if one is available, you can use the component-get tool to check if there's an upgrade available. To see all of its information after it has been updated, use the component-get tool.</usage>`;
 
 const UpdateComponentInputSchemaRaw = {
-  changeSetId: z.string().describe(
-    "The change set to update the component in; components cannot be created on the HEAD change set",
-  ),
+  changeSetId: z
+    .string()
+    .describe(
+      "The change set to update the component in; components cannot be created on the HEAD change set",
+    ),
   componentId: z.string().describe("the component id to update"),
   attributes: AttributesSchema,
+  upgrade: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("whether to upgrade the component"),
 };
 
 const UpdateComponentOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
+  errorMessage: z
+    .string()
+    .optional()
+    .describe(
+      "If the status is failure, the error message will contain information about what went wrong",
+    ),
   data: z.object({
     success: z.boolean().describe("a successful update"),
   }),
 };
-const UpdateComponentOutputSchema = z.object(
-  UpdateComponentOutputSchemaRaw,
-);
+const UpdateComponentOutputSchema = z.object(UpdateComponentOutputSchemaRaw);
 
 type UpdateComponentResult = z.infer<
   typeof UpdateComponentOutputSchema
@@ -54,12 +61,35 @@ export function componentUpdateTool(server: McpServer) {
       inputSchema: UpdateComponentInputSchemaRaw,
       outputSchema: UpdateComponentOutputSchemaRaw,
     },
-    async (
-      { changeSetId, attributes, componentId },
-    ): Promise<CallToolResult> => {
+    async ({
+      changeSetId,
+      attributes,
+      componentId,
+      upgrade,
+    }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
         const siApi = new ComponentsApi(apiConfig);
         try {
+          if (upgrade) {
+            const compResponse = await siApi.getComponent({
+              workspaceId: WORKSPACE_ID,
+              changeSetId: changeSetId,
+              componentId,
+            });
+
+            if (compResponse.data.component.canBeUpgraded) {
+              await siApi.upgradeComponent({
+                workspaceId: WORKSPACE_ID,
+                changeSetId: changeSetId,
+                componentId,
+              });
+            } else {
+              return errorResponse({
+                message: "Component is not able to be upgraded",
+              });
+            }
+          }
+
           await siApi.updateComponent({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
@@ -72,9 +102,7 @@ export function componentUpdateTool(server: McpServer) {
             success: true,
           };
 
-          return successResponse(
-            result,
-          );
+          return successResponse(result);
         } catch (error) {
           return errorResponse(error);
         }
