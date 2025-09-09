@@ -263,42 +263,24 @@ async fn handle_shell_websocket(mut socket: WebSocket, session_id: String) -> Re
     info!(session_id = %session_id, "Remote shell WebSocket connected");
     
     // Terminal dimensions - start with defaults, will be updated by client
-    let mut terminal_cols = 120;
-    let mut terminal_rows = 30;
+    let terminal_cols = 120;
+    let terminal_rows = 30;
     
-    // Send welcome message
-    socket.send(Message::Text(format!(
-        "{{\"type\":\"system\",\"content\":\"Connected to Claude CLI session: {}\\n\",\"timestamp\":\"{}\"}}",
-        session_id,
-        chrono::Utc::now().to_rfc3339()
-    ))).await?;
+    // Session timeout - 10 minutes of inactivity
+    let session_timeout = tokio::time::Duration::from_secs(10 * 60);
+    let mut last_activity = tokio::time::Instant::now();
     
-    // Send startup message
-    socket.send(Message::Text(format!(
-        "{{\"type\":\"system\",\"content\":\"Starting Claude CLI...\\n\",\"timestamp\":\"{}\"}}",
-        chrono::Utc::now().to_rfc3339()
-    ))).await?;
 
     // Track any running interactive process
     let mut interactive_process: Option<(tokio::process::Child, tokio::task::JoinHandle<()>, tokio::task::JoinHandle<()>, mpsc::Receiver<String>)> = None;
     let mut interactive_stdin: Option<tokio::process::ChildStdin> = None;
 
-    // Test with a simple command first to debug the issue
-    socket.send(Message::Text(format!(
-        "{{\"type\":\"system\",\"content\":\"Testing basic command execution...\\n\",\"timestamp\":\"{}\"}}",
-        chrono::Utc::now().to_rfc3339()
-    ))).await?;
     
-    // Try a simple echo command first to verify our piping works
-    if let Err(e) = execute_test_command(&mut socket).await {
-        error!(error = %e, "Failed to run test command");
-    }
-    
-    // Now try to start Claude CLI
-    if let Err(e) = start_interactive_command_with_dimensions(&mut socket, "claude", &mut interactive_process, &mut interactive_stdin, terminal_cols, terminal_rows).await {
-        error!(error = %e, "Failed to auto-start Claude CLI");
+    // Start a normal shell (bash)
+    if let Err(e) = start_interactive_command_with_dimensions(&mut socket, "bash", &mut interactive_process, &mut interactive_stdin, terminal_cols, terminal_rows).await {
+        error!(error = %e, "Failed to start shell");
         socket.send(Message::Text(format!(
-            "{{\"type\":\"system\",\"content\":\"Failed to start Claude CLI: {}\\n\",\"timestamp\":\"{}\"}}",
+            "{{\"type\":\"system\",\"content\":\"Failed to start shell: {}\\n\",\"timestamp\":\"{}\"}}",
             e,
             chrono::Utc::now().to_rfc3339()
         ))).await?;
@@ -315,39 +297,42 @@ async fn handle_shell_websocket(mut socket: WebSocket, session_id: String) -> Re
                         if let Ok(cmd_data) = serde_json::from_str::<serde_json::Value>(&text) {
                             // Handle raw character input (from xterm.js onData)
                             if let Some(input) = cmd_data.get("input").and_then(|i| i.as_str()) {
+                                // Update activity timestamp
+                                last_activity = tokio::time::Instant::now();
+                                
                                 if let Some(ref mut stdin) = interactive_stdin {
-                                    info!("Sending raw input to Claude CLI: {:?}", input);
+                                    info!("Sending raw input to shell: {:?}", input);
                                     
                                     // Send raw input directly - no processing needed
                                     let input_bytes = input.as_bytes().to_vec();
                                     
                                     if let Err(e) = stdin.write_all(&input_bytes).await {
-                                        error!(error = %e, "Failed to write to Claude CLI");
+                                        error!(error = %e, "Failed to write to shell");
                                         // Clean up dead process and restart Claude
                                         interactive_process = None;
                                         interactive_stdin = None;
                                         
-                                        // Attempt to restart Claude
-                                        if let Err(e) = start_interactive_command(&mut socket, "claude", &mut interactive_process, &mut interactive_stdin).await {
-                                            error!(error = %e, "Failed to restart Claude CLI");
+                                        // Attempt to restart shell
+                                        if let Err(e) = start_interactive_command(&mut socket, "bash", &mut interactive_process, &mut interactive_stdin).await {
+                                            error!(error = %e, "Failed to restart shell");
                                         }
                                     } else if let Err(e) = stdin.flush().await {
-                                        error!(error = %e, "Failed to flush Claude CLI input");
+                                        error!(error = %e, "Failed to flush shell input");
                                         // Clean up dead process and restart Claude
                                         interactive_process = None;
                                         interactive_stdin = None;
                                         
-                                        // Attempt to restart Claude
-                                        if let Err(e) = start_interactive_command(&mut socket, "claude", &mut interactive_process, &mut interactive_stdin).await {
-                                            error!(error = %e, "Failed to restart Claude CLI");
+                                        // Attempt to restart shell
+                                        if let Err(e) = start_interactive_command(&mut socket, "bash", &mut interactive_process, &mut interactive_stdin).await {
+                                            error!(error = %e, "Failed to restart shell");
                                         }
                                     } else {
-                                        info!("Successfully sent raw input to Claude CLI");
+                                        info!("Successfully sent raw input to shell");
                                     }
                                 } else {
-                                    // No active Claude process - restart it
-                                    if let Err(e) = start_interactive_command(&mut socket, "claude", &mut interactive_process, &mut interactive_stdin).await {
-                                        error!(error = %e, "Failed to start Claude CLI");
+                                    // No active shell process - restart it
+                                    if let Err(e) = start_interactive_command(&mut socket, "bash", &mut interactive_process, &mut interactive_stdin).await {
+                                        error!(error = %e, "Failed to start shell");
                                     }
                                 }
                             }
@@ -358,25 +343,19 @@ async fn handle_shell_websocket(mut socket: WebSocket, session_id: String) -> Re
                                     cmd_data.get("rows").and_then(|r| r.as_u64())
                                 ) {
                                     info!("Terminal resize requested: {}x{}", cols, rows);
-                                    terminal_cols = cols;
-                                    terminal_rows = rows;
                                     
-                                    // Restart Claude CLI with new dimensions
-                                    if interactive_process.is_some() {
-                                        info!("Restarting Claude CLI with new terminal dimensions");
-                                        if let Err(e) = start_interactive_command_with_dimensions(&mut socket, "claude", &mut interactive_process, &mut interactive_stdin, terminal_cols, terminal_rows).await {
-                                            error!(error = %e, "Failed to restart Claude CLI with new dimensions");
-                                        }
-                                    }
+                                    // Note: For most shells, we don't need to restart on resize.
+                                    // The COLUMNS/LINES environment variables are set at startup.
+                                    // In a full PTY implementation, you'd send SIGWINCH to the child process.
                                 }
                             }
                             // Handle full commands (legacy support)
                             else if let Some(command) = cmd_data.get("command").and_then(|c| c.as_str()) {
                                 let cmd = command.trim();
                                 
-                                // All input goes to Claude CLI (we always have an interactive process)
+                                // All input goes to shell (we always have an interactive process)
                                 if let Some(ref mut stdin) = interactive_stdin {
-                                    info!("Sending command to Claude CLI: {}", cmd);
+                                    info!("Sending command to shell: {}", cmd);
                                     
                                     // Handle special control characters
                                     let input_bytes = if cmd == "\x03" {
@@ -388,32 +367,32 @@ async fn handle_shell_websocket(mut socket: WebSocket, session_id: String) -> Re
                                     };
                                     
                                     if let Err(e) = stdin.write_all(&input_bytes).await {
-                                        error!(error = %e, "Failed to write to Claude CLI");
+                                        error!(error = %e, "Failed to write to shell");
                                         // Clean up dead process and restart Claude
                                         interactive_process = None;
                                         interactive_stdin = None;
                                         
-                                        // Attempt to restart Claude
-                                        if let Err(e) = start_interactive_command(&mut socket, "claude", &mut interactive_process, &mut interactive_stdin).await {
-                                            error!(error = %e, "Failed to restart Claude CLI");
+                                        // Attempt to restart shell
+                                        if let Err(e) = start_interactive_command(&mut socket, "bash", &mut interactive_process, &mut interactive_stdin).await {
+                                            error!(error = %e, "Failed to restart shell");
                                         }
                                     } else if let Err(e) = stdin.flush().await {
-                                        error!(error = %e, "Failed to flush Claude CLI input");
+                                        error!(error = %e, "Failed to flush shell input");
                                         // Clean up dead process and restart Claude
                                         interactive_process = None;
                                         interactive_stdin = None;
                                         
-                                        // Attempt to restart Claude
-                                        if let Err(e) = start_interactive_command(&mut socket, "claude", &mut interactive_process, &mut interactive_stdin).await {
-                                            error!(error = %e, "Failed to restart Claude CLI");
+                                        // Attempt to restart shell
+                                        if let Err(e) = start_interactive_command(&mut socket, "bash", &mut interactive_process, &mut interactive_stdin).await {
+                                            error!(error = %e, "Failed to restart shell");
                                         }
                                     } else {
-                                        info!("Successfully sent input to Claude CLI");
+                                        info!("Successfully sent input to shell");
                                     }
                                 } else {
-                                    // No active Claude process - restart it
-                                    if let Err(e) = start_interactive_command(&mut socket, "claude", &mut interactive_process, &mut interactive_stdin).await {
-                                        error!(error = %e, "Failed to start Claude CLI");
+                                    // No active shell process - restart it
+                                    if let Err(e) = start_interactive_command(&mut socket, "bash", &mut interactive_process, &mut interactive_stdin).await {
+                                        error!(error = %e, "Failed to start shell");
                                     }
                                 }
                             }
@@ -451,10 +430,10 @@ async fn handle_shell_websocket(mut socket: WebSocket, session_id: String) -> Re
                     if let Some((child, _, _, _)) = interactive_process.as_mut() {
                         match child.try_wait() {
                             Ok(Some(_status)) => {
-                                // Claude CLI has exited - restart it
-                                info!("Claude CLI has exited, restarting...");
+                                // shell has exited - restart it
+                                info!("Shell has exited, restarting...");
                                 let restart_msg = format!(
-                                    "{{\"type\":\"system\",\"content\":\"Claude CLI exited, restarting...\\n\",\"timestamp\":\"{}\"}}",
+                                    "{{\"type\":\"system\",\"content\":\"Shell exited, restarting...\\n\",\"timestamp\":\"{}\"}}",
                                     chrono::Utc::now().to_rfc3339()
                                 );
                                 let _ = socket.send(Message::Text(restart_msg)).await;
@@ -467,11 +446,11 @@ async fn handle_shell_websocket(mut socket: WebSocket, session_id: String) -> Re
                                 }
                                 interactive_stdin = None;
                                 
-                                // Restart Claude CLI
-                                if let Err(e) = start_interactive_command(&mut socket, "claude", &mut interactive_process, &mut interactive_stdin).await {
-                                    error!(error = %e, "Failed to restart Claude CLI");
+                                // Restart shell
+                                if let Err(e) = start_interactive_command(&mut socket, "bash", &mut interactive_process, &mut interactive_stdin).await {
+                                    error!(error = %e, "Failed to restart shell");
                                     let error_msg = format!(
-                                        "{{\"type\":\"system\",\"content\":\"Failed to restart Claude CLI: {}\\n\",\"timestamp\":\"{}\"}}",
+                                        "{{\"type\":\"system\",\"content\":\"Failed to restart shell: {}\\n\",\"timestamp\":\"{}\"}}",
                                         e,
                                         chrono::Utc::now().to_rfc3339()
                                     );
@@ -481,6 +460,19 @@ async fn handle_shell_websocket(mut socket: WebSocket, session_id: String) -> Re
                             _ => {} // Still running or error checking
                         }
                     }
+                }
+            }
+            
+            // Check for session timeout (10 minutes of inactivity)
+            _ = tokio::time::sleep(tokio::time::Duration::from_secs(60)) => {
+                if last_activity.elapsed() >= session_timeout {
+                    info!(session_id = %session_id, "Session timed out after 10 minutes of inactivity");
+                    let timeout_msg = format!(
+                        "{{\"type\":\"system\",\"content\":\"Session timed out after 10 minutes of inactivity. Closing connection.\\n\",\"timestamp\":\"{}\"}}",
+                        chrono::Utc::now().to_rfc3339()
+                    );
+                    let _ = socket.send(Message::Text(timeout_msg)).await;
+                    break;
                 }
             }
         }
@@ -505,6 +497,22 @@ async fn start_interactive_command_with_dimensions(
     cols: u64,
     rows: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Check if we already have a running process - don't start duplicates
+    if let Some((child, _, _, _)) = interactive_process.as_mut() {
+        match child.try_wait() {
+            Ok(None) => {
+                info!("Shell process {} already running, not starting duplicate", child.id().unwrap_or(0));
+                return Ok(());
+            }
+            Ok(Some(status)) => {
+                info!("Previous shell process exited with status: {:?}", status);
+            }
+            Err(e) => {
+                info!("Error checking shell process status: {}, will restart", e);
+            }
+        }
+    }
+
     // Clean up any existing interactive process
     if let Some((mut child, stdout_task, stderr_task, _rx)) = interactive_process.take() {
         stdout_task.abort();
@@ -516,33 +524,55 @@ async fn start_interactive_command_with_dimensions(
     // Prepare the command with any special handling
     let _prepared_command = prepare_interactive_command(command);
     
-    // Claude CLI needs a proper terminal environment - try different approaches
-    info!("Starting Claude CLI with proper terminal emulation");
+    // Interactive commands need a proper terminal environment - try different approaches
+    info!("Starting {} with proper terminal emulation", command);
     
-    // Try using unbuffer first (if available), which creates a PTY
-    let child = Command::new("unbuffer")
-        .arg("claude")
-        .env("TERM", "xterm-256color")
-        .env("COLUMNS", &cols.to_string()) 
-        .env("LINES", &rows.to_string())
-        .env("LANG", "en_US.UTF-8")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped()) 
-        .stderr(Stdio::piped())
-        .spawn();
+    // Use script command to create proper PTY for interactive shell
+    let child = if command == "bash" {
+        // Use script with immediate flush to create proper PTY
+        Command::new("script")
+            .arg("-qfe")   // -q quiet, -f flush output immediately, -e return exit code
+            .arg("-c")     // -c command to run
+            .arg("bash --norc --noprofile")
+            .arg("/dev/null")  // Don't create log file
+            .env("TERM", "xterm-256color")
+            .env("COLUMNS", &cols.to_string()) 
+            .env("LINES", &rows.to_string())
+            .env("LANG", "en_US.UTF-8")
+            .env("PS1", r"\u@\h:\w$ ")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped()) 
+            .stderr(Stdio::piped())
+            .spawn()
+    } else {
+        Command::new(command)
+            .env("TERM", "xterm-256color")
+            .env("COLUMNS", &cols.to_string()) 
+            .env("LINES", &rows.to_string())
+            .env("LANG", "en_US.UTF-8")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped()) 
+            .stderr(Stdio::piped())
+            .spawn()
+    };
 
     let mut child = match child {
         Ok(c) => {
-            info!("Claude CLI started with unbuffer, PID: {:?}", c.id());
+            info!("{} started directly, PID: {:?}", command, c.id());
             c
         }
         Err(e) => {
-            error!("Failed to start Claude CLI with unbuffer: {}, trying script", e);
-            // Try with script for PTY
-            let script_cmd = "script -qfc 'claude' /dev/null";
+            error!("Failed to start {} directly: {}, trying script", command, e);
+            // Fallback - already using script as primary method, so this shouldn't happen
+            // But keep it as backup
+            let script_cmd = if command == "bash" {
+                "script -qfe -c 'bash --norc --noprofile' /dev/null".to_string()
+            } else {
+                format!("script -qfe -c '{}' /dev/null", command)
+            };
             let script_child = Command::new("bash")
                 .arg("-c")
-                .arg(script_cmd)
+                .arg(&script_cmd)
                 .env("TERM", "xterm-256color")
                 .env("COLUMNS", &cols.to_string())
                 .env("LINES", &rows.to_string())
@@ -554,21 +584,37 @@ async fn start_interactive_command_with_dimensions(
                 
             match script_child {
                 Ok(c) => {
-                    info!("Claude CLI started with script, PID: {:?}", c.id());
+                    info!("{} started with script, PID: {:?}", command, c.id());
                     c
                 }
                 Err(e) => {
-                    error!("Failed to start Claude CLI with script: {}, trying direct", e);
-                    // Last resort - direct execution
-                    Command::new("claude")
-                        .env("TERM", "xterm-256color")
-                        .env("COLUMNS", "120")
-                        .env("LINES", "30") 
-                        .env("LANG", "en_US.UTF-8")
-                        .stdin(Stdio::piped())
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .spawn()?
+                    error!("Failed to start {} with script: {}, trying direct", command, e);
+                    // Last resort - direct bash without PTY (will be limited)
+                    if command == "bash" {
+                        Command::new("bash")
+                            .arg("--norc")
+                            .arg("--noprofile") 
+                            .arg("-i")
+                            .env("TERM", "xterm-256color")
+                            .env("COLUMNS", &cols.to_string())
+                            .env("LINES", &rows.to_string()) 
+                            .env("LANG", "en_US.UTF-8")
+                            .env("PS1", "$ ")
+                            .stdin(Stdio::piped())
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::piped())
+                            .spawn()?
+                    } else {
+                        Command::new(command)
+                            .env("TERM", "xterm-256color")
+                            .env("COLUMNS", &cols.to_string())
+                            .env("LINES", &rows.to_string()) 
+                            .env("LANG", "en_US.UTF-8")
+                            .stdin(Stdio::piped())
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::piped())
+                            .spawn()?
+                    }
                 }
             }
         }
@@ -584,14 +630,14 @@ async fn start_interactive_command_with_dimensions(
     // Spawn task to handle stdout with better buffering
     let socket_tx1 = tx.clone();
     let stdout_task = tokio::spawn(async move {
-        info!("Started stdout reader task for Claude CLI");
+        info!("Started stdout reader task for shell");
         let mut stdout_reader = BufReader::new(stdout);
         let mut buffer = [0u8; 1024]; // Larger buffer but process more responsively
         
         loop {
             match stdout_reader.read(&mut buffer).await {
                 Ok(0) => {
-                    info!("Claude CLI stdout EOF reached");
+                    info!("shell stdout EOF reached");
                     break;
                 }
                 Ok(n) => {
@@ -611,19 +657,19 @@ async fn start_interactive_command_with_dimensions(
                     }
                 }
                 Err(e) => {
-                    error!("Error reading Claude CLI stdout: {}", e);
+                    error!("Error reading shell stdout: {}", e);
                     break;
                 }
             }
         }
-        info!("Claude CLI stdout reader task ended");
+        info!("shell stdout reader task ended");
     });
 
     // Spawn task to handle stderr
     let socket_tx2 = tx.clone();
     let stderr_task = tokio::spawn(async move {
         use tokio::io::AsyncBufReadExt;
-        info!("Started stderr reader task for Claude CLI");
+        info!("Started stderr reader task for shell");
         let mut stderr_reader = BufReader::new(stderr);
         let mut line = String::new();
         
@@ -631,37 +677,52 @@ async fn start_interactive_command_with_dimensions(
             line.clear();
             match stderr_reader.read_line(&mut line).await {
                 Ok(0) => {
-                    info!("Claude CLI stderr EOF reached");
+                    info!("shell stderr EOF reached");
                     break; // EOF
                 }
                 Ok(_) => {
-                    info!("Received stderr line: {:?}", line);
-                    let message = serde_json::json!({
-                        "type": "stderr", 
-                        "content": line.trim_end(),
-                        "timestamp": chrono::Utc::now().to_rfc3339()
-                    });
-                    let msg = message.to_string();
-                    if socket_tx2.send(msg).await.is_err() {
-                        error!("Failed to send stderr message to WebSocket");
-                        break;
+                    let line_content = line.trim_end();
+                    
+                    // Filter out common bash startup warnings/errors that are harmless but noisy
+                    let should_suppress = line_content.contains("cannot set terminal process group") ||
+                                        line_content.contains("no job control in this shell") ||
+                                        line_content.contains("bash: cannot set terminal process group") ||
+                                        line_content.contains("bash: no job control") ||
+                                        line_content.contains("_completion_loader:") ||
+                                        line_content.contains("bash: complete: command not found") ||
+                                        line_content.contains("bash: shopt:") ||
+                                        line_content.contains("invalid shell option name") ||
+                                        line_content.contains("progcomp") ||
+                                        line_content.contains("hostcomplete");
+                    
+                    if !should_suppress && !line_content.is_empty() {
+                        info!("Received stderr line: {:?}", line_content);
+                        let message = serde_json::json!({
+                            "type": "stderr", 
+                            "content": line_content,
+                            "timestamp": chrono::Utc::now().to_rfc3339()
+                        });
+                        let msg = message.to_string();
+                        if socket_tx2.send(msg).await.is_err() {
+                            error!("Failed to send stderr message to WebSocket");
+                            break;
+                        }
+                    } else {
+                        // Log suppressed warnings for debugging but don't send to client
+                        if should_suppress {
+                            info!("Suppressed bash warning: {:?}", line_content);
+                        }
                     }
                 }
                 Err(e) => {
-                    error!("Error reading Claude CLI stderr: {}", e);
+                    error!("Error reading shell stderr: {}", e);
                     break;
                 }
             }
         }
-        info!("Claude CLI stderr reader task ended");
+        info!("shell stderr reader task ended");
     });
 
-    // Send notification that interactive mode started
-    socket.send(Message::Text(format!(
-        "{{\"type\":\"system\",\"content\":\"Started Claude CLI (PID: {})\\n\",\"timestamp\":\"{}\"}}",
-        child.id().unwrap_or(0),
-        chrono::Utc::now().to_rfc3339()
-    ))).await?;
 
     // Give Claude a moment to initialize and send initial output
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -669,35 +730,90 @@ async fn start_interactive_command_with_dimensions(
     // Check if the process is still running
     match child.try_wait() {
         Ok(Some(status)) => {
-            error!("Claude CLI exited immediately with status: {:?}", status);
+            error!("Shell exited immediately with status: {:?}", status);
             socket.send(Message::Text(format!(
-                "{{\"type\":\"system\",\"content\":\"Claude CLI exited immediately: {:?}\\n\",\"timestamp\":\"{}\"}}",
+                "{{\"type\":\"system\",\"content\":\"Shell exited immediately: {:?}\\n\",\"timestamp\":\"{}\"}}",
                 status,
                 chrono::Utc::now().to_rfc3339()
             ))).await?;
         }
         Ok(None) => {
-            info!("Claude CLI is running");
-            socket.send(Message::Text(format!(
-                "{{\"type\":\"system\",\"content\":\"Claude CLI is running and ready\\n\",\"timestamp\":\"{}\"}}",
-                chrono::Utc::now().to_rfc3339()
-            ))).await?;
+            info!("Shell is running");
+            
+            // Send terminal banner and initial prompt
+            if let Some(ref mut stdin) = *interactive_stdin {
+                // Wait a moment for bash to be ready
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                
+                // Send the welcome banner directly to WebSocket first to test
+                let banner_msg = serde_json::json!({
+                    "type": "stdout",
+                    "content": "\n╭─────────────────────────────────────────────────────────────╮\n│  ____            _                   ___       _ _   _       │\n│ / ___| _   _ ___| |_ ___ _ __ ___    |_ _|_ __ (_) |_(_) __ _ │\n│ \\___ \\| | | / __| __/ _ \\ '_ ` _ \\    | || '_ \\| | __| |/ _` |│\n│  ___) | |_| \\__ \\ ||  __/ | | | | |  | || | | | | |_| | (_| |│\n│ |____/ \\__, |___/\\__\\___|_| |_| |_| |___|_| |_|_|\\__|_|\\__,_|│\n│        |___/                                                 │\n│                                                             │\n│  🚀 System Initiative Managed Terminal                     │\n│                                                             │\n│  📋 Available Tools:                                        │\n│     • claude      - Claude Code CLI assistant              │\n│     • aws         - AWS CLI tools                          │\n│     • docker      - Container management                   │\n│     • git         - Version control                        │\n│                                                             │\n│  ⚠️  Notice:                                                │\n│     • No persistence between sessions                      │\n│     • Files are temporary and will be lost                 │\n│     • Use for development and testing only                 │\n│                                                             │\n│  💡 Get started: try 'echo hello world' or 'ls'            │\n╰─────────────────────────────────────────────────────────────╯\n\n",
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                });
+                
+                if let Err(e) = socket.send(Message::Text(banner_msg.to_string())).await {
+                    error!("Failed to send banner to WebSocket: {}", e);
+                } else {
+                    info!("Sent banner directly to WebSocket");
+                }
+                
+                // Send a test command to verify bash is working
+                let test_cmd = "echo 'Shell is ready - type commands here:'\n";
+                if let Err(e) = stdin.write_all(test_cmd.as_bytes()).await {
+                    error!("Failed to send test command to shell: {}", e);
+                } else if let Err(e) = stdin.flush().await {
+                    error!("Failed to flush test command: {}", e);
+                } else {
+                    info!("Sent test command to bash");
+                }
+            }
         }
         Err(e) => {
-            error!("Error checking Claude CLI status: {}", e);
+            error!("Error checking shell status: {}", e);
         }
     }
 
     *interactive_process = Some((child, stdout_task, stderr_task, rx));
     *interactive_stdin = Some(stdin);
 
-    // Try sending an initial newline to trigger the interface
-    if let Some(stdin_handle) = interactive_stdin {
-        info!("Sending initial newline to trigger Claude interface");
-        let _ = stdin_handle.write_all(b"\n").await;
-        let _ = stdin_handle.flush().await;
-    }
+    Ok(())
+}
 
+async fn send_terminal_banner(stdin: &mut tokio::process::ChildStdin) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let banner_lines = vec![
+        "",
+        "╭─────────────────────────────────────────────────────────────╮",
+        "│  ____            _                   ___       _ _   _       │",
+        "│ / ___| _   _ ___| |_ ___ _ __ ___    |_ _|_ __ (_) |_(_) __ _ │",
+        "│ \\___ \\| | | / __| __/ _ \\ '_ ` _ \\    | || '_ \\| | __| |/ _` |│",
+        "│  ___) | |_| \\__ \\ ||  __/ | | | | |  | || | | | | |_| | (_| |│",
+        "│ |____/ \\__, |___/\\__\\___|_| |_| |_| |___|_| |_|_|\\__|_|\\__,_|│",
+        "│        |___/                                                 │",
+        "│                                                             │",
+        "│  🚀 System Initiative Managed Terminal                     │",
+        "│                                                             │",
+        "│  📋 Available Tools:                                        │",
+        "│     • claude      - Claude Code CLI assistant              │",
+        "│     • aws         - AWS CLI tools                          │",
+        "│     • docker      - Container management                   │",
+        "│     • git         - Version control                        │",
+        "│                                                             │",
+        "│  ⚠️  Notice:                                                │",
+        "│     • No persistence between sessions                      │",
+        "│     • Files are temporary and will be lost                 │",
+        "│     • Use for development and testing only                 │",
+        "│                                                             │",
+        "│  💡 Get started: type 'claude' to launch Claude Code CLI   │",
+        "╰─────────────────────────────────────────────────────────────╯",
+        "",
+    ];
+
+    for line in banner_lines {
+        stdin.write_all(format!("echo '{}'\n", line).as_bytes()).await?;
+    }
+    stdin.flush().await?;
+    
     Ok(())
 }
 
