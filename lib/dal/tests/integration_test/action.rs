@@ -36,6 +36,8 @@ use pretty_assertions_sorted::{
 use serde_json::json;
 use si_id::ActionId;
 
+mod schema_level;
+
 #[test]
 async fn prototype_id(ctx: &mut DalContext) -> Result<()> {
     let component =

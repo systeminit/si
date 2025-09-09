@@ -33,7 +33,10 @@ use crate::{
     SchemaVariant,
     action::{
         Action,
-        prototype::ActionKind,
+        prototype::{
+            ActionKind,
+            ActionPrototype,
+        },
     },
     attribute::value::default_subscription::{
         DefaultSubscription,
@@ -333,15 +336,15 @@ impl Component {
             potential_sub.subscribe(ctx).await?;
         }
 
-        // Find all create action prototypes for the variant and create actions for them.
-        for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+        // Find the create action prototype for the schema or variant and enqueue the create action
+        for prototype in ActionPrototype::find_by_kind_for_schema_or_variant(
             ctx,
-            schema_variant_id,
             ActionKind::Create,
+            schema_variant_id,
         )
         .await?
         {
-            Action::new(ctx, prototype_id, Some(component.id)).await?;
+            Action::new(ctx, prototype.id(), Some(component.id)).await?;
         }
 
         // Clear the prop suggestion cache's mapping

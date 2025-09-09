@@ -371,7 +371,7 @@ impl AttributeBinding {
             validate_intrinsic_inputs(
                 ctx,
                 func_id,
-                eventual_parent,
+                eventual_parent.clone(),
                 output_location,
                 prototype_arguments.clone(),
             )
@@ -440,6 +440,7 @@ impl AttributeBinding {
                             .await?;
                         }
                     }
+                    EventualParent::Schemas(_) => {}
                 }
             }
             AttributeFuncDestination::OutputSocket(output_socket_id) => {
@@ -493,6 +494,7 @@ impl AttributeBinding {
                         )
                         .await?;
                     }
+                    EventualParent::Schemas(_) => {}
                 }
             }
             // we don't let users configure this right now

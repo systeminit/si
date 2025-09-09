@@ -126,7 +126,7 @@ mod test {
             .cleanup_and_merkle_tree_hash()
             .expect("merkle it!");
         assert_eq!(
-            18,                // expected
+            19,                // expected
             onto.node_count()  // actual
         );
 

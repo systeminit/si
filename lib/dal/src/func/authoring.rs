@@ -305,7 +305,7 @@ impl FuncAuthoringClient {
         output_location: AttributeFuncDestination,
         argument_bindings: Vec<AttributeArgumentBinding>,
     ) -> FuncAuthoringResult<Func> {
-        if let Some(eventual_parent) = eventual_parent {
+        if let Some(eventual_parent) = &eventual_parent {
             eventual_parent.error_if_locked(ctx).await?;
         }
         let func = create::create_attribute_func(

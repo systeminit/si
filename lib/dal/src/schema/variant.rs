@@ -73,10 +73,7 @@ use crate::{
     WsEvent,
     WsEventResult,
     WsPayload,
-    action::prototype::{
-        ActionKind,
-        ActionPrototype,
-    },
+    action::prototype::ActionPrototype,
     attribute::{
         prototype::{
             AttributePrototypeError,
@@ -1395,35 +1392,6 @@ impl SchemaVariant {
         discriminant: EdgeWeightKindDiscriminants::ManagementPrototype,
         result: SchemaVariantResult,
     );
-
-    pub async fn find_action_prototypes_by_kind(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-        kind: ActionKind,
-    ) -> SchemaVariantResult<Vec<ActionPrototypeId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let id: Ulid = schema_variant_id.into();
-
-        let action_prototype_node_idxs = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::ActionPrototype)
-            .await?;
-
-        let mut prototype_ids = vec![];
-
-        for prototype_idx in action_prototype_node_idxs {
-            let NodeWeight::ActionPrototype(weight) =
-                workspace_snapshot.get_node_weight(prototype_idx).await?
-            else {
-                continue;
-            };
-
-            if weight.kind() == kind {
-                prototype_ids.push(weight.id().into());
-            }
-        }
-
-        Ok(prototype_ids)
-    }
 
     pub async fn find_leaf_item_functions(
         ctx: &DalContext,
