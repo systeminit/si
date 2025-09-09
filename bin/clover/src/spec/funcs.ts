@@ -107,7 +107,7 @@ export const MANAGEMENT_FUNCS = {
   FuncSpecInfo & { handlers: CfHandlerKind[] }
 >;
 
-export const QUALIFICATION_FUNC_SPECS = {} as const satisfies Record<
+export const QUALIFICATION_FUNC_SPECS = {} as const as Record<
   string,
   FuncSpecInfo
 >;
@@ -246,7 +246,6 @@ export function createManagementFuncSpec(
     name,
     description: null,
     funcUniqueId,
-    managedSchemas: null,
   };
 }
 
