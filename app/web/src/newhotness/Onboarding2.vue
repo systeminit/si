@@ -78,7 +78,7 @@
                   <label
                     class="basis-0 grow flex flex-row items-center gap-2xs"
                   >
-                    {{ title }} {{ field.required && "*" }}
+                    {{ title }}<span v-if="field.required">*</span>
                   </label>
                   <div class="flex flex-row basis-0 grow">
                     <input
