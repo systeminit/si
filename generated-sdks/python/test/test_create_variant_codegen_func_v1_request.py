@@ -38,9 +38,6 @@ class TestCreateVariantCodegenFuncV1Request(unittest.TestCase):
                 code = '<!-- String escaped Typescript code here -->',
                 description = 'Generates the payload required for creating an EC2 instance',
                 display_name = 'Generate EC2 Instance Create Payload',
-                locations = [
-                    'code'
-                    ],
                 name = 'awsEC2InstanceGenerateCode'
             )
         else:
@@ -48,9 +45,6 @@ class TestCreateVariantCodegenFuncV1Request(unittest.TestCase):
                 code = '<!-- String escaped Typescript code here -->',
                 description = 'Generates the payload required for creating an EC2 instance',
                 display_name = 'Generate EC2 Instance Create Payload',
-                locations = [
-                    'code'
-                    ],
                 name = 'awsEC2InstanceGenerateCode',
         )
         """

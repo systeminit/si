@@ -1935,9 +1935,6 @@ Schemas management endpoints
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Generates the payload required for creating an EC2 instance",
   "displayName": "Generate EC2 Instance Create Payload",
-  "locations": [
-    "code"
-  ],
   "name": "awsEC2InstanceGenerateCode"
 }
 ```
@@ -2036,9 +2033,6 @@ Schemas management endpoints
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Creates an EC2 Instance",
   "displayName": "Create EC2 Instance",
-  "locations": [
-    "code"
-  ],
   "name": "awsEC2InstanceCreate"
 }
 ```
@@ -3596,9 +3590,6 @@ xor
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Generates the payload required for creating an EC2 instance",
   "displayName": "Generate EC2 Instance Create Payload",
-  "locations": [
-    "code"
-  ],
   "name": "awsEC2InstanceGenerateCode"
 }
 
@@ -3611,7 +3602,6 @@ xor
 |code|string|true|none|none|
 |description|string|true|none|none|
 |displayName|string|true|none|none|
-|locations|[string]|true|none|none|
 |name|string|true|none|none|
 
 ## [CreateVariantCodegenFuncV1Response](#tocS_CreateVariantCodegenFuncV1Response)
@@ -3692,9 +3682,6 @@ xor
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Creates an EC2 Instance",
   "displayName": "Create EC2 Instance",
-  "locations": [
-    "code"
-  ],
   "name": "awsEC2InstanceCreate"
 }
 
@@ -3707,7 +3694,6 @@ xor
 |code|string|true|none|none|
 |description|string|true|none|none|
 |displayName|string|true|none|none|
-|locations|[string]|true|none|none|
 |name|string|true|none|none|
 
 ## [CreateVariantQualificationFuncV1Response](#tocS_CreateVariantQualificationFuncV1Response)
