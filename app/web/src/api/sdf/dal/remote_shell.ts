@@ -15,9 +15,9 @@ export interface RemoteShellConnectionInfo {
 }
 
 export enum RemoteShellStatus {
-  Active = "Active",
-  Error = "Error", 
-  Terminated = "Terminated",
+  Active = "active",
+  Error = "error", 
+  Terminated = "terminated",
 }
 
 export interface CreateRemoteShellSessionResponse {
@@ -41,10 +41,16 @@ export class RemoteShellApi {
     request: CreateRemoteShellSessionRequest = {}
   ): Promise<RemoteShellSessionDetails> {
     const response = await sdfApiInstance.post(
-      `/api/v2/workspaces/${workspaceId}/change-sets/${changeSetId}/remote-shell/create`,
+      `/v2/workspaces/${workspaceId}/change-sets/${changeSetId}/remote-shell/create`,
       request
     );
 
-    return response.data as RemoteShellSessionDetails;
+    // The backend returns a ForceChangeSetResponse where:
+    // - The actual data is in response.data directly (CreateRemoteShellSessionResponse)
+    // - The force_change_set_id is in the response headers
+    return {
+      forcedChangeSetId: response.headers.force_change_set_id || '',
+      data: response.data as CreateRemoteShellSessionResponse,
+    };
   }
 }

@@ -73,7 +73,7 @@
 
     <NewButton
       v-tooltip="{
-        content: 'Open Remote Shell',
+        content: 'Open Claude CLI',
       }"
       data-testid="remote-shell-button"
       :disabled="
@@ -151,7 +151,7 @@ import { tw } from "@si/vue-lib";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import AbandonChangeSetModal from "@/components/AbandonChangeSetModal.vue";
-import RemoteShellTerminal from "@/components/RemoteShellTerminal.vue";
+import RemoteShellTerminal from "@/components/RemoteShellTerminalXterm.vue";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
 import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
 import * as heimdall from "../../../store/realtime/heimdall";

@@ -420,6 +420,15 @@ importers:
       vue-toastification:
         specifier: 2.0.0-rc.5
         version: 2.0.0-rc.5(vue@3.5.13(typescript@5.0.4))
+      xterm:
+        specifier: ^5.3.0
+        version: 5.3.0
+      xterm-addon-fit:
+        specifier: ^0.8.0
+        version: 0.8.0(xterm@5.3.0)
+      xterm-addon-web-links:
+        specifier: ^0.9.0
+        version: 0.9.0(xterm@5.3.0)
       y-indexeddb:
         specifier: ^9.0.12
         version: 9.0.12(yjs@13.6.8)
@@ -11406,6 +11415,22 @@ packages:
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
+
+  xterm-addon-fit@0.8.0:
+    resolution: {integrity: sha512-yj3Np7XlvxxhYF/EJ7p3KHaMt6OdwQ+HDu573Vx1lRXsVxOcnVJs51RgjZOouIZOczTsskaS+CpXspK81/DLqw==}
+    deprecated: This package is now deprecated. Move to @xterm/addon-fit instead.
+    peerDependencies:
+      xterm: ^5.0.0
+
+  xterm-addon-web-links@0.9.0:
+    resolution: {integrity: sha512-LIzi4jBbPlrKMZF3ihoyqayWyTXAwGfu4yprz1aK2p71e9UKXN6RRzVONR0L+Zd+Ik5tPVI9bwp9e8fDTQh49Q==}
+    deprecated: This package is now deprecated. Move to @xterm/addon-web-links instead.
+    peerDependencies:
+      xterm: ^5.0.0
+
+  xterm@5.3.0:
+    resolution: {integrity: sha512-8QqjlekLUFTrU6x7xck1MsPzPA571K5zNqWm0M0oroYEWVOptZ0+ubQSkQ3uxIEhcIHRujJy6emDWX4A7qyFzg==}
+    deprecated: This package is now deprecated. Move to @xterm/xterm instead.
 
   y-indexeddb@9.0.12:
     resolution: {integrity: sha512-9oCFRSPPzBK7/w5vOkJBaVCQZKHXB/v6SIT+WYhnJxlEC61juqG0hBrAf+y3gmSMLFLwICNH9nQ53uscuse6Hg==}
@@ -24024,6 +24049,16 @@ snapshots:
       cssfilter: 0.0.10
 
   xtend@4.0.2: {}
+
+  xterm-addon-fit@0.8.0(xterm@5.3.0):
+    dependencies:
+      xterm: 5.3.0
+
+  xterm-addon-web-links@0.9.0(xterm@5.3.0):
+    dependencies:
+      xterm: 5.3.0
+
+  xterm@5.3.0: {}
 
   y-indexeddb@9.0.12(yjs@13.6.8):
     dependencies:

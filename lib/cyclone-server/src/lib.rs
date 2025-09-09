@@ -4,6 +4,7 @@ mod extract;
 mod handlers;
 #[cfg(target_os = "linux")]
 pub mod process_gatherer;
+mod remote_shell;
 mod result;
 mod routes;
 mod server;

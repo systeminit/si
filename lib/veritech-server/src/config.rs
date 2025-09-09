@@ -530,6 +530,10 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 if action {
                     builder.action();
                 }
+                // Enable remote shell for local process execution
+                if matches!(runtime_strategy, LocalUdsRuntimeStrategy::LocalProcess) {
+                    builder.remote_shell();
+                }
                 builder.pool_size(pool_size);
                 builder.connect_timeout(connect_timeout);
                 builder.create_firecracker_setup_scripts(create_firecracker_setup_scripts);

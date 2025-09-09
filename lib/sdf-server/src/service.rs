@@ -6,4 +6,3 @@ pub mod whoami;
 #[cfg(debug_assertions)]
 pub mod dev;
 
-pub(crate) use sdf_core::impl_default_error_into_response;
