@@ -73,16 +73,9 @@
 
     <NewButton
       v-tooltip="{
-        content: 'Open Remote Shell',
+        content: 'Open Claude CLI',
       }"
       data-testid="remote-shell-button"
-      :disabled="
-        !changeSet ||
-        (ctx.headChangeSetId.value &&
-          changeSet.id === ctx.headChangeSetId.value) ||
-        createApi.inFlight.value ||
-        changeSet.status === ChangeSetStatus.NeedsApproval
-      "
       icon="command"
       tone="action"
       class="flex-none"
@@ -153,7 +146,7 @@ import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
 import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
 import AbandonChangeSetModal from "./AbandonChangeSetModal.vue";
-import RemoteShellTerminal from "@/components/RemoteShellTerminal.vue";
+import RemoteShellTerminal from "@/components/RemoteShellTerminalXterm.vue";
 import * as heimdall from "../../store/realtime/heimdall";
 import { routes, useApi } from "../api_composables";
 import { useChangeSets } from "../logic_composables/change_set";
