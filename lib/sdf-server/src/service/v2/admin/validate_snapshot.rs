@@ -83,7 +83,8 @@ async fn get_validation_issues(
 
 async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> AdminAPIResult<bool> {
     Ok(match issue {
-        &ValidationIssue::ConnectionToUnknownSocket { apa, .. } => {
+        &ValidationIssue::ConnectionToMissingComponent { apa, .. }
+        | &ValidationIssue::ConnectionToUnknownSocket { apa, .. } => {
             // These will never be fixed, so we just remove them
             AttributePrototypeArgument::remove(ctx, apa).await?;
             true
@@ -117,8 +118,10 @@ async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> AdminAPIResult<
             AttributeValue::remove(ctx, duplicate).await?;
             true
         }
-        ValidationIssue::MultipleValues { .. }
+        ValidationIssue::ArgumentTargets { .. }
+        | ValidationIssue::ComponentHasParent { .. }
         | ValidationIssue::MissingChildAttributeValues { .. }
+        | ValidationIssue::MultipleValues { .. }
         | ValidationIssue::UnknownChildAttributeValue { .. } => false,
     })
 }
