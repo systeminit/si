@@ -12,7 +12,7 @@
         clsx(
           'flex flex-row gap-sm items-center justify-between border rounded-sm cursor-pointer active:bg-neutral-700 select-none',
           !expandable && 'h-full',
-          prompt ? 'p-sm italic' : 'p-xs',
+          prompt ? 'p-sm' : 'p-xs',
           themeClasses(
             'border-neutral-400 bg-neutral-300',
             'bg-neutral-900 border border-neutral-600',
@@ -43,7 +43,6 @@
         @mouseenter="onMouseEnterSubIcon"
         @mouseleave="onMouseLeaveSubIcon"
       />
-      <Icon v-else-if="prompt" name="sparkles" class="flex-none" />
       <div
         :class="
           clsx(
