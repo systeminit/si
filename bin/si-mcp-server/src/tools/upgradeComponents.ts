@@ -12,7 +12,8 @@ import {
 
 const name = "upgrade-components";
 const title = "Upgrade a list of components";
-const description = `<description>Find a list of components to upgrade. On failure, returns error details. *Always* ensure that components can be upgraded before trying to upgrade them.</description><usage>Use this tool to upgrade a list of components in a change set. To see all of its information after it has been updated, use the component-get tool.</usage>`;
+const description =
+  `<description>Find a list of components to upgrade. On failure, returns error details. *Always* ensure that components can be upgraded before trying to upgrade them.</description><usage>Use this tool to upgrade a list of components in a change set. To see all of its information after it has been updated, use the component-get tool.</usage>`;
 
 const UpgradeComponentInputSchemaRaw = {
   changeSetId: z
