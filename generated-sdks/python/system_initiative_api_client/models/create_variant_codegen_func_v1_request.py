@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
@@ -29,17 +29,8 @@ class CreateVariantCodegenFuncV1Request(BaseModel):
     code: StrictStr
     description: StrictStr
     display_name: StrictStr = Field(alias="displayName")
-    locations: List[StrictStr]
     name: StrictStr
-    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "locations", "name"]
-
-    @field_validator('locations')
-    def locations_validate_enum(cls, value):
-        """Validates the enum"""
-        for i in value:
-            if i not in set(['code', 'deletedAt', 'domain', 'resource', 'secrets']):
-                raise ValueError("each list item must be one of ('code', 'deletedAt', 'domain', 'resource', 'secrets')")
-        return value
+    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "name"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -95,7 +86,6 @@ class CreateVariantCodegenFuncV1Request(BaseModel):
             "code": obj.get("code"),
             "description": obj.get("description"),
             "displayName": obj.get("displayName"),
-            "locations": obj.get("locations"),
             "name": obj.get("name")
         })
         return _obj

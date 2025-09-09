@@ -776,30 +776,11 @@ export interface CreateVariantCodegenFuncV1Request {
     'displayName': string;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof CreateVariantCodegenFuncV1Request
-     */
-    'locations': Array<CreateVariantCodegenFuncV1RequestLocationsEnum>;
-    /**
-     * 
      * @type {string}
      * @memberof CreateVariantCodegenFuncV1Request
      */
     'name': string;
 }
-
-/**
-    * @export
-    * @enum {string}
-    */
-export enum CreateVariantCodegenFuncV1RequestLocationsEnum {
-    CODE = 'code',
-    DELETED_AT = 'deletedAt',
-    DOMAIN = 'domain',
-    RESOURCE = 'resource',
-    SECRETS = 'secrets'
-}
-
 /**
  * 
  * @export
@@ -883,30 +864,11 @@ export interface CreateVariantQualificationFuncV1Request {
     'displayName': string;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof CreateVariantQualificationFuncV1Request
-     */
-    'locations': Array<CreateVariantQualificationFuncV1RequestLocationsEnum>;
-    /**
-     * 
      * @type {string}
      * @memberof CreateVariantQualificationFuncV1Request
      */
     'name': string;
 }
-
-/**
-    * @export
-    * @enum {string}
-    */
-export enum CreateVariantQualificationFuncV1RequestLocationsEnum {
-    CODE = 'code',
-    DELETED_AT = 'deletedAt',
-    DOMAIN = 'domain',
-    RESOURCE = 'resource',
-    SECRETS = 'secrets'
-}
-
 /**
  * 
  * @export

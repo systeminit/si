@@ -38,9 +38,6 @@ class TestCreateVariantQualificationFuncV1Request(unittest.TestCase):
                 code = '<!-- String escaped Typescript code here -->',
                 description = 'Creates an EC2 Instance',
                 display_name = 'Create EC2 Instance',
-                locations = [
-                    'code'
-                    ],
                 name = 'awsEC2InstanceCreate'
             )
         else:
@@ -48,9 +45,6 @@ class TestCreateVariantQualificationFuncV1Request(unittest.TestCase):
                 code = '<!-- String escaped Typescript code here -->',
                 description = 'Creates an EC2 Instance',
                 display_name = 'Create EC2 Instance',
-                locations = [
-                    'code'
-                    ],
                 name = 'awsEC2InstanceCreate',
         )
         """
