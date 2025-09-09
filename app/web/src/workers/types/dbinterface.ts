@@ -495,7 +495,7 @@ export interface WorkspaceIndexUpdate {
   meta: WorkspaceAtomMeta;
   kind: MessageKind.WORKSPACE_INDEXUPDATE;
   indexChecksum: string;
-  patch: AtomOperation;
+  patch: null | AtomOperation;
 }
 
 export interface DeploymentIndexUpdate {

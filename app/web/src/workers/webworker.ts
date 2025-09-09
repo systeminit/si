@@ -944,6 +944,10 @@ const initIndexAndChangeSet = (
 
 const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
   await tracer.startActiveSpan("IndexMvPatch", async (span) => {
+    if (!msg.patch) {
+      span.setAttribute("no_patch", true);
+      return;
+    }
     const data = {
       kind: msg.patch.kind, // EntityKind.MvIndex
       fromChecksum: msg.patch.fromChecksum,
