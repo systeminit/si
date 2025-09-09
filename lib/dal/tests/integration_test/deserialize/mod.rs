@@ -682,7 +682,7 @@ async fn graph_can_be_serialized_and_then_deserialized(ctx: &DalContext) {
     let (bytes, _) = serialize::to_vec(&original_graph).expect("serialize");
 
     let graph: WorkspaceSnapshotGraph = serialize::from_bytes(&bytes).expect("deserialize");
-    assert_eq!(35, graph.node_count());
+    assert_eq!(36, graph.node_count());
     verify_graph_invariants(&graph);
 }
 

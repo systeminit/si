@@ -36,6 +36,7 @@ pub enum EntityKind {
     CategoryDiagramObject,
     CategoryFunc,
     CategoryModule,
+    CategoryOverlay,
     CategorySchema,
     CategorySecret,
     CategoryView,
