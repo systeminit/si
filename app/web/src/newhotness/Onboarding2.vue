@@ -1,345 +1,498 @@
 <template>
   <div
     data-testid="lobby"
-    class="absolute w-screen h-screen bg-neutral-900 z-[1000] flex flex-col items-center text-white"
+    :class="
+      clsx(
+        'absolute w-screen h-screen z-[1000] scrollable',
+        themeClasses('bg-white text-black', 'bg-neutral-900 text-white,'),
+      )
+    "
   >
-    <!--  HEADER  -->
-    <div
-      class="flex flex-row flex-none items-center justify-between w-full px-sm py-xs"
-    >
-      <SiLogo class="block h-md w-md flex-none" />
-      <NewButton
-        aria-label="schedule-demo-header"
-        class="group/schedule font-normal"
-        tone="empty"
-        :href="scheduleLink"
-        target="_blank"
+    <div class="flex flex-col items-center w-full h-full min-w-[900px]">
+      <!--  HEADER  -->
+      <div
+        class="flex flex-row flex-none items-center justify-between w-full px-sm py-xs"
       >
-        <span class="text-neutral-400 group-hover/schedule:text-white">
-          Not ready? Schedule a meeting and we'll demo it for you.
-        </span>
-      </NewButton>
-    </div>
-    <!--  Form + Text in the middle  -->
-    <div
-      class="flex flex-row items-center grow w-full max-w-[1500px] px-lg gap-lg"
-    >
-      <div class="flex-1 basis-1/2 min-w-0">
-        <!-- Step 1: User Input -->
-        <OnboardingStepBlock v-if="currentStep === OnboardingStep.INITIALIZE">
-          <template #header>
-            <div class="flex flex-row items-center justify-between">
-              <span
+        <SiLogo class="block h-md w-md flex-none" />
+        <NewButton
+          aria-label="schedule-demo-header"
+          class="group/schedule font-normal"
+          tone="empty"
+          :href="scheduleLink"
+          target="_blank"
+        >
+          <span
+            :class="
+              clsx(
+                themeClasses(
+                  'text-neutral-600 group-hover/schedule:text-black',
+                  'text-neutral-400 group-hover/schedule:text-white',
+                ),
+              )
+            "
+          >
+            Not ready? Schedule a meeting and we'll demo it for you.
+          </span>
+        </NewButton>
+      </div>
+      <!--  Form + Text in the middle  -->
+      <div
+        class="flex flex-row items-center grow w-full max-w-[1500px] px-lg gap-lg"
+      >
+        <div class="flex-1 basis-1/2 min-w-0">
+          <!-- Step 1: User Input -->
+          <OnboardingStepBlock v-if="currentStep === OnboardingStep.INITIALIZE">
+            <template #header>
+              <div class="flex flex-row items-center justify-between">
+                <span
+                  :class="
+                    initializeRequestSentAndSuccessful && 'text-success-200'
+                  "
+                >
+                  Enter an AWS Credential
+                </span>
+                <div>1/3</div>
+              </div>
+            </template>
+            <template #body>
+              <!-- Credential -->
+              <div
                 :class="
-                  initializeRequestSentAndSuccessful && 'text-success-200'
+                  clsx(
+                    'flex flex-col border p-sm gap-sm',
+                    themeClasses('border-neutral-400', 'border-neutral-600'),
+                  )
                 "
               >
-                Enter an AWS Credential
-              </span>
-              <div>1/3</div>
-            </div>
-          </template>
-          <template #body>
-            <!-- Credential -->
-            <div class="flex flex-col border border-neutral-600 p-sm gap-sm">
-              <div class="flex flex-row justify-between items-center">
-                <label for="aws-credential-name" class="basis-0 grow">
-                  Name your credential*
-                </label>
-                <input
-                  id="aws-credential-name"
-                  v-model="credentialName"
+                <div class="flex flex-row justify-between items-center">
+                  <label for="aws-credential-name" class="basis-0 grow">
+                    Name your credential*
+                  </label>
+                  <input
+                    id="aws-credential-name"
+                    v-model="credentialName"
+                    data-lpignore="true"
+                    data-1p-ignore
+                    data-bwignore
+                    data-form-type="other"
+                    :class="
+                      clsx(
+                        'h-lg p-xs text-sm border font-mono cursor-text basis-0 grow',
+                        'focus:outline-none focus:ring-0 focus:z-10',
+                        themeClasses(
+                          'text-black bg-white border-neutral-400 focus:border-action-500',
+                          'text-white bg-black border-neutral-600 focus:border-action-300',
+                        ),
+                      )
+                    "
+                  />
+                </div>
+                <!-- Secret Values -->
+                <ErrorMessage
                   :class="
                     clsx(
-                      'h-lg p-xs text-sm border font-mono cursor-text basis-0 grow',
-                      'focus:outline-none focus:ring-0 focus:z-10',
-                      'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
+                      'rounded-md text-md px-xs py-xs mt-xs',
+                      themeClasses('bg-action-200', 'bg-action-900'),
+                    )
+                  "
+                  tone="action"
+                  variant="block"
+                  noIcon
+                >
+                  <div class="flex flex-row items-center justify-between">
+                    <div>
+                      Paste the full Bash environment block into the first field
+                      — we’ll auto-fill the rest.
+                    </div>
+                    <Icon
+                      v-tooltip="
+                        someFieldsVisible
+                          ? 'Hide All Values'
+                          : 'Show All Values'
+                      "
+                      :name="someFieldsVisible ? 'hide' : 'eye'"
+                      size="xs"
+                      class="cursor-pointer z-20"
+                      @click="toggleAll"
+                    />
+                  </div>
+                </ErrorMessage>
+
+                <div class="flex flex-col">
+                  <div
+                    v-for="(field, title) in secretFormFields"
+                    :key="title"
+                    :class="'flex flex-row justify-between items-center text-sm mb-[-1px]'"
+                  >
+                    <label
+                      class="basis-0 grow flex flex-row items-center gap-2xs"
+                    >
+                      {{ title }}<span v-if="field.required">*</span>
+                    </label>
+                    <div class="flex flex-row basis-0 grow relative">
+                      <input
+                        v-model="field.ref"
+                        :type="field.type"
+                        :class="
+                          clsx(
+                            'h-lg p-xs pr-7 text-sm border font-mono cursor-text grow',
+                            'focus:outline-none focus:ring-0 focus:z-10',
+                            themeClasses(
+                              'text-black bg-white border-neutral-400 focus:border-action-500',
+                              'text-white bg-black border-neutral-600 focus:border-action-300',
+                            ),
+                          )
+                        "
+                        :placeholder="
+                          field.type === 'password'
+                            ? '*****'
+                            : 'Value will be visible'
+                        "
+                        data-lpignore="true"
+                        data-1p-ignore
+                        data-bwignore
+                        data-form-type="other"
+                        @paste="(ev: ClipboardEvent) => tryMatchOnPaste(ev)"
+                      />
+                      <Icon
+                        v-tooltip="
+                          field.type === 'password'
+                            ? 'Show Value'
+                            : 'Hide Value'
+                        "
+                        :name="field.type === 'password' ? 'eye' : 'hide'"
+                        size="xs"
+                        class="absolute right-xs top-[10px] cursor-pointer z-20"
+                        @click="toggleVisibility(field)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Region -->
+              <div
+                :class="
+                  clsx(
+                    'border flex flex-col p-sm gap-sm',
+                    themeClasses('border-neutral-400', 'border-neutral-600'),
+                  )
+                "
+              >
+                <div>Pick a region*</div>
+                <div
+                  class="flex desktop:flex-row flex-col desktop:items-center items-stretch desktop:gap-sm gap-xs"
+                >
+                  <div
+                    v-for="region in pickerRegions"
+                    :key="region.value"
+                    :class="
+                      clsx(
+                        'flex flex-row grow items-center border desktop:p-sm p-xs gap-sm cursor-pointer',
+                        themeClasses(
+                          'hover:border-neutral-700',
+                          'hover:border-neutral-300',
+                        ),
+                        region.value === awsRegion
+                          ? themeClasses(
+                              'border-neutral-700',
+                              'border-neutral-300',
+                            )
+                          : themeClasses(
+                              'border-neutral-300',
+                              'border-neutral-600',
+                            ),
+                      )
+                    "
+                    @click="awsRegion = region.value"
+                  >
+                    <Icon
+                      :name="
+                        region.value === awsRegion
+                          ? 'check-circle'
+                          : 'circle-empty'
+                      "
+                    />
+                    <div class="flex flex-col justify-center align-middle">
+                      <span class="text-sm">{{ region.title }}</span>
+                      <span class="text-sm text-neutral-400">
+                        {{ region.value }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-row items-center">
+                  <label for="aws-region" class="basis-0 grow">
+                    Or select any region
+                  </label>
+                  <select
+                    id="aws-region"
+                    v-model="awsRegion"
+                    :class="
+                      clsx(
+                        'h-lg basis-0 grow p-xs text-sm border font-mono cursor-pointer',
+                        'focus:outline-none focus:ring-0 focus:z-10',
+                        themeClasses(
+                          'text-black bg-white border-neutral-400 focus:border-action-500',
+                          'text-white bg-black border-neutral-600 focus:border-action-300',
+                        ),
+                      )
+                    "
+                  >
+                    <option v-for="region in awsRegions" :key="region.value">
+                      {{ region.value }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </template>
+            <template #footerRight>
+              <NewButton
+                :label="initializeApiError ? 'Retry' : 'Next'"
+                :tooltip="
+                  !formHasRequiredValues
+                    ? 'You must enter your credential to continue'
+                    : undefined
+                "
+                tone="action"
+                :disabled="!formHasRequiredValues"
+                :loading="submitOnboardingInProgress"
+                loadingText="Saving"
+                @click="submitOnboardRequest"
+              />
+            </template>
+          </OnboardingStepBlock>
+          <!-- Step 2: Agent Tutorial + token -->
+          <OnboardingStepBlock
+            v-else-if="currentStep === OnboardingStep.SETUP_AI"
+          >
+            <template #header>
+              <div class="flex flex-row items-center justify-between">
+                <span>Connect your AI Agent</span>
+                <div>2/3</div>
+              </div>
+            </template>
+            <template #body>
+              <div class="flex flex-col gap-xs">
+                <span>Clone the AI Agent repository</span>
+                <CopyableTextBlock
+                  text="git clone https://github.com/systeminit/si-ai-agent.git"
+                />
+              </div>
+              <div class="flex flex-col gap-xs">
+                <span>Run the setup script</span>
+                <CopyableTextBlock text="./setup.sh" />
+              </div>
+              <div class="flex flex-col gap-xs">
+                <span>
+                  Copy this API token to use as part of the AI Agent setup
+                </span>
+                <ErrorMessage
+                  :class="
+                    clsx(
+                      'rounded-md text-md px-xs py-xs my-xs',
+                      themeClasses('bg-action-200', 'bg-action-900'),
+                    )
+                  "
+                  icon="alert-circle"
+                  tone="action"
+                  variant="block"
+                >
+                  We're only showing you the value of this token once. Please,
+                  store it somewhere safe.
+                </ErrorMessage>
+                <CopyableTextBlock
+                  :text="apiToken"
+                  expandable
+                  @copied="onCopyAgentToken"
+                />
+                <ErrorMessage
+                  v-if="agentTokenCopied"
+                  tone="neutral"
+                  icon="loader"
+                >
+                  Waiting for the AI agent to start. You’ll be able to proceed
+                  as soon as setup is finished.
+                </ErrorMessage>
+                <ErrorMessage v-else tone="neutral" icon="sparkles">
+                  Click the API token to copy it.
+                </ErrorMessage>
+              </div>
+            </template>
+            <template #footerRight>
+              <!-- <NewButton
+                label="Previous"
+                tone="neutral"
+                @click="decrementOnboardingStep"
+              /> -->
+              <NewButton
+                label="Next"
+                tone="action"
+                :icon="
+                  stepTwoNextDisabled && agentTokenCopied ? 'loader' : undefined
+                "
+                :disabled="stepTwoNextDisabled"
+                :tooltip="
+                  stepTwoNextDisabled
+                    ? 'You must setup your AI agent to continue'
+                    : undefined
+                "
+                @click="incrementOnboardingStep"
+              />
+            </template>
+          </OnboardingStepBlock>
+          <!-- Step 3: Try your first prompt -->
+          <OnboardingStepBlock v-else>
+            <template #header>
+              <div class="flex flex-row items-center justify-between">
+                <span>Try your first prompt</span>
+                <div
+                  :class="themeClasses('text-success-600', 'text-success-300')"
+                >
+                  3/3
+                </div>
+              </div>
+            </template>
+            <template #body>
+              <div>
+                Now that you have connected your AI agent, you can use any of
+                these prompts, or one of your own, to see System Initiative in
+                action:
+              </div>
+              <CopyableTextBlock
+                v-for="(prompt, index) in prompts"
+                :key="index"
+                :text="prompt"
+                prompt
+              />
+            </template>
+            <template #footerRight>
+              <NewButton
+                label="Get Started"
+                tone="action"
+                @click="closeOnboarding"
+              />
+            </template>
+          </OnboardingStepBlock>
+        </div>
+        <div
+          class="flex-1 basis-1/4 min-w-0 flex flex-col gap-lg ml-xl font-medium"
+        >
+          <div class="text-xl">
+            <span
+              :class="
+                clsx(themeClasses('text-neutral-600', 'text-neutral-400'))
+              "
+              >Your workspace</span
+            >
+            will be ready with these simple steps
+          </div>
+          <div class="flex flex-col">
+            <div
+              v-for="(step, index) in steps"
+              :key="index"
+              class="grid steps gap-0"
+            >
+              <div
+                :class="
+                  clsx(
+                    'number self-center flex flex-row items-center justify-center rounded-full w-8 h-8',
+                    finishedStep(index)
+                      ? themeClasses('bg-neutral-300', 'bg-neutral-600')
+                      : themeClasses(
+                          'bg-success-300',
+                          'bg-success-900 text-success-200',
+                        ),
+                  )
+                "
+              >
+                <div v-if="finishedStep(index)" class="w-full text-center">
+                  {{ index + 1 }}
+                </div>
+                <Icon v-else name="check" size="sm" />
+              </div>
+              <div class="numberline w-full h-full flex flex-col items-center">
+                <div
+                  v-if="index < steps.length - 1"
+                  :class="
+                    clsx(
+                      'border-r h-full',
+                      finishedStep(index)
+                        ? themeClasses(
+                            'border-neutral-300',
+                            'border-neutral-600',
+                          )
+                        : themeClasses(
+                            'border-success-300',
+                            'border-success-900',
+                          ),
                     )
                   "
                 />
               </div>
-              <!-- Secret Values -->
-              <ErrorMessage
-                class="rounded-md text-md px-xs py-xs bg-action-900 mt-xs"
-                tone="action"
-                variant="block"
-                noIcon
+              <TruncateWithTooltip
+                class="primary self-center pl-sm max-h-8 text-sm leading-none pb-3xs mt-3xs"
+                :lineClamp="2"
               >
-                Paste the full Bash environment block into the first field —
-                we’ll auto-fill the rest.
-              </ErrorMessage>
-
-              <div class="flex flex-col">
-                <div
-                  v-for="(field, title) in secretFormFields"
-                  :key="title"
-                  :class="'flex flex-row justify-between items-center text-sm mb-[-1px]'"
-                >
-                  <label
-                    class="basis-0 grow flex flex-row items-center gap-2xs"
-                  >
-                    {{ title }}<span v-if="field.required">*</span>
-                  </label>
-                  <div class="flex flex-row basis-0 grow">
-                    <input
-                      v-model="field.ref"
-                      :type="field.type"
-                      :class="
-                        clsx(
-                          'h-lg p-xs text-sm border font-mono cursor-text grow',
-                          'focus:outline-none focus:ring-0 focus:z-10',
-                          'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
-                        )
-                      "
-                      placeholder="***"
-                      data-lpignore="true"
-                      data-1p-ignore
-                      data-bwignore
-                      data-form-type="other"
-                      @paste="(ev: ClipboardEvent) => tryMatchOnPaste(ev)"
-                    />
-                    <!-- TODO(Wendy+Victor) - let's get this working, see SecretInput for an example -->
-                    <NewButton
-                      icon="eye"
-                      class="hidden"
-                      @click="toggleVisibility(field)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <!-- Region -->
-            <div class="border border-neutral-600 flex flex-col p-sm gap-sm">
-              <div>Pick a region*</div>
+                {{ step.primaryText }}
+              </TruncateWithTooltip>
               <div
-                class="flex desktop:flex-row flex-col desktop:items-center items-stretch desktop:gap-sm gap-xs"
-              >
-                <div
-                  v-for="region in pickerRegions"
-                  :key="region.value"
-                  :class="
-                    clsx(
-                      'flex flex-row grow items-center border desktop:p-sm p-xs gap-sm hover:border-neutral-300 cursor-pointer',
-                      region.value === awsRegion
-                        ? 'border-neutral-300'
-                        : 'border-neutral-600',
-                    )
-                  "
-                  @click="awsRegion = region.value"
-                >
-                  <Icon
-                    :name="
-                      region.value === awsRegion
-                        ? 'check-circle'
-                        : 'circle-empty'
-                    "
-                  />
-                  <div class="flex flex-col justify-center align-middle">
-                    <span class="text-sm">{{ region.title }}</span>
-                    <span class="text-sm text-neutral-400">
-                      {{ region.value }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex flex-row items-center">
-                <label for="aws-region" class="basis-0 grow">
-                  Or select any region
-                </label>
-                <select
-                  id="aws-region"
-                  v-model="awsRegion"
-                  :class="
-                    clsx(
-                      'h-lg basis-0 grow p-xs text-sm border font-mono cursor-pointer',
-                      'focus:outline-none focus:ring-0 focus:z-10',
-                      'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
-                    )
-                  "
-                >
-                  <option v-for="region in awsRegions" :key="region.value">
-                    {{ region.value }}
-                  </option>
-                </select>
-              </div>
-            </div>
-          </template>
-          <template #footerRight>
-            <NewButton
-              :label="initializeApiError ? 'Retry' : 'Next'"
-              tone="action"
-              :disabled="!formHasRequiredValues"
-              :loading="submitOnboardingInProgress"
-              loadingText="Saving"
-              @click="submitOnboardRequest"
-            />
-          </template>
-        </OnboardingStepBlock>
-        <!-- Step 2: Agent Tutorial + token -->
-        <OnboardingStepBlock
-          v-else-if="currentStep === OnboardingStep.SETUP_AI"
-        >
-          <template #header>
-            <div class="flex flex-row items-center justify-between">
-              <span>Connect your AI Agent</span>
-              <div>2/3</div>
-            </div>
-          </template>
-          <template #body>
-            <div class="flex flex-col gap-xs">
-              <span>Clone the AI Agent repository</span>
-              <CopyableTextBlock
-                text="git clone https://github.com/systeminit/si-ai-agent.git"
-              />
-            </div>
-            <div class="flex flex-col gap-xs">
-              <span>Run the setup script</span>
-              <CopyableTextBlock text="./setup.sh" />
-            </div>
-            <div class="flex flex-col gap-xs">
-              <span>
-                Copy this API token to use as part of the AI Agent setup
-              </span>
-              <ErrorMessage
-                class="rounded-md text-md px-xs py-xs bg-action-900 my-xs"
-                icon="alert-circle"
-                tone="action"
-                variant="block"
-              >
-                We're only showing you the value of this token once. Please,
-                store it somewhere safe.
-              </ErrorMessage>
-              <CopyableTextBlock
-                :text="apiToken"
-                expandable
-                @copied="trackEvent('onboarding_ai_token_copied')"
-              />
-            </div>
-          </template>
-          <template #footerRight>
-            <!-- <NewButton
-              label="Previous"
-              tone="neutral"
-              @click="decrementOnboardingStep"
-            /> -->
-            <NewButton
-              label="Next"
-              tone="action"
-              :disabled="!initializeRequestSentAndSuccessful || !hasUsedAiAgent"
-              @click="incrementOnboardingStep"
-            />
-          </template>
-        </OnboardingStepBlock>
-        <!-- Step 3: Run your first prompt -->
-        <OnboardingStepBlock v-else>
-          <template #header>
-            <div class="flex flex-row items-center justify-between">
-              <span>Try your first prompt</span>
-              <div class="text-success-300">3/3</div>
-            </div>
-          </template>
-          <template #body>
-            <div>
-              Now that you have connected your AI agent, you can use any of
-              these prompts, or one of your own, to see System Initiative in
-              action:
-            </div>
-            <CopyableTextBlock
-              v-for="(prompt, index) in prompts"
-              :key="index"
-              :text="prompt"
-              prompt
-            />
-          </template>
-          <template #footerRight>
-            <NewButton
-              label="Get Started"
-              tone="action"
-              @click="closeOnboarding"
-            />
-          </template>
-        </OnboardingStepBlock>
-      </div>
-      <div
-        class="flex-1 basis-1/4 min-w-0 flex flex-col gap-lg ml-xl font-medium"
-      >
-        <div class="text-xl">
-          <span class="text-neutral-400">Your workspace</span> will be ready
-          with these simple steps
-        </div>
-        <div class="flex flex-col">
-          <div
-            v-for="(step, index) in steps"
-            :key="index"
-            class="grid steps gap-0"
-          >
-            <div
-              :class="
-                clsx(
-                  'number self-center flex flex-row items-center justify-center rounded-full w-8 h-8',
-                  finishedStep(index)
-                    ? 'bg-neutral-600'
-                    : 'bg-success-900 text-success-200',
-                )
-              "
-            >
-              <div v-if="finishedStep(index)" class="w-full text-center">
-                {{ index + 1 }}
-              </div>
-              <Icon v-else name="check" size="sm" />
-            </div>
-            <div class="numberline w-full h-full flex flex-col items-center">
-              <div
-                v-if="index < steps.length - 1"
                 :class="
                   clsx(
-                    'border-r h-full',
-                    finishedStep(index)
-                      ? 'border-neutral-600'
-                      : 'border-success-900',
+                    'secondary pl-sm pt-xs pb-lg text-sm',
+                    themeClasses('text-neutral-600', 'text-neutral-400'),
                   )
                 "
-              />
-            </div>
-            <TruncateWithTooltip
-              class="primary self-center pl-sm max-h-8 text-sm leading-none pb-3xs mt-3xs"
-              :lineClamp="2"
-            >
-              {{ step.primaryText }}
-            </TruncateWithTooltip>
-            <div class="secondary pl-sm pt-xs pb-lg text-neutral-400 text-sm">
-              {{ step.secondaryText }}
+              >
+                {{ step.secondaryText }}
+              </div>
             </div>
           </div>
         </div>
       </div>
+      <!--  Bottom Links  -->
+      <div
+        class="flex flex-row flex-none w-full items-center justify-start px-lg py-sm gap-sm"
+      >
+        <template v-if="currentStep === OnboardingStep.INITIALIZE">
+          <div
+            :class="
+              clsx(
+                'hover:underline cursor-pointer',
+                themeClasses(
+                  'text-neutral-700 hover:text-black',
+                  'text-neutral-300 hover:text-white',
+                ),
+              )
+            "
+            @click="() => credNecessaryModal?.open()"
+          >
+            Why is a credential necessary?
+          </div>
+          <p class="text-neutral-600">|</p>
+          <div
+            :class="
+              clsx(
+                'hover:underline cursor-pointer',
+                themeClasses(
+                  'text-neutral-700 hover:text-black',
+                  'text-neutral-300 hover:text-white',
+                ),
+              )
+            "
+            @click="() => noCredModal?.open()"
+          >
+            I don't use AWS, what do I do?
+          </div>
+        </template>
+        <template v-else-if="currentStep === OnboardingStep.SETUP_AI">
+          <!-- TODO(Wendy) - any footer links we want here? -->
+        </template>
+        <template v-else>
+          <!-- TODO(Wendy) - any footer links we want here? -->
+        </template>
+      </div>
     </div>
-    <!--  Bottom Links  -->
-    <div
-      class="flex flex-row flex-none w-full items-center justify-start px-lg py-sm gap-sm"
-    >
-      <template v-if="currentStep === OnboardingStep.INITIALIZE">
-        <div
-          class="text-neutral-300 hover:text-white hover:underline cursor-pointer"
-          @click="() => credNecessaryModal?.open()"
-        >
-          Why is a credential necessary?
-        </div>
-        <p class="text-neutral-600">|</p>
-        <div
-          class="text-neutral-300 hover:text-white hover:underline cursor-pointer"
-          @click="() => noCredModal?.open()"
-        >
-          I don't use AWS, what do I do?
-        </div>
-      </template>
-      <template v-else-if="currentStep === OnboardingStep.SETUP_AI">
-        <!-- TODO(Wendy) - any footer links we want here? -->
-      </template>
-      <template v-else>
-        <!-- TODO(Wendy) - any footer links we want here? -->
-      </template>
-    </div>
+
     <Modal
       ref="credNecessaryModal"
       title="Why is a credential necessary?"
@@ -367,9 +520,17 @@
       type="done"
     >
       <div>
-        <a :href="mailToLink" class="underline hover:text-action-300">
-          Reach out
-        </a>
+        <a
+          :href="mailToLink"
+          target="_blank"
+          :class="
+            clsx(
+              'underline',
+              themeClasses('hover:text-action-500', 'hover:text-action-300'),
+            )
+          "
+          >Reach out</a
+        >
         <span>
           and let us know what providers you work with that we should add
           support for.
@@ -387,6 +548,7 @@ import {
   Icon,
   Modal,
   NewButton,
+  themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
@@ -521,6 +683,20 @@ const tryMatchOnPaste = (ev: ClipboardEvent) => {
 
 const toggleVisibility = (field: SecretFormField) => {
   field.type = field.type === "password" ? "text" : "password";
+};
+const someFieldsVisible = computed(() =>
+  Object.values(secretFormFields).some((field) => field.type !== "password"),
+);
+const toggleAll = () => {
+  if (someFieldsVisible.value) {
+    Object.values(secretFormFields).forEach((field) => {
+      field.type = "password";
+    });
+  } else {
+    Object.values(secretFormFields).forEach((field) => {
+      field.type = "text";
+    });
+  }
 };
 
 // REGION
@@ -688,7 +864,17 @@ const closeOnboarding = async (fast = false) => {
   emit("completed");
 };
 
+const agentTokenCopied = ref(false);
+const onCopyAgentToken = () => {
+  agentTokenCopied.value = true;
+  trackEvent("onboarding_ai_token_copied");
+};
+
 const finishedStep = (step: number) => currentStep.value < step + 1;
+
+const stepTwoNextDisabled = computed(
+  () => !initializeRequestSentAndSuccessful.value || !hasUsedAiAgent.value,
+);
 
 const credNecessaryModal = ref<InstanceType<typeof Modal>>();
 const noCredModal = ref<InstanceType<typeof Modal>>();

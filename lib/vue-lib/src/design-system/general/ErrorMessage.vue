@@ -5,12 +5,15 @@
       clsx(
         'flex flex-row items-center',
         variant === 'classic' && [
-          'text-sm border rounded-sm',
+          'text-sm rounded-sm',
+          tone !== 'neutral' && 'border',
           !noPadding && 'p-xs',
           tone === 'destructive' &&
             'border-destructive-500 text-destructive-400',
           tone === 'warning' && 'border-warning-500 text-warning-400',
           tone === 'info' && 'border-action-900 text-action-200',
+          tone === 'neutral' &&
+            themeClasses('bg-neutral-300', 'bg-neutral-700'),
         ],
         variant === 'block' && [
           'p-2xs text-xs',
