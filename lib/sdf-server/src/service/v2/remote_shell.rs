@@ -530,10 +530,11 @@ async fn start_interactive_command_with_dimensions(
     // Use script command to create proper PTY for interactive shell
     let child = if command == "bash" {
         // Use script with immediate flush to create proper PTY
+        // Use --norc --noprofile to avoid completion loading errors
         Command::new("script")
             .arg("-qfe")   // -q quiet, -f flush output immediately, -e return exit code
             .arg("-c")     // -c command to run
-            .arg("bash --norc --noprofile")
+            .arg("bash --norc --noprofile -i")   // Interactive bash without rc files to avoid completion errors
             .arg("/dev/null")  // Don't create log file
             .env("TERM", "xterm-256color")
             .env("COLUMNS", &cols.to_string()) 
@@ -563,21 +564,27 @@ async fn start_interactive_command_with_dimensions(
         }
         Err(e) => {
             error!("Failed to start {} directly: {}, trying script", command, e);
-            // Fallback - already using script as primary method, so this shouldn't happen
-            // But keep it as backup
-            let script_cmd = if command == "bash" {
-                "script -qfe -c 'bash --norc --noprofile' /dev/null".to_string()
+            // Fallback - use direct command execution 
+            let mut cmd = if command == "bash" {
+                let mut cmd = Command::new("bash");
+                cmd.arg("--norc")
+                    .arg("--noprofile") 
+                    .arg("-i")
+                    .env("TERM", "xterm-256color")
+                    .env("COLUMNS", &cols.to_string())
+                    .env("LINES", &rows.to_string())
+                    .env("LANG", "en_US.UTF-8")
+                    .env("PS1", r"\u@\h:\w$ ");
+                cmd
             } else {
-                format!("script -qfe -c '{}' /dev/null", command)
+                let mut cmd = Command::new(command);
+                cmd.env("TERM", "xterm-256color")
+                    .env("COLUMNS", &cols.to_string())
+                    .env("LINES", &rows.to_string())
+                    .env("LANG", "en_US.UTF-8");
+                cmd
             };
-            let script_child = Command::new("bash")
-                .arg("-c")
-                .arg(&script_cmd)
-                .env("TERM", "xterm-256color")
-                .env("COLUMNS", &cols.to_string())
-                .env("LINES", &rows.to_string())
-                .env("LANG", "en_US.UTF-8")
-                .stdin(Stdio::piped())
+            let script_child = cmd.stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .spawn();
@@ -589,17 +596,15 @@ async fn start_interactive_command_with_dimensions(
                 }
                 Err(e) => {
                     error!("Failed to start {} with script: {}, trying direct", command, e);
-                    // Last resort - direct bash without PTY (will be limited)
+                    // Last resort - direct bash with interactive mode
                     if command == "bash" {
                         Command::new("bash")
-                            .arg("--norc")
-                            .arg("--noprofile") 
-                            .arg("-i")
+                            .arg("-i")  // Interactive mode for proper behavior
                             .env("TERM", "xterm-256color")
                             .env("COLUMNS", &cols.to_string())
                             .env("LINES", &rows.to_string()) 
                             .env("LANG", "en_US.UTF-8")
-                            .env("PS1", "$ ")
+                            .env("PS1", "\\u@\\h:\\w\\$ ")
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
                             .stderr(Stdio::piped())
@@ -620,9 +625,21 @@ async fn start_interactive_command_with_dimensions(
         }
     };
 
-    let stdin = child.stdin.take().ok_or("Failed to get stdin")?;
+    let mut stdin = child.stdin.take().ok_or("Failed to get stdin")?;
     let stdout = child.stdout.take().ok_or("Failed to get stdout")?;
     let stderr = child.stderr.take().ok_or("Failed to get stderr")?;
+    
+    // Send a newline to trigger the initial bash prompt
+    if let Err(e) = stdin.write_all(b"\n").await {
+        warn!("Failed to send initial newline to shell: {}", e);
+    } else {
+        info!("Sent initial newline to trigger bash prompt");
+    }
+    
+    // Flush to ensure the newline is sent immediately
+    if let Err(e) = stdin.flush().await {
+        warn!("Failed to flush stdin: {}", e);
+    }
     
     // Create channels for communication
     let (tx, rx) = mpsc::channel::<String>(32);

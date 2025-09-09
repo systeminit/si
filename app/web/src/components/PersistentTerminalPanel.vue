@@ -4,6 +4,9 @@
     
     <!-- Navbar shell icon: Always visible with different states -->
   <div 
+    v-tooltip="{
+      content: 'Remote Terminal',
+    }"
     @click="handleNavbarIconClick"
     class="flex items-center justify-center w-8 h-8 bg-gray-800 rounded transition-all relative"
     :class="{ 
@@ -21,7 +24,7 @@
 
   <!-- Sidebar panel state -->
   <div 
-    v-if="panelState === 'sidebar'"
+    v-show="panelState === 'sidebar'"
     class="fixed right-0 top-0 h-full bg-gray-900 shadow-2xl z-50 flex flex-col border-l border-gray-700"
     :style="{ width: sidebarWidth + 'px' }"
   >
@@ -56,7 +59,7 @@
           class="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-200"
           title="Pop out"
         >
-          <Icon name="empty-square" class="w-4 h-4" />
+          <Icon name="plus" class="w-4 h-4" />
         </button>
         <button 
           @click="minimizePanel"
@@ -112,7 +115,7 @@
 
   <!-- Popped out overlay state - full screen -->
   <div 
-    v-if="panelState === 'popped-out'"
+    v-show="panelState === 'popped-out'"
     class="fixed inset-0 bg-gray-900 shadow-2xl z-50 flex flex-col"
   >
     <!-- Header -->
@@ -151,7 +154,7 @@
 
     <!-- Terminal Container -->
     <div class="flex-1 bg-black relative min-h-0">
-      <div ref="terminalContainerPopped" class="w-full h-full"></div>
+      <!-- Shared terminal container will be moved here dynamically -->
       
       <!-- Loading/Error overlays (same as sidebar) -->
       <div
@@ -211,9 +214,8 @@ const changeSetsStore = useChangeSetsStore();
 // Panel states: 'minimized' | 'sidebar' | 'popped-out'
 const panelState = ref<'minimized' | 'sidebar' | 'popped-out'>('minimized');
 
-// Terminal containers for different states
+// Single terminal container for all states
 const terminalContainer = ref<HTMLElement>();
-const terminalContainerPopped = ref<HTMLElement>();
 
 // Connection state  
 const isConnecting = ref(false);
@@ -234,8 +236,8 @@ let sessionTimeout: number | null = null;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 3;
 
-// Sidebar resizing functionality
-const sidebarWidth = ref(576); // Default 36rem = 576px
+// Sidebar resizing functionality  
+const sidebarWidth = ref(662); // Default 36rem + 15% = 576px * 1.15 = 662px
 const resizeHandle = ref<HTMLElement>();
 let isResizing = false;
 const minWidth = 320; // Minimum 20rem
@@ -244,36 +246,26 @@ const maxWidth = 1200; // Maximum 75rem
 const currentWorkspaceId = computed(() => workspacesStore.selectedWorkspacePk);
 const currentChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
 
-// Initialize xterm.js terminal
+// Initialize xterm.js terminal - only create once to prevent flicker
 function initializeTerminal() {
-  const container = panelState.value === 'popped-out' ? terminalContainerPopped.value : terminalContainer.value;
-  if (!container) return;
-
-  // If we already have a terminal, just move it to the new container
-  if (terminal) {
-    try {
-      // Detach from old container and attach to new one
-      terminal.open(container);
-      
-      // Re-fit to new container dimensions and restore focus
-      nextTick(() => {
-        fitAddon?.fit();
-        terminal?.focus(); // Restore focus after reattachment
-      });
-      return; // Keep existing terminal instance
-    } catch (error) {
-      // If reattaching fails, dispose and create new
-      console.warn('Failed to reattach terminal, creating new:', error);
-      terminal.dispose();
-      terminal = null;
-    }
+  // If terminal already exists, just resize it
+  if (terminal && fitAddon) {
+    nextTick(() => {
+      fitAddon?.fit();
+    });
+    return;
   }
+
+  // Only create terminal if we don't have one yet
+  const container = terminalContainer.value;
+  if (!container) return;
 
   terminal = new Terminal({
     cursorBlink: true,
     cursorStyle: 'block',
     fontSize: 13,
     fontFamily: 'Monaco, Menlo, "DejaVu Sans Mono", "Lucida Console", monospace',
+    rightClickSelectsWord: false, // Disable right click selection to avoid paste conflicts
     theme: {
       background: '#000000',
       foreground: '#ffffff',
@@ -307,6 +299,9 @@ function initializeTerminal() {
   // Open terminal in container
   terminal.open(container);
   
+  // Disable bracketed paste mode to fix paste issues
+  terminal.write('\x1b[?2004l');
+  
   // Fit terminal to container
   nextTick(() => {
     fitAddon?.fit();
@@ -322,19 +317,27 @@ function initializeTerminal() {
     }
   });
 
-  // Handle terminal resize
+  // Handle terminal resize with debouncing to prevent flicker
+  let resizeTimeout: number | null = null;
   const handleResize = () => {
-    if (fitAddon && terminal) {
-      fitAddon.fit();
-      // Send new dimensions to backend
-      if (shellWebSocket.value && shellWebSocket.value.readyState === WebSocket.OPEN) {
-        shellWebSocket.value.send(JSON.stringify({ 
-          type: 'resize', 
-          cols: terminal.cols, 
-          rows: terminal.rows 
-        }));
-      }
+    if (resizeTimeout) {
+      clearTimeout(resizeTimeout);
     }
+    
+    resizeTimeout = window.setTimeout(() => {
+      if (fitAddon && terminal) {
+        fitAddon.fit();
+        // Send new dimensions to backend
+        if (shellWebSocket.value && shellWebSocket.value.readyState === WebSocket.OPEN) {
+          shellWebSocket.value.send(JSON.stringify({ 
+            type: 'resize', 
+            cols: terminal.cols, 
+            rows: terminal.rows 
+          }));
+        }
+      }
+      resizeTimeout = null;
+    }, 100);
   };
   
   window.addEventListener('resize', handleResize);
@@ -387,17 +390,41 @@ function minimizePanel() {
 }
 
 function popOut() {
+  const oldState = panelState.value;
   panelState.value = 'popped-out';
-  nextTick(() => {
-    initializeTerminal();
-  });
+  
+  // Only reinitialize terminal if we're coming from minimized state
+  if (oldState === 'minimized') {
+    nextTick(() => {
+      initializeTerminal();
+    });
+  } else {
+    // Terminal container stays the same, just resize
+    nextTick(() => {
+      if (fitAddon && terminal) {
+        fitAddon.fit();
+      }
+    });
+  }
 }
 
 function popIn() {
+  const oldState = panelState.value;
   panelState.value = 'sidebar';
-  nextTick(() => {
-    initializeTerminal();
-  });
+  
+  // Only reinitialize terminal if we're coming from minimized state  
+  if (oldState === 'minimized') {
+    nextTick(() => {
+      initializeTerminal();
+    });
+  } else {
+    // Terminal container stays the same, just resize
+    nextTick(() => {
+      if (fitAddon && terminal) {
+        fitAddon.fit();
+      }
+    });
+  }
 }
 
 // Session timeout management
@@ -657,10 +684,15 @@ defineExpose({
 :deep(.xterm) {
   height: 100%;
   width: 100%;
+  /* Prevent flicker during container changes */
+  transition: none !important;
 }
 
 :deep(.xterm-viewport) {
   background-color: #000000 !important;
+  /* Smooth rendering without jarring transitions */
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 
