@@ -8,7 +8,9 @@ RUN apk add --no-cache \
     github-cli \
     musl-dev \
     openssh-client \
-    python3
+    python3 \
+    docker \
+    docker-cli-compose
 
 RUN set -eux; \
     ARCH="$(arch)"; \
