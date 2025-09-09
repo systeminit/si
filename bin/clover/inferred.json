@@ -10760,6 +10760,9 @@
   "The auto-generated Graph Id assigned by the service.": {
     "enum": null
   },
+  "The auto-scaling mode for the cluster": {
+    "enum": null
+  },
   "The availability of the image version specified by the maintainer.": {
     "enum": null
   },
@@ -10908,6 +10911,9 @@
     "enum": null
   },
   "The cluster identifier.": {
+    "enum": null
+  },
+  "The cluster role for the autoscaler to assume.": {
     "enum": null
   },
   "The cluster that the access entry is created for.": {
@@ -16530,6 +16536,9 @@
     "enum": null
   },
   "The type of attachment used to provide connectivity between the AWS Verified Access endpoint and the application.": {
+    "enum": null
+  },
+  "The type of auto-scaler to use": {
     "enum": null
   },
   "The type of client authentication used to connect to the Kafka cluster. Value NONE means that no client authentication is used.": {
