@@ -112,13 +112,13 @@ export type PossibleConnection = {
   attributeValueId: string;
   name: string;
   path: string;
-  value: string | null;
+  value: JsonValue;
   componentName: string;
   schemaName: string;
   componentId: string;
   kind: string;
   isOriginSecret: boolean;
-  suggestAsSourceFor?: PropSuggestion[];
+  suggestAsSourceFor?: null | PropSuggestion[];
 };
 
 export interface View {
@@ -192,13 +192,13 @@ export interface ComponentQualificationTotals {
 export interface EddaComponent {
   id: ComponentId;
   name: string;
-  color?: string;
+  color?: null | string;
   schemaName: string;
   schemaId: SchemaId;
   schemaVariantId: WeakReference<EntityKind.SchemaVariant>;
   schemaVariantName: string;
-  schemaVariantDescription?: string;
-  schemaVariantDocLink?: string;
+  schemaVariantDescription?: null | string;
+  schemaVariantDocLink?: null | string;
   schemaCategory: string;
   hasResource: boolean;
   qualificationTotals: ComponentQualificationTotals;
@@ -212,8 +212,8 @@ export interface EddaComponent {
   siAttributeValueId: AttributeValueId;
   resourceValueAttributeValueId: AttributeValueId;
   resourceDiff: {
-    current?: string;
-    diff?: string;
+    current?: null | string;
+    diff?: null | string;
   };
   attributeTree: AttributeTree;
   schemaMembers: WeakReference<EntityKind.SchemaMembers>;
@@ -223,7 +223,7 @@ export interface EddaComponent {
 export interface SchemaMembers {
   id: SchemaId;
   defaultVariantId: SchemaVariantId;
-  editingVariantId?: SchemaVariantId;
+  editingVariantId?: null | SchemaVariantId;
 }
 
 export interface UninstalledVariant {
@@ -247,13 +247,13 @@ export type Categories = {
 
 export interface PropTree {
   props: Record<PropId, Prop>;
-  treeInfo: Record<PropId, { parent?: PropId; children: PropId[] }>;
+  treeInfo: Record<PropId, { parent?: null | PropId; children: PropId[] }>;
 }
 
 export interface MgmtFunction {
   id: string;
   funcId: FuncId;
-  description?: string;
+  description?: null | string;
   prototypeName: string;
   name: string;
   kind: MgmtFuncKind;
@@ -270,7 +270,7 @@ export interface SchemaVariant {
   id: string;
   schemaVariantId: string;
   schemaName: string;
-  schemaDocLinks?: string;
+  schemaDocLinks?: null | string;
   displayName: string | null;
   category: string;
   color: string;
@@ -296,15 +296,15 @@ export interface SchemaVariant {
 export interface BifrostComponent {
   id: ComponentId;
   name: string;
-  color?: string;
+  color?: null | string;
   schemaName: string;
   schemaId: SchemaId;
   // Needed for "ComponentInList" usage where the "SchemaVariant" is dropped.
   schemaVariantId: WeakReference<EntityKind.SchemaVariant>;
   schemaVariant: SchemaVariant;
   schemaVariantName: string;
-  schemaVariantDescription?: string;
-  schemaVariantDocLink?: string;
+  schemaVariantDescription?: null | string;
+  schemaVariantDocLink?: null | string;
   schemaCategory: string;
   hasResource: boolean;
   qualificationTotals: ComponentQualificationTotals;
@@ -319,8 +319,8 @@ export interface BifrostComponent {
   siAttributeValueId: AttributeValueId;
   resourceValueAttributeValueId: AttributeValueId;
   resourceDiff: {
-    current?: string;
-    diff?: string;
+    current?: null | string;
+    diff?: null | string;
   };
   toDelete: boolean;
 }
@@ -332,8 +332,8 @@ export interface ComponentDiff {
   diffStatus: ComponentDiffStatus;
   attributeDiffs: Record<AttributePath, AttributeDiff>;
   resourceDiff: {
-    current?: string;
-    diff?: string;
+    current?: null | string;
+    diff?: null | string;
   };
 }
 
@@ -355,11 +355,11 @@ export type AttributeDiff =
   | {
       // Added
       new: AttributeSourceAndValue;
-      old?: undefined;
+      old?: null | undefined;
     }
   | {
       // Removed
-      new?: undefined;
+      new?: null | undefined;
       old: AttributeSourceAndValue;
     };
 
@@ -437,20 +437,20 @@ export interface AttributeSourceAndValue {
    * If it's a subscription or dynamic function, this will change when the value changes, even
    * though the source does not.
    */
-  $value?: unknown;
+  $value?: null | unknown;
 
   /**
    * If the source is pointed at a secret, this has name and other information about it.
    */
-  $secret?: Secret;
+  $secret?: null | Secret;
 }
 
 /** The place in the tree this came from */
 export interface AttributeSourceLocation {
   /** true if the value came from a "default" or attribute function on the schema */
-  fromSchema?: true;
+  fromSchema?: null | true;
   /** If this came from a dynamic function on a *parent* attribute, this is the path to that attribute */
-  fromAncestor?: AttributePath;
+  fromAncestor?: null | AttributePath;
 }
 
 export type SimplifiedAttributeSource =
@@ -459,24 +459,24 @@ export type SimplifiedAttributeSource =
       componentName: ComponentName;
       path: AttributePath;
 
-      prototype?: undefined;
-      value?: undefined;
+      prototype?: null | undefined;
+      value?: null | undefined;
     }
   | {
       value: unknown;
 
-      component?: undefined;
-      componentName?: undefined;
-      path?: undefined;
-      prototype?: undefined;
+      component?: null | undefined;
+      componentName?: null | undefined;
+      path?: null | undefined;
+      prototype?: null | undefined;
     }
   | {
       prototype: string;
 
-      component?: undefined;
-      componentName?: undefined;
-      path?: undefined;
-      value?: undefined;
+      component?: null | undefined;
+      componentName?: null | undefined;
+      path?: null | undefined;
+      value?: null | undefined;
     };
 
 export interface ErasedComponents {
@@ -487,8 +487,8 @@ export interface ErasedComponents {
       diff: ComponentDiff;
       component: ComponentInList;
       resourceDiff: {
-        current?: string;
-        diff?: string;
+        current?: null | string;
+        diff?: null | string;
       };
     }
   >;
@@ -499,7 +499,7 @@ export interface ErasedComponents {
 export interface ComponentInList {
   id: ComponentId;
   name: string;
-  color?: string;
+  color?: null | string;
   schemaName: string;
   schemaId: SchemaId;
   // Needed for "ComponentInList" usage where the "SchemaVariant" is dropped.
@@ -534,7 +534,7 @@ export interface ActionPrototypeView {
   id: ActionPrototypeId;
   funcId: FuncId;
   kind: ActionKind;
-  displayName?: string;
+  displayName?: null | string;
   name: string;
 }
 
@@ -548,19 +548,19 @@ export interface Prop {
   path: string;
   name: string;
   kind: PropKind;
-  childKind: PropKind;
-  widgetKind: PropertyEditorPropWidgetKind;
-  docLink?: string;
-  documentation?: string;
-  validationFormation?: string;
+  childKind?: null | PropKind;
+  widgetKind?: null | PropertyEditorPropWidgetKind;
+  docLink?: null | string;
+  documentation?: null | string;
+  validationFormat?: null | string;
   defaultCanBeSetBySocket: boolean;
   isOriginSecret: boolean;
-  secretDefinition?: SecretDefinition;
+  secretDefinition?: null | SecretDefinition;
   createOnly: boolean;
   eligibleForConnection: boolean;
   hidden: boolean;
-  suggestSources?: PropSuggestion[];
-  suggestAsSourceFor?: PropSuggestion[];
+  suggestSources?: null | PropSuggestion[];
+  suggestAsSourceFor?: null | PropSuggestion[];
 }
 
 export interface PropSuggestion {
@@ -568,18 +568,26 @@ export interface PropSuggestion {
   prop: string;
 }
 
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | { [key: string]: JsonValue } // Object
+  | JsonValue[] // Array
+  | null;
+
 export interface AttributeValue {
   id: AttributeValueId;
-  key?: string;
+  key?: null | string;
   path: AttributePath;
-  propId?: PropId;
-  value: string | null;
-  canBeSetBySocket: boolean;
-  externalSources?: ExternalSource[];
+  propId?: null | PropId;
+  value: JsonValue;
+  canBeSetBySocket?: null | boolean;
+  externalSources?: null | ExternalSource[];
   isControlledByAncestor: boolean;
   isControlledByDynamicFunc: boolean;
-  overriden: boolean;
-  validation?: ValidationOutput;
+  overridden: boolean;
+  validation?: null | ValidationOutput;
   secret: Secret | null;
   hasSocketConnection: boolean;
   isDefaultSource: boolean;
@@ -593,7 +601,7 @@ export interface ExternalSource {
 }
 
 export interface AVTree {
-  parent?: AttributeValueId;
+  parent?: null | AttributeValueId;
   children: AttributeValueId[];
 }
 
@@ -668,7 +676,7 @@ export interface Secret {
   // The definition of a [`Secret`].
   label: string;
   // The description of a [`Secret`] as provided by the user.
-  description?: string;
+  description?: null | string;
   // If the secret can be used on this workspace
   isUsable: boolean;
 }
@@ -697,19 +705,19 @@ export const emptyDefaultSubs: DefaultSubscriptions = {
 
 export interface AuditLog {
   title: string;
-  userId?: string;
-  userEmail?: string;
-  userName?: string;
+  userId?: null | string;
+  userEmail?: null | string;
+  userName?: null | string;
   kind: string;
   entityName: string;
   entityType: string;
   timestamp: string;
-  changeSetId?: string;
-  changeSetName?: string;
+  changeSetId?: null | string;
+  changeSetName?: null | string;
   metadata: Record<string, unknown>;
   authenticationMethod: {
     method: string;
-    role?: string;
-    tokenId?: string;
+    role?: null | string;
+    tokenId?: null | string;
   };
 }

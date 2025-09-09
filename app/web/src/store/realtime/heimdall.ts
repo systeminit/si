@@ -46,6 +46,7 @@ import {
   SHOW_CACHED_APP_NOTIFICATION_EVENT,
   cachedAppNotificationIsOpen,
 } from "./cached_app_emitter";
+import { innerUseMakeKey, innerUseMakeArgs } from "./heimdall_inner";
 
 // We want an id right away, not later. But ulid fails if run in this context
 // (something about crypto randomValues).  we do not need crypto-secure ulids.
@@ -847,15 +848,7 @@ export const useMakeArgsForHead = () => {
 export const useMakeArgs = () => {
   const ctx: Context | undefined = inject("CONTEXT");
   assertIsDefined<Context>(ctx);
-
-  return <K = Gettable>(kind: EntityKind, id?: string) => {
-    return {
-      workspaceId: ctx.workspacePk.value,
-      changeSetId: ctx.changeSetId.value,
-      kind: kind as K,
-      id: id ?? ctx.workspacePk.value,
-    };
-  };
+  return innerUseMakeArgs(ctx);
 };
 
 export const changeSetExists = async (
@@ -877,31 +870,7 @@ export const changeSetExists = async (
 export const useMakeKey = () => {
   const ctx: Context | undefined = inject("CONTEXT");
   assertIsDefined<Context>(ctx);
-
-  return <K = Gettable>(
-    kind: MaybeRefOrGetter<K>,
-    id?: MaybeRefOrGetter<string>,
-    extension?: MaybeRefOrGetter<string>,
-  ) =>
-    computed<
-      | [string, string, ComputedRef<K> | K, string, string]
-      | [string, string, ComputedRef<K> | K, string]
-    >(() =>
-      extension
-        ? [
-            ctx.workspacePk.value,
-            ctx.changeSetId.value,
-            toValue(kind),
-            toValue(id ?? ctx.workspacePk),
-            toValue(extension),
-          ]
-        : [
-            ctx.workspacePk.value,
-            ctx.changeSetId.value,
-            toValue(kind),
-            toValue(id ?? ctx.workspacePk),
-          ],
-    );
+  return innerUseMakeKey(ctx);
 };
 
 export const useMakeKeyForHead = () => {

@@ -154,6 +154,7 @@
         :key="secret.id"
         :component="component"
         :attributeTree="secret"
+        data-testid="secret"
         @set-default-subscription-source="
           (path, setTo) => setDefaultSubscriptionSourceStatus(path, setTo)
         "
@@ -191,6 +192,7 @@ import {
   AttributeValue,
   BifrostComponent,
   EntityKind,
+  JsonValue,
   MgmtFunction,
 } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
@@ -324,7 +326,7 @@ provide("ATTRIBUTE_ERRORS", errorContext);
 
 const save = async (
   path: AttributePath,
-  value: string,
+  value: JsonValue,
   propKind: PropKind,
   connectingComponentId?: ComponentId,
 ) => {
@@ -333,6 +335,7 @@ const save = async (
     { id: props.component.id },
   );
 
+  value = value?.toString() ?? "";
   const payload = makeSavePayload(path, value, propKind, connectingComponentId);
 
   const { req, newChangeSetId } =
@@ -592,7 +595,7 @@ const resourceIdAttr = computed(() => {
 const resourceIdValue = computed(
   () => resourceIdAttr.value?.attributeValue.value ?? null,
 );
-const resourceIdFormValue = ref<string | undefined>();
+const resourceIdFormValue = ref<JsonValue>();
 
 const importInputRef = ref<HTMLInputElement>();
 

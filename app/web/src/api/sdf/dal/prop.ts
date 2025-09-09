@@ -1,3 +1,5 @@
+import { PropertyEditorPropWidgetKind } from "./property_editor";
+
 export type PropId = string;
 
 export enum PropKind {
@@ -14,6 +16,8 @@ export enum PropKind {
 export interface Prop {
   id: PropId;
   kind: PropKind;
+  childKind?: null | PropKind;
+  widgetKind?: null | PropertyEditorPropWidgetKind;
   name: string;
   path: string;
   // this is for output sources
@@ -28,6 +32,7 @@ export interface Prop {
  */
 export type TopLevelProp =
   | "code"
+  | "deleted_at"
   | "domain"
   | "resource_value"
   | "resource"

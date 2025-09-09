@@ -85,7 +85,7 @@ const showDetails = ref(false);
 const qualification = toRef(props, "qualification");
 
 const qualificationStatus = computed((): QualificationStatus | undefined => {
-  return props.qualification.status;
+  return props.qualification.status ?? undefined;
 });
 
 const dvuApi = useApi();

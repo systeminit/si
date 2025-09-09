@@ -161,5 +161,10 @@ export default (opts: { mode: string }) => {
         },
       },
     },
+    test: {
+      globals: true,
+      environment: "jsdom",
+      include: ["**/newhotness/**/*.test.ts"],
+    },
   });
 };

@@ -16,5 +16,13 @@ module.exports = {
         "import/extensions": 0,
       },
     },
+    {
+      files: ["./src/newhotness/testing/*"],
+      env: { node: true },
+      rules: {
+        // these files often refer to dev dependencies
+        "import/no-extraneous-dependencies": 0,
+      },
+    },
   ],
 };
