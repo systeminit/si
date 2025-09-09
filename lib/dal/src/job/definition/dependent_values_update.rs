@@ -15,11 +15,7 @@ use serde::{
     Serialize,
 };
 use si_events::FuncRunValue;
-use si_frontend_types::DiagramSocket;
-use si_id::{
-    ChangeSetId,
-    SchemaVariantId,
-};
+use si_id::ChangeSetId;
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
@@ -710,34 +706,6 @@ async fn send_status_update(
         .await?
         .publish_immediately(ctx)
         .await?;
-    // If this is the finished event, we should also ensure we send
-    // component_updated when the rebase happens in the job.
-
-    // another wack-a-mole event needed that I'm excited to not have to do
-    // ever again.
-    if let StatusUpdate::DependentValueUpdate {
-        status,
-        component_id,
-        ..
-    } = status_update
-    {
-        if status == StatusMessageState::StatusFinished {
-            let mut diagram_sockets: HashMap<SchemaVariantId, Vec<DiagramSocket>> = HashMap::new();
-            let component = Component::get_by_id(ctx, component_id).await?;
-            let payload = component
-                .into_frontend_type_for_default_view(
-                    ctx,
-                    component.change_status(ctx).await?,
-                    &mut diagram_sockets,
-                )
-                .await?;
-            // don't publish immediately, we want this fired when the rebase lands
-            WsEvent::component_updated(ctx, payload)
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-        }
-    }
     Ok(())
 }
 
