@@ -10,12 +10,12 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 
-const name = "component-generate-template";
+const name = "template-generate";
 const title = "Generate a template from a list a components";
 const description =
   `<description>Generate a template for a given list of componentIds and a name for the template. If the list is empty, do not use this tool. Only include componentIds explicitly listed. The name can either be explicitly given or generated based on the names of the components themselves. The name must be relevant to the components chosen. Returns the 'success' on successful creation of a template. On failure, returns error details.</description><usage>Use this tool to generate a template from at least one component in a change set. Use only the component-list tool to understand the components that are available to be included in a template. For the template name, generate it based on the component names, schema names, and their conceptual relevancy to one another. To see all of its information after the template has been generated, use the schema-find tool.</usage>`;
 
-const ComponentGenerateTemplateInputSchemaRaw = {
+const TemplateGenerateInputSchemaRaw = {
   changeSetId: z.string().describe(
     "The change set to generate a template in; templates cannot be generated on the HEAD change set",
   ),
@@ -37,7 +37,7 @@ const ComponentGenerateTemplateInputSchemaRaw = {
   ),
 };
 
-const ComponentGenerateTemplateOutputSchemaRaw = {
+const TemplateGenerateOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
   errorMessage: z.string().optional().describe(
     "If the status is failure, the error message will contain information about what went wrong",
@@ -77,26 +77,26 @@ const ComponentGenerateTemplateOutputSchemaRaw = {
   ),
 };
 
-const ComponentGenerateTemplateOutputSchema = z.object(
-  ComponentGenerateTemplateOutputSchemaRaw,
+const TemplateGenerateOutputSchema = z.object(
+  TemplateGenerateOutputSchemaRaw,
 );
 
-type ComponentGenerateTemplateResult = z.infer<
-  typeof ComponentGenerateTemplateOutputSchema
+type TemplateGenerateResult = z.infer<
+  typeof TemplateGenerateOutputSchema
 >["data"];
 
-export function componentGenerateTemplateTool(server: McpServer) {
+export function templateGenerateTool(server: McpServer) {
   server.registerTool(
     name,
     {
       title,
       description: generateDescription(
         description,
-        "componentGenerateTemplate",
-        ComponentGenerateTemplateOutputSchema,
+        "templateGenerate",
+        TemplateGenerateOutputSchema,
       ),
-      inputSchema: ComponentGenerateTemplateInputSchemaRaw,
-      outputSchema: ComponentGenerateTemplateOutputSchemaRaw,
+      inputSchema: TemplateGenerateInputSchemaRaw,
+      outputSchema: TemplateGenerateOutputSchemaRaw,
     },
     async (
       { changeSetId, componentIds, templateName },
@@ -122,7 +122,7 @@ export function componentGenerateTemplateTool(server: McpServer) {
             schemaId: response.data.schemaId,
           });
 
-          const result: ComponentGenerateTemplateResult = {
+          const result: TemplateGenerateResult = {
             schemaId: response.data.schemaId,
             schemaVariantId: response.data.schemaVariantId,
             funcId: response.data.funcId,

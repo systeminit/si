@@ -22,8 +22,10 @@ import { componentDeleteTool } from "./tools/componentDelete.ts";
 import { componentEraseTool } from "./tools/componentErase.ts";
 import { componentRestoreTool } from "./tools/componentRestore.ts";
 import { generateSiUrlTool } from "./tools/generateSiUrl.ts";
-import { componentGenerateTemplateTool } from "./tools/componentGenerateTemplate.ts";
 import { upgradeComponentsTool } from "./tools/upgradeComponents.ts";
+import { templateGenerateTool } from "./tools/templateGenerate.ts";
+import { templateRunTool } from "./tools/templateRun.ts";
+import { templateListTool } from "./tools/templateList.ts";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -50,7 +52,9 @@ export function createServer(): McpServer {
   componentDeleteTool(server);
   componentEraseTool(server);
   componentRestoreTool(server);
-  componentGenerateTemplateTool(server);
+  templateGenerateTool(server);
+  templateRunTool(server);
+  templateListTool(server);
   generateSiUrlTool(server);
   upgradeComponentsTool(server);
   importPrompt(server);
