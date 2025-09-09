@@ -1,7 +1,7 @@
 <template>
   <Modal
     ref="modalRef"
-    :title="`Claude CLI - ${sessionDetails?.sessionId || 'Connecting...'}`"
+    :title="`Remote Shell - ${sessionDetails?.sessionId || 'Connecting...'}`"
     size="4xl"
     noEscClose
     @close="handleClose"
@@ -31,7 +31,7 @@
       <!-- Connection Status -->
       <div class="px-3 py-1 bg-gray-900 text-xs text-gray-400 border-t border-gray-700">
         Status: {{ connectionStatus }} | 
-        Mode: Claude CLI |
+        Mode: Shell |
         Session: {{ sessionDetails?.sessionId || 'N/A' }} |
         Container: {{ sessionDetails?.containerId || 'N/A' }}
       </div>
@@ -44,7 +44,7 @@
     >
       <div class="text-center text-white">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-        <p>Starting Claude CLI...</p>
+        <p>Starting remote shell...</p>
         <p class="text-sm text-gray-300 mt-2">{{ connectingMessage }}</p>
       </div>
     </div>
@@ -196,7 +196,7 @@ async function createSession() {
 
   try {
     isConnecting.value = true;
-    connectingMessage.value = "Creating Claude CLI session...";
+    connectingMessage.value = "Creating remote shell session...";
     errorMessage.value = "";
 
     const response = await RemoteShellApi.createSession(
@@ -220,17 +220,15 @@ async function createSession() {
     connectionStatus.value = response.data.status;
     
     if (terminal) {
-      terminal.writeln("\\x1b[32m[System] Claude CLI session created successfully!\\x1b[0m");
-      terminal.writeln(`\\x1b[32m[System] Session ID: ${response.data.sessionId}\\x1b[0m`);
-      terminal.writeln(`\\x1b[32m[System] Container ID: ${response.data.containerId}\\x1b[0m`);
+      terminal.writeln("\x1b[36m• Remote shell session created\x1b[0m");
     }
     
     if (response.data.message) {
-      terminal?.writeln(`\\x1b[32m[System] ${response.data.message}\\x1b[0m`);
+      terminal?.writeln(`\x1b[36m• ${response.data.message}\x1b[0m`);
     }
 
-    connectingMessage.value = "Connecting to Claude CLI...";
-    await connectToClaudeCLI();
+    connectingMessage.value = "Connecting to remote shell...";
+    await connectToRemoteShell();
 
   } catch (error: any) {
     console.error("Failed to create remote shell session:", error);
@@ -241,12 +239,12 @@ async function createSession() {
   }
 }
 
-// Connect to Claude CLI via WebSocket
-async function connectToClaudeCLI() {
+// Connect to remote shell via WebSocket
+async function connectToRemoteShell() {
   if (!sessionDetails.value) return;
 
   try {
-    connectionStatus.value = "Connecting to Claude CLI...";
+    connectionStatus.value = "Connecting to remote shell...";
     
     // Connect to SDF WebSocket endpoint that relays shell I/O
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -255,11 +253,10 @@ async function connectToClaudeCLI() {
     const ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
-      console.log('Claude CLI WebSocket connected');
+      console.log('Remote shell WebSocket connected');
       connectionStatus.value = "Connected";
       if (terminal) {
-        terminal.writeln("\\x1b[32m[System] Claude CLI connected successfully!\\x1b[0m");
-        terminal.writeln("\\x1b[32m[System] Claude CLI is starting...\\x1b[0m");
+        terminal.writeln("\x1b[36m• Connected to shell session\x1b[0m");
         
         // Send terminal dimensions immediately after connection
         ws.send(JSON.stringify({ 
@@ -306,18 +303,18 @@ async function connectToClaudeCLI() {
     };
     
     ws.onclose = (event) => {
-      console.log('Claude CLI WebSocket disconnected:', event.code, event.reason);
+      console.log('Remote shell WebSocket disconnected:', event.code, event.reason);
       connectionStatus.value = "Disconnected";
       if (terminal) {
-        terminal.writeln("\\x1b[31m[System] Claude CLI connection closed\\x1b[0m");
+        terminal.writeln("\x1b[31m• Shell connection closed\x1b[0m");
       }
     };
     
     ws.onerror = (error) => {
-      console.error('Claude CLI WebSocket error:', error);
+      console.error('Remote shell WebSocket error:', error);
       connectionStatus.value = "Connection Failed";
       if (terminal) {
-        terminal.writeln("\\x1b[31m[System] Claude CLI connection error\\x1b[0m");
+        terminal.writeln("\x1b[31m• Shell connection error\x1b[0m");
       }
     };
     
@@ -325,8 +322,8 @@ async function connectToClaudeCLI() {
     shellWebSocket.value = ws;
     
   } catch (error: any) {
-    console.error("Failed to connect to Claude CLI WebSocket:", error);
-    errorMessage.value = "Failed to connect to Claude CLI";
+    console.error("Failed to connect to remote shell WebSocket:", error);
+    errorMessage.value = "Failed to connect to remote shell";
     connectionStatus.value = "Connection Failed";
   }
 }

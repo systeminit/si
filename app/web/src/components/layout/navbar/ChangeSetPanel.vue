@@ -71,23 +71,7 @@
       @click="openAbandonConfirmationModal"
     />
 
-    <NewButton
-      v-tooltip="{
-        content: 'Open Claude CLI',
-      }"
-      data-testid="remote-shell-button"
-      :disabled="
-        !selectedChangeSetName ||
-        changeSetsStore.headSelected ||
-        changeSetsStore.creatingChangeSet ||
-        changeSetsStore.selectedChangeSet?.status ===
-          ChangeSetStatus.NeedsApproval
-      "
-      icon="command"
-      tone="action"
-      class="flex-none"
-      @click="openRemoteShellModal"
-    />
+    <PersistentTerminalPanel ref="terminalPanelRef" />
 
     <Modal ref="createModalRef" title="Create Change Set">
       <form @submit.prevent="onCreateChangeSet">
@@ -128,7 +112,6 @@
     </Modal>
     <AbandonChangeSetModal ref="abandonModalRef" />
     <ChangesetRenameModal v-if="enableChangesetRename" ref="renameModalRef" />
-    <RemoteShellTerminal ref="remoteShellModalRef" />
   </div>
 </template>
 
@@ -151,7 +134,7 @@ import { tw } from "@si/vue-lib";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import AbandonChangeSetModal from "@/components/AbandonChangeSetModal.vue";
-import RemoteShellTerminal from "@/components/RemoteShellTerminalXterm.vue";
+import PersistentTerminalPanel from "@/components/PersistentTerminalPanel.vue";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
 import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
 import * as heimdall from "../../../store/realtime/heimdall";
@@ -209,12 +192,9 @@ const openAbandonConfirmationModal = () => {
   abandonModalRef.value?.open();
 };
 
-const remoteShellModalRef = ref<InstanceType<typeof RemoteShellTerminal> | null>(
+const terminalPanelRef = ref<InstanceType<typeof PersistentTerminalPanel> | null>(
   null,
 );
-const openRemoteShellModal = () => {
-  remoteShellModalRef.value?.open();
-};
 
 const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(
   null,

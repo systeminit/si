@@ -71,16 +71,7 @@
       @click="openAbandonConfirmationModal"
     />
 
-    <NewButton
-      v-tooltip="{
-        content: 'Open Claude CLI',
-      }"
-      data-testid="remote-shell-button"
-      icon="command"
-      tone="action"
-      class="flex-none"
-      @click="openRemoteShellModal"
-    />
+    <PersistentTerminalPanel ref="terminalPanelRef" />
 
     <Modal ref="createModalRef" title="Create Change Set">
       <form @submit.prevent="onCreateChangeSet">
@@ -123,7 +114,6 @@
       :changeSet="changeSet"
     />
     <ChangesetRenameModal ref="renameModalRef" />
-    <RemoteShellTerminal ref="remoteShellModalRef" />
   </div>
 </template>
 
@@ -146,7 +136,7 @@ import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
 import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
 import AbandonChangeSetModal from "./AbandonChangeSetModal.vue";
-import RemoteShellTerminal from "@/components/RemoteShellTerminalXterm.vue";
+import PersistentTerminalPanel from "@/components/PersistentTerminalPanel.vue";
 import * as heimdall from "../../store/realtime/heimdall";
 import { routes, useApi } from "../api_composables";
 import { useChangeSets } from "../logic_composables/change_set";
@@ -215,12 +205,9 @@ function openRenameModal(option: { value: string; label: string }) {
   renameModalRef.value?.open(option.value, option.label);
 }
 
-const remoteShellModalRef = ref<InstanceType<typeof RemoteShellTerminal> | null>(
+const terminalPanelRef = ref<InstanceType<typeof PersistentTerminalPanel> | null>(
   null,
 );
-const openRemoteShellModal = () => {
-  remoteShellModalRef.value?.open();
-};
 
 const createModalRef = ref<InstanceType<typeof Modal>>();
 
