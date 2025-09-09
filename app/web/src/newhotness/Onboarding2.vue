@@ -9,17 +9,14 @@
     >
       <SiLogo class="block h-md w-md flex-none" />
       <NewButton
-        aria-label="RENAME ME"
+        aria-label="schedule-demo-header"
         class="group/schedule font-normal"
         tone="empty"
         :href="scheduleLink"
         target="_blank"
       >
         <span class="text-neutral-400 group-hover/schedule:text-white">
-          Skip the set up, book a call and let us demo it for you.
-        </span>
-        <span class="text-neutral-300 group-hover/schedule:text-white">
-          Schedule a meeting.
+          Not ready? Schedule a meeting and we'll demo it for you.
         </span>
       </NewButton>
     </div>
@@ -37,7 +34,7 @@
                   initializeRequestSentAndSuccessful && 'text-success-200'
                 "
               >
-                Enter a temporary AWS Credential
+                Enter an AWS Credential
               </span>
               <div>1/3</div>
             </div>
@@ -184,13 +181,13 @@
         >
           <template #header>
             <div class="flex flex-row items-center justify-between">
-              <span>Setup your AI Agent</span>
+              <span>Connect your AI Agent</span>
               <div>2/3</div>
             </div>
           </template>
           <template #body>
             <div class="flex flex-col gap-xs">
-              <span>Clone the AI Agent</span>
+              <span>Clone the AI Agent repository</span>
               <CopyableTextBlock
                 text="git clone https://github.com/systeminit/si-ai-agent.git"
               />
@@ -237,14 +234,15 @@
         <OnboardingStepBlock v-else>
           <template #header>
             <div class="flex flex-row items-center justify-between">
-              <span>Run your first prompt</span>
+              <span>Try your first prompt</span>
               <div class="text-success-300">3/3</div>
             </div>
           </template>
           <template #body>
             <div>
-              Set up the AI agent and run these prompts to see System Initiative
-              in action:
+              Now that you have connected your AI agent, you can use any of
+              these prompts, or one of your own, to see System Initiative in
+              action:
             </div>
             <CopyableTextBlock
               v-for="(prompt, index) in prompts"
@@ -253,10 +251,9 @@
               prompt
             />
           </template>
-          <template #footerLeft> Ready to see your prompt in action? </template>
           <template #footerRight>
             <NewButton
-              label="Take me there"
+              label="Get Started"
               tone="action"
               @click="closeOnboarding"
             />
@@ -267,7 +264,8 @@
         class="flex-1 basis-1/4 min-w-0 flex flex-col gap-lg ml-xl font-medium"
       >
         <div class="text-xl">
-          <span class="text-neutral-400">Your workspace</span> ready for action
+          <span class="text-neutral-400">Your workspace</span> will be ready
+          with these simple steps
         </div>
         <div class="flex flex-col">
           <div
@@ -332,7 +330,7 @@
           class="text-neutral-300 hover:text-white hover:underline cursor-pointer"
           @click="() => noCredModal?.open()"
         >
-          I don't have a AWS Credential
+          I don't use AWS, what do I do?
         </div>
       </template>
       <template v-else-if="currentStep === OnboardingStep.SETUP_AI">
@@ -349,27 +347,32 @@
       size="xl"
       type="done"
     >
-      With a credential, you'll see System Initiative at full power. No mock
-      data, you’ll get the real thing. All data is encrypted.
+      <span>
+        System Initiative is an AI Native Infrastructure Automation Platform
+        that provides a real-time digital twin of your infrastructure. To do
+        that, we need access to your AWS account to securely manage your
+        infrastructure. Nothing changes without your approval.
+      </span>
+      <br />
+      <span>
+        Your secrets are safe. They are encrypted in transit and at rest using
+        industry best-practice cryptography.
+      </span>
     </Modal>
     <Modal
       ref="noCredModal"
-      title="I don't have a AWS Credential"
+      title="I don't use AWS, what do I do?"
       onboardingModal
       size="xl"
       type="done"
     >
       <div>
-        <span>We're multi-tenant. </span>
-        <a
-          :href="scheduleLink"
-          target="_blank"
-          class="underline hover:text-action-300"
-          >Reach out</a
-        >
+        <a :href="mailToLink" class="underline hover:text-action-300">
+          Reach out
+        </a>
         <span>
-          and let us know what providers you work with. We'll understand your
-          use case and help you get started.
+          and let us know what providers you work with that we should add
+          support for.
         </span>
       </div>
     </Modal>
@@ -400,20 +403,30 @@ import { prompts } from "./WelcomeBanner.vue";
 const scheduleLink =
   "https://calendly.com/d/cns7-v2b-jkz/system-initiative-demo";
 
+const mailToLink = computed(() => {
+  const to = "help@systeminit.com";
+  const subject = encodeURIComponent("Provider Support");
+  const body = encodeURIComponent(
+    "Please tell us what providers you are interested in support for:",
+  );
+  return `mailto:${to}?subject=${subject}&body=${body}`;
+});
+
 const steps = [
   {
-    primaryText: "Enter a temporary AWS credential and select a region",
+    primaryText: "Enter an AWS credential and select a region",
     secondaryText:
       "With a credential, you'll see System Initiative at full power. No mock data, you’ll get the real thing.",
   },
   {
-    primaryText: "Get your AI Agent token",
+    primaryText: "Connect our AI Agent",
     secondaryText:
-      "We're an AI-native platform. Use your token to activate Claude.",
+      "Use our AI Agent to solve your problems quickly and easily. Automate your infrastructure, explain how it works, propose changes, optimize costs, perform security reviews, etc.",
   },
   {
-    primaryText: "Run your first prompt",
-    secondaryText: "That's all you need to see everything we have to offer.",
+    primaryText: "Try your first prompt",
+    secondaryText:
+      "Use the sample prompts to perform automation tasks in minutes.",
   },
 ];
 
