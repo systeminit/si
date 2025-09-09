@@ -47,7 +47,6 @@ use crate::{
     Func,
     FuncError,
     HelperError,
-    SchemaVariant,
     SchemaVariantError,
     TransactionsError,
     WorkspaceSnapshotError,
@@ -877,13 +876,13 @@ impl Action {
         should_dispatch: bool,
     ) -> ActionResult<()> {
         let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-        let refresh_actions = SchemaVariant::find_action_prototypes_by_kind(
+        let refresh_actions = ActionPrototype::find_by_kind_for_schema_or_variant(
             ctx,
-            schema_variant_id,
             ActionKind::Refresh,
+            schema_variant_id,
         )
         .await?;
-        if let Ok(&prototype_id) = refresh_actions.iter().exactly_one().map_err(|_| {
+        if let Ok(prototype) = refresh_actions.iter().exactly_one().map_err(|_| {
             ActionError::UnexpectedNumberOfActionKinds(ActionKind::Refresh, schema_variant_id)
         }) {
             let maybe_duplicate_action =
@@ -905,7 +904,7 @@ impl Action {
                         Action::dispatch_action(ctx, action_id).await?;
                     } else {
                         let new_action_id =
-                            Self::enqueue_new_refresh(ctx, prototype_id, component_id).await?;
+                            Self::enqueue_new_refresh(ctx, prototype.id(), component_id).await?;
                         Action::dispatch_action(ctx, new_action_id).await?;
                     }
                 } else {
@@ -923,7 +922,8 @@ impl Action {
                 }
             } else {
                 // No duplicate actions - create a new one and optionally dispatch
-                let action_id = Self::enqueue_new_refresh(ctx, prototype_id, component_id).await?;
+                let action_id =
+                    Self::enqueue_new_refresh(ctx, prototype.id(), component_id).await?;
                 if should_dispatch {
                     Action::dispatch_action(ctx, action_id).await?;
                 }

@@ -13,6 +13,7 @@ use si_events::{
     FuncRunId,
 };
 use si_frontend_types::DiagramComponentView;
+use si_id::SchemaId;
 use si_layer_cache::LayerDbError;
 use si_pkg::ActionFuncSpecKind;
 use strum::Display;
@@ -34,6 +35,8 @@ use crate::{
     EdgeWeightKindDiscriminants,
     FuncError,
     HelperError,
+    Schema,
+    SchemaError,
     SchemaVariant,
     SchemaVariantError,
     SchemaVariantId,
@@ -43,11 +46,15 @@ use crate::{
     WsEventError,
     WsEventResult,
     WsPayload,
-    action::ActionId,
+    action::{
+        Action,
+        ActionId,
+    },
     component::ComponentUpdatedPayload,
     diagram::DiagramError,
     func::{
         FuncId,
+        binding::EventualParent,
         runner::{
             FuncRunner,
             FuncRunnerError,
@@ -90,6 +97,10 @@ pub enum ActionPrototypeError {
     LayerDb(#[from] LayerDbError),
     #[error("Node Weight error: {0}")]
     NodeWeight(#[from] Box<NodeWeightError>),
+    #[error("Action prototype {0} is orphaned")]
+    Orphaned(ActionPrototypeId),
+    #[error("schema error: {0}")]
+    Schema(#[from] Box<SchemaError>),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("schema variant not found for prototype: {0}")]
@@ -237,6 +248,33 @@ impl From<ActionKind> for ActionFuncSpecKind {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ActionPrototypeParent {
+    Schema(SchemaId),
+    SchemaVariant(SchemaVariantId),
+}
+
+impl From<ActionPrototypeParent> for EventualParent {
+    fn from(value: ActionPrototypeParent) -> Self {
+        match value {
+            ActionPrototypeParent::Schema(id) => EventualParent::Schema(id),
+            ActionPrototypeParent::SchemaVariant(id) => EventualParent::SchemaVariant(id),
+        }
+    }
+}
+
+impl From<SchemaId> for ActionPrototypeParent {
+    fn from(value: SchemaId) -> Self {
+        ActionPrototypeParent::Schema(value)
+    }
+}
+
+impl From<SchemaVariantId> for ActionPrototypeParent {
+    fn from(value: SchemaVariantId) -> Self {
+        ActionPrototypeParent::SchemaVariant(value)
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ActionPrototype {
     pub id: ActionPrototypeId,
@@ -266,11 +304,12 @@ impl ActionPrototype {
         kind: ActionKind,
         name: String,
         description: Option<String>,
-        schema_variant_id: SchemaVariantId,
+        parent_id: impl Into<ActionPrototypeParent>,
         func_id: FuncId,
     ) -> ActionPrototypeResult<Self> {
         let new_id: ActionPrototypeId = ctx.workspace_snapshot()?.generate_ulid().await?.into();
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
+        let parent_id = parent_id.into();
         let node_weight =
             NodeWeight::new_action_prototype(new_id.into(), lineage_id, kind, name, description);
         ctx.workspace_snapshot()?
@@ -279,13 +318,27 @@ impl ActionPrototype {
 
         Self::add_edge_to_func(ctx, new_id, func_id, EdgeWeightKind::new_use()).await?;
 
-        SchemaVariant::add_edge_to_action_prototype(
-            ctx,
-            schema_variant_id,
-            new_id,
-            EdgeWeightKind::ActionPrototype,
-        )
-        .await?;
+        match parent_id {
+            ActionPrototypeParent::Schema(schema_id) => {
+                Schema::add_edge_to_action_prototype(
+                    ctx,
+                    schema_id,
+                    new_id,
+                    EdgeWeightKind::ActionPrototype,
+                )
+                .await
+                .map_err(Box::new)?;
+            }
+            ActionPrototypeParent::SchemaVariant(schema_variant_id) => {
+                SchemaVariant::add_edge_to_action_prototype(
+                    ctx,
+                    schema_variant_id,
+                    new_id,
+                    EdgeWeightKind::ActionPrototype,
+                )
+                .await?;
+            }
+        }
 
         let new_prototype: Self = ctx
             .workspace_snapshot()?
@@ -362,10 +415,53 @@ impl ActionPrototype {
         Ok(action_prototype_ids)
     }
 
+    pub async fn parent_id(
+        ctx: &DalContext,
+        id: ActionPrototypeId,
+    ) -> ActionPrototypeResult<ActionPrototypeParent> {
+        if let Some(schema_id) = Self::schema_id(ctx, id).await? {
+            Ok(ActionPrototypeParent::Schema(schema_id))
+        } else if let Some(schema_variant_id) = Self::schema_variant_id(ctx, id).await? {
+            Ok(ActionPrototypeParent::SchemaVariant(schema_variant_id))
+        } else {
+            Err(ActionPrototypeError::Orphaned(id))
+        }
+    }
+
+    /// If this Action Prototype is parented by a Schema, returns the Schema Id.
+    pub async fn schema_id(
+        ctx: &DalContext,
+        id: ActionPrototypeId,
+    ) -> ActionPrototypeResult<Option<SchemaId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        // Schemas have an outgoing edge to the action prototype, which have an incoming edge from the schema
+        let Some(maybe_schema_id) = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::ActionPrototype)
+            .await?
+            .into_iter()
+            .next()
+        else {
+            return Ok(None);
+        };
+
+        if let NodeWeight::Content(content_weight) = ctx
+            .workspace_snapshot()?
+            .get_node_weight(maybe_schema_id)
+            .await?
+        {
+            if ContentAddressDiscriminants::Schema == content_weight.content_address().into() {
+                return Ok(Some(maybe_schema_id.into()));
+            }
+        }
+        Ok(None)
+    }
+
+    /// If this Action Prototype is parented by a SchemaVariant, returns the SchemaVariant Id.
     pub async fn schema_variant_id(
         ctx: &DalContext,
         id: ActionPrototypeId,
-    ) -> ActionPrototypeResult<SchemaVariantId> {
+    ) -> ActionPrototypeResult<Option<SchemaVariantId>> {
         for (_, tail_node_idx, _head_node_idx) in ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(
@@ -382,16 +478,50 @@ impl ActionPrototype {
 
             if NodeWeightDiscriminants::from(&node_weight) == NodeWeightDiscriminants::SchemaVariant
             {
-                return Ok(node_weight.id().into());
+                return Ok(Some(node_weight.id().into()));
             } else if let NodeWeight::Content(content_weight) = &node_weight {
                 if ContentAddressDiscriminants::from(content_weight.content_address())
                     == ContentAddressDiscriminants::SchemaVariant
                 {
-                    return Ok(node_weight.id().into());
+                    return Ok(Some(node_weight.id().into()));
                 }
             }
         }
-        Err(ActionPrototypeError::SchemaVariantNotFoundForPrototype(id))
+
+        Ok(None)
+    }
+
+    /// Find the action prototype for a given kind. If a prototype is one of the
+    /// unique ones (`ActionKind::Create`, `ActionKind::Update`,
+    /// `ActionKind::Refresh`, `ActionKind::Destroy`), then look first for the
+    /// version defined at the schema level, and only look for the variant level
+    /// if no schema level prototype is found. For `ActionKind::Manual`, find
+    /// prototype at both levels.
+    pub async fn find_by_kind_for_schema_or_variant(
+        ctx: &DalContext,
+        kind: ActionKind,
+        schema_variant_id: SchemaVariantId,
+    ) -> ActionPrototypeResult<Vec<Self>> {
+        let schema_id = SchemaVariant::schema_id(ctx, schema_variant_id).await?;
+
+        let mut prototypes = vec![];
+        prototypes.extend(
+            Self::for_schema(ctx, schema_id)
+                .await?
+                .into_iter()
+                .filter(|proto| proto.kind == kind),
+        );
+
+        if prototypes.is_empty() || kind == ActionKind::Manual {
+            prototypes.extend(
+                Self::for_variant(ctx, schema_variant_id)
+                    .await?
+                    .into_iter()
+                    .filter(|proto| proto.kind == kind),
+            );
+        }
+
+        Ok(prototypes)
     }
 
     pub async fn run(
@@ -485,6 +615,32 @@ impl ActionPrototype {
         Ok((maybe_run_result, func_run_value.func_run_id()))
     }
 
+    pub async fn for_schema(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> ActionPrototypeResult<Vec<Self>> {
+        let prototype_edges = ctx
+            .workspace_snapshot()?
+            .edges_directed_for_edge_weight_kind(
+                schema_id,
+                Outgoing,
+                EdgeWeightKindDiscriminants::ActionPrototype,
+            )
+            .await?;
+        let mut prototypes = Vec::with_capacity(prototype_edges.len());
+        for (_, _, head_node_id) in prototype_edges {
+            if let NodeWeight::ActionPrototype(node_weight) = ctx
+                .workspace_snapshot()?
+                .get_node_weight(head_node_id)
+                .await?
+            {
+                prototypes.push(node_weight.into());
+            }
+        }
+
+        Ok(prototypes)
+    }
+
     pub async fn for_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -498,10 +654,10 @@ impl ActionPrototype {
             )
             .await?;
         let mut prototypes = Vec::with_capacity(prototype_edges.len());
-        for (_, _tail_node_idx, head_node_idx) in prototype_edges {
+        for (_, _, head_node_id) in prototype_edges {
             if let NodeWeight::ActionPrototype(node_weight) = ctx
                 .workspace_snapshot()?
-                .get_node_weight(head_node_idx)
+                .get_node_weight(head_node_id)
                 .await?
             {
                 prototypes.push(node_weight.into());
@@ -513,24 +669,37 @@ impl ActionPrototype {
 
     pub async fn get_prototypes_to_trigger(
         ctx: &DalContext,
-        id: ActionPrototypeId,
+        action_id: ActionId,
+        prototype_id: ActionPrototypeId,
     ) -> ActionPrototypeResult<Vec<ActionPrototypeId>> {
         // for now we are only defaulting to triggering a
         // refresh when a create action succeeds
         // in the future, this will be configurable and we'll look up edges
-        let mut triggered_actions = vec![];
-        let action_prototype = Self::get_by_id(ctx, id).await?;
-        if action_prototype.kind == ActionKind::Create {
-            // find refresh func for schema variant
-            let schema_variant_id = Self::schema_variant_id(ctx, id).await?;
-            let prototypes = Self::for_variant(ctx, schema_variant_id).await?;
-            for prototype in prototypes {
-                if prototype.kind == ActionKind::Refresh {
-                    triggered_actions.push(prototype.id());
-                }
-            }
+        let action_prototype = Self::get_by_id(ctx, prototype_id).await?;
+
+        // Currently we only trigger a refresh for a create
+        if action_prototype.kind != ActionKind::Create {
+            return Ok(vec![]);
         }
-        Ok(triggered_actions)
+
+        // Although we may in the future support actions without components,
+        // right now that is not meaningful
+        let Some(component_id) = Action::component_id(ctx, action_id)
+            .await
+            .map_err(Box::new)?
+        else {
+            return Ok(vec![]);
+        };
+
+        let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+
+        Ok(
+            Self::find_by_kind_for_schema_or_variant(ctx, ActionKind::Refresh, schema_variant_id)
+                .await?
+                .into_iter()
+                .map(|proto| proto.id())
+                .collect(),
+        )
     }
 
     async fn find_enqueued_actions(

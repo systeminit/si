@@ -21,6 +21,7 @@ use crate::{
     action::prototype::{
         ActionKind,
         ActionPrototype,
+        ActionPrototypeParent,
     },
     func::binding::FuncBindingError,
     prop::PropPath,
@@ -68,8 +69,7 @@ impl ActionBinding {
         action_prototype_id: ActionPrototypeId,
         kind: ActionKind,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
-        let schema_variant_id =
-            ActionPrototype::schema_variant_id(ctx, action_prototype_id).await?;
+        let prototype_parent = ActionPrototype::parent_id(ctx, action_prototype_id).await?;
         let func_id = ActionPrototype::func_id(ctx, action_prototype_id).await?;
         let func = Func::get_by_id(ctx, func_id).await?; // delete and recreate the prototype
 
@@ -79,7 +79,7 @@ impl ActionBinding {
             kind,
             func.name.to_owned(),
             func.description.to_owned(),
-            schema_variant_id,
+            prototype_parent,
             func_id,
         )
         .await?;
@@ -124,7 +124,7 @@ impl ActionBinding {
             action_kind,
             func.name.to_owned(),
             func.description.to_owned(),
-            schema_variant_id,
+            ActionPrototypeParent::SchemaVariant(schema_variant_id),
             func.id,
         )
         .await?;
@@ -143,13 +143,15 @@ impl ActionBinding {
         action_prototype_id: ActionPrototypeId,
     ) -> FuncBindingResult<EventualParent> {
         // don't delete binding if parent is locked
-        let schema_variant_id =
-            ActionPrototype::schema_variant_id(ctx, action_prototype_id).await?;
-        SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
+        let parent_id = ActionPrototype::parent_id(ctx, action_prototype_id).await?;
+
+        if let ActionPrototypeParent::SchemaVariant(schema_variant_id) = parent_id {
+            SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
+        }
 
         ActionPrototype::remove(ctx, action_prototype_id).await?;
 
-        Ok(EventualParent::SchemaVariant(schema_variant_id))
+        Ok(parent_id.into())
     }
 
     pub(crate) async fn compile_action_types(
