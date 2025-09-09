@@ -14,12 +14,12 @@
           !expandable && 'h-full',
           prompt ? 'p-sm' : 'p-xs',
           themeClasses(
-            'border-neutral-400 bg-neutral-300',
+            'border-neutral-400 bg-neutral-100',
             'bg-neutral-900 border border-neutral-600',
           ),
           !hoverSubIcon &&
             themeClasses(
-              'hover:bg-neutral-400 active:bg-neutral-500',
+              'hover:bg-neutral-300 active:bg-neutral-400',
               'hover:bg-neutral-600 active:bg-neutral-700',
             ),
         )

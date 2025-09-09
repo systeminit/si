@@ -1,7 +1,22 @@
 <template>
-  <div class="bg-neutral-800 rounded border border-neutral-600">
+  <div
+    :class="
+      clsx(
+        'rounded border',
+        themeClasses(
+          'bg-white border-neutral-300',
+          'bg-neutral-800 border-neutral-600',
+        ),
+      )
+    "
+  >
     <div
-      :class="clsx('p-sm border-neutral-600 select-none rounded-t', 'border-b')"
+      :class="
+        clsx(
+          'p-sm select-none rounded-t border-b',
+          themeClasses('border-neutral-300', 'border-neutral-600'),
+        )
+      "
     >
       <slot name="header" />
     </div>
@@ -20,5 +35,6 @@
 </template>
 
 <script lang="ts" setup>
+import { themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 </script>
