@@ -932,13 +932,13 @@ const currentComponentIndex = computed(() => {
 });
 
 const canGoBack = computed(() => {
-  // Always enabled if there are components (will select first if none selected, or go back if one is selected)
-  return filteredComponentList.value?.length > 0;
+  // Disabled if there are no changes or only 1 change
+  return (filteredComponentList.value?.length ?? 0) > 1;
 });
 
 const canGoForward = computed(() => {
-  // Always enabled if there are components (will select first if none selected, or go forward if one is selected)
-  return filteredComponentList.value?.length > 0;
+  // Disabled if there are no changes or only 1 change
+  return (filteredComponentList.value?.length ?? 0) > 1;
 });
 
 const goToPreviousComponent = (e?: Event) => {
