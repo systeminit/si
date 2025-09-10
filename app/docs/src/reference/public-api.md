@@ -763,6 +763,7 @@ Components management endpoints
 
 ```json
 {
+  "schemaCategory": "AWS::EC2",
   "schemaName": "AWS::EC2::Instance",
   "upgradable": true
 }
@@ -5352,6 +5353,7 @@ Component details in action response
 
 ```json
 {
+  "schemaCategory": "AWS::EC2",
   "schemaName": "AWS::EC2::Instance",
   "upgradable": true
 }
@@ -5362,6 +5364,7 @@ Component details in action response
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|schemaCategory|string,null|false|none|none|
 |schemaName|string,null|false|none|none|
 |upgradable|boolean,null|false|none|none|
 

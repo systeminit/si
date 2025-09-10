@@ -26,9 +26,10 @@ class SearchComponentsV1Request(BaseModel):
     """
     SearchComponentsV1Request
     """ # noqa: E501
+    schema_category: Optional[StrictStr] = Field(default=None, alias="schemaCategory")
     schema_name: Optional[StrictStr] = Field(default=None, alias="schemaName")
     upgradable: Optional[StrictBool] = None
-    __properties: ClassVar[List[str]] = ["schemaName", "upgradable"]
+    __properties: ClassVar[List[str]] = ["schemaCategory", "schemaName", "upgradable"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -69,6 +70,11 @@ class SearchComponentsV1Request(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if schema_category (nullable) is None
+        # and model_fields_set contains the field
+        if self.schema_category is None and "schema_category" in self.model_fields_set:
+            _dict['schemaCategory'] = None
+
         # set to None if schema_name (nullable) is None
         # and model_fields_set contains the field
         if self.schema_name is None and "schema_name" in self.model_fields_set:
@@ -91,6 +97,7 @@ class SearchComponentsV1Request(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "schemaCategory": obj.get("schemaCategory"),
             "schemaName": obj.get("schemaName"),
             "upgradable": obj.get("upgradable")
         })
