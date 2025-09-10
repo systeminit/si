@@ -451,8 +451,9 @@ const checkOnboardingCompleteData = async () => {
   const { data, status } = await call.get();
 
   if (status !== 200) {
-    tokenFail.value = true;
-    tokenFailStatus.value = status;
+    // If we don't get onboarding status back successfully, default to skipping onboarding.
+    // Because we do not want to end up in a state where a user is locked out of a workspace!
+    onboardingCompleted.value = true;
     return;
   }
 
