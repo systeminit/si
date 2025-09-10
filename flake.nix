@@ -66,7 +66,7 @@
           b3sum
           buck2
           deno
-          git
+          gitMinimal
           makeWrapper
           nodePkgs.pnpm
           nodejs

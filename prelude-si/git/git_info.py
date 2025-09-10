@@ -70,6 +70,7 @@ def parse_git_show() -> Dict[str, str]:
         "git",
         "show",
         "--no-patch",
+        "--abbrev=8",
         f"--format=format:{format_str}",
     ]
     result = subprocess.run(git_show_cmd, capture_output=True)
@@ -99,6 +100,7 @@ def finalize(data: Dict[str, Any]):
         ABBREVIATED_COMMIT_HASH,
         "HASH-NOT-FOUND",
     )
+    abbreviated_commit_hash = abbreviated_commit_hash[:8]
     dt_str = data.get(COMMITER_DATE_STRICT)
     is_dirty = data.get(IS_DIRTY)
 
