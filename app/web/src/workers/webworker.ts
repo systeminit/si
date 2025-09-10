@@ -1013,7 +1013,7 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
       operations: msg.patch.patch,
       id: msg.meta.workspaceId,
     };
-    patchAtom(db, atom);
+    await patchAtom(db, atom);
     const inserted = insertAtomMTM(db, atom, msg.meta.toIndexChecksum);
     span.setAttribute("insertedMTM", inserted);
     span.end();
