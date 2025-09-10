@@ -6,15 +6,9 @@
     @scrollend="handleScrollEnd"
   >
     <div class="flex flex-row justify-between items-center gap-xs pb-xs">
+      <NewButton class="grow" label="Expand All" @click="handleAll('expand')" />
       <NewButton
         class="grow"
-        size="xs"
-        label="Expand All"
-        @click="handleAll('expand')"
-      />
-      <NewButton
-        class="grow"
-        size="xs"
         label="Collapse All"
         @click="handleAll('collapse')"
       />

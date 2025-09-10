@@ -4,6 +4,7 @@
 // without creating anything, and without needing to pass the AI agent checks.
 // Debug mode also ALWAYS shows button disabled tooltips so they can be seen
 // MAKE SURE YOU SET IT BACK TO FALSE WHEN YOU ARE DONE!
+// MAKE SURE YOU TEST THE FUNCTIONALITY OF THE FLOW WITH DEBUG MODE TURNED OFF!
 export const DEBUG_MODE = false;
 </script>
 

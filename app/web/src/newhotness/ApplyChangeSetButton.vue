@@ -4,20 +4,12 @@
       ref="applyButtonRef"
       tone="action"
       label="Apply Change Set"
+      :pill="proposedActions.length"
       class="ml-2xs mr-xs"
       loadingText="Applying Changes"
       :loading="applyInFlight"
       @click="openApplyChangeSetModal"
-    >
-      <template #iconRight>
-        <PillCounter
-          :count="proposedActions.length"
-          :paddingX="proposedActions.length > 10 ? '2xs' : 'xs'"
-          noColorStyles
-          class="border border-action-200 ml-2xs py-2xs"
-        />
-      </template>
-    </NewButton>
+    />
     <ApplyChangeSetModal
       ref="applyChangeSetModalRef"
       votingKind="merge"
@@ -29,7 +21,7 @@
 <script lang="ts" setup>
 import { computed, ref, watchEffect, nextTick } from "vue";
 import * as _ from "lodash-es";
-import { PillCounter, NewButton } from "@si/vue-lib/design-system";
+import { NewButton } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
 import { useRoute, useRouter } from "vue-router";
 import {

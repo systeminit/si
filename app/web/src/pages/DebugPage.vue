@@ -42,17 +42,27 @@
 
       <div class="w-full px-lg text-xl text-left">Button Garden (NEW UI)</div>
       <div
-        class="w-full flex flex-row gap-sm flex-wrap px-lg pb-lg justify-start"
+        v-for="num in Array(6).keys()"
+        :key="num"
+        :class="
+          clsx(
+            'w-full flex flex-row gap-sm flex-wrap px-lg justify-start h-8',
+            num === 5 && 'mb-lg',
+          )
+        "
       >
-        <NewButton label="Neutral" />
-        <NewButton label="Action" tone="action" />
-        <NewButton label="Warning" tone="warning" />
-        <NewButton label="Destructive" tone="destructive" />
-        <NewButton
-          v-tooltip="'Here is the tooltip'"
-          label="Disabled"
-          disabled
-        />
+        <template v-for="variant in buttonVariants" :key="variant">
+          <NewButton
+            v-tooltip="getButtonTooltip(variant)"
+            :label="variant.charAt(0).toUpperCase() + variant.slice(1)"
+            :tone="variant !== 'disabled' ? (variant as ButtonTones) : undefined"
+            :pill="num > 3 ? 'test' : undefined"
+            :icon="num === 1 || num === 5 ? 'cat' : undefined"
+            :iconRight="num === 2 ? 'cat' : undefined"
+            :loading="num === 3"
+            :disabled="variant === 'disabled'"
+          />
+        </template>
       </div>
 
       <div class="w-full px-lg text-xl text-left">
@@ -247,10 +257,13 @@ import {
   ColorNamesArray,
   SPINNABLE_ICONS,
   NewButton,
+  ButtonTones,
+  BUTTON_TONES,
 } from "@si/vue-lib/design-system";
 import { colors } from "@si/vue-lib";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import clsx from "clsx";
+import { computed } from "vue";
 import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
 import EmptyStateIcon, { BIG_ICONS } from "@/components/EmptyStateIcon.vue";
 import AppLayout from "@/components/layout/AppLayout.vue";
@@ -271,4 +284,18 @@ type ColorNumber =
 
 const indexToColorNumber = (i: number) =>
   (i === 1 ? 50 : (i - 1) * 100).toString() as ColorNumber;
+
+const buttonVariants = computed(() => [...BUTTON_TONES, "disabled"]);
+
+const getButtonTooltip = (variant: string) => {
+  if (variant === "disabled") {
+    return "Disabled buttons can have explanatory tooltips";
+  } else if (variant === "empty") {
+    return "The empty variant is used to clear all tone related styles";
+  } else if (variant === "nostyle") {
+    return "The nostyle variant is used to clear ALL styles";
+  } else {
+    return undefined;
+  }
+};
 </script>
