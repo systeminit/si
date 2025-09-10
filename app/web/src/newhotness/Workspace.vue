@@ -44,7 +44,15 @@
     </nav>
     <div
       v-if="!hasUsedAiAgent"
-      class="w-full shrink-0 flex flex-row items-center justify-between bg-[#7D4A1740] border border-warning-500 px-sm py-xs"
+      :class="
+        clsx(
+          'w-full shrink-0 flex flex-row items-center justify-between border px-sm py-xs',
+          themeClasses(
+            'bg-warning-100 border-warning-600',
+            'bg-newhotness-warningdark border-warning-500',
+          ),
+        )
+      "
     >
       <div class="flex flex-row items-center gap-xs">
         <Icon name="alert-triangle-outline" class="text-warning-500" />
@@ -170,7 +178,7 @@ import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { muspelheimStatuses } from "@/store/realtime/heimdall";
 import Onboarding from "@/newhotness/Onboarding.vue";
 import { trackEvent } from "@/utils/tracking";
-import Onboarding2 from "@/newhotness/Onboarding2.vue";
+import Onboarding2, { DEBUG_MODE } from "@/newhotness/Onboarding2.vue";
 import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
@@ -461,6 +469,9 @@ const lobby = computed(
 );
 
 const showOnboarding = computed(() => {
+  // Force Onboarding2 if this debug boolean is set to true
+  if (DEBUG_MODE) return true;
+
   if (!featureFlagsStore.INITIALIZER_ONBOARD) return false;
 
   return !onboardingCompleted.value;

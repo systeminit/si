@@ -75,20 +75,37 @@
               <div
                 :class="
                   clsx(
-                    'border-neutral-200 dark:border-shade-100 flex flex-col place-content-center text-sm',
-                    !noInnerPadding && !noWrapper && 'p-sm',
+                    'flex flex-col place-content-center text-sm',
+                    themeClasses('border-neutral-400', 'border-neutral-600'),
+                    !noInnerPadding &&
+                      !noWrapper &&
+                      !buttonConfiguration &&
+                      'p-sm',
                     !noWrapper && 'border-t',
                   )
                 "
               >
-                <slot />
+                <slot v-if="!buttonConfiguration" />
+                <div
+                  v-else
+                  :class="clsx(!noInnerPadding && !noWrapper && 'p-sm')"
+                >
+                  <slot />
+                </div>
 
-                <template v-if="!noWrapper">
-                  <div
-                    v-if="type === 'save'"
-                    class="flex flex-row justify-between gap-sm pt-xs"
-                  >
-                    <slot name="leftButton" />
+                <div
+                  v-if="
+                    !noWrapper && (buttonConfiguration || $slots.leftButton)
+                  "
+                  :class="
+                    clsx(
+                      'flex flex-row p-xs border-t justify-between gap-sm',
+                      themeClasses('border-neutral-400', 'border-neutral-600'),
+                    )
+                  "
+                >
+                  <slot name="leftButton" />
+                  <template v-if="buttonConfiguration === 'save'">
                     <NewButton
                       icon="x"
                       label="Cancel"
@@ -103,14 +120,13 @@
                       tone="action"
                       @click="emit('save')"
                     />
-                  </div>
-                  <div
-                    v-else-if="type === 'done'"
-                    class="flex flex-row justify-end pt-xs"
-                  >
+                  </template>
+                  <template v-else-if="buttonConfiguration === 'done'">
+                    <!-- Empty div here forces the one button to the right even if there is no left button-->
+                    <div />
                     <NewButton label="Done" tone="action" @click="close" />
-                  </div>
-                </template>
+                  </template>
+                </div>
               </div>
 
               <div
@@ -173,7 +189,7 @@ import {
 import { PropType, toRef, ref } from "vue";
 import clsx from "clsx";
 import { Icon, NewButton } from "..";
-import { useThemeContainer } from "../utils/theme_tools";
+import { themeClasses, useThemeContainer } from "../utils/theme_tools";
 
 const props = defineProps({
   beginOpen: { type: Boolean, default: false },
@@ -187,8 +203,8 @@ const props = defineProps({
   capitalizeTitle: { type: Boolean, default: true },
   noExit: { type: Boolean },
   hideExitButton: { type: Boolean },
-  type: {
-    type: String as PropType<"save" | "done" | "custom">,
+  buttonConfiguration: {
+    type: String as PropType<"save" | "done">,
   },
   disableSave: {
     type: Boolean,

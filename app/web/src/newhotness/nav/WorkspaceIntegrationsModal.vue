@@ -1,7 +1,7 @@
 <template>
   <Modal
     ref="modalRef"
-    type="save"
+    buttonConfiguration="save"
     size="sm"
     saveLabel="Save"
     title="Save Integrations"

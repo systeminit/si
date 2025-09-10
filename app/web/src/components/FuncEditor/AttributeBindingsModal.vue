@@ -1,7 +1,7 @@
 <template>
   <Modal
     ref="bindingsModalRef"
-    type="save"
+    buttonConfiguration="save"
     :saveLabel="isCreating ? 'Add Binding' : 'Update Binding'"
     size="2xl"
     :title="modalTitle"

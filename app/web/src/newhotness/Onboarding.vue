@@ -267,7 +267,7 @@
                 />
                 <ErrorMessage
                   v-if="!isSkippable && !hasUsedAiAgent"
-                  class="rounded-md text-md px-xs py-xs bg-[#7D4A1740] my-xs"
+                  class="rounded-md text-md px-xs py-xs bg-newhotness-warningdark my-xs"
                   icon="loader"
                   tone="warning"
                   variant="block"
