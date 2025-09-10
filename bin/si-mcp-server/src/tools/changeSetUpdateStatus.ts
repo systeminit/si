@@ -11,18 +11,11 @@ import {
 } from "./commonBehavior.ts";
 
 const name = "change-set-update-status";
-const title = "Update the status of a change set";
-const description = `<description>Update the status of a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Apply a change set or Force Apply the change set (ignoring all approvals). You may *never* update the status of the HEAD change set.</usage>`;
+const title = "Apply a change set";
+const description = `<description>Apply a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Apply a change set. If the change set requires approval, you should be told that it's waiting for approval on the web application and you should review the changes on that page before merging. You may *never* update the status of the HEAD change set.</usage>`;
 
 const UpdateChangeSetInputSchemaRaw = {
-  newStatus: z
-    .enum(["apply", "force-apply"])
-    .describe(
-      "'apply' will apply the change set and follow any workspace approval requirements. 'force-apply' will apply the change set *ignoring* all approval requirements",
-    ),
-  changeSetId: z
-    .string()
-    .describe("the ID of the change set to update the status of"),
+  changeSetId: z.string().describe("the ID of the change set to apply"),
 };
 
 const UpdateChangeSetOutputSchemaRaw = {
@@ -55,18 +48,12 @@ export function changeSetUpdateTool(server: McpServer) {
       inputSchema: UpdateChangeSetInputSchemaRaw,
       outputSchema: UpdateChangeSetOutputSchemaRaw,
     },
-    async ({ changeSetId, newStatus }): Promise<CallToolResult> => {
+    async ({ changeSetId }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
         if (!changeSetId) {
           return errorResponse({
             message:
               "Must provide a change set id; ensure you get one from the user!",
-          });
-        }
-        if (!newStatus) {
-          return errorResponse({
-            message:
-              "Must provide a new status for the change set; ensure you get one from the user!",
           });
         }
 
@@ -88,37 +75,25 @@ export function changeSetUpdateTool(server: McpServer) {
 
         try {
           // Confirm the change set you want to manipulate isn't HEAD
-          if (newStatus == "apply") {
-            const response = await siApi.requestApproval({
+          const response = await siApi.requestApproval({
+            workspaceId: WORKSPACE_ID,
+            changeSetId,
+          });
+          try {
+            const newResponse = await siApi.getChangeSet({
               workspaceId: WORKSPACE_ID,
               changeSetId,
             });
-            try {
-              const newResponse = await siApi.getChangeSet({
-                workspaceId: WORKSPACE_ID,
-                changeSetId,
-              });
-              if (newResponse.data.changeSet.status == "NeedsApproval") {
-                return successResponse(
-                  response.data,
-                  "Tell the user that while the request was successful, the Change Set requires review and explicit Approval.",
-                );
-              } else {
-                return successResponse(response.data);
-              }
-            } catch (error) {
-              return errorResponse(error);
+            if (newResponse.data.changeSet.status == "NeedsApproval") {
+              return successResponse(
+                response.data,
+                "Tell the user that while the request was successful, the Change Set requires review and explicit Approval.",
+              );
+            } else {
+              return successResponse(response.data);
             }
-          } else if (newStatus == "force-apply") {
-            const response = await siApi.forceApply({
-              workspaceId: WORKSPACE_ID,
-              changeSetId,
-            });
-            return successResponse(response.data);
-          } else {
-            return errorResponse({
-              message: `Invalid status '${newStatus}'. Must be one of: apply or force-apply`,
-            });
+          } catch (error) {
+            return errorResponse(error);
           }
         } catch (error) {
           return errorResponse(error);
