@@ -13,46 +13,48 @@
     :class="
       clsx(
         'newbutton',
-        'flex flex-row items-center gap-xs transition-all justify-center whitespace-nowrap leading-none font-medium rounded-sm',
-        hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs',
-        tone !== 'empty' && 'border',
-        computedTextSize,
-        truncateText && 'min-w-0',
-        disabled
-          ? [
-              'cursor-not-allowed',
-              themeClasses(
-                'text-neutral-500 bg-neutral-200 border-neutral-300',
-                'text-neutral-400 bg-neutral-800 border-neutral-700',
-              ),
-            ]
-          : [
-              computedLoading
-                ? 'cursor-not-allowed'
-                : 'cursor-pointer hover:scale-105 active:scale-100',
-              {
-                neutral: themeClasses(
-                  'text-neutral-900 bg-neutral-200 border-neutral-400 hover:bg-neutral-100',
-                  'text-white bg-neutral-700 border-neutral-600 hover:bg-neutral-600',
+        tone !== 'nostyle' && [
+          'flex flex-row items-center gap-xs transition-all justify-center whitespace-nowrap leading-none font-medium rounded-sm',
+          hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs',
+          tone !== 'empty' && 'border',
+          computedTextSize,
+          truncateText && 'min-w-0',
+          disabled
+            ? [
+                'cursor-not-allowed',
+                themeClasses(
+                  'text-neutral-500 bg-neutral-200 border-neutral-300',
+                  'text-neutral-400 bg-neutral-800 border-neutral-700',
                 ),
-                action: [
-                  'text-white',
-                  themeClasses(
-                    'bg-[#1264BF] border-[#318AED] hover:bg-[#2583EC]',
-                    'bg-[#1264BF] border-[#318AED] hover:bg-[#2583EC]',
+              ]
+            : [
+                computedLoading
+                  ? 'cursor-not-allowed'
+                  : 'cursor-pointer hover:scale-105 active:scale-100',
+                {
+                  neutral: themeClasses(
+                    'text-neutral-900 bg-neutral-200 border-neutral-400 hover:bg-neutral-100',
+                    'text-white bg-neutral-700 border-neutral-600 hover:bg-neutral-600',
                   ),
-                ],
-                warning: themeClasses(
-                  'text-neutral-900 bg-[#F4F0EC] border-warning-500 hover:bg-white',
-                  'text-white bg-[#432D1D] border-[#98511B] hover:bg-[#67452D]',
-                ),
-                destructive: themeClasses(
-                  'text-neutral-900 bg-destructive-50 border-destructive-300 hover:bg-white',
-                  'text-white bg-[#341C1C] border-[#A93232] hover:bg-[#562E2E]',
-                ),
-                empty: '',
-              }[tone],
-            ],
+                  action: [
+                    'text-white',
+                    themeClasses(
+                      'bg-[#1264BF] border-[#318AED] hover:bg-[#2583EC]',
+                      'bg-[#1264BF] border-[#318AED] hover:bg-[#2583EC]',
+                    ),
+                  ],
+                  warning: themeClasses(
+                    'text-neutral-900 bg-[#F4F0EC] border-warning-500 hover:bg-white',
+                    'text-white bg-[#432D1D] border-[#98511B] hover:bg-[#67452D]',
+                  ),
+                  destructive: themeClasses(
+                    'text-neutral-900 bg-destructive-50 border-destructive-300 hover:bg-white',
+                    'text-white bg-[#341C1C] border-[#A93232] hover:bg-[#562E2E]',
+                  ),
+                  empty: '',
+                }[tone],
+              ],
+        ],
       )
     "
     @click="clickHandler($event)"
@@ -115,6 +117,7 @@
         />
       </slot>
       <slot name="pill">
+        <!-- TODO(Wendy) - style the pills separately -->
         <TextPill
           v-if="pill"
           :class="
@@ -126,6 +129,7 @@
                 warning: '',
                 destructive: '',
                 empty: '',
+                nostyle: '',
               }[props.tone],
             )
           "
@@ -160,7 +164,8 @@ export type ButtonTones =
   | "action"
   | "warning"
   | "destructive"
-  | "empty";
+  | "empty" // hides all tone styles but keeps basic styling
+  | "nostyle"; // removes ALL styles from the button, avoid using too much!
 
 const props = defineProps({
   size: { type: String as PropType<ButtonSizes>, default: "sm" },

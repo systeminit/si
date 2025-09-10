@@ -180,6 +180,8 @@ import CarbonChevronDown from "~icons/carbon/chevron-down";
 import CarbonChevronRight from "~icons/carbon/chevron-right";
 import CarbonRepeat from "~icons/carbon/repeat";
 import CarbonUndo from "~icons/carbon/undo";
+import CarbonInformation from "~icons/carbon/information";
+import CarbonWarning from "~icons/carbon/warning";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -196,7 +198,6 @@ import Plug from "~icons/ph/plugs-fill";
 // MDI
 import MdiCheckboxBlankCircle from "~icons/mdi/checkbox-blank-circle";
 import MdiCheckboxBlankCircleOutline from "~icons/mdi/checkbox-blank-circle-outline";
-import MdiInformationVariantCircleOutline from "~icons/mdi/information-variant-circle-outline";
 import MdiMouseRightClickOutline from "~icons/mdi/mouse-right-click-outline";
 
 // attribute widget types
@@ -316,6 +317,7 @@ export const ICONS = Object.freeze({
   erase: Eraser,
   esc: MdiKeyboardEsc,
   "exclamation-circle": ExclamationCircle,
+  "exclamation-circle-carbon": CarbonWarning,
   "expand-row": ExpandAll,
   "external-link": ExternalLink,
   eye: Eye,
@@ -333,7 +335,7 @@ export const ICONS = Object.freeze({
   hide: EyeOff,
   hourglass: Hourglass,
   "incoming-connection": IncomingConnection,
-  "info-circle": MdiInformationVariantCircleOutline,
+  "info-circle": CarbonInformation,
   "input-connection": InputConnection,
   "input-socket": InputSocket,
   "input-type-number": InputTypeNumber,

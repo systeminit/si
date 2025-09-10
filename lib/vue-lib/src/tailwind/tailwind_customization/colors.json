@@ -64,6 +64,7 @@
     "0": "#FFFFFF"
   },
   "newhotness": {
+    "warningdark": "#46392C",
     "destructive": "#332222",
     "success": "#354139",
     "purpledark": "#d4b4fe",

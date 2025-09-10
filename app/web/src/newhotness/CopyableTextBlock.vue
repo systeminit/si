@@ -10,12 +10,12 @@
       }"
       :class="
         clsx(
-          'flex flex-row gap-sm items-center justify-between border rounded-sm cursor-pointer active:bg-neutral-700 select-none',
+          'flex flex-row gap-sm items-center justify-between border rounded-sm cursor-pointer select-none',
           !expandable && 'h-full',
           prompt ? 'p-sm' : 'p-xs',
           themeClasses(
-            'border-neutral-400 bg-neutral-100',
-            'bg-neutral-900 border border-neutral-600',
+            'bg-neutral-100 border-neutral-400',
+            'bg-neutral-900 border-neutral-600',
           ),
           !hoverSubIcon &&
             themeClasses(
@@ -46,20 +46,28 @@
       <div
         :class="
           clsx(
-            'flex-grow',
+            'flex-grow text-sm',
             breakWords && 'break-all',
             !prompt &&
-              'overflow-hidden text-ellipsis whitespace-nowrap text-sm py-2xs font-mono',
+              'overflow-hidden text-ellipsis whitespace-nowrap py-2xs font-mono',
           )
         "
       >
         {{ text }}
       </div>
-      <Icon v-tooltip="'Copy'" name="copy" class="flex-none" />
+      <Icon v-tooltip="'Copy'" name="copy" class="flex-none" size="sm" />
     </div>
     <div
       v-if="expandable && expanded"
-      class="bg-neutral-900 rounded-sm border border-neutral-600 p-xs text-sm leading-4 break-all"
+      :class="
+        clsx(
+          'rounded-sm border p-xs text-sm leading-4 break-all font-mono',
+          themeClasses(
+            'bg-neutral-100 border-neutral-400',
+            'bg-neutral-900 border-neutral-600',
+          ),
+        )
+      "
     >
       {{ text }}
     </div>

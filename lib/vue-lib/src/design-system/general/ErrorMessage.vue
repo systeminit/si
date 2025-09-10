@@ -30,7 +30,12 @@
       )
     "
   >
-    <Icon v-if="!noIcon" :name="props.icon" class="mr-xs flex-none" />
+    <Icon
+      v-if="!noIcon"
+      :name="props.icon"
+      class="mr-xs flex-none"
+      :size="iconSize"
+    />
     <div class="flex-grow">
       <slot>{{ computedMessage }}</slot>
     </div>
@@ -43,7 +48,7 @@ import { computed } from "vue";
 import clsx from "clsx";
 import { ApiRequestStatus, getErrorMessage } from "../../pinia";
 import { Tones } from "../utils/color_utils";
-import { Icon, themeClasses, IconNames } from "..";
+import { Icon, themeClasses, IconNames, IconSizes } from "..";
 
 export type ErrorMessageVariant = "classic" | "block";
 
@@ -56,12 +61,14 @@ const props = withDefaults(
     noPadding?: boolean;
     variant?: ErrorMessageVariant;
     icon?: IconNames;
+    iconSize?: IconSizes;
     noIcon?: boolean;
   }>(),
   {
     tone: "destructive",
     variant: "classic",
     icon: "alert-triangle",
+    iconSize: "md",
   },
 );
 
