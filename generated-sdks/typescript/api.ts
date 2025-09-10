@@ -2184,6 +2184,12 @@ export interface SearchComponentsV1Request {
      * @type {string}
      * @memberof SearchComponentsV1Request
      */
+    'schemaCategory'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SearchComponentsV1Request
+     */
     'schemaName'?: string | null;
     /**
      * 
