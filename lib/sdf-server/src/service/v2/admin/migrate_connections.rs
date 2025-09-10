@@ -92,8 +92,9 @@ pub async fn migrate_connections_async(
         si.change_set.id = ctx.change_set_id().to_string(),
         dry_run,
         connections = summary.connections,
-        migrated = summary.migrated,
-        unmigrateable = summary.unmigrateable,
+        migrated_connections = summary.migrated,
+        unmigrateable_connections = summary.unmigrateable,
+        removed_parents = summary.removed_parents,
         error = err.is_some(),
         "Migration summary"
     );
@@ -109,6 +110,7 @@ pub async fn migrate_connections_async(
             "connections": summary.connections,
             "migrated": summary.migrated,
             "unmigrateable": summary.unmigrateable,
+            "removed_parents": summary.removed_parents,
             "error": err.as_ref().map(|e| e.to_string()),
         }),
     );
@@ -146,30 +148,14 @@ async fn migrate_connections_async_fallible(
     // static value.
     let mut migrations = Vec::with_capacity(connections.len());
     for mut connection in connections {
-        let migrated = match migrate_connection(ctx, &connection).await {
-            // Don't include noop migrations (already-migrated) in the report
-            Ok(Some(false)) => continue,
-            Ok(Some(true)) => true,
-            Ok(None) => false,
-            // Mark it as unmigrateable if there was an error
-            Err(err) => {
-                if connection.issue.is_none() {
-                    connection.issue = Some(ConnectionUnmigrateableBecause::InvalidGraph {
-                        error: err.to_string(),
-                    });
-                }
-                false
-            }
-        };
-        if migrated {
-            summary.migrated += 1;
-        } else {
-            summary.unmigrateable += 1;
+        if !migrate_connection(ctx, &mut connection).await {
+            continue;
         }
+        summary.migrated += 1;
 
         // Report that it was migrated.
         let message = connection.fmt_title(ctx).await;
-        info!(message, migrated, "migrated socket connection");
+        info!(message, "migrated socket connection");
         let migration = ConnectionMigrationWithMessage {
             connection,
             message,
@@ -257,36 +243,61 @@ async fn get_connection_migrations(ctx: &DalContext) -> AdminAPIResult<Vec<Conne
 /// is entirely unmigrateable.
 ///
 /// Check `issue` to see if there was an issue (e.g. partial migration).
-async fn migrate_connection(
-    ctx: &DalContext,
-    migration: &ConnectionMigration,
-) -> AdminAPIResult<Option<bool>> {
+async fn migrate_connection(ctx: &DalContext, migration: &mut ConnectionMigration) -> bool {
     let mut did_something = false;
     match &migration.issue {
         // If there is no migration issue, create the prop connection
         None => {
+            // Migrate everything we can
             for prop_connection in &migration.prop_connections {
-                if add_prop_connection(ctx, prop_connection).await? {
-                    did_something = true;
+                match add_prop_connection(ctx, prop_connection).await {
+                    Ok(true) => did_something = true,
+                    Ok(false) => {}
+                    Err(err) => {
+                        if migration.issue.is_none() {
+                            migration.issue = Some(ConnectionUnmigrateableBecause::InvalidGraph {
+                                error: err.to_string(),
+                            });
+                        }
+                    }
                 }
             }
         }
         // If there was an issue, freeze connection values (because we're going to
         // remove the socket connection no matter what)
-        Some(_) => {
-            freeze_connection_values(ctx, &migration.socket_connection).await?;
-        }
+        Some(_) => match freeze_connection_values(ctx, &migration.socket_connection).await {
+            Ok(true) => did_something = true,
+            Ok(false) => {}
+            Err(err) => {
+                if migration.issue.is_none() {
+                    migration.issue = Some(ConnectionUnmigrateableBecause::InvalidGraph {
+                        error: err.to_string(),
+                    });
+                }
+            }
+        },
     }
-    if remove_socket_connection(
+
+    // Remove the socket connection, regardless of what has come before
+    match remove_socket_connection(
         ctx,
         migration.explicit_connection_id,
         &migration.socket_connection,
     )
-    .await?
+    .await
     {
-        did_something = true;
+        Ok(true) => did_something = true,
+        Ok(false) => {}
+        Err(err) => {
+            if migration.issue.is_none() {
+                migration.issue = Some(ConnectionUnmigrateableBecause::InvalidGraph {
+                    error: err.to_string(),
+                });
+            }
+        }
     }
-    Ok(Some(did_something))
+
+    did_something
 }
 
 /// Add the given prop connections
