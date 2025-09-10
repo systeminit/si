@@ -26,6 +26,7 @@ import { upgradeComponentsTool } from "./tools/upgradeComponents.ts";
 import { templateGenerateTool } from "./tools/templateGenerate.ts";
 import { templateRunTool } from "./tools/templateRun.ts";
 import { templateListTool } from "./tools/templateList.ts";
+import { changeSetAbandonTool } from "./tools/changeSetAbandon.ts";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -36,6 +37,7 @@ export function createServer(): McpServer {
   changeSetListTool(server);
   changeSetCreateTool(server);
   changeSetUpdateTool(server);
+  changeSetAbandonTool(server);
   schemaFindTool(server);
   schemaAttributesListTool(server);
   schemaAttributesDocumentationTool(server);

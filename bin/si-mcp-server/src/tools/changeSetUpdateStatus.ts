@@ -12,14 +12,13 @@ import {
 
 const name = "change-set-update-status";
 const title = "Update the status of a change set";
-const description =
-  `<description>Update the status of a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Abandon (or 'delete') a change set, Apply a change set, or Force Apply the change set (ignoring all approvals). You may *never* update the status of the HEAD change set.</usage>`;
+const description = `<description>Update the status of a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Apply a change set or Force Apply the change set (ignoring all approvals). You may *never* update the status of the HEAD change set.</usage>`;
 
 const UpdateChangeSetInputSchemaRaw = {
   newStatus: z
-    .enum(["abandon", "apply", "force-apply"])
+    .enum(["apply", "force-apply"])
     .describe(
-      "'abandon' will abandon this change set, effectively deleting it. 'apply' will apply the change set and follow any workspace approval requirements. 'force-apply' will apply the change set *ignoring* all approval requirements",
+      "'apply' will apply the change set and follow any workspace approval requirements. 'force-apply' will apply the change set *ignoring* all approval requirements",
     ),
   changeSetId: z
     .string()
@@ -89,13 +88,7 @@ export function changeSetUpdateTool(server: McpServer) {
 
         try {
           // Confirm the change set you want to manipulate isn't HEAD
-          if (newStatus == "abandon") {
-            const response = await siApi.abandonChangeSet({
-              workspaceId: WORKSPACE_ID,
-              changeSetId,
-            });
-            return successResponse(response.data);
-          } else if (newStatus == "apply") {
+          if (newStatus == "apply") {
             const response = await siApi.requestApproval({
               workspaceId: WORKSPACE_ID,
               changeSetId,
@@ -124,8 +117,7 @@ export function changeSetUpdateTool(server: McpServer) {
             return successResponse(response.data);
           } else {
             return errorResponse({
-              message:
-                `Invalid status '${newStatus}'. Must be one of: abandon, apply or force-apply`,
+              message: `Invalid status '${newStatus}'. Must be one of: apply or force-apply`,
             });
           }
         } catch (error) {
