@@ -1070,6 +1070,7 @@ npm_package_path="$1"
 npm_run_command="$2"
 
 cd "$rootpath/$npm_package_path"
+pnpm install
 pnpm run --report-summary "$npm_run_command"
 """, is_executable = True)
     args = cmd_args(

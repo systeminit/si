@@ -3,7 +3,7 @@
     <template v-if="attributeTree && qualifications.length > 0">
       <QualificationView
         v-for="qualification in qualifications"
-        :key="qualification.avId"
+        :key="qualification.avId ?? undefined"
         :qualification="qualification"
         :component="component.id"
       />
@@ -30,13 +30,13 @@ import EmptyState from "./EmptyState.vue";
 export type QualificationStatus = "success" | "failure" | "warning" | "unknown";
 
 export interface Qualification {
-  name?: string;
-  message?: string;
-  status?: QualificationStatus;
-  avId?: AttributeValueId;
+  name?: null | string;
+  message?: null | string;
+  status?: null | QualificationStatus;
+  avId?: null | AttributeValueId;
   // This exists so the validation qualification can pass in its output, since that comes baked in the data
   // We should avoid using it for normal qualifications, for which QualificationView will lazily fetch the output
-  output?: string[];
+  output?: null | string[];
 }
 
 const props = defineProps<{

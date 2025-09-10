@@ -131,7 +131,7 @@ export type ValidationOutputStatus = "Error" | "Failure" | "Success";
 
 export interface ValidationOutput {
   status: ValidationOutputStatus;
-  message?: string;
+  message?: null | string;
 }
 
 export interface PropertyEditorValue {

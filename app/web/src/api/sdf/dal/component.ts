@@ -146,6 +146,7 @@ export interface PotentialMatch {
 // domain/resource/si, etc. Specifying it this way gives us nice autocompletions for "/domain"
 // and friends under IDEs, too.
 export type AttributePath =
-  | "/"
+  | "" // root
+  | "/" // havent seen this in data yet
   | `/${TopLevelProp}`
   | `/${TopLevelProp}/${string}`;

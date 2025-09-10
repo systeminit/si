@@ -6,7 +6,7 @@
         :key="item.name ?? index"
         :title="item.name ?? `${index + 1}`"
         :showTitle="codes.length > 1 || !!item.name"
-        :code="item.code"
+        :code="item.code?.toString()"
         titleClasses="text-sm font-bold h-8"
       />
     </template>
@@ -19,6 +19,7 @@ import { computed } from "vue";
 import {
   AttributeTree,
   BifrostComponent,
+  JsonValue,
 } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { findAvsAtPropPath } from "./util";
@@ -30,7 +31,7 @@ const props = defineProps<{
 }>();
 
 const codes = computed(() => {
-  const codes: { code: string; name: string | undefined }[] = [];
+  const codes: { code: JsonValue; name: string | undefined }[] = [];
   if (!props.attributeTree) return codes;
 
   const data = findAvsAtPropPath(props.attributeTree, [

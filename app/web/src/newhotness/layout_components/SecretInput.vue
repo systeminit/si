@@ -58,11 +58,12 @@ import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { nextTick, ref } from "vue";
 
-defineProps({
-  field: { type: Object, required: true },
-  fieldname: { type: String, required: true },
-  placeholder: { type: String },
-});
+defineProps<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  field: any;
+  fieldname: string;
+  placeholder?: null | string;
+}>();
 
 const getFormFieldType = (fieldname: string) => {
   if (fieldname !== "Name" && fieldname !== "Description") {

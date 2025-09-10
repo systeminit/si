@@ -362,8 +362,10 @@
             v-if="selectedComponent"
             :title="`${selectedComponent.name}: ${selectedComponent.schemaName}`"
             :code="
-              selectedComponent.componentDiff?.resourceDiff?.diff ||
-              selectedComponent.componentDiff?.resourceDiff?.current
+              (selectedComponent.componentDiff?.resourceDiff?.diff ??
+                undefined) ||
+              (selectedComponent.componentDiff?.resourceDiff?.current ??
+                undefined)
             "
             codeLanguage="diff"
             copyTooltip="Copy diff to clipboard"
@@ -706,7 +708,9 @@ function shouldIncludeDiff(
  * This is where we put any fixups we need while working in the frontend; any changes here need
  * to move to the backend MV.
  */
-function fixAttributeSourceAndValue(sourceAndValue?: AttributeSourceAndValue) {
+function fixAttributeSourceAndValue(
+  sourceAndValue?: null | AttributeSourceAndValue,
+) {
   if (!sourceAndValue) return undefined;
   const { $source } = sourceAndValue;
   // Add componentName to $source

@@ -819,14 +819,14 @@ const featureFlagsStore = useFeatureFlagsStore();
 const props = defineProps<{
   path: AttributePath;
   value: string;
-  kind?: PropertyEditorPropWidgetKind | string;
-  prop?: Prop;
-  validation?: ValidationOutput;
+  kind?: null | PropertyEditorPropWidgetKind | string;
+  prop?: null | Prop;
+  validation?: null | ValidationOutput;
   component: BifrostComponent | ComponentInList;
   displayName: string;
   canDelete?: boolean;
   disabled?: boolean;
-  externalSources?: ExternalSource[];
+  externalSources?: null | ExternalSource[];
   isArray?: boolean;
   isMap?: boolean;
   isSecret?: boolean;
