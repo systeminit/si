@@ -59,16 +59,10 @@ impl PropertyEditorValues {
         let component = Component::get_by_id(ctx, component_id).await?;
 
         let sockets_on_component: HashSet<InputSocketId> =
-            Component::incoming_connections_for_id(ctx, component_id)
+            Component::inferred_incoming_connections(ctx, component_id)
                 .await?
-                .into_iter()
+                .iter()
                 .map(|c| c.to_input_socket_id)
-                .chain(
-                    Component::inferred_incoming_connections(ctx, component_id)
-                        .await?
-                        .iter()
-                        .map(|c| c.to_input_socket_id),
-                )
                 .collect();
 
         let controlling_ancestors_for_av_id =

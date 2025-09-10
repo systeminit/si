@@ -281,13 +281,6 @@ async fn arguments_are_same(
         return Ok(false);
     }
 
-    // If they are for different targets, they are different.
-    let old_arg = AttributePrototypeArgument::get_by_id(old_ctx, old_apa_id).await?;
-    let new_arg = AttributePrototypeArgument::get_by_id(new_ctx, new_apa_id).await?;
-    if old_arg.targets() != new_arg.targets() {
-        return Ok(false);
-    }
-
     // If they have different value sources, they are different.
     let old_value = AttributePrototypeArgument::value_source(old_ctx, old_apa_id).await?;
     let new_value = AttributePrototypeArgument::value_source(new_ctx, new_apa_id).await?;
@@ -514,10 +507,9 @@ async fn assemble_simplified_source(
     }
 
     // If it isn't a special simplified case, show the prototype instead.
-    let component_id = AttributeValue::component_id(ctx, av_id).await?;
     Ok((
         SimplifiedAttributeSource::Prototype {
-            prototype: AttributePrototype::fmt_title(ctx, prototype_id, Some(component_id)).await,
+            prototype: AttributePrototype::fmt_title(ctx, prototype_id).await,
         },
         None,
     ))

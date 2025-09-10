@@ -34,7 +34,6 @@ use dal_test::{
     color_eyre::Result,
     helpers::{
         ChangeSetTestHelpers,
-        connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
     },
     test,
@@ -163,57 +162,16 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
     let component_id = component.id();
 
     // create 2 more to connect it to things
-    let input_comp = create_component_for_default_schema_name_in_default_view(
+    let _input_comp = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd",
     )
     .await?;
 
-    let output_comp =
+    let _output_comp =
         create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "even")
             .await?;
-    // let mut input_output_socket_avs = input_comp
-    //     .output_socket_attribute_values(ctx)
-    //     .await
-    //     ?;
-    // let input_output_socket_id = OutputSocket::find_for_attribute_value_id(
-    //     ctx,
-    //     input_output_socket_avs.pop().expect("couldn't get id"),
-    // )
-    // .await
-    // ?
-    // .expect("socket not found");
-    // let input_output_socket = OutputSocket::get_by_id(ctx, input_output_socket_id)
-    //     .await
-    //     ?;
-
-    connect_components_with_socket_names(ctx, input_comp.id(), "two", component_id, "input_socket")
-        .await?;
-    // let mut output_input_socket_avs = output_comp
-    //     .input_socket_attribute_values(ctx)
-    //     .await
-    //     ?;
-    // let output_input_socket_id = InputSocket::find_for_attribute_value_id(
-    //     ctx,
-    //     output_input_socket_avs.pop().expect("couldn't get id"),
-    // )
-    // .await
-    // ?
-    // .expect("socket not found");
-    // let output_input_socket = InputSocket::get_by_id(ctx, output_input_socket_id)
-    //     .await
-    //     ?;
-
-    connect_components_with_socket_names(
-        ctx,
-        component_id,
-        "output_socket",
-        output_comp.id(),
-        "two",
-    )
-    .await?;
-
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let component = Component::get_by_id(ctx, component_id).await?;
@@ -244,16 +202,6 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
         format!("{:?}", output_socket.connection_annotations()),
         "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]"
     );
-
-    // check connections on the component
-    let mut incoming_connections = component.incoming_connections(ctx).await?;
-    assert_eq!(incoming_connections.len(), 1);
-    let incoming_connection = incoming_connections.pop().expect("has one connection");
-    assert_eq!(incoming_connection.from_component_id, input_comp.id());
-    let mut outgoing_connections = component.outgoing_connections(ctx).await?;
-    assert_eq!(outgoing_connections.len(), 1);
-    let outgoing_connection = outgoing_connections.pop().expect("has a connection");
-    assert_eq!(outgoing_connection.to_component_id, output_comp.id());
 
     // Modify the sockets, changing their arity and adding a connection annotation
     let asset_func = "function main() {
@@ -323,13 +271,6 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
         format!("{:?}", output_socket.connection_annotations()),
         "[ConnectionAnnotation { tokens: [\"one\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]"
     );
-
-    // connections are NO LONGER maintained on regenerate and upgrade
-    let incoming_connections = component.incoming_connections(ctx).await?;
-    assert!(incoming_connections.is_empty());
-    let outgoing_connections = component.outgoing_connections(ctx).await?;
-    assert!(outgoing_connections.is_empty());
-
     Ok(())
 }
 

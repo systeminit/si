@@ -1,21 +1,17 @@
 use dal::{
-    AttributeValue,
-    Component,
     DalContext,
-    InputSocket,
-    OutputSocket,
-    Prop,
     Secret,
     Workspace,
-    prop::PropPath,
-    property_editor::values::PropertyEditorValues,
     resource_metadata,
 };
 use dal_test::{
+    Result,
     WorkspaceSignup,
     helpers::{
         ChangeSetTestHelpers,
-        create_component_for_default_schema_name_in_default_view,
+        attribute::value,
+        change_set,
+        component,
         encrypt_message,
     },
     test,
@@ -27,65 +23,26 @@ use si_events::{
 };
 
 #[test]
-async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) {
-    let source_component =
-        create_component_for_default_schema_name_in_default_view(ctx, "dummy-secret", "source")
-            .await
-            .expect("could not create component");
-    let source_schema_variant_id = Component::schema_variant_id(ctx, source_component.id())
-        .await
-        .expect("could not get schema variant id for component");
-    let destination_component =
-        create_component_for_default_schema_name_in_default_view(ctx, "fallout", "destination")
-            .await
-            .expect("could not create component");
-    let destination_schema_variant_id =
-        Component::schema_variant_id(ctx, destination_component.id())
-            .await
-            .expect("could not get schema variant id for component");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) -> Result<()> {
+    component::create(ctx, "dummy-secret", "source").await?;
+    component::create(ctx, "fallout", "destination").await?;
+    change_set::commit(ctx).await?;
 
     // Cache the name of the secret definition from the test exclusive schema. Afterward, cache the
     // prop we need for attribute value update.
-    let secret_definition_name = "dummy";
-    let reference_to_secret_prop = Prop::find_prop_by_path(
+    value::subscribe(
         ctx,
-        source_schema_variant_id,
-        &PropPath::new(["root", "secrets", secret_definition_name]),
+        ("destination", "/secrets/dummy"),
+        ("source", "/secrets/dummy"),
     )
-    .await
-    .expect("could not find prop by path");
-
-    // Connect the two components to propagate the secret value and commit.
-    let source_output_socket = OutputSocket::find_with_name(ctx, "dummy", source_schema_variant_id)
-        .await
-        .expect("could not perform find with name")
-        .expect("output socket not found by name");
-    let destination_input_socket =
-        InputSocket::find_with_name(ctx, "dummy", destination_schema_variant_id)
-            .await
-            .expect("could not perform find with name")
-            .expect("input socket not found by name");
-    Component::connect_for_tests(
-        ctx,
-        source_component.id(),
-        source_output_socket.id(),
-        destination_component.id(),
-        destination_input_socket.id(),
-    )
-    .await
-    .expect("could not connect");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    .await?;
+    change_set::commit(ctx).await?;
 
     // Create the secret and commit.
     let secret = Secret::new(
         ctx,
         "toto wolff",
-        secret_definition_name.to_string(),
+        "dummy".to_string(),
         None,
         &encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
             .await
@@ -94,46 +51,28 @@ async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) {
         Default::default(),
         Default::default(),
     )
-    .await
-    .expect("cannot create secret");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    .await?;
+    change_set::commit(ctx).await?;
 
     // Use the secret in the source component and commit.
-    let property_values = PropertyEditorValues::assemble(ctx, source_component.id())
-        .await
-        .expect("unable to list prop values");
-    let reference_to_secret_attribute_value_id = property_values
-        .find_by_prop_id(reference_to_secret_prop.id)
-        .expect("could not find attribute value");
     Secret::attach_for_attribute_value(
         ctx,
-        reference_to_secret_attribute_value_id,
+        value::id(ctx, ("source", "/secrets/dummy")).await?,
         Some(secret.id()),
     )
-    .await
-    .expect("could not attach secret");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    .await?;
+    change_set::commit(ctx).await?;
 
     // Set the workspace token to mimic how it works with the auth-api.
     Workspace::get_by_pk(ctx, ctx.tenancy().workspace_pk().expect("workspace"))
-        .await
-        .expect("could not get workspace")
+        .await?
         .set_token(ctx, "token".to_string())
-        .await
-        .expect("could not set token");
+        .await?;
 
     // Ensure that the parent is head so that the "create" action will execute by default.
     // Technically, this primarily validates the test setup rather than the system itself, but it
     // serves a secondary function of ensuring no prior functions cause this assertion to fail.
-    assert!(
-        ctx.parent_is_head()
-            .await
-            .expect("could not perform parent is head")
-    );
+    assert!(ctx.parent_is_head().await?);
 
     // Apply to the base change set and commit.
     ChangeSetTestHelpers::apply_change_set_to_base(ctx)
@@ -164,21 +103,9 @@ async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) {
                 },
             },
         }], // expected
-        source_component
-            .view(ctx)
-            .await
-            .expect("could not get materialized view")
-            .expect("empty materialized view") // actual
+        component::value(ctx, "source").await?
     );
-    let last_synced_av_id = destination_component
-        .attribute_values_for_prop(ctx, &["root", "resource", "last_synced"])
-        .await
-        .expect("should be able to find avs for last synced")
-        .pop()
-        .expect("should have an av for last synced");
-    let last_synced_value = AttributeValue::view(ctx, last_synced_av_id)
-        .await
-        .expect("should be able to get value for last synced av");
+    let last_synced = value::get(ctx, ("destination", "/resource/last_synced")).await?;
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -196,29 +123,24 @@ async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) {
             "resource": {
                 "status": "ok",
                 "payload": { "poop" :true },
-                "last_synced": last_synced_value.clone().unwrap_or(serde_json::Value::Null),
+                "last_synced": last_synced.clone(),
             },
             "resource_value": {}
         }], // expected
-        destination_component
-            .view(ctx)
-            .await
-            .expect("could not get materialized view")
-            .expect("empty materialized view") // actual
+        component::value(ctx, "destination").await?
     );
 
     // Finally, we can collect the resource metadata.
-    let metadata = resource_metadata::list(ctx)
-        .await
-        .expect("could not collect resource metadata");
+    let metadata = resource_metadata::list(ctx).await?;
     let expected = ResourceMetadata {
-        component_id: destination_component.id(),
+        component_id: component::id(ctx, "destination").await?,
         status: ResourceStatus::Ok,
-        last_synced: serde_json::from_value(last_synced_value.unwrap_or(serde_json::Value::Null))
-            .expect("could not deserialize"),
+        last_synced: serde_json::from_value(last_synced)?,
     };
     assert_eq!(
         vec![expected], // expected
         metadata,       // actual
     );
+
+    Ok(())
 }
