@@ -48,9 +48,16 @@ curl -L https://nixos.org/nix/install | sh -s -- --daemon
 git clone https://github.com/systeminit/si.git
 cd si
 
+RBE_TOKEN=$(aws secretsmanager get-secret-value \
+  --region us-east-1 \
+  --secret-id rbe-token \
+  --query SecretString \
+  --output text)
+
 # Activate nix in current session
 . /etc/profile.d/nix.sh
 
-# 4. Enter development shell for running the test stack
-. /etc/profile.d/nix.sh
-nix develop --extra-experimental-features nix-command --extra-experimental-features flakes -c bash -c "DEV_HOST=0.0.0.0 TILT_HOST=0.0.0.0 buck2 run dev:up"
+nix develop \
+  --extra-experimental-features nix-command \
+  --extra-experimental-features flakes \
+  -c bash -c "SI_RBE_TOKEN='$RBE_TOKEN' DEV_HOST=0.0.0.0 TILT_HOST=0.0.0.0 buck2 run dev:up"
