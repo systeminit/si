@@ -20,6 +20,7 @@ export { default as RichText } from "./general/RichText.vue";
 export { default as Timestamp } from "./general/Timestamp.vue";
 export { default as VButton } from "./general/VButton.vue";
 export { default as NewButton } from "./general/NewButton.vue";
+export { BUTTON_TONES } from "./general/NewButton.vue";
 export type { ButtonTones, ButtonSizes } from "./general/NewButton.vue";
 export { default as IconButton } from "./general/IconButton.vue";
 export { default as SiSearch } from "./general/SiSearch.vue";

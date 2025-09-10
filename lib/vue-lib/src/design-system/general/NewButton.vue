@@ -14,7 +14,8 @@
       clsx(
         'newbutton',
         tone !== 'nostyle' && [
-          'flex flex-row items-center gap-xs transition-all justify-center whitespace-nowrap leading-none font-medium rounded-sm',
+          'flex flex-row items-center gap-xs justify-center rounded-sm',
+          'transition-all whitespace-nowrap leading-none font-medium max-h-fit',
           hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs',
           tone !== 'empty' && 'border',
           computedTextSize,
@@ -60,19 +61,11 @@
     @click="clickHandler($event)"
   >
     <template v-if="computedLoading">
-      <Icon
-        :size="iconSize ? iconSize : size"
-        :class="iconClasses"
-        :name="loadingIcon"
-      />
+      <Icon :size="computedIconSize" :class="iconClasses" :name="loadingIcon" />
       <span v-if="loadingText">{{ loadingText }}</span>
     </template>
     <template v-else-if="showSuccess">
-      <Icon
-        :size="iconSize ? iconSize : size"
-        :class="iconClasses"
-        :name="successIcon"
-      />
+      <Icon :size="computedIconSize" :class="iconClasses" :name="successIcon" />
       <span>
         <slot v-if="successText" name="success">{{ successText }}</slot>
       </span>
@@ -81,12 +74,16 @@
       <slot name="icon">
         <Icon
           v-if="icon"
-          :size="iconSize ? iconSize : size"
+          :size="computedIconSize"
           :class="iconClasses"
           :name="icon"
         />
       </slot>
-      <TruncateWithTooltip v-if="truncateText" ref="truncateRef">
+      <TruncateWithTooltip
+        v-if="truncateText && hasLabel"
+        ref="truncateRef"
+        class="py-2xs"
+      >
         <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
           |
           {{
@@ -97,7 +94,7 @@
         </slot>
         <slot v-else>{{ label }}</slot>
       </TruncateWithTooltip>
-      <span v-else-if="hasLabel">
+      <span v-else-if="hasLabel" class="py-2xs">
         <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
           |
           {{
@@ -111,7 +108,7 @@
       <slot name="iconRight">
         <Icon
           v-if="iconRight"
-          :size="iconSize ? iconSize : size"
+          :size="computedIconSize"
           :class="iconClasses"
           :name="iconRight"
         />
@@ -122,7 +119,7 @@
           v-if="pill"
           :class="
             clsx(
-              'ml-2xs min-w-[22px] text-center',
+              'min-w-[22px] text-center',
               {
                 neutral: '',
                 action: '',
@@ -158,15 +155,6 @@ import { themeClasses } from "../utils/theme_tools";
 
 const SHOW_SUCCESS_DELAY = 2000;
 
-export type ButtonSizes = "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
-export type ButtonTones =
-  | "neutral"
-  | "action"
-  | "warning"
-  | "destructive"
-  | "empty" // hides all tone styles but keeps basic styling
-  | "nostyle"; // removes ALL styles from the button, avoid using too much!
-
 const props = defineProps({
   size: { type: String as PropType<ButtonSizes>, default: "sm" },
   iconSize: { type: String as PropType<IconSizes> },
@@ -192,7 +180,10 @@ const props = defineProps({
   iconSuccess: { type: String as PropType<IconNames> },
   confirmClick: { type: [Boolean, String] },
   submit: { type: Boolean },
-  pill: { type: String, required: false },
+  pill: {
+    type: [String, Number] as PropType<string | number>,
+    required: false,
+  },
   truncateText: { type: Boolean },
   tabIndex: Number,
   tooltip: { type: String },
@@ -368,4 +359,22 @@ const tooltipObject = computed(() =>
 const slots = useSlots();
 
 const hasLabel = computed(() => !!(props.label || slots.default));
+
+const computedIconSize = computed(() => {
+  if (props.iconSize) return props.iconSize;
+  else return props.size as IconSizes;
+});
+</script>
+
+<script lang="ts">
+export type ButtonSizes = "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
+export const BUTTON_TONES = [
+  "neutral",
+  "action",
+  "warning",
+  "destructive",
+  "empty", // hides all tone styles but keeps basic styling
+  "nostyle", // removes ALL styles from the button, avoid using too much!
+] as const;
+export type ButtonTones = (typeof BUTTON_TONES)[number];
 </script>
