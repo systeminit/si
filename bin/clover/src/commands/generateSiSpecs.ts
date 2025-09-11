@@ -19,7 +19,6 @@ import {
   ExpandedSchemaSpec,
   ExpandedSchemaVariantSpec,
 } from "../spec/pkgs.ts";
-import { prettifySocketNames } from "../pipeline-steps/prettifySocketNames.ts";
 import { loadInferred } from "../spec/inferred.ts";
 import { addInferredEnums } from "../pipeline-steps/addInferredEnums.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
@@ -36,7 +35,7 @@ import { createSuggestionsForPrimaryIdentifiers } from "../pipeline-steps/create
 import {
   createRegionSuggestion,
   createCredentialSuggestion,
-} from "../pipeline-steps/awsRegionAndCredentialSpecificSuggestions.ts";
+} from "../pipeline-steps/genericAwsProperties.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -74,25 +73,19 @@ export async function generateSiSpecs(options: {
   }
 
   // EXECUTE PIPELINE STEPS
+
   specs = await removeBadDocLinks(specs, options.docLinkCache);
   specs = addInferredEnums(specs, inferred);
-  // TODO prop suggestions for props ending in Arn
-  // specs = generateOutputSocketsFromProps(specs);
   specs = addDefaultPropsAndSockets(specs);
   specs = attachDefaultActionFuncs(specs);
   specs = generateDefaultLeafFuncs(specs);
   specs = attachDefaultManagementFuncs(specs);
   specs = generateDefaultQualificationFuncs(specs);
+
   // subAssets should not have any of the above, but need an asset func and
   // intrinsics
   specs = generateSubAssets(specs);
   specs = generateIntrinsicFuncs(specs);
-  // TODO prop suggestions and CodeEditor widget for PolicyDocuments
-  // specs = createPolicyDocumentInputSockets(specs);
-  // don't generate input sockets until we have all of the output sockets
-  specs = prettifySocketNames(specs);
-  // remove these after socket generation so we can still connect to their
-  // alternatives
   specs = removeUnneededAssets(specs);
 
   // this step will eventually replace all the socket stuff. Must come before

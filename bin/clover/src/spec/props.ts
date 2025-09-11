@@ -9,6 +9,7 @@ import { Extend } from "../extend.ts";
 import { CfSchema } from "../cfDb.ts";
 const { createHash } = await import("node:crypto");
 import { cfPcreToRegexp } from "../pcre.ts";
+import { ExpandedPkgSpec } from "./pkgs.ts";
 
 export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
 
@@ -403,7 +404,7 @@ function createPropFromCf(
     // TODO if this is gonna be json we should really check that it's valid json ...
     const prop = partialProp as ExpandedPropSpecFor["string"];
     prop.kind = "string";
-    prop.data.widgetKind = "TextArea";
+    prop.data.widgetKind = "CodeEditor";
 
     // Add validation
     let validation = "";
@@ -735,4 +736,15 @@ export function generatePropHash(prop: ExpandedPropSpec): string {
   });
 
   return hasher.digest("hex");
+}
+
+export function propSuggestionFor(
+  variant: ExpandedPkgSpec,
+  prop: ExpandedPropSpec,
+): PropSuggestion {
+  return {
+    schema: variant.name,
+    // stripping /root out
+    prop: "/" + prop.metadata.propPath.slice(1).join("/"),
+  };
 }
