@@ -142,11 +142,13 @@ def create_component(change_set_id, schema_name, name, options=None):
     request_body = {'schemaName': schema_name, 'name': name}
     if options:
         request_body.update(options)
+    # print(request_body)
     response = requests.post(
         f'{API_URL}/v1/w/{WORKSPACE_ID}/change-sets/{change_set_id}/components',
         headers=headers,
         json=request_body)
     response.raise_for_status()
+    # print(response.json())
     return response.json()
 
 
@@ -185,8 +187,8 @@ def main():
         userdata_script = userdata_template.replace('{{BRANCH}}', branch_name)
 
         userdata_options = {
-            "domain": {
-                "userdataContent": userdata_script
+            "attributes": {
+                "/domain/userdataContent": userdata_script
             },
             "viewName": "Environments",
         }
@@ -205,57 +207,68 @@ def main():
                          MANAGER_COMPONENT_ID)
         print('Userdata component now managed.')
 
-        ec2_properties = {
-            "InstanceType":
-            "c6i.16xlarge",
-            "BlockDeviceMappings": [{
-                "DeviceName": "/dev/sda1",
-                "Ebs": {
-                    "DeleteOnTermination": True,
-                    "VolumeSize": 100,
-                    "VolumeType": "gp3"
-                }
-            }],
-            "Tags": [{
-                "Key": "Name",
-                "Value": "frontend-ci-validation-test-machine"
-            }]
-        }
-
         ec2_options = {
-            "domain": ec2_properties,
-            "subscriptions": {
+            "attributes": {
+                "/domain/InstanceType": "c6i.16xlarge",
+                "/domain/BlockDeviceMappings/0": {
+                    "DeviceName": "/dev/sda1",
+                    "Ebs": {
+                        "DeleteOnTermination": True,
+                        "VolumeSize": 100,
+                        "VolumeType": "gp3"
+                    }
+                },
+                "/domain/Tags/0": {
+                    "Key": "Name",
+                    "Value": "frontend-ci-validation-test-machine"
+                },
                 "/domain/SecurityGroupIds/0": {
-                    "component": "frontend-ci-validation-sg",
-                    "propPath": "/resource_value/GroupId",
+                    "$source": {
+                        "component": "frontend-ci-validation-sg",
+                        "path": "/resource_value/GroupId",
+                    }
                 },
                 "/domain/ImageId": {
-                    "component": "Arch Linux",
-                    "propPath": "/domain/ImageId",
+                    "$source": {
+                        "component": "Arch Linux",
+                        "path": "/domain/ImageId",
+                    }
                 },
                 "/domain/SubnetId": {
-                    "component": "frontend-ci-validation-subnet-pub-1",
-                    "propPath": "/resource_value/SubnetId",
+                    "$source": {
+                        "component": "frontend-ci-validation-subnet-pub-1",
+                        "path": "/resource_value/SubnetId",
+                    }
                 },
                 "/domain/KeyName": {
-                    "component": "frontend-ci-validation-kp",
-                    "propPath": "/domain/KeyName",
+                    "$source": {
+                        "component": "frontend-ci-validation-kp",
+                        "path": "/domain/KeyName",
+                    }
                 },
                 "/domain/extra/Region": {
-                    "component": "us-east-1",
-                    "propPath": "/domain/region"
+                    "$source": {
+                        "component": "us-east-1",
+                        "path": "/domain/region"
+                    }
                 },
                 "/domain/UserData": {
-                    "component": f'userdata-{str(environment_uuid)}',
-                    "propPath": "/domain/userdataContentBase64"
+                    "$source": {
+                        "component": f'userdata-{str(environment_uuid)}',
+                        "path": "/domain/userdataContentBase64"
+                    }
                 },
                 "/domain/IamInstanceProfile": {
-                    "component": "ci-validation-instance-instance-profile",
-                    "propPath": "/domain/InstanceProfileName"
+                    "$source": {
+                        "component": "ci-validation-instance-instance-profile",
+                        "path": "/domain/InstanceProfileName"
+                    }
                 },
                 "/secrets/AWS Credential": {
-                    "component": "si-tools-sandbox",
-                    "propPath": "/secrets/AWS Credential"
+                    "$source": {
+                        "component": "si-tools-sandbox",
+                        "path": "/secrets/AWS Credential"
+                    }
                 }
             },
             "viewName": "Environments",

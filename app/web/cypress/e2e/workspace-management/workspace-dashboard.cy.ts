@@ -37,7 +37,7 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
 
       // check to confirm that we have reached either the lobby or the app itself
       cy.get("#app-layout").should("exist", { timeout: 60000 });
-      cy.url().should("contain", SI_WORKSPACE_ID);
+      cy.url().should("contain", SI_WORKSPACE_ID, { timeout: 60000 });
 
       // checks for the new hotness UI Explore page
       // cy.appModelPageLoaded();
