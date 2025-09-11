@@ -1,9 +1,9 @@
 import _ from "npm:lodash";
 import _logger from "../logger.ts";
-import { propPathToString } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import {
   addPropSuggestSource,
+  bfsPropTree,
   createScalarProp,
   ExpandedPropSpec,
   ExpandedPropSpecFor,
@@ -25,6 +25,111 @@ import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
 import { FuncSpec } from "../bindings/FuncSpec.ts";
 import { ActionFuncSpec } from "../bindings/ActionFuncSpec.ts";
 import { LeafFunctionSpec } from "../bindings/LeafFunctionSpec.ts";
+import { AttrFuncInputSpec } from "../bindings/AttrFuncInputSpec.ts";
+
+// Easy way to create property overrides
+// Matches the schema and prop and calls the override
+const PROP_OVERRIDES: Record<
+  string,
+  Record<string, (prop: ExpandedPropSpec, spec: ExpandedPkgSpec) => void>
+> = {
+  // AWS::EC2
+  "AWS::EC2::FlowLog": {
+    DeliverLogsPermissionArn: arnProp("AWS::IAM::Role"),
+  },
+  "AWS::EC2::LaunchTemplate": {
+    // TODO test this since it's an array item thing
+    "LaunchTemplateData/LicenseSpecifications/LicenseSpecification/LicenseConfigurationArn":
+      arnProp("AWS::LicenseManager::LicenseConfiguration"),
+  },
+  "AWS::EC2::VPCEndpointConnectionNotification": {
+    ConnectionNotificationArn: arnProp("AWS::SNS::Topic", "TopicArn"),
+  },
+  // UNHANDLED ARNs from EC2:
+  // - OutpostArn - no component for it, or not exposed
+  // - CertificateArn: this isn't exposed on AWS::CertificateManager::Certificate! Maybe
+  //   AWS::IAM::ServerCertificate is an alternative?
+  // - CapacityReservationResourceGroupArn - not sure what component this talks to
+
+  // AWS::KMS
+  "AWS::KMS::Key": {
+    KeyPolicy: policyDocumentProp,
+  },
+
+  // AWS::Logs
+  "AWS::Logs::LogGroup": {
+    DataProtectionPolicy: policyDocumentProp,
+  },
+
+  // Props that exist on resources across all of AWS
+  ".*": {
+    // Policy document props have a bunch of stuff
+    ".*(PolicyDocument|PolicyText)": policyDocumentProp,
+
+    // AWS::EC2 ARNs
+    ".*IpamArn": arnProp("AWS::EC2::IPAM"),
+    ".*IpamPoolArn": arnProp("AWS::EC2::IPAMPool"),
+    ".*IpamScopeArn": arnProp("AWS::EC2::IPAMScope"),
+    ".*LocalGatewayRouteTableArn": arnProp(
+      "AWS::EC2::LocalGatewayRouteTable",
+      "LocalGatewayRouteTableArn",
+    ),
+
+    // AWS::ElasticLoadBalancingV2 ARNs
+    ".*LoadBalancerArn": arnProp(
+      "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "LoadBalancerArn",
+    ),
+    ".*(TargetGroupArn|TargetGroup/Arn)": arnProp(
+      "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "TargetGroupArn",
+    ),
+
+    // AWS::KMS ARNs
+    ".*KmsKeyArn": arnProp("AWS::KMS::Key"),
+
+    // AWS::IAM ARNs
+    ".*(InstanceProfileArn|InstanceProfile/Arn|InstanceProfileSpecification/Arn)":
+      arnProp("AWS::IAM::InstanceProfile"),
+    ".*RoleArn": arnProp("AWS::IAM::Role"),
+    ".*SAMLProviderArn": arnProp("AWS::IAM::SAMLProvider"),
+
+    // AWS::Lambda ARNs
+    ".*(LambdaArn|LambdaFunctionArn)": arnProp("AWS::Lambda::Function"),
+
+    // AWS::LicenseManager ARNs
+    ".*(LicenseArn|LicenseConfigurationArn)": arnProp(
+      "AWS::LicenseManager::License",
+      "LicenseArn",
+    ),
+
+    // AWS::Logs ARNs
+    ".*LogGroupArn": arnProp("AWS::Logs::LogGroup"),
+
+    // AWS::NetworkManager ARNs
+    ".*CoreNetworkArn": arnProp(
+      "AWS::NetworkManager::CoreNetwork",
+      "CoreNetworkArn",
+    ),
+
+    // AWS::RDS ARNs
+    ".*DbInstanceArn": arnProp("AWS::RDS::DBInstance", "DBInstanceArn"),
+    ".*DbClusterArn": arnProp("AWS::RDS::DBCluster", "DBClusterArn"),
+    ".*DbProxyArn": arnProp("AWS::RDS::DBProxy", "DBProxyArn"),
+
+    // AWS::ResourceGroups ARNs
+    ".*ResourceGroupArn": arnProp("AWS::ResourceGroups::Group"),
+
+    // AWS::SNS ARNs
+    ".*TopicArn": arnProp("AWS::SNS::Topic", "TopicArn"),
+
+    // AWS::VpcLattice ARNs
+    ".*ResourceConfigurationArn": arnProp(
+      "AWS::VpcLattice::ResourceConfiguration",
+    ),
+    ".*ServiceNetworkArn": arnProp("AWS::VpcLattice::ServiceNetwork"),
+  },
+};
 
 const logger = _logger.ns("assetOverrides").seal();
 
@@ -33,11 +138,35 @@ export function assetSpecificOverrides(
 ): ExpandedPkgSpec[] {
   const newSpecs = [] as ExpandedPkgSpec[];
 
+  // Run overrides on all specs
   for (const spec of incomingSpecs) {
-    if (overrides.has(spec.name)) {
-      logger.debug(`Running override for ${spec.name}`);
-      overrides.get(spec.name)?.(spec);
+    const variant = spec.schemas[0].variants[0];
+
+    // If there's a schema-level override for this spec, run it
+    const schemaOverrideFn = SCHEMA_OVERRIDES.get(spec.name);
+    if (schemaOverrideFn) {
+      logger.debug(`Running schema override for ${spec.name}`);
+      schemaOverrideFn(spec);
     }
+
+    // If there are prop-level overrides for this schema+spec, run them
+    bfsPropTree([variant.domain, variant.resourceValue], (prop) => {
+      const propPath = "/" + prop.metadata.propPath.slice(1).join("/");
+
+      // Check for overrides that match the schema
+      for (const [matchSchema, overrides] of Object.entries(PROP_OVERRIDES)) {
+        if (!spec.name.match(new RegExp(`^${matchSchema}$`))) continue;
+
+        // Check for overrides that match the prop
+        for (const [matchProp, overrideFn] of Object.entries(overrides)) {
+          if (!propPath.match(new RegExp(`^/domain/${matchProp}$`))) continue;
+
+          // Run the matching override
+          logger.debug(`Running prop override for ${spec.name} ${propPath}`);
+          overrideFn(prop, spec);
+        }
+      }
+    });
     newSpecs.push(spec);
   }
 
@@ -46,7 +175,7 @@ export function assetSpecificOverrides(
 
 type OverrideFn = (spec: ExpandedPkgSpec) => void;
 
-const overrides = new Map<string, OverrideFn>([
+const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
   // TODO prop suggestion ValueFrom <- Id
   // ["ContainerDefinitions Secrets", (spec: ExpandedPkgSpec) => {
   //   const variant = spec.schemas[0].variants[0];
@@ -207,36 +336,6 @@ const overrides = new Map<string, OverrideFn>([
       // setAnnotationOnSocket(egressOnlyIgwInputSocket, {
       //   tokens: ["Id<string<scalar>>"],
       // });
-    },
-  ],
-  [
-    "AWS::EC2::VPCEndpoint",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
-
-      const prop = propForOverride(variant.domain, "PolicyDocument");
-      prop.kind = "json";
-      prop!.data.widgetKind = "CodeEditor";
-    },
-  ],
-  [
-    "AWS::KMS::Key",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
-
-      const prop = propForOverride(variant.domain, "KeyPolicy");
-      prop.kind = "json";
-      prop!.data.widgetKind = "CodeEditor";
-    },
-  ],
-  [
-    "AWS::Logs::LogGroup",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
-
-      const prop = propForOverride(variant.domain, "DataProtectionPolicy");
-      prop.kind = "json";
-      prop!.data.widgetKind = "CodeEditor";
     },
   ],
   [
@@ -452,16 +551,6 @@ const overrides = new Map<string, OverrideFn>([
       prop!.data.widgetKind = "CodeEditor";
     },
   ],
-  [
-    "AWS::S3::BucketPolicy",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
-
-      const prop = propForOverride(variant.domain, "PolicyDocument");
-      prop.kind = "json";
-      prop!.data.widgetKind = "CodeEditor";
-    },
-  ],
   // TODO prop suggestions
   // [
   //   "AWS::EC2::VPCCidrBlock",
@@ -648,20 +737,8 @@ const overrides = new Map<string, OverrideFn>([
       );
       targetGroupsProp.data.funcUniqueId = attrFuncId;
       targetGroupsProp.data.inputs = [
-        {
-          kind: "prop",
-          name: "type",
-          prop_path: propPathToString(["root", "domain", "Type"]),
-          unique_id: ulid(),
-          deleted: false,
-        },
-        {
-          kind: "prop",
-          name: "targetGroupArn",
-          prop_path: propPathToString(["root", "domain", "TargetGroupArn"]),
-          unique_id: ulid(),
-          deleted: false,
-        },
+        propInputBinding("/domain/Type", "type"),
+        propInputBinding("/domain/TargetGroupArn", "targetGroupArn"),
       ];
     },
   ],
@@ -768,27 +845,6 @@ const overrides = new Map<string, OverrideFn>([
       const newUpdatePath =
         "./src/cloud-control-funcs/overrides/AWS::ECS::TaskDefinition/actions/update.ts";
       modifyFunc(spec, updateTargetId, newUpdateId, newUpdatePath);
-    },
-  ],
-  [
-    "AWS::ECR::RegistryPolicy",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
-
-      const policyTextProp = propForOverride(variant.domain, "PolicyText");
-
-      // PolicyText needs to be prop kind json and widgetkind CodeEditor
-      policyTextProp.kind = "json";
-      policyTextProp.data.widgetKind = "CodeEditor";
-
-      // TODO prop suggestion PolicyText -> PolicyDocument
-      // // Create an input socket that connects PolicyDocument
-      // const policyDocumentSocket = createInputSocketFromProp(
-      //   policyTextProp,
-      //   [{ tokens: ["policydocument"] }],
-      //   "Policy Document",
-      // );
-      // variant.sockets.push(policyDocumentSocket);
     },
   ],
   // TODO prop suggestion Name -> ClusterName
@@ -1250,4 +1306,48 @@ function stringPropForOverride(
     throw new Error(`Prop ${propName} is not a string!`);
   }
   return prop;
+}
+
+function propInputBinding(
+  attributePath: string,
+  name: string,
+): AttrFuncInputSpec {
+  const PROP_PATH_SEPARATOR = "\u{b}";
+  const prop_path = `root${attributePath}`.replaceAll("/", PROP_PATH_SEPARATOR);
+  return {
+    kind: "prop",
+    name,
+    prop_path,
+    unique_id: ulid(),
+    deleted: false,
+  };
+}
+
+// Overrides for PolicyDocument JSON props
+function policyDocumentProp(prop: ExpandedPropSpec) {
+  if (prop.kind !== "string" && prop.kind !== "json")
+    throw new Error(`${prop.metadata.propPath} is not a string`);
+  prop.kind = "json";
+  prop.data.widgetKind = "CodeEditor";
+  addPropSuggestSource(prop, {
+    schema: "String Template",
+    prop: "/domain/Rendered/Value",
+  });
+  // TODO qualification to check the policy document format?
+}
+
+// Overrides for an ARN prop.
+function arnProp(suggestSchema: string, suggestProp: string = "Arn") {
+  return suggest(suggestSchema, suggestProp);
+}
+
+/// Suggestion override. If prop does not start with /, it is assumed to be under /resource_value
+function suggest(suggestSchema: string, suggestProp: string) {
+  if (!suggestProp.startsWith("/"))
+    suggestProp = `/resource_value/${suggestProp}`;
+  return (addToProp: ExpandedPropSpec) =>
+    addPropSuggestSource(addToProp, {
+      schema: suggestSchema,
+      prop: suggestProp,
+    });
 }

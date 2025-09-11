@@ -31,8 +31,6 @@ export function pruneCfAssets(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
 
     const attrFunc = createAttributeFunc();
     spec.funcs.push(attrFunc);
-
-    // TODO
   }
   return specs;
 }

@@ -13,36 +13,25 @@ import {
 export function createRegionSuggestion(
   specs: ExpandedPkgSpec[],
 ): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
   for (const spec of specs) {
-    const [schema] = spec.schemas;
-    const [schemaVariant] = schema.variants;
+    const variant = spec.schemas[0].variants[0];
 
-    const domainProp = schemaVariant.domain;
-    const extraProp = findPropByName(domainProp, "extra");
-    if (!extraProp) {
-      newSpecs.push(spec);
-      continue;
-    }
+    const extraProp = findPropByName(variant.domain, "extra");
+    if (!extraProp) continue;
 
     let regionProp = findPropByName(
       extraProp as ExpandedPropSpecFor["object"],
       "Region",
     );
-    if (!regionProp) {
-      newSpecs.push(spec);
-      continue;
-    }
+    if (!regionProp) continue;
 
     regionProp = addPropSuggestSource(regionProp, {
       schema: "Region",
       prop: "/domain/region",
     });
-
-    newSpecs.push(spec);
   }
 
-  return newSpecs;
+  return specs;
 }
 
 // We want to ensure that the first suggestion for any credentials
@@ -53,25 +42,18 @@ export function createRegionSuggestion(
 export function createCredentialSuggestion(
   specs: ExpandedPkgSpec[],
 ): ExpandedPkgSpec[] {
-  const newSpecs = [] as ExpandedPkgSpec[];
   for (const spec of specs) {
-    const [schema] = spec.schemas;
-    const [schemaVariant] = schema.variants;
+    const variant = spec.schemas[0].variants[0];
 
-    const secretsProp = schemaVariant.secrets;
+    const secretsProp = variant.secrets;
     let credentialProp = findPropByName(secretsProp, "AWS Credential");
-    if (!credentialProp) {
-      newSpecs.push(spec);
-      continue;
-    }
+    if (!credentialProp) continue;
 
     credentialProp = addPropSuggestSource(credentialProp, {
       schema: "AWS Credential",
       prop: "/secrets/AWS Credential",
     });
-
-    newSpecs.push(spec);
   }
 
-  return newSpecs;
+  return specs;
 }
