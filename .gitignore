@@ -67,3 +67,5 @@ component/toolbox/results/
 
 # Bedrock Recordings
 **/recordings/
+
+.ci/ip
