@@ -31,7 +31,7 @@ import { AttrFuncInputSpec } from "../bindings/AttrFuncInputSpec.ts";
 // Matches the schema and prop and calls the override
 const PROP_OVERRIDES: Record<
   string,
-  Record<string, (prop: ExpandedPropSpec, spec: ExpandedPkgSpec) => void>
+  Record<string, PropOverrideFn | PropOverrideFn[]>
 > = {
   // AWS::EC2
   "AWS::EC2::FlowLog": {
@@ -39,8 +39,23 @@ const PROP_OVERRIDES: Record<
   },
   "AWS::EC2::LaunchTemplate": {
     // TODO test this since it's an array item thing
-    "LaunchTemplateData/LicenseSpecifications/LicenseSpecification/LicenseConfigurationArn":
+    "LaunchTemplateData/LicenseSpecifications/LicenseSpecificationsItem/LicenseConfigurationArn":
       arnProp("AWS::LicenseManager::LicenseConfiguration"),
+  },
+  "AWS::EC2::NetworkInterface": {
+    "GroupSet/GroupSetItem": suggest("AWS::EC2::SecurityGroup", "GroupId"),
+  },
+  "AWS::EC2::Route": {
+    GatewayId: [
+      suggest("AWS::EC2::InternetGateway", "InternetGatewayId"),
+      suggest("AWS::EC2::VPNGateway", "VPNGatewayId"),
+    ],
+    // TODO LocalGatewayId?
+  },
+  "AWS::EC2::VPCCidrBlock": {
+    // TODO these should probably be covered by generic rules
+    Ipv4IpamPoolId: suggest("AWS::EC2::IPAMPool", "IpamPoolId"),
+    Ipv6IpamPoolId: suggest("AWS::EC2::IPAMPool", "IpamPoolId"),
   },
   "AWS::EC2::VPCEndpointConnectionNotification": {
     ConnectionNotificationArn: arnProp("AWS::SNS::Topic", "TopicArn"),
@@ -50,6 +65,28 @@ const PROP_OVERRIDES: Record<
   // - CertificateArn: this isn't exposed on AWS::CertificateManager::Certificate! Maybe
   //   AWS::IAM::ServerCertificate is an alternative?
   // - CapacityReservationResourceGroupArn - not sure what component this talks to
+
+  // AWS::ECS
+  "AWS::ECS::TaskDefinition": {
+    "ContainerDefinitions/ContainerDefinitionsItem/Secrets/SecretsItem/ValueFrom":
+      [
+        suggest("AWS::SecretsManager::Secret", "Id"),
+        suggest("AWS::SSM::Parameter", "/domain/Name"),
+      ],
+  },
+
+  // AWS::ElasticLoadBalancingV2
+  "AWS::ElasticLoadBalancingV2::TargetGroup": {
+    "Targets/TargetsItem/Id": [
+      suggest("AWS::EC2::Instance", "InstanceId"),
+      suggest("AWS::Lambda::Function", "Arn"),
+      suggest("AWS::ElasticLoadBalancingV2::LoadBalancer", "LoadBalancerArn"),
+    ],
+  },
+
+  // TODO AWS::EC2::SecurityGroup GroupId suggestions for arrays of "*SecurityGroups"
+  // (Probably should be a generic rule about Ids!)
+  // e.g. AWS::RDB::DBInstance VPCSecurityGroups/VPCSecurityGroupsItem
 
   // AWS::KMS
   "AWS::KMS::Key": {
@@ -66,14 +103,21 @@ const PROP_OVERRIDES: Record<
     // Policy document props have a bunch of stuff
     ".*(PolicyDocument|PolicyText)": policyDocumentProp,
 
-    // AWS::EC2 ARNs
+    // AWS::EC2 ARNs/IDs/Versions
     ".*IpamArn": arnProp("AWS::EC2::IPAM"),
     ".*IpamPoolArn": arnProp("AWS::EC2::IPAMPool"),
     ".*IpamScopeArn": arnProp("AWS::EC2::IPAMScope"),
+    ".*LaunchTemplate*/Version": [
+      suggest("AWS::EC2::LaunchTemplate", "LatestVersionNumber"),
+      suggest("AWS::EC2::LaunchTemplate", "DefaultVersionNumber"),
+    ],
     ".*LocalGatewayRouteTableArn": arnProp(
       "AWS::EC2::LocalGatewayRouteTable",
       "LocalGatewayRouteTableArn",
     ),
+    // GroupId isn't primary key for whatever reason, but it's the thing we want to connect to
+    ".*GroupId": suggest("AWS::EC2::SecurityGroup", "GroupId"),
+    ".*GroupName": suggest("AWS::EC2::SecurityGroup", "/domain/GroupName"),
 
     // AWS::ElasticLoadBalancingV2 ARNs
     ".*LoadBalancerArn": arnProp(
@@ -131,6 +175,8 @@ const PROP_OVERRIDES: Record<
   },
 };
 
+type PropOverrideFn = (prop: ExpandedPropSpec, spec: ExpandedPkgSpec) => void;
+
 const logger = _logger.ns("assetOverrides").seal();
 
 export function assetSpecificOverrides(
@@ -158,12 +204,16 @@ export function assetSpecificOverrides(
         if (!spec.name.match(new RegExp(`^${matchSchema}$`))) continue;
 
         // Check for overrides that match the prop
-        for (const [matchProp, overrideFn] of Object.entries(overrides)) {
+        for (const [matchProp, overrideFns] of Object.entries(overrides)) {
           if (!propPath.match(new RegExp(`^/domain/${matchProp}$`))) continue;
 
           // Run the matching override
           logger.debug(`Running prop override for ${spec.name} ${propPath}`);
-          overrideFn(prop, spec);
+          if (Array.isArray(overrideFns)) {
+            for (const overrideFn of overrideFns) overrideFn(prop, spec);
+          } else {
+            overrideFns(prop, spec);
+          }
         }
       }
     });
@@ -176,17 +226,6 @@ export function assetSpecificOverrides(
 type OverrideFn = (spec: ExpandedPkgSpec) => void;
 
 const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
-  // TODO prop suggestion ValueFrom <- Id
-  // ["ContainerDefinitions Secrets", (spec: ExpandedPkgSpec) => {
-  //   const variant = spec.schemas[0].variants[0];
-
-  //   const prop = propForOverride(variant.domain, "ValueFrom");
-  //   if (!prop) return;
-  //   const socket = createInputSocketFromProp(prop);
-  //   setAnnotationOnSocket(socket, { tokens: ["Id"] });
-  //   variant.sockets.push(socket);
-  // }],
-
   [
     "AWS::EC2::Instance",
     (spec: ExpandedPkgSpec) => {
@@ -257,22 +296,6 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
     (spec: ExpandedPkgSpec) => {
       const variant = spec.schemas[0].variants[0];
 
-      // TODO prop suggestions
-      // ensure we can connect to the Version input for the EC2 Instance and AutoScaling Group Assets
-      // const defaultVersionSocket = variant.sockets.find(
-      //   (s: ExpandedSocketSpec) =>
-      //     s.name === "Default Version Number" && s.data.kind === "output",
-      // );
-      // if (!defaultVersionSocket) return;
-      // setAnnotationOnSocket(defaultVersionSocket, { tokens: ["Version"] });
-
-      // const latestVersionSocket = variant.sockets.find(
-      //   (s: ExpandedSocketSpec) =>
-      //     s.name === "Latest Version Number" && s.data.kind === "output",
-      // );
-      // if (!latestVersionSocket) return;
-      // setAnnotationOnSocket(latestVersionSocket, { tokens: ["Version"] });
-
       const ltData = objectPropForOverride(
         variant.domain,
         "LaunchTemplateData",
@@ -296,46 +319,6 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
         "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/discover.ts";
 
       modifyFunc(spec, discoverTargetId, newDiscoverId, discoverPath);
-    },
-  ],
-  // TODO prop suggestion
-  // [
-  //   "AWS::EC2::NetworkInterface",
-  //   (spec: ExpandedPkgSpec) => {
-  //     const variant = spec.schemas[0].variants[0];
-  //     // Add an annotation for the Id output socket to connect to HostedZoneId
-  //     const socket = variant.sockets.find(
-  //       (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
-  //     );
-  //     if (!socket) return;
-  //     setAnnotationOnSocket(socket, { tokens: ["NetworkInterfaceId"] });
-  //     const prop = propForOverride(variant.domain, "GroupSet");
-  //     const groupSocket = createInputSocketFromProp(prop);
-  //     setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
-  //     variant.sockets.push(groupSocket);
-  //   },
-  // ],
-  [
-    "AWS::EC2::Route",
-    (_spec: ExpandedPkgSpec) => {
-      // TODO prop suggestions for GatewayId <- InternetGatewayId/VPNGatewayId
-      // const variant = spec.schemas[0].variants[0];
-      // const prop = propForOverride(variant.domain, "GatewayId");
-      // const socket = createInputSocketFromProp(prop);
-      // setAnnotationOnSocket(socket, { tokens: ["InternetGatewayId"] });
-      // setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
-      // setAnnotationOnSocket(socket, { tokens: ["Gateway Id"] });
-      // TODO prop suggestion for EgressOnlyInternetGatewayId <- Id
-      // const egressOnlyIgwProp = propForOverride(
-      //   variant.domain,
-      //   "EgressOnlyInternetGatewayId",
-      // );
-      // const egressOnlyIgwInputSocket =
-      //   createInputSocketFromProp(egressOnlyIgwProp);
-      // setAnnotationOnSocket(egressOnlyIgwInputSocket, { tokens: ["Id"] });
-      // setAnnotationOnSocket(egressOnlyIgwInputSocket, {
-      //   tokens: ["Id<string<scalar>>"],
-      // });
     },
   ],
   [
@@ -372,31 +355,8 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       addSecretProp("Secret String", "secretString", ["MasterUserPassword"])(
         spec,
       );
-
-      // TODO prop suggestions
-      // const variant = spec.schemas[0].variants[0];
-
-      // const securityGroupsSocket = variant.sockets.find(
-      //   (s: ExpandedSocketSpec) =>
-      //     s.name === "VPC Security Groups" && s.data.kind === "input",
-      // );
-      // if (!securityGroupsSocket) return;
-
-      // setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
     },
   ],
-  // TODO duplicate with other prop suggestion override
-  // [
-  //   "AWS::EC2::NetworkInterface",
-  //   (spec: ExpandedPkgSpec) => {
-  //     const variant = spec.schemas[0].variants[0];
-
-  //     const prop = propForOverride(variant.domain, "GroupSet");
-  //     const groupSocket = createInputSocketFromProp(prop);
-
-  //     setAnnotationOnSocket(groupSocket, { tokens: ["GroupId"] });
-  //   },
-  // ],
   [
     "AWS::EC2::SecurityGroupIngress",
     (spec: ExpandedPkgSpec) => {
@@ -404,29 +364,6 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       const domainId = variant.domain.uniqueId;
 
       if (!domainId) return;
-
-      // TODO prop suggestions
-      // // Add Source SG ID to an input socket
-      // const idProp = propForOverride(variant.domain, "SourceSecurityGroupId");
-      // const groupIdSocket = createInputSocketFromProp(idProp);
-
-      // setAnnotationOnSocket(groupIdSocket, {
-      //   tokens: ["SourceSecurityGroupId", "GroupId"],
-      // });
-      // setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
-      // variant.sockets.push(groupIdSocket);
-
-      // // Add Source SG Name to an input socket
-      // const nameProp = propForOverride(
-      //   variant.domain,
-      //   "SourceSecurityGroupName",
-      // );
-      // const groupSocket = createInputSocketFromProp(nameProp);
-
-      // setAnnotationOnSocket(groupSocket, {
-      //   tokens: ["SourceSecurityGroupName", "GroupName"],
-      // });
-      // variant.sockets.push(groupSocket);
 
       const { func, leafFuncSpec } = attachQualificationFunction(
         "./src/cloud-control-funcs/overrides/AWS::EC2::SecurityGroupIngress/qualifications/checkForEitherGroupIdOrGroupName.ts",
@@ -439,70 +376,11 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       variant.leafFunctions.push(leafFuncSpec);
     },
   ],
-  // TODO prop suggestions
-  // [
-  //   "AWS::EC2::SecurityGroup",
-  //   (spec: ExpandedPkgSpec) => {
-  //     const variant = spec.schemas[0].variants[0];
-
-  //     // Add SG GroupName to an output socket
-  //     const nameProp = propForOverride(variant.domain, "GroupName");
-  //     const groupSocket = createOutputSocketFromProp(nameProp);
-  //     variant.sockets.push(groupSocket);
-
-  //     // Add annotations to Group Id output socket
-  //     const groupIdSocket = variant.sockets.find(
-  //       (s: ExpandedSocketSpec) =>
-  //         s.name === "Group Id" && s.data.kind === "output",
-  //     );
-  //     if (!groupIdSocket) return;
-
-  //     setAnnotationOnSocket(groupIdSocket, { tokens: ["Security Group Ids"] });
-  //     setAnnotationOnSocket(groupIdSocket, { tokens: ["Security Group Id"] });
-  //     setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
-  //   },
-  // ],
-  // TODO prop suggestions
-  // [
-  //   "AWS::EC2::SecurityGroupEgress",
-  //   (spec: ExpandedPkgSpec) => {
-  //     const variant = spec.schemas[0].variants[0];
-
-  //     // Add Destination SG ID to an input socket
-  //     const idProp = propForOverride(
-  //       variant.domain,
-  //       "DestinationSecurityGroupId",
-  //     );
-  //     const groupIdSocket = createInputSocketFromProp(idProp);
-
-  //     setAnnotationOnSocket(groupIdSocket, {
-  //       tokens: ["DestinationSecurityGroupId", "GroupId"],
-  //     });
-  //     setAnnotationOnSocket(groupIdSocket, { tokens: ["GroupId"] });
-  //     variant.sockets.push(groupIdSocket);
-  //   },
-  // ],
 
   [
     "AWS::AutoScaling::AutoScalingGroup",
     (spec: ExpandedPkgSpec) => {
-      // TODO prop suggestions
       const variant = spec.schemas[0].variants[0];
-      // const launchTemplateVersionSocket = variant.sockets.find(
-      //   (s: ExpandedSocketSpec) =>
-      //     s.name === "Launch Template Version" && s.data.kind === "input",
-      // );
-      // if (!launchTemplateVersionSocket) return;
-
-      // setAnnotationOnSocket(launchTemplateVersionSocket, {
-      //   tokens: ["DefaultVersionNumber"],
-      // });
-      // setAnnotationOnSocket(launchTemplateVersionSocket, {
-      //   tokens: ["LatestVersionNumber"],
-      // });
-      // setAnnotationOnSocket(launchTemplateVersionSocket, {
-      //   tokens: ["LaunchTemplateVersion<string<scalar>>"],
-      // });
 
       // Modify the existing update function instead of replacing it
       const updateTargetId = ACTION_FUNC_SPECS["Update Asset"].id;
@@ -525,23 +403,6 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       variant.actionFuncs.push(refreshInstancesFuncSpec);
     },
   ],
-  // TODO prop suggestions
-  // [
-  //   "TargetGroup Targets",
-  //   (spec: ExpandedPkgSpec) => {
-  //     const variant = spec.schemas[0].variants[0];
-
-  //     // Add an annotation for the Id output socket to connect to HostedZoneId
-  //     const socket = variant.sockets.find(
-  //       (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "input",
-  //     );
-  //     if (!socket) return;
-
-  //     setAnnotationOnSocket(socket, { tokens: ["InstanceId"] });
-  //     setAnnotationOnSocket(socket, { tokens: ["arn", "string"] });
-  //     setAnnotationOnSocket(socket, { tokens: ["arn"] });
-  //   },
-  // ],
   [
     "AWS::ImageBuilder::Component",
     (spec: ExpandedPkgSpec) => {
@@ -551,28 +412,6 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       prop!.data.widgetKind = "CodeEditor";
     },
   ],
-  // TODO prop suggestions
-  // [
-  //   "AWS::EC2::VPCCidrBlock",
-  //   (spec: ExpandedPkgSpec) => {
-  //     const variant = spec.schemas[0].variants[0];
-
-  //     const ipv6IpamProp = propForOverride(variant.domain, "Ipv6IpamPoolId");
-
-  //     const ipv6IpamSocket = createInputSocketFromProp(ipv6IpamProp, [
-  //       { tokens: ["Ipam Pool Id"] },
-  //       { tokens: ["IpamPoolId"] },
-  //       { tokens: ["IpamPoolId", "string", "scalar"] },
-  //     ]);
-  //     const ipv4IpamProp = propForOverride(variant.domain, "Ipv4IpamPoolId");
-
-  //     const ipv4IpamSocket = createInputSocketFromProp(ipv4IpamProp, [
-  //       { tokens: ["Ipam Pool Id"] },
-  //       { tokens: ["IpamPoolId"] },
-  //       { tokens: ["IpamPoolId", "string", "scalar"] },
-  //     ]);
-  //   },
-  // ],
   [
     "AWS::ECS::Cluster",
     (spec: ExpandedPkgSpec) => {
