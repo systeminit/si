@@ -8,15 +8,15 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.basicLogin();
     });
 
-    // it("log_out", () => {
-    //   cy.basicLogin();
+    it("log_out", () => {
+      cy.basicLogin();
       
-    //   // log out
-    //   cy.get('[aria-label="Profile"]').should('exist').click();
-    //   cy.get('.profile-dropdown-menu-logout').should('exist').should('be.visible').click({ force: true });
+      // log out
+      cy.get('[aria-label="Profile"]').should('exist').click();
+      cy.get('.profile-dropdown-menu-logout').should('exist').should('be.visible').click({ force: true });
 
-    //   // There is a bug currently where you log out of the product & it just logs you out to the workspaces page of the UI in auth portal
-    //   cy.url().should("contain", AUTH_PORTAL_URL + '/workspaces');
-    // });
+      // There is a bug currently where you log out of the product & it just logs you out to the workspaces page of the UI in auth portal
+      cy.url().should("contain", AUTH_PORTAL_URL + '/workspaces');
+    });
   });
 });
