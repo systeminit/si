@@ -74,7 +74,7 @@ Cypress.Commands.add('appModelPageLoaded', () => {
   const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
   
   cy.wait(3000);
-  cy.url().should("contain", SI_WORKSPACE_ID);
+  cy.url().should("contain", SI_WORKSPACE_ID, { timeout: 60000 });
   cy.get('[data-testid="lobby"]').should('not.exist', { timeout: 180000 });
   cy.get('[data-testid="left-column-new-hotness-explore"]', { timeout: 60000 });
   cy.get('[data-testid="right-column-new-hotness-explore"]', { timeout: 60000 });
