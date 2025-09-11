@@ -12,7 +12,7 @@ A FUSE filesystem for editing System Initiative assets in your favorite editor.
 2. Mount the filesystem:
 
 ```bash
-buck2 run //bin/si-fs -- --foreground --workspace-id <WORKSPACE_ID> --endpoint <ENDPOINT> /mountpoint
+buck2 run //bin/si-fs -- --foreground --workspace-id <WORKSPACE_ID> [--endpoint <ENDPOINT>] /mountpoint
 ```
 
 At this point, we recommend running in the foreground, so you can see any errors
@@ -125,3 +125,19 @@ The function must be on the same change set as the schema you are attaching to.
 
 Like when creating a new function, Attribute and Action functions will be put
 into a pending state.
+
+## Mac Setup
+
+Ensure you setup macFUSE before attempting above setup
+ https://github.com/macfuse/macfuse/wiki/Getting-Started
+
+You will need to use a mountpoint in your user profile otherwise you will get `std io error: Read-only file system (os error 30)` when trying to write to the filesystem.
+
+Note, you must use the buck2 commands on mac, as it's not currently possible to ensure the settings for building via cargo directly and buck2 work correctly.
+
+To build via cargo directly add this to the end of your `third-party/rust/Cargo.toml` file.
+
+```
+[target.'cfg(target_os = "macos")'.dependencies]
+fuser = { version = "0.15.1", default-features = false, features = ["libfuse"] }
+```
