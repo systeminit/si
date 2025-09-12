@@ -84,11 +84,17 @@ pub async fn update_cached_modules_inner(
     original_uri: &Uri,
     host_name: &String,
     PosthogClient(posthog_client): PosthogClient,
-    edda_client: edda_client::EddaClient,
+    edda_client: edda_client::Client,
 ) -> AdminAPIResult<()> {
     info!("Starting module cache update");
-    CachedModule::update_cached_modules(ctx, edda_client.clone()).await?;
-    edda_client.rebuild_for_deployment().await?;
+    let report = CachedModule::update_cached_modules(ctx).await?;
+    edda_client
+        .rebuild_specific_for_deployment(
+            report.removed_schema_ids,
+            report.removed_schema_variant_ids,
+            report.new_module_ids,
+        )
+        .await?;
 
     track(
         &posthog_client,

@@ -1,4 +1,10 @@
-use std::result;
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    result,
+};
 
 use bytes::Bytes;
 use edda_core::{
@@ -15,6 +21,10 @@ use edda_core::{
         rebuild_request::{
             RebuildRequest,
             RebuildRequestVCurrent,
+        },
+        rebuild_specific_request::{
+            RebuildSpecificRequest,
+            RebuildSpecificRequestVCurrent,
         },
         update_request::{
             UpdateRequest,
@@ -37,7 +47,10 @@ use si_data_nats::{
     },
 };
 use si_events::{
+    CachedModuleId,
     ChangeSetId,
+    SchemaId,
+    SchemaVariantId,
     WorkspacePk,
     WorkspaceSnapshotAddress,
     change_batch::ChangeBatchAddress,
@@ -190,9 +203,30 @@ impl Client {
         .await
     }
 
+    // NOTE(nick): this is unused but someone may want to use this someday... right?
     pub async fn rebuild_for_deployment(&self) -> Result<RequestId> {
         let id = RequestId::new();
         let request = RebuildRequest::new(RebuildRequestVCurrent { id });
+        let mut info = ContentInfo::from(&request);
+        let (content_type, payload) = request.to_vec()?;
+        info.content_type = content_type.into();
+
+        self.publish_inner(None, id, payload.into(), info).await
+    }
+
+    pub async fn rebuild_specific_for_deployment(
+        &self,
+        schema_ids: HashSet<SchemaId>,
+        schema_variant_ids: HashMap<SchemaVariantId, SchemaId>,
+        module_ids: HashSet<CachedModuleId>,
+    ) -> Result<RequestId> {
+        let id = RequestId::new();
+        let request = RebuildSpecificRequest::new(RebuildSpecificRequestVCurrent {
+            id,
+            schema_ids: schema_ids.iter().copied().collect(),
+            schema_variant_ids,
+            module_ids: module_ids.iter().copied().collect(),
+        });
         let mut info = ContentInfo::from(&request);
         let (content_type, payload) = request.to_vec()?;
         info.content_type = content_type.into();

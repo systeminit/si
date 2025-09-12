@@ -75,6 +75,14 @@ async fn multiple_rebuilds() {
         CompressedDeploymentRequest::Rebuild { src_requests_count } => {
             assert_eq!(requests.len(), src_requests_count);
         }
+        CompressedDeploymentRequest::RebuildSpecific {
+            src_requests_count: _,
+            schema_ids: _,
+            schema_variant_ids: _,
+            module_ids: _,
+        } => {
+            panic!("specific rebuild requests are not expected");
+        }
     }
 }
 
@@ -107,6 +115,9 @@ mod helpers {
                     let payload: Bytes = payload.into();
 
                     (info, payload)
+                }
+                DeploymentRequest::RebuildSpecific(_) => {
+                    panic!("specific rebuild requests are not expected");
                 }
             };
 
