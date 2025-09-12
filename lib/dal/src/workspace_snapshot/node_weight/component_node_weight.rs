@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    sync::Arc,
-};
+use std::collections::HashSet;
 
 use itertools::Itertools;
 use petgraph::{
@@ -15,7 +12,6 @@ use serde::{
 };
 use si_events::{
     ContentHash,
-    Timestamp,
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
@@ -35,18 +31,10 @@ use super::{
     traits::CorrectTransformsResult,
 };
 use crate::{
-    DalContext,
     EdgeWeight,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
     WorkspaceSnapshotGraphVCurrent,
-    layer_db_types::{
-        ComponentContent,
-        ComponentContentDiscriminants,
-        ComponentContentV2,
-        GeometryContent,
-        GeometryContentV1,
-    },
     workspace_snapshot::{
         NodeInformation,
         content_address::{
@@ -55,7 +43,6 @@ use crate::{
         },
         graph::{
             LineageId,
-            WorkspaceSnapshotGraphV4,
             correct_transforms::add_dependent_value_root_updates,
             detector::Update,
         },
@@ -159,108 +146,6 @@ impl ComponentNodeWeight {
             EdgeWeightKindDiscriminants::Use,
             EdgeWeightKindDiscriminants::Root,
         ]
-    }
-
-    pub(crate) async fn try_upgrade_and_create_external_geometry(
-        ctx: &DalContext,
-        v4_graph: &mut WorkspaceSnapshotGraphV4,
-        default_view_idx: NodeIndex,
-        component_node_weight: &ComponentNodeWeight,
-    ) -> NodeWeightResult<()> {
-        let component_idx = v4_graph
-            .get_node_index_by_id(component_node_weight.id)
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
-
-        let layer_db = ctx.layer_db();
-        let cas = layer_db.cas();
-
-        let component_content: ComponentContent = cas
-            .try_read_as(&component_node_weight.content_hash())
-            .await?
-            .ok_or_else(|| NodeWeightError::MissingContentFromStore(component_node_weight.id))?;
-
-        // When migrating from graph v3 to v4 all components should be on v1
-        let ComponentContent::V1(content) = component_content.clone() else {
-            let actual = ComponentContentDiscriminants::from(component_content);
-            return Err(NodeWeightError::UnexpectedComponentContentVersion(
-                actual,
-                ComponentContentDiscriminants::V1,
-            ));
-        };
-
-        // Create geometry node
-        let geometry_content = GeometryContent::V1(GeometryContentV1 {
-            timestamp: Timestamp::now(),
-            x: content.x,
-            y: content.y,
-            width: content.width,
-            height: content.height,
-        });
-
-        let (content_address, _) = cas.write(
-            Arc::new(geometry_content.clone().into()),
-            None,
-            ctx.events_tenancy(),
-            ctx.events_actor(),
-        )?;
-
-        let geometry_id = v4_graph
-            .generate_ulid()
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
-
-        let geometry_node_weight = NodeWeight::new_geometry(
-            geometry_id,
-            v4_graph
-                .generate_ulid()
-                .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?,
-            content_address,
-        );
-
-        let geometry_idx = v4_graph
-            .add_or_replace_node(geometry_node_weight)
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
-
-        // Connect geometry to component
-        v4_graph
-            .add_edge(
-                geometry_idx,
-                EdgeWeight::new(EdgeWeightKind::Represents),
-                component_idx,
-            )
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
-
-        // Connect geometry to default view
-        v4_graph
-            .add_edge(
-                default_view_idx,
-                EdgeWeight::new(EdgeWeightKind::new_use()),
-                geometry_idx,
-            )
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
-
-        // Upgrade component content
-        let updated_content = ComponentContent::V2(ComponentContentV2 {
-            timestamp: content.timestamp,
-        });
-
-        let (updated_content_address, _) = cas.write(
-            Arc::new(updated_content.into()),
-            None,
-            ctx.events_tenancy(),
-            ctx.events_actor(),
-        )?;
-
-        let upgraded_node_weight = NodeWeight::new_component(
-            component_node_weight.id,
-            component_node_weight.lineage_id,
-            updated_content_address,
-        );
-
-        v4_graph
-            .add_or_replace_node(upgraded_node_weight)
-            .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
-
-        Ok(())
     }
 }
 
