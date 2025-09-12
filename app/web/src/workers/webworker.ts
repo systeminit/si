@@ -1605,13 +1605,17 @@ const mjolnirBulk = async (
       indexChecksum,
       numHammers: hammerObjs.length,
     });
-    try {
-      const startBulkMjolnirReq = performance.now();
-      req = await sdf<BulkResponse>({
-        method: "post",
-        url,
-        data: { requests: hammerObjs },
-      });
+    const startBulkMjolnirReq = performance.now();
+    req = await sdf<BulkResponse>({
+      method: "post",
+      url,
+      data: { requests: hammerObjs },
+    });
+    if (req.status !== 200) {
+      span.setAttribute("http.status", req.status);
+      debug("🔨 MJOLNIR HTTP:", req.status, indexChecksum);
+      error("MJOLNIR", req.status, url, hammerObjs);
+    } else {
       debug(
         "🔨 MJOLNIR BULK HTTP SUCCESS:",
         indexChecksum,
@@ -1621,17 +1625,12 @@ const mjolnirBulk = async (
         successful: req.data.successful.length,
         failed: req.data.failed.length,
       });
-    } catch (err) {
-      span.setAttribute("http.status", 404);
-      debug("🔨 MJOLNIR HTTP 404:", indexChecksum, err);
-      error("MJOLNIR 404", url, hammerObjs, err);
-    } finally {
-      if (req?.status) span.setAttribute("http.status", req.status);
-      span.end();
     }
+    if (req?.status) span.setAttribute("http.status", req.status);
+    span.end();
   });
 
-  if (!req) {
+  if (!req || req.status !== 200) {
     debug("🔨 MJOLNIR BULK FAILED:", indexChecksum, "no response");
     bulkDone({ workspaceId, changeSetId }, true);
     return;
@@ -4141,6 +4140,12 @@ const dbInterface: TabDBInterface = {
       throw new Error(DB_NOT_INIT_ERR);
     }
     return sqlite.transaction((db) => handleWorkspacePatchMessage(db, data));
+  },
+  handleIndexMvPatch(data) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) => handleIndexMvPatch(db, data));
   },
   exec,
   oneInOne,
