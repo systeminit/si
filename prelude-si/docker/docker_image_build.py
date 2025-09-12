@@ -135,7 +135,7 @@ def build_image(
 ):
     cmd = [
         "docker",
-        "image",
+        "buildx",
         "build",
     ]
     for key, value in metadata.items():
