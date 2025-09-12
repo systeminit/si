@@ -32,7 +32,7 @@ export type BustCacheFn = (
 ) => void;
 
 export type OutgoingConnections = DefaultMap<
-  string,
+  ComponentId,
   Record<string, Connection>
 >;
 
@@ -366,6 +366,7 @@ export interface TabDBInterface {
   encodeDocumentForDB(doc: object): Promise<ArrayBuffer>;
   decodeDocumentFromDB(doc: ArrayBuffer): AtomDocument;
   handleWorkspacePatchMessage(data: WorkspacePatchBatch): Promise<void>;
+  handleIndexMvPatch(data: WorkspaceIndexUpdate): Promise<void>;
   handleHammer(msg: WorkspaceAtomMessage): Promise<void>;
   exec(
     opts: ExecBaseOptions &
