@@ -37,11 +37,11 @@ def main() -> int:
 
 
 def download_program(dst: str):
-    bin_release_name = "{}-{}-{}".format(
-        PROGRAM,
-        os.uname().sysname.lower(),
-        detect_architecture(),
-    )
+    # bin_release_name = "{}-{}-{}".format(
+    #     PROGRAM,
+    #     os.uname().sysname.lower(),
+    #     detect_architecture(),
+    # )
     tmp_dst = os.path.join(os.path.dirname(dst),
                            ".download.{}".format(os.path.basename(dst)))
 
@@ -57,9 +57,10 @@ def download_program(dst: str):
         "--repo",
         REPO,
         "--pattern",
-        bin_release_name,
+        "si-ci-linux-x86_64",
         "--output",
         tmp_dst,
+        "v20250912.2041.16"
     ]
     exit_code = subprocess.call(download_program_cmd, stdout=sys.stderr)
     if exit_code != 0:
