@@ -30,7 +30,6 @@ use crate::{
     WorkspaceSnapshotError,
     workspace::SnapshotVersion,
     workspace_snapshot::{
-        migrator::v4::migrate_v3_to_v4,
         node_weight::NodeWeightError,
         split_snapshot::{
             SplitSnapshot,
@@ -41,7 +40,6 @@ use crate::{
 };
 
 pub mod split_v1;
-pub mod v4;
 
 #[derive(Error, Debug)]
 #[remain::sorted]
@@ -230,13 +228,12 @@ impl SnapshotGraphMigrator {
         loop {
             match working_graph {
                 Graphs::Legacy(WorkspaceSnapshotGraph::Legacy)
-                | Graphs::Legacy(WorkspaceSnapshotGraph::V1 | WorkspaceSnapshotGraph::V2) => {
+                | Graphs::Legacy(
+                    WorkspaceSnapshotGraph::V1
+                    | WorkspaceSnapshotGraph::V2
+                    | WorkspaceSnapshotGraph::V3,
+                ) => {
                     return Err(SnapshotGraphMigratorError::MigrationUnsupported);
-                }
-                Graphs::Legacy(WorkspaceSnapshotGraph::V3(inner_graph)) => {
-                    working_graph = Graphs::Legacy(WorkspaceSnapshotGraph::V4(
-                        migrate_v3_to_v4(ctx, inner_graph).await?,
-                    ));
                 }
                 Graphs::Legacy(WorkspaceSnapshotGraph::V4(v4_graph)) => {
                     working_graph = Graphs::Split {

@@ -10,12 +10,10 @@ use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
 use super::{
-    ContentNodeWeight,
     NodeWeightError,
     traits::SiVersionedNodeWeight,
 };
 use crate::{
-    DalContext,
     WorkspaceSnapshotError,
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
 };
@@ -23,8 +21,6 @@ use crate::{
 pub mod v1;
 
 pub use v1::SchemaVariantNodeWeightV1;
-
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -59,18 +55,5 @@ impl SchemaVariantNodeWeight {
             is_locked,
             content_hash,
         ))
-    }
-
-    pub async fn try_upgrade_from_content_node_weight(
-        ctx: &DalContext,
-        v3_graph: &mut WorkspaceSnapshotGraphV3,
-        content_node_weight: &ContentNodeWeight,
-    ) -> SchemaVariantNodeWeightResult<()> {
-        SchemaVariantNodeWeightV1::try_upgrade_from_content_node_weight(
-            ctx,
-            v3_graph,
-            content_node_weight,
-        )
-        .await
     }
 }

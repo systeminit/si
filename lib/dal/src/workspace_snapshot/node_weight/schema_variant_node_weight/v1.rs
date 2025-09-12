@@ -1,9 +1,6 @@
-use std::{
-    collections::{
-        HashMap,
-        HashSet,
-    },
-    sync::Arc,
+use std::collections::{
+    HashMap,
+    HashSet,
 };
 
 use serde::{
@@ -17,22 +14,12 @@ use si_events::{
     ulid::Ulid,
 };
 
-use super::{
-    SchemaVariantNodeWeight,
-    SchemaVariantNodeWeightError,
-    SchemaVariantNodeWeightResult,
-};
 use crate::{
-    DalContext,
     EdgeWeightKindDiscriminants,
     SchemaId,
     SchemaVariantError,
     SchemaVariantId,
     WorkspaceSnapshotGraphVCurrent,
-    layer_db_types::{
-        SchemaVariantContent,
-        SchemaVariantContentV3,
-    },
     workspace_snapshot::{
         content_address::{
             ContentAddress,
@@ -41,15 +28,11 @@ use crate::{
         graph::{
             LineageId,
             WorkspaceSnapshotGraphError,
-            WorkspaceSnapshotGraphV3,
             detector::Update,
         },
         node_weight::{
             self,
-            ContentNodeWeight,
-            NodeWeight,
             NodeWeightDiscriminants,
-            NodeWeightError,
             traits::{
                 CorrectExclusiveOutgoingEdge,
                 CorrectTransforms,
@@ -96,103 +79,6 @@ impl SchemaVariantNodeWeightV1 {
 
     pub fn new_content_hash(&mut self, new_content_hash: ContentHash) {
         self.content_address = ContentAddress::SchemaVariant(new_content_hash);
-    }
-
-    pub(crate) async fn try_upgrade_from_content_node_weight(
-        ctx: &DalContext,
-        v3_graph: &mut WorkspaceSnapshotGraphV3,
-        content_node_weight: &ContentNodeWeight,
-    ) -> SchemaVariantNodeWeightResult<()> {
-        let content_hash = if let ContentAddress::SchemaVariant(content_hash) =
-            content_node_weight.content_address()
-        {
-            content_hash
-        } else {
-            return Err(Box::new(NodeWeightError::UnexpectedContentAddressVariant(
-                ContentAddressDiscriminants::SchemaVariant,
-                content_node_weight.content_address_discriminants(),
-            ))
-            .into());
-        };
-
-        let content: SchemaVariantContent = ctx
-            .layer_db()
-            .cas()
-            .try_read_as(&content_hash)
-            .await?
-            .ok_or_else(|| {
-                Box::new(NodeWeightError::MissingContentFromStore(
-                    content_node_weight.id(),
-                ))
-            })?;
-
-        let (v3_content, is_locked) = match content {
-            SchemaVariantContent::V1(old_content) => {
-                let v3_content = SchemaVariantContentV3 {
-                    timestamp: old_content.timestamp,
-                    ui_hidden: old_content.ui_hidden,
-                    version: old_content.timestamp.created_at.to_string(),
-                    display_name: old_content.display_name.unwrap_or_else(String::new),
-                    category: old_content.category,
-                    color: old_content.color,
-                    component_type: old_content.component_type,
-                    link: old_content.link,
-                    description: old_content.description,
-                    asset_func_id: old_content.asset_func_id,
-                    finalized_once: old_content.finalized_once,
-                    is_builtin: old_content.is_builtin,
-                };
-
-                // Locking variants didn't exist at this point, so everything should be considered
-                // as locked.
-                (v3_content, true)
-            }
-            SchemaVariantContent::V2(old_content) => {
-                let v3_content = SchemaVariantContentV3 {
-                    timestamp: old_content.timestamp,
-                    ui_hidden: old_content.ui_hidden,
-                    version: old_content.version,
-                    display_name: old_content.display_name,
-                    category: old_content.category,
-                    color: old_content.color,
-                    component_type: old_content.component_type,
-                    link: old_content.link,
-                    description: old_content.description,
-                    asset_func_id: old_content.asset_func_id,
-                    finalized_once: old_content.finalized_once,
-                    is_builtin: old_content.is_builtin,
-                };
-
-                (v3_content, old_content.is_locked)
-            }
-            SchemaVariantContent::V3(_) => {
-                return Err(SchemaVariantNodeWeightError::InvalidContentForNodeWeight(
-                    content_node_weight.id(),
-                ));
-            }
-        };
-
-        let (hash, _) = ctx.layer_db().cas().write(
-            Arc::new(SchemaVariantContent::V3(v3_content).into()),
-            None,
-            ctx.events_tenancy(),
-            ctx.events_actor(),
-        )?;
-
-        let new_node_weight_inner = Self::new(
-            content_node_weight.id(),
-            content_node_weight.lineage_id(),
-            is_locked,
-            hash,
-        );
-        let new_node_weight =
-            NodeWeight::SchemaVariant(SchemaVariantNodeWeight::V1(new_node_weight_inner));
-
-        v3_graph
-            .add_or_replace_node(new_node_weight)
-            .map_err(Box::new)?;
-
-        Ok(())
     }
 }
 
