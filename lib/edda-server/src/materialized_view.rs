@@ -97,8 +97,7 @@ use si_frontend_mv_types::{
     },
 };
 use si_id::{
-    ChangeSetId,
-    WorkspacePk,
+    CachedModuleId, ChangeSetId, ModuleId, WorkspacePk
 };
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -568,13 +567,6 @@ pub async fn build_mv_for_changes_in_change_set(
     name = "materialized_view.build_all_mvs_for_deployment",
     level = "info",
     skip_all,
-    fields(
-        si.materialized_view.reason = reason_message,
-        si.edda.mv.count = Empty,
-        si.edda.mv.avg_build_elapsed_ms = Empty,
-        si.edda.mv.max_build_elapsed_ms = Empty,
-        si.edda.mv.slowest_kind = Empty,
-    ),
 )]
 pub async fn build_all_mvs_for_deployment(
     ctx: &DalContext,
@@ -583,10 +575,50 @@ pub async fn build_all_mvs_for_deployment(
     parallel_build_limit: usize,
     reason_message: &'static str,
 ) -> Result<(), MaterializedViewError> {
-    let span = current_span_for_instrument_at!("info");
+    let deployment_tasks = discover_deployment_mvs_for_all_modules(ctx).await?;
+    build_mvs_for_deployment(ctx, frigg, edda_updates, parallel_build_limit, reason_message, deployment_tasks.as_slice()).await
+}
 
-    // Discover all deployment MVs that need to be built
-    let deployment_tasks = discover_deployment_mvs(ctx).await?;
+/// This function builds the minimal number of required Materialized Views (MVs) for this deployment environment
+#[instrument(
+    name = "materialized_view.build_minimal_mvs_for_deployment",
+    level = "info",
+    skip_all,
+)]
+pub async fn build_minimal_mvs_for_deployment(
+    ctx: &DalContext,
+    frigg: &FriggStore,
+    edda_updates: &EddaUpdates,
+    parallel_build_limit: usize,
+    new_module_ids: Vec<CachedModuleId>,
+    removed_module_ids: Vec<CachedModuleId>,
+    reason_message: &'static str,
+) -> Result<(), MaterializedViewError> {
+    let deployment_tasks = discover_deployment_mvs(ctx, new_module_ids).await?;
+    build_mvs_for_deployment(ctx, frigg, edda_updates, parallel_build_limit, reason_message, deployment_tasks.as_slice()).await
+}
+
+#[instrument(
+    name = "materialized_view.build_mvs_for_deployment",
+    level = "info",
+    skip_all,
+    fields(
+        si.materialized_view.reason = reason_message,
+        si.edda.mv.count = Empty,
+        si.edda.mv.avg_build_elapsed_ms = Empty,
+        si.edda.mv.max_build_elapsed_ms = Empty,
+        si.edda.mv.slowest_kind = Empty,
+    ),
+)]
+async fn build_mvs_for_deployment(
+    ctx: &DalContext,
+    frigg: &FriggStore,
+    edda_updates: &EddaUpdates,
+    parallel_build_limit: usize,
+    reason_message: &'static str,
+    deployment_tasks: &[DeploymentMvTask],
+) -> Result<(), MaterializedViewError> {
+    let span = current_span_for_instrument_at!("info");
 
     // Use the deployment MV parallel processing system
     let (
@@ -596,7 +628,7 @@ pub async fn build_all_mvs_for_deployment(
         build_total_elapsed,
         build_max_elapsed,
         build_slowest_mv_kind,
-    ) = build_deployment_mv_inner(ctx, frigg, parallel_build_limit, &deployment_tasks).await?;
+    ) = build_deployment_mv_inner(ctx, frigg, parallel_build_limit, deployment_tasks).await?;
     span.record("si.edda.mv.count", build_count);
     if build_count > 0 {
         span.record(
@@ -1030,8 +1062,23 @@ impl PartialOrd for DeploymentMvTask {
 /// Discovers all deployment-scoped MVs that need to be built.
 /// This function examines deployment-scoped data sources and creates tasks
 /// for all individual objects and collections that should be built.
+async fn discover_deployment_mvs_for_all_modules(
+    ctx: &DalContext,
+) -> Result<Vec<DeploymentMvTask>, MaterializedViewError> {
+    discover_deployment_mvs_inner(ctx, HashSet::new()).await
+}
+
 async fn discover_deployment_mvs(
     ctx: &DalContext,
+    new_module_ids: Vec<CachedModuleId>,
+) -> Result<Vec<DeploymentMvTask>, MaterializedViewError> {
+    let filter_module_ids = HashSet::from_iter(new_module_ids.into_iter());
+    discover_deployment_mvs_inner(ctx, filter_module_ids).await
+}
+
+async fn discover_deployment_mvs_inner(
+    ctx: &DalContext,
+    filter_module_ids: HashSet<CachedModuleId>,
 ) -> Result<Vec<DeploymentMvTask>, MaterializedViewError> {
     use dal::cached_module::CachedModule;
 
@@ -1047,6 +1094,9 @@ async fn discover_deployment_mvs(
     // Discover individual CachedSchema and CachedSchemaVariant objects from cached modules
     let modules = CachedModule::latest_modules(ctx).await?;
     for mut module in modules {
+        if !filter_module_ids.is_empty() && !filter_module_ids.contains(&module.id) {
+            continue;
+        }
         let si_pkg = module.si_pkg(ctx).await?;
         let schemas = si_pkg.schemas().map_err(CachedModuleError::SiPkg)?;
         for schema in schemas {
@@ -1306,6 +1356,7 @@ where
 {
     // For deployment MVs, check if object exists in deployment storage
     let op = {
+        //AARON & NICK: start here with the deletes
         let maybe_previous_version = frigg
             .get_current_deployment_object_with_index(
                 mv_kind,

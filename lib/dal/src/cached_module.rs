@@ -272,8 +272,7 @@ impl CachedModule {
     /// updates the cache for any new builtin modules
     pub async fn update_cached_modules(
         ctx: &DalContext,
-        edda_client: EddaClient,
-    ) -> CachedModuleResult<Vec<CachedModule>> {
+    ) -> CachedModuleResult<(Vec<CachedModuleId>, Vec<CachedModuleId>)> {
         let module_index_client = {
             let services_context = ctx.services_context();
             let module_index_url = services_context
@@ -292,25 +291,24 @@ impl CachedModule {
             .collect();
 
         // We need to remove any schemas that are in the cache but no longer in the builtin list
-        Self::remove_unused(ctx, &modules).await?;
+        let removed_module_ids = Self::remove_unused(ctx, &modules).await?;
 
         let ctx_clone = ctx.clone();
         ctx_clone.commit_no_rebase().await?;
 
-        let new_modules =
-            Self::cache_modules(ctx, &modules, module_index_client, edda_client).await?;
+        let new_module_ids =
+            Self::cache_modules(ctx, &modules, module_index_client).await?.iter().map(|module| module.id).collect();
 
         // Now check and fix up any missing package summaries
         Self::update_missing_package_summaries(ctx).await?;
 
-        Ok(new_modules)
+        Ok((new_module_ids, removed_module_ids))
     }
 
     async fn cache_modules(
         ctx: &DalContext,
         modules: &HashMap<String, ModuleDetailsResponse>,
         module_index_client: ModuleIndexClient,
-        _edda_client: EddaClient,
     ) -> CachedModuleResult<Vec<CachedModule>> {
         let hashes = modules.keys().map(ToOwned::to_owned).collect_vec();
         let uncached_hashes = CachedModule::find_missing_entries(ctx, hashes).await?;
@@ -354,20 +352,13 @@ impl CachedModule {
             tokio::time::sleep(WAIT_BETWEEN_BATCHES).await;
         }
 
-        // Ask edda to rebuild the deployment MVs, which include the cached modules
-        //
-        // Until the performance issues in building the deployment-level MVs are fixed,
-        // this is only going to be deployed through the manual module sync process.
-        //
-        // edda_client.rebuild_for_deployment().await?;
-
         Ok(new_modules)
     }
 
     async fn remove_unused(
         ctx: &DalContext,
         module_details_by_hash: &HashMap<String, ModuleDetailsResponse>,
-    ) -> CachedModuleResult<()> {
+    ) -> CachedModuleResult<Vec<CachedModuleId>> {
         let builtin_schema_ids: HashSet<SchemaId> = module_details_by_hash
             .values()
             .filter_map(|module| {
@@ -381,14 +372,16 @@ impl CachedModule {
 
         // Look at all schema IDs in the cache and determine if any of them are no longer builtins.
         // If they aren't, ALL modules corresponding to them get remove.
+        let mut removed_module_ids = Vec::new();
         for lm in CachedModule::latest_user_independent_modules(ctx).await? {
             if !builtin_schema_ids.contains(&lm.schema_id) {
-                CachedModule::remove_all_for_schema_id(ctx, lm.schema_id).await?;
+                removed_module_ids.extend(CachedModule::remove_all_for_schema_id(ctx, lm.schema_id).await?);
             }
         }
 
-        Ok(())
+        Ok(removed_module_ids)
     }
+
     #[instrument(name = "cached_module.install_from_module", level = "info", skip_all)]
     pub async fn find_latest_for_schema_id(
         ctx: &DalContext,
@@ -578,14 +571,22 @@ impl CachedModule {
     pub async fn remove_all_for_schema_id(
         ctx: &DalContext,
         schema_id: SchemaId,
-    ) -> CachedModuleResult<()> {
+    ) -> CachedModuleResult<Vec<CachedModuleId>> {
         let query = r#"
-            DELETE FROM cached_modules WHERE schema_id = $1
+            DELETE FROM cached_modules
+            WHERE schema_id = $1
+            RETURNING id
             "#;
 
-        ctx.txns().await?.pg().query(query, &[&schema_id]).await?;
+        let rows = ctx.txns().await?.pg().query(query, &[&schema_id]).await?;
 
-        Ok(())
+        let mut deleted_ids = Vec::with_capacity(rows.len());
+
+        for row in rows {
+            deleted_ids.push(row.try_get("id")?);
+        }
+
+        Ok(deleted_ids)
     }
 
     // module_id is just for debugging purposes; we only want one record per hash

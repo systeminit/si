@@ -16,6 +16,7 @@ use serde::{
     Serialize,
 };
 pub use si_id::ulid;
+pub use si_id::CachedModuleId;
 use split_snapshot_rebase_batch_address::SplitSnapshotRebaseBatchAddress;
 
 mod action;

@@ -362,13 +362,25 @@ mod handlers {
 
         match request {
             CompressedDeploymentRequest::Rebuild { .. } => {
-                // Rebuild
                 materialized_view::build_all_mvs_for_deployment(
                     ctx,
                     frigg,
                     edda_updates,
                     parallel_build_limit,
                     "explicit rebuild",
+                )
+                .await
+                .map_err(Into::into)
+            },
+            CompressedDeploymentRequest::RebuildMinimal { src_requests_count: _, new_module_ids, removed_module_ids } => {
+                materialized_view::build_minimal_mvs_for_deployment(
+                    ctx,
+                    frigg,
+                    edda_updates,
+                    parallel_build_limit,
+                    new_module_ids,
+                    removed_module_ids,
+                    "minimal rebuild",
                 )
                 .await
                 .map_err(Into::into)

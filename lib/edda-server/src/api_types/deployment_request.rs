@@ -9,12 +9,15 @@ use edda_core::api_types::{
     Negotiate,
     NegotiateError,
     rebuild_request::RebuildRequest,
+    rebuild_minimal_request::RebuildMinimalRequest,
+
 };
 use naxum::async_trait;
 use serde::{
     Deserialize,
     Serialize,
 };
+use si_id::CachedModuleId;
 use strum::AsRefStr;
 use telemetry::prelude::*;
 
@@ -27,6 +30,7 @@ use super::{
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DeploymentRequest {
     Rebuild(RebuildRequest),
+    RebuildMinimal(RebuildMinimalRequest),
 }
 
 impl Negotiate for DeploymentRequest {
@@ -52,6 +56,7 @@ impl Negotiate for DeploymentRequest {
 #[derive(AsRefStr, Clone, Debug, Deserialize, Serialize)]
 pub enum CompressedDeploymentRequest {
     Rebuild { src_requests_count: usize },
+    RebuildMinimal { src_requests_count: usize, new_module_ids: Vec<CachedModuleId>, removed_module_ids: Vec<CachedModuleId> },
 }
 
 #[async_trait]
@@ -100,6 +105,7 @@ impl CompressedDeploymentRequest {
     pub fn src_requests_count(&self) -> usize {
         match self {
             Self::Rebuild { src_requests_count } => *src_requests_count,
+            Self::RebuildMinimal { src_requests_count, new_module_ids, removed_module_ids } => *src_requests_count,
         }
     }
 
