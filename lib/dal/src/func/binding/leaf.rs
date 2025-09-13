@@ -19,6 +19,7 @@ use crate::{
     Func,
     FuncId,
     Prop,
+    Schema,
     SchemaVariant,
     SchemaVariantId,
     attribute::prototype::argument::AttributePrototypeArgument,
@@ -134,6 +135,9 @@ impl LeafBinding {
                 // let attribute_prototype_id =
                 //     Component::upsert_leaf_function(ctx, component_id, leaf_kind, inputs, &func).await?;
             }
+            EventualParent::Schema(_) => {
+                // zack: how to handle?
+            }
         }
 
         let new_bindings = FuncBinding::for_func_id(ctx, func_id).await?;
@@ -227,6 +231,9 @@ impl LeafBinding {
                 // )
                 // .await?;
             }
+            EventualParent::Schema(_) => {
+                // zack: todo
+            }
         }
         FuncBinding::for_func_id(ctx, func_id).await
     }
@@ -283,6 +290,10 @@ impl LeafBinding {
                     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
                     schema_variant_ids.push(schema_variant_id);
                 }
+                EventualParent::Schema(schema_id) => {
+                    let default_variant = Schema::default_variant_id(ctx, schema_id).await?;
+                    schema_variant_ids.push(default_variant);
+                }
             }
         }
         let mut ts_type = "type Input = {\n".to_string();
@@ -304,6 +315,7 @@ impl LeafBinding {
 
         Ok(ts_type)
     }
+
     async fn get_per_variant_types_for_prop_path(
         ctx: &DalContext,
         variant_ids: &[SchemaVariantId],
