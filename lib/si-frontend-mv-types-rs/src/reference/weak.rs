@@ -13,7 +13,10 @@ use super::{
     ReferenceId,
     ReferenceKind,
 };
-use crate::checksum::FrontendChecksum;
+use crate::{
+    checksum::FrontendChecksum,
+    definition_checksum::DefinitionChecksum,
+};
 
 /// A marker trait used for ensuring that weak references are strongly typed at compile time and
 /// that the constructor method adheres to that type.
@@ -125,5 +128,32 @@ pub mod markers {
 
     impl ReferenceKindMarker for SchemaMembers {
         const REFERENCE_KIND: ReferenceKind = ReferenceKind::SchemaMembers;
+    }
+}
+
+// ================================================================================================
+// DefinitionChecksum implementations for weak reference types
+// ================================================================================================
+
+impl<T, R> DefinitionChecksum for WeakReference<T, R>
+where
+    T: DefinitionChecksum
+        + Eq
+        + PartialEq
+        + Clone
+        + std::fmt::Debug
+        + Serialize
+        + std::fmt::Display,
+    R: ReferenceKindMarker,
+{
+    fn definition_checksum() -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(b"WeakReference<");
+        hasher.update(T::definition_checksum().as_bytes());
+        hasher.update(b", ");
+        // Include the reference kind in the checksum for strong typing
+        hasher.update(R::REFERENCE_KIND.to_string().as_bytes());
+        hasher.update(b">");
+        hasher.finalize()
     }
 }

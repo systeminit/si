@@ -37,6 +37,7 @@ use si_id::{
 
 use crate::{
     component::attribute_tree::ValidationStatus,
+    definition_checksum::DefinitionChecksum,
     schema_variant::{
         SchemaVariantsByCategory,
         prop_tree::{
@@ -394,5 +395,423 @@ impl FrontendChecksum for &[u8] {
         let mut hasher = ChecksumHasher::new();
         hasher.update(self);
         hasher.finalize()
+    }
+}
+
+// ================================================================================================
+// DefinitionChecksum implementations for basic types
+// ================================================================================================
+// DefinitionChecksum implementations for primitive types.
+// Each primitive type gets a unique, static checksum that represents its type identity.
+
+impl DefinitionChecksum for String {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"String");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for bool {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"bool");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for usize {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"usize");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for i64 {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"i64");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for u64 {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"u64");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for Vec<u8> {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"Vec<u8>");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+// Generic collection implementations
+impl<T> DefinitionChecksum for Option<T>
+where
+    T: DefinitionChecksum,
+{
+    fn definition_checksum() -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(b"Option<");
+        hasher.update(T::definition_checksum().as_bytes());
+        hasher.update(b">");
+        hasher.finalize()
+    }
+}
+
+impl<T> DefinitionChecksum for Vec<T>
+where
+    T: DefinitionChecksum,
+{
+    fn definition_checksum() -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(b"Vec<");
+        hasher.update(T::definition_checksum().as_bytes());
+        hasher.update(b">");
+        hasher.finalize()
+    }
+}
+
+impl<K, V> DefinitionChecksum for HashMap<K, V>
+where
+    K: DefinitionChecksum,
+    V: DefinitionChecksum,
+{
+    fn definition_checksum() -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(b"HashMap<");
+        hasher.update(K::definition_checksum().as_bytes());
+        hasher.update(b", ");
+        hasher.update(V::definition_checksum().as_bytes());
+        hasher.update(b">");
+        hasher.finalize()
+    }
+}
+
+impl<T1, T2> DefinitionChecksum for (T1, T2)
+where
+    T1: DefinitionChecksum,
+    T2: DefinitionChecksum,
+{
+    fn definition_checksum() -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(b"(");
+        hasher.update(T1::definition_checksum().as_bytes());
+        hasher.update(b", ");
+        hasher.update(T2::definition_checksum().as_bytes());
+        hasher.update(b")");
+        hasher.finalize()
+    }
+}
+
+// ================================================================================================
+// DefinitionChecksum implementations for domain types
+// ================================================================================================
+
+impl DefinitionChecksum for serde_json::Value {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"serde_json::Value");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for DateTime<Utc> {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"DateTime<Utc>");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for Timestamp {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"Timestamp");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for Checksum {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"Checksum");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+// ================================================================================================
+// DefinitionChecksum implementations for ID types - each gets unique checksum
+// ================================================================================================
+
+impl DefinitionChecksum for Ulid {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"Ulid");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for ChangeSetId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ChangeSetId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for WorkspacePk {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"WorkspacePk");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for WorkspaceId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"WorkspaceId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for ViewId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ViewId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for SchemaId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"SchemaId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for SchemaVariantId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"SchemaVariantId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for ManagementPrototypeId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ManagementPrototypeId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for FuncId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"FuncId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for FuncRunId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"FuncRunId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for InputSocketId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"InputSocketId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for OutputSocketId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"OutputSocketId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for SecretId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"SecretId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for PropId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"PropId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for ComponentId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ComponentId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for ActionId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ActionId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for ActionPrototypeId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ActionPrototypeId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for AttributeValueId {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"AttributeValueId");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+// ================================================================================================
+// DefinitionChecksum implementations for enum types
+// ================================================================================================
+
+impl DefinitionChecksum for ChangeSetStatus {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ChangeSetStatus");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for ActionKind {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ActionKind");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for ActionState {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ActionState");
+            hasher.finalize()
+        });
+        *CHECKSUM
     }
 }
