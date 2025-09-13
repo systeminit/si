@@ -9,3 +9,5 @@ of System Initiative.
   TypeScript API documentation.
 - [Public API](./public-api.md) - the reference docs for the Public API to
   manage a System Initiative workspace.
+- [IaC vs System Initiative](./iac-comparison.md) - map existing IaC capabilities to System Initiative.
+- [System Initiative Architecture](./architecture/index.md) - learn about the architecture that powers System Initiative.

@@ -140,16 +140,24 @@ export default defineConfig({
         collapsed: false,
         items: [
           {
-            text: "Public API",
-            link: "/reference/public-api",
+            text: "Vocabulary",
+            link: "/reference/vocabulary",
           },
           {
             text: "TypeScript Function API",
             link: "/reference/typescript/README",
           },
           {
-            text: "Vocabulary",
-            link: "/reference/vocabulary",
+            text: "Public API",
+            link: "/reference/public-api",
+          },
+          {
+            text: "IaC vs System Initiative",
+            link: "/reference/iac-comparison",
+          },
+          {
+            text: "System Initiative Architecture",
+            link: "/reference/architecture/index",
           },
         ],
       },

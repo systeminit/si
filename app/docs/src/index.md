@@ -2,9 +2,13 @@
 
 ## New to System Initiative?
 
-System Initiative is an Intuitive, Powerful, and Collaborative replacement for Infrastructure as Code.
+System Initiative is an AI Native Infrastructure Automation Platform that unlocks your team's productivity
 
 Follow the [Getting Started](./tutorials/getting-started.md) guide.
+
+Learn about the [architecture](./reference/architecture/index.md) that powers System Initiative.
+
+Understand how existing [IaC capabilities map](./reference/iac-comparison.md) to System Intiative functionality.
 
 ## Getting help
 
