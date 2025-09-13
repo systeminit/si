@@ -204,6 +204,9 @@ unzip -q deno.zip && mv deno /usr/local/bin/ && chmod +x /usr/local/bin/deno && 
 # Linode CLI
 pip3 install --break-system-packages linode-cli
 
+# Azure CLI
+pip3 install azure-cli
+
 cd / && rm -rf /tmp/* 2>/dev/null && adduser -D app
 
 # Create wrapper scripts for binaries
