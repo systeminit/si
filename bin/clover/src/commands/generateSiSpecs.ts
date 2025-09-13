@@ -82,9 +82,6 @@ export async function generateSiSpecs(options: {
   specs = attachDefaultManagementFuncs(specs);
   specs = generateDefaultQualificationFuncs(specs);
 
-  // subAssets should not have any of the above, but need an asset func and
-  // intrinsics
-  specs = generateSubAssets(specs);
   specs = generateIntrinsicFuncs(specs);
   specs = removeUnneededAssets(specs);
 
