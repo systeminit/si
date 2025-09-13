@@ -64,6 +64,13 @@ export const routerOptions: RouterOptions = {
         return { name: "workspaces" };
       },
     },
+    {
+      path: "/download",
+      name: "download",
+      redirect() {
+        return { name: "workspaces" };
+      },
+    },
     { path: "/workspaces", name: "workspaces", component: WorkspacesPage },
     { path: "/billing", name: "billing", component: BillingPage },
     {
