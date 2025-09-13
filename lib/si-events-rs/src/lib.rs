@@ -15,7 +15,6 @@ use serde::{
     Deserialize,
     Serialize,
 };
-pub use si_id::ulid;
 use split_snapshot_rebase_batch_address::SplitSnapshotRebaseBatchAddress;
 
 mod action;
@@ -38,6 +37,11 @@ mod tenancy;
 mod timestamp;
 mod vector_clock_id;
 mod web_event;
+
+pub use si_id::{
+    CachedModuleId,
+    ulid,
+};
 
 pub use crate::{
     action::{

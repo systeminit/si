@@ -1,6 +1,7 @@
 use std::{
     collections::{
         BinaryHeap,
+        HashMap,
         HashSet,
     },
     sync::Arc,
@@ -12,14 +13,19 @@ use dal::{
     ChangeSetError,
     ComponentError,
     DalContext,
+    SchemaId,
     SchemaVariantError,
+    SchemaVariantId,
     TransactionsError,
     WorkspaceSnapshotError,
     action::{
         ActionError,
         prototype::ActionPrototypeError,
     },
-    cached_module::CachedModuleError,
+    cached_module::{
+        CachedModule,
+        CachedModuleError,
+    },
     diagram::DiagramError,
     prop::PropError,
     slow_rt::{
@@ -97,6 +103,7 @@ use si_frontend_mv_types::{
     },
 };
 use si_id::{
+    CachedModuleId,
     ChangeSetId,
     WorkspacePk,
 };
@@ -563,9 +570,9 @@ pub async fn build_mv_for_changes_in_change_set(
     Ok(())
 }
 
-/// This function builds all Materialized Views (MVs) this deployment environment
+/// This function builds all Materialized Views (MVs) for this deployment environment
 #[instrument(
-    name = "materialized_view.build_all_mvs_for_deployment",
+    name = "materialized_view.build_mvs_for_deployment",
     level = "info",
     skip_all,
     fields(
@@ -576,17 +583,33 @@ pub async fn build_mv_for_changes_in_change_set(
         si.edda.mv.slowest_kind = Empty,
     ),
 )]
-pub async fn build_all_mvs_for_deployment(
+pub async fn build_mvs_for_deployment(
     ctx: &DalContext,
     frigg: &FriggStore,
     edda_updates: &EddaUpdates,
     parallel_build_limit: usize,
+    mv_ids: Option<(
+        Vec<SchemaId>,
+        HashMap<SchemaVariantId, SchemaId>,
+        Vec<CachedModuleId>,
+    )>,
     reason_message: &'static str,
 ) -> Result<(), MaterializedViewError> {
     let span = current_span_for_instrument_at!("info");
 
-    // Discover all deployment MVs that need to be built
-    let deployment_tasks = discover_deployment_mvs(ctx).await?;
+    // Determine or discover all deployment MVs that need to be built.
+    let deployment_tasks = match mv_ids {
+        Some((schema_ids, schema_variant_ids, specific_module_ids)) => {
+            specific_deployment_mv_tasks(
+                ctx,
+                schema_ids.as_slice(),
+                &schema_variant_ids,
+                HashSet::from_iter(specific_module_ids.iter().copied()),
+            )
+            .await?
+        }
+        None => all_deployment_mv_tasks(ctx).await?,
+    };
 
     // Use the deployment MV parallel processing system
     let (
@@ -983,6 +1006,9 @@ struct DeploymentMvTask {
     pub mv_kind: ReferenceKind,
     pub mv_id: String,
     pub priority: BuildPriority,
+    // TODO(nick): this is so ugly, but we don't have a graph to rely on to know where some MV's
+    // dependents when dealing with deletions...
+    pub dependent_schema_id: Option<SchemaId>,
 }
 
 impl Ord for QueuedBuildMvTask {
@@ -1030,7 +1056,7 @@ impl PartialOrd for DeploymentMvTask {
 /// Discovers all deployment-scoped MVs that need to be built.
 /// This function examines deployment-scoped data sources and creates tasks
 /// for all individual objects and collections that should be built.
-async fn discover_deployment_mvs(
+async fn all_deployment_mv_tasks(
     ctx: &DalContext,
 ) -> Result<Vec<DeploymentMvTask>, MaterializedViewError> {
     use dal::cached_module::CachedModule;
@@ -1042,6 +1068,7 @@ async fn discover_deployment_mvs(
         mv_kind: ReferenceKind::CachedSchemas,
         mv_id: "cached_schemas".to_string(), // Collection has a fixed ID
         priority: <si_frontend_mv_types::cached_schemas::CachedSchemas as MaterializedView>::build_priority(),
+        dependent_schema_id: None
     });
 
     // Discover individual CachedSchema and CachedSchemaVariant objects from cached modules
@@ -1055,6 +1082,7 @@ async fn discover_deployment_mvs(
                 mv_kind: ReferenceKind::CachedSchema,
                 mv_id: module.schema_id.to_string(),
                 priority: <si_frontend_mv_types::cached_schema::CachedSchema as MaterializedView>::build_priority(),
+                dependent_schema_id: None
             });
 
             // Add CachedDefaultVariant MV task
@@ -1062,6 +1090,7 @@ async fn discover_deployment_mvs(
                 mv_kind: ReferenceKind::CachedDefaultVariant,
                 mv_id: module.schema_id.to_string(),
                 priority: <si_frontend_mv_types::cached_default_variant::CachedDefaultVariant as MaterializedView>::build_priority(),
+                dependent_schema_id: None
             });
 
             // Add individual CachedSchemaVariant MV tasks
@@ -1073,11 +1102,110 @@ async fn discover_deployment_mvs(
                             mv_kind: ReferenceKind::CachedSchemaVariant,
                             mv_id: variant_id.to_string(),
                             priority: <si_frontend_mv_types::cached_schema_variant::CachedSchemaVariant as MaterializedView>::build_priority(),
+                            dependent_schema_id: Some(module.schema_id),
                         });
                     }
                 }
             }
         }
+    }
+
+    Ok(tasks)
+}
+
+/// Determines all deployment-scoped MVs that need to be built from specific parameter(s).
+async fn specific_deployment_mv_tasks(
+    ctx: &DalContext,
+    schema_ids: &[SchemaId],
+    schema_variant_ids: &HashMap<SchemaVariantId, SchemaId>,
+    module_ids: HashSet<CachedModuleId>,
+) -> Result<Vec<DeploymentMvTask>, MaterializedViewError> {
+    if schema_ids.is_empty() && schema_variant_ids.is_empty() && module_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut tasks = vec![DeploymentMvTask {
+        mv_kind: ReferenceKind::CachedSchemas,
+        mv_id: "cached_schemas".to_string(), // Collection has a fixed ID
+        priority: <si_frontend_mv_types::cached_schemas::CachedSchemas as MaterializedView>::build_priority(),
+        dependent_schema_id: None
+    }];
+
+    let mut seen_schema_ids = HashSet::new();
+    let mut seen_schema_variant_ids = HashSet::new();
+
+    let modules = CachedModule::latest_modules(ctx).await?;
+    for mut module in modules {
+        if !module_ids.contains(&module.id) {
+            continue;
+        }
+        let si_pkg = module.si_pkg(ctx).await?;
+        let schemas = si_pkg.schemas().map_err(CachedModuleError::SiPkg)?;
+        for schema in schemas {
+            seen_schema_ids.insert(module.schema_id);
+
+            // Add individual CachedSchema MV task
+            tasks.push(DeploymentMvTask {
+                mv_kind: ReferenceKind::CachedSchema,
+                mv_id: module.schema_id.to_string(),
+                priority: <si_frontend_mv_types::cached_schema::CachedSchema as MaterializedView>::build_priority(),
+                dependent_schema_id: None
+            });
+
+            // Add CachedDefaultVariant MV task
+            tasks.push(DeploymentMvTask {
+                mv_kind: ReferenceKind::CachedDefaultVariant,
+                mv_id: module.schema_id.to_string(),
+                priority: <si_frontend_mv_types::cached_default_variant::CachedDefaultVariant as MaterializedView>::build_priority(),
+                dependent_schema_id: None
+            });
+
+            // Add individual CachedSchemaVariant MV tasks
+            let variants = schema.variants().map_err(CachedModuleError::SiPkg)?;
+            for variant in variants {
+                if let Some(unique_id) = variant.unique_id() {
+                    if let Ok(variant_id) = unique_id.parse::<dal::SchemaVariantId>() {
+                        seen_schema_variant_ids.insert(variant_id);
+                        tasks.push(DeploymentMvTask {
+                            mv_kind: ReferenceKind::CachedSchemaVariant,
+                            mv_id: variant_id.to_string(),
+                            priority: <si_frontend_mv_types::cached_schema_variant::CachedSchemaVariant as MaterializedView>::build_priority(),
+                            dependent_schema_id: Some(module.schema_id),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    for schema_id in schema_ids {
+        if seen_schema_ids.contains(schema_id) {
+            continue;
+        }
+        tasks.push(DeploymentMvTask {
+            mv_kind: ReferenceKind::CachedSchema,
+            mv_id: schema_id.to_string(),
+            priority: <si_frontend_mv_types::cached_schema::CachedSchema as MaterializedView>::build_priority(),
+            dependent_schema_id: None
+        });
+        tasks.push(DeploymentMvTask {
+            mv_kind: ReferenceKind::CachedDefaultVariant,
+            mv_id: schema_id.to_string(),
+            priority: <si_frontend_mv_types::cached_default_variant::CachedDefaultVariant as MaterializedView>::build_priority(),
+            dependent_schema_id: None
+        });
+    }
+
+    for (schema_variant_id, schema_id) in schema_variant_ids {
+        if seen_schema_variant_ids.contains(schema_variant_id) {
+            continue;
+        }
+        tasks.push(DeploymentMvTask {
+            mv_kind: ReferenceKind::CachedSchemaVariant,
+            mv_id: schema_variant_id.to_string(),
+            priority: <si_frontend_mv_types::cached_schema_variant::CachedSchemaVariant as MaterializedView>::build_priority(),
+            dependent_schema_id: Some(*schema_id)
+        });
     }
 
     Ok(tasks)
@@ -1124,7 +1252,13 @@ async fn build_deployment_mv_inner(
 
         // Spawn as many of the queued build tasks as we can, up to the concurrency limit.
         while !queued_mv_builds.is_empty() && build_tasks.len() < parallel_build_limit {
-            let Some(DeploymentMvTask { mv_kind, mv_id, .. }) = queued_mv_builds.pop() else {
+            let Some(DeploymentMvTask {
+                mv_kind,
+                mv_id,
+                dependent_schema_id,
+                ..
+            }) = queued_mv_builds.pop()
+            else {
                 // This _really_ shouldn't ever return `None` as we just checked that
                 // `queued_mv_builds` is not empty.
                 break;
@@ -1136,6 +1270,7 @@ async fn build_deployment_mv_inner(
                 mv_kind,
                 mv_id,
                 maybe_deployment_mv_index.clone(),
+                dependent_schema_id,
             )
             .await?;
         }
@@ -1189,6 +1324,7 @@ async fn spawn_deployment_mv_task(
     mv_kind: ReferenceKind,
     mv_id: String,
     maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
+    maybe_dependent_schema_id: Option<SchemaId>,
 ) -> Result<(), MaterializedViewError> {
     // Record the currently running number of MV build tasks
     metric!(counter.edda.mv_build = 1, label = mv_kind.to_string());
@@ -1202,6 +1338,7 @@ async fn spawn_deployment_mv_task(
                 mv_kind,
                 dal_materialized_views::cached::schemas::assemble(ctx.clone()),
                 maybe_deployment_mv_index,
+                None,
             ));
         }
         ReferenceKind::CachedSchema => {
@@ -1215,6 +1352,7 @@ async fn spawn_deployment_mv_task(
                 mv_kind,
                 dal_materialized_views::cached::schema::assemble(ctx.clone(), schema_id),
                 maybe_deployment_mv_index,
+                Some(schema_id),
             ));
         }
         ReferenceKind::CachedSchemaVariant => {
@@ -1229,6 +1367,7 @@ async fn spawn_deployment_mv_task(
                 mv_kind,
                 dal_materialized_views::cached::schema::variant::assemble(ctx.clone(), variant_id),
                 maybe_deployment_mv_index,
+                maybe_dependent_schema_id,
             ));
         }
         ReferenceKind::CachedDefaultVariant => {
@@ -1246,6 +1385,7 @@ async fn spawn_deployment_mv_task(
                     schema_id,
                 ),
                 maybe_deployment_mv_index,
+                Some(schema_id),
             ));
         }
         _ => {
@@ -1260,12 +1400,13 @@ async fn spawn_deployment_mv_task(
 
 /// Builds an MV task specifically for deployment (no Change context needed).
 async fn build_mv_for_deployment_task<F, T, E>(
-    _ctx: DalContext,
+    ctx: DalContext,
     frigg: FriggStore,
     mv_id: String,
     mv_kind: ReferenceKind,
     build_mv_future: F,
     maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
+    schema_id_to_check_for_deleted_modules: Option<SchemaId>,
 ) -> BuildMvTaskResult
 where
     F: Future<Output = Result<T, E>> + Send + 'static,
@@ -1278,11 +1419,13 @@ where
     let start = Instant::now();
 
     let result = build_mv_for_deployment_task_inner(
+        &ctx,
         &frigg,
         mv_id.clone(),
         mv_kind,
         build_mv_future,
         maybe_deployment_mv_index,
+        schema_id_to_check_for_deleted_modules,
     )
     .await;
 
@@ -1291,11 +1434,13 @@ where
 
 /// Inner function for building deployment MV tasks.
 async fn build_mv_for_deployment_task_inner<F, T, E>(
+    ctx: &DalContext,
     frigg: &FriggStore,
     mv_id: String,
     mv_kind: ReferenceKind,
     build_mv_future: F,
     maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
+    schema_id_to_check_for_deleted_modules: Option<SchemaId>,
 ) -> MvBuilderResult
 where
     F: Future<Output = Result<T, E>> + Send + 'static,
@@ -1314,13 +1459,25 @@ where
             )
             .await?;
 
-        if let Some(previous_version) = maybe_previous_version {
-            BuildMvOp::UpdateFrom {
+        // If this is provided, the caller wants to check if it has been deleted.
+        let should_delete = match schema_id_to_check_for_deleted_modules {
+            Some(schema_id) => CachedModule::list_for_schema_id(ctx, schema_id)
+                .await?
+                .is_empty(),
+            None => false,
+        };
+
+        match (maybe_previous_version, should_delete) {
+            (Some(previous_version), true) => BuildMvOp::Delete {
+                id: mv_id,
+                checksum: previous_version.checksum,
+            },
+            (Some(previous_version), false) => BuildMvOp::UpdateFrom {
                 checksum: previous_version.checksum,
                 data: previous_version.data,
-            }
-        } else {
-            BuildMvOp::Create
+            },
+            (None, true) => return Ok((None, None)),
+            (None, false) => BuildMvOp::Create,
         }
     };
 

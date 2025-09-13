@@ -362,17 +362,32 @@ mod handlers {
 
         match request {
             CompressedDeploymentRequest::Rebuild { .. } => {
-                // Rebuild
-                materialized_view::build_all_mvs_for_deployment(
+                materialized_view::build_mvs_for_deployment(
                     ctx,
                     frigg,
                     edda_updates,
                     parallel_build_limit,
+                    None,
                     "explicit rebuild",
                 )
                 .await
                 .map_err(Into::into)
             }
+            CompressedDeploymentRequest::RebuildSpecific {
+                src_requests_count: _,
+                schema_ids,
+                schema_variant_ids,
+                module_ids,
+            } => materialized_view::build_mvs_for_deployment(
+                ctx,
+                frigg,
+                edda_updates,
+                parallel_build_limit,
+                Some((schema_ids, schema_variant_ids, module_ids)),
+                "specific rebuild",
+            )
+            .await
+            .map_err(Into::into),
         }
         .inspect(|_| span.record_ok())
         .map_err(|err| span.record_err(err))
