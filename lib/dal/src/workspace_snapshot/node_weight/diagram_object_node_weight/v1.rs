@@ -32,6 +32,7 @@ use crate::{
                 CorrectTransforms,
                 CorrectTransformsError,
                 CorrectTransformsResult,
+                ExclusiveOutgoingEdges,
                 SiNodeWeight,
             },
         },
@@ -207,7 +208,9 @@ impl CorrectTransforms for DiagramObjectNodeWeightV1 {
     }
 }
 
-impl CorrectExclusiveOutgoingEdge for DiagramObjectNodeWeightV1 {
+impl CorrectExclusiveOutgoingEdge for DiagramObjectNodeWeightV1 {}
+
+impl ExclusiveOutgoingEdges for DiagramObjectNodeWeightV1 {
     fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
     }
