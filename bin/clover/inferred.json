@@ -4313,6 +4313,9 @@
   "ARN of an SNS topic to send alert notifications to.": {
     "enum": null
   },
+  "ARN of the CloudWatch log group": {
+    "enum": null
+  },
   "ARN of the IAM role that allows access to the stream processor, and provides Rekognition read permissions for KVS stream and write permissions to S3 bucket and SNS topic.": {
     "enum": null
   },
@@ -4605,6 +4608,9 @@
     "enum": null
   },
   "An optional 128-bit, 16-byte hex value represented by a 32-character string, used in conjunction with the key for encrypting blocks. If you don't specify a value, then MediaPackage creates the constant initialization vector (IV).": {
+    "enum": null
+  },
+  "An optional IAM Role Arn for a service to assume, to be able to post inbound SMS messages.": {
     "enum": null
   },
   "An optional custom string that is prepended to the name of each segment. If not specified, it defaults to the ChannelId.": {
@@ -5118,6 +5124,9 @@
     "enum": null
   },
   "Describes the number of parallel tasks that a Java-based Kinesis Data Analytics application can perform per Kinesis Processing Unit (KPU) used by the application. For more information about KPUs, see Amazon Kinesis Data Analytics Pricing.": {
+    "enum": null
+  },
+  "Describes the storage location for an instance store-backed AMI.": {
     "enum": null
   },
   "Describes the verbosity of the CloudWatch Logs for an application.": {
@@ -8636,6 +8645,9 @@
   "The Amazon Resource Name (ARN) of the ACM certificate.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the AWS End User Messaging SMS and Voice resource to attach the resource-based policy to.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the AWS IAM role that the DataSync will assume when mounting the EFS file system.": {
     "enum": null
   },
@@ -8988,6 +9000,9 @@
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the trust store.": {
+    "enum": null
+  },
+  "The Amazon Resource Name (ARN) of the two way channel.": {
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the type version.": {
@@ -10970,6 +10985,9 @@
   "The conditions of the rule.": {
     "enum": null
   },
+  "The confidence threshold for triggering guardrail actions based on Automated Reasoning policy violations.": {
+    "enum": null
+  },
   "The configValue for configuring audit checks.": {
     "enum": null
   },
@@ -11283,6 +11301,9 @@
     "enum": null
   },
   "The default number of days until the data within the domain expires.": {
+    "enum": null
+  },
+  "The default sender ID to set for the ConfigurationSet.": {
     "enum": null
   },
   "The default value for all purge settings for `slurmdbd.conf`. For more information, see the [slurmdbd.conf documentation at SchedMD](https://slurm.schedmd.com/slurmdbd.conf.html). The default value is `-1`. A value of `-1` means there is no purge time and records persist as long as the cluster exists.": {
@@ -13499,6 +13520,12 @@
   "The name of the OpenSearch Serverless index.": {
     "enum": null
   },
+  "The name of the OptOutList to associate with the phone number. You can use the OptOutListName or OptOutListArn.": {
+    "enum": null
+  },
+  "The name of the OptOutList to associate with the pool. You can use the OptOutListName or OptOutListArn.": {
+    "enum": null
+  },
   "The name of the Pipeline.": {
     "enum": null
   },
@@ -14156,6 +14183,9 @@
   "The name of the network function group to change.": {
     "enum": null
   },
+  "The name of the new OptOutList.": {
+    "enum": null
+  },
   "The name of the new resource.": {
     "enum": null
   },
@@ -14622,6 +14652,9 @@
     "enum": null
   },
   "The name to associate with the stack set. The name must be unique in the Region where you create your stack set.": {
+    "enum": null
+  },
+  "The name to use for the configuration set.": {
     "enum": null
   },
   "The name to use for the public repository. The repository name may be specified on its own (such as ``nginx-web-app``) or it can be prepended with a namespace to group the repository into a category (such as ``project-a/nginx-web-app``). If you don't specify a name, CFNlong generates a unique physical ID and uses that ID for the repository name. For more information, see [Name Type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n  If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.": {
@@ -15857,6 +15890,9 @@
   "The semantic version of the container recipe (<major>.<minor>.<patch>).": {
     "enum": null
   },
+  "The sender ID string to request.": {
+    "enum": null
+  },
   "The service principal for the AWS service to which this role is attached.": {
     "enum": null
   },
@@ -16499,6 +16535,9 @@
   "The tunnel protocol.": {
     "enum": null
   },
+  "The two-character code, in ISO 3166-1 alpha-2 format, for the country or region.": {
+    "enum": null
+  },
   "The type of AWS DMS Serverless replication to provision using this replication configuration": {
     "enum": null
   },
@@ -16628,6 +16667,9 @@
   "The type of parameter.\n  Parameters of type ``SecureString`` are not supported by CFNlong.": {
     "enum": null
   },
+  "The type of phone number to request.": {
+    "enum": null
+  },
   "The type of portal": {
     "enum": null
   },
@@ -16749,6 +16791,9 @@
     "enum": null
   },
   "The unique identifier for the email account.": {
+    "enum": null
+  },
+  "The unique identifier for the protect configuration to be associated to the configuration set.": {
     "enum": null
   },
   "The unique identifier of a connection used to fetch relevant parameters from connection during Datasource run": {
