@@ -7,7 +7,6 @@ import { generateDefaultLeafFuncs } from "./pipeline-steps/generateDefaultLeafFu
 import { generateDefaultQualificationFuncs } from "./pipeline-steps/generateQualificationFuncs.ts";
 import { attachDefaultManagementFuncs } from "./pipeline-steps/attachDefaultManagementFuncs.ts";
 import { addDefaultPropsAndSockets } from "./pipeline-steps/addDefaultPropsAndSockets.ts";
-import { generateSubAssets } from "./pipeline-steps/generateSubAssets.ts";
 import { generateIntrinsicFuncs } from "./pipeline-steps/generateIntrinsicFuncs.ts";
 import { updateSchemaIdsForExistingSpecs } from "./pipeline-steps/updateSchemaIdsForExistingSpecs.ts";
 import { getExistingSpecs } from "../../specUpdates.ts";
@@ -60,10 +59,6 @@ export async function generateAwsSpecs(options: {
   specs = generateDefaultLeafFuncs(specs);
   specs = attachDefaultManagementFuncs(specs);
   specs = generateDefaultQualificationFuncs(specs);
-
-  // subAssets should not have any of the above, but need an asset func and
-  // intrinsics
-  specs = generateSubAssets(specs);
   specs = generateIntrinsicFuncs(specs);
   specs = removeUnneededAssets(specs);
 
