@@ -2,6 +2,35 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## September 8th to 14th 2025
+
+### ✨ Added
+
+- Added more **telemetry collection** to the onboarding flow.
+- Enabled **review screen navigation** — back and forward buttons are now
+  available if there are items to review.
+- Split out **abandon, apply, and force_apply** MCP tools for finer control.
+
+### 🔄 Changed
+
+- Updated the **onboarding flow** for the web application.
+- Simplified the **Public API** for creating qualifications and codegen
+  functions.
+- Compressed **deployment task requests** in Edda for efficiency.
+- Updated Luminork to allow **upgrading components by Schema Category** for more
+  fine-grained control.
+- Made additional **UX changes** to the onboarding flow.
+- Removed all **sockets from Clover-based assets** and redeployed them.
+
+### 🐞 Fixed
+
+- Fixed an issue where **DVU status messages** incorrectly sent component
+  updated notifications.
+- Fixed a race condition in the **web worker**.
+- Fixed an issue where users could get **stuck in the lobby** if the
+  `checkOnboardingApi` call failed.
+- Fixed an issue where **buttons changed size** during loading states.
+
 ## September 2nd to 7th 2025
 
 ### ✨ Added
