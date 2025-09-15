@@ -5564,6 +5564,9 @@
   "Group attribute for this IAM Identity Center integration": {
     "enum": null
   },
+  "Group attribute for this IAM federation integration": {
+    "enum": null
+  },
   "Group attribute for this saml integration": {
     "enum": null
   },
@@ -17526,6 +17529,9 @@
     "enum": null
   },
   "User attribute for this IAM Identity Center integration": {
+    "enum": null
+  },
+  "User attribute for this IAM federation integration": {
     "enum": null
   },
   "User defined indentifier for participant associated with IngestConfiguration.": {
