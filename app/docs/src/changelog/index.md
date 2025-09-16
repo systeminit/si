@@ -65,6 +65,8 @@ All notable changes to System Initiative will be documented in this file.
 - Fixed an issue where **multi-select showed the context menu** attached to the
   incorrect component.
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/djEE7OGEVQI?si=sEWg2aRdZNLZKrtC" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## August 25th to 30th 2025
 
 > **Note:** Public release of the new **Application platform**.
