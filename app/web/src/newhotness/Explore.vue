@@ -158,9 +158,7 @@
             </Transition>
           </div>
         </div>
-        <div
-          class="flex-none flex flex-row flex-wrap items-center gap-xs justify-between"
-        >
+        <div class="flex-none flex flex-row flex-wrap items-center gap-xs">
           <TabGroupToggle
             ref="groupRef"
             :aOrB="urlGridOrMap === 'grid'"
@@ -183,7 +181,16 @@
               />
             </template>
           </TabGroupToggle>
-          <div v-if="showGrid" class="flex flex-row flex-wrap gap-xs">
+          <label v-if="!showGrid" class="text-sm">
+            <input
+              type="checkbox"
+              :checked="queryHideSubscriptions"
+              class="focus:outline-none"
+              @click="toggleHide"
+            />
+            Hide unconnected components
+          </label>
+          <div v-if="showGrid" class="ml-auto flex flex-row flex-wrap gap-xs">
             <DefaultSubscriptionsButton
               v-if="featureFlagsStore.DEFAULT_SUBS"
               :selected="gridMode.mode === 'defaultSubscriptions'"
@@ -710,6 +717,25 @@ const collapsingStyles = computed(() =>
     historyRef.value?.openState,
   ]),
 );
+
+const queryHideSubscriptions = computed(() => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  return query.hideSubscriptions === "1";
+});
+
+const toggleHide = () => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  if (queryHideSubscriptions.value) {
+    delete query.hideSubscriptions;
+  } else {
+    query.hideSubscriptions = "1";
+  }
+  router.replace({ query });
+};
 
 const urlGridOrMap = computed((): "grid" | "map" => {
   const q: SelectionsInQueryString = router.currentRoute.value?.query;
