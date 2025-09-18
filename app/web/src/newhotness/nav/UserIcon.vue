@@ -27,7 +27,7 @@
       class="absolute top-0 w-full h-full z-90 opacity-60 bg-shade-100 rounded-full pointer-events-none"
     />
     <div
-      v-if="!hideChangesetStar && ctx.changeSetId.value === user.changeSetId"
+      v-if="!hideChangesetStar && ctx.changeSetId.value === user.changeSetId && !user.ai"
       :class="
         clsx(
           'absolute w-full h-full z-100 flex flex-col items-center text-warning-300 pointer-events-none',

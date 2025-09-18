@@ -19,6 +19,7 @@
         :enableSecondaryAction="calculateShowSecondaryAction"
         :sizeClass="tw`h-[28px]`"
         secondaryActionIcon="edit2"
+        :class="clsx('transition-all', glowy && 'glowy')"
         @select="onSelectChangeSet"
         @secondaryAction="openRenameModal"
       >
@@ -138,6 +139,7 @@ import * as heimdall from "../../store/realtime/heimdall";
 import { routes, useApi } from "../api_composables";
 import { useChangeSets } from "../logic_composables/change_set";
 import { useContext } from "../logic_composables/context";
+import clsx from "clsx";
 
 const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
 
@@ -249,6 +251,8 @@ const waitForChangeSetExists = (
   });
 };
 
+const glowy = ref(false);
+
 async function onSelectChangeSet(newVal: string, goToMap=false) {
   if (newVal === "NEW") {
     openCreateModal();
@@ -283,6 +287,10 @@ async function onSelectChangeSet(newVal: string, goToMap=false) {
     if (goToMap) {
       const key = `newhotness-view-mode: ${ctx.changeSetId.value}`;
       localStorage.setItem(key, "map");
+      glowy.value = true;
+      setTimeout(() => {
+        glowy.value = false;
+      }, 2000);
     }
     reset();
   }
@@ -322,3 +330,9 @@ function openCreateModal() {
 
 defineExpose({ openCreateModal });
 </script>
+
+<style scoped>
+.glowy {
+  box-shadow: 0 0 10px 10px yellow;
+}
+</style>
