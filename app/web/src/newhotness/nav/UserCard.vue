@@ -41,8 +41,8 @@ assertIsDefined(ctx);
 const { openChangeSets } = useChangeSets(computed(() => ctx));
 
 const changeSetName = computed(() => {
-  return props.user.changeSet
-    ? openChangeSets.value.find((c) => c.id === props.user.changeSet)?.name ||
+  return props.user.changeSetId
+    ? openChangeSets.value.find((c) => c.id === props.user.changeSetId)?.name ||
         "Head"
     : "Head";
 });

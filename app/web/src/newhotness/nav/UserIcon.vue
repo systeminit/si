@@ -16,7 +16,7 @@
       <!-- TODO(Wendy) - This should check for and pull the image of the user in question, not the current user's image! -->
       <img
         v-if="user.pictureUrl"
-        class="rounded-full bg-shade-0"
+        :class="clsx('rounded-full bg-shade-0', user.ai && 'invert')"
         :src="user.pictureUrl"
         referrerpolicy="no-referrer"
       />
@@ -27,7 +27,7 @@
       class="absolute top-0 w-full h-full z-90 opacity-60 bg-shade-100 rounded-full pointer-events-none"
     />
     <div
-      v-if="!hideChangesetStar && ctx.changeSetId.value === user.changeSet"
+      v-if="!hideChangesetStar && ctx.changeSetId.value === user.changeSetId"
       :class="
         clsx(
           'absolute w-full h-full z-100 flex flex-col items-center text-warning-300 pointer-events-none',

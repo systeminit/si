@@ -262,7 +262,10 @@ import { getAssetIcon } from "./util";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import { truncateString } from "./logic_composables/string_funcs";
 import MiniMap from "./MiniMap.vue";
-import { useFuncRuns, useLatestManagementComponentRuns } from "./logic_composables/management";
+import {
+  useFuncRuns,
+  useLatestManagementComponentRuns,
+} from "./logic_composables/management";
 import { FuncKind, FuncRun } from "./api_composables/func_run";
 
 const MAX_STRING_LENGTH = 18;
@@ -279,7 +282,8 @@ const latestManagementComponentRuns = useLatestManagementComponentRuns();
 
 const componentsById = computed(() => {
   return (props.components || []).reduce((obj, component) => {
-    const latestManagementFuncRun = latestManagementComponentRuns.value[component.id];
+    const latestManagementFuncRun =
+      latestManagementComponentRuns.value[component.id];
     obj[component.id] = { ...component, latestManagementFuncRun };
     return obj;
   }, {} as Record<ComponentId, ComponentInList & { latestManagementFuncRun?: FuncRun }>);
@@ -531,11 +535,16 @@ const addNodeElements = (group: any, d: layoutNode) => {
       if (props.componentsWithFailedActions.has(d.component.id)) {
         classes.push("failed-actions");
       }
-      // if (d.component.latestManagementFuncRun || true) {
-        // classes.push("has-management-run");
-      // }
 
-      return classes.join(" ");
+      if (d.component.latestManagementFuncRun) {
+        classes.push("management-runs");
+      }
+
+      const classesString = classes.join(" ");
+
+      console.log(classesString);
+
+      return classesString;
     })
     .on("click", (e: MouseEvent) => {
       clickedNode(e, d);
@@ -582,7 +591,12 @@ const addNodeElements = (group: any, d: layoutNode) => {
 
   group
     .append("text")
-    .text(truncateString(`${d.component.schemaVariantName} - ${d.component.latestManagementFuncRun?.functionName}`, MAX_STRING_LENGTH))
+    .text(
+      truncateString(
+        `${d.component.schemaVariantName} - ${d.component.latestManagementFuncRun?.functionName}`,
+        MAX_STRING_LENGTH,
+      ),
+    )
     .attr("dx", "45")
     .attr("dy", "45")
     .attr("class", "")
@@ -1985,6 +1999,18 @@ defineExpose({
 </script>
 
 <style lang="less">
+@keyframes pulse-glow {
+  0% {
+    filter: drop-shadow(0 0 1rem yellow);
+  }
+  50% {
+    filter: drop-shadow(0 0 5rem yellow) drop-shadow(0 0 3rem yellow);
+  }
+  100% {
+    filter: drop-shadow(0 0 1rem yellow);
+  }
+}
+
 #map > svg {
   rect.node {
     fill: @colors-neutral-100;
@@ -2045,8 +2071,8 @@ defineExpose({
       }
     }
 
-    &.has-management-run {
-      fill:@colors-destructive-500;
+    &.management-runs {
+      animation: pulse-glow 2s infinite alternate;
     }
   }
 

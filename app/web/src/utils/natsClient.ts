@@ -17,7 +17,7 @@ export class NatsWebSocketClient {
         this.ws = new WebSocket(this.url);
 
         this.ws.onopen = () => {
-          console.log('NATS WebSocket connected');
+          console.log("NATS WebSocket connected");
           this.connected = true;
           this.reconnectAttempts = 0;
           resolve();
@@ -28,18 +28,17 @@ export class NatsWebSocketClient {
         };
 
         this.ws.onclose = (event) => {
-          console.log('NATS WebSocket disconnected:', event.code, event.reason);
+          console.log("NATS WebSocket disconnected:", event.code, event.reason);
           this.connected = false;
           this.handleReconnect();
         };
 
         this.ws.onerror = (error) => {
-          console.error('NATS WebSocket error:', error);
+          console.error("NATS WebSocket error:", error);
           if (!this.connected) {
             reject(error);
           }
         };
-
       } catch (error) {
         reject(error);
       }
@@ -50,31 +49,33 @@ export class NatsWebSocketClient {
     try {
       // Parse NATS message format
       // For now, we'll assume messages are in the format: "subject:payload"
-      const [subject, ...payloadParts] = data.split(':');
+      const [subject, ...payloadParts] = data.split(":");
       if (!subject) return;
-      
-      const payload = payloadParts.join(':');
+
+      const payload = payloadParts.join(":");
       const handler = this.subscribers.get(subject);
       if (handler) {
         handler(payload);
       }
     } catch (error) {
-      console.error('Failed to handle NATS message:', error);
+      console.error("Failed to handle NATS message:", error);
     }
   }
 
   private async handleReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-      
+      console.log(
+        `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`,
+      );
+
       setTimeout(() => {
-        this.connect().catch(error => {
-          console.error('Reconnection failed:', error);
+        this.connect().catch((error) => {
+          console.error("Reconnection failed:", error);
         });
       }, this.reconnectDelay * this.reconnectAttempts);
     } else {
-      console.error('Max reconnection attempts reached');
+      console.error("Max reconnection attempts reached");
     }
   }
 
@@ -84,8 +85,8 @@ export class NatsWebSocketClient {
     // Send subscription message to NATS (if protocol supported this)
     if (this.connected && this.ws) {
       const subscribeMsg = JSON.stringify({
-        type: 'subscribe',
-        subject
+        type: "subscribe",
+        subject,
       });
       this.ws.send(subscribeMsg);
     }
@@ -95,8 +96,8 @@ export class NatsWebSocketClient {
       this.subscribers.delete(subject);
       if (this.connected && this.ws) {
         const unsubscribeMsg = JSON.stringify({
-          type: 'unsubscribe', 
-          subject
+          type: "unsubscribe",
+          subject,
         });
         this.ws.send(unsubscribeMsg);
       }
@@ -106,13 +107,13 @@ export class NatsWebSocketClient {
   publish(subject: string, data: string): void {
     if (this.connected && this.ws) {
       const message = JSON.stringify({
-        type: 'publish',
+        type: "publish",
         subject,
-        data
+        data,
       });
       this.ws.send(message);
     } else {
-      console.warn('Cannot publish - NATS WebSocket not connected');
+      console.warn("Cannot publish - NATS WebSocket not connected");
     }
   }
 
@@ -136,7 +137,7 @@ export class MockNatsClient {
 
   // eslint-disable-next-line class-methods-use-this
   async connect(): Promise<void> {
-    console.log('Mock NATS client connected');
+    console.log("Mock NATS client connected");
   }
 
   subscribe(subject: string, handler: (data: string) => void): () => void {
@@ -152,12 +153,12 @@ export class MockNatsClient {
 
   publish(subject: string, data: string): void {
     console.log(`Mock publish to ${subject}:`, data);
-    
+
     // Simulate command execution for demo
-    if (subject.endsWith('.stdin')) {
+    if (subject.endsWith(".stdin")) {
       // Simulate shell response after a short delay
       setTimeout(() => {
-        const outputSubject = subject.replace('.stdin', '.stdout');
+        const outputSubject = subject.replace(".stdin", ".stdout");
         const handler = this.subscribers.get(outputSubject);
         if (handler) {
           // Mock shell output
@@ -170,20 +171,20 @@ export class MockNatsClient {
 
   private static generateMockOutput(command: string): string {
     const cmd = command.trim();
-    
+
     // Mock different command outputs
-    if (cmd === 'ls') {
-      return 'bin  etc  home  lib  usr  var';
-    } else if (cmd === 'pwd') {
-      return '/workspace';
-    } else if (cmd.startsWith('echo ')) {
+    if (cmd === "ls") {
+      return "bin  etc  home  lib  usr  var";
+    } else if (cmd === "pwd") {
+      return "/workspace";
+    } else if (cmd.startsWith("echo ")) {
       return cmd.substring(5);
-    } else if (cmd === 'whoami') {
-      return 'si';
-    } else if (cmd === 'date') {
+    } else if (cmd === "whoami") {
+      return "si";
+    } else if (cmd === "date") {
       return new Date().toString();
-    } else if (cmd === 'ps') {
-      return '  PID TTY          TIME CMD\n    1 ?        00:00:01 bash\n   42 ?        00:00:00 ps';
+    } else if (cmd === "ps") {
+      return "  PID TTY          TIME CMD\n    1 ?        00:00:01 bash\n   42 ?        00:00:00 ps";
     } else {
       return `${cmd}: command not found (mock shell)`;
     }
@@ -191,7 +192,7 @@ export class MockNatsClient {
 
   disconnect(): void {
     this.subscribers.clear();
-    console.log('Mock NATS client disconnected');
+    console.log("Mock NATS client disconnected");
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -201,11 +202,13 @@ export class MockNatsClient {
 }
 
 // Factory function to create appropriate client
-export function createNatsClient(useReal = false): NatsWebSocketClient | MockNatsClient {
+export function createNatsClient(
+  useReal = false,
+): NatsWebSocketClient | MockNatsClient {
   if (useReal) {
     // In a real implementation, this would connect to the actual NATS WebSocket endpoint
     // The URL would need to be configured based on your NATS setup
-    const natsWsUrl = 'ws://localhost:4222'; // This would need to be your actual NATS WebSocket URL
+    const natsWsUrl = "ws://localhost:4222"; // This would need to be your actual NATS WebSocket URL
     return new NatsWebSocketClient(natsWsUrl);
   } else {
     return new MockNatsClient();

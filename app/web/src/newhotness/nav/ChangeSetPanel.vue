@@ -71,8 +71,6 @@
       @click="openAbandonConfirmationModal"
     />
 
-    <PersistentTerminalPanel ref="terminalPanelRef" />
-
     <Modal ref="createModalRef" title="Create Change Set">
       <form @submit.prevent="onCreateChangeSet">
         <Stack>
@@ -135,8 +133,8 @@ import { tw } from "@si/vue-lib";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
 import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
-import AbandonChangeSetModal from "./AbandonChangeSetModal.vue";
 import PersistentTerminalPanel from "@/components/PersistentTerminalPanel.vue";
+import AbandonChangeSetModal from "./AbandonChangeSetModal.vue";
 import * as heimdall from "../../store/realtime/heimdall";
 import { routes, useApi } from "../api_composables";
 import { useChangeSets } from "../logic_composables/change_set";
@@ -163,7 +161,12 @@ const { openChangeSets, changeSet } = useChangeSets(computed(() => ctx));
 watch(openChangeSets, (newChangeSets, oldChangeSets) => {
   if (newChangeSets.length === oldChangeSets.length + 1) {
     // One new change set, let's switch to it automatically!
-    const newestChangeSet = newChangeSets.find((newChangeSet) => oldChangeSets.find((oldChangeSet) => oldChangeSet.id === newChangeSet.id) === undefined);
+    const newestChangeSet = newChangeSets.find(
+      (newChangeSet) =>
+        oldChangeSets.find(
+          (oldChangeSet) => oldChangeSet.id === newChangeSet.id,
+        ) === undefined,
+    );
     if (newestChangeSet) {
       onSelectChangeSet(newestChangeSet.id);
     }
@@ -214,10 +217,6 @@ const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(
 function openRenameModal(option: { value: string; label: string }) {
   renameModalRef.value?.open(option.value, option.label);
 }
-
-const terminalPanelRef = ref<InstanceType<typeof PersistentTerminalPanel> | null>(
-  null,
-);
 
 const createModalRef = ref<InstanceType<typeof Modal>>();
 

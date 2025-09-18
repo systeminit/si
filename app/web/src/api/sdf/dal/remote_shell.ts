@@ -16,7 +16,7 @@ export interface RemoteShellConnectionInfo {
 
 export enum RemoteShellStatus {
   Active = "active",
-  Error = "error", 
+  Error = "error",
   Terminated = "terminated",
 }
 
@@ -38,18 +38,18 @@ export class RemoteShellApi {
   static async createSession(
     workspaceId: string,
     changeSetId: string,
-    request: CreateRemoteShellSessionRequest = {}
+    request: CreateRemoteShellSessionRequest = {},
   ): Promise<RemoteShellSessionDetails> {
     const response = await sdfApiInstance.post(
       `/v2/workspaces/${workspaceId}/change-sets/${changeSetId}/remote-shell/create`,
-      request
+      request,
     );
 
     // The backend returns a ForceChangeSetResponse where:
     // - The actual data is in response.data directly (CreateRemoteShellSessionResponse)
     // - The force_change_set_id is in the response headers
     return {
-      forcedChangeSetId: response.headers.force_change_set_id || '',
+      forcedChangeSetId: response.headers.force_change_set_id || "",
       data: response.data as CreateRemoteShellSessionResponse,
     };
   }

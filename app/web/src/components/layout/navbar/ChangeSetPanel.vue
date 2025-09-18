@@ -71,8 +71,6 @@
       @click="openAbandonConfirmationModal"
     />
 
-    <PersistentTerminalPanel ref="terminalPanelRef" />
-
     <Modal ref="createModalRef" title="Create Change Set">
       <form @submit.prevent="onCreateChangeSet">
         <Stack>
@@ -191,10 +189,6 @@ const abandonModalRef = ref<InstanceType<typeof AbandonChangeSetModal> | null>(
 const openAbandonConfirmationModal = () => {
   abandonModalRef.value?.open();
 };
-
-const terminalPanelRef = ref<InstanceType<typeof PersistentTerminalPanel> | null>(
-  null,
-);
 
 const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(
   null,

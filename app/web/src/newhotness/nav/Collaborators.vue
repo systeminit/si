@@ -14,10 +14,10 @@
         <UserIcon
           :tooltip="userTooltips[index]"
           :user="user"
-          :class="clsx('absolute translate-x-[-50%]', user.view==='AI' && 'invert')"
+          class="absolute translate-x-[-50%]"
           hasHoverState
           forceDark
-          @click="goToUserChangeSet(user)"
+          @click="onUserClick(user)"
         />
       </div>
     </template>
@@ -86,23 +86,26 @@
             :key="index"
             :user="user"
             iconHasHoverState
-            @iconClicked="goToUserChangeSet(user)"
+            @iconClicked="onUserClick(user)"
           />
         </div>
       </div>
     </Popover>
+
+    <PersistentTerminalPanel ref="persistentTerminalPanelRef" />
   </div>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useAuthStore } from "@/store/auth.store";
 import { SiSearch, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "@/store/auth.store";
 import Popover from "@/components/Popover.vue";
 import { usePresenceStore } from "@/store/presence.store";
+import PersistentTerminalPanel from "@/components/PersistentTerminalPanel.vue";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 import { useContext } from "../logic_composables/context";
@@ -116,12 +119,12 @@ const ctx = useContext();
 
 export type UserInfo = {
   name: string;
+  ai?: boolean;
   color?: string | null;
   status?: string | null;
-  changeSet?: string; // TODO(Wendy) - this should be called changeSetId
+  changeSetId?: string;
   pictureUrl?: string | null;
-  view?: string; // TODO(Wendy) - this should be called viewId
-  // TODO(Wendy) - we should probably also send the viewName so we can show it in the tooltip
+  viewId?: string;
 };
 
 const moreUsersPopoverRef = ref();
@@ -139,28 +142,31 @@ const users = computed<UserInfo[]>(() => {
   // return testUsers();
 
   const list = [] as UserInfo[];
+
+  // Add an AI agent user if appropriate
+  if (hasUsedAiAgent.value && authStore.user) {
+    list.push({
+      name: "Your Claude",
+      status: "active",
+      pictureUrl: authStore.user.picture_url,
+      color: persistentTerminalPanelRef.value?.isConnected()
+        ? "yellow"
+        : "black",
+      ai: true,
+    });
+  }
+
   for (const user of _.values(presenceStore.usersById)) {
     list.push({
       name: user.name,
       color: user.color,
       status: user.idle ? "idle" : "active",
-      changeSet: user.changeSetId,
+      changeSetId: user.changeSetId,
       pictureUrl: user.pictureUrl,
-      view: user.viewId,
+      viewId: user.viewId,
     });
   }
-
-  // Add an AI agent user if appropriate
-    if (hasUsedAiAgent.value && authStore.user) {
-        list.push({
-            name: "Your Claude",
-            color: "blue",
-            status: "active",
-            changeSet: "Dunno",
-            pictureUrl: authStore.user.picture_url,
-            view: "AI",
-        });
-    }
+  
   return list;
 });
 
@@ -168,15 +174,21 @@ const sortedUsers = computed(() => {
   const usersCopy = _.clone(users.value);
   return usersCopy.sort((a, b) => {
     if (ctx.changeSetId.value) {
+      if (a.ai) {
+        return 100;
+      }
+      if (b.ai) {
+        return -100;
+      }
       if (
-        a.changeSet !== ctx.changeSetId.value &&
-        b.changeSet === ctx.changeSetId.value
+        a.changeSetId !== ctx.changeSetId.value &&
+        b.changeSetId === ctx.changeSetId.value
       ) {
         return 2;
       }
       if (
-        a.changeSet === ctx.changeSetId.value &&
-        b.changeSet !== ctx.changeSetId.value
+        a.changeSetId === ctx.changeSetId.value &&
+        b.changeSetId !== ctx.changeSetId.value
       ) {
         return -2;
       }
@@ -208,20 +220,38 @@ const userTooltips = computed(() => {
   }[];
 
   displayUsers.value.forEach((user) => {
-    tooltips.push({
-      content: `<div class='flex flex-col items-center max-w-lg'>
-        <div class='text-center font-bold w-full break-words line-clamp-3 pb-3xs px-sm min-w-0'>${
-          user.name
-        }</div>
-        <div class='text-xs font-bold w-full text-center line-clamp-3 px-sm'>${
-          user.changeSet ? ctx.changeSet.value?.name || "Head" : "Head"
-        }</div>
-        <div class='text-xs w-full text-center line-clamp-3 px-sm'>${
-          user.status
-        }</div>
-        </div>`,
-      theme: "user-info",
-    });
+    if (user.ai) {
+      tooltips.push({
+        content: `<div class='flex flex-col items-center max-w-lg'>
+          <div class='text-center font-bold w-full break-words line-clamp-3 pb-3xs px-sm min-w-0'>
+          Your AI Agent
+          </div>
+          <div class='text-xs w-full text-center line-clamp-3 px-sm'>
+          Click here to ${
+            persistentTerminalPanelRef.value?.panelState() === "minimized"
+              ? "open"
+              : "close"
+          } terminal
+          </div>
+          </div>`,
+        theme: "user-info",
+      });
+    } else {
+      tooltips.push({
+        content: `<div class='flex flex-col items-center max-w-lg'>
+          <div class='text-center font-bold w-full break-words line-clamp-3 pb-3xs px-sm min-w-0'>${
+            user.name
+          }</div>
+          <div class='text-xs font-bold w-full text-center line-clamp-3 px-sm'>${
+            user.changeSetId ? ctx.changeSet.value?.name || "Head" : "Head"
+          }</div>
+          <div class='text-xs w-full text-center line-clamp-3 px-sm'>${
+            user.status
+          }</div>
+          </div>`,
+        theme: "user-info",
+      });
+    }
   });
 
   return tooltips;
@@ -296,16 +326,23 @@ const hasUsedAiAgent = computed(
   () => authStore.userWorkspaceFlags.executedAgent ?? false,
 );
 
-function goToUserChangeSet(user: UserInfo) {
-  if (!user || !user.changeSet) return;
+const persistentTerminalPanelRef =
+  ref<InstanceType<typeof PersistentTerminalPanel>>();
 
-  if (user.view) {
+function onUserClick(user: UserInfo) {
+  if (user.ai) {
+    persistentTerminalPanelRef.value?.open();
+  }
+
+  if (!user || !user.changeSetId) return;
+
+  if (user.viewId) {
     router.push({
       name: "new-hotness-view",
       params: {
         ...route.params,
-        changeSetId: user.changeSet,
-        viewId: user.view,
+        changeSetId: user.changeSetId,
+        viewId: user.viewId,
       },
       query: route.query,
     });
@@ -316,7 +353,7 @@ function goToUserChangeSet(user: UserInfo) {
     name: "new-hotness",
     params: {
       ...route.params,
-      changeSetId: user.changeSet,
+      changeSetId: user.changeSetId,
     },
     query: route.query,
   });
