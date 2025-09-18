@@ -226,9 +226,35 @@ const realtimeStore = useRealtimeStore();
 const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
 
-const hasUsedAiAgent = computed(
-  () => authStore.userWorkspaceFlags.executedAgent ?? false,
-);
+const hasUsedAiAgent = computed(() => {
+  const restoreAuthStatus = authStore.getRequestStatus("RESTORE_AUTH");
+  const reconnectAuthStatus = authStore.getRequestStatus("AUTH_RECONNECT");
+
+  // If still loading auth data, hide banner to avoid flickering
+  if (
+    restoreAuthStatus.value.isPending ||
+    reconnectAuthStatus.value.isPending
+  ) {
+    return true;
+  }
+
+  // If auth failed and we never got user workspace flags, hide banner
+  // (we can't reliably know the state, so err on the side of not showing it)
+  if (
+    (restoreAuthStatus.value.isError || reconnectAuthStatus.value.isError) &&
+    !authStore.userIsLoggedInAndInitialized
+  ) {
+    return true;
+  }
+
+  // If we have valid auth but no executedAgent flag, show the banner
+  if (authStore.userIsLoggedInAndInitialized) {
+    return authStore.userWorkspaceFlags.executedAgent ?? false;
+  }
+
+  // Default: hide banner if we're in an uncertain state
+  return true;
+});
 
 const coldStartInProgress = computed(() => heimdall.muspelheimInProgress.value);
 
