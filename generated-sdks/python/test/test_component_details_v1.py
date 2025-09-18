@@ -35,6 +35,7 @@ class TestComponentDetailsV1(unittest.TestCase):
         model = ComponentDetailsV1()
         if include_optional:
             return ComponentDetailsV1(
+                codegen = None,
                 component_id = '',
                 name = '',
                 schema_name = ''

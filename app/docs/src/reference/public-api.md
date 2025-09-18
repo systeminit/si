@@ -395,6 +395,7 @@ Components management endpoints
 |change_set_id|path|string|true|Change Set identifier|
 |limit|query|string|false|Maximum number of results to return (default: 50, max: 300)|
 |cursor|query|string|false|Cursor for pagination (ComponentId of the last item from previous page)|
+|includeCodegen|query|boolean|false|Allow returning the codegen for the cloudformation template for the component (if it exists)|
 
 > Example responses
 
@@ -3008,6 +3009,7 @@ Standard success response format for v1 API
 
 ```json
 {
+  "codegen": null,
   "componentId": "string",
   "name": "string",
   "schemaName": "string"
@@ -3019,6 +3021,7 @@ Standard success response format for v1 API
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|codegen|any|false|none|none|
 |componentId|string|true|none|none|
 |name|string|true|none|none|
 |schemaName|string|true|none|none|
