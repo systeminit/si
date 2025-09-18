@@ -1,9 +1,11 @@
 import { computed, ComputedRef, inject, ref } from "vue";
-import { useQuery } from "@tanstack/vue-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/vue-query";
 import { FuncKind, FuncRun } from "../api_composables/func_run";
 import { ManagementFuncJobState } from "../api_composables/management_func_job_state";
-import { useApi, routes } from "../api_composables";
+import { useApi, routes, funcRunTypes } from "../api_composables";
 import { assertIsDefined, Context } from "../types";
+import { useContext } from "./context";
+import { ComponentId } from "@/api/sdf/dal/component";
 
 export const useManagementFuncJobState = (
   funcRun: ComputedRef<FuncRun | undefined>,
@@ -43,4 +45,58 @@ export const useManagementFuncJobState = (
   });
 
   return computed(() => data);
+};
+
+export const useFuncRuns = () => {
+  const ctx = useContext();
+  const api = useApi();
+  const pageSize = 50;
+
+  const { data } = useInfiniteQuery({
+    queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
+    queryFn: async ({
+      pageParam = undefined,
+    }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
+      const call = api.endpoint<funcRunTypes.GetFuncRunsPaginatedResponse>(
+        routes.GetFuncRunsPaginated,
+      );
+      const params = new URLSearchParams();
+      params.append("limit", pageSize.toString());
+      if (pageParam) {
+        params.append("cursor", pageParam);
+      }
+      const req = await call.get(params);
+      if (api.ok(req)) {
+        return req.data;
+      }
+      return {
+        funcRuns: [],
+        nextCursor: null,
+      };
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage: funcRunTypes.GetFuncRunsPaginatedResponse) => {
+      return lastPage.nextCursor ?? undefined;
+    },
+  });
+
+  // Flatten the pages of function runs for display
+  return computed<FuncRun[]>(() => {
+    if (!data.value) return [];
+    return data.value.pages.flatMap((page) => page.funcRuns);
+  });
+};
+
+export const useLatestManagementComponentRuns = () => {
+  const allFuncRuns = useFuncRuns();
+  const managementFuncRuns = computed(() =>
+    allFuncRuns.value.filter((r) => r.functionKind === FuncKind.Management),
+  );
+  return computed(() => {
+    const result = {} as { [key in ComponentId]?: FuncRun };
+    for (const run of managementFuncRuns.value) {
+      result[run.componentId ?? "none"] ??= run;
+    }
+    return result;
+  });
 };

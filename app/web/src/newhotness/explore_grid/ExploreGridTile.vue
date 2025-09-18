@@ -205,9 +205,10 @@ import { getAssetIcon } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
 import ComponentTileQualificationStatus from "../ComponentTileQualificationStatus.vue";
 import ActionPills from "../ActionPills.vue";
+import { FuncRun } from "../api_composables/func_run";
 
 const props = defineProps<{
-  component: ComponentInList;
+  component: ComponentInList & { latestManagementFuncRun?: FuncRun };
   selected?: boolean;
   focused?: boolean;
   hovered?: boolean;

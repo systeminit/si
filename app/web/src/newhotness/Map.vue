@@ -262,6 +262,8 @@ import { getAssetIcon } from "./util";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import { truncateString } from "./logic_composables/string_funcs";
 import MiniMap from "./MiniMap.vue";
+import { useFuncRuns, useLatestManagementComponentRuns } from "./logic_composables/management";
+import { FuncKind, FuncRun } from "./api_composables/func_run";
 
 const MAX_STRING_LENGTH = 18;
 
@@ -273,11 +275,14 @@ const props = defineProps<{
   componentsWithFailedActions: Set<ComponentId>;
 }>();
 
-const componentsById = computed<Record<ComponentId, ComponentInList>>(() => {
+const latestManagementComponentRuns = useLatestManagementComponentRuns();
+
+const componentsById = computed(() => {
   return (props.components || []).reduce((obj, component) => {
-    obj[component.id] = component;
+    const latestManagementFuncRun = latestManagementComponentRuns.value[component.id];
+    obj[component.id] = { ...component, latestManagementFuncRun };
     return obj;
-  }, {} as Record<ComponentId, ComponentInList>);
+  }, {} as Record<ComponentId, ComponentInList & { latestManagementFuncRun?: FuncRun }>);
 });
 
 const componentContextMenuRef =
@@ -526,6 +531,9 @@ const addNodeElements = (group: any, d: layoutNode) => {
       if (props.componentsWithFailedActions.has(d.component.id)) {
         classes.push("failed-actions");
       }
+      // if (d.component.latestManagementFuncRun || true) {
+        // classes.push("has-management-run");
+      // }
 
       return classes.join(" ");
     })
@@ -574,7 +582,7 @@ const addNodeElements = (group: any, d: layoutNode) => {
 
   group
     .append("text")
-    .text(truncateString(d.component.schemaVariantName, MAX_STRING_LENGTH))
+    .text(truncateString(`${d.component.schemaVariantName} - ${d.component.latestManagementFuncRun?.functionName}`, MAX_STRING_LENGTH))
     .attr("dx", "45")
     .attr("dy", "45")
     .attr("class", "")
@@ -1179,7 +1187,7 @@ export type node = {
   id: string;
   width: number;
   height: number;
-  component: ComponentInList;
+  component: ComponentInList & { latestManagementFuncRun?: FuncRun };
   icons: [string | null];
 };
 
@@ -2035,6 +2043,10 @@ defineExpose({
         fill: @colors-neutral-700;
         stroke: @colors-neutral-600;
       }
+    }
+
+    &.has-management-run {
+      fill:@colors-destructive-500;
     }
   }
 
