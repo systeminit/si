@@ -30,6 +30,7 @@
       <div v-if="mode === 'schema'" class="grow">
         <GraphSchemaVisualizer
           showRelationships
+          :layoutAlgorithm="'layered'"
           @nodeClick="handleNodeClick"
           @nodeDoubleClick="handleNodeDoubleClick"
           @edgeClick="handleEdgeClick"
@@ -47,7 +48,7 @@
               <thead>
                 <tr :class="themeClasses('bg-neutral-100 text-neutral-900', 'bg-neutral-800 text-neutral-100')">
                   <th 
-                    v-for="(name, index) in sampleTableHeaders" 
+                    v-for="(name, index) in tableHeaders" 
                     :key="index"                     
                     :class="clsx( 
                       'p-xs border',
@@ -60,7 +61,7 @@
               </thead>
               <tbody>
                 <tr
-                  v-for="(entry, index) in sampleTableEntries"
+                  v-for="(entry, index) in tableEntries"
                   :key="index"
                   :class="clsx([
                     'cursor-pointer transition-colors',
@@ -71,7 +72,7 @@
                   ])"
                 >
                   <td 
-                    v-for="(_, index) in sampleTableHeaders" 
+                    v-for="(_, index) in tableHeaders" 
                     :key="index"
                     :class="clsx( 
                       'p-xs border',
@@ -94,15 +95,18 @@
 import { ref, reactive, computed, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Icon, themeClasses, NewButton } from "@si/vue-lib/design-system";
-import type { 
+import { 
   ComponentInList, 
   SchemaVariant, 
   EntityKind,
+  BifrostActionViewList,
 } from "@/workers/types/entity_kind_types";
 import type { EntityNode, RelationshipEdge, EntitySchemaKind } from "@/components/GraphSchemaVisualizer/types/schema-graph";
 import GraphSchemaVisualizer from "@/components/GraphSchemaVisualizer/GraphSchemaVisualizer.vue";
 import { ExploreContext } from "./types";
 import clsx from "clsx";
+import { useQuery } from "@tanstack/vue-query";
+import { bifrost, useMakeKey } from "@/store/realtime/heimdall";
 
 const route = useRoute();
 const router = useRouter();
@@ -276,20 +280,40 @@ const handleSelectionChange = (selectedNodes: Set<string>) => {
 };
 
 
-const sampleTableHeaders = ref(["Id", "Name", "Variant Name"])
+const tableHeaders = ref(["Id", "Name", "Variant Name"])
 
-const sampleTableEntries = reactive([
+const tableEntries = reactive([
   ["1", "Rex", "EC2 Instance"],
   ["2", "Orange", "EC2 Instance"],
   ["3", "County", "EC2 Instance"],
 ]);
 
+const key = useMakeKey();
+
+const actionViewListRaw = useQuery<BifrostActionViewList | null>({
+  queryKey: key(EntityKind.ActionViewList),
+  queryFn: async () =>
+    await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
+});
+const actionViewList = computed(
+  () => actionViewListRaw.data.value?.actions ?? [],
+);
+
 const handleTableViewRequest = (entityKind: EntitySchemaKind) => {
   console.log("Table view requested for:", entityKind);
   // Switch to table mode when user clicks table link in graph
   mode.value = 'table';
+
+  if(entityKind === "Action") {
+    console.log(actionViewList.value);
+    
+  } else if(entityKind === "Component") {}
+  else if(entityKind === "SchemaVariant") {}
+  else if(entityKind === "Schema") {}
+  else if(entityKind === "Function") {}
 };
 
-
-
+function args(ActionViewList: EntityKind): { workspaceId: import("../api/sdf/dal/workspace").WorkspacePk; changeSetId: import("../api/sdf/dal/change_set").ChangeSetId; kind: import("../workers/types/dbinterface").Gettable; id: import("../workers/types/dbinterface").Id; } {
+  throw new Error("Function not implemented.");
+}
 </script>

@@ -53,13 +53,16 @@
       </text>
       
       <!-- Table link button -->
-      <g class="table-link" :transform="`translate(${node.dimensions.width - 24}, 8)`">
+      <g 
+        class="table-link" 
+        :transform="`translate(${node.dimensions.width - 24}, 8)`"
+        @click.stop="handleTableLinkClick"
+      >
         <rect
           width="16"
           height="16"
           :class="linkButtonClasses"
           rx="2"
-          @click.stop="handleTableLinkClick"
         />
         <foreignObject width="16" height="16">
           <Icon name="data-table" size="xs" />

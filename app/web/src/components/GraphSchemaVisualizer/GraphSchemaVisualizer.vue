@@ -206,7 +206,7 @@ const {
 } = useSchemaLayout();
 
 // Local state
-const selectedLayoutAlgorithm = ref('force');
+const selectedLayoutAlgorithm = ref<'hierarchical' | 'layered' | 'force'>('force');
 const showRelationships = ref(props.showRelationships || true);
 const activeEntityTypes = ref<Set<EntitySchemaKind>>(new Set(props.entityTypes || []));
 const selectedNodes = ref<Set<string>>(new Set());
