@@ -122,26 +122,20 @@ def promote(src_prefix: str, dst: str, multi_arches: List[DockerArchitecture]):
     for src in srcs:
         print(f"      - {src}")
 
-    manifest_create_cmd = [
+    imagetools_cmd = [
         "docker",
-        "manifest",
+        "buildx",
+        "imagetools",
         "create",
+        "--tag",
         dst,
     ]
-    for src in srcs:
-        manifest_create_cmd.append("--amend")
-        manifest_create_cmd.append(src)
-    subprocess.run(manifest_create_cmd).check_returncode()
+    imagetools_cmd.extend(srcs)
 
-    print(f"  - Pushing manifest list to {dst}")
-    manifest_push_cmd = [
-        "docker",
-        "manifest",
-        "push",
-        "--purge",
-        dst,
-    ]
-    subprocess.run(manifest_push_cmd).check_returncode()
+    print(
+        f"  - Creating and pushing manifest list with: {' '.join(imagetools_cmd)}"
+    )
+    subprocess.run(imagetools_cmd).check_returncode()
 
 
 if __name__ == "__main__":

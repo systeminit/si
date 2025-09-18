@@ -10,6 +10,8 @@ DockerImageInfo = provider(fields = {
     "build_metadata": provider_field(typing.Any, default = None),  # [Artifact]
     "label_metadata": provider_field(typing.Any, default = None),  # [Artifact]
     "tag_metadata": provider_field(typing.Any, default = None),  # [Artifact]
+    "build_context": provider_field(typing.Any, default = None),  # BuildContext
+    "build_args": provider_field(typing.Any, default = None),  # Dict[str, str]
 })
 
 def docker_image_impl(ctx: AnalysisContext) -> list[[
@@ -121,17 +123,25 @@ def docker_image_release_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInf
     cli_args = ctx.actions.declare_output("args.txt")
 
     docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
+    docker_image_info = ctx.attrs.docker_image[DockerImageInfo]
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         docker_toolchain.docker_image_push[DefaultInfo].default_outputs,
         "--artifact-file",
-        ctx.attrs.docker_image[DockerImageInfo].artifact,
+        docker_image_info.artifact,
         "--tag-metadata-file",
-        ctx.attrs.docker_image[DockerImageInfo].tag_metadata,
+        docker_image_info.tag_metadata,
         "--label-metadata-file",
-        ctx.attrs.docker_image[DockerImageInfo].label_metadata,
+        docker_image_info.label_metadata,
+        "--docker-context-dir",
+        docker_image_info.build_context.root,
     )
+
+    # Add build args
+    for key, value in docker_image_info.build_args.items():
+        cmd.add("--build-arg")
+        cmd.add("{}={}".format(key, value))
 
     ctx.actions.write(cli_args.as_output(), cmd)
 
@@ -261,13 +271,15 @@ def build_docker_image(
         cmd.add("--build-arg")
         cmd.add("{}={}".format(key, value))
 
-    ctx.actions.run(cmd, category = "docker_build")
+    ctx.actions.run(cmd, category = "docker_build", prefer_local = True)
 
     return DockerImageInfo(
         artifact = artifact,
         build_metadata = build_metadata,
         label_metadata = label_metadata,
         tag_metadata = tag_metadata,
+        build_context = docker_build_ctx,
+        build_args = ctx.attrs.build_args,
     )
 
 def docker_run_args(ctx: AnalysisContext, image_info: DockerImageInfo) -> cmd_args:
