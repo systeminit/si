@@ -14,7 +14,7 @@
         <UserIcon
           :tooltip="userTooltips[index]"
           :user="user"
-          class="absolute translate-x-[-50%]"
+          :class="clsx('absolute translate-x-[-50%]', user.view==='AI' && 'invert')"
           hasHoverState
           forceDark
           @click="goToUserChangeSet(user)"
@@ -97,6 +97,7 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useAuthStore } from "@/store/auth.store";
 import { SiSearch, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRoute, useRouter } from "vue-router";
@@ -107,6 +108,7 @@ import UserCard from "./UserCard.vue";
 import { useContext } from "../logic_composables/context";
 
 const presenceStore = usePresenceStore();
+const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
@@ -148,6 +150,17 @@ const users = computed<UserInfo[]>(() => {
     });
   }
 
+  // Add an AI agent user if appropriate
+    if (hasUsedAiAgent && authStore.user) {
+        list.push({
+            name: "Your Claude",
+            color: "blue",
+            status: "active",
+            changeSet: "Dunno",
+            pictureUrl: authStore.user.picture_url,
+            view: "AI",
+        });
+    }
   return list;
 });
 
@@ -278,6 +291,10 @@ const filteredUsers = computed(() => {
     );
   } else return sortedUsers.value;
 });
+
+const hasUsedAiAgent = computed(
+  () => authStore.userWorkspaceFlags.executedAgent ?? false,
+);
 
 function goToUserChangeSet(user: UserInfo) {
   if (!user || !user.changeSet) return;
