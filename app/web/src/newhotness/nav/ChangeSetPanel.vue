@@ -133,7 +133,6 @@ import { tw } from "@si/vue-lib";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
 import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
-import PersistentTerminalPanel from "@/components/PersistentTerminalPanel.vue";
 import AbandonChangeSetModal from "./AbandonChangeSetModal.vue";
 import * as heimdall from "../../store/realtime/heimdall";
 import { routes, useApi } from "../api_composables";
@@ -168,7 +167,7 @@ watch(openChangeSets, (newChangeSets, oldChangeSets) => {
         ) === undefined,
     );
     if (newestChangeSet) {
-      onSelectChangeSet(newestChangeSet.id);
+      onSelectChangeSet(newestChangeSet.id, true);
     }
   }
 });
@@ -250,7 +249,7 @@ const waitForChangeSetExists = (
   });
 };
 
-async function onSelectChangeSet(newVal: string) {
+async function onSelectChangeSet(newVal: string, goToMap=false) {
   if (newVal === "NEW") {
     openCreateModal();
     return;
@@ -269,14 +268,22 @@ async function onSelectChangeSet(newVal: string) {
     }
 
     const name = route.name;
-    await router.push({
-      name,
-      params: {
+    const params = {
         ...route.params,
         changeSetId: newVal,
-      },
-      query: route.query,
+    };
+    const query = goToMap ? {
+      map: 1,
+    } : route.query;
+    await router.push({
+      name,
+      params,
+      query,
     });
+    if (goToMap) {
+      const key = `newhotness-view-mode: ${ctx.changeSetId.value}`;
+      localStorage.setItem(key, "map");
+    }
     reset();
   }
 }

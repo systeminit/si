@@ -309,6 +309,12 @@ watch(componentsById, (newComponentsById) => {
       }
     });
     selectedComponents.value = newSelectedComponents;
+
+    const funcRun = Object.values(newComponentsById).find((component) => component.latestManagementFuncRun);
+    if (funcRun) {
+      selectedComponents.value = new Set([funcRun]);
+      navigateToSelectedComponent();
+    }
   }
 });
 

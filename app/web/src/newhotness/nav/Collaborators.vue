@@ -143,8 +143,8 @@ const users = computed<UserInfo[]>(() => {
 
   const list = [] as UserInfo[];
 
-  // Add an AI agent user if appropriate
-  if (hasUsedAiAgent.value && authStore.user) {
+  // Add an AI agent user
+  if (authStore.user) {
     list.push({
       name: "Your Claude",
       status: "active",
@@ -166,7 +166,7 @@ const users = computed<UserInfo[]>(() => {
       viewId: user.viewId,
     });
   }
-  
+
   return list;
 });
 

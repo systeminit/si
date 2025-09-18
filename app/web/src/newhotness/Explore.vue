@@ -662,7 +662,7 @@ const args = useMakeArgs();
 
 const VIEW_MODE_LOCAL_STORAGE_KEY = "newhotness-view-mode";
 const viewModeStorageKey = () =>
-  `${VIEW_MODE_LOCAL_STORAGE_KEY}: ${ctx.changeSetId}`;
+  `${VIEW_MODE_LOCAL_STORAGE_KEY}: ${ctx.changeSetId.value}`;
 const storeViewMode = () => {
   if (!groupRef.value) return;
 
