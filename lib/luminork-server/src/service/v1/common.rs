@@ -123,5 +123,5 @@ pub struct PaginationParams {
     pub limit: Option<u32>,
     #[schema(example = "01H9ZQD35JPMBGHH69BT0Q79VY", nullable = true, value_type = Option<String>)]
     pub cursor: Option<String>,
-    pub include_codegen: bool,
+    pub include_codegen: Option<bool>,
 }
