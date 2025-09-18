@@ -3,6 +3,7 @@ use axum::{
     response::Json,
 };
 use dal::{
+    AttributeValue,
     Component,
     ComponentId,
 };
@@ -101,6 +102,14 @@ pub async fn list_components(
 
     // Sort components  for consistent pagination
     all_components.sort_by_key(|c| c.id());
+
+    for component in all_components {
+        let code_map_av_id =
+            Component::find_code_map_attribute_value_id(ctx, component.id()).await?;
+
+        let av = AttributeValue::get_by_id(ctx, code_map_av_id).await?;
+        let view = av.view(ctx).await?;
+    }
 
     // Find the start index by matching the stringified ComponentId
     let start_index = if let Some(ref cursor_str) = cursor {
