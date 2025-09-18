@@ -336,14 +336,12 @@ async fn update_attributes_inner(
                             .resolve(ctx)
                             .await?
                             .ok_or(AttributesError::SourceComponentNotFound(source_component.0))?;
-                        let subscription = ValueSubscription {
-                            attribute_value_id: Component::root_attribute_value_id(
-                                ctx,
-                                source_component_id,
-                            )
-                            .await?,
-                            path: AttributePath::from_json_pointer(source_path),
-                        };
+                        let subscription = ValueSubscription::new(
+                            ctx,
+                            source_component_id,
+                            AttributePath::from_json_pointer(source_path),
+                        )
+                        .await?;
 
                         let maybe_func_id = if let Some(func) = func_ident {
                             func.resolve(ctx).await?

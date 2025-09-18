@@ -103,6 +103,23 @@ impl AttributePath {
         }
     }
 
+    /// Get the path of this subscription, relative to the root attribute value.
+    pub async fn from_root(
+        &self,
+        ctx: &DalContext,
+        av_id: AttributeValueId,
+    ) -> AttributeValueResult<(AttributeValueId, Self)> {
+        match self {
+            AttributePath::JsonPointer(relative_path) => {
+                let (root_id, root_path) = AttributeValue::path_from_root(ctx, av_id).await?;
+                Ok((
+                    root_id,
+                    Self::JsonPointer(format!("{root_path}{relative_path}")),
+                ))
+            }
+        }
+    }
+
     /// Returns true if the `possible_parent_path` is included but doesn't completely match this path
     pub fn is_under(&self, possible_parent_path: &Self) -> bool {
         match (self, possible_parent_path) {

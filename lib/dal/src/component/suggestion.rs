@@ -45,10 +45,7 @@ use crate::{
             Source,
         },
         path::AttributePath,
-        value::{
-            default_subscription::PropSuggestion,
-            subscription::ValueSubscription,
-        },
+        value::default_subscription::PropSuggestion,
     },
     component::ComponentResult,
     prop::PropError,
@@ -498,12 +495,8 @@ impl AutosubscribeContext {
 
             if let Ok(source) = matches.iter().exactly_one() {
                 // Unambiguous match - create the subscription
-                let (root_attribute_value_id, source_path) =
-                    AttributeValue::path_from_root(ctx, source.attribute_value_id).await?;
-                let subscription = ValueSubscription {
-                    attribute_value_id: root_attribute_value_id,
-                    path: AttributePath::from_json_pointer(&source_path),
-                };
+                let subscription =
+                    AttributeValue::as_subscription(ctx, source.attribute_value_id).await?;
 
                 // Make sure the subscribed-to path is valid
                 match subscription.validate(ctx).await {
@@ -523,7 +516,7 @@ impl AutosubscribeContext {
                                     target_path,
                                     subscription_source: Source::Subscription {
                                         component: source.component_id.into(),
-                                        path: source_path,
+                                        path: subscription.path.to_string(),
                                         func: None,
                                         _keep_existing_subscriptions: None,
                                     },

@@ -656,7 +656,7 @@ async fn subscribe_with_custom_function(ctx: &mut DalContext) -> Result<()> {
         ctx,
         ("subscriber", "/domain/Value"),
         ("source", "/domain/Value"),
-        Some(func.id),
+        func.id,
     )
     .await?;
 

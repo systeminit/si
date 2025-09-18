@@ -3,6 +3,7 @@ use serde::{
     Serialize,
 };
 use serde_json::Value;
+use si_id::ComponentId;
 use strum::Display;
 
 use super::{
@@ -31,6 +32,10 @@ pub enum AttributeFuncArgumentSource {
     StaticArgument(Value),
     OutputSocket(OutputSocketId),
     Secret(SecretId),
+    ValueSubscription {
+        component_id: ComponentId,
+        path: String,
+    },
 }
 
 impl From<AttributeFuncArgumentSource> for Option<si_events::PropId> {
@@ -43,6 +48,7 @@ impl From<AttributeFuncArgumentSource> for Option<si_events::PropId> {
             AttributeFuncArgumentSource::StaticArgument(_) => None,
             AttributeFuncArgumentSource::OutputSocket(_) => None,
             AttributeFuncArgumentSource::Secret(_) => None,
+            AttributeFuncArgumentSource::ValueSubscription { .. } => None,
         }
     }
 }
@@ -57,6 +63,7 @@ impl From<AttributeFuncArgumentSource> for Option<si_events::InputSocketId> {
             AttributeFuncArgumentSource::StaticArgument(_) => None,
             AttributeFuncArgumentSource::OutputSocket(_) => None,
             AttributeFuncArgumentSource::Secret(_) => None,
+            AttributeFuncArgumentSource::ValueSubscription { .. } => None,
         }
     }
 }
@@ -69,6 +76,7 @@ impl From<AttributeFuncArgumentSource> for Option<Value> {
             AttributeFuncArgumentSource::StaticArgument(val) => Some(val),
             AttributeFuncArgumentSource::OutputSocket(_) => None,
             AttributeFuncArgumentSource::Secret(_) => None,
+            AttributeFuncArgumentSource::ValueSubscription { .. } => None,
         }
     }
 }
@@ -107,6 +115,14 @@ impl AttributeArgumentBinding {
                         StaticArgumentValue::get_by_id(ctx, static_argument_id).await?;
                     AttributeFuncArgumentSource::StaticArgument(static_value.value)
                 }
+                ValueSource::Secret(secret_id) => AttributeFuncArgumentSource::Secret(secret_id),
+                ValueSource::ValueSubscription(subscription) => {
+                    let (component_id, path) = subscription.path_from_component(ctx).await?;
+                    AttributeFuncArgumentSource::ValueSubscription { component_id, path }
+                }
+                // jkeiser 2024-06-03: We should serialize all the value sources here, because
+                // functions can now be bound to AVs, which means any value you can use in an
+                // AV, you may see in a function binding.
                 value_source => {
                     return Err(FuncBindingError::UnexpectedValueSource(
                         value_source,

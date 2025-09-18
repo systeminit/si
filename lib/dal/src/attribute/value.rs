@@ -2583,11 +2583,10 @@ impl AttributeValue {
         Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
     }
 
-    // The JSON pointer path to this attribute value, relative to its AV root.
-    // Returns the root attribute value id as well as the path.
-    // - for a domain prop AV: (:root_av_id, "/domain/ExposedPorts/1")
-    // - for a socket AV, it returns the current id and empty path: (:id, "/")
-    #[instrument(level = "debug", skip_all)]
+    /// The JSON pointer path to this attribute value, relative to its AV root.
+    /// Returns the root attribute value id as well as the path.
+    /// - for a domain prop AV: (:root_av_id, "/domain/ExposedPorts/1")
+    /// - for a socket AV, it returns the current id and empty path: (:id, "/")
     pub async fn path_from_root(
         ctx: &DalContext,
         mut child_id: AttributeValueId,
@@ -2625,6 +2624,18 @@ impl AttributeValue {
             child_id = parent_id;
         }
         Ok((child_id, pointer.to_string()))
+    }
+
+    /// Get a subscription to this AV, from its root AV.
+    pub async fn as_subscription(
+        ctx: &DalContext,
+        child_av_id: AttributeValueId,
+    ) -> AttributeValueResult<ValueSubscription> {
+        let (attribute_value_id, path) = Self::path_from_root(ctx, child_av_id).await?;
+        Ok(ValueSubscription {
+            attribute_value_id,
+            path: AttributePath::from_json_pointer(path),
+        })
     }
 
     /// This includes the key/index in the path, unlike the [`PropPath`] which doesn't

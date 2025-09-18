@@ -35,9 +35,13 @@ use crate::{
     OutputSocket,
     Prop,
     WorkspaceSnapshotError,
-    attribute::prototype::{
-        AttributePrototypeEventualParent,
-        argument::AttributePrototypeArgument,
+    attribute::{
+        path::AttributePath,
+        prototype::{
+            AttributePrototypeEventualParent,
+            argument::AttributePrototypeArgument,
+        },
+        value::subscription::ValueSubscription,
     },
     func::{
         FuncKind,
@@ -301,12 +305,6 @@ impl AttributeBinding {
     ) -> FuncBindingResult<Vec<FuncBinding>> {
         let mut bindings = vec![];
 
-        // Note(victor): AttributeArgumentBinding::assemble, fails for ValueSubscription value source.
-        // Since this method does not care for these func bindings, we'll just return an empty list here
-        if Func::get_by_id(ctx, func_id).await?.is_transformation {
-            return Ok(bindings);
-        }
-
         for attribute_prototype_id in AttributePrototype::list_ids_for_func_id(ctx, func_id).await?
         {
             let eventual_parent = Self::find_eventual_parent(ctx, attribute_prototype_id).await?;
@@ -526,7 +524,7 @@ impl AttributeBinding {
             }
 
             match arg.attribute_func_input_location {
-                super::AttributeFuncArgumentSource::Prop(prop_id) => {
+                AttributeFuncArgumentSource::Prop(prop_id) => {
                     AttributePrototypeArgument::new(
                         ctx,
                         attribute_prototype_id,
@@ -535,7 +533,7 @@ impl AttributeBinding {
                     )
                     .await?;
                 }
-                super::AttributeFuncArgumentSource::InputSocket(input_socket_id) => {
+                AttributeFuncArgumentSource::InputSocket(input_socket_id) => {
                     AttributePrototypeArgument::new(
                         ctx,
                         attribute_prototype_id,
@@ -545,7 +543,7 @@ impl AttributeBinding {
                     .await?;
                 }
                 // note: this isn't in use yet, but is ready for when we enable users to set default values via the UI
-                super::AttributeFuncArgumentSource::StaticArgument(value) => {
+                AttributeFuncArgumentSource::StaticArgument(value) => {
                     AttributePrototypeArgument::new_static_value(
                         ctx,
                         attribute_prototype_id,
@@ -554,13 +552,28 @@ impl AttributeBinding {
                     )
                     .await?;
                 }
+                AttributeFuncArgumentSource::ValueSubscription { component_id, path } => {
+                    let subscription = ValueSubscription::new(
+                        ctx,
+                        component_id,
+                        AttributePath::from_json_pointer(path),
+                    )
+                    .await?;
+                    AttributePrototypeArgument::new(
+                        ctx,
+                        attribute_prototype_id,
+                        arg.func_argument_id,
+                        subscription,
+                    )
+                    .await?;
+                }
                 // we do not allow users to manually set these as inputs right now
-                super::AttributeFuncArgumentSource::Secret(secret_id) => {
+                AttributeFuncArgumentSource::Secret(secret_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::Secret(secret_id),
                     ));
                 }
-                super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
+                AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::OutputSocket(output_socket_id),
                     ));
@@ -620,7 +633,7 @@ impl AttributeBinding {
             }
 
             match arg.attribute_func_input_location {
-                super::AttributeFuncArgumentSource::Prop(prop_id) => {
+                AttributeFuncArgumentSource::Prop(prop_id) => {
                     AttributePrototypeArgument::new(
                         ctx,
                         attribute_prototype_id,
@@ -629,7 +642,7 @@ impl AttributeBinding {
                     )
                     .await?;
                 }
-                super::AttributeFuncArgumentSource::InputSocket(input_socket_id) => {
+                AttributeFuncArgumentSource::InputSocket(input_socket_id) => {
                     AttributePrototypeArgument::new(
                         ctx,
                         attribute_prototype_id,
@@ -639,7 +652,7 @@ impl AttributeBinding {
                     .await?;
                 }
                 // note: this isn't in use yet, but is ready for when we enable users to set default values via the UI
-                super::AttributeFuncArgumentSource::StaticArgument(value) => {
+                AttributeFuncArgumentSource::StaticArgument(value) => {
                     AttributePrototypeArgument::new_static_value(
                         ctx,
                         attribute_prototype_id,
@@ -648,13 +661,28 @@ impl AttributeBinding {
                     )
                     .await?;
                 }
+                AttributeFuncArgumentSource::ValueSubscription { component_id, path } => {
+                    let subscription = ValueSubscription::new(
+                        ctx,
+                        component_id,
+                        AttributePath::from_json_pointer(path),
+                    )
+                    .await?;
+                    AttributePrototypeArgument::new(
+                        ctx,
+                        attribute_prototype_id,
+                        arg.func_argument_id,
+                        subscription,
+                    )
+                    .await?;
+                }
                 // we do not allow users to manually set these as inputs right now
-                super::AttributeFuncArgumentSource::Secret(secret_id) => {
+                AttributeFuncArgumentSource::Secret(secret_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::Secret(secret_id),
                     ));
                 }
-                super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
+                AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::OutputSocket(output_socket_id),
                     ));
@@ -887,6 +915,7 @@ async fn validate_intrinsic_inputs(
                         AttributeFuncArgumentSource::StaticArgument(_) => true,
                         AttributeFuncArgumentSource::OutputSocket(_) => true,
                         AttributeFuncArgumentSource::Secret(_) => true,
+                        AttributeFuncArgumentSource::ValueSubscription { .. } => false,
                     });
                     if !maybe_invalid_inputs.is_empty() {
                         return Err(FuncBindingError::InvalidIntrinsicBinding);
@@ -901,6 +930,7 @@ async fn validate_intrinsic_inputs(
                         AttributeFuncArgumentSource::StaticArgument(_) => true,
                         AttributeFuncArgumentSource::OutputSocket(_) => true,
                         AttributeFuncArgumentSource::Secret(_) => true,
+                        AttributeFuncArgumentSource::ValueSubscription { .. } => false,
                     });
                     if !maybe_invalid_inputs.is_empty() {
                         return Err(FuncBindingError::InvalidIntrinsicBinding);
