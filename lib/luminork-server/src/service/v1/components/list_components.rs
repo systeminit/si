@@ -145,14 +145,16 @@ pub async fn list_components(
             codegen: None,
         };
 
-        if params.include_codegen {
-            let code_map_av_id =
-                Component::find_code_map_attribute_value_id(ctx, component.id()).await?;
+        if let Some(codegen) = params.include_codegen {
+            if codegen {
+                let code_map_av_id =
+                    Component::find_code_map_attribute_value_id(ctx, component.id()).await?;
 
-            let view = AttributeValue::view(ctx, code_map_av_id).await?;
-            if let Some(v) = view {
-                let details = v.get("awsCloudFormationLint");
-                comp_response.codegen = details.cloned();
+                let view = AttributeValue::view(ctx, code_map_av_id).await?;
+                if let Some(v) = view {
+                    let details = v.get("awsCloudFormationLint");
+                    comp_response.codegen = details.cloned();
+                }
             }
         }
 
