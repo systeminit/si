@@ -411,18 +411,18 @@ function togglePanel() {
   }
 }
 
-const handleNavbarIconClick = () => {
-  if (panelState.value === "minimized") {
-    // Normal behavior - expand to sidebar
-    togglePanel();
-  } else if (panelState.value === "sidebar") {
-    // If sidebar is open, minimize it
-    minimizePanel();
-  } else if (panelState.value === "popped-out") {
-    // If popped out, minimize it (user probably wants to get back to normal view)
-    minimizePanel();
-  }
-};
+// const handleNavbarIconClick = () => {
+//   if (panelState.value === "minimized") {
+//     // Normal behavior - expand to sidebar
+//     togglePanel();
+//   } else if (panelState.value === "sidebar") {
+//     // If sidebar is open, minimize it
+//     minimizePanel();
+//   } else if (panelState.value === "popped-out") {
+//     // If popped out, minimize it (user probably wants to get back to normal view)
+//     minimizePanel();
+//   }
+// };
 
 function minimizePanel() {
   panelState.value = "minimized";

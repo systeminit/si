@@ -523,7 +523,7 @@ const restoreViewportCenter = (
 
 // Helper functions for creating node elements and edges
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const addNodeElements = (group: any, d: layoutNode) => {
+const addNodeElements = (group: any, d: layoutNode, glowy=false) => {
   group
     .append("rect")
     .attr("width", d.width)
@@ -544,6 +544,10 @@ const addNodeElements = (group: any, d: layoutNode) => {
 
       if (d.component.latestManagementFuncRun) {
         classes.push("management-runs");
+      }
+
+      if (glowy) {
+        classes.push("brand-new");
       }
 
       const classesString = classes.join(" ");
@@ -1900,11 +1904,9 @@ watch(
               // Add new node with fade in
               const group = svg
                 .append("g")
-                .attr("transform", `translate(${newNode.x}, ${newNode.y})`)
-                .style("opacity", 0);
+                .attr("transform", `translate(${newNode.x}, ${newNode.y})`);
 
-              addNodeElements(group, newNode);
-              group.transition().duration(400).style("opacity", 1);
+              addNodeElements(group, newNode, true);
             }
           });
 
@@ -2079,6 +2081,10 @@ defineExpose({
 
     &.management-runs {
       animation: pulse-glow 2s infinite alternate;
+    }
+
+    &.brand-new {
+      animation: pulse-glow 5s;
     }
   }
 
