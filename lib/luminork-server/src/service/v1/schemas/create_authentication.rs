@@ -71,7 +71,7 @@ pub async fn create_variant_authentication(
     }
 
     let func =
-        FuncAuthoringClient::create_new_management_func(ctx, Some(payload.name), schema_variant_id)
+        FuncAuthoringClient::create_new_auth_func(ctx, Some(payload.name), schema_variant_id)
             .await?;
 
     FuncAuthoringClient::update_func(ctx, func.id, payload.display_name, payload.description)
