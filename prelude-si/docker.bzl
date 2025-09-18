@@ -124,7 +124,7 @@ def docker_image_release_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInf
 
     docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
     docker_image_info = ctx.attrs.docker_image[DockerImageInfo]
-    
+
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         docker_toolchain.docker_image_push[DefaultInfo].default_outputs,
@@ -137,7 +137,7 @@ def docker_image_release_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInf
         "--docker-context-dir",
         docker_image_info.build_context.root,
     )
-    
+
     # Add build args
     for key, value in docker_image_info.build_args.items():
         cmd.add("--build-arg")
@@ -271,7 +271,7 @@ def build_docker_image(
         cmd.add("--build-arg")
         cmd.add("{}={}".format(key, value))
 
-    ctx.actions.run(cmd, category = "docker_build")
+    ctx.actions.run(cmd, category = "docker_build", prefer_local = True)
 
     return DockerImageInfo(
         artifact = artifact,

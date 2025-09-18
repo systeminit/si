@@ -44,8 +44,8 @@ def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
             remote_enabled = remote_enabled,
             use_limited_hybrid = True,
             remote_cache_enabled = remote_enabled,
-            allow_limited_hybrid_fallbacks = True,
-            allow_hybrid_fallbacks_on_failure = True,
+            allow_limited_hybrid_fallbacks = False,
+            allow_hybrid_fallbacks_on_failure = False,
             allow_cache_uploads = True,
             remote_output_paths = "output_paths",
             remote_execution_properties = {
