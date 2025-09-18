@@ -3,11 +3,15 @@ use axum::{
     response::Json,
 };
 use dal::{
+    AttributeValue,
     Component,
     ComponentId,
 };
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{
+    Value,
+    json,
+};
 use utoipa::{
     self,
     ToSchema,
@@ -51,6 +55,7 @@ pub struct ComponentDetailsV1 {
     pub component_id: ComponentId,
     pub name: String,
     pub schema_name: String,
+    pub codegen: Option<Value>,
 }
 
 #[utoipa::path(
@@ -61,6 +66,7 @@ pub struct ComponentDetailsV1 {
         ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("limit" = Option<String>, Query, description = "Maximum number of results to return (default: 50, max: 300)"),
         ("cursor" = Option<String>, Query, description = "Cursor for pagination (ComponentId of the last item from previous page)"),
+        ("includeCodegen" = Option<bool>, Query, description = "Allow returning the codegen for the cloudformation template for the component (if it exists)"),
     ),
     summary = "List all components",
     tag = "components",
@@ -131,11 +137,26 @@ pub async fn list_components(
     for component in &paginated_components {
         let name = component.name(ctx).await?;
         let schema_name = component.schema(ctx).await?.name;
-        comp_details.push(ComponentDetailsV1 {
+
+        let mut comp_response = ComponentDetailsV1 {
             component_id: component.id(),
             name,
             schema_name,
-        });
+            codegen: None,
+        };
+
+        if params.include_codegen {
+            let code_map_av_id =
+                Component::find_code_map_attribute_value_id(ctx, component.id()).await?;
+
+            let view = AttributeValue::view(ctx, code_map_av_id).await?;
+            if let Some(v) = view {
+                let details = v.get("awsCloudFormationLint");
+                comp_response.codegen = details.cloned();
+            }
+        }
+
+        comp_details.push(comp_response);
     }
 
     tracker.track(ctx, "api_list_components", json!({}));
