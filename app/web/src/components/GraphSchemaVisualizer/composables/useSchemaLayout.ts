@@ -79,6 +79,7 @@ export function useSchemaLayout() {
       sources: [edge.sourceId],
       targets: [edge.targetId],
       // Store relationship metadata
+      arity: edge.arity,
       sourceProperty: edge.sourceProperty,
       targetProperty: edge.targetProperty
     }));
@@ -116,8 +117,9 @@ export function useSchemaLayout() {
 
     const edges: RelationshipEdge[] = elkResult.edges.map((elkEdge: any) => ({
       id: elkEdge.id,
-      source: elkEdge.sources[0],
-      target: elkEdge.targets[0],
+      sourceId: elkEdge.sources[0],
+      targetId: elkEdge.targets[0],
+      arity: elkEdge.arity || 'one',
       sourceProperty: elkEdge.sourceProperty,
       targetProperty: elkEdge.targetProperty
     }));

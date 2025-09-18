@@ -286,8 +286,6 @@ const tableHeaders = ref(["Id", "Name", "Variant Name"])
 
 const tableEntries = ref([
   ["1", "Rex", "EC2 Instance"],
-  ["2", "Orange", "EC2 Instance"],
-  ["3", "County", "EC2 Instance"],
 ]);
 
 const key = useMakeKey();
@@ -314,7 +312,7 @@ const componentQueryKey = key(componentListQueryKind, componentListQueryId);
 const componentListQuery = useQuery<ComponentInList[]>({
   queryKey: componentQueryKey,
   queryFn: async () => {
-    const arg = args(EntityKind.ComponentList);
+    const arg = args<Listable>(EntityKind.ComponentList);
     const list = await bifrostList<ComponentInList[]>(arg);
     return list ?? [];
   },
@@ -347,12 +345,52 @@ const handleTableViewRequest = (entityKind: EntitySchemaKind) => {
 
     tableEntries.value = entries;
     return;
-  } else if(entityKind === "Component") {}
+  } else if(entityKind === "Component") {
+    console.log(componentList.value);
+    tableHeaders.value = ["Id", "Name", "Schema Name", "Schema Id", "Schema Variant Name", "Schema Variant Id", "Category"];
+    const entries: string[][] = [];
+
+    for (const component of componentList.value) {
+      entries.push([
+        component.id,
+        component.name,
+        component.schemaName,
+        component.schemaId,
+        component.schemaVariantName,
+        component.schemaVariantId,
+        component.schemaCategory,
+      ])
+    }
+
+    tableEntries.value = entries;
+    return;
+  }
   else if(entityKind === "SchemaVariant") {}
   else if(entityKind === "Schema") {}
   else if(entityKind === "Function") {
   }
 
-  mode.value = 'table';
+  mode.value = 'schema';
 };
+
+/**
+ * 
+  id: ComponentId;
+  name: string;
+  color?: null | string;
+  schemaName: string;
+  schemaId: SchemaId;
+  // Needed for "ComponentInList" usage where the "SchemaVariant" is dropped.
+  schemaVariantId: SchemaVariantId;
+  schemaVariantName: string;
+  schemaCategory: string;
+  hasResource: boolean;
+  qualificationTotals: ComponentQualificationTotals;
+  inputCount: number;
+  diffStatus: ComponentDiffStatus;
+  toDelete: boolean;
+  resourceId: string | null;
+  hasSocketConnections: boolean;
+ * 
+ */
 </script>
