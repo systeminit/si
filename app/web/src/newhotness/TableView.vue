@@ -106,7 +106,9 @@ import GraphSchemaVisualizer from "@/components/GraphSchemaVisualizer/GraphSchem
 import { ExploreContext } from "./types";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
-import { bifrost, useMakeKey } from "@/store/realtime/heimdall";
+import { bifrost, bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import { useContext } from "./logic_composables/context";
+import { Listable } from "../workers/types/dbinterface";
 
 const route = useRoute();
 const router = useRouter();
@@ -282,13 +284,14 @@ const handleSelectionChange = (selectedNodes: Set<string>) => {
 
 const tableHeaders = ref(["Id", "Name", "Variant Name"])
 
-const tableEntries = reactive([
+const tableEntries = ref([
   ["1", "Rex", "EC2 Instance"],
   ["2", "Orange", "EC2 Instance"],
   ["3", "County", "EC2 Instance"],
 ]);
 
 const key = useMakeKey();
+const args = useMakeArgs();
 
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({
   queryKey: key(EntityKind.ActionViewList),
@@ -299,6 +302,27 @@ const actionViewList = computed(
   () => actionViewListRaw.data.value?.actions ?? [],
 );
 
+const ctx = useContext();
+
+const componentListQueryKind = computed(() =>
+  EntityKind.ComponentList
+);
+const componentListQueryId = computed(() =>
+  ctx.workspacePk.value,
+);
+const componentQueryKey = key(componentListQueryKind, componentListQueryId);
+const componentListQuery = useQuery<ComponentInList[]>({
+  queryKey: componentQueryKey,
+  queryFn: async () => {
+    const arg = args(EntityKind.ComponentList);
+    const list = await bifrostList<ComponentInList[]>(arg);
+    return list ?? [];
+  },
+});
+const componentList = computed(() => {
+  return componentListQuery.data.value ?? [];
+});
+
 const handleTableViewRequest = (entityKind: EntitySchemaKind) => {
   console.log("Table view requested for:", entityKind);
   // Switch to table mode when user clicks table link in graph
@@ -306,14 +330,29 @@ const handleTableViewRequest = (entityKind: EntitySchemaKind) => {
 
   if(entityKind === "Action") {
     console.log(actionViewList.value);
-    
+    tableHeaders.value = ["Id", "Kind", "State", "Description", "originatingChangeSetId", "componentId", "funcId"];
+    const entries: string[][] = [];
+
+    for (const action of actionViewList.value) {
+      entries.push([
+        action.id,
+        action.kind,
+        action.state,
+        action.description ?? "",
+        action.originatingChangeSetId,
+        action.componentId ?? "",
+        action.funcRunId ?? "",
+      ])
+    }
+
+    tableEntries.value = entries;
+    return;
   } else if(entityKind === "Component") {}
   else if(entityKind === "SchemaVariant") {}
   else if(entityKind === "Schema") {}
-  else if(entityKind === "Function") {}
-};
+  else if(entityKind === "Function") {
+  }
 
-function args(ActionViewList: EntityKind): { workspaceId: import("../api/sdf/dal/workspace").WorkspacePk; changeSetId: import("../api/sdf/dal/change_set").ChangeSetId; kind: import("../workers/types/dbinterface").Gettable; id: import("../workers/types/dbinterface").Id; } {
-  throw new Error("Function not implemented.");
-}
+  mode.value = 'table';
+};
 </script>

@@ -34,6 +34,17 @@
         </button>
       </div> -->
 
+      <!-- Layout algorithm selector -->
+      <select
+        v-model="selectedLayoutAlgorithm"
+        :class="selectClasses"
+        @change="handleLayoutChange"
+      >
+        <option value="layered">Layered</option>
+        <option value="hierarchical">Hierarchical</option>
+        <option value="force">Force-directed</option>
+      </select>
+      
       <!-- Show relationships toggle -->
       <label :class="checkboxLabelClasses">
         <input
@@ -96,11 +107,11 @@
             v-for="edge in visibleEdges"
             :key="edge.id"
             :edge="edge"
-            :source-node="getNodeById(edge.sourceId)!"
-            :target-node="getNodeById(edge.targetId)!"
-            :is-highlighted="isEdgeHighlighted(edge)"
-            :is-selected="selectedEdges.has(edge.id)"
-            :show-label="showRelationships"
+            :sourceNode="getNodeById(edge.sourceId)!"
+            :targetNode="getNodeById(edge.targetId)!"
+            :isHighlighted="isEdgeHighlighted(edge)"
+            :isSelected="selectedEdges.has(edge.id)"
+            :showLabel="showRelationships"
             @click="handleEdgeClick"
             @mouseenter="handleEdgeMouseEnter"
             @mouseleave="handleEdgeMouseLeave"
@@ -113,12 +124,12 @@
             v-for="node in layoutResult?.nodes || []"
             :key="node.id"
             :node="node"
-            :is-selected="selectedNodes.has(node.id)"
-            :is-hovered="hoveredNode === node.id"
+            :isSelected="selectedNodes.has(node.id)"
+            :isHovered="hoveredNode === node.id"
             @contextmenu="handleNodeContextMenu"
             @mouseenter="handleNodeMouseEnter"
             @mouseleave="handleNodeMouseLeave"
-            @table-link-click="handleTableLinkClick"
+            @tableLinkClick="handleTableLinkClick"
           />
         </g>
       </g>
@@ -176,6 +187,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   showRelationships: true,
+  layoutAlgorithm: 'force',
 });
 
 const emit = defineEmits<Emits>();
@@ -206,7 +218,7 @@ const {
 } = useSchemaLayout();
 
 // Local state
-const selectedLayoutAlgorithm = ref<'hierarchical' | 'layered' | 'force'>('force');
+const selectedLayoutAlgorithm = ref(props.layoutAlgorithm || 'layered');
 const showRelationships = ref(props.showRelationships || true);
 const activeEntityTypes = ref<Set<EntitySchemaKind>>(new Set(props.entityTypes || []));
 const selectedNodes = ref<Set<string>>(new Set());
@@ -355,6 +367,9 @@ const toggleEntityType = (entityType: EntitySchemaKind) => {
   activeEntityTypes.value = new Set(activeEntityTypes.value);
 };
 
+const handleLayoutChange = () => {
+  // Layout will be recomputed due to reactive dependencies
+};
 
 const zoomIn = () => {
   const newScale = Math.min(currentScale.value * 1.2, maxZoom);

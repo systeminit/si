@@ -68,13 +68,21 @@ export function useEntityGraph() {
 
   const extractRelationshipsFromEntities = (entities: Entity[]): RelationshipEdge[] => {
     const relationships: RelationshipEdge[] = [];
+    const primaryKeys: Record<string, Entity> = {};
+    entities.forEach(entity => {
+      // Look for self-referential foreign keys
+      entity.properties.forEach(prop => {
+        if (prop.kind === 'primary_key') {
+          primaryKeys[prop.name] = entity;
+        }
+      })});
     
     entities.forEach(entity => {
       // Look for foreign key relationships in properties
       entity.properties.forEach(prop => {
         if (prop.kind === 'foreign_key') {
           // Try to find the target entity (simplified matching)
-          const targetEntity = entities.find(e => e.id.includes(prop.type) || e.entityKind === prop.type);
+          const targetEntity = primaryKeys[prop.foreignName];
           if (targetEntity) {
             relationships.push({
               id: `${entity.id}-${targetEntity.id}`,
@@ -92,7 +100,7 @@ export function useEntityGraph() {
     return relationships;
   };
 
-  const populateGraph = (): { entities: Entity[], relationships: RelationshipEdge[] } => {
+  const populateGraph = (): { entities: Entity[] } => {
     const entities: Entity[] = [];
     const primaryKeys:  Record<string, Entity> = {};
     // action entity
@@ -106,9 +114,9 @@ export function useEntityGraph() {
         { name: 'state', type: 'string', kind: 'value' },
         {name: 'description', type: 'string', kind: 'value' },
         {name: 'originatingChangeSetId', type: 'string', kind: 'value' },
-        { name: 'cEntitySchemaKind.ActionId', type: 'string', arity: 'one', kind: 'foreign_key' },
-        { name: 'schemaVariantId', type: 'string', arity: 'one', kind: 'foreign_key'},
-        {name: 'funcId', type: 'string', arity: 'one', kind: 'foreign_key' },
+        { name: 'componentId', foreignName: 'componentId', type: 'string', arity: 'one', kind: 'foreign_key' },
+        { name: 'schemaVariantId', foreignName: 'schemaVariantId', type: 'string', arity: 'one', kind: 'foreign_key'},
+        {name: 'funcId', foreignName: 'funcId', type: 'string', arity: 'one', kind: 'foreign_key' },
       ]
     };
     entities.push(actionEntity);
@@ -138,8 +146,8 @@ export function useEntityGraph() {
         { name: 'schemaId', type: 'string', kind: 'primary_key' },
         { name: 'name', type: 'string', kind: 'value' },
         {name: 'description', type: 'string', kind: 'value' },
-        { name: 'defaultVariantId', type: 'string', arity: 'one', kind: 'foreign_key' },
-        { name: 'editingVariantId', type: 'string', arity: 'one', kind: 'foreign_key' }
+        { name: 'defaultVariantId', foreignName: 'schemaVariantId', type: 'string', arity: 'one', kind: 'foreign_key' },
+        { name: 'editingVariantId', foreignName: 'schemaVariantId', type: 'string', arity: 'one', kind: 'foreign_key' }
       ]
     };
     entities.push(schemaEntity);
@@ -153,9 +161,9 @@ export function useEntityGraph() {
         { name: 'name', type: 'string', kind: 'value' },
         { name: 'color', type: 'string', kind: 'value' },
         { name: 'schemaId', type: 'string', kind: 'value' },
-        { name: 'schemaVariantId', type: 'string', arity: 'one', kind: 'foreign_key' },
-        { name: 'aEntitySchemaKind.Componente', type: 'object', kind: 'value' },
-        {name: 'source', type: 'componentId', kind: 'foreign_key', arity: 'many' },
+        { name: 'schemaVariantId', foreignName: 'schemaVariantId', type: 'string', arity: 'one', kind: 'foreign_key' },
+        { name: 'attributeTree', type: 'object', kind: 'value' },
+        {name: 'source', foreignName: 'componentId', type: 'componentId', kind: 'foreign_key', arity: 'many' },
        // {name: 'target', type: 'componentId', kind: 'foreign_key', arity: 'many' },
       ]
     };
@@ -169,11 +177,11 @@ export function useEntityGraph() {
         { name: 'id', type: 'string', kind: 'primary_key' },
         { name: 'state', type: 'string', kind: 'value' },
         { name: 'actor', type: 'string', kind: 'value' },
-        { name: 'componentId', type: 'string', arity: 'one', kind: 'foreign_key' },
+        { name: 'componentId', foreignName:'componentId', type: 'string', arity: 'one', kind: 'foreign_key' },
         { name: 'attributeValueId', type: 'string', kind: 'value' },
         { name: 'componentName', type: 'string', kind: 'value' },
         { name: 'schemaName', type: 'string', kind: 'value' },
-        { name: 'actionId', type: 'string', arity: 'one', kind: 'foreign_key' },
+        { name: 'actionId', foreignName: 'actionId', type: 'string', arity: 'one', kind: 'foreign_key' },
         { name: 'actionKind', type: 'string', kind: 'value' },
         { name: 'actionDisplayName', type: 'string', kind: 'value' },
         { name: 'actionOriginatingChangeSetId', type: 'string', kind: 'value' },
@@ -276,28 +284,27 @@ export function useEntityGraph() {
       }
     );
 
-    return { entities, relationships };
+    return { entities };
   };
 
   const createGraphData = (
     entities: Entity[] = [],
-    providedRelationships: RelationshipEdge[] = []
   ): GraphData => {
     // Transform entities to nodes
     const nodes = transformEntitiesToNodes(entities);
     
     // Use provided relationships or extract from entities
-    let edges = providedRelationships;
-    if (edges.length === 0) {
-      edges = extractRelationshipsFromEntities(entities);
-    }
+    
+    let  edges = extractRelationshipsFromEntities(entities);
+      console.log("Extracted relationships:", edges);
+    
     
     // Filter edges to only include those between visible nodes
     const nodeIds = new Set(nodes.map(node => node.id));
     const filteredEdges = edges.filter(edge => 
       nodeIds.has(edge.sourceId) && nodeIds.has(edge.targetId)
     );
-
+    console.log("Filtered edges:", filteredEdges);
     return { nodes, edges: filteredEdges };
   };
 

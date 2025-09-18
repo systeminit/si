@@ -183,7 +183,7 @@ const entityIcon = computed(() => {
 
 const truncatedTitle = computed(() => {
   const title = (props.node.entityKind as string);
-  return title.length > 18 ? title.substring(0, 15) + '...' : title;
+  return title.length > 18 ? `${title.substring(0, 15)}...` : title;
 });
 
 // All properties to show in body

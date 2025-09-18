@@ -30,7 +30,8 @@ export type EntityProperty = {
   kind: "foreign_key",
   type: string,
   arity: 'one' | 'many',
-  name: string, // matches a primary key in another entity
+  name: string, 
+  foreignName: string,
 }
 
 export interface RelationshipEdge {

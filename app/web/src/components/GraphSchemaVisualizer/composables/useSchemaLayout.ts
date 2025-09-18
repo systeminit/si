@@ -73,7 +73,7 @@ export function useSchemaLayout() {
       name: node.name,
       properties: node.properties
     }));
-
+    console.log('elkEdges', graphData.edges);
     const elkEdges: ElkEdge[] = graphData.edges.map(edge => ({
       id: edge.id,
       sources: [edge.sourceId],
@@ -118,14 +118,15 @@ export function useSchemaLayout() {
       id: elkEdge.id,
       source: elkEdge.sources[0],
       target: elkEdge.targets[0],
-      relationshipType: elkEdge.relationshipType,
       sourceProperty: elkEdge.sourceProperty,
       targetProperty: elkEdge.targetProperty
     }));
 
     // Calculate bounds for viewport management
     const bounds = calculateBounds(nodes);
-
+    console.log('Layout bounds:', bounds);
+    console.log('Layout nodes:', nodes);
+    console.log('Layout edges:', edges);
     return { nodes, edges, bounds };
   };
 
@@ -174,7 +175,7 @@ export function useSchemaLayout() {
 
       const elkGraph = convertToElkGraph(graphData, options);
       const elkResult = await elk.layout(elkGraph);
-      
+      console.log('ELK layout result:', elkResult);
       return convertFromElkGraph(elkResult);
 
     } catch (error) {
