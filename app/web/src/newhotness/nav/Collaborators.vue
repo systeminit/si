@@ -105,12 +105,14 @@ import { usePresenceStore } from "@/store/presence.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 import { useContext } from "../logic_composables/context";
+import { useChangeSets } from "../logic_composables/change_set";
 
 const presenceStore = usePresenceStore();
 const router = useRouter();
 const route = useRoute();
 
 const ctx = useContext();
+const { openChangeSets } = useChangeSets(computed(() => ctx));
 
 export type UserInfo = {
   name: string;
@@ -195,13 +197,17 @@ const userTooltips = computed(() => {
   }[];
 
   displayUsers.value.forEach((user) => {
+    const userChangeSet = openChangeSets.value.find(
+      (changeSet) => changeSet.id === user.changeSet,
+    );
+
     tooltips.push({
       content: `<div class='flex flex-col items-center max-w-lg'>
         <div class='text-center font-bold w-full break-words line-clamp-3 pb-3xs px-sm min-w-0'>${
           user.name
         }</div>
         <div class='text-xs font-bold w-full text-center line-clamp-3 px-sm'>${
-          user.changeSet ? ctx.changeSet.value?.name || "Head" : "Head"
+          userChangeSet ? userChangeSet.name : "Head"
         }</div>
         <div class='text-xs w-full text-center line-clamp-3 px-sm'>${
           user.status
