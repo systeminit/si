@@ -161,10 +161,10 @@
         <div
           class="flex-none flex flex-row flex-wrap items-center gap-xs justify-between"
         >
-          <TabGroupToggle
+          <TabGroupTriple
             ref="groupRef"
-            :aOrB="urlGridOrMap === 'grid'"
-            @toggle="storeViewMode"
+            :selectedTab="selectedTabValue"
+            @toggle="onViewModeToggle"
           >
             <template #a="{ selected, toggle }">
               <ExploreModeTile
@@ -182,8 +182,16 @@
                 @toggle="toggle"
               />
             </template>
-          </TabGroupToggle>
-          <div v-if="showGrid" class="flex flex-row flex-wrap gap-xs">
+            <template #c="{ selected, toggle }">
+              <ExploreModeTile
+                icon="data-table"
+                label="Table"
+                :selected="selected"
+                @toggle="toggle"
+              />
+            </template>
+          </TabGroupTriple>
+          <div v-if="showGrid || showTable" class="flex flex-row flex-wrap gap-xs">
             <DefaultSubscriptionsButton
               v-if="featureFlagsStore.DEFAULT_SUBS"
               :selected="gridMode.mode === 'defaultSubscriptions'"
@@ -436,14 +444,15 @@
         </template>
       </template>
       <MapComponent
-        v-else
+        v-else-if="showMap"
         ref="mapRef"
-        :active="!showGrid"
+        :active="showMap"
         :components="filteredComponents"
         :componentsWithFailedActions="componentsHaveActionsWithState.failed"
         @deselect="onMapDeselect"
         @help="openShortcutModal"
       />
+      <TableView v-else-if="showTable" />
     </div>
     <!-- Right column -->
     <div
@@ -626,7 +635,7 @@ import {
   windowResizeEmitter,
   windowWidthReactive,
 } from "./logic_composables/emitters";
-import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
+import TabGroupTriple from "./layout_components/TabGroupTriple.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import AddComponentModal from "./AddComponentModal.vue";
 import DefaultSubscriptionsButton from "./DefaultSubscriptionsButton.vue";
@@ -646,6 +655,7 @@ import { routes, useApi } from "./api_composables";
 import { ExploreGridRowData } from "./explore_grid/ExploreGridRow.vue";
 import { useDefaultSubscription } from "./logic_composables/default_subscriptions";
 import { useContext } from "./logic_composables/context";
+import TableView from "./TableView.vue";
 
 const featureFlagsStore = useFeatureFlagsStore();
 
@@ -663,16 +673,13 @@ const args = useMakeArgs();
 const VIEW_MODE_LOCAL_STORAGE_KEY = "newhotness-view-mode";
 const viewModeStorageKey = () =>
   `${VIEW_MODE_LOCAL_STORAGE_KEY}: ${ctx.changeSetId}`;
-const storeViewMode = () => {
-  if (!groupRef.value) return;
-
+const storeViewMode = (mode: "grid" | "map" | "table") => {
   const key = viewModeStorageKey();
-
-  if (groupRef.value.isB) {
-    localStorage.setItem(key, "grid");
+  localStorage.setItem(key, mode);
+  
+  if (mode === "grid") {
     fixContextMenu();
   } else {
-    localStorage.setItem(key, "map");
     componentContextMenuRef.value?.close();
   }
 };
@@ -696,7 +703,7 @@ const retrieveFilterAndGroup = (): SelectionsInQueryString => {
 
 const defaultSubscriptions = useDefaultSubscription();
 
-const groupRef = ref<InstanceType<typeof TabGroupToggle>>();
+const groupRef = ref<InstanceType<typeof TabGroupTriple>>();
 const actionsRef = ref<typeof CollapsingGridItem>();
 const historyRef = ref<typeof CollapsingGridItem>();
 const mapRef = ref<InstanceType<typeof MapComponent>>();
@@ -711,24 +718,32 @@ const collapsingStyles = computed(() =>
   ]),
 );
 
-const urlGridOrMap = computed((): "grid" | "map" => {
+const urlViewMode = computed((): "grid" | "map" | "table" => {
   const q: SelectionsInQueryString = router.currentRoute.value?.query;
   const keys = Object.keys(q);
   if (keys.includes("grid")) return "grid";
   if (keys.includes("map")) return "map";
+  if (keys.includes("table")) return "table";
   const mode = localStorage.getItem(viewModeStorageKey());
   if (mode) {
-    return mode as "grid" | "map";
+    return mode as "grid" | "map" | "table";
   } else {
     return "grid";
   }
 });
 
-// Since we won't always have the group ref, let the url control showGrid
-const showGrid = computed(() => urlGridOrMap.value === "grid");
-const gridMapSwitcherValue = computed(
-  () => groupRef.value && groupRef.value.isA,
-);
+// Since we won't always have the group ref, let the url control views
+const showGrid = computed(() => urlViewMode.value === "grid");
+const showMap = computed(() => urlViewMode.value === "map");
+const showTable = computed(() => urlViewMode.value === "table");
+const selectedTabValue = computed(() => {
+  switch (urlViewMode.value) {
+    case "grid": return "a";
+    case "map": return "b";
+    case "table": return "c";
+    default: return "a";
+  }
+});
 // TODO — if youre on HEAD and you start bulk editing, create a change set right away
 const bulkEditing = ref(false);
 
@@ -778,20 +793,30 @@ watch(bulkEditing, () => {
   router.push({ query });
 });
 
-watch(gridMapSwitcherValue, (newShowGrid) => {
-  // If this is nil, groupRef is unmounted, and we don't care about the change.
-  if (_.isNil(newShowGrid)) return;
+const onViewModeToggle = (tab: "a" | "b" | "c") => {
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
   delete query.map;
   delete query.grid;
-  if (newShowGrid) query.grid = "1";
-  else query.map = "1";
+  delete query.table;
+  
+  let mode: "grid" | "map" | "table";
+  if (tab === "a") {
+    query.grid = "1";
+    mode = "grid";
+  } else if (tab === "b") {
+    query.map = "1";
+    mode = "map";
+  } else {
+    query.table = "1";
+    mode = "table";
+  }
 
+  storeViewMode(mode);
   storeFilterAndGroup(query);
   router.push({ query });
-});
+};
 
 // Track hovered component for highlighting failed actions
 const hoveredComponentId = ref<ComponentId | undefined>(undefined);
@@ -1823,7 +1848,7 @@ const focusedComponentIsPinned = computed(() => {
 });
 
 const nextComponent = (wrap = false) => {
-  if (!showGrid.value) return;
+  if (!showGrid.value && !showTable.value) return;
 
   if (focusedComponentIdx.value === undefined) {
     setFocusedComponentIdx(-1);
@@ -1841,7 +1866,7 @@ const nextComponent = (wrap = false) => {
   }
 };
 const previousComponent = (wrap = false) => {
-  if (!showGrid.value) return;
+  if (!showGrid.value && !showTable.value) return;
 
   if (focusedComponentIdx.value === undefined) {
     setFocusedComponentIdx(-1);
@@ -2031,7 +2056,7 @@ const onArrow = () => {
 const onBackspace = (e: KeyDetails["Backspace"] | KeyDetails["Delete"]) => {
   e.preventDefault();
 
-  if (showGrid.value) {
+  if (showGrid.value || showTable.value) {
     if (!selectionComponentsForAction.value) return;
     componentContextMenuRef.value?.componentsStartDelete(
       selectionComponentsForAction.value,
@@ -2043,7 +2068,7 @@ const onBackspace = (e: KeyDetails["Backspace"] | KeyDetails["Delete"]) => {
 
 const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
   e.preventDefault();
-  if (!showGrid.value) return; // no tab behavior on the map yet
+  if (!showGrid.value && !showTable.value) return; // no tab behavior on the map yet
   if (isThereAModalOpen.value) return; // no tab behavior when a modal is open
 
   selectedComponentIndexes.clear();
@@ -2063,7 +2088,7 @@ const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
 const onEscape = () => {
   if (isThereAModalOpen.value || bulkEditing.value) return;
 
-  if (showGrid.value) {
+  if (showGrid.value || showTable.value) {
     searchRef.value?.blur();
     clearSelection();
   } else {
@@ -2098,7 +2123,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   d: (e) => {
     e.preventDefault();
 
-    if (showGrid.value) {
+    if (showGrid.value || showTable.value) {
       if (!selectionComponentsForActionIds.value) return;
       componentContextMenuRef.value?.duplicateComponentStart(
         selectionComponentsForActionIds.value,
@@ -2109,7 +2134,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   },
   e: (e) => {
     e.preventDefault();
-    if (showGrid.value) {
+    if (showGrid.value || showTable.value) {
       if (!selectionComponentsForAction.value) return;
 
       componentContextMenuRef.value?.componentsStartErase(
@@ -2120,7 +2145,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     }
   },
   f: (e) => {
-    if (showGrid.value) {
+    if (showGrid.value || showTable.value) {
       if (!selectionComponentsForActionIds.value) return;
       if (allSelectedComponentsAreRestorable.value) {
         componentContextMenuRef.value?.componentsRestore(
@@ -2139,7 +2164,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     e.preventDefault();
 
     // Deselect the current selection based on which screen you are on
-    if (showGrid.value) {
+    if (showGrid.value || showTable.value) {
       clearSelection();
     } else {
       mapRef.value?.deselect();
@@ -2151,8 +2176,8 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   // l: undefined,
   m: (e) => {
     e.preventDefault();
-    if (showGrid.value) {
-      // Do nothing in grid mode
+    if (showGrid.value || showTable.value) {
+      // Do nothing in grid/table mode
       return;
     }
     mapRef.value?.onM(e);
@@ -2169,7 +2194,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     if (selectedComponentIndexes.size > 1) return;
 
     e.preventDefault();
-    if (showGrid.value) {
+    if (showGrid.value || showTable.value) {
       if (!focusedComponent.value || selectedComponents.value.length > 1)
         return;
 
@@ -2208,14 +2233,14 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   t: (e) => {
     e.preventDefault();
 
-    if (showGrid.value && selectedComponents.value.length > 0) {
+    if ((showGrid.value || showTable.value) && selectedComponents.value.length > 0) {
       componentContextMenuRef.value?.createTemplateStart();
     }
   },
   u: (e) => {
     e.preventDefault();
 
-    if (showGrid.value) {
+    if (showGrid.value || showTable.value) {
       if (!selectionComponentsForActionIds.value) return;
 
       if (allSelectedComponentsAreUpgradeable.value) {
@@ -2255,7 +2280,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     e.preventDefault();
 
     // If dealing with the map view, use its navigation and return immediately.
-    if (!showGrid.value) {
+    if (!showGrid.value && !showTable.value) {
       if (mapRef.value) {
         mapRef.value.navigateToSelectedComponent();
       }
@@ -2330,7 +2355,7 @@ const onResize = () => {
 const onClick = (e: MouseDetails["click"]) => {
   if (bulkEditing.value) return;
 
-  if (showGrid.value) {
+  if (showGrid.value || showTable.value) {
     const inside =
       componentContextMenuRef.value?.contextMenuRef?.elementIsInsideMenu;
     if (inside && e.target instanceof Node && inside(e.target)) {

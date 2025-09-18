@@ -159,6 +159,8 @@ import FastlyLogo from "~icons/simple-icons/fastly";
 // carbon
 import Create from "~icons/carbon/intent-request-create";
 import CarbonEdit from "~icons/carbon/edit";
+import DataTable from "~icons/carbon/data-table";
+import DataTableReference from "~icons/carbon/data-table-reference";
 import Hourglass from "~icons/carbon/hourglass";
 import CarbonCompare from "~icons/carbon/compare";
 import CarbonMaximize from "~icons/carbon/maximize";
@@ -182,6 +184,7 @@ import CarbonRepeat from "~icons/carbon/repeat";
 import CarbonUndo from "~icons/carbon/undo";
 import CarbonInformation from "~icons/carbon/information";
 import CarbonWarning from "~icons/carbon/warning";
+import CarbonSchematics from "~icons/carbon/schematics";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -305,6 +308,8 @@ export const ICONS = Object.freeze({
   cursor: PhCursorTextBold,
   "cursor-array-rays": CursorArrayRays,
   diagram: Diagram,
+  "data-table": DataTable,
+  "data-table-reference": DataTableReference,
   diff: CarbonCompare,
   docs: Docs,
   "dots-horizontal": DotsHorizontal,
@@ -395,6 +400,7 @@ export const ICONS = Object.freeze({
   resize: Resize,
   save: Save,
   scissors: Scissors,
+  schematics: CarbonSchematics,
   search: Search,
   selector: Selector,
   settings: Gear,
