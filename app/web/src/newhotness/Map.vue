@@ -1090,6 +1090,7 @@ const mapData = computed(() => {
   // Check if we should filter to only show connected components
   const shouldHideUnconnected =
     router.currentRoute.value.query.hideSubscriptions === "1";
+
   const hasSelectedComponents = selectedComponents.value.size > 0;
 
   // First pass: collect all components and their connections
@@ -1324,45 +1325,11 @@ const selectComponent = (component: ComponentInList, componentEl?: Element) => {
 const deselect = () => {
   selectedComponents.value = new Set();
   componentContextMenuRef.value?.close();
-
-  // Clear hideSubscriptions parameter when deselecting all components
-  // BUT NOT when we're still loading from URL
-  const currentQuery = router.currentRoute.value.query;
-  if (currentQuery.hideSubscriptions === "1" && !isLoadingFromURL.value) {
-    // Restore all hidden elements before clearing the parameter
-    document
-      .querySelectorAll("#map > svg rect.node[style*='display: none']")
-      .forEach((element) => {
-        (element as HTMLElement).style.display = "";
-      });
-
-    document
-      .querySelectorAll("#map > svg g[style*='display: none']")
-      .forEach((group) => {
-        (group as SVGGElement).style.display = "";
-      });
-
-    document
-      .querySelectorAll("#map > svg path.edge[style*='display: none']")
-      .forEach((edge) => {
-        (edge as SVGPathElement).style.display = "";
-      });
-
-    const newQuery = { ...currentQuery };
-    delete newQuery.hideSubscriptions;
-
-    // Restore minimap when exiting hideSubscriptions mode
-    showMinimap.value = (props.components?.length ?? 0) > 0;
-
-    router.push({ query: newQuery });
-  }
 };
 
 watch(
-  selectedComponents,
+  () => [selectedComponents, router.currentRoute.value.query.hideSubscriptions],
   () => {
-    // Only restore hidden elements when hideSubscriptions should be cleared due to manual component selection
-    // Don't restore during URL loading process
     const currentQuery = router.currentRoute.value.query;
 
     // NOTE(nick,victor): this watcher is colliding with the "Explore.vue" watcher that handles
@@ -1370,24 +1337,21 @@ watch(
     // watchers handle setting things up appropriately before anything else happens.
     if (currentQuery.retainSessionState) return;
 
-    if (currentQuery.hideSubscriptions === "1" && !isLoadingFromURL.value) {
-      // Restore all hidden elements
-      document
-        .querySelectorAll("#map > svg rect.node[style*='display: none']")
-        .forEach((element) => {
-          (element as HTMLElement).style.display = "";
-        });
-      document
-        .querySelectorAll("#map > svg g[style*='display: none']")
-        .forEach((group) => {
-          (group as SVGGElement).style.display = "";
-        });
-      document
-        .querySelectorAll("#map > svg path.edge[style*='display: none']")
-        .forEach((edge) => {
-          (edge as SVGPathElement).style.display = "";
-        });
-    }
+    document
+      .querySelectorAll("#map > svg rect.node[style*='display: none']")
+      .forEach((element) => {
+        (element as HTMLElement).style.display = "";
+      });
+    document
+      .querySelectorAll("#map > svg g[style*='display: none']")
+      .forEach((group) => {
+        (group as SVGGElement).style.display = "";
+      });
+    document
+      .querySelectorAll("#map > svg path.edge[style*='display: none']")
+      .forEach((edge) => {
+        (edge as SVGPathElement).style.display = "";
+      });
 
     // this handles later changes after the page loads
     document.querySelectorAll("#map > svg rect.node").forEach((n) => {
@@ -1410,13 +1374,7 @@ watch(
       }
     });
 
-    const routeQuery = router.currentRoute.value?.query || {};
-    const query: SelectionsInQueryString = { ...routeQuery };
-
-    // Explicitly remove hideSubscriptions if it should be cleared due to manual component selection
-    if (routeQuery.hideSubscriptions === "1" && !isLoadingFromURL.value) {
-      delete query.hideSubscriptions;
-    }
+    const query: SelectionsInQueryString = { ...currentQuery };
 
     delete query.c;
 
@@ -1634,7 +1592,6 @@ const connectedComponentIds = computed(() => {
 // so we no longer need separate DOM manipulation for hiding/showing components
 
 const fillDefault = ref<string[]>();
-const isLoadingFromURL = ref<boolean>(false);
 
 onMounted(() => {
   const query: SelectionsInQueryString = {
@@ -1644,11 +1601,6 @@ onMounted(() => {
   if (query.c) {
     // Parse comma-separated component IDs
     fillDefault.value = query.c.split(",").filter((id) => id.trim());
-
-    // Set flag if we're loading with hideSubscriptions parameter
-    if (query.hideSubscriptions === "1") {
-      isLoadingFromURL.value = true;
-    }
   }
 });
 
@@ -1687,8 +1639,6 @@ watch(
             pendingPanComponent.value = selectedComps[0].id;
           }
           fillDefault.value = undefined;
-          // Clear the loading flag since selection is complete
-          isLoadingFromURL.value = false;
         }
       });
     }
