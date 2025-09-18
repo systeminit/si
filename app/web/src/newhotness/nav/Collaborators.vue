@@ -151,7 +151,7 @@ const users = computed<UserInfo[]>(() => {
   }
 
   // Add an AI agent user if appropriate
-    if (hasUsedAiAgent && authStore.user) {
+    if (hasUsedAiAgent.value && authStore.user) {
         list.push({
             name: "Your Claude",
             color: "blue",
