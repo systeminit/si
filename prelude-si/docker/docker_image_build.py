@@ -113,11 +113,12 @@ def main() -> int:
         label_metadata,
         args.build_arg or [],
         tag_metadata,
+        args.artifact_out_file,
     )
     write_json(args.label_metadata_out_file, label_metadata)
     write_json(args.tag_metadata_out_file, tag_metadata)
 
-    write_artifact(args.artifact_out_file, tag_metadata)
+    verify_artifact(args.artifact_out_file, tag_metadata)
 
     b3sum = compute_b3sum(args.artifact_out_file)
     build_metadata = compute_build_metadata(label_metadata, architecture,
@@ -132,11 +133,25 @@ def build_image(
     metadata: Dict[str, str | str],
     build_args: List[str],
     tags: List[str],
+    output_file: str,
 ):
+    # Set up buildx builder with docker-container driver
+    subprocess.run(
+        ["docker", "buildx", "create", "--name", "local-builder", "--use"],
+        check=False)  # Don't fail if builder already exists
+
+    # Convert to absolute path and ensure the output directory exists
+    abs_output_file = os.path.abspath(output_file)
+    output_dir = os.path.dirname(abs_output_file)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
     cmd = [
         "docker",
-        "image",
+        "buildx",
         "build",
+        "--output",
+        f"type=docker,dest={abs_output_file}",
     ]
     for key, value in metadata.items():
         cmd.append("--label")
@@ -166,17 +181,13 @@ def write_json(output: str, metadata: Union[Dict[str, str], List[str]]):
         json.dump(metadata, file, sort_keys=True)
 
 
-def write_artifact(output: str, tag_metadata: List[str]):
-    cmd = [
-        "docker",
-        "save",
-        "--output",
-        output,
-    ]
-    cmd.extend(tag_metadata)
-
-    print("--- Creating image archive with: {}".format(" ".join(cmd)))
-    subprocess.run(cmd).check_returncode()
+def verify_artifact(output: str, tag_metadata: List[str]):
+    # Artifact is already created by buildx build --output, no need to run docker save
+    print("--- Image archive already created at: {}".format(output))
+    # Verify the file exists
+    if not os.path.exists(output):
+        raise FileNotFoundError(
+            f"Expected artifact file {output} was not created by buildx build")
 
 
 # Possible machine architecture detection comes from reading the Rustup shell

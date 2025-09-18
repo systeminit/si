@@ -15,7 +15,7 @@ def git_info(ctx: AnalysisContext) -> GitInfo:
         git_toolchain.git_info[DefaultInfo].default_outputs,
         json_file.as_output(),
     )
-    ctx.actions.run(cmd, category = "git_info")
+    ctx.actions.run(cmd, category = "git_info", prefer_local = True)
 
     return GitInfo(
         file = json_file,

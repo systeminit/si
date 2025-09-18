@@ -29,7 +29,7 @@ def build_context(
         cmd.add(dep.label.raw_target())
     cmd.add(context_tree.as_output())
 
-    ctx.actions.run(cmd, category = "build_context")
+    ctx.actions.run(cmd, category = "build_context", prefer_local = True)
 
     return BuildContext(
         root = context_tree,
