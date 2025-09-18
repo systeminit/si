@@ -67,6 +67,7 @@
           b3sum
           buck2
           deno
+          gh
           gitMinimal
           makeWrapper
           nodePkgs.pnpm
@@ -130,309 +131,82 @@
 
       langJsExtraPkgs = with pkgs; [
         awscli2
-        butane
-        gh
-        skopeo
-        openssh
-        minio-client
-        fastly
-        doctl
-        google-cloud-sdk
-        linode-cli
-        flyctl
         azure-cli
+        butane
+        doctl
+        fastly
+        flyctl
+        google-cloud-sdk
         govc
+        linode-cli
+        minio-client
+        openssh
+        skopeo
         (pkgs.python3.withPackages (p:
           with p; [
             cfn-lint
           ]))
-        deno
       ];
 
-      standaloneBinaryDerivation = {
-        pkgName,
-        fromPkg,
-        bin ? pkgs.lib.strings.removeSuffix "-standalone" pkgName,
-      }:
-        pkgs.stdenv.mkDerivation {
-          name = pkgName;
-          __impure = true;
-          src = ./.;
-          buildInputs = [fromPkg];
-          installPhase = ''
-            install -Dv "${fromPkg}/bin/${bin}" "$out/bin/${bin}"
-          '';
-          postFixup =
-            ""
-            + pkgs.lib.optionalString (pkgs.stdenv.isDarwin) ''
-              nix_lib="$(otool -L "$out/bin/$name" \
-                | grep libiconv.dylib \
-                | awk '{print $1}'
-              )"
-              install_name_tool \
-                -change \
-                "$nix_lib" \
-                /usr/lib/libiconv.2.dylib \
-                "$out/bin/$name" \
-                2>/dev/null
-            ''
-            + pkgs.lib.optionalString (pkgs.stdenv.isLinux) ''
-              patchelf \
-                --set-interpreter "${systemInterpreter}" \
-                --remove-rpath \
-                "$out/bin/${bin}"
-            '';
-          dontPatchELF = true;
-          dontAutoPatchELF = true;
-        };
-
-      buck2Derivation = {
-        pathPrefix,
-        pkgName,
-        extraBuildInputs ? [],
-        stdBuildPhase ? ''
-          buck2 build \
-            "$buck2_target" \
-            --verbose 8 \
-            --out "build/$name-$system"
-        '',
-        extraBuildPhase ? "",
-        installPhase,
-        dontStrip ? true,
-        dontPatchELF ? false,
-        dontAutoPatchELF ? false,
-        postFixup ? "",
-      }:
-        pkgs.stdenv.mkDerivation {
-          name = pkgName;
-          buck2_target = "//${pathPrefix}/${pkgName}";
-          __impure = true;
-          src = ./.;
-          nativeBuildInputs =
-            buck2NativeBuildInputs
-            ++ pkgs.lib.optionals (
-              pkgs.stdenv.isLinux && !dontAutoPatchELF
-            ) [pkgs.autoPatchelfHook];
-          buildInputs = buck2BuildInputs ++ extraBuildInputs;
-          runtimeDependencies = map pkgs.lib.getLib buck2BuildInputs;
-          postPatch = with pkgs; ''
-            rg -l '#!(/usr/bin/env|/bin/bash|/bin/sh)' prelude prelude-si \
-              | while read -r file; do
-                patchShebangs --build "$file"
-              done
-
-            rg -l '(/usr/bin/env|/bin/bash)' prelude prelude-si \
-              | while read -r file; do
-                substituteInPlace "$file" \
-                  --replace /usr/bin/env "${coreutils}/bin/env" \
-                  --replace /bin/bash "${bash}/bin/bash"
-              done
-          '';
-          buildPhase =
-            ''
-              export HOME="$(dirname $(pwd))/home"
-              mkdir -p build
-            ''
-            + stdBuildPhase
-            + extraBuildPhase;
-          inherit installPhase;
-          inherit dontStrip;
-          inherit dontPatchELF;
-          inherit postFixup;
-        };
-
-      appDerivation = {
-        pkgName,
-        extraBuildPhase ? "",
-        extraInstallPhase ? "",
-        dontStrip ? false,
-        dontPatchELF ? false,
-        dontAutoPatchELF ? false,
-      }: (buck2Derivation {
-        pathPrefix = "app";
-        inherit pkgName;
-        inherit extraBuildPhase;
-        installPhase =
-          ''
-            mkdir -pv "$out"
-            cp -rpv "build/$name-$system" "$out/html"
-          ''
-          + extraInstallPhase;
-        inherit dontStrip;
-        inherit dontPatchELF;
-        inherit dontAutoPatchELF;
-      });
-
-      binDerivation = {
-        pkgName,
-        extraBuildPhase ? "",
-        extraInstallPhase ? "",
-        dontStrip ? true,
-        dontPatchELF ? false,
-        dontAutoPatchELF ? false,
-      }: (buck2Derivation {
-        pathPrefix = "bin";
-        inherit pkgName;
-        inherit extraBuildPhase;
-        installPhase =
-          ''
-            mkdir -pv "$out/bin"
-            cp -pv "build/$name-$system" "$out/bin/$name"
-          ''
-          + extraInstallPhase;
-        inherit dontStrip;
-        inherit dontPatchELF;
-        inherit dontAutoPatchELF;
-      });
     in
       with pkgs; rec {
-        packages = {
-          auth-api = binDerivation {pkgName = "auth-api";};
-
-          cyclone = binDerivation {pkgName = "cyclone";};
-
-          # autoPatchingElf and stripping will break deno compile'd binaries.
-          # We need to make sure we know where glibc and friends exist and since
-          # we can't patchelf, we need to ensure we drop the dynmic linker in a
-          # known place. Note that LD_LIBRAY_PATH is unset when using siExec to
-          # ensure the binaries our binaries run don't inherit it.
-          lang-js = binDerivation {
-            pkgName = "lang-js";
-            dontAutoPatchELF = true;
-            dontStrip = true;
-            extraBuildPhase = ''
-              export DENO_DIR="$TMPDIR/deno-cache"
-              mkdir -p "$DENO_DIR"
-
-              # Cache the dependencies
-              ${pkgs.deno}/bin/deno cache \
-                --node-modules-dir \
-                --reload \
-                bin/lang-js/src/sandbox.ts \
-
-            '';
-            extraInstallPhase = ''
-              # build a cache of our deps so we don't need to donwload them in
-              # the firecracker jail each time
-              mkdir -p $out/cache
-              cp -rL "$TMPDIR/deno-cache"/* $out/cache/
-              chmod -R 755 $out/cache
-
-              # since we can't patchelf, we need to ensure the dynamic linker
-              # is where we expect it. This gets droppped into the rootfs as
-              # /lib64/ld-linux-x86-64.so.2 -> /nix/store/*/ld-linux-x86-64.20.2
-              mkdir -p $out/lib64
-              ln -sf \
-                "${pkgs.glibc}/lib/${interpreterName}" \
-                "$out/lib64/${interpreterName}"
-
-              wrapProgram $out/bin/lang-js \
-                --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath [
-                pkgs.glibc
-                pkgs.gcc-unwrapped.lib
-              ]}" \
-                --set DENO_DIR "$out/cache" \
-                --prefix PATH : ${pkgs.lib.makeBinPath langJsExtraPkgs} \
-                --run 'cd "$(dirname "$0")"'
-                # ^ deno falls over trying to resolve libraries if you don't set
-                # the working path
-            '';
+        devShells = {
+          # Full development environment
+          default = mkShell {
+            shellHook = with pkgs; if pkgs.stdenv.isLinux then ''
+              export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
+              export BINDGEN_EXTRA_CLANG_ARGS="\
+                $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
+                $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
+                $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
+                $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
+                $NIX_CFLAGS_COMPILE"
+              export OUT=${placeholder "out"}
+              echo $OUT
+            '' else "";
+            packages =
+              [
+                alejandra
+                buildkite-test-collector-rust
+                cargo-insta
+                cargo-sort
+                docker-compose
+                jq
+                nats-top
+                natscli
+                openapi-generator-cli
+                # pgcli
+                reindeer
+                shellcheck
+                shfmt
+                spicedb-zed
+                taplo
+                tilt
+                tokio-console
+                typos
+                yapf
+              ]
+              ++ buck2NativeBuildInputs
+              ++ buck2BuildInputs
+              ++ langJsExtraPkgs;
           };
 
-          bedrock = binDerivation {pkgName = "bedrock";};
-
-          edda = binDerivation {pkgName = "edda";};
-
-          forklift = binDerivation {pkgName = "forklift";};
-
-          innit = binDerivation {pkgName = "innit";};
-
-          innitctl = binDerivation {pkgName = "innitctl";};
-
-          luminork = binDerivation {pkgName = "luminork";};
-
-          module-index = binDerivation {pkgName = "module-index";};
-
-          pinga = binDerivation {pkgName = "pinga";};
-
-          rebaser = binDerivation {pkgName = "rebaser";};
-
-          sdf = binDerivation {pkgName = "sdf";};
-
-          si-fs = binDerivation {pkgName = "si-fs";};
-
-          si-fs-standalone = standaloneBinaryDerivation {
-            pkgName = "si-fs-standalone";
-            fromPkg = packages.si-fs;
-          };
-
-          veritech = binDerivation {pkgName = "veritech";};
-
-          web = appDerivation rec {
-            pkgName = "web";
-            extraBuildPhase = ''
-              buck2 build app/web:nginx_src --verbose 3 --out build/nginx
-              buck2 build app/web:docker-entrypoint.sh \
-                --verbose 3 --out build/docker-entrypoint.sh
-            '';
-            extraInstallPhase = ''
-              patchShebangs --host build/docker-entrypoint.sh
-              substituteInPlace build/docker-entrypoint.sh \
-                --replace @@nginx@@ "${nginx}/bin/nginx" \
-                --replace @@conf@@ "$out/conf/nginx.conf" \
-                --replace @@prefix@@ "$out"
-
-              mkdir -pv "$out/bin" "$out/conf"
-              cp -pv build/nginx/nginx.conf "$out/conf/nginx.conf"
-              cp -pv "${nginx}/conf/mime.types" "$out/conf"/
-              cp -pv build/docker-entrypoint.sh "$out/bin/${pkgName}"
-            '';
-          };
-        };
-
-        devShells.default = mkShell {
-          shellHook = with pkgs; if pkgs.stdenv.isLinux then ''
-            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
-            export BINDGEN_EXTRA_CLANG_ARGS="\
-              $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
-              $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
-              $(< ${pkgs.stdenv.cc}/nix-support/cc-cflags) \
-              $(< ${pkgs.stdenv.cc}/nix-support/libcxx-cxxflags) \
-              $NIX_CFLAGS_COMPILE"
-            export OUT=${placeholder "out"}
-            echo $OUT
-          '' else "";
-          packages =
-            [
-              alejandra
+          # CI environment - essential tools for CI tasks without heavy build dependencies
+          ci = mkShell {
+            packages = buck2NativeBuildInputs ++ [
               buildkite-test-collector-rust
-              cargo-insta
-              cargo-sort
+              docker
               docker-compose
+              gh
               jq
-              nats-top
-              natscli
-              openapi-generator-cli
-              # pgcli
-              reindeer
-              shellcheck
               shfmt
-              spicedb-zed
-              taplo
-              tilt
-              tokio-console
-              typos
-              yapf
-            ]
-            # Directly add the build dependencies for the packages rather than
-            # use: `inputsFrom = lib.attrValues packages;`.
-            #
-            # This tweak means our flake doesn't require `impure-derivations`
-            # and `ca-derivations` experimental features by default--only when
-            # attempting to build the packages directly.
-            ++ buck2NativeBuildInputs
-            ++ buck2BuildInputs
-            ++ langJsExtraPkgs;
+            ];
+          };
+
+          # environment for lang-js
+          langjs = mkShell {
+            packages = buck2NativeBuildInputs ++ langJsExtraPkgs ++ [];
+          };
         };
 
         formatter = alejandra;
