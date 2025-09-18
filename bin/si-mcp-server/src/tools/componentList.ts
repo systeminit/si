@@ -18,55 +18,79 @@ import { ChangeSet } from "../data/changeSets.ts";
 
 const name = "component-list";
 const title = "List components";
-const description =
-  `<description>Lists all components. Returns an array of components with componentId, component name, and the schema name. On failure, returns error details</description><usage>Use this tool to understand what components are present in a change set in the workspace, and to find their componentId or schemaName in order to work with them.</usage>`;
+const description = `<description>Lists all components. Returns an array of components with componentId, component name, and the schema name. On failure, returns error details</description><usage>Use this tool to understand what components are present in a change set in the workspace, and to find their componentId or schemaName in order to work with them.</usage>`;
 
 const ListComponentsInputSchemaRaw = {
-  changeSetId: z.string().optional().describe(
-    "The change set to look up components in; if not provided, HEAD will be used",
-  ),
-  filters: z.object({
-    logic: z.enum(["AND", "OR"]).optional().describe(
-      "Logic operator between filter groups (default: AND)",
+  changeSetId: z
+    .string()
+    .optional()
+    .describe(
+      "The change set to look up components in; if not provided, HEAD will be used",
     ),
-    filterGroups: z.array(
-      z.object({
-        responseField: z.enum(["componentName", "componentId", "schemaName"])
-          .describe("the response field to filter on"),
-        logic: z.enum(["AND", "OR"]).optional().describe(
-          "Logic operator between regular expressions within this filter group (default: OR)",
-        ),
-        regularExpressions: z.array(
-          z.string().describe("a javascript regular expression string"),
-        ).describe(
-          "an array of javascript compatible regular expression strings",
-        ),
-      }).describe(
-        "a filter group, consisting of a responseField to filter and an array of regularExpressions",
-      ),
-    ).describe("an array of filter groups"),
-  }).optional().describe(
-    "filtering configuration with configurable AND/OR logic both between filter groups and within each group's regular expressions",
-  ),
+  filters: z
+    .object({
+      logic: z
+        .enum(["AND", "OR"])
+        .optional()
+        .describe("Logic operator between filter groups (default: AND)"),
+      filterGroups: z
+        .array(
+          z
+            .object({
+              responseField: z
+                .enum(["componentName", "componentId", "schemaName"])
+                .describe("the response field to filter on"),
+              logic: z
+                .enum(["AND", "OR"])
+                .optional()
+                .describe(
+                  "Logic operator between regular expressions within this filter group (default: OR)",
+                ),
+              regularExpressions: z
+                .array(
+                  z.string().describe("a javascript regular expression string"),
+                )
+                .describe(
+                  "an array of javascript compatible regular expression strings",
+                ),
+            })
+            .describe(
+              "a filter group, consisting of a responseField to filter and an array of regularExpressions",
+            ),
+        )
+        .describe("an array of filter groups"),
+    })
+    .optional()
+    .describe(
+      "filtering configuration with configurable AND/OR logic both between filter groups and within each group's regular expressions",
+    ),
 };
 
 const ListComponentsOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
-  data: z.array(
-    z.object({
-      componentId: z.string().describe("the component id"),
-      componentName: z.string().describe("the component name"),
-      schemaName: z.string().describe("the schema name for the component"),
-    }).describe("an individual component"),
-  )
+  errorMessage: z
+    .string()
+    .optional()
+    .describe(
+      "If the status is failure, the error message will contain information about what went wrong",
+    ),
+  data: z
+    .array(
+      z
+        .object({
+          componentId: z.string().describe("the component id"),
+          componentName: z.string().describe("the component name"),
+          schemaName: z.string().describe("the schema name for the component"),
+          codegen: z
+            .any()
+            .optional()
+            .describe("the codegen for the cloudformation for the resource"),
+        })
+        .describe("an individual component"),
+    )
     .describe("the list of components"),
 };
-const ListComponentsOutputSchema = z.object(
-  ListComponentsOutputSchemaRaw,
-);
+const ListComponentsOutputSchema = z.object(ListComponentsOutputSchemaRaw);
 type ListComponents = z.infer<typeof ListComponentsOutputSchema>;
 
 export function componentListTool(server: McpServer) {
@@ -103,19 +127,16 @@ export function componentListTool(server: McpServer) {
             changeSetId = head.id;
           } catch (error) {
             return errorResponse({
-              message:
-                `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
-                  error instanceof Error ? error.message : String(error)
-                }`,
+              message: `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
             });
           }
         }
         try {
           const response = await listAllComponents(apiConfig, changeSetId);
           const filteredResponse = applyFilters(response, filters);
-          return successResponse(
-            filteredResponse,
-          );
+          return successResponse(filteredResponse);
         } catch (error) {
           return errorResponse(error);
         }
@@ -174,11 +195,12 @@ export function applyFilters(
   });
 }
 
-async function listAllComponents(
+export async function listAllComponents(
   apiConfig: Configuration,
   changeSetId: string,
   cursor?: string,
   componentList?: Array<ListComponents["data"][number]>,
+  withCodegen?: boolean,
 ): Promise<Array<ListComponents["data"][number]>> {
   if (!componentList) {
     componentList = [];
@@ -191,12 +213,14 @@ async function listAllComponents(
       changeSetId: changeSetId,
       limit: "300",
       cursor,
+      ...(withCodegen && { includeCodegen: true }),
     };
   } else {
     args = {
       workspaceId: WORKSPACE_ID,
       changeSetId: changeSetId,
       limit: "300",
+      ...(withCodegen && { includeCodegen: true }),
     };
   }
 
@@ -206,6 +230,7 @@ async function listAllComponents(
       componentId: component.componentId,
       componentName: component.name,
       schemaName: component.schemaName,
+      codegen: component.codegen,
     });
   }
   if (response.data.nextCursor) {
@@ -214,6 +239,7 @@ async function listAllComponents(
       changeSetId,
       response.data.nextCursor,
       componentList,
+      withCodegen,
     );
   }
   return componentList;

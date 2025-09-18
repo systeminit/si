@@ -28,6 +28,7 @@ import { templateRunTool } from "./tools/templateRun.ts";
 import { templateListTool } from "./tools/templateList.ts";
 import { changeSetAbandonTool } from "./tools/changeSetAbandon.ts";
 import { changeSetForceApplyTool } from "./tools/changeSetForceApply.ts";
+import { costExplorerTool } from "./tools/costResourceExplorer.ts";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -63,6 +64,7 @@ export function createServer(): McpServer {
   upgradeComponentsTool(server);
   importPrompt(server);
   discoverPrompt(server);
+  costExplorerTool(server);
 
   return server;
 }

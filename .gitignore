@@ -4,6 +4,7 @@ node_modules
 .vagrant
 .idea
 .vscode
+.infracost
 target
 kubeconfig.yml
 vendor/automerge
