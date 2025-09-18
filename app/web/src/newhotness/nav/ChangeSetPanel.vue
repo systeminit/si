@@ -160,6 +160,16 @@ const ctx = useContext();
 
 const { openChangeSets, changeSet } = useChangeSets(computed(() => ctx));
 
+watch(openChangeSets, (newChangeSets, oldChangeSets) => {
+  if (newChangeSets.length === oldChangeSets.length + 1) {
+    // One new change set, let's switch to it automatically!
+    const newestChangeSet = newChangeSets.find((newChangeSet) => oldChangeSets.find((oldChangeSet) => oldChangeSet.id === newChangeSet.id) === undefined);
+    if (newestChangeSet) {
+      onSelectChangeSet(newestChangeSet.id);
+    }
+  }
+});
+
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
 
 const changeSetDropdownOptions = computed(() => [
