@@ -7459,6 +7459,12 @@
   "Specifies the certificate chain to be imported.": {
     "enum": null
   },
+  "Specifies the configuration for Amazon S3 access from the ODB network.": {
+    "enum": null
+  },
+  "Specifies the configuration for Zero-ETL access from the ODB network.": {
+    "enum": null
+  },
   "Specifies the credentials required for the integration, if any. For AWS integrations, three options are available. To specify an IAM Role for API Gateway to assume, use the role's Amazon Resource Name (ARN). To require that the caller's identity be passed through from the request, specify the string arn:aws:iam::*:user/*. To use resource-based permissions on supported AWS services, don't specify this parameter.": {
     "enum": null
   },
@@ -7478,6 +7484,9 @@
     "enum": null
   },
   "Specifies the encryption key id": {
+    "enum": null
+  },
+  "Specifies the endpoint policy for Amazon S3 access from the ODB network.": {
     "enum": null
   },
   "Specifies the fallback behavior if the handler does not return a valid response, encounters an error, or times out.": {
@@ -8971,6 +8980,9 @@
   "The Amazon Resource Name (ARN) of the resource configuration.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the resource gateway.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the role that is used for target invocation.": {
     "enum": null
   },
@@ -9251,6 +9263,9 @@
     "enum": null
   },
   "The CIDR block associated with the local subnet of the customer network.": {
+    "enum": null
+  },
+  "The CIDR block for the Zero-ETL access.": {
     "enum": null
   },
   "The CIDR block to assign Kubernetes service IP addresses from. If you don't specify a block, Kubernetes assigns addresses from either the 10.100.0.0/16 or 172.20.0.0/16 CIDR blocks. We recommend that you specify a block that does not overlap with resources in other networks that are peered or connected to your VPC. ": {
@@ -11860,7 +11875,13 @@
   "The domain name assigned to your CF distribution.": {
     "enum": null
   },
+  "The domain name for the Amazon S3 access.": {
+    "enum": null
+  },
   "The domain name or IP address of the storage system's management interface.": {
+    "enum": null
+  },
+  "The domain name to use for the resources in the ODB network.": {
     "enum": null
   },
   "The domain name.": {
@@ -11951,6 +11972,9 @@
     "enum": null
   },
   "The endpoint for the collection.": {
+    "enum": null
+  },
+  "The endpoint policy for the Amazon S3 access.": {
     "enum": null
   },
   "The endpoint.": {
@@ -12356,6 +12380,9 @@
     "enum": null
   },
   "The identifier of the Multi-AZ DB cluster that will act as the source for the read replica. Each DB cluster can have up to 15 read replicas.\n Constraints:\n  +  Must be the identifier of an existing Multi-AZ DB cluster.\n  +  Can't be specified if the ``SourceDBInstanceIdentifier`` parameter is also specified.\n  +  The specified DB cluster must have automatic backups enabled, that is, its backup retention period must be greater than 0.\n  +  The source DB cluster must be in the same AWS-Region as the read replica. Cross-Region replication isn't supported.": {
+    "enum": null
+  },
+  "The identifier of the VPC endpoint.": {
     "enum": null
   },
   "The identifier of the VPC in which to create the directory.": {
@@ -13550,6 +13577,9 @@
     "enum": null
   },
   "The name of the NFS server. This value is the IP address or DNS name of the NFS server.": {
+    "enum": null
+  },
+  "The name of the ODB peering connection.": {
     "enum": null
   },
   "The name of the OIDC provider configuration.": {
@@ -15247,6 +15277,9 @@
   "The password that corresponds to the username.": {
     "enum": null
   },
+  "The patching mode for the maintenance window.": {
+    "enum": null
+  },
   "The path for the policy.\n For more information about paths, see [IAM identifiers](https://docs.aws.amazon.com/IAM/latest/UserGuide/Using_Identifiers.html) in the *IAM User Guide*.\n This parameter is optional. If it is not included, it defaults to a slash (/).\n This parameter allows (through its [regex pattern](https://docs.aws.amazon.com/http://wikipedia.org/wiki/regex)) a string of characters consisting of either a forward slash (/) by itself or a string that must begin and end with forward slashes. In addition, it can contain any ASCII character from the ! (``\\u0021``) through the DEL character (``\\u007F``), including most punctuation characters, digits, and upper and lowercased letters.\n  You cannot use an asterisk (*) in the path name.": {
     "enum": null
   },
@@ -16213,6 +16246,9 @@
   "The status of encryption for the cluster.": {
     "enum": null
   },
+  "The status of the Amazon S3 access.": {
+    "enum": null
+  },
   "The status of the Amazon SNS notification topic. Notifications are sent only if the status is enabled.": {
     "enum": null
   },
@@ -16220,6 +16256,9 @@
     "enum": null
   },
   "The status of the TopicRuleDestination.": {
+    "enum": null
+  },
+  "The status of the Zero-ETL access.": {
     "enum": null
   },
   "The status of the automation rule": {
@@ -16238,6 +16277,9 @@
     "enum": null
   },
   "The status of the lifecycle policy.": {
+    "enum": null
+  },
+  "The status of the managed Amazon S3 backup access.": {
     "enum": null
   },
   "The status of the monitoring job.": {
@@ -16531,6 +16573,9 @@
   "The time-to-live (TTL) period, in seconds, that specifies how long API Gateway caches responses.": {
     "enum": null
   },
+  "The timeout duration for custom actions in minutes.": {
+    "enum": null
+  },
   "The timestamp at which the inference experiment ended or will end.": {
     "enum": null
   },
@@ -16762,6 +16807,9 @@
   "The type of the Integration.": {
     "enum": null
   },
+  "The type of the VPC endpoint.": {
+    "enum": null
+  },
   "The type of the application": {
     "enum": null
   },
@@ -16876,6 +16924,9 @@
   "The unique identifier of the ODB network for the VM cluster.": {
     "enum": null
   },
+  "The unique identifier of the ODB network.": {
+    "enum": null
+  },
   "The unique identifier of the cache policy that is attached to the default cache behavior. For more information, see [Creating cache policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/controlling-the-cache-key.html#cache-key-create-cache-policy) or [Using the managed cache policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html) in the *Amazon CloudFront Developer Guide*.\n A ``DefaultCacheBehavior`` must include either a ``CachePolicyId`` or ``ForwardedValues``. We recommend that you use a ``CachePolicyId``.": {
     "enum": null
   },
@@ -16883,6 +16934,9 @@
     "enum": null
   },
   "The unique identifier of the origin request policy that is attached to the default cache behavior. For more information, see [Creating origin request policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/controlling-origin-requests.html#origin-request-create-origin-request-policy) or [Using the managed origin request policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html) in the *Amazon CloudFront Developer Guide*.": {
+    "enum": null
+  },
+  "The unique identifier of the peer network.": {
     "enum": null
   },
   "The unique identity, or principal, to which Kerberos can assign tickets.": {
