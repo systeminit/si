@@ -277,6 +277,12 @@ export interface ChangeSetViewV1 {
 export interface ComponentDetailsV1 {
     /**
      * 
+     * @type {any}
+     * @memberof ComponentDetailsV1
+     */
+    'codegen'?: any;
+    /**
+     * 
      * @type {string}
      * @memberof ComponentDetailsV1
      */
@@ -4385,10 +4391,11 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
          * @param {string} changeSetId Change Set identifier
          * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
          * @param {string} [cursor] Cursor for pagination (ComponentId of the last item from previous page)
+         * @param {boolean} [includeCodegen] Allow returning the codegen for the cloudformation template for the component (if it exists)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listComponents: async (workspaceId: string, changeSetId: string, limit?: string, cursor?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        listComponents: async (workspaceId: string, changeSetId: string, limit?: string, cursor?: string, includeCodegen?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'workspaceId' is not null or undefined
             assertParamExists('listComponents', 'workspaceId', workspaceId)
             // verify required parameter 'changeSetId' is not null or undefined
@@ -4413,6 +4420,10 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
 
             if (cursor !== undefined) {
                 localVarQueryParameter['cursor'] = cursor;
+            }
+
+            if (includeCodegen !== undefined) {
+                localVarQueryParameter['includeCodegen'] = includeCodegen;
             }
 
 
@@ -4805,11 +4816,12 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
          * @param {string} changeSetId Change Set identifier
          * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
          * @param {string} [cursor] Cursor for pagination (ComponentId of the last item from previous page)
+         * @param {boolean} [includeCodegen] Allow returning the codegen for the cloudformation template for the component (if it exists)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listComponents(workspaceId: string, changeSetId: string, limit?: string, cursor?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListComponentsV1Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listComponents(workspaceId, changeSetId, limit, cursor, options);
+        async listComponents(workspaceId: string, changeSetId: string, limit?: string, cursor?: string, includeCodegen?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListComponentsV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listComponents(workspaceId, changeSetId, limit, cursor, includeCodegen, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ComponentsApi.listComponents']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -4999,7 +5011,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
          * @throws {RequiredError}
          */
         listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListComponentsV1Response> {
-            return localVarFp.listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(axios, basePath));
+            return localVarFp.listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, requestParameters.includeCodegen, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -5518,6 +5530,13 @@ export interface ComponentsApiListComponentsRequest {
      * @memberof ComponentsApiListComponents
      */
     readonly cursor?: string
+
+    /**
+     * Allow returning the codegen for the cloudformation template for the component (if it exists)
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeCodegen?: boolean
 }
 
 /**
@@ -5798,7 +5817,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      * @memberof ComponentsApi
      */
     public listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig) {
-        return ComponentsApiFp(this.configuration).listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(this.axios, this.basePath));
+        return ComponentsApiFp(this.configuration).listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, requestParameters.includeCodegen, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

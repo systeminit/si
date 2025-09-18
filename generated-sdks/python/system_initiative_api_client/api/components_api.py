@@ -16,7 +16,7 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
-from pydantic import Field, StrictStr
+from pydantic import Field, StrictBool, StrictStr
 from typing import Optional
 from typing_extensions import Annotated
 from system_initiative_api_client.models.add_action_v1_request import AddActionV1Request
@@ -2860,6 +2860,7 @@ class ComponentsApi:
         change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
         cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
+        include_codegen: Annotated[Optional[StrictBool], Field(description="Allow returning the codegen for the cloudformation template for the component (if it exists)")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2884,6 +2885,8 @@ class ComponentsApi:
         :type limit: str
         :param cursor: Cursor for pagination (ComponentId of the last item from previous page)
         :type cursor: str
+        :param include_codegen: Allow returning the codegen for the cloudformation template for the component (if it exists)
+        :type include_codegen: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2911,6 +2914,7 @@ class ComponentsApi:
             change_set_id=change_set_id,
             limit=limit,
             cursor=cursor,
+            include_codegen=include_codegen,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2940,6 +2944,7 @@ class ComponentsApi:
         change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
         cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
+        include_codegen: Annotated[Optional[StrictBool], Field(description="Allow returning the codegen for the cloudformation template for the component (if it exists)")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2964,6 +2969,8 @@ class ComponentsApi:
         :type limit: str
         :param cursor: Cursor for pagination (ComponentId of the last item from previous page)
         :type cursor: str
+        :param include_codegen: Allow returning the codegen for the cloudformation template for the component (if it exists)
+        :type include_codegen: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2991,6 +2998,7 @@ class ComponentsApi:
             change_set_id=change_set_id,
             limit=limit,
             cursor=cursor,
+            include_codegen=include_codegen,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3020,6 +3028,7 @@ class ComponentsApi:
         change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
         cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
+        include_codegen: Annotated[Optional[StrictBool], Field(description="Allow returning the codegen for the cloudformation template for the component (if it exists)")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3044,6 +3053,8 @@ class ComponentsApi:
         :type limit: str
         :param cursor: Cursor for pagination (ComponentId of the last item from previous page)
         :type cursor: str
+        :param include_codegen: Allow returning the codegen for the cloudformation template for the component (if it exists)
+        :type include_codegen: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3071,6 +3082,7 @@ class ComponentsApi:
             change_set_id=change_set_id,
             limit=limit,
             cursor=cursor,
+            include_codegen=include_codegen,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3095,6 +3107,7 @@ class ComponentsApi:
         change_set_id,
         limit,
         cursor,
+        include_codegen,
         _request_auth,
         _content_type,
         _headers,
@@ -3128,6 +3141,10 @@ class ComponentsApi:
         if cursor is not None:
             
             _query_params.append(('cursor', cursor))
+            
+        if include_codegen is not None:
+            
+            _query_params.append(('includeCodegen', include_codegen))
             
         # process the header parameters
         # process the form parameters

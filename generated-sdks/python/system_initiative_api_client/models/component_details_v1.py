@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -26,10 +26,11 @@ class ComponentDetailsV1(BaseModel):
     """
     ComponentDetailsV1
     """ # noqa: E501
+    codegen: Optional[Any] = None
     component_id: StrictStr = Field(alias="componentId")
     name: StrictStr
     schema_name: StrictStr = Field(alias="schemaName")
-    __properties: ClassVar[List[str]] = ["componentId", "name", "schemaName"]
+    __properties: ClassVar[List[str]] = ["codegen", "componentId", "name", "schemaName"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -70,6 +71,11 @@ class ComponentDetailsV1(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if codegen (nullable) is None
+        # and model_fields_set contains the field
+        if self.codegen is None and "codegen" in self.model_fields_set:
+            _dict['codegen'] = None
+
         return _dict
 
     @classmethod
@@ -82,6 +88,7 @@ class ComponentDetailsV1(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "codegen": obj.get("codegen"),
             "componentId": obj.get("componentId"),
             "name": obj.get("name"),
             "schemaName": obj.get("schemaName")
