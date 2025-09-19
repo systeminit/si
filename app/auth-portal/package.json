@@ -20,7 +20,7 @@
     "@si/vue-lib": "workspace:*",
     "@vueuse/core": "^12.0.0",
     "@vueuse/head": "^1.3.1",
-    "axios": "^1.8.2",
+    "axios": "^1.12.0",
     "clsx": "^1.2.1",
     "floating-vue": "2.0.0-beta.20",
     "highlight.js": "^11.10.0",
