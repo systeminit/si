@@ -6920,28 +6920,28 @@ cargo.rust_library(
 
 alias(
     name = "fuser",
-    actual = ":fuser-0.15.1",
+    actual = ":fuser-0.16.0",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "fuser-0.15.1.crate",
-    sha256 = "53274f494609e77794b627b1a3cddfe45d675a6b2e9ba9c0fdc8d8eee2184369",
-    strip_prefix = "fuser-0.15.1",
-    urls = ["https://static.crates.io/crates/fuser/0.15.1/download"],
+    name = "fuser-0.16.0.crate",
+    sha256 = "0bb29a3ae32279fe3e79a958fe01899f5fb23eadccee919cf88e145b54ed9367",
+    strip_prefix = "fuser-0.16.0",
+    urls = ["https://static.crates.io/crates/fuser/0.16.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "fuser-0.15.1",
-    srcs = [":fuser-0.15.1.crate"],
+    name = "fuser-0.16.0",
+    srcs = [":fuser-0.16.0.crate"],
     crate = "fuser",
-    crate_root = "fuser-0.15.1.crate/src/lib.rs",
-    edition = "2021",
+    crate_root = "fuser-0.16.0.crate/src/lib.rs",
+    edition = "2024",
     env = {
-        "OUT_DIR": "$(location :fuser-0.15.1-build-script-run[out_dir])",
+        "OUT_DIR": "$(location :fuser-0.16.0-build-script-run[out_dir])",
     },
-    rustc_flags = ["@$(location :fuser-0.15.1-build-script-run[rustc_flags])"],
+    rustc_flags = ["@$(location :fuser-0.16.0-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":libc-0.2.174",
@@ -6955,19 +6955,19 @@ cargo.rust_library(
 )
 
 cargo.rust_binary(
-    name = "fuser-0.15.1-build-script-build",
-    srcs = [":fuser-0.15.1.crate"],
+    name = "fuser-0.16.0-build-script-build",
+    srcs = [":fuser-0.16.0.crate"],
     crate = "build_script_build",
-    crate_root = "fuser-0.15.1.crate/build.rs",
-    edition = "2021",
+    crate_root = "fuser-0.16.0.crate/build.rs",
+    edition = "2024",
     visibility = [],
 )
 
 buildscript_run(
-    name = "fuser-0.15.1-build-script-run",
+    name = "fuser-0.16.0-build-script-run",
     package_name = "fuser",
-    buildscript_rule = ":fuser-0.15.1-build-script-build",
-    version = "0.15.1",
+    buildscript_rule = ":fuser-0.16.0-build-script-build",
+    version = "0.16.0",
 )
 
 alias(
