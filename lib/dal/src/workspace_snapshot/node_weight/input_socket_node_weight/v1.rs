@@ -20,6 +20,7 @@ use crate::{
             traits::{
                 CorrectExclusiveOutgoingEdge,
                 CorrectTransforms,
+                ExclusiveOutgoingEdges,
                 SiNodeWeight,
             },
         },
@@ -62,7 +63,9 @@ impl InputSocketNodeWeightV1 {
 
 impl CorrectTransforms for InputSocketNodeWeightV1 {}
 
-impl CorrectExclusiveOutgoingEdge for InputSocketNodeWeightV1 {
+impl CorrectExclusiveOutgoingEdge for InputSocketNodeWeightV1 {}
+
+impl ExclusiveOutgoingEdges for InputSocketNodeWeightV1 {
     fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
     }
