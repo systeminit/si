@@ -9,6 +9,7 @@ use si_events::workspace_snapshot::{
 
 use crate::{
     checksum::FrontendChecksum,
+    definition_checksum::DefinitionChecksum,
     object::FrontendObject,
 };
 
@@ -94,7 +95,14 @@ where
     pub checksum: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, si_frontend_mv_types_macros::FrontendChecksum)]
+#[derive(
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    si_frontend_mv_types_macros::DefinitionChecksum,
+    si_frontend_mv_types_macros::FrontendChecksum,
+)]
 pub struct IndexReference {
     pub kind: String,
     pub id: String,
@@ -159,7 +167,7 @@ where
     T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
 {
     fn checksum(&self) -> Checksum {
-        todo!()
+        FrontendChecksum::checksum(&self.to_string())
     }
 }
 
@@ -199,4 +207,57 @@ where
 
     fn reference_kind(&self) -> ReferenceKind;
     fn reference_id(&self) -> ReferenceId<T>;
+}
+
+// ================================================================================================
+// DefinitionChecksum implementations for reference types
+// ================================================================================================
+
+impl<T> DefinitionChecksum for ReferenceId<T>
+where
+    T: DefinitionChecksum
+        + Eq
+        + PartialEq
+        + Clone
+        + std::fmt::Debug
+        + Serialize
+        + std::fmt::Display,
+{
+    fn definition_checksum() -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(b"ReferenceId<");
+        hasher.update(T::definition_checksum().as_bytes());
+        hasher.update(b">");
+        hasher.finalize()
+    }
+}
+
+impl DefinitionChecksum for ReferenceKind {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"ReferenceKind");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl<T> DefinitionChecksum for Reference<T>
+where
+    T: DefinitionChecksum
+        + Eq
+        + PartialEq
+        + Clone
+        + std::fmt::Debug
+        + Serialize
+        + std::fmt::Display,
+{
+    fn definition_checksum() -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(b"Reference<");
+        hasher.update(T::definition_checksum().as_bytes());
+        hasher.update(b">");
+        hasher.finalize()
+    }
 }

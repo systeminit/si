@@ -17,6 +17,7 @@ use crate::reference::ReferenceKind;
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
     si_frontend_mv_types_macros::FrontendObject,
     si_frontend_mv_types_macros::Refer,

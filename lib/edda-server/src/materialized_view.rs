@@ -1,14 +1,11 @@
 use std::{
-    collections::{
-        BinaryHeap,
-        HashSet,
-    },
+    collections::BinaryHeap,
+    future::Future,
     sync::Arc,
     time::Duration,
 };
 
 use dal::{
-    ChangeSet,
     ChangeSetError,
     ComponentError,
     DalContext,
@@ -26,7 +23,6 @@ use dal::{
         self,
         SlowRuntimeError,
     },
-    workspace_snapshot::WorkspaceSnapshotSelector,
 };
 use frigg::{
     FriggError,
@@ -34,7 +30,6 @@ use frigg::{
 };
 use serde_json::Value;
 use si_events::{
-    WorkspaceSnapshotAddress,
     materialized_view::BuildPriority,
     workspace_snapshot::Change,
 };
@@ -60,32 +55,15 @@ use si_frontend_mv_types::{
         IncomingConnectionsList as IncomingConnectionsListMv,
         ManagementConnections as ManagementConnectionsMv,
     },
-    index::{
-        ChangeSetMvIndex,
-        DeploymentMvIndex,
-    },
-    materialized_view::{
-        MaterializedView,
-        MaterializedViewInventoryItem,
-        materialized_view_definitions_checksum,
-    },
+    materialized_view::MaterializedViewInventoryItem,
     object::{
         FrontendObject,
         patch::{
-            ChangesetIndexUpdate,
-            ChangesetPatchBatch,
-            ChangesetUpdateMeta,
-            DeploymentIndexUpdate,
-            DeploymentPatchBatch,
-            DeploymentUpdateMeta,
             ObjectPatch,
             StreamingPatch,
         },
     },
-    reference::{
-        IndexReference,
-        ReferenceKind,
-    },
+    reference::ReferenceKind,
     schema_variant::{
         SchemaVariant as SchemaVariantMv,
         SchemaVariantCategories as SchemaVariantCategoriesMv,
@@ -112,6 +90,20 @@ use tokio::{
 use crate::updates::{
     EddaUpdates,
     EddaUpdatesError,
+};
+
+pub mod change_set;
+pub mod deployment;
+
+// Re-export public functions from submodules
+pub use change_set::{
+    build_all_mv_for_change_set,
+    build_mv_for_changes_in_change_set,
+    try_reuse_mv_index_for_new_change_set,
+};
+pub use deployment::{
+    build_all_mvs_for_deployment,
+    build_outdated_mvs_for_deployment,
 };
 
 #[remain::sorted]
@@ -162,491 +154,11 @@ pub enum MaterializedViewError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
-/// This function iterates active change sets that share the same snapshot address,
-/// and looks for an [`ChangeSetMvIndex`] it can use. If it finds one, create a new index pointer to
-/// the found [`ChangeSetMvIndex`] and return true. If none can be used, return false.
-/// NOTE: The copy will fail if we try to reuse an index for a change set that already has an index pointer
-#[instrument(
-    name = "materialized_view.try_reuse_mv_index_for_new_change_set",
-    level = "info",
-    skip_all,
-    fields(
-        si.workspace.id = Empty,
-        si.change_set.id = %ctx.change_set_id(),
-        si.from_change_set.id = Empty,
-    ),
-)]
-pub async fn try_reuse_mv_index_for_new_change_set(
-    ctx: &DalContext,
-    frigg: &FriggStore,
-    edda_updates: &EddaUpdates,
-    snapshot_address: WorkspaceSnapshotAddress,
-) -> Result<bool, MaterializedViewError> {
-    let span = current_span_for_instrument_at!("info");
-    let workspace_id = ctx.workspace_pk()?;
-    let change_set_id = ctx.change_set_id();
-    span.record("si.workspace.id", workspace_id.to_string());
-    // first find a change set Id in my workspace that has the same snapshot address that I do
-    // do we care which change set we use? Assuming there's more than one, we could choose Head...
-    let change_sets_using_snapshot = ChangeSet::list_active(ctx).await?;
-
-    let definitions_checksum = materialized_view_definitions_checksum();
-
-    for change_set in change_sets_using_snapshot {
-        // found a match, so let's retrieve that MvIndex and put the same object as ours
-        // If we're unable to parse the pointer for some reason, don't treat it as a hard error and just move on.
-        let Ok(Some((pointer, _revision))) = frigg
-            .get_change_set_index_pointer_value(workspace_id, change_set.id)
-            .await
-        else {
-            // try the next one
-            // no need error if this index was never built, it would get rebuilt when necessary
-            continue;
-        };
-
-        if pointer.snapshot_address == snapshot_address.to_string()
-            && pointer.definition_checksum == definitions_checksum
-        {
-            // found one, create a new index pointer to it!
-            let change_set_mv_id = change_set_id.to_string();
-            frigg
-                .insert_change_set_index_key_for_existing_index(
-                    workspace_id,
-                    &change_set_mv_id,
-                    pointer.clone(),
-                )
-                .await?;
-            span.record("si.from_change_set.id", change_set.id.to_string());
-            let meta = ChangesetUpdateMeta {
-                workspace_id,
-                change_set_id,
-                from_index_checksum: pointer.clone().index_checksum.to_owned(), // These are the same because we're starting from current for the new change set
-                to_index_checksum: pointer.clone().index_checksum,
-            };
-            let index_update = ChangesetIndexUpdate::new(meta, pointer.index_checksum, None);
-            edda_updates
-                .publish_change_set_index_update(index_update)
-                .await?;
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
-/// This function first tries to copy and existing [`ChangeSetMvIndex`] if we find a valid one with the same snapshot address
-/// If it cannot copy one, it builds all Materialized Views (MVs) for the change set in the [`DalContext`].
-/// It assumes there is no existing [`ChangeSetMvIndex`] for the change set.
-#[instrument(
-    name = "materialized_view.new_change_set",
-    level = "info",
-    skip_all,
-    fields(
-        si.workspace.id = Empty,
-        si.change_set.id = %ctx.change_set_id(),
-    ),
-)]
-pub async fn reuse_or_rebuild_index_for_new_change_set(
-    ctx: &DalContext,
-    frigg: &FriggStore,
-    edda_updates: &EddaUpdates,
-    parallel_build_limit: usize,
-    to_snapshot_address: WorkspaceSnapshotAddress,
-) -> Result<(), MaterializedViewError> {
-    let span = current_span_for_instrument_at!("info");
-    span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
-    let did_copy_result =
-        self::try_reuse_mv_index_for_new_change_set(ctx, frigg, edda_updates, to_snapshot_address)
-            .await;
-
-    match did_copy_result {
-        // If we returned successfully, evaluate the response,
-        Ok(did_copy) => {
-            if did_copy {
-                return Ok(());
-            } else {
-                // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
-                self::build_all_mv_for_change_set(
-                    ctx,
-                    frigg,
-                    edda_updates,
-                    parallel_build_limit,
-                    None,
-                    "initial build",
-                )
-                .await?
-            }
-        }
-        Err(err) => {
-            error!(si.error.message = ?err, "error copying existing index");
-            // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
-            self::build_all_mv_for_change_set(
-                ctx,
-                frigg,
-                edda_updates,
-                parallel_build_limit,
-                None,
-                "initial build",
-            )
-            .await?
-        }
-    }
-    Ok(())
-}
-
-/// This function builds all Materialized Views (MVs) for the change set in the [`DalContext`].
-/// It assumes there is no existing [`ChangeSetMvIndex`] for the change set.
-/// If we're rebuilding due to a moved snapshot (Edda got behind), then we pass in the [`from_snapshot_address`]
-/// so that patches can be successfully processed.
-/// If we're rebuilding on demand, pass [`None`] for [`from_snapshot_address`]
-#[instrument(
-    name = "materialized_view.build_all_mv_for_change_set",
-    level = "info",
-    skip_all,
-    fields(
-        si.workspace.id = Empty,
-        si.change_set.id = %ctx.change_set_id(),
-        si.materialized_view.reason = reason_message,
-        si.edda.mv.count = Empty,
-        si.edda.mv.avg_build_elapsed_ms = Empty,
-        si.edda.mv.max_build_elapsed_ms = Empty,
-        si.edda.mv.slowest_kind = Empty,
-    ),
-)]
-pub async fn build_all_mv_for_change_set(
-    ctx: &DalContext,
-    frigg: &FriggStore,
-    edda_updates: &EddaUpdates,
-    parallel_build_limit: usize,
-    from_index_checksum: Option<String>,
-    reason_message: &'static str,
-) -> Result<(), MaterializedViewError> {
-    let span = current_span_for_instrument_at!("info");
-    span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
-
-    // Pretend everything has changed, and build all MVs.
-    let changes = map_all_nodes_to_change_objects(&ctx.workspace_snapshot()?)
-        .instrument(tracing::info_span!(
-            "materialized_view.build_all_mv_for_change_set.make_changes_for_all_nodes"
-        ))
-        .await?;
-
-    let (
-        frontend_objects,
-        patches,
-        build_count,
-        build_total_elapsed,
-        build_max_elapsed,
-        build_slowest_mv_kind,
-    ) = build_mv_inner(
-        ctx,
-        frigg,
-        parallel_build_limit,
-        edda_updates,
-        ctx.workspace_pk()?,
-        ctx.change_set_id(),
-        &changes,
-    )
-    .await?;
-    span.record("si.edda.mv.count", build_count);
-    if build_count > 0 {
-        span.record(
-            "si.edda.mv.avg_build_elapsed_ms",
-            build_total_elapsed.as_millis() / build_count,
-        );
-        span.record(
-            "si.edda.mv.max_build_elapsed_ms",
-            build_max_elapsed.as_millis(),
-        );
-        span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
-    }
-
-    let mut index_entries: Vec<_> = frontend_objects.into_iter().map(Into::into).collect();
-    index_entries.sort();
-    let snapshot_to_address = ctx.workspace_snapshot()?.address().await;
-    let workspace_id = ctx.workspace_pk()?;
-    let change_set_id = ctx.change_set_id();
-    debug!("index_entries {:?}", index_entries);
-    let mv_index = ChangeSetMvIndex::new(snapshot_to_address.to_string(), index_entries);
-    let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
-    let meta = ChangesetUpdateMeta {
-        workspace_id,
-        change_set_id,
-        from_index_checksum: from_index_checksum
-            .map_or(mv_index_frontend_object.checksum.to_owned(), |check| check),
-        to_index_checksum: mv_index_frontend_object.checksum.to_owned(),
-    };
-    let patch_batch = ChangesetPatchBatch::new(meta.clone(), patches);
-    let change_set_mv_id = change_set_id.to_string();
-
-    let index_update =
-        ChangesetIndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned(), None);
-
-    frigg
-        .put_change_set_index(
-            ctx.workspace_pk()?,
-            &change_set_mv_id,
-            &mv_index_frontend_object,
-        )
-        .await?;
-
-    edda_updates
-        .publish_change_set_patch_batch(patch_batch)
-        .await?;
-    edda_updates
-        .publish_change_set_index_update(index_update)
-        .await?;
-
-    Ok(())
-}
-
-pub async fn map_all_nodes_to_change_objects(
-    snapshot: &WorkspaceSnapshotSelector,
-) -> Result<Vec<Change>, MaterializedViewError> {
-    Ok(snapshot
-        .nodes()
-        .await?
-        .into_iter()
-        .map(|node| Change {
-            entity_id: node.id().into(),
-            entity_kind: (&node).into(),
-            merkle_tree_hash: node.merkle_tree_hash(),
-        })
-        .collect())
-}
-
-#[instrument(
-    name = "materialized_view.build_mv_for_changes_in_change_set",
-    level = "info",
-    skip_all,
-    fields(
-        si.workspace.id = Empty,
-        si.change_set.id = %change_set_id,
-        si.snapshot_from_address = %from_snapshot_address,
-        si.snapshot_to_address = %to_snapshot_address,
-        si.edda_request.changes.count = changes.len(),
-        si.edda.mv.count = Empty,
-        si.edda.mv.avg_build_elapsed_ms = Empty,
-        si.edda.mv.max_build_elapsed_ms = Empty,
-        si.edda.mv.slowest_kind = Empty,
-    )
-)]
-#[allow(clippy::too_many_arguments)]
-pub async fn build_mv_for_changes_in_change_set(
-    ctx: &DalContext,
-    frigg: &FriggStore,
-    edda_updates: &EddaUpdates,
-    parallel_build_limit: usize,
-    change_set_id: ChangeSetId,
-    from_snapshot_address: WorkspaceSnapshotAddress,
-    to_snapshot_address: WorkspaceSnapshotAddress,
-    changes: &[Change],
-) -> Result<(), MaterializedViewError> {
-    let workspace_id = ctx.workspace_pk()?;
-    debug!("building for changes: {:?}", changes);
-    let span = current_span_for_instrument_at!("info");
-    span.record("si.workspace.id", workspace_id.to_string());
-    let (index_frontend_object, index_kv_revision) = frigg
-        .get_change_set_index(ctx.workspace_pk()?, change_set_id)
-        .await?
-        .ok_or_else(|| MaterializedViewError::NoIndexForIncrementalBuild {
-            workspace_pk: workspace_id,
-            change_set_id,
-        })?;
-    let from_index_checksum = index_frontend_object.checksum;
-    let (
-        frontend_objects,
-        patches,
-        build_count,
-        build_total_elapsed,
-        build_max_elapsed,
-        build_slowest_mv_kind,
-    ) = build_mv_inner(
-        ctx,
-        frigg,
-        parallel_build_limit,
-        edda_updates,
-        workspace_id,
-        change_set_id,
-        changes,
-    )
-    .await?;
-    span.record("si.edda.mv.count", build_count);
-    if build_count > 0 {
-        span.record(
-            "si.edda.mv.avg_build_elapsed_ms",
-            build_total_elapsed.as_millis() / build_count,
-        );
-        span.record(
-            "si.edda.mv.max_build_elapsed_ms",
-            build_max_elapsed.as_millis(),
-        );
-        span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
-    }
-
-    let mv_index: ChangeSetMvIndex = serde_json::from_value(index_frontend_object.data.clone())?;
-    let removal_checksum = "0".to_string();
-    let removed_items: HashSet<(String, String)> = patches
-        .iter()
-        .filter_map(|patch| {
-            if patch.to_checksum == removal_checksum {
-                Some((patch.kind.clone(), patch.id.clone()))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mut index_entries: Vec<IndexReference> =
-        frontend_objects.into_iter().map(Into::into).collect();
-    let new_index_entries: HashSet<(String, String)> = index_entries
-        .iter()
-        .map(|index_entry| (index_entry.kind.clone(), index_entry.id.clone()))
-        .collect();
-
-    for index_entry in mv_index.mv_list {
-        if !removed_items.contains(&(index_entry.kind.clone(), index_entry.id.clone()))
-            && !new_index_entries.contains(&(index_entry.kind.clone(), index_entry.id.clone()))
-        {
-            index_entries.push(index_entry.clone());
-        }
-    }
-    index_entries.sort();
-
-    let new_mv_index = ChangeSetMvIndex::new(to_snapshot_address.to_string(), index_entries);
-    let new_mv_index_frontend_object = FrontendObject::try_from(new_mv_index)?;
-
-    let patch = json_patch::diff(
-        &index_frontend_object.data,
-        &new_mv_index_frontend_object.data,
-    );
-
-    let to_index_checksum = new_mv_index_frontend_object.checksum.to_owned();
-    let meta = ChangesetUpdateMeta {
-        workspace_id,
-        change_set_id,
-        from_index_checksum: from_index_checksum.clone(),
-        to_index_checksum: to_index_checksum.clone(),
-    };
-    let patch_batch = ChangesetPatchBatch::new(meta.clone(), patches);
-
-    let index_patch = ObjectPatch {
-        kind: ReferenceKind::ChangeSetMvIndex.to_string(),
-        id: new_mv_index_frontend_object.id.clone(),
-        from_checksum: from_index_checksum,
-        to_checksum: to_index_checksum,
-        patch,
-    };
-
-    let index_update = ChangesetIndexUpdate::new(
-        meta,
-        new_mv_index_frontend_object.checksum.to_owned(),
-        Some(index_patch),
-    );
-    let change_set_mv_id = change_set_id.to_string();
-
-    frigg
-        .update_change_set_index(
-            workspace_id,
-            &change_set_mv_id,
-            &new_mv_index_frontend_object,
-            index_kv_revision,
-        )
-        .await?;
-
-    edda_updates
-        .publish_change_set_patch_batch(patch_batch)
-        .await?;
-    edda_updates
-        .publish_change_set_index_update(index_update)
-        .await?;
-
-    Ok(())
-}
-
-/// This function builds all Materialized Views (MVs) this deployment environment
-#[instrument(
-    name = "materialized_view.build_all_mvs_for_deployment",
-    level = "info",
-    skip_all,
-    fields(
-        si.materialized_view.reason = reason_message,
-        si.edda.mv.count = Empty,
-        si.edda.mv.avg_build_elapsed_ms = Empty,
-        si.edda.mv.max_build_elapsed_ms = Empty,
-        si.edda.mv.slowest_kind = Empty,
-    ),
-)]
-pub async fn build_all_mvs_for_deployment(
-    ctx: &DalContext,
-    frigg: &FriggStore,
-    edda_updates: &EddaUpdates,
-    parallel_build_limit: usize,
-    reason_message: &'static str,
-) -> Result<(), MaterializedViewError> {
-    let span = current_span_for_instrument_at!("info");
-
-    // Discover all deployment MVs that need to be built
-    let deployment_tasks = discover_deployment_mvs(ctx).await?;
-
-    // Use the deployment MV parallel processing system
-    let (
-        frontend_objects,
-        patches,
-        build_count,
-        build_total_elapsed,
-        build_max_elapsed,
-        build_slowest_mv_kind,
-    ) = build_deployment_mv_inner(ctx, frigg, parallel_build_limit, &deployment_tasks).await?;
-    span.record("si.edda.mv.count", build_count);
-    if build_count > 0 {
-        span.record(
-            "si.edda.mv.avg_build_elapsed_ms",
-            build_total_elapsed.as_millis() / build_count,
-        );
-        span.record(
-            "si.edda.mv.max_build_elapsed_ms",
-            build_max_elapsed.as_millis(),
-        );
-        span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
-    }
-
-    // Build the deployment index from all the frontend objects
-    let mut index_entries: Vec<_> = frontend_objects.into_iter().map(Into::into).collect();
-    index_entries.sort();
-
-    debug!("index_entries {:?}", index_entries);
-    let mv_index = DeploymentMvIndex::new(index_entries);
-    let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
-    let from_index_checksum = mv_index_frontend_object.checksum.to_owned();
-    let to_index_checksum = from_index_checksum.clone();
-    let meta = DeploymentUpdateMeta {
-        from_index_checksum,
-        to_index_checksum,
-    };
-    let patch_batch = DeploymentPatchBatch::new(meta.clone(), patches);
-    let index_update =
-        DeploymentIndexUpdate::new(meta, mv_index_frontend_object.checksum.to_owned());
-
-    // Store the index on frigg
-    frigg
-        .put_deployment_index(&mv_index_frontend_object)
-        .await?;
-
-    // publish updates
-    edda_updates
-        .publish_deployment_patch_batch(patch_batch)
-        .await?;
-    edda_updates
-        .publish_deployment_index_update(index_update)
-        .await?;
-
-    Ok(())
-}
-
+#[macro_export]
 macro_rules! spawn_build_mv_task {
     ($build_tasks:expr, $ctx:expr, $frigg:expr, $change:expr, $mv_id:expr, $mv:ty, $build_fn:expr, $maybe_mv_index:expr $(,)?) => {
         let kind = <$mv as ::si_frontend_mv_types::materialized_view::MaterializedView>::kind();
-        $build_tasks.spawn(build_mv_for_graph_task(
+        $build_tasks.spawn($crate::materialized_view::build_mv_for_graph_task(
             $ctx.clone(),
             $frigg.clone(),
             $change,
@@ -658,7 +170,7 @@ macro_rules! spawn_build_mv_task {
     };
 }
 
-type BuildMvInnerReturn = (
+pub type BuildMvInnerReturn = (
     Vec<FrontendObject>,
     Vec<ObjectPatch>,
     u128,
@@ -676,7 +188,7 @@ type BuildMvInnerReturn = (
         si.change_set_id = %change_set_id,
     ),
 )]
-async fn build_mv_inner(
+pub async fn build_mv_inner(
     ctx: &DalContext,
     frigg: &FriggStore,
     parallel_build_limit: usize,
@@ -716,7 +228,7 @@ async fn build_mv_inner(
     let mut build_slowest_mv_kind: &str = "N/A";
 
     loop {
-        // If there there aren't any queued builds waiting for the concurrency limit then
+        // If there aren't any queued builds waiting for the concurrency limit then
         // we've finished everything and are able to send off the collected
         // FrontendObjects, and ObjectPatches to update the index & send patches out over the
         // websocket.
@@ -806,14 +318,14 @@ async fn build_mv_inner(
     ))
 }
 
-type BuildMvTaskResult = (
+pub type BuildMvTaskResult = (
     ReferenceKind,
     String,
     Duration,
     Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>,
 );
 
-async fn build_mv_for_graph_task<F, T, E>(
+pub async fn build_mv_for_graph_task<F, T, E>(
     ctx: DalContext,
     frigg: FriggStore,
     change: Change,
@@ -846,7 +358,8 @@ where
     (mv_kind, mv_id, start.elapsed(), result)
 }
 
-type MvBuilderResult = Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>;
+pub type MvBuilderResult =
+    Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>;
 
 pub enum BuildMvOp {
     Create,
@@ -908,427 +421,8 @@ where
     build_mv(op, mv_kind, build_mv_future).await
 }
 
-pub async fn build_mv<F, T, E>(
-    operation: BuildMvOp,
-    mv_kind: ReferenceKind,
-    build_mv_future: F,
-) -> MvBuilderResult
-where
-    F: Future<Output = Result<T, E>> + Send + 'static,
-    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum + Send + 'static,
-    E: Into<MaterializedViewError> + std::marker::Send + 'static,
-    MaterializedViewError: From<E>,
-    MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
-{
-    let kind = mv_kind.to_string();
-
-    if let BuildMvOp::Delete { id, checksum } = operation {
-        Ok((
-            Some(ObjectPatch {
-                kind,
-                id,
-                from_checksum: checksum,
-                to_checksum: "0".to_string(),
-                patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
-                    json_patch::RemoveOperation::default(),
-                )]),
-            }),
-            None,
-        ))
-    } else {
-        let mv = slow_rt::spawn(build_mv_future)?.await??;
-        let mv_json = serde_json::to_value(&mv)?;
-        let to_checksum = FrontendChecksum::checksum(&mv).to_string();
-        let frontend_object: FrontendObject = mv.try_into()?;
-
-        let (from_checksum, previous_data) = match operation {
-            BuildMvOp::Create => ("0".to_string(), serde_json::Value::Null),
-            BuildMvOp::UpdateFrom { checksum, data } => (checksum, data),
-            BuildMvOp::Delete { .. } => unreachable!(),
-        };
-
-        if from_checksum == to_checksum {
-            // If checksum does not change, return the object but no patch
-            Ok((None, Some(frontend_object)))
-        } else {
-            Ok((
-                Some(ObjectPatch {
-                    kind,
-                    id: frontend_object.id.clone(),
-                    from_checksum,
-                    to_checksum,
-                    patch: json_patch::diff(&previous_data, &mv_json),
-                }),
-                Some(frontend_object),
-            ))
-        }
-    }
-}
-
-/// The [`Change`] of the trigger entity that would have spawned a build task for the
-/// `mv_kind`, if we hadn't already reached the concurrency limit for running build
-/// tasks.
-#[derive(Debug, Eq, PartialEq)]
-struct QueuedBuildMvTask {
-    pub change: Change,
-    pub mv_kind: ReferenceKind,
-    pub priority: BuildPriority,
-}
-
-/// A deployment MV task that needs to be built for the deployment environment.
-/// Unlike changeset MVs, these are not triggered by graph changes but by deployment-scoped
-/// data that exists outside the workspace graph (e.g., cached modules, global configuration, etc.).
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct DeploymentMvTask {
-    pub mv_kind: ReferenceKind,
-    pub mv_id: String,
-    pub priority: BuildPriority,
-}
-
-impl Ord for QueuedBuildMvTask {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match self.priority.cmp(&other.priority) {
-            std::cmp::Ordering::Equal => {
-                // Within the same priority, items will be ordered by the triggering
-                // entity ID. Doing `self.cmp(other)` means that the newer IDs are
-                // be considered "larger", and items with the same priority will be
-                // processed newest to oldest acording to when their ID was created.
-                self.change.entity_id.cmp(&other.change.entity_id)
-            }
-            ord => ord,
-        }
-    }
-}
-
-impl PartialOrd for QueuedBuildMvTask {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for DeploymentMvTask {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match self.priority.cmp(&other.priority) {
-            std::cmp::Ordering::Equal => {
-                // Within the same priority, order by MV kind and then by ID
-                match self.mv_kind.cmp(&other.mv_kind) {
-                    std::cmp::Ordering::Equal => self.mv_id.cmp(&other.mv_id),
-                    ord => ord,
-                }
-            }
-            ord => ord,
-        }
-    }
-}
-
-impl PartialOrd for DeploymentMvTask {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-/// Discovers all deployment-scoped MVs that need to be built.
-/// This function examines deployment-scoped data sources and creates tasks
-/// for all individual objects and collections that should be built.
-async fn discover_deployment_mvs(
-    ctx: &DalContext,
-) -> Result<Vec<DeploymentMvTask>, MaterializedViewError> {
-    use dal::cached_module::CachedModule;
-
-    let mut tasks = Vec::new();
-
-    // Add the existing CachedSchemas collection MV
-    tasks.push(DeploymentMvTask {
-        mv_kind: ReferenceKind::CachedSchemas,
-        mv_id: "cached_schemas".to_string(), // Collection has a fixed ID
-        priority: <si_frontend_mv_types::cached_schemas::CachedSchemas as MaterializedView>::build_priority(),
-    });
-
-    // Discover individual CachedSchema and CachedSchemaVariant objects from cached modules
-    let modules = CachedModule::latest_modules(ctx).await?;
-    for mut module in modules {
-        let si_pkg = module.si_pkg(ctx).await?;
-        let schemas = si_pkg.schemas().map_err(CachedModuleError::SiPkg)?;
-        for schema in schemas {
-            // Add individual CachedSchema MV task
-            tasks.push(DeploymentMvTask {
-                mv_kind: ReferenceKind::CachedSchema,
-                mv_id: module.schema_id.to_string(),
-                priority: <si_frontend_mv_types::cached_schema::CachedSchema as MaterializedView>::build_priority(),
-            });
-
-            // Add CachedDefaultVariant MV task
-            tasks.push(DeploymentMvTask {
-                mv_kind: ReferenceKind::CachedDefaultVariant,
-                mv_id: module.schema_id.to_string(),
-                priority: <si_frontend_mv_types::cached_default_variant::CachedDefaultVariant as MaterializedView>::build_priority(),
-            });
-
-            // Add individual CachedSchemaVariant MV tasks
-            let variants = schema.variants().map_err(CachedModuleError::SiPkg)?;
-            for variant in variants {
-                if let Some(unique_id) = variant.unique_id() {
-                    if let Ok(variant_id) = unique_id.parse::<dal::SchemaVariantId>() {
-                        tasks.push(DeploymentMvTask {
-                            mv_kind: ReferenceKind::CachedSchemaVariant,
-                            mv_id: variant_id.to_string(),
-                            priority: <si_frontend_mv_types::cached_schema_variant::CachedSchemaVariant as MaterializedView>::build_priority(),
-                        });
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(tasks)
-}
-
-/// Builds deployment MVs using the same parallel processing pattern as changeset MVs.
-/// Uses a priority queue and JoinSet for concurrent execution with error handling.
-#[instrument(
-    name = "materialized_view.build_deployment_mv_inner",
-    level = "debug",
-    skip_all
-)]
-async fn build_deployment_mv_inner(
-    ctx: &DalContext,
-    frigg: &FriggStore,
-    parallel_build_limit: usize,
-    deployment_tasks: &[DeploymentMvTask],
-) -> Result<BuildMvInnerReturn, MaterializedViewError> {
-    let mut frontend_objects = Vec::new();
-    let mut patches = Vec::new();
-    let mut build_tasks = JoinSet::new();
-    let mut queued_mv_builds = BinaryHeap::new();
-
-    let maybe_deployment_mv_index =
-        Arc::new(frigg.get_deployment_index().await?.map(|result| result.0));
-
-    // Queue all deployment tasks
-    for task in deployment_tasks {
-        queued_mv_builds.push(task.clone());
-    }
-
-    let mut build_total_elapsed = Duration::from_nanos(0);
-    let mut build_count: u128 = 0;
-    let mut build_max_elapsed = Duration::from_nanos(0);
-    let mut build_slowest_mv_kind: &str = "N/A";
-
-    loop {
-        // If there aren't any queued builds waiting for the concurrency limit then
-        // we've finished everything and are able to send off the collected
-        // FrontendObjects and ObjectPatches to update the index.
-        if queued_mv_builds.is_empty() && build_tasks.is_empty() {
-            break;
-        }
-
-        // Spawn as many of the queued build tasks as we can, up to the concurrency limit.
-        while !queued_mv_builds.is_empty() && build_tasks.len() < parallel_build_limit {
-            let Some(DeploymentMvTask { mv_kind, mv_id, .. }) = queued_mv_builds.pop() else {
-                // This _really_ shouldn't ever return `None` as we just checked that
-                // `queued_mv_builds` is not empty.
-                break;
-            };
-            spawn_deployment_mv_task(
-                &mut build_tasks,
-                ctx,
-                frigg,
-                mv_kind,
-                mv_id,
-                maybe_deployment_mv_index.clone(),
-            )
-            .await?;
-        }
-
-        if let Some(join_result) = build_tasks.join_next().await {
-            let (kind, mv_id, build_duration, execution_result) = join_result?;
-            metric!(counter.edda.mv_build = -1, label = kind.to_string());
-
-            match execution_result {
-                Ok((maybe_patch, maybe_frontend_object)) => {
-                    // Store deployment objects using deployment storage
-                    if let Some(frontend_object) = maybe_frontend_object {
-                        frigg.insert_deployment_object(&frontend_object).await?;
-                        frontend_objects.push(frontend_object);
-                    }
-                    if let Some(patch) = maybe_patch {
-                        // Deployment MVs don't need streaming patches since they're not changeset-scoped
-                        debug!("Deployment Patch: {:?}", patch);
-                        patches.push(patch);
-                    }
-                    build_count += 1;
-                    if build_duration > build_max_elapsed {
-                        build_max_elapsed = build_duration;
-                        build_slowest_mv_kind = kind.into();
-                    }
-                    build_total_elapsed += build_duration;
-                }
-                Err(err) => {
-                    error!(name = "deployment_mv_build_error", si.error.message = err.to_string(), kind = %kind, id = %mv_id);
-                    return Err(err);
-                }
-            }
-        }
-    }
-
-    Ok((
-        frontend_objects,
-        patches,
-        build_count,
-        build_total_elapsed,
-        build_max_elapsed,
-        build_slowest_mv_kind,
-    ))
-}
-
-/// Spawns a build task for a specific deployment MV.
-async fn spawn_deployment_mv_task(
-    build_tasks: &mut JoinSet<BuildMvTaskResult>,
-    ctx: &DalContext,
-    frigg: &FriggStore,
-    mv_kind: ReferenceKind,
-    mv_id: String,
-    maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
-) -> Result<(), MaterializedViewError> {
-    // Record the currently running number of MV build tasks
-    metric!(counter.edda.mv_build = 1, label = mv_kind.to_string());
-
-    match mv_kind {
-        ReferenceKind::CachedSchemas => {
-            build_tasks.spawn(build_mv_for_deployment_task(
-                ctx.clone(),
-                frigg.clone(),
-                mv_id,
-                mv_kind,
-                dal_materialized_views::cached::schemas::assemble(ctx.clone()),
-                maybe_deployment_mv_index,
-            ));
-        }
-        ReferenceKind::CachedSchema => {
-            let schema_id: dal::SchemaId = mv_id.parse().map_err(|_| {
-                dal::SchemaError::UninstalledSchemaNotFound(dal::SchemaId::from(ulid::Ulid::nil()))
-            })?;
-            build_tasks.spawn(build_mv_for_deployment_task(
-                ctx.clone(),
-                frigg.clone(),
-                mv_id,
-                mv_kind,
-                dal_materialized_views::cached::schema::assemble(ctx.clone(), schema_id),
-                maybe_deployment_mv_index,
-            ));
-        }
-        ReferenceKind::CachedSchemaVariant => {
-            let variant_id: dal::SchemaVariantId = mv_id.parse().map_err(|_| {
-                dal::SchemaVariantError::NotFound(dal::SchemaVariantId::from(ulid::Ulid::nil()))
-            })?;
-
-            build_tasks.spawn(build_mv_for_deployment_task(
-                ctx.clone(),
-                frigg.clone(),
-                mv_id,
-                mv_kind,
-                dal_materialized_views::cached::schema::variant::assemble(ctx.clone(), variant_id),
-                maybe_deployment_mv_index,
-            ));
-        }
-        ReferenceKind::CachedDefaultVariant => {
-            let schema_id: dal::SchemaId = mv_id.parse().map_err(|_| {
-                dal::SchemaError::UninstalledSchemaNotFound(dal::SchemaId::from(ulid::Ulid::nil()))
-            })?;
-
-            build_tasks.spawn(build_mv_for_deployment_task(
-                ctx.clone(),
-                frigg.clone(),
-                mv_id,
-                mv_kind,
-                dal_materialized_views::cached::schema::variant::default::assemble(
-                    ctx.clone(),
-                    schema_id,
-                ),
-                maybe_deployment_mv_index,
-            ));
-        }
-        _ => {
-            // This shouldn't happen for deployment MVs, but we'll handle it gracefully
-            warn!("Unexpected MV kind for deployment: {:?}", mv_kind);
-            return Ok(());
-        }
-    }
-
-    Ok(())
-}
-
-/// Builds an MV task specifically for deployment (no Change context needed).
-async fn build_mv_for_deployment_task<F, T, E>(
-    _ctx: DalContext,
-    frigg: FriggStore,
-    mv_id: String,
-    mv_kind: ReferenceKind,
-    build_mv_future: F,
-    maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
-) -> BuildMvTaskResult
-where
-    F: Future<Output = Result<T, E>> + Send + 'static,
-    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum + Send + 'static,
-    E: Into<MaterializedViewError> + Send + 'static,
-    MaterializedViewError: From<E>,
-    MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
-{
-    debug!(kind = %mv_kind, id = %mv_id, "Building Deployment MV");
-    let start = Instant::now();
-
-    let result = build_mv_for_deployment_task_inner(
-        &frigg,
-        mv_id.clone(),
-        mv_kind,
-        build_mv_future,
-        maybe_deployment_mv_index,
-    )
-    .await;
-
-    (mv_kind, mv_id, start.elapsed(), result)
-}
-
-/// Inner function for building deployment MV tasks.
-async fn build_mv_for_deployment_task_inner<F, T, E>(
-    frigg: &FriggStore,
-    mv_id: String,
-    mv_kind: ReferenceKind,
-    build_mv_future: F,
-    maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
-) -> MvBuilderResult
-where
-    F: Future<Output = Result<T, E>> + Send + 'static,
-    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum + Send + 'static,
-    E: Into<MaterializedViewError> + Send + 'static,
-    MaterializedViewError: From<E>,
-    MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
-{
-    // For deployment MVs, check if object exists in deployment storage
-    let op = {
-        let maybe_previous_version = frigg
-            .get_current_deployment_object_with_index(
-                mv_kind,
-                &mv_id,
-                (*maybe_deployment_mv_index).clone(),
-            )
-            .await?;
-
-        if let Some(previous_version) = maybe_previous_version {
-            BuildMvOp::UpdateFrom {
-                checksum: previous_version.checksum,
-                data: previous_version.data,
-            }
-        } else {
-            BuildMvOp::Create
-        }
-    };
-
-    build_mv(op, mv_kind, build_mv_future).await
-}
-
 #[allow(clippy::too_many_arguments)]
-async fn spawn_build_mv_task_for_change_and_mv_kind(
+pub async fn spawn_build_mv_task_for_change_and_mv_kind(
     build_tasks: &mut JoinSet<BuildMvTaskResult>,
     ctx: &DalContext,
     frigg: &FriggStore,
@@ -1757,4 +851,92 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
     }
 
     Ok(())
+}
+
+pub async fn build_mv<F, T, E>(
+    operation: BuildMvOp,
+    mv_kind: ReferenceKind,
+    build_mv_future: F,
+) -> MvBuilderResult
+where
+    F: Future<Output = Result<T, E>> + Send + 'static,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum + Send + 'static,
+    E: Into<MaterializedViewError> + std::marker::Send + 'static,
+    MaterializedViewError: From<E>,
+    MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
+{
+    let kind = mv_kind.to_string();
+
+    if let BuildMvOp::Delete { id, checksum } = operation {
+        Ok((
+            Some(ObjectPatch {
+                kind,
+                id,
+                from_checksum: checksum,
+                to_checksum: "0".to_string(),
+                patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
+                    json_patch::RemoveOperation::default(),
+                )]),
+            }),
+            None,
+        ))
+    } else {
+        let mv = slow_rt::spawn(build_mv_future)?.await??;
+        let mv_json = serde_json::to_value(&mv)?;
+        let to_checksum = FrontendChecksum::checksum(&mv).to_string();
+        let frontend_object: FrontendObject = mv.try_into()?;
+
+        let (from_checksum, previous_data) = match operation {
+            BuildMvOp::Create => ("0".to_string(), serde_json::Value::Null),
+            BuildMvOp::UpdateFrom { checksum, data } => (checksum, data),
+            BuildMvOp::Delete { .. } => unreachable!(),
+        };
+
+        if from_checksum == to_checksum {
+            // If checksum does not change, return the object but no patch
+            Ok((None, Some(frontend_object)))
+        } else {
+            Ok((
+                Some(ObjectPatch {
+                    kind,
+                    id: frontend_object.id.clone(),
+                    from_checksum,
+                    to_checksum,
+                    patch: json_patch::diff(&previous_data, &mv_json),
+                }),
+                Some(frontend_object),
+            ))
+        }
+    }
+}
+
+/// The [`Change`] of the trigger entity that would have spawned a build task for the
+/// `mv_kind`, if we hadn't already reached the concurrency limit for running build
+/// tasks.
+#[derive(Debug, Eq, PartialEq)]
+pub struct QueuedBuildMvTask {
+    pub change: Change,
+    pub mv_kind: ReferenceKind,
+    pub priority: BuildPriority,
+}
+
+impl Ord for QueuedBuildMvTask {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.priority.cmp(&other.priority) {
+            std::cmp::Ordering::Equal => {
+                // Within the same priority, items will be ordered by the triggering
+                // entity ID. Doing `self.cmp(other)` means that the newer IDs are
+                // be considered "larger", and items with the same priority will be
+                // processed newest to oldest acording to when their ID was created.
+                self.change.entity_id.cmp(&other.change.entity_id)
+            }
+            ord => ord,
+        }
+    }
+}
+
+impl PartialOrd for QueuedBuildMvTask {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
