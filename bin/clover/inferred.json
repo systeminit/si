@@ -2348,6 +2348,12 @@
       "OUTBOUND"
     ]
   },
+  "The principal type. The supported value is IAM if you use a fully defined Amazon Resource Name (ARN), or IAM_PATTERN if you use an ARN with no accountID, with or without wildcard characters.": {
+    "enum": [
+      "IAM",
+      "IAM_PATTERN"
+    ]
+  },
   "The frequency unit. Supported values are HOURS and DAYS.": {
     "enum": [
       "HOURS",
@@ -8252,6 +8258,9 @@
     "enum": null
   },
   "The ARN of the policy used to set the permissions boundary for the role.\n For more information about permissions boundaries, see [Permissions boundaries for IAM identities](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) in the *IAM User Guide*.": {
+    "enum": null
+  },
+  "The ARN of the principal (user, role, or group).": {
     "enum": null
   },
   "The ARN of the public certificate issued by ACM to validate ownership of your custom domain. Only required when configuring mutual TLS and using an ACM imported or private CA certificate ARN as the RegionalCertificateArn.": {
