@@ -244,6 +244,7 @@ impl AttributeFuncDestination {
 pub enum EventualParent {
     SchemaVariant(SchemaVariantId),
     Component(ComponentId),
+    Schema(SchemaId),
 }
 impl EventualParent {
     /// Returns an error if the [`EventualParent`] is a locked [`SchemaVariant`]
@@ -252,7 +253,7 @@ impl EventualParent {
             EventualParent::SchemaVariant(schema_variant_id) => {
                 Ok(SchemaVariant::error_if_locked(ctx, *schema_variant_id).await?)
             }
-            EventualParent::Component(_) => Ok(()),
+            EventualParent::Schema(_) | EventualParent::Component(_) => Ok(()),
         }
     }
 }
@@ -260,7 +261,7 @@ impl EventualParent {
 impl From<EventualParent> for Option<si_events::ComponentId> {
     fn from(value: EventualParent) -> Self {
         match value {
-            EventualParent::SchemaVariant(_) => None,
+            EventualParent::SchemaVariant(_) | EventualParent::Schema(_) => None,
             EventualParent::Component(component_id) => Some(component_id),
         }
     }
@@ -270,7 +271,7 @@ impl From<EventualParent> for Option<si_events::SchemaVariantId> {
     fn from(value: EventualParent) -> Self {
         match value {
             EventualParent::SchemaVariant(schema_variant_id) => Some(schema_variant_id),
-            EventualParent::Component(_) => None,
+            EventualParent::Component(_) | EventualParent::Schema(_) => None,
         }
     }
 }
