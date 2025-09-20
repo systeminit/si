@@ -11,7 +11,6 @@ use chrono::{
     DateTime,
     Utc,
 };
-use edda_client::EddaClient;
 use itertools::Itertools;
 use module_index_client::{
     ModuleDetailsResponse,
@@ -29,7 +28,10 @@ use si_data_pg::{
 };
 use si_db::HistoryActor;
 pub use si_id::CachedModuleId;
-use si_id::UserPk;
+use si_id::{
+    SchemaVariantId,
+    UserPk,
+};
 use si_pkg::{
     SiPkg,
     SiPkgError,
@@ -272,8 +274,7 @@ impl CachedModule {
     /// updates the cache for any new builtin modules
     pub async fn update_cached_modules(
         ctx: &DalContext,
-        edda_client: EddaClient,
-    ) -> CachedModuleResult<Vec<CachedModule>> {
+    ) -> CachedModuleResult<UpdateCachedModuleReport> {
         let module_index_client = {
             let services_context = ctx.services_context();
             let module_index_url = services_context
@@ -292,25 +293,33 @@ impl CachedModule {
             .collect();
 
         // We need to remove any schemas that are in the cache but no longer in the builtin list
-        Self::remove_unused(ctx, &modules).await?;
+        let (removed_schema_ids, removed_schema_variant_ids, removed_module_ids) =
+            Self::remove_unused(ctx, &modules).await?;
 
         let ctx_clone = ctx.clone();
         ctx_clone.commit_no_rebase().await?;
 
-        let new_modules =
-            Self::cache_modules(ctx, &modules, module_index_client, edda_client).await?;
+        let new_module_ids = Self::cache_modules(ctx, &modules, module_index_client)
+            .await?
+            .iter()
+            .map(|m| m.id)
+            .collect();
 
         // Now check and fix up any missing package summaries
         Self::update_missing_package_summaries(ctx).await?;
 
-        Ok(new_modules)
+        Ok(UpdateCachedModuleReport {
+            removed_module_ids,
+            removed_schema_ids,
+            removed_schema_variant_ids,
+            new_module_ids,
+        })
     }
 
     async fn cache_modules(
         ctx: &DalContext,
         modules: &HashMap<String, ModuleDetailsResponse>,
         module_index_client: ModuleIndexClient,
-        _edda_client: EddaClient,
     ) -> CachedModuleResult<Vec<CachedModule>> {
         let hashes = modules.keys().map(ToOwned::to_owned).collect_vec();
         let uncached_hashes = CachedModule::find_missing_entries(ctx, hashes).await?;
@@ -354,20 +363,18 @@ impl CachedModule {
             tokio::time::sleep(WAIT_BETWEEN_BATCHES).await;
         }
 
-        // Ask edda to rebuild the deployment MVs, which include the cached modules
-        //
-        // Until the performance issues in building the deployment-level MVs are fixed,
-        // this is only going to be deployed through the manual module sync process.
-        //
-        // edda_client.rebuild_for_deployment().await?;
-
         Ok(new_modules)
     }
 
+    /// Remove all unused modules. These are those that are either no longer builtins or have been deleted.
     async fn remove_unused(
         ctx: &DalContext,
         module_details_by_hash: &HashMap<String, ModuleDetailsResponse>,
-    ) -> CachedModuleResult<()> {
+    ) -> CachedModuleResult<(
+        HashSet<SchemaId>,
+        HashMap<SchemaVariantId, SchemaId>,
+        HashSet<CachedModuleId>,
+    )> {
         let builtin_schema_ids: HashSet<SchemaId> = module_details_by_hash
             .values()
             .filter_map(|module| {
@@ -379,16 +386,62 @@ impl CachedModule {
             .map(Into::into)
             .collect();
 
+        let mut schema_ids = HashSet::new();
+        let mut schema_variant_ids = HashMap::new();
+        let mut module_ids = HashSet::new();
+
         // Look at all schema IDs in the cache and determine if any of them are no longer builtins.
         // If they aren't, ALL modules corresponding to them get remove.
-        for lm in CachedModule::latest_user_independent_modules(ctx).await? {
+        for mut lm in CachedModule::latest_user_independent_modules(ctx).await? {
             if !builtin_schema_ids.contains(&lm.schema_id) {
-                CachedModule::remove_all_for_schema_id(ctx, lm.schema_id).await?;
+                let (collected_schema_ids, collected_schema_variant_ids) =
+                    lm.collect_ids_before_deletion(ctx).await?;
+                schema_ids.extend(collected_schema_ids);
+                schema_variant_ids.extend(collected_schema_variant_ids);
+                module_ids.extend(CachedModule::remove_all_for_schema_id(ctx, lm.schema_id).await?);
             }
         }
 
-        Ok(())
+        Ok((schema_ids, schema_variant_ids, module_ids))
     }
+
+    /// Collect all relevant IDs for a [`CachedModule`] that is about to be deleted. You especially
+    /// may need this if the data you need is in the package data as it is serialized and
+    /// difficult to access by query.
+    async fn collect_ids_before_deletion(
+        &mut self,
+        ctx: &DalContext,
+    ) -> CachedModuleResult<(Vec<SchemaId>, HashMap<SchemaVariantId, SchemaId>)> {
+        let mut schema_ids = Vec::new();
+        let mut schema_variant_ids = HashMap::new();
+
+        let pkg = self.si_pkg(ctx).await?;
+        for schema in pkg.schemas()? {
+            if let Some(unique_id) = schema.unique_id() {
+                if let Ok(schema_id) = unique_id.parse::<SchemaId>() {
+                    schema_ids.push(schema_id);
+
+                    // Theorhetically, there is a chance that the unique ID does not become a
+                    // SchemaId and that we do not process the variants. If that happens, I will
+                    // eat my keyboard with a sewing instrument. We need the SchemaId because
+                    // garbage collecting the variants in edda requires having the SchemaId in
+                    // order to know if the cached module has been shot out back. Why? Because the
+                    // SchemaVariantId is part of the serialized package data. You cannot search
+                    // for modules by variant. You need the SchemaId to find a way back home.
+                    for variant in schema.variants()? {
+                        if let Some(unique_id) = variant.unique_id() {
+                            if let Ok(schema_variant_id) = unique_id.parse::<SchemaVariantId>() {
+                                schema_variant_ids.insert(schema_variant_id, schema_id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok((schema_ids, schema_variant_ids))
+    }
+
     #[instrument(name = "cached_module.install_from_module", level = "info", skip_all)]
     pub async fn find_latest_for_schema_id(
         ctx: &DalContext,
@@ -578,14 +631,18 @@ impl CachedModule {
     pub async fn remove_all_for_schema_id(
         ctx: &DalContext,
         schema_id: SchemaId,
-    ) -> CachedModuleResult<()> {
+    ) -> CachedModuleResult<Vec<CachedModuleId>> {
         let query = r#"
-            DELETE FROM cached_modules WHERE schema_id = $1
+            DELETE FROM cached_modules WHERE schema_id = $1 RETURNING id
             "#;
 
-        ctx.txns().await?.pg().query(query, &[&schema_id]).await?;
+        let rows = ctx.txns().await?.pg().query(query, &[&schema_id]).await?;
 
-        Ok(())
+        let mut deleted_ids = Vec::with_capacity(rows.len());
+        for row in rows {
+            deleted_ids.push(row.try_get("id")?);
+        }
+        Ok(deleted_ids)
     }
 
     // module_id is just for debugging purposes; we only want one record per hash
@@ -746,4 +803,18 @@ impl PackageData {
     fn package_summary(&self) -> &serde_json::Value {
         &self.package_summary
     }
+}
+
+/// The report generated from updating [cached modules](CachedModule).
+#[derive(Debug, Clone)]
+pub struct UpdateCachedModuleReport {
+    /// All modules that were removed because they are no longer builtins or have been deleted.
+    pub removed_module_ids: HashSet<CachedModuleId>,
+    /// All [schemas](dal::Schema) that are no longer builtins.
+    pub removed_schema_ids: HashSet<SchemaId>,
+    /// All [schema variants](dal::SchemaVariant) that are no longer builtins along with a pointer
+    /// to their original [schemas](dal::SchemaId).
+    pub removed_schema_variant_ids: HashMap<SchemaVariantId, SchemaId>,
+    /// All modules that were added as new builtins.
+    pub new_module_ids: HashSet<CachedModuleId>,
 }
