@@ -4384,6 +4384,9 @@
   "ARN of the source object in S3.": {
     "enum": null
   },
+  "ARN of the workload identity": {
+    "enum": null
+  },
   "ARN or name of a Bedrock model.": {
     "enum": null
   },
@@ -4478,6 +4481,9 @@
     "enum": null
   },
   "Amazon RDS cluster Amazon Resource Name (ARN).": {
+    "enum": null
+  },
+  "Amazon Resource Name (ARN) of an IAM role": {
     "enum": null
   },
   "Amazon Resource Name (ARN) of the Resiliency Policy.": {
@@ -5269,6 +5275,9 @@
   "Description of the recipe": {
     "enum": null
   },
+  "Description of the resource": {
+    "enum": null
+  },
   "Descriptor for where the location actually points": {
     "enum": null
   },
@@ -5393,6 +5402,9 @@
     "enum": null
   },
   "Environment role arn for custom aws environment permissions": {
+    "enum": null
+  },
+  "Environment variable value": {
     "enum": null
   },
   "Epoch time in seconds you want the first interval to start. Be sure to choose a time that configures the intervals the way that you want. For example, if you want weekly intervals starting on Mondays at 6 a.m., be sure to specify a start time that is a Monday at 6 a.m.\nAs soon as one calendar interval ends, another automatically begins.": {
@@ -6397,6 +6409,9 @@
   "Name for a prompt resource.": {
     "enum": null
   },
+  "Name for a resource": {
+    "enum": null
+  },
   "Name for a resource.": {
     "enum": null
   },
@@ -6688,6 +6703,15 @@
   "Network egress type.": {
     "enum": null
   },
+  "Network mode configuration type": {
+    "enum": null
+  },
+  "Network modes supported by browser": {
+    "enum": null
+  },
+  "Network modes supported by code interpreter": {
+    "enum": null
+  },
   "Network type of the InfluxDB Instance.": {
     "enum": null
   },
@@ -6731,6 +6755,9 @@
     "enum": null
   },
   "OpenID Connect (OIDC) scopes are used by an application during authentication to authorize access to details of a user. Each scope returns a specific set of user attributes.": {
+    "enum": null
+  },
+  "OpenID Connect discovery URL": {
     "enum": null
   },
   "Optional SecretManager ARN which stores the database credentials": {
@@ -6839,6 +6866,9 @@
     "enum": null
   },
   "Property description not available.": {
+    "enum": null
+  },
+  "Protocol configuration for the agent runtime": {
     "enum": null
   },
   "Protocol that is used for encrypting the traffic exchanged between the DataSync Agent and the EFS file system.": {
@@ -8086,6 +8116,9 @@
   "The ARN of the IAM role that has permissions to read from the Amazon S3 data source.": {
     "enum": null
   },
+  "The ARN of the IAM role that the code interpreter uses to access resources.": {
+    "enum": null
+  },
   "The ARN of the IAM role under which Amazon SES publishes email sending events to the Amazon Kinesis Firehose stream.": {
     "enum": null
   },
@@ -8767,6 +8800,9 @@
   "The Amazon Resource Name (ARN) of the IAM role that provides permissions for the Kubernetes control plane to make calls to AWS API operations on your behalf.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the IAM role that the browser uses to access resources.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the IAM role that the proxy uses to access secrets in AWS Secrets Manager.": {
     "enum": null
   },
@@ -9359,6 +9395,9 @@
     "enum": null
   },
   "The EC2 key pair of the infrastructure configuration..": {
+    "enum": null
+  },
+  "The ECR URI of the container": {
     "enum": null
   },
   "The ECRRepositoryPrefix is a custom alias for upstream registry url.": {
@@ -9968,6 +10007,9 @@
     "enum": null
   },
   "The ID of the organizational unit.": {
+    "enum": null
+  },
+  "The ID of the parent Agent Runtime (required for creation)": {
     "enum": null
   },
   "The ID of the parent domain unit.": {
@@ -11431,6 +11473,9 @@
   "The description of the API.": {
     "enum": null
   },
+  "The description of the AgentCore Runtime endpoint.": {
+    "enum": null
+  },
   "The description of the Amazon DataZone domain.": {
     "enum": null
   },
@@ -11488,7 +11533,13 @@
   "The description of the attribute group. ": {
     "enum": null
   },
+  "The description of the browser.": {
+    "enum": null
+  },
   "The description of the calculated attribute.": {
+    "enum": null
+  },
+  "The description of the code interpreter.": {
     "enum": null
   },
   "The description of the collection": {
@@ -13420,6 +13471,9 @@
   "The name of the Access Control List to associate with the cluster.": {
     "enum": null
   },
+  "The name of the Agent Runtime Endpoint": {
+    "enum": null
+  },
   "The name of the Amazon CloudWatch log group the function sends logs to. By default, Lambda functions send logs to a default log group named ``/aws/lambda/<function name>``. To use a different log group, enter an existing log group or enter a new log group name.": {
     "enum": null
   },
@@ -13768,6 +13822,9 @@
   "The name of the bridge.": {
     "enum": null
   },
+  "The name of the browser.": {
+    "enum": null
+  },
   "The name of the bucket on the self-managed object storage server.": {
     "enum": null
   },
@@ -13805,6 +13862,9 @@
     "enum": null
   },
   "The name of the cluster. This value must be unique as it also serves as the cluster identifier.": {
+    "enum": null
+  },
+  "The name of the code interpreter.": {
     "enum": null
   },
   "The name of the collection": {
@@ -17243,6 +17303,9 @@
     "enum": null
   },
   "The version of robot software suite.": {
+    "enum": null
+  },
+  "The version of the AgentCore Runtime to use for the endpoint.": {
     "enum": null
   },
   "The version of the Amazon Redshift engine software that you want to deploy on the cluster.The version selected runs on all the nodes in the cluster.": {
