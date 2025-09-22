@@ -74,7 +74,6 @@
         <DropdownMenuItem
           icon="eye"
           label="View details"
-          :disabled="!shouldAllowClick"
           @select="navigateToActionDetails"
         />
 

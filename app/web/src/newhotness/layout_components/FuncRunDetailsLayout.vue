@@ -35,11 +35,7 @@
       <!-- Function info -->
       <div class="flex-1 flex flex-row items-center gap-xs">
         <span class="sm">
-          {{
-            funcRun?.functionDisplayName ||
-            funcRun?.functionName ||
-            "Function Run"
-          }}
+          {{ displayName }}
         </span>
 
         <!-- add a bit more "gap" to the first (dt) element, so the pairs have more space between them -->
@@ -52,20 +48,7 @@
             )
           "
         >
-          <template v-if="funcRun?.functionKind">
-            <dt><Icon name="func" size="xs" /></dt>
-            <dd>{{ funcRun.functionKind }}</dd>
-          </template>
-
-          <template v-if="funcRun?.componentName">
-            <dt></dt>
-            <dd>{{ funcRun.componentName }}</dd>
-          </template>
-
-          <template v-if="funcRun?.actionKind">
-            <dt><Icon name="play" size="xs" /></dt>
-            <dd>{{ funcRun.actionKind }}</dd>
-          </template>
+          <slot name="headerList"> </slot>
         </dl>
         <FuncRunStatusBadge v-if="funcRun && status" :status="status" />
       </div>
@@ -93,9 +76,10 @@
       "
     >
       <GridItemWithLiveHeader
+        v-if="!noLogs"
         class="row-span-3"
         title="Logs"
-        :live="isLive && funcRun?.state === 'Running'"
+        :live="!!isLive && funcRun?.state === 'Running'"
       >
         <CodeViewer
           v-if="logText"
@@ -108,65 +92,29 @@
           No logs available
         </div>
       </GridItemWithLiveHeader>
-
-      <GridItemWithLiveHeader title="Code" :live="false">
-        <CodeViewer
-          v-if="functionCode"
-          :code="functionCode"
-          language="javascript"
-          allowCopy
-        />
-        <div v-else class="text-neutral-400 italic text-xs p-xs">
-          No code available
-        </div>
-      </GridItemWithLiveHeader>
-
-      <GridItemWithLiveHeader title="Arguments" :live="false">
-        <CodeViewer
-          v-if="argsJson"
-          :code="argsJson"
-          language="json"
-          allowCopy
-        />
-        <div v-else class="text-neutral-400 italic text-xs p-xs">
-          No arguments available
-        </div>
-      </GridItemWithLiveHeader>
-
-      <GridItemWithLiveHeader title="Result" :live="false">
-        <CodeViewer
-          v-if="resultJson"
-          :code="resultJson"
-          language="json"
-          allowCopy
-        />
-        <div v-else class="text-neutral-400 italic text-xs p-xs">
-          No result available
-        </div>
-      </GridItemWithLiveHeader>
+      <slot name="grid"> </slot>
     </div>
   </section>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
-import { Icon, themeClasses, NewButton } from "@si/vue-lib/design-system";
+import { themeClasses, NewButton } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import CodeViewer from "@/components/CodeViewer.vue";
-import { FuncRun } from "../api_composables/func_run";
 import FuncRunStatusBadge from "../FuncRunStatusBadge.vue";
-import GridItemWithLiveHeader from "./GridItemWithLiveHeader.vue";
 import StatusBox from "./StatusBox.vue";
+import GridItemWithLiveHeader from "./GridItemWithLiveHeader.vue";
+import { FuncRun } from "../api_composables/func_run";
 
 const props = defineProps<{
-  funcRun: FuncRun;
+  displayName: string;
+  funcRun?: FuncRun;
+  noLogs?: boolean;
   status: string;
   logText: string;
-  functionCode: string;
-  argsJson: string;
-  resultJson: string;
-  isLive: boolean;
+  isLive?: boolean;
   errorHint?: string;
   errorMessageRaw?: string;
 }>();
