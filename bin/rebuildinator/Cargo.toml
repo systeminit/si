@@ -1,0 +1,18 @@
+[package]
+name = "rebuildinator"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+clap = { workspace = true }
+color-eyre = { workspace = true }
+edda-client = { path = "../../lib/edda-client" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-id = { path = "../../lib/si-id" }
+si-std = { path = "../../lib/si-std" }
+tokio = { workspace = true }
