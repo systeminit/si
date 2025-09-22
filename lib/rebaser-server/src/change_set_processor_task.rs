@@ -546,6 +546,8 @@ mod handlers {
         PreCommit(#[source] HandlerErrorSource),
         #[error("message processing error due to transient service (retry message): {0}")]
         TransientService(#[source] HandlerErrorSource),
+        #[error("unprocessable message error (delete message): {0}")]
+        Unprocessable(#[source] HandlerErrorSource),
     }
 
     impl HandlerError {
@@ -559,6 +561,10 @@ mod handlers {
 
         pub(crate) fn transient_service(err: impl Into<HandlerErrorSource>) -> Self {
             Self::TransientService(err.into())
+        }
+
+        pub(crate) fn unprocessable(err: impl Into<HandlerErrorSource>) -> Self {
+            Self::Unprocessable(err.into())
         }
     }
 
@@ -593,31 +599,14 @@ mod handlers {
                     );
                     Response::default_service_unavailable()
                 }
+                Self::Unprocessable(err) => {
+                    error!(
+                        si.error.message = ?err,
+                        "failed to process message which appears to be unprocessable",
+                    );
+                    Response::default_bad_request()
+                }
             }
-            // match self {
-            //     Self::DalTransactions(dal::TransactionsError::PgPool(err)) => match err.as_ref() {
-            //         si_data_pg::PgPoolError::PoolError(err) => {
-            //             return Response::default_service_unavailable();
-            //         }
-            //         _ => {}
-            //     },
-            //     _ => {}
-            //     //
-            //     // Self::Action(action_error) => todo!(),
-            //     // Self::ChangeSet(change_set_error) => todo!(),
-            //     // Self::ComputeExecutor(dedicated_executor_error) => todo!(),
-            //     // Self::DependentValueRoot(dependent_value_root_error) => todo!(),
-            //     // Self::PublishReply(error) => todo!(),
-            //     // Self::Rebase(rebase_error) => todo!(),
-            //     // Self::Serialize(serialize_error) => todo!(),
-            //     // Self::DalTransactions(txns_error) => todo!(),
-            //     // Self::Workspace(workspace_error) => todo!(),
-            //     // Self::WorkspaceSnapshot(workspace_snapshot_error) => todo!(),
-            //     // Self::WsEvent(ws_event_error) => todo!(),
-            // };
-            //
-            // // TODO(fnichol): there are different responses, esp. for expected interrupted
-            // Response::default_internal_server_error()
         }
     }
 
@@ -643,61 +632,70 @@ mod handlers {
         let metric_label = format!("{workspace_id}:{change_set_id}");
 
         metric!(counter.rebaser.rebase_processing = 1, label = metric_label);
-        // FIXME: error DalTransactions -> PgPoolError -> PoolError
+
         let mut ctx = ctx_builder
             .build_for_change_set_as_system(workspace_id, change_set_id, None)
             .await
-            .map_err(|err| match err {
-                dal::TransactionsError::AuditLogging(audit_logging_error) => todo!(),
-                dal::TransactionsError::BadActivity(
-                    activity_payload_discriminants,
-                    activity_payload_discriminants1,
-                ) => todo!(),
-                dal::TransactionsError::BadWorkspaceAndChangeSet => todo!(),
-                dal::TransactionsError::ChangeSet(change_set_error) => todo!(),
-                dal::TransactionsError::ChangeSetNotSet => todo!(),
-                dal::TransactionsError::ConnStateInvalid => todo!(),
-                dal::TransactionsError::JobQueueProcessor(job_queue_processor_error) => todo!(),
-                dal::TransactionsError::Join(join_error) => todo!(),
-                dal::TransactionsError::LayerDb(layer_db_error) => todo!(),
-                dal::TransactionsError::Nats(error) => todo!(),
-                dal::TransactionsError::NoBaseChangeSet(change_set_id) => todo!(),
-                dal::TransactionsError::Pg(pg_error) => todo!(),
-                dal::TransactionsError::PgPool(pg_pool_error) => todo!(),
-                dal::TransactionsError::RebaseFailed(
-                    rebase_batch_address_kind,
-                    change_set_id,
-                    _,
-                ) => todo!(),
-                dal::TransactionsError::Rebaser(client_error) => todo!(),
-                dal::TransactionsError::RebaserReplyDeadlineElasped(
-                    duration,
-                    naxum_api_types_request_id,
-                ) => todo!(),
-                dal::TransactionsError::SerdeJson(error) => todo!(),
-                dal::TransactionsError::SiDb(error) => todo!(),
-                dal::TransactionsError::SlowRuntime(slow_runtime_error) => todo!(),
-                dal::TransactionsError::TryLock(try_lock_error) => todo!(),
-                dal::TransactionsError::TxnCommit => todo!(),
-                dal::TransactionsError::TxnRollback => todo!(),
-                dal::TransactionsError::TxnStart(_) => todo!(),
-                dal::TransactionsError::Workspace(workspace_error) => todo!(),
-                dal::TransactionsError::WorkspaceNotSet => todo!(),
-                dal::TransactionsError::WorkspaceSnapshot(workspace_snapshot_error) => todo!(),
+            .map_err(|err| match &err {
+                // - Failed to get connection from pool or other pg pool issue
+                dal::TransactionsError::PgPool(_)
+                // - Failed to determine change set via db query
+                | dal::TransactionsError::ChangeSet(_)
+                // - Failed to determine workspace via db query
+                // - Failed to determine snapshot address via db query
+                // - Failed to load snapshot from layer db
+                //
+                | dal::TransactionsError::Workspace(_)
+                => {
+                    HandlerError::transient_service(err)
+                }
+                _ => HandlerError::pre_commit(err)
             })?;
 
-        let rebase_status = perform_rebase(&mut ctx, &edda, &request, &server_tracker, features)
-            .await
-            .unwrap_or_else(|err| {
-                error!(
-                    si.error.message = ?err,
-                    ?request,
-                    "performing rebase failed, attempting to reply",
-                );
-                RebaseStatus::Error {
-                    message: err.to_string(),
-                }
-            });
+        let rebase_status_result =
+            match perform_rebase(&mut ctx, &edda, &request, &server_tracker, features).await {
+                Ok(rebase_status) => Ok(rebase_status),
+                Err(rebase_error) => match &rebase_error {
+                    // - Failed to compute correct transforms. Failures here are related to the
+                    //   structure of a graph snapshot and so would reliably and reproducibly fail
+                    //   on additional retries.
+                    RebaseError::WorkspaceSnapshot(
+                        dal::WorkspaceSnapshotError::CorrectTransforms(_)
+                        | dal::WorkspaceSnapshotError::CorrectTransformsSplit(_),
+                    )
+                    // - Failed to perform updates from correct transforms. For similar reasons as
+                    //   above, these error are a result of unexpected graph snapshot structures
+                    //   and would reliably and reproducibly failed on additional retries.
+                    | RebaseError::PerformUpdates(_) => {
+                        Err(HandlerError::unprocessable(rebase_error))
+                    }
+                    // - Failed to send updates to edda, but this is after commit so should *not*
+                    //   retry
+                    RebaseError::SendEddaUpdates(_) => {
+                        Ok(RebaseStatus::Error {
+                            message: rebase_error.to_string(),
+                        })
+                    }
+                    // - Failed to successfully commit the changes--all these errors are pre-commit
+                    //   and so message should be retried
+                    _ => {
+                        Err(HandlerError::pre_commit(rebase_error))
+                    }
+                },
+            };
+
+        // let rebase_status = perform_rebase(&mut ctx, &edda, &request, &server_tracker, features)
+        //     .await
+        //     .unwrap_or_else(|err| {
+        //         error!(
+        //             si.error.message = ?err,
+        //             ?request,
+        //             "performing rebase failed, attempting to reply",
+        //         );
+        //         RebaseStatus::Error {
+        //             message: err.to_string(),
+        //         }
+        //     });
 
         let maybe_post_rebase_activities_result =
             if matches!(rebase_status, RebaseStatus::Success { .. }) {
