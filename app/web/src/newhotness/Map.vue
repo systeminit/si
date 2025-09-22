@@ -542,7 +542,8 @@ const addNodeElements = (group: any, d: layoutNode, glowy=false) => {
         classes.push("failed-actions");
       }
 
-      if (d.component.latestManagementFuncRun) {
+      const funcRun = latestManagementComponentRuns.value[d.component.id]
+      if (funcRun) {
         classes.push("management-runs");
       }
 
@@ -602,10 +603,7 @@ const addNodeElements = (group: any, d: layoutNode, glowy=false) => {
   group
     .append("text")
     .text(
-      truncateString(
-        `${d.component.schemaVariantName} - ${d.component.latestManagementFuncRun?.functionName}`,
-        MAX_STRING_LENGTH,
-      ),
+      truncateString(d.component.schemaVariantName, MAX_STRING_LENGTH),
     )
     .attr("dx", "45")
     .attr("dy", "45")
@@ -1114,7 +1112,7 @@ const connections = useQuery<IncomingConnections[]>({
 const mapData = computed(() => {
   const nodes = new Set<string>();
   const edges = new Set<string>();
-  const components: Record<string, ComponentInList> = {};
+  const components: Record<string, ComponentInList & { latestManagementFuncRun?: FuncRun }> = {};
   if (!connections.data.value || !componentsById.value) {
     return { nodes, edges, components };
   }
@@ -1176,7 +1174,7 @@ const mapData = computed(() => {
       const component = allComponents.get(componentId);
       if (component) {
         nodes.add(componentId);
-        components[componentId] = component;
+        components[componentId] = { ...component, latestManagementFuncRun: latestManagementComponentRuns.value[componentId] };
       }
     });
 
@@ -1196,7 +1194,7 @@ const mapData = computed(() => {
     // Normal mode: include all components
     allComponents.forEach((component, componentId) => {
       nodes.add(componentId);
-      components[componentId] = component;
+      components[componentId] = { ...component, latestManagementFuncRun: latestManagementComponentRuns.value[componentId] };
     });
 
     allConnections.forEach((edge) => {

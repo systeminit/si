@@ -346,6 +346,22 @@ function initializeTerminal() {
     ) {
       shellWebSocket.value.send(JSON.stringify({ input: data }));
     }
+
+    fixScroll();
+  });
+
+  const fixScroll = () => {
+    const domEl = document.querySelector(".xterm-viewport");
+    if (domEl) {
+      domEl.scrollTop = domEl.scrollHeight;
+    }
+  };
+
+  terminal.onLineFeed(() => {
+    fixScroll();
+  });
+  terminal.onRender(() => {
+    fixScroll();
   });
 
   // Handle terminal resize with debouncing to prevent flicker
