@@ -25,6 +25,11 @@ onMounted(async () => {
     return router.push({
       name: "review-legal",
     });
+  } else if (!authStore.user.emailVerified) {
+    // unverified users who have finished the ToS go to the profile page
+    return router.push({
+      name: "profile",
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
