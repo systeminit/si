@@ -75,7 +75,7 @@ fastrace = "0.7.4"
 flate2 = "1.0.35"
 foyer = { version = "0.14.1", features = ["tracing"] }
 fs4 = "0.12.0"
-fuser = { version = "0.15.1", default-features = false }
+fuser = { version = "0.16.0", default-features = false }
 futures = "0.3.31"
 futures-lite = "2.5.0"
 glob = "0.3.1"
