@@ -12,48 +12,10 @@ docker_image(
         "//:flake.nix": ".",
         "//:flake.lock": ".",
         "//:rust-toolchain": ".",
-        "docker-entrypoint.sh": ".",
     },
     build_args = {
         "BASE_VERSION": "12-slim",
         "USER_UID": "2000",
         "USER_GID": "2000",
     },
-    run_docker_args = [
-        "--privileged",
-        "--volume",
-        "$PWD:/workdir",
-        "--volume",
-        "/workdir/buck-out",
-        "--volume",
-        "/workdir/target",
-        "--volume",
-        "/workdir/tmp",
-        "--volume",
-        "/var/run/docker.sock:/var/run/docker.sock",
-    ],
-)
-
-shfmt_check(
-    name = "check-format-shell",
-    srcs = ["docker-entrypoint.sh"],
-)
-
-shellcheck(
-    name = "check-lint-shell",
-    srcs = ["docker-entrypoint.sh"],
-)
-
-test_suite(
-    name = "check-format",
-    tests = [
-        ":check-format-shell",
-    ],
-)
-
-test_suite(
-    name = "check-lint",
-    tests = [
-        ":check-lint-shell",
-    ],
 )

@@ -70,7 +70,7 @@
           gh
           gitMinimal
           makeWrapper
-          nodePkgs.pnpm
+          pnpm
           nodejs
           python3
           ripgrep
@@ -191,21 +191,39 @@
               ++ langJsExtraPkgs;
           };
 
-          # CI environment - essential tools for CI tasks without heavy build dependencies
           ci = mkShell {
             packages = buck2NativeBuildInputs ++ [
+              awscli2
               buildkite-test-collector-rust
+              cargo-sort
+              deno
               docker
               docker-compose
               gh
               jq
               shfmt
+              shellcheck
+              yapf
             ];
           };
+        };
 
-          # environment for lang-js
-          langjs = mkShell {
-            packages = buck2NativeBuildInputs ++ langJsExtraPkgs ++ [];
+        packages = {
+          ci-tools = pkgs.symlinkJoin {
+            name = "ci-tools";
+            paths = buck2NativeBuildInputs ++ [
+              awscli2
+              buildkite-test-collector-rust
+              cargo-sort
+              deno
+              docker
+              docker-compose
+              gh
+              jq
+              shfmt
+              shellcheck
+              yapf
+            ];
           };
         };
 

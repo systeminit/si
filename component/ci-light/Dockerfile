@@ -4,6 +4,7 @@ FROM debian:${BASE_VERSION}
 ARG USER_UID
 ARG USER_GID
 
+# Install base system requirements
 # hadolint ignore=DL3008
 RUN set -eux; \
     apt-get update; \
@@ -19,6 +20,7 @@ RUN set -eux; \
     ; \
     rm -rf /var/lib/apt/lists/*
 
+# Install buildevents
 ARG BUILDEVENTS_VERSION=v0.17.0
 RUN set -eux; \
     ARCH="$(dpkg --print-architecture)"; \
@@ -31,49 +33,34 @@ RUN set -eux; \
         "https://github.com/honeycombio/buildevents/releases/download/${BUILDEVENTS_VERSION}/buildevents-${BUILDEVENTS_ARCH}" && \
     chmod +x /usr/local/bin/buildevents
 
+# Setup workspace and git configuration
 RUN set -eux; \
-    useradd --create-home --shell /bin/bash --uid "${USER_UID}" ci; \
-    echo 'ci ALL=(ALL:ALL) NOPASSWD: ALL' >/etc/sudoers.d/ci; \
-    mkdir -p /workdir; \
-    chown -R ci:ci /workdir
+    mkdir -p /workspace; \
+    git config --global --add safe.directory /workspace
 
-RUN groupadd -f docker && usermod -aG docker ci
-
-ENV USER=ci
-USER ci:ci
-
-# hadolint ignore=DL3004,DL4006
+# Install Nix as root with daemon mode
 RUN set -eux; \
-    sudo install -d -m755 -o $(id -u) -g $(id -g) /nix; \
-    curl \
-            --proto '=https' \
-            --tlsv1.2 -sSf \
-            -L https://nixos.org/nix/install \
-        | sh -s -- --no-daemon; \
-    mkdir -p "$HOME/.config/nix"; \
+    curl -L https://nixos.org/nix/install | sh -s -- --daemon; \
+    mkdir -p /root/.config/nix; \
     { \
         echo 'extra-nix-path = nixpkgs=flake:nixpkgs'; \
         echo 'experimental-features = nix-command flakes impure-derivations ca-derivations'; \
         echo 'auto-optimise-store = true'; \
         echo 'bash-prompt-prefix = (nix:$name)\040'; \
-    } >"$HOME/.config/nix/nix.conf"; \
-    . "$HOME/.nix-profile/etc/profile.d/nix.sh"; \
-    nix-env -iA nixpkgs.nixVersions.stable; \
-    grep 'Nix installer' "$HOME/.profile" >>"$HOME/.bashrc"; \
-    \
-    git config --global --add safe.directory /workdir; \
-    mkdir -p "$HOME/.ssh"; \
-    chmod 0700 "$HOME/.ssh"; \
-    ssh-keyscan github.com >>"$HOME/.ssh/known_hosts";
+    } >"/root/.config/nix/nix.conf"; \
+    mkdir -p "/root/.ssh"; \
+    chmod 0700 "/root/.ssh"; \
+    ssh-keyscan github.com >>"/root/.ssh/known_hosts"
 
-WORKDIR /workdir
+WORKDIR /workspace
 
+# Copy flake configuration and prebuild Nix environment
 COPY flake.nix flake.lock rust-toolchain ./
-COPY docker-entrypoint.sh /
 
 RUN set -eux; \
-    . "$HOME/.nix-profile/etc/profile.d/nix.sh"; \
+    . /etc/profile.d/nix.sh; \
     nix develop .#ci --build; \
-    rm -f flake.nix flake.lock rust-toolchain
+    CI_TOOLS=$(nix build --no-link --print-out-paths .#ci-tools); \
+    cp -rs "$CI_TOOLS/bin/"* /usr/local/bin/ 2>/dev/null || true; \
+    cp -rs "$CI_TOOLS/share" /usr/local/ 2>/dev/null || true
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
