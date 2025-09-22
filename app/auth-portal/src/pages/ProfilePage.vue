@@ -128,16 +128,15 @@
 
             <VButton
               iconRight="chevron--right"
-              :disabled="validationState.isError"
+              :disabled="validationState.isError || failedEmailVerify"
               :requestStatus="updateUserReqStatus"
               loadingText="Saving your profile..."
               successText="Updated your profile!"
               tone="action"
               variant="solid"
+              :label="saveButtonLabel"
               @click="saveHandler"
-            >
-              Save
-            </VButton>
+            />
           </Stack>
         </form>
       </div>
@@ -175,6 +174,8 @@ const DISCORD_TAG_REGEX =
 const { validationState, validationMethods } = useValidatedInputGroup();
 const authStore = useAuthStore();
 const workspacesStore = useWorkspacesStore();
+// Reactively load the workspaces so that the workspace redirect happens for first time users
+workspacesStore.refreshWorkspaces();
 const router = useRouter();
 
 const loadUserReqStatus = authStore.getRequestStatus("LOAD_USER");
@@ -184,6 +185,10 @@ const updateUserReqStatus = authStore.getRequestStatus("UPDATE_USER");
 const storeUser = computed(() => authStore.user);
 const draftUser = ref<User>();
 const isOnboarding = ref<boolean>();
+
+const refreshAuth0ReqStatus = authStore.getRequestStatus(
+  "REFRESH_AUTH0_PROFILE",
+);
 
 useHead({ title: "Profile" });
 
@@ -201,6 +206,12 @@ function checkUserOnboarding() {
 
 watch(storeUser, checkUserOnboarding, { immediate: true });
 
+watch([refreshAuth0ReqStatus, storeUser], () => {
+  if (storeUser.value?.emailVerified) {
+    failedEmailVerify.value = false;
+  }
+});
+
 onBeforeMount(() => {
   // normally when landing on this page, we should probably make sure we have the latest profile info
   // but we already load user info with CHECK_AUTH so can skip if it was just loaded
@@ -216,7 +227,17 @@ onBeforeMount(() => {
 const saveHandler = async () => {
   if (validationMethods.hasError()) return;
 
-  // if this is first time, we will take them off profile page after save
+  // Users whose email has not been verified should not be able to continue past here
+  if (!authStore.user?.emailVerified) {
+    await verifyEmail();
+    if (!authStore.user?.emailVerified) {
+      youMustVerifyYourEmailAddress();
+      return;
+    }
+  }
+
+  // Okay now we know that their email has been verified
+  // if this is first time, do this stuff
   const updateReq = await authStore.UPDATE_USER(draftUser.value!);
   if (updateReq.result.success && isOnboarding.value) {
     if (
@@ -244,11 +265,14 @@ const saveHandler = async () => {
     }
 
     const completeProfileReq = await authStore.COMPLETE_PROFILE({});
+
     if (completeProfileReq.result.success) {
-      if (authStore.user?.emailVerified && workspacesStore.defaultWorkspace) {
+      if (workspacesStore.defaultWorkspace) {
+        // all new users should hit here and go to their first workspace
         tracker.trackEvent("workspace_launcher_widget_click");
         window.location.href = `${API_HTTP_URL}/workspaces/${workspacesStore.defaultWorkspace.id}/go`;
       } else {
+        // last resort if the new user doesn't have a default workspace
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         router.push({ name: "workspaces" });
       }
@@ -266,6 +290,37 @@ const clearPicture = () => {
 const restorePicture = () => {
   if (draftUser.value && storeUser.value) {
     draftUser.value.pictureUrl = storeUser.value.pictureUrl;
+  }
+};
+
+const saveButtonLabel = ref("Save");
+const failedEmailVerify = ref(false);
+const youMustVerifyYourEmailAddress = () => {
+  saveButtonLabel.value = "You must verify your email address to continue";
+  failedEmailVerify.value = true;
+};
+
+const verifyEmail = async () => {
+  // if this is first time, we will take them off profile page after save
+  const verificationReq = await authStore.REFRESH_AUTH0_PROFILE();
+  if (verificationReq.result.success) {
+    failedEmailVerify.value = false;
+    if (storeUser.value && storeUser.value.emailVerified) {
+      // We only want to send this event when a user has signed up and
+      // we captured a verified email for them
+      // This means we won't ever be sending badly formed data to our CRM
+      // or billing
+      // This is also the place we would trigger the creation of a Billing user
+      tracker.trackEvent("user_email_manually_verified", {
+        email: storeUser.value?.email,
+        githubUsername: storeUser.value?.githubUsername,
+        discordUsername: storeUser.value?.discordUsername,
+        firstName: storeUser.value?.firstName,
+        lastName: storeUser.value?.lastName,
+      });
+
+      await authStore.BILLING_INTEGRATION();
+    }
   }
 };
 </script>
