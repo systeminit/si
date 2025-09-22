@@ -2,6 +2,18 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## September 15th to 21st 2025
+
+### ✨ Added
+
+- Added support in **Public API** to access **component codegen data**.
+
+### 🐞 Fixed
+
+- Fixed a bug in **Public API** when creating authentication components.
+- Fixed an issue in the **web app** where collaborator change set names were
+  displayed incorrectly.
+
 ## September 8th to 14th 2025
 
 ### ✨ Added
@@ -17,8 +29,8 @@ All notable changes to System Initiative will be documented in this file.
 - Simplified the **Public API** for creating qualifications and codegen
   functions.
 - Compressed **deployment task requests** in Edda for efficiency.
-- Updated Luminork to allow **upgrading components by Schema Category** for more
-  fine-grained control.
+- Updated Public API to allow **upgrading components by Schema Category** for
+  more fine-grained control.
 - Made additional **UX changes** to the onboarding flow.
 - Removed all **sockets from Clover-based assets** and redeployed them.
 
@@ -37,7 +49,7 @@ All notable changes to System Initiative will be documented in this file.
 
 - Added **Component Details skeletons** for smoother loading.
 - Added more **tracking to the Onboarding workflow**.
-- Added **authoring endpoints** to Luminork.
+- Added **authoring endpoints** to Public API.
 - Added a new **search endpoint for schemas** in the public API.
 - Added support for **generating a template** to the MCP server.
 
@@ -60,7 +72,7 @@ All notable changes to System Initiative will be documented in this file.
 - Fixed the **abandon change set URL** in the new UX.
 - Fixed an issue in the **Auth Portal** where users could be placed in a dev
   workspace instead of a production one.
-- Fixed an issue where adding **secrets via Luminork** was unnecessarily
+- Fixed an issue where adding **secrets via Public API** was unnecessarily
   difficult.
 - Fixed an issue where **multi-select showed the context menu** attached to the
   incorrect component.
@@ -76,21 +88,21 @@ All notable changes to System Initiative will be documented in this file.
 - Added **observability values** in the frontend for better monitoring.
 - Added **toolbox helpers** to support ops work.
 - Added more **metadata to pending event publish errors** for easier debugging.
-- Added a **Luminork endpoint** to record when a user has executed an AI agent
+- Added a **Public API endpoint** to record when a user has executed an AI agent
   at least once.
 - Added a **flag in the UX** to warn users if they haven’t yet connected to the
   AI agent.
 
 ### 🔄 Changed
 
-- Updated the **MCP Server** to use Luminork as its source of schema attributes
-  and documentation.
+- Updated the **MCP Server** to use Public API as its source of schema
+  attributes and documentation.
 - Optimistically update the **Actions List on HEAD** for a faster UI experience.
 - Terminate the **web worker** if the app is out of date, preventing users from
   being stuck in the lobby.
-- Bypassed the **deployment MV index** for Frigg to ensure Luminork stays
+- Bypassed the **deployment MV index** for Frigg to ensure Public API stays
   current.
-- Released **v1.0.9 of Luminork SDKs**.
+- Released **v1.0.9 of Public API SDKs**.
 - Extended **index update payloads** with patch data.
 - Moved the **create change set button** to use the v2 route.
 
@@ -127,11 +139,11 @@ All notable changes to System Initiative will be documented in this file.
 - Improved **system status messaging** for better clarity.
 - Improved logic for running actions to reduce unnecessary rebaser trips.
 - Updated **discovery and import management** functions.
-- Expanded **Luminork’s PropSpec** to include property documentation and more.
+- Expanded **Public API’s PropSpec** to include property documentation and more.
 - Improved the **map regeneration experience**.
 - Changed **multi-select and context menus** in the grid for easier navigation.
-- Updated Luminork endpoints (`get_schema`, `get_default_variant`) to use a new
-  schema system.
+- Updated Public API endpoints (`get_schema`, `get_default_variant`) to use a
+  new schema system.
 - Removed the old **IAM permissions check**.
 - Removed outdated **SDF routes**.
 - Enhanced the **MCP server** to automatically clean up after itself.
@@ -164,15 +176,15 @@ All notable changes to System Initiative will be documented in this file.
 
 ### ✨ Added
 
-- Added a **duplicate components endpoint** to Luminork.
+- Added a **duplicate components endpoint** to Public API.
 - Added ability to **save from the CodeEditor modal**.
 - Added ability to **group by incompatible components** in a workspace.
 - Added visibility into the **number of change sets being finalized** when the
   lobby is loading.
-- Exposed the **component upgrade API** in Luminork.
-- Added **tracking to the Luminork `whoami` call** (an MCP hotpath).
+- Exposed the **component upgrade API** in Public API.
+- Added **tracking to the Public API `whoami` call** (an MCP hotpath).
 - Added support for **AWS IAM assets** in the MCP server.
-- Added ability to **generate a template from Luminork**.
+- Added ability to **generate a template from Public API**.
 
 ### 🔄 Changed
 
@@ -258,8 +270,7 @@ All notable changes to System Initiative will be documented in this file.
 - Improved **management function detail output**.
 - Enhanced the **right-click context menu**.
 - Updated **keyboard shortcuts modal layout**.
-- Ensured consistency across the **Luminork API and SDF** when passing
-  attributes.
+- Ensured consistency across the **Public API and SDF** when passing attributes.
 - Changed how the **visualize connections button** works — it now hides all
   unconnected items on the map.
 - Applied more **consistency fixes for buttons**.
