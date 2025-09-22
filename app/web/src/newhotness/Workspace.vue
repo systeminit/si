@@ -480,6 +480,7 @@ const checkOnboardingCompleteData = async () => {
     // If we don't get onboarding status back successfully, default to skipping onboarding.
     // Because we do not want to end up in a state where a user is locked out of a workspace!
     onboardingCompleted.value = true;
+    loadedOnboardingStateFromApi.value = true;
     return;
   }
 
