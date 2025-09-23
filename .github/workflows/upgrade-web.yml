@@ -31,17 +31,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: us-east-1
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '18.18.2'
           cache: 'pnpm'
@@ -63,7 +63,7 @@ jobs:
           pnpm run build --mode $MODE
 
       - name: Deploy
-        uses: islishude/spa-deploy-action@v1
+        uses: islishude/spa-deploy-action@v1.1.1
         with:
           dir-path: app/web/dist
           s3-bucket: ${{ vars.WEB_HOSTING_BUCKET }}
