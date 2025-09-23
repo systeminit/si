@@ -59,7 +59,6 @@ COPY flake.nix flake.lock rust-toolchain ./
 
 RUN set -eux; \
     . /etc/profile.d/nix.sh; \
-    nix develop .#ci --build; \
     CI_TOOLS=$(nix build --no-link --print-out-paths .#ci-tools); \
     cp -rs "$CI_TOOLS/bin/"* /usr/local/bin/ 2>/dev/null || true; \
     cp -rs "$CI_TOOLS/share" /usr/local/ 2>/dev/null || true

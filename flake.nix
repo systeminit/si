@@ -190,42 +190,29 @@
               ++ buck2BuildInputs
               ++ langJsExtraPkgs;
           };
-
-          ci = mkShell {
-            packages = buck2NativeBuildInputs ++ [
-              awscli2
-              buildkite-test-collector-rust
-              cargo-sort
-              deno
-              docker
-              docker-compose
-              gh
-              jq
-              shfmt
-              shellcheck
-              yapf
-            ];
-          };
         };
 
         packages = {
           ci-tools = pkgs.symlinkJoin {
             name = "ci-tools";
-            paths = buck2NativeBuildInputs ++ [
-              awscli2
-              buildkite-test-collector-rust
-              cargo-sort
-              deno
-              docker
-              docker-compose
-              gh
-              jq
-              shfmt
-              shellcheck
-              yapf
-            ];
+            paths =
+              [
+                awscli2
+                buildkite-test-collector-rust
+                cargo-sort
+                deno
+                docker
+                docker-compose
+                gh
+                jq
+                shfmt
+                shellcheck
+                yapf
+              ]
+              ++ buck2BuildInputs
+              ++ buck2NativeBuildInputs;
+            };
           };
-        };
 
         formatter = alejandra;
       });
