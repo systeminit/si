@@ -1,11 +1,18 @@
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts">
+export enum OnboardingStep {
+  INITIALIZE,
+  SETUP_AI,
+}
+
 // Toggle this to true to force onboarding to show, to go through the onboarding
 // without creating anything, and without needing to pass the AI agent checks.
 // Debug mode also ALWAYS shows button disabled tooltips so they can be seen
 // MAKE SURE YOU SET IT BACK TO FALSE WHEN YOU ARE DONE!
 // MAKE SURE YOU TEST THE FUNCTIONALITY OF THE FLOW WITH DEBUG MODE TURNED OFF!
 export const DEBUG_MODE = false;
+export const DEBUG_ONBOARDING_SHOW_DISABLED = false;
+export const DEBUG_ONBOARDING_START = OnboardingStep.INITIALIZE;
 </script>
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
@@ -48,9 +55,9 @@ export const DEBUG_MODE = false;
               )
             "
           >
-            Not ready?
+            Need help? Have questions?
             <NewButton
-              aria-label="schedule-demo-header"
+              aria-label="schedule-meeting-header"
               :class="
                 clsx(
                   'hover:underline',
@@ -61,12 +68,12 @@ export const DEBUG_MODE = false;
                 )
               "
               tone="nostyle"
-              :href="scheduleLink"
+              :href="scheduleWithUsLink"
               target="_blank"
               label="Schedule a meeting"
-              @click="onboardingTracking('schedule_meeting')"
+              @mousedown="onboardingTracking('schedule_meeting_header')"
             />
-            and we'll demo it for you.
+            with us.
           </div>
         </div>
 
@@ -74,11 +81,7 @@ export const DEBUG_MODE = false;
         <div
           class="flex flex-row items-center grow w-full max-w-[1600px] px-lg gap-lg z-10"
         >
-          <div
-            ref="rightPanelDivRef"
-            class="flex-1 flex flex-col basis-1/2 min-w-0"
-            :style="`min-height: ${rightPanelMinHeight}px`"
-          >
+          <div class="flex-1 flex flex-col basis-1/2 min-w-0">
             <!-- Step 1: User Input -->
             <OnboardingStepBlock
               v-if="currentStep === OnboardingStep.INITIALIZE"
@@ -92,7 +95,7 @@ export const DEBUG_MODE = false;
                   >
                     Enter an AWS Credential
                   </span>
-                  <div>1/3</div>
+                  <div>1/2</div>
                 </div>
               </template>
               <template #body>
@@ -148,7 +151,7 @@ export const DEBUG_MODE = false;
                     >
                       <div>
                         Paste the full Bash environment block into the first
-                        field — we’ll auto-fill the rest.
+                        field — we'll auto-fill the rest.
                       </div>
                       <Icon
                         v-tooltip="
@@ -319,7 +322,9 @@ export const DEBUG_MODE = false;
                       : undefined
                   "
                   tone="action"
-                  :disabled="!formHasRequiredValues"
+                  :disabled="
+                    !formHasRequiredValues || DEBUG_ONBOARDING_SHOW_DISABLED
+                  "
                   :loading="submitOnboardingInProgress"
                   loadingText="Saving"
                   @click="submitOnboardRequest"
@@ -332,81 +337,261 @@ export const DEBUG_MODE = false;
             >
               <template #header>
                 <div class="flex flex-row items-center justify-between">
-                  <span>Connect your AI Agent</span>
-                  <div>2/3</div>
+                  <span>Connect the AI Agent</span>
+                  <div>2/2</div>
                 </div>
               </template>
               <template #body>
-                <div class="flex flex-col gap-xs">
-                  <span>Clone the AI Agent repository</span>
-                  <CopyableTextBlock
-                    text="git clone https://github.com/systeminit/si-ai-agent.git"
-                    @copied="onboardingTracking('copied_git_clone_ai_repo')"
-                  />
+                <div
+                  class="flex flex-col gap-md [&>div]:flex [&>div]:flex-col [&>div]:gap-xs"
+                >
+                  <div>
+                    <div class="flex flex-col">
+                      <span
+                        >Install
+                        <NewButton
+                          aria-label="claude-code-link"
+                          :class="
+                            clsx(
+                              'underline',
+                              themeClasses(
+                                'hover:text-action-500',
+                                'hover:text-action-300',
+                              ),
+                            )
+                          "
+                          tone="nostyle"
+                          href="https://claude.com/product/claude-code"
+                          target="_blank"
+                          label="Claude Code"
+                          @mousedown="
+                            onboardingTracking('external_link_claude_code')
+                          "
+                      /></span>
+                      <span
+                        :class="
+                          clsx(
+                            themeClasses(
+                              'text-neutral-800',
+                              'text-neutral-300',
+                            ),
+                          )
+                        "
+                      >
+                        The System Initiative AI Agent is a customized
+                        installation of Claude Code.
+                      </span>
+                    </div>
+                    <CopyableTextBlock
+                      text="npm install -g @anthropic-ai/claude-code"
+                      @copied="onboardingTracking('copied_install_claude')"
+                    />
+                  </div>
+                  <div>
+                    <span>
+                      Clone the
+                      <NewButton
+                        aria-label="ai-agent-repo-main"
+                        :class="
+                          clsx(
+                            'underline',
+                            themeClasses(
+                              'hover:text-action-500',
+                              'hover:text-action-300',
+                            ),
+                          )
+                        "
+                        tone="nostyle"
+                        href="https://github.com/systeminit/si-ai-agent"
+                        target="_blank"
+                        label="AI Agent repository"
+                        @mousedown="
+                          onboardingTracking('external_link_ai_agent_repo')
+                        "
+                      />
+                      locally
+                    </span>
+                    <CopyableTextBlock
+                      text="git clone https://github.com/systeminit/si-ai-agent.git"
+                      @copied="onboardingTracking('copied_git_clone_ai_repo')"
+                    />
+                  </div>
+                  <div>
+                    <div class="flex flex-col">
+                      <span>
+                        Run the AI Agent
+                        <NewButton
+                          aria-label="setup-script-link"
+                          :class="
+                            clsx(
+                              'underline',
+                              themeClasses(
+                                'hover:text-action-500',
+                                'hover:text-action-300',
+                              ),
+                            )
+                          "
+                          tone="nostyle"
+                          href="https://github.com/systeminit/si-ai-agent/blob/main/setup.sh"
+                          target="_blank"
+                          label="setup script"
+                          @mousedown="
+                            onboardingTracking('external_link_setup_script')
+                          "
+                        />
+                      </span>
+                      <span
+                        :class="
+                          clsx(
+                            themeClasses(
+                              'text-neutral-800',
+                              'text-neutral-300',
+                            ),
+                          )
+                        "
+                      >
+                        Open your terminal in the root of the repository to run
+                        the script, which will connect the Agent to your
+                        workspace.
+                      </span>
+                    </div>
+                    <CopyableTextBlock
+                      text="./setup.sh"
+                      @copied="
+                        onboardingTracking('copied_ai_setup_script_run_command')
+                      "
+                    />
+                  </div>
+                  <div>
+                    <div class="flex flex-col">
+                      <span>Enter your API token</span>
+                      <span
+                        :class="
+                          clsx(
+                            themeClasses(
+                              'text-neutral-800',
+                              'text-neutral-300',
+                            ),
+                          )
+                        "
+                      >
+                        In your terminal, the setup script will ask for the
+                        System Initiative API token. Paste it there. The input
+                        is hidden for security. Press Enter to save and proceed.
+                      </span>
+                    </div>
+                    <ErrorMessage
+                      :class="
+                        clsx(
+                          'rounded-sm px-xs py-xs my-xs border',
+                          themeClasses(
+                            'bg-warning-100 border-warning-600',
+                            'bg-newhotness-warningdark border-warning-500',
+                          ),
+                        )
+                      "
+                      icon="exclamation-circle-carbon"
+                      iconSize="sm"
+                      tone="action"
+                      variant="block"
+                    >
+                      <div class="text-sm">
+                        We're only showing you the value of this token once.
+                      </div>
+                    </ErrorMessage>
+                    <CopyableTextBlock
+                      :text="apiToken"
+                      expandable
+                      @copied="onCopyAgentToken"
+                    />
+                  </div>
+                  <div>
+                    <span> Run Claude Code </span>
+                    <CopyableTextBlock
+                      text="claude"
+                      @copied="onboardingTracking('copied_run_claude_command')"
+                    />
+                  </div>
+                  <div>
+                    <ErrorMessage
+                      v-if="stepTwoNextDisabled"
+                      tone="neutral"
+                      icon="loader"
+                    >
+                      <div>
+                        Waiting for the AI agent to start. You'll be able to
+                        proceed as soon as setup is finished and Claude is
+                        running.
+                      </div>
+                      <div>
+                        If you are having trouble,
+                        <NewButton
+                          aria-label="schedule-meeting-stuck-agent"
+                          :class="
+                            clsx(
+                              'underline',
+                              themeClasses(
+                                'hover:text-action-500',
+                                'hover:text-action-300',
+                              ),
+                            )
+                          "
+                          tone="nostyle"
+                          :href="scheduleWithUsLink"
+                          target="_blank"
+                          label="schedule a meeting"
+                          @mousedown="
+                            onboardingTracking('schedule_meeting_stuck_agent')
+                          "
+                        />
+                        with us and we will help you out.
+                      </div>
+                    </ErrorMessage>
+                    <ErrorMessage v-else tone="neutral" icon="check">
+                      Congratulations! Your Agent is connected and you are ready
+                      to start.
+                    </ErrorMessage>
+                  </div>
                 </div>
-                <div class="flex flex-col gap-xs">
-                  <span>Run the setup script</span>
-                  <CopyableTextBlock
-                    text="./setup.sh"
-                    @copied="
-                      onboardingTracking('copied_ai_setup_script_run_command')
-                    "
-                  />
-                </div>
-                <div class="flex flex-col gap-xs">
-                  <span>
-                    Copy this API token to use as part of the AI Agent setup
-                  </span>
-                  <ErrorMessage
+              </template>
+              <template #footerLeft>
+                <div
+                  :class="
+                    clsx(
+                      'text-sm leading-none',
+                      themeClasses('text-neutral-800', 'text-neutral-300'),
+                    )
+                  "
+                >
+                  Checkout our
+                  <NewButton
+                    aria-label="our-repo"
                     :class="
                       clsx(
-                        'rounded-sm px-xs py-xs my-xs border',
+                        'underline',
                         themeClasses(
-                          'bg-warning-100 border-warning-600',
-                          'bg-newhotness-warningdark border-warning-500',
+                          'text-black hover:text-action-500',
+                          'text-white hover:text-action-300',
                         ),
                       )
                     "
-                    icon="exclamation-circle-carbon"
-                    iconSize="sm"
-                    tone="action"
-                    variant="block"
-                  >
-                    <div class="text-sm">
-                      We're only showing you the value of this token once.
-                      Please, store it somewhere safe.
-                    </div>
-                  </ErrorMessage>
-                  <CopyableTextBlock
-                    :text="apiToken"
-                    expandable
-                    @copied="onCopyAgentToken"
+                    tone="nostyle"
+                    href="https://github.com/systeminit/si-ai-agent"
+                    target="_blank"
+                    label="GitHub repo"
+                    @mousedown="onboardingTracking('checkout_our_github_repo')"
                   />
-                  <ErrorMessage
-                    v-if="agentTokenCopied"
-                    tone="neutral"
-                    icon="loader"
-                  >
-                    Waiting for the AI agent to start. You’ll be able to proceed
-                    as soon as setup is finished.
-                  </ErrorMessage>
+                  for more guidance
                 </div>
               </template>
               <template #footerRight>
-                <!-- <NewButton
-                  label="Previous"
-                  tone="neutral"
-                  @click="decrementOnboardingStep"
-                /> -->
                 <NewButton
-                  label="Next"
+                  label="Get Started"
                   tone="action"
-                  :icon="
-                    (stepTwoNextDisabled || DEBUG_MODE) && agentTokenCopied
-                      ? 'loader'
-                      : undefined
+                  :disabled="
+                    (stepTwoNextDisabled && !DEBUG_MODE) ||
+                    DEBUG_ONBOARDING_SHOW_DISABLED
                   "
-                  :disabled="stepTwoNextDisabled && !DEBUG_MODE"
                   :tooltip="
                     stepTwoNextDisabled || DEBUG_MODE
                       ? 'You must set up your AI agent to continue'
@@ -416,240 +601,248 @@ export const DEBUG_MODE = false;
                 />
               </template>
             </OnboardingStepBlock>
-            <!-- Step 3: Try your first prompt -->
-            <OnboardingStepBlock v-else>
-              <template #header>
-                <div class="flex flex-row items-center justify-between">
-                  <span>Try your first prompt</span>
-                  <div
-                    :class="
-                      themeClasses('text-success-600', 'text-success-300')
-                    "
-                  >
-                    3/3
-                  </div>
-                </div>
-              </template>
-              <template #body>
-                <div class="text-sm">
-                  Now that you have connected your AI agent, you can use any of
-                  these prompts, or one of your own, to see System Initiative in
-                  action:
-                </div>
-                <CopyableTextBlock
-                  v-for="(prompt, index) in prompts"
-                  :key="index"
-                  :text="prompt"
-                  prompt
-                  @copied="
-                    onboardingTracking(
-                      `copied_prompt_${prompt
-                        .substring(0, 40)
-                        .trim()
-                        .toLowerCase()
-                        .replace(/ /g, '_')}`,
-                    )
-                  "
-                />
-              </template>
-              <template #footerRight>
-                <NewButton
-                  label="Get Started"
-                  tone="action"
-                  @click="closeOnboarding"
-                />
-              </template>
-            </OnboardingStepBlock>
           </div>
           <div
             class="flex-1 basis-1/4 min-w-0 flex flex-col gap-lg ml-xl font-medium"
           >
             <div class="text-xl">
+              <template v-if="currentStep === OnboardingStep.INITIALIZE">
+                Connect your AWS account to discover, manage, and automate your
+                infrastructure.
+              </template>
+              <template v-else-if="currentStep === OnboardingStep.SETUP_AI">
+                Install the System Initiative AI Agent
+              </template>
               <span
                 :class="
                   clsx(themeClasses('text-neutral-600', 'text-neutral-400'))
                 "
-                >Your workspace</span
               >
-              will be ready with these simple steps
+                <!-- <template v-if="currentStep === OnboardingStep.INITIALIZE">
+                  Explore safely, see the impact of your changes, and apply only
+                  when you decide.
+                </template> 
+                <template v-else-if="currentStep === OnboardingStep.SETUP_AI">
+                  See and interact with your infrastructure as never before.
+                </template> -->
+              </span>
             </div>
-            <div class="flex flex-col">
-              <div
-                v-for="(step, index) in steps"
-                :key="index"
-                class="grid steps gap-0"
+            <div
+              v-if="currentStep === OnboardingStep.INITIALIZE"
+              class="flex flex-col gap-xs"
+            >
+              <CollapsingFlexItem
+                variant="onboarding"
+                open
+                @toggle="
+                  onboardingTracking('toggled_why_is_aws_cred_necessary')
+                "
               >
-                <div
-                  :class="
-                    clsx(
-                      'number self-center flex flex-row items-center justify-center rounded-full w-8 h-8',
-                      finishedStep(index)
-                        ? themeClasses('bg-neutral-300', 'bg-neutral-600')
-                        : themeClasses(
-                            'bg-success-300',
-                            'bg-success-900 text-success-200',
-                          ),
-                    )
-                  "
-                >
-                  <div v-if="finishedStep(index)" class="w-full text-center">
-                    {{ index + 1 }}
-                  </div>
-                  <Icon v-else name="check" size="sm" />
+                <template #header>Why is an AWS credential necessary?</template>
+                <div>
+                  <span
+                    :class="
+                      clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                    "
+                    >System Initiative needs access to your AWS account to
+                    securely discover, manage, and automate your infrastructure.
+                  </span>
+                  <span>You make and approve all changes.</span>
                 </div>
-                <div
-                  class="numberline w-full h-full flex flex-col items-center"
-                >
-                  <div
-                    v-if="index < steps.length - 1"
+                <div>
+                  Have questions?
+                  <NewButton
+                    aria-label="schedule-meeting-not-ready"
                     :class="
                       clsx(
-                        'border-r h-full',
-                        finishedStep(index)
-                          ? themeClasses(
-                              'border-neutral-300',
-                              'border-neutral-600',
-                            )
-                          : themeClasses(
-                              'border-success-300',
-                              'border-success-900',
-                            ),
+                        'underline',
+                        themeClasses(
+                          'hover:text-action-500',
+                          'hover:text-action-300',
+                        ),
                       )
                     "
+                    tone="nostyle"
+                    :href="scheduleWithUsLink"
+                    target="_blank"
+                    label="Schedule a meeting"
+                    @mousedown="
+                      onboardingTracking('schedule_meeting_not_ready')
+                    "
                   />
+                  with us.
                 </div>
-                <TruncateWithTooltip
-                  class="primary self-center pl-sm max-h-8 text-sm leading-none pb-3xs mt-3xs"
-                  :lineClamp="2"
-                >
-                  {{ step.primaryText }}
-                </TruncateWithTooltip>
+              </CollapsingFlexItem>
+              <CollapsingFlexItem
+                variant="onboarding"
+                @toggle="
+                  onboardingTracking('toggled_how_are_my_secrets_stored')
+                "
+              >
+                <template #header>How are my secrets stored?</template>
                 <div
                   :class="
-                    clsx(
-                      'secondary pl-sm pt-xs pb-lg text-sm',
-                      themeClasses('text-neutral-600', 'text-neutral-400'),
-                    )
+                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
                   "
                 >
-                  {{ step.secondaryText }}
+                  System Initiative secrets are secure by default. They are
+                  encrypted in the browser before being transmitted over the
+                  wire and encrypted at rest. All generated logs will
+                  automatically redact each secret so that there are no leaks.
+                  <!-- TODO - add link here when we have a good blog post to link to -->
+                  <!-- <NewButton
+                    aria-label="read-more-secrets"
+                    :class="
+                      clsx(
+                        'underline',
+                        themeClasses(
+                          'text-black hover:text-action-500',
+                          'text-white hover:text-action-300',
+                        ),
+                      )
+                    "
+                    tone="nostyle"
+                    href="https://www.systeminit.com/blog/its-a-secret"
+                    target="_blank"
+                    label="Read more"
+                    @mousedown="onboardingTracking('read-more-secrets')"
+                  /> -->
                 </div>
-              </div>
+              </CollapsingFlexItem>
+              <CollapsingFlexItem
+                variant="onboarding"
+                @toggle="onboardingTracking('toggled_i_dont_use_aws')"
+              >
+                <template #header>I don't use AWS, what should I do?</template>
+                <div
+                  :class="
+                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                  "
+                >
+                  We are currently adding support for additional providers.
+                </div>
+                <div>
+                  <NewButton
+                    aria-label="schedule-meeting-no-aws"
+                    :class="
+                      clsx(
+                        'underline',
+                        themeClasses(
+                          'hover:text-action-500',
+                          'hover:text-action-300',
+                        ),
+                      )
+                    "
+                    tone="nostyle"
+                    :href="scheduleWithUsLink"
+                    target="_blank"
+                    label="Schedule a meeting"
+                    @mousedown="onboardingTracking('schedule_meeting_no_aws')"
+                  />
+                  <span
+                    :class="
+                      clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                    "
+                  >
+                    with us and tell us what you need.</span
+                  >
+                </div>
+              </CollapsingFlexItem>
+            </div>
+            <div
+              v-else-if="currentStep === OnboardingStep.SETUP_AI"
+              class="flex flex-col gap-xs"
+            >
+              <CollapsingFlexItem
+                variant="onboarding"
+                open
+                @toggle="onboardingTracking('toggled_how_does_ai_agent_work')"
+              >
+                <template #header
+                  >What does the System Initiative AI Agent do?</template
+                >
+                <div
+                  :class="
+                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                  "
+                >
+                  The AI Agent allows you to discover resources, propose
+                  changes, and understand your infrastructure using natural
+                  language. Think of it like having an AWS expert around to help
+                  out.
+                </div>
+              </CollapsingFlexItem>
+              <CollapsingFlexItem
+                variant="onboarding"
+                @toggle="onboardingTracking('toggled_what_am_i_installing')"
+              >
+                <template #header>What am I installing?</template>
+                <div
+                  :class="
+                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                  "
+                >
+                  The
+                  <NewButton
+                    aria-label="ai-agent-repo-right"
+                    :class="
+                      clsx(
+                        'underline',
+                        themeClasses(
+                          'hover:text-action-500',
+                          'hover:text-action-300',
+                        ),
+                      )
+                    "
+                    tone="nostyle"
+                    href="https://github.com/systeminit/si-ai-agent"
+                    target="_blank"
+                    label="si-ai-agent repository"
+                    @mousedown="
+                      onboardingTracking('external_link_ai_agent_repo')
+                    "
+                  />
+                  is an instance of Claude Code preconfigured to work with the
+                  System Initiative MCP server. It includes both the tools
+                  neccessary to work with System Inititaive and helpful context
+                  for the agent.
+                </div>
+              </CollapsingFlexItem>
+              <CollapsingFlexItem
+                variant="onboarding"
+                @toggle="onboardingTracking('toggled_can_i_not_use_claude')"
+              >
+                <template #header
+                  >Can I use an Agent other than Claude?</template
+                >
+                <div
+                  :class="
+                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                  "
+                >
+                  Not to get started. We have found that Claude Code is the best
+                  agent for System Initiative, and we have pre-configured it for
+                  a great experience. Once you have experienced it, you can
+                  configure the MCP server to work with any Agent you want.
+                </div>
+              </CollapsingFlexItem>
             </div>
           </div>
         </div>
-
-        <!--  Bottom Links  -->
-        <div
-          class="flex flex-row flex-none w-full items-center justify-start px-lg py-sm gap-sm z-10"
-        >
-          <template v-if="currentStep === OnboardingStep.INITIALIZE">
-            <div
-              :class="
-                clsx(
-                  'hover:underline cursor-pointer',
-                  themeClasses(
-                    'text-neutral-700 hover:text-black',
-                    'text-neutral-300 hover:text-white',
-                  ),
-                )
-              "
-              @click="openCredNecessaryModal"
-            >
-              Why is a credential necessary?
-            </div>
-            <p class="text-neutral-600">|</p>
-            <div
-              :class="
-                clsx(
-                  'hover:underline cursor-pointer',
-                  themeClasses(
-                    'text-neutral-700 hover:text-black',
-                    'text-neutral-300 hover:text-white',
-                  ),
-                )
-              "
-              @click="openNoCredModal"
-            >
-              I don't use AWS, what do I do?
-            </div>
-          </template>
-          <template v-else-if="currentStep === OnboardingStep.SETUP_AI">
-            <!-- TODO(Wendy) - any footer links we want here? -->
-          </template>
-          <template v-else>
-            <!-- TODO(Wendy) - any footer links we want here? -->
-          </template>
-        </div>
       </div>
     </div>
-
-    <Modal
-      ref="credNecessaryModal"
-      title="Why is a credential necessary?"
-      onboardingModal
-      size="xl"
-      buttonConfiguration="done"
-    >
-      <span>
-        System Initiative is an AI Native Infrastructure Automation Platform
-        that provides a real-time digital twin of your infrastructure. To do
-        that, we need access to your AWS account to securely manage your
-        infrastructure. Nothing changes without your approval.
-      </span>
-      <br />
-      <span>
-        Your secrets are safe. They are encrypted in transit and at rest using
-        industry best-practice cryptography.
-      </span>
-    </Modal>
-    <Modal
-      ref="noCredModal"
-      title="I don't use AWS, what do I do?"
-      onboardingModal
-      size="xl"
-      buttonConfiguration="done"
-    >
-      <div>
-        <a
-          :href="mailToLink"
-          target="_blank"
-          :class="
-            clsx(
-              'underline focus:outline-none',
-              themeClasses('hover:text-action-500', 'hover:text-action-300'),
-            )
-          "
-          @click="onboardingTracking('clicked_reach_out_email_link')"
-          >Reach out</a
-        >
-        <span>
-          and let us know what providers you work with that we should add
-          support for.
-        </span>
-      </div>
-    </Modal>
   </div>
 </template>
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
-import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  reactive,
-  ref,
-  watch,
-} from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import clsx from "clsx";
 import {
   ErrorMessage,
   Icon,
-  Modal,
   NewButton,
   themeClasses,
-  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import * as _ from "lodash-es";
@@ -660,38 +853,12 @@ import { trackEvent } from "@/utils/tracking";
 import OnboardingStepBlock from "@/newhotness/OnboardingStepBlock.vue";
 import { useAuthStore } from "@/store/auth.store";
 import CopyableTextBlock from "./CopyableTextBlock.vue";
-import { prompts } from "./WelcomeBanner.vue";
-import { windowResizeEmitter } from "./logic_composables/emitters";
+import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 
-const scheduleLink =
-  "https://calendly.com/d/cns7-v2b-jkz/system-initiative-demo";
-
-const mailToLink = computed(() => {
-  const to = "help@systeminit.com";
-  const subject = encodeURIComponent("Provider Support");
-  const body = encodeURIComponent(
-    "Please tell us what providers you are interested in support for:",
-  );
-  return `mailto:${to}?subject=${subject}&body=${body}`;
-});
-
-const steps = [
-  {
-    primaryText: "Enter an AWS credential and select a region",
-    secondaryText:
-      "With a credential, you'll see System Initiative at full power. No mock data, you’ll get the real thing.",
-  },
-  {
-    primaryText: "Connect our AI Agent",
-    secondaryText:
-      "Use our AI Agent to solve your problems quickly and easily. Automate your infrastructure, explain how it works, propose changes, optimize costs, perform security reviews, etc.",
-  },
-  {
-    primaryText: "Try your first prompt",
-    secondaryText:
-      "Use the sample prompts to perform automation tasks in minutes.",
-  },
-];
+const scheduleWithUsLink =
+  "https://calendly.com/d/cw8r-6rq-b3n/share-your-use-case-with-system-initiative";
+// const scheduleADemoLink =
+//   "https://calendly.com/d/cns7-v2b-jkz/system-initiative-demo";
 
 const ctx = useContext();
 
@@ -702,33 +869,19 @@ const hasUsedAiAgent = computed(
 );
 
 /// STARTUP LOGIC
-enum OnboardingStep {
-  INITIALIZE,
-  SETUP_AI,
-  DONE,
-}
-const currentStep = ref<OnboardingStep>(OnboardingStep.INITIALIZE);
+const currentStep = ref<OnboardingStep>(
+  DEBUG_MODE ? DEBUG_ONBOARDING_START : OnboardingStep.INITIALIZE,
+);
 const incrementOnboardingStep = () => {
-  if (!rightPanelDivRef.value) return;
-
-  // Record the current height of this div
-  rightPanelMinHeight.value = rightPanelDivRef.value.clientHeight;
-
   currentStep.value = Math.min(
-    OnboardingStep.DONE,
+    OnboardingStep.SETUP_AI,
     currentStep.value + 1,
   ) as OnboardingStep;
 };
-// const decrementOnboardingStep = () => {
-//   currentStep.value = Math.max(
-//     OnboardingStep.INITIALIZE,
-//     currentStep.value - 1,
-//   ) as OnboardingStep;
-// };
 
 const onNextPageTwo = () => {
   onboardingTracking("finish_step_2_connect_your_ai_agent");
-  incrementOnboardingStep();
+  closeOnboarding();
 };
 
 // CREDENTIAL
@@ -874,20 +1027,12 @@ const initializeRequestSentAndSuccessful = computed(() => {
 
 const submitOnboardingInProgress = ref(false);
 
-const rightPanelMinHeight = ref(0);
-const rightPanelDivRef = ref<HTMLDivElement>();
-
 const submitOnboardRequest = async () => {
-  if (!rightPanelDivRef.value) return;
-
   // Tracking
   onboardingTracking("finish_step_1_submit_aws_info");
 
   // Disable button
   submitOnboardingInProgress.value = true;
-
-  // Record the current height of this div
-  rightPanelMinHeight.value = rightPanelDivRef.value.clientHeight;
 
   if (DEBUG_MODE) {
     // debug mode skips creating credentials
@@ -979,32 +1124,12 @@ const generateToken = async () => {
   apiToken.value = token;
 };
 
-const MINIMUM_VERTICAL_PADDING_AROUND_LEFT_PANEL = 100;
-const onWindowResize = () => {
-  if (rightPanelMinHeight.value <= 0) return;
-
-  if (
-    window.innerHeight - rightPanelMinHeight.value <
-    MINIMUM_VERTICAL_PADDING_AROUND_LEFT_PANEL
-  ) {
-    rightPanelMinHeight.value =
-      window.innerHeight - MINIMUM_VERTICAL_PADDING_AROUND_LEFT_PANEL;
-  }
-};
-
 onMounted(() => {
-  windowResizeEmitter.on("resize", onWindowResize);
   generateToken();
-});
-
-onBeforeUnmount(() => {
-  windowResizeEmitter.off("resize", onWindowResize);
 });
 
 const dismissOnboardingApi = useApi();
 const closeOnboarding = async (fast = false) => {
-  onboardingTracking("finish_step_3_try_your_first_prompt");
-
   const userPk = ctx.user?.pk;
   if (!userPk) return;
 
@@ -1027,23 +1152,9 @@ const onCopyAgentToken = () => {
   onboardingTracking("ai_token_copied");
 };
 
-const finishedStep = (step: number) => currentStep.value < step + 1;
-
 const stepTwoNextDisabled = computed(
   () => !initializeRequestSentAndSuccessful.value || !hasUsedAiAgent.value,
 );
-
-const credNecessaryModal = ref<InstanceType<typeof Modal>>();
-const noCredModal = ref<InstanceType<typeof Modal>>();
-
-const openCredNecessaryModal = () => {
-  onboardingTracking("open_credential_necessary_modal");
-  credNecessaryModal.value?.open();
-};
-const openNoCredModal = () => {
-  onboardingTracking("open_no_credential_modal");
-  noCredModal.value?.open();
-};
 
 const emit = defineEmits<{
   (e: "completed"): void;

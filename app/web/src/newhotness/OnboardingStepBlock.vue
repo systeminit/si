@@ -31,10 +31,10 @@
         )
       "
     >
-      <div class="flex flex-row gap-xs">
+      <div class="flex flex-row gap-xs items-center">
         <slot name="footerLeft" />
       </div>
-      <div class="flex flex-row gap-xs">
+      <div class="flex flex-row gap-xs items-center">
         <slot name="footerRight" />
       </div>
     </div>

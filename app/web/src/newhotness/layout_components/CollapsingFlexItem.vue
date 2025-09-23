@@ -6,15 +6,17 @@
         'collapsing-flex-item', // identifying class
         'flex flex-col items-stretch',
         'border overflow-hidden basis-0 mb-[-1px]', // basis-0 makes items take equal size when multiple are open
-        themeClasses(
-          'border-neutral-400 bg-white',
-          'border-neutral-600 bg-neutral-800',
-        ),
         showOpen ? 'grow' : 'shrink',
         maxHeightContent && 'max-h-fit',
+        themeClasses('border-neutral-400', 'border-neutral-600'),
+        variant === 'standard' &&
+          themeClasses('border-neutral-400', 'border-neutral-600'),
+        variant === 'onboarding' && 'min-h-fit rounded-sm bg-[#00000033]',
       )
     "
-    :style="`min-height: ${headerHeight}px`"
+    :style="
+      variant === 'standard' ? `min-height: ${headerHeight}px` : undefined
+    "
   >
     <h3
       ref="headerRef"
@@ -25,14 +27,18 @@
           'flex-none flex items-center px-xs m-0 min-h-[2.5rem]',
           !disableCollapse && [
             'cursor-pointer',
-            themeClasses('hover:bg-neutral-100', 'hover:bg-neutral-700'),
+            variant === 'standard' &&
+              themeClasses('hover:bg-neutral-100', 'hover:bg-neutral-700'),
           ],
-          `text-${headerTextSize}`,
-          showOpen && 'border-b',
-          themeClasses(
-            'bg-white border-neutral-400',
-            'bg-neutral-800 border-neutral-600',
-          ),
+          `text-${computedHeaderTextSize}`,
+          variant === 'standard' && [
+            showOpen && 'border-b',
+            themeClasses(
+              'bg-white border-neutral-400',
+              'bg-neutral-800 border-neutral-600',
+            ),
+          ],
+          variant === 'onboarding' && 'hover:underline',
         )
       "
       @click="toggleOpen"
@@ -62,7 +68,17 @@
         @click.prevent.stop="expand"
       />
     </h3>
-    <div v-if="showOpen" :class="clsx('scrollable min-h-0 flex-1')">
+    <div
+      v-if="showOpen"
+      :class="
+        clsx(
+          'min-h-0 flex-1',
+          variant === 'standard' && 'scrollable',
+          variant === 'onboarding' &&
+            'p-xs pl-lg pt-0 flex flex-col gap-sm text-sm',
+        )
+      "
+    >
       <slot />
     </div>
     <Modal ref="modalRef" size="4xl">
@@ -94,6 +110,8 @@ import { computed, onMounted, ref } from "vue";
 import { tw } from "@si/vue-lib";
 import { useToggle } from "../logic_composables/toggle_containers";
 
+type CollapsingVariant = "standard" | "onboarding";
+
 const openState = useToggle();
 
 const modalRef = ref<InstanceType<typeof Modal>>();
@@ -110,12 +128,13 @@ const props = withDefaults(
     headerTextSize?: SpacingSizes;
     disableCollapse?: boolean;
     maxHeightContent?: boolean;
+    variant?: CollapsingVariant;
   }>(),
   {
     h3class: tw`flex flex-row items-center gap-xs p-2xs z-30`,
     expandable: true,
     disableCollapse: false,
-    headerTextSize: "lg",
+    variant: "standard",
   },
 );
 
@@ -123,6 +142,12 @@ const headerRef = ref<HTMLDivElement>();
 const headerHeight = computed(() => headerRef.value?.offsetHeight ?? 0);
 
 const showOpen = computed(() => openState.open.value || props.disableCollapse);
+
+const computedHeaderTextSize = computed(() => {
+  if (props.headerTextSize) return props.headerTextSize;
+  else if (props.variant === "onboarding") return "sm";
+  else return "lg";
+});
 
 onMounted(() => {
   openState.open.value = props.open;
@@ -138,7 +163,11 @@ const toggleOpen = () => {
 };
 
 const showExpandButton = computed(
-  () => props.expandable && showOpen.value && !props.disableCollapse,
+  () =>
+    props.expandable &&
+    showOpen.value &&
+    !props.disableCollapse &&
+    props.variant === "standard",
 );
 
 defineExpose({

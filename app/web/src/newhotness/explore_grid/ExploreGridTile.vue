@@ -4,7 +4,7 @@
     :class="
       clsx(
         'component tile',
-        'cursor-pointer rounded overflow-hidden relative select-none',
+        'cursor-pointer rounded-sm overflow-hidden relative select-none',
         hasRunningActions ? 'spinning-border' : 'border',
         !hasRunningActions && [
           selected || focused
