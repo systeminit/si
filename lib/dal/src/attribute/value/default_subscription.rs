@@ -11,7 +11,6 @@ use si_id::{
 use super::{
     AttributeValue,
     AttributeValueResult,
-    subscription::ValueSubscription,
 };
 use crate::{
     Component,
@@ -22,7 +21,6 @@ use crate::{
     Prop,
     PropKind,
     SchemaVariant,
-    attribute::path::AttributePath,
     workspace_snapshot::node_weight::{
         CategoryNodeWeight,
         NodeWeight,
@@ -94,12 +92,7 @@ pub struct DefaultSubscription {
 impl DefaultSubscription {
     /// NOTE: This will clobber existing subscriptions
     pub async fn subscribe(&self, ctx: &DalContext) -> AttributeValueResult<()> {
-        let (root_attribute_value_id, path) =
-            AttributeValue::path_from_root(ctx, self.source_av_id).await?;
-        let subscription = ValueSubscription {
-            attribute_value_id: root_attribute_value_id,
-            path: AttributePath::from_json_pointer(path),
-        };
+        let subscription = AttributeValue::as_subscription(ctx, self.source_av_id).await?;
 
         AttributeValue::set_to_subscription(
             ctx,

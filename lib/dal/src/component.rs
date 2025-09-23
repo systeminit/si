@@ -2589,15 +2589,10 @@ impl Component {
 
                 if pasted_component_ids.contains(&maybe_pasted_subscriber_id) {
                     // now we know that the subcriber we're dealing with is one that was pasted!
-                    let pasted_root_id =
-                        Component::root_attribute_value_id(ctx, pasted_component_id).await?;
                     AttributePrototypeArgument::set_value_source(
                         ctx,
                         maybe_pasted_subscriber_apa_id,
-                        ValueSource::ValueSubscription(ValueSubscription {
-                            attribute_value_id: pasted_root_id,
-                            path,
-                        }),
+                        ValueSubscription::new(ctx, pasted_component_id, path).await?,
                     )
                     .await?;
                 }
@@ -2653,15 +2648,10 @@ impl Component {
                 };
                 let subscriber_id = AttributeValue::component_id(ctx, subscriber_av_id).await?;
                 if pasted_component_ids.contains(&subscriber_id) {
-                    let pasted_root_id =
-                        Component::root_attribute_value_id(ctx, pasted_component_id).await?;
                     AttributePrototypeArgument::set_value_source(
                         ctx,
                         subscriber_apa_id,
-                        ValueSource::ValueSubscription(ValueSubscription {
-                            attribute_value_id: pasted_root_id,
-                            path,
-                        }),
+                        ValueSubscription::new(ctx, pasted_component_id, path).await?,
                     )
                     .await?;
                 }

@@ -1,5 +1,6 @@
 use si_id::{
     AttributeValueId,
+    ComponentId,
     PropId,
 };
 
@@ -23,6 +24,18 @@ pub struct ValueSubscription {
 }
 
 impl ValueSubscription {
+    pub async fn new(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        path: AttributePath,
+    ) -> AttributeValueResult<Self> {
+        let attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
+        Ok(Self {
+            attribute_value_id,
+            path,
+        })
+    }
+
     /// Find the attribute value a subscription points to
     /// Returns `None` if the path leads to an attribute value that does not exist
     pub async fn resolve(
@@ -44,7 +57,31 @@ impl ValueSubscription {
             .await
             .unwrap_or_else(|e| e.to_string())
     }
-    pub async fn fmt_title_fallible(&self, ctx: &DalContext) -> AttributeValueResult<String> {
+
+    /// Get a version of this subscription, relative to its root attribute value
+    pub async fn from_root(&self, ctx: &DalContext) -> AttributeValueResult<Self> {
+        let (attribute_value_id, path) = self.path.from_root(ctx, self.attribute_value_id).await?;
+        Ok(Self {
+            attribute_value_id,
+            path,
+        })
+    }
+
+    /// Get the path of this subscription, relative to the component it is on
+    pub async fn path_from_component(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributeValueResult<(ComponentId, String)> {
+        let ValueSubscription {
+            attribute_value_id,
+            path: AttributePath::JsonPointer(path),
+        } = self.from_root(ctx).await?;
+        let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+        Ok((component_id, path))
+    }
+
+    /// Get the path of this subscription, relative to the component it is on
+    async fn fmt_title_fallible(&self, ctx: &DalContext) -> AttributeValueResult<String> {
         // If the subscription somehow isn't to a root attribute value, make it so.
         let (root_id, child_path) =
             AttributeValue::path_from_root(ctx, self.attribute_value_id).await?;

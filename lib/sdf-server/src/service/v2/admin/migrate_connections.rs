@@ -321,15 +321,11 @@ async fn add_prop_connection(
     }
 
     // Create the subscription
-    let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
     let from_path = AttributePath::from_json_pointer(from_path.to_string());
     AttributeValue::set_to_subscription_unchecked(
         ctx,
         to_av_id,
-        ValueSubscription {
-            attribute_value_id: from_root_av_id,
-            path: from_path,
-        },
+        ValueSubscription::new(ctx, from_component_id, from_path).await?,
         Some(func_id),
         Reason::new_user_added(ctx),
     )

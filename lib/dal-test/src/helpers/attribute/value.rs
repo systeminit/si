@@ -9,16 +9,16 @@ use dal::{
     },
     workspace_snapshot::node_weight::reason_node_weight::Reason,
 };
-use si_id::{
-    AttributeValueId,
-    FuncId,
-};
+use si_id::AttributeValueId;
 
 use crate::{
     Result,
-    helpers::component::{
-        self,
-        ComponentKey,
+    helpers::{
+        component::{
+            self,
+            ComponentKey,
+        },
+        func::FuncKey,
     },
 };
 
@@ -38,7 +38,11 @@ pub async fn subscribe(
     subscriber: impl AttributeValueKey,
     subscription: impl AttributeValueKey,
 ) -> Result<()> {
-    subscribe_with_custom_function(ctx, subscriber, subscription, None).await
+    let subscriber = vivify(ctx, subscriber).await?;
+    let subscription = AttributeValueKey::to_subscription(ctx, subscription).await?;
+    let reason = Reason::new_user_added(ctx);
+    AttributeValue::set_to_subscription(ctx, subscriber, subscription, None, reason).await?;
+    Ok(())
 }
 
 /// Set the subscriptions on a value
@@ -46,17 +50,14 @@ pub async fn subscribe_with_custom_function(
     ctx: &DalContext,
     subscriber: impl AttributeValueKey,
     subscription: impl AttributeValueKey,
-    func_id: Option<FuncId>,
+    func: impl FuncKey,
 ) -> Result<()> {
+    let func_id = FuncKey::id(ctx, func).await?;
     let subscriber = vivify(ctx, subscriber).await?;
-    AttributeValue::set_to_subscription(
-        ctx,
-        subscriber,
-        AttributeValueKey::to_subscription(ctx, subscription).await?,
-        func_id,
-        Reason::new_user_added(ctx),
-    )
-    .await?;
+    let subscription = AttributeValueKey::to_subscription(ctx, subscription).await?;
+    let reason = Reason::new_user_added(ctx);
+    AttributeValue::set_to_subscription(ctx, subscriber, subscription, Some(func_id), reason)
+        .await?;
     Ok(())
 }
 
