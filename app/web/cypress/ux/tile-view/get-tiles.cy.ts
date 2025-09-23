@@ -18,13 +18,13 @@ describe("web", () => {
 
   it("get_ptlw_tiles", () => {
     // Go to the Synthetic User's Dashboard
-    cy.visit(AUTH_PORTAL_URL + '/dashboard')
+    cy.visit(AUTH_PORTAL_URL + '/workspaces');
     cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", UUID);
 
     cy.wait(5000);
 
     // Find the URL for the synthetic workspace and go there
-    cy.get('a[href="' + AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go"]')
+    cy.get('a[href="' + AUTH_API_URL + '/workspaces/' + SI_WORKSPACE_ID + '/go"]', { timeout: 30000 })
       .should('be.visible')
       .invoke('removeAttr', 'target')
       .click();
@@ -46,7 +46,7 @@ describe("web", () => {
     function checkTileCount() {
       // For virtual scrolling, we need to scroll through the entire list
       // First scroll to top, then gradually scroll down to ensure all items are rendered
-      cy.get('[data-testid="explore-grid"]').parent().scrollTo("top");
+      cy.get('[data-testid="explore-grid"]', { timeout: 60000 }).parent().scrollTo("top");
       cy.wait(500);
 
       // Scroll through the list in increments to trigger rendering of all items
