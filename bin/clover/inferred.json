@@ -12511,6 +12511,9 @@
   "The identifier of the routing profile for the user.": {
     "enum": null
   },
+  "The identifier of the source portfolio. The source portfolio must be a portfolio imported from a different account than the one creating the association. This account must have previously shared this portfolio with the account creating the association.": {
+    "enum": null
+  },
   "The identifier of the target account, organizational unit, or the root": {
     "enum": null
   },
@@ -14902,6 +14905,9 @@
   "The network interface ID that is associated with the target.": {
     "enum": null
   },
+  "The network interface's position in the attachment order. For example, the first attached network interface has a DeviceIndex of 0.": {
+    "enum": null
+  },
   "The network interface's position in the attachment order. For example, the first attached network interface has a ``DeviceIndex`` of 0.": {
     "enum": null
   },
@@ -14954,6 +14960,9 @@
     "enum": null
   },
   "The number of DPUs to request to be allocated to the reservation.": {
+    "enum": null
+  },
+  "The number of ENA queues to be created with the instance.": {
     "enum": null
   },
   "The number of I/O operations per second (IOPS)": {
