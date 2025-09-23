@@ -7,16 +7,11 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
-import {
-  AttributePrototypeArgumentId,
-  FuncArgumentId,
-  FuncId,
-} from "@/api/sdf/dal/func";
+import { AttributePrototypeArgumentId } from "@/api/sdf/dal/func";
 import { PropId } from "@/api/sdf/dal/prop";
-import { InputSocketId, OutputSocketId } from "@/api/sdf/dal/schema";
+import { OutputSocketId } from "@/api/sdf/dal/schema";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { AttributeValueId } from "./status.store";
-import { WsEventPayloadMap } from "./realtime/realtime_events";
 
 export interface AdminWorkspace {
   id: WorkspacePk;
@@ -34,17 +29,6 @@ export interface AdminChangeSet {
   workspaceSnapshotAddress: string;
   workspaceId: WorkspacePk;
   mergeRequestedByUserId?: UserId;
-}
-
-export interface ConnectionMigrationRun {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
-  startedAt: Date;
-  dryRun: boolean;
-  migrations: ConnectionMigration[];
-  summary?: WsEventPayloadMap["ConnectionMigrationFinished"] & {
-    finishedAt: Date;
-  };
 }
 
 export const useAdminStore = () => {
@@ -67,7 +51,6 @@ export const useAdminStore = () => {
         validateSnapshotResponse: undefined as
           | ValidateSnapshotResponse
           | undefined,
-        connectionMigrationRun: undefined as ConnectionMigrationRun | undefined,
       }),
       getters: {},
       actions: {
@@ -188,16 +171,6 @@ export const useAdminStore = () => {
             },
           });
         },
-        async MIGRATE_CONNECTIONS(
-          workspaceId: string,
-          changeSetId: string,
-          options?: { dryRun?: boolean },
-        ) {
-          return new ApiRequest<unknown>({
-            method: options?.dryRun ? "get" : "post",
-            url: `v2/admin/workspaces/${workspaceId}/change_sets/${changeSetId}/migrate_connections`,
-          });
-        },
         async VALIDATE_SNAPSHOT(
           workspaceId: string,
           changeSetId: string,
@@ -228,37 +201,6 @@ export const useAdminStore = () => {
               if (id === this.updatingModuleCacheOperationId) {
                 this.updatingModuleCacheOperationError = error;
                 this.updatingModuleCacheOperationRunning = false;
-              }
-            },
-          },
-          {
-            eventType: "ConnectionMigrationStarted",
-            callback: async ({ dryRun }, { workspace_pk, change_set_id }) => {
-              this.connectionMigrationRun = {
-                workspaceId: workspace_pk,
-                changeSetId: change_set_id,
-                dryRun,
-                startedAt: new Date(),
-                migrations: [],
-              };
-            },
-          },
-          {
-            eventType: "ConnectionMigrated",
-            callback: async (migration) => {
-              if (this.connectionMigrationRun) {
-                this.connectionMigrationRun.migrations.push(migration);
-              }
-            },
-          },
-          {
-            eventType: "ConnectionMigrationFinished",
-            callback: async (summary) => {
-              if (this.connectionMigrationRun) {
-                this.connectionMigrationRun.summary = {
-                  ...summary,
-                  finishedAt: new Date(),
-                };
               }
             },
           },
@@ -309,65 +251,3 @@ export type ValidationIssue =
       message: string;
       fixed: boolean;
     };
-
-export type ConnectionMigration =
-  // If there is no issue, both socket and prop connections are always defined.
-  | {
-      issue?: undefined;
-      explicitConnectionId?: AttributePrototypeArgumentId;
-      socketConnection: ConnectionMigrationSocketConnection;
-      propConnections: ConnectionMigrationPropConnection[];
-      message: string;
-      migrated: boolean;
-    }
-  // If there is an issue with an explicit connection, socket connections may be undefined
-  // (because we may have identified the connection but been unable to completely build them out).
-  | {
-      issue: ConnectionUnmigrateableBecause;
-      explicitConnectionId: AttributePrototypeArgumentId;
-      socketConnection?: ConnectionMigrationSocketConnection;
-      propConnections: ConnectionMigrationPropConnection[];
-      message: string;
-      migrated: boolean;
-    }
-  // If there is an issue with an inferred connection, socketConnection is still always defined.
-  | {
-      issue: ConnectionUnmigrateableBecause;
-      explicitConnectionId?: undefined;
-      socketConnection: ConnectionMigrationSocketConnection;
-      propConnections: ConnectionMigrationPropConnection[];
-      message: string;
-      migrated: boolean;
-    };
-
-export interface ConnectionMigrationSocketConnection {
-  source: { componentId: ComponentId; socketId: OutputSocketId };
-  destination: { componentId: ComponentId; socketId: InputSocketId };
-}
-
-export interface ConnectionMigrationPropConnection {
-  destAvId: AttributeValueId;
-  sourceRootAvId: AttributeValueId;
-  sourcePath: string;
-  funcId: FuncId;
-  funcArgId: FuncArgumentId;
-}
-
-export type ConnectionUnmigrateableBecause =
-  | { type: "connectionPrototypeHasMultipleArgs" }
-  | { type: "destinationIsNotInputSocket" }
-  | { type: "destinationSocketArgumentNotBoundToProp" }
-  | { type: "destinationSocketBoundToPropWithNoValue"; destPropId: PropId }
-  | { type: "destinationSocketHasMultipleBindings" }
-  | { type: "destinationSocketHasNoBindings" }
-  | { type: "invalidGraph" }
-  | { type: "multipleConnectionsToSameSocket" }
-  | { type: "noArgumentTargets" }
-  | {
-      type: "sourceAndDestinationSocketBothHaveFuncs";
-      sourceFuncId: FuncId;
-      destFuncId: FuncId;
-    }
-  | { type: "sourceSocketPrototypeArgumentNotBoundToProp" }
-  | { type: "sourceSocketPrototypeHasMultipleArguments" }
-  | { type: "sourceSocketPrototypeHasNoArguments" };

@@ -325,28 +325,10 @@ impl DependentValueGraph {
                         .get_node_weight(apa_idx)
                         .await?
                         .get_attribute_prototype_argument_node_weight()?;
-
-                    match apa.targets() {
-                        // If there are no targets, this is a schema-level attribute prototype argument
-                        None => relevant_apas.push(apa),
-                        Some(targets) => {
-                            if targets.source_component_id == current_component_id {
-                                // Both "deleted" and not deleted Components can feed data into
-                                // "deleted" Components. **ONLY** not deleted Components can feed
-                                // data into not deleted Components.
-                                if Component::should_data_flow_between_components(
-                                    ctx,
-                                    targets.destination_component_id,
-                                    targets.source_component_id,
-                                )
-                                .await
-                                .map_err(|e| AttributeValueError::Component(Box::new(e)))?
-                                {
-                                    relevant_apas.push(apa)
-                                }
-                            }
-                        }
-                    }
+                    // If there are no targets, this is a schema-level attribute prototype argument
+                    // TODO (jkeiser) the above comment is false; there can be apas on component-specific
+                    // prototypes. Presumably we check this elsewhere.
+                    relevant_apas.push(apa);
                 }
                 relevant_apas
             };
@@ -435,12 +417,8 @@ impl DependentValueGraph {
                     AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
 
                 for attribute_value_id in attribute_value_ids {
-                    let filter_component_id = match apa.targets() {
-                        None => current_component_id,
-                        Some(targets) => targets.destination_component_id,
-                    };
                     let component_id = self.component_id_for_av(ctx, attribute_value_id).await?;
-                    if component_id != filter_component_id {
+                    if component_id != current_component_id {
                         continue;
                     }
 

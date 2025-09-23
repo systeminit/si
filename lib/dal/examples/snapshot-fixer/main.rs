@@ -11,7 +11,6 @@ use dal::{
     WorkspaceSnapshotGraph,
     workspace_snapshot::graph::validator::{
         WithGraph,
-        connections::connection_migrations,
         validate_graph,
     },
 };
@@ -48,9 +47,6 @@ async fn main() -> Result<()> {
     // let node_id = "01JTXGMYKFFPY7H2ZNV7SKFQ9X";
     // remove_node_by_id(&mut graph, node_id)?;
 
-    for migration in connection_migrations(&graph, vec![]) {
-        println!("{}", WithGraph(&graph, &migration));
-    }
     for issue in validate_graph(&graph)? {
         println!("{}", WithGraph(&graph, &issue));
         // Only fix ConnectionToUnknownSocket issues for now

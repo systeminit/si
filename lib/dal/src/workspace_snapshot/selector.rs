@@ -1101,13 +1101,6 @@ impl ComponentExt for WorkspaceSnapshotSelector {
             Self::SplitSnapshot(snapshot) => snapshot.external_source_count(id).await,
         }
     }
-
-    async fn has_socket_connections(&self, id: ComponentId) -> ComponentResult<bool> {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.has_socket_connections(id).await,
-            Self::SplitSnapshot(snapshot) => snapshot.has_socket_connections(id).await,
-        }
-    }
 }
 
 #[async_trait]

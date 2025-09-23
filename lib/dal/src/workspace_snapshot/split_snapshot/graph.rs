@@ -23,13 +23,11 @@ use crate::{
         EntityKindResult,
     },
     workspace_snapshot::{
-        content_address::ContentAddress,
         graph::traits::{
             attribute_value::AttributeValueExt,
             component::ComponentExt,
             entity_kind::EntityKindExt,
         },
-        node_weight::NodeWeight,
         split_snapshot::SplitSnapshotGraphV1,
     },
 };
@@ -66,25 +64,6 @@ impl ComponentExt for SplitSnapshotGraphV1 {
 
         Ok(count)
     }
-
-    fn has_socket_connections(&self, component_id: ComponentId) -> ComponentResult<bool> {
-        // Start DFS
-        // Path: Component -> SchemaVariant → InputSocket → AttributePrototype (Content) → AttributePrototypeArgument
-        let mut has_connections = false;
-
-        // Find schema variant by following "Use" edge from component
-        let schema_variant_id = self
-            .outgoing_targets(component_id.into(), EdgeWeightKindDiscriminants::Use)
-            .map_err(WorkspaceSnapshotError::from)?
-            .next()
-            .ok_or(ComponentError::SchemaVariantNotFound(component_id))?;
-
-        petgraph::visit::depth_first_search(self, Some(schema_variant_id), |event| {
-            has_socket_connections_dfs_event(event, &mut has_connections, component_id, self)
-        })?;
-
-        Ok(has_connections)
-    }
 }
 
 impl EntityKindExt for SplitSnapshotGraphV1 {
@@ -92,66 +71,6 @@ impl EntityKindExt for SplitSnapshotGraphV1 {
         self.node_weight(id.into())
             .ok_or(EntityKindError::NodeNotFound(id))
             .map(Into::into)
-    }
-}
-fn has_socket_connections_dfs_event(
-    event: DfsEvent<Ulid>,
-    has_connections: &mut bool,
-    component_id: ComponentId,
-    graph: &SplitSnapshotGraphV1,
-) -> ComponentResult<Control<()>> {
-    match event {
-        DfsEvent::Discover(node_id, _) => {
-            let Some(node_weight) = graph.node_weight(node_id) else {
-                return Ok(petgraph::visit::Control::Continue);
-            };
-
-            match node_weight {
-                // Found an APA Node weight - let's see if it has targets and if the component in question is the destination
-                NodeWeight::AttributePrototypeArgument(apa_node_weight) => {
-                    if let Some(targets) = apa_node_weight.targets() {
-                        if targets.destination_component_id == component_id {
-                            *has_connections = true;
-                            return Ok(petgraph::visit::Control::Break(()));
-                        }
-                    }
-                    Ok(petgraph::visit::Control::Continue)
-                }
-                NodeWeight::Content(content_node_weight) => {
-                    match content_node_weight.content_address() {
-                        // we really only care about these I think. The rest can be pruned
-                        ContentAddress::AttributePrototype(_) | ContentAddress::InputSocket(_) => {
-                            Ok(petgraph::visit::Control::Continue)
-                        }
-
-                        _ => Ok(petgraph::visit::Control::Prune),
-                    }
-                }
-                // If we see any of these, keep walking
-                NodeWeight::SchemaVariant(_) | NodeWeight::InputSocket(_) | NodeWeight::Prop(_) => {
-                    Ok(petgraph::visit::Control::Continue)
-                }
-                // All of these can be pruned, they don't lead to the answer
-                NodeWeight::Action(_)
-                | NodeWeight::AttributeValue(_)
-                | NodeWeight::Component(_)
-                | NodeWeight::ActionPrototype(_)
-                | NodeWeight::Category(_)
-                | NodeWeight::DependentValueRoot(_)
-                | NodeWeight::FinishedDependentValueRoot(_)
-                | NodeWeight::Ordering(_)
-                | NodeWeight::Geometry(_)
-                | NodeWeight::View(_)
-                | NodeWeight::DiagramObject(_)
-                | NodeWeight::ApprovalRequirementDefinition(_)
-                | NodeWeight::ManagementPrototype(_)
-                | NodeWeight::Func(_)
-                | NodeWeight::FuncArgument(_)
-                | NodeWeight::Reason(_)
-                | NodeWeight::Secret(_) => Ok(petgraph::visit::Control::Prune),
-            }
-        }
-        _ => Ok(petgraph::visit::Control::Continue),
     }
 }
 

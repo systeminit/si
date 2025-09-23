@@ -21,11 +21,9 @@ use si_id::{
     SchemaVariantId,
 };
 
-use super::WorkspaceSnapshotGraphError;
 use crate::{
     prop::PropKind,
     workspace_snapshot::{
-        content_address::ContentAddressDiscriminants,
         edge_weight::{
             EdgeWeight,
             EdgeWeightKind,
@@ -36,7 +34,6 @@ use crate::{
             WorkspaceSnapshotGraphVCurrent,
         },
         node_weight::{
-            ArgumentTargets,
             AttributePrototypeArgumentNodeWeight,
             AttributeValueNodeWeight,
             ComponentNodeWeight,
@@ -45,8 +42,6 @@ use crate::{
         },
     },
 };
-
-pub mod connections;
 
 /// Validate the entire graph, returning a list of validation issues found.
 pub fn validate_graph_with_text(
@@ -174,7 +169,7 @@ impl ValidateNode for AttributePrototypeArgumentNodeWeight {
     fn validate_node(
         graph: &WorkspaceSnapshotGraphVCurrent,
         issues: &mut Vec<ValidationIssue>,
-        (apa_node, apa): (&Self, NodeIndex),
+        (_, apa): (&Self, NodeIndex),
     ) -> WorkspaceSnapshotGraphResult<()> {
         // Check that the APA has exactly one value
         {
@@ -196,56 +191,6 @@ impl ValidateNode for AttributePrototypeArgumentNodeWeight {
                 issues.push(ValidationIssue::MultipleValues {
                     apa: graph.get_node_weight(apa)?.id().into(),
                 });
-            }
-        }
-
-        // ArgumentTargets are not allowed
-        if let Some(ArgumentTargets {
-            source_component_id,
-            ..
-        }) = apa_node.targets
-        {
-            issues.push(ValidationIssue::ArgumentTargets {
-                apa: graph.get_node_weight(apa)?.id().into(),
-            });
-
-            // Check for connection to unknown component or socket
-            let Some(source_component) = graph.get_node_index_by_id_opt(source_component_id) else {
-                issues.push(ValidationIssue::ConnectionToMissingComponent {
-                    apa: graph.get_node_weight(apa)?.id().into(),
-                    source_component: source_component_id,
-                });
-                return Ok(());
-            };
-
-            // If this is a connection to a socket or prop, make sure the component on the other
-            // end has an AV for it
-            let Some(source_socket) =
-                graph.target_opt(apa, EdgeWeightKind::PrototypeArgumentValue)?
-            else {
-                return Ok(());
-            };
-
-            // Make sure the source is an output socket
-            if Some(ContentAddressDiscriminants::OutputSocket)
-                != graph
-                    .get_node_weight(source_socket)?
-                    .content_address_discriminants()
-            {
-                return Ok(());
-            };
-
-            // Run through the sockets on the component, and find the one that matches
-            let mut component_sockets = graph
-                .targets(source_component, EdgeWeightKind::SocketValue)
-                .filter_map(|socket_value| graph.target(socket_value, EdgeWeightKind::Socket).ok());
-            if !component_sockets.contains(&source_socket) {
-                issues.push(ValidationIssue::ConnectionToUnknownSocket {
-                    apa: graph.get_node_weight(apa)?.id().into(),
-                    source_component: graph.get_node_weight(source_component)?.id().into(),
-                    source_socket: graph.get_node_weight(source_socket)?.id().into(),
-                });
-                return Ok(());
             }
         }
 
@@ -275,23 +220,10 @@ impl ValidateNode for ComponentNodeWeight {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, strum::EnumDiscriminants)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ValidationIssue {
-    /// APA has ArgumentTargets (should all be gone!)
-    ArgumentTargets { apa: AttributePrototypeArgumentId },
     /// Component has a parent (should all be gone!)
     ComponentHasParent {
         component: ComponentId,
         parent: ComponentId,
-    },
-    /// APA is connected to a component that does not exist
-    ConnectionToMissingComponent {
-        apa: AttributePrototypeArgumentId,
-        source_component: ComponentId,
-    },
-    /// APA is connected to a socket that does not exist on the source component
-    ConnectionToUnknownSocket {
-        apa: AttributePrototypeArgumentId,
-        source_component: ComponentId,
-        source_socket: OutputSocketId,
     },
     /// A child prop of an object has more than one attribute value
     DuplicateAttributeValue {
@@ -386,34 +318,12 @@ impl std::fmt::Display for WithGraph<'_, &'_ ValidationIssue> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let &WithGraph(graph, issue) = self;
         match *issue {
-            ValidationIssue::ArgumentTargets { apa } => {
-                write!(f, "APA {} has ArgumentTargets", WithGraph(graph, apa))
-            }
             ValidationIssue::ComponentHasParent { component, parent } => {
                 write!(
                     f,
                     "Component {} has parent {}",
                     WithGraph(graph, component),
                     WithGraph(graph, parent)
-                )
-            }
-            ValidationIssue::ConnectionToMissingComponent {
-                apa: dest_apa,
-                source_component,
-            } => {
-                write!(
-                    f,
-                    "Connection from APA {dest_apa} to missing component {source_component}"
-                )
-            }
-            ValidationIssue::ConnectionToUnknownSocket {
-                apa: dest_apa,
-                source_component,
-                source_socket,
-            } => {
-                write!(
-                    f,
-                    "Connection from APA {dest_apa} to unknown socket {source_socket} on component {source_component}"
                 )
             }
             ValidationIssue::DuplicateAttributeValue {

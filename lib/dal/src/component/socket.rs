@@ -15,7 +15,6 @@ use super::{
     ComponentResult,
 };
 use crate::{
-    AttributePrototype,
     AttributeValue,
     AttributeValueId,
     Component,
@@ -24,10 +23,7 @@ use crate::{
     InputSocketId,
     OutputSocket,
     OutputSocketId,
-    attribute::{
-        prototype::argument::AttributePrototypeArgument,
-        value::ValueIsFor,
-    },
+    attribute::value::ValueIsFor,
 };
 
 /// Represents a given [`Component`]'s [`crate::InputSocket`], identified by its
@@ -81,7 +77,7 @@ impl ComponentOutputSocket {
         let mut inferred_connection_graph =
             workspace_snapshot.inferred_connection_graph(ctx).await?;
         let mut connections = inferred_connection_graph
-            .inferred_connections_for_component_stack(ctx, component_id)
+            .inferred_connections_for_component_stack(component_id)
             .await?;
         connections.retain(|inferred_connection| {
             inferred_connection.source_component_id == component_id
@@ -232,7 +228,7 @@ impl ComponentInputSocket {
             workspace_snapshot.inferred_connection_graph(ctx).await?;
         let mut connections = Vec::new();
         for inferred_connection in inferred_connection_graph
-            .inferred_connections_for_input_socket(ctx, self.component_id, self.input_socket_id)
+            .inferred_connections_for_input_socket(self.component_id, self.input_socket_id)
             .await?
         {
             let attribute_value_id = OutputSocket::component_attribute_value_id(
@@ -391,30 +387,5 @@ impl ComponentInputSocket {
         let view = AttributeValue::view(ctx, attribute_value_id).await?;
 
         Ok(view)
-    }
-
-    /// Return true if the input socket already has an explicit connection (a user drew an edge)
-    #[instrument(level = "debug", skip(ctx))]
-    pub async fn is_manually_configured(&self, ctx: &DalContext) -> ComponentResult<bool> {
-        // if the input socket has an explicit connection, then we will not gather any implicit
-        // note we could do some weird logic here when it comes to sockets with arrity of many
-        // but let's punt for now
-        if let Some(maybe_attribute_prototype) =
-            AttributePrototype::find_for_input_socket(ctx, self.input_socket_id).await?
-        {
-            // if this socket has an attribute prototype argument,
-            //that means it has an explicit connection and we should not
-            // look for implicits
-            let maybe_apa = AttributePrototypeArgument::list_ids_for_prototype_and_destination(
-                ctx,
-                maybe_attribute_prototype,
-                self.component_id,
-            )
-            .await?;
-            if !maybe_apa.is_empty() {
-                return Ok(true);
-            }
-        }
-        Ok(false)
     }
 }

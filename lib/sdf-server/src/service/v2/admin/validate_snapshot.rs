@@ -7,7 +7,6 @@ use dal::{
     ChangeSetId,
     DalContext,
     WorkspacePk,
-    attribute::prototype::argument::AttributePrototypeArgument,
     workspace_snapshot::graph::validator::ValidationIssue,
 };
 use si_db::Tenancy;
@@ -79,12 +78,6 @@ async fn get_validation_issues(
 
 async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> AdminAPIResult<bool> {
     Ok(match issue {
-        &ValidationIssue::ConnectionToMissingComponent { apa, .. }
-        | &ValidationIssue::ConnectionToUnknownSocket { apa, .. } => {
-            // These will never be fixed, so we just remove them
-            AttributePrototypeArgument::remove(ctx, apa).await?;
-            true
-        }
         &ValidationIssue::MissingValue { .. } => {
             // We can only remove this if it is a connection from an input socket, meaning it has
             // targets and is hanging off an input socket.
@@ -96,8 +89,7 @@ async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> AdminAPIResult<
             AttributeValue::remove(ctx, duplicate).await?;
             true
         }
-        ValidationIssue::ArgumentTargets { .. }
-        | ValidationIssue::ComponentHasParent { .. }
+        ValidationIssue::ComponentHasParent { .. }
         | ValidationIssue::MissingChildAttributeValues { .. }
         | ValidationIssue::MultipleValues { .. }
         | ValidationIssue::UnknownChildAttributeValue { .. } => false,

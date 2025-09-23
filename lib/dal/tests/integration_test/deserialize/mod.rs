@@ -73,7 +73,6 @@ use dal::{
     workspace_snapshot::{
         content_address::ContentAddress,
         node_weight::{
-            ArgumentTargets,
             AttributePrototypeArgumentNodeWeight,
             CategoryNodeWeight,
             NodeWeight,
@@ -92,7 +91,6 @@ use si_events::{
     CasValue,
     EncryptedSecretKey,
     Timestamp,
-    merkle_tree_hash::MerkleTreeHash,
 };
 use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
@@ -107,7 +105,11 @@ const CURRENT_SERIALIZED_CONTENT_FILENAME: &str =
 // deserialization test against the snapshot with the *old* weights. If it does, update the
 // validation snapshot file.
 #[allow(unused)]
-fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
+async fn make_me_one_with_everything(ctx: &DalContext) -> WorkspaceSnapshotGraph {
+    let mut graph = WorkspaceSnapshotGraphVCurrent::new(ctx)
+        .await
+        .expect("make new");
+
     let mut node_indexes = vec![];
 
     // For every enum that goes into a node weight, try to pick the last variant
@@ -126,16 +128,9 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
                 None,
             ),
             NodeWeightDiscriminants::AttributePrototypeArgument => {
-                NodeWeight::AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight {
-                    id: Ulid::new(),
-                    lineage_id: Ulid::new(),
-                    merkle_tree_hash: MerkleTreeHash::default(),
-                    targets: Some(ArgumentTargets {
-                        source_component_id: Ulid::new().into(),
-                        destination_component_id: Ulid::new().into(),
-                    }),
-                    timestamp: Timestamp::now(),
-                })
+                NodeWeight::AttributePrototypeArgument(
+                    AttributePrototypeArgumentNodeWeight::new_for_deserialization_test(),
+                )
             }
             NodeWeightDiscriminants::AttributeValue => NodeWeight::new_attribute_value(
                 Ulid::new(),
@@ -312,6 +307,8 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
 
         last_node += 1;
     }
+
+    WorkspaceSnapshotGraph::V4(graph)
 }
 
 fn make_static_utc() -> DateTime<Utc> {
@@ -596,16 +593,9 @@ fn make_me_one_with_everything_content_types_edition() -> Vec<ContentTypes> {
 #[test]
 #[ignore = "only run this when you want to produce a new serialized graph"]
 async fn write_deserialization_data(ctx: &DalContext) {
-    let mut graph = WorkspaceSnapshotGraphVCurrent::new(ctx)
-        .await
-        .expect("make new");
+    let graph = make_me_one_with_everything(ctx).await;
 
-    make_me_one_with_everything(&mut graph);
-
-    graph.cleanup_and_merkle_tree_hash().expect("hash it");
-
-    let real_graph = WorkspaceSnapshotGraph::V4(graph);
-    let (serialized, _) = serialize::to_vec(&real_graph).expect("serialize");
+    let (serialized, _) = serialize::to_vec(&graph).expect("serialize");
 
     let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
 
@@ -658,6 +648,18 @@ async fn content_can_be_deserialized(_ctx: &DalContext) {
 }
 
 #[test]
+async fn content_can_be_serialized_and_then_deserialized(_ctx: &DalContext) {
+    let original_content = make_me_one_with_everything_content_types_edition();
+    let (bytes, _) = serialize::to_vec(&original_content).expect("serialize");
+
+    let content: Vec<ContentTypes> = serialize::from_bytes(&bytes).expect("deserialize");
+    let expected = make_me_one_with_everything_content_types_edition();
+
+    assert_eq!(expected, content);
+}
+
+// This tests that old versions of the graph can be deserialized.
+#[test]
 async fn graph_can_be_deserialized(_ctx: &DalContext) {
     let mut file = std::fs::File::open(format!(
         "{CURRENT_SERIALIZED_GRAPH_DIR_PATH}/{CURRENT_SERIALIZED_GRAPH_FILENAME}"
@@ -667,9 +669,22 @@ async fn graph_can_be_deserialized(_ctx: &DalContext) {
     file.read_to_end(&mut bytes).expect("able to read bytes");
 
     let graph: WorkspaceSnapshotGraph = serialize::from_bytes(&bytes).expect("deserialize");
-
     assert_eq!(32, graph.node_count());
+    verify_graph_invariants(&graph);
+}
 
+// This tests that the *current* version of the graph can be round-tripped.
+#[test]
+async fn graph_can_be_serialized_and_then_deserialized(ctx: &DalContext) {
+    let original_graph = make_me_one_with_everything(ctx).await;
+    let (bytes, _) = serialize::to_vec(&original_graph).expect("serialize");
+
+    let graph: WorkspaceSnapshotGraph = serialize::from_bytes(&bytes).expect("deserialize");
+    assert_eq!(35, graph.node_count());
+    verify_graph_invariants(&graph);
+}
+
+fn verify_graph_invariants(graph: &WorkspaceSnapshotGraph) {
     // Where we can, verify that the enums on the node weights match what we expect
     for (node_weight, _) in graph.nodes() {
         match node_weight {

@@ -1129,18 +1129,9 @@ impl WorkspaceSnapshotGraphV4 {
                         };
                         (discrim.to_string(), color)
                     }
-                    NodeWeight::AttributePrototypeArgument(apa) => (
-                        format!(
-                            "Attribute Prototype Argument{}",
-                            apa.targets()
-                                .map(|targets| format!(
-                                    "\nsource: {}\nto: {}",
-                                    targets.source_component_id, targets.destination_component_id
-                                ))
-                                .unwrap_or("".to_string())
-                        ),
-                        "green",
-                    ),
+                    NodeWeight::AttributePrototypeArgument(_) => {
+                        ("Attribute Prototype Argument".to_string(), "green")
+                    }
                     NodeWeight::AttributeValue(_) => ("Attribute Value".to_string(), "blue"),
                     NodeWeight::Category(category_node_weight) => match category_node_weight.kind()
                     {
@@ -1156,15 +1147,16 @@ impl WorkspaceSnapshotGraphV4 {
                         CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
                         CategoryNodeKind::Module => ("Modules (Category)".to_string(), "black"),
                         CategoryNodeKind::DependentValueRoots => {
-                            ("Dependent Values (Category)".into(), "black")
+                            ("Dependent Values (Category)".to_string(), "black")
                         }
-                        CategoryNodeKind::View => ("Views (Category)".into(), "black"),
+                        CategoryNodeKind::View => ("Views (Category)".to_string(), "black"),
                         CategoryNodeKind::DiagramObject => {
-                            ("Diagram Objects (Category)".into(), "black")
+                            ("Diagram Objects (Category)".to_string(), "black")
                         }
-                        CategoryNodeKind::DefaultSubscriptionSources => {
-                            ("Default Subscription Sources (Category)".into(), "black")
-                        }
+                        CategoryNodeKind::DefaultSubscriptionSources => (
+                            "Default Subscription Sources (Category)".to_string(),
+                            "black",
+                        ),
                     },
                     NodeWeight::Component(component) => (
                         "Component".to_string(),
@@ -1344,19 +1336,6 @@ impl WorkspaceSnapshotGraphV4 {
             DfsEvent::Discover(other_node_index, _) => {
                 let other_node_weight = other.get_node_weight(other_node_index)?;
 
-                // AttributePrototypeArguments with targets connect Input & Output Sockets, and we
-                // don't want to import either the Component on the other end of the connection, or
-                // the connection itself. Unfortunately, we can't prune when looking at the
-                // relevant edge, as that would prune _all remaining edges_ outgoing from the
-                // AttributePrototype.
-                if NodeWeightDiscriminants::AttributePrototypeArgument == other_node_weight.into() {
-                    let apa_node_weight =
-                        other_node_weight.get_attribute_prototype_argument_node_weight()?;
-                    if apa_node_weight.targets().is_some() {
-                        return Ok(petgraph::visit::Control::Prune);
-                    }
-                }
-
                 // When we hit something that already exists, we're pretty much guaranteed to have
                 // left "the component" and have gone into already-existing Funcs or the Schema
                 // Variant.
@@ -1382,18 +1361,6 @@ impl WorkspaceSnapshotGraphV4 {
                     .find_equivalent_node(other_node_weight.id(), other_node_weight.lineage_id())?
                     .is_none()
                 {
-                    // AttributePrototypeArguments for cross-component connections will still have
-                    // their DfsEvent::Finish fire, and won't already exist in self, but we do not
-                    // want to import them.
-                    if let NodeWeight::AttributePrototypeArgument(
-                        attribute_prototype_argument_node_weight,
-                    ) = other_node_weight
-                    {
-                        if attribute_prototype_argument_node_weight.targets().is_some() {
-                            return Ok(petgraph::visit::Control::Prune);
-                        }
-                    }
-
                     // Import the node.
                     self.add_or_replace_node(other_node_weight.clone())?;
 

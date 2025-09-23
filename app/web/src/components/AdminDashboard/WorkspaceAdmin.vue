@@ -119,24 +119,6 @@
             "
             >Validate AND FIX changeset</VButton
           >
-
-          <VButton
-            :requestStatus="migrateConnectionsRequestStatus"
-            @click="
-              migrateConnections(selectedWorkspaceId, selectedChangeSetId)
-            "
-            >Migrate connections (UPDATES changeset)</VButton
-          >
-
-          <VButton
-            :requestStatus="migrateConnectionsRequestStatus"
-            @click="
-              migrateConnections(selectedWorkspaceId, selectedChangeSetId, {
-                dryRun: true,
-              })
-            "
-            >Migrate connections (dry run)</VButton
-          >
         </Stack>
 
         <dl class="p-3">
@@ -212,7 +194,6 @@
       </Modal>
 
       <ValidateSnapshot v-if="showPanel === 'validate-snapshot'" />
-      <MigrateConnections v-else-if="showPanel === 'migrate-connections'" />
     </template>
   </Stack>
 </template>
@@ -238,7 +219,6 @@ import {
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import ValidateSnapshot from "@/components/AdminDashboard/ValidateSnapshot.vue";
-import MigrateConnections from "@/components/AdminDashboard/MigrateConnections.vue";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
 
 const adminStore = useAdminStore();
@@ -543,17 +523,6 @@ const setConcurrencyLimit = async () => {
 };
 
 const showPanel = ref<"validate-snapshot" | "migrate-connections" | null>(null);
-const migrateConnectionsRequestStatus = adminStore.getRequestStatus(
-  "MIGRATE_CONNECTIONS",
-);
-function migrateConnections(
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-  options?: { dryRun?: boolean },
-) {
-  adminStore.MIGRATE_CONNECTIONS(workspaceId, changeSetId, options);
-  showPanel.value = "migrate-connections";
-}
 
 const validateSnapshotRequestStatus =
   adminStore.getRequestStatus("VALIDATE_SNAPSHOT");

@@ -88,11 +88,6 @@ use crate::{
         OnlinePayload,
         UserWorkspaceFlagsPayload,
     },
-    workspace_snapshot::graph::validator::connections::{
-        ConnectionMigratedPayload,
-        ConnectionMigrationFinishedPayload,
-        ConnectionMigrationStartedPayload,
-    },
 };
 
 #[remain::sorted]
@@ -155,9 +150,6 @@ pub enum WsPayload {
     ComponentUpdated(ComponentUpdatedPayload),
     ComponentUpgraded(ComponentUpgradedPayload),
     ConnectionDeleted(ConnectionDeletedPayload),
-    ConnectionMigrated(ConnectionMigratedPayload),
-    ConnectionMigrationFinished(ConnectionMigrationFinishedPayload),
-    ConnectionMigrationStarted(ConnectionMigrationStartedPayload),
     ConnectionUpserted(ConnectionUpsertedPayload),
     Cursor(CursorPayload),
     FuncArgumentsSaved(FuncWsEventPayload),

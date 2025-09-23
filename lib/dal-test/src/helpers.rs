@@ -200,41 +200,6 @@ pub async fn create_named_component_for_schema_variant_on_default_view(
     Ok(Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?)
 }
 
-/// Disconnects two [`Components`](Component) for a given set of socket names.
-pub async fn disconnect_components_with_socket_names(
-    ctx: &DalContext,
-    source_component_id: ComponentId,
-    output_socket_name: impl AsRef<str>,
-    destination_component_id: ComponentId,
-    input_socket_name: impl AsRef<str>,
-) -> Result<()> {
-    let from_socket_id = {
-        let sv_id = Component::schema_variant_id(ctx, source_component_id).await?;
-        OutputSocket::find_with_name(ctx, output_socket_name, sv_id)
-            .await?
-            .ok_or(eyre!("no output socket found"))?
-            .id()
-    };
-
-    let to_socket_id = {
-        let sv_id = Component::schema_variant_id(ctx, destination_component_id).await?;
-        InputSocket::find_with_name(ctx, input_socket_name, sv_id)
-            .await?
-            .ok_or(eyre!("no input socket found"))?
-            .id()
-    };
-
-    Component::remove_connection(
-        ctx,
-        source_component_id,
-        from_socket_id,
-        destination_component_id,
-        to_socket_id,
-    )
-    .await?;
-    Ok(())
-}
-
 /// Gets the [`Value`] for a specific [`Component`]'s [`InputSocket`] by the [`InputSocket`] name
 pub async fn get_component_input_socket_value(
     ctx: &DalContext,

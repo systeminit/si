@@ -97,7 +97,7 @@ impl ActionDependencyGraph {
             action_kinds.insert(action_id, action_prototype.kind);
         }
 
-        // TODO: Account for explicitly defiend dependencies between actions. These should be edges
+        // TODO: Account for explicitly defined dependencies between actions. These should be edges
         //       directly between two Actions, but are not implemented yet.
 
         // Get all inferred connections up front so we don't build this tree each time
@@ -117,7 +117,7 @@ impl ActionDependencyGraph {
                 .or_insert_with(|| component_dependencies.add_node(component_id))
                 .to_owned();
             for inferred_connection in component_tree
-                .inferred_incoming_connections_for_component(ctx, component_id)
+                .inferred_incoming_connections_for_component(component_id)
                 .await?
             {
                 // The edges of this graph go `output_socket_component (source) ->
