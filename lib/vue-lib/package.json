@@ -49,7 +49,7 @@
     "@tanstack/vue-table": "^8.20.5",
     "@vueuse/core": "^12.0.0",
     "@vueuse/head": "^1.1.23",
-    "axios": "^1.8.2",
+    "axios": "^1.12.0",
     "clsx": "^1.2.1",
     "date-fns": "^2.29.2",
     "floating-vue": "2.0.0-beta.20",
