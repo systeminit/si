@@ -18,6 +18,7 @@ use dal::{
     ChangeSet,
     ChangeSetError,
     ChangeSetId,
+    Component,
     ComponentError,
     ComponentId,
     Func,
@@ -149,6 +150,7 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/:action_id/put_on_hold", put(hold))
         .route("/:action_id/retry", put(retry))
         .route("/:action_id/func_run_id", get(get_func_run_id))
+        .route("/:action_id/queued_details", get(queued_details))
 }
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -359,4 +361,38 @@ pub async fn get_func_run_id(
 
     let func_run_id = Action::last_func_run_id_for_id_opt(&ctx, action_id).await?;
     Ok(Json(LatestFuncRunId { func_run_id }))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueuedDetails {
+    code: Option<String>,
+    args: serde_json::Value,
+}
+
+pub async fn queued_details(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(access_builder): AccessBuilder,
+    Path((_workspace_pk, change_set_id, action_id)): Path<(WorkspacePk, ChangeSetId, ActionId)>,
+) -> ActionResult<Json<QueuedDetails>> {
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
+
+    let prototype = Action::prototype(&ctx, action_id).await?;
+    let func_id = ActionPrototype::func_id(&ctx, prototype.id).await?;
+    let func = Func::get_by_id(&ctx, func_id).await?;
+    let code = func.code_plaintext()?;
+
+    let maybe_component_id = Action::component_id(&ctx, action_id).await?;
+    let args = match maybe_component_id {
+        Some(component_id) => {
+            let component = Component::get_by_id(&ctx, component_id).await?;
+            let component_view = component.view(&ctx).await?;
+            let args = serde_json::json!({ "properties" : component_view });
+            args
+        }
+        None => serde_json::json!(None::<serde_json::Value>),
+    };
+    Ok(Json(QueuedDetails { code, args }))
 }

@@ -1,6 +1,9 @@
 <template>
   <FuncRunDetailsLayout
     v-if="funcRun?.id"
+    :displayName="
+      funcRun.functionDisplayName || funcRun.functionName || 'Function Run'
+    "
     :funcRun="funcRun"
     :status="funcRunStatus(funcRun, managementFuncJobState?.state) || ''"
     :logText="logText"
@@ -10,11 +13,24 @@
         : undefined
     "
     :errorMessageRaw="managementFuncJobState?.message"
-    :functionCode="functionCode"
-    :argsJson="argsJson"
-    :resultJson="resultJson"
     :isLive="isLive"
   >
+    <template #headerList>
+      <template v-if="funcRun.functionKind">
+        <dt><Icon name="func" size="xs" /></dt>
+        <dd>{{ funcRun.functionKind }}</dd>
+      </template>
+
+      <template v-if="funcRun.componentName">
+        <dt></dt>
+        <dd>{{ funcRun.componentName }}</dd>
+      </template>
+
+      <template v-if="funcRun.actionKind">
+        <dt><Icon name="play" size="xs" /></dt>
+        <dd>{{ funcRun.actionKind }}</dd>
+      </template>
+    </template>
     <template #actions>
       <NewButton
         v-if="funcRun && funcRun.componentId && componentExists"
@@ -44,6 +60,43 @@
         @click="retryAction"
       />
     </template>
+    <template #grid>
+      <GridItemWithLiveHeader title="Code" :live="false">
+        <CodeViewer
+          v-if="functionCode"
+          :code="functionCode"
+          language="javascript"
+          allowCopy
+        />
+        <div v-else class="text-neutral-400 italic text-xs p-xs">
+          No code available
+        </div>
+      </GridItemWithLiveHeader>
+
+      <GridItemWithLiveHeader title="Arguments" :live="false">
+        <CodeViewer
+          v-if="argsJson"
+          :code="argsJson"
+          language="json"
+          allowCopy
+        />
+        <div v-else class="text-neutral-400 italic text-xs p-xs">
+          No arguments available
+        </div>
+      </GridItemWithLiveHeader>
+
+      <GridItemWithLiveHeader title="Result" :live="false">
+        <CodeViewer
+          v-if="resultJson"
+          :code="resultJson"
+          language="json"
+          allowCopy
+        />
+        <div v-else class="text-neutral-400 italic text-xs p-xs">
+          No result available
+        </div>
+      </GridItemWithLiveHeader>
+    </template>
   </FuncRunDetailsLayout>
   <h1 v-else class="text-">Func Run {{ funcRunId }} not found</h1>
 </template>
@@ -51,7 +104,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, onBeforeUnmount, ref, inject, unref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
-import { NewButton } from "@si/vue-lib/design-system";
+import { NewButton, Icon } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
 import { bifrost, useMakeKey, useMakeArgs } from "@/store/realtime/heimdall";
@@ -59,7 +112,9 @@ import {
   BifrostComponent,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
+import CodeViewer from "@/components/CodeViewer.vue";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
+import GridItemWithLiveHeader from "./layout_components/GridItemWithLiveHeader.vue";
 import { assertIsDefined, Context } from "./types";
 import { useApi, routes, funcRunTypes } from "./api_composables";
 import { keyEmitter } from "./logic_composables/emitters";
