@@ -10,18 +10,25 @@
     "generate-api-docs": "npx widdershins --omitHeader --search false --language_tabs \"typescript:TypeScript\" --summary ../../bin/openapi-extractor/data/openapi.json -o src/reference/public-api.md -u ./custom-templates/openapi3"
   },
   "devDependencies": {
+    "@braintree/sanitize-url": "^7.1.1",
     "@si/eslint-config": "workspace:*",
     "@si/tsconfig": "workspace:*",
-    "@types/node": "^18.19.59",
+    "@types/node": "^18.19.127",
+    "cytoscape": "^3.33.1",
+    "cytoscape-cose-bilkent": "^4.1.0",
+    "dayjs": "^1.11.18",
+    "debug": "^4.3.4",
     "eslint": "^8.57.1",
     "medium-zoom": "^1.1.0",
+    "mermaid": "^11.12.0",
     "typescript": "^4.9.5",
-    "vitepress": "~1.0.2",
-    "vitepress-plugin-lightbox": "^1.0.2",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-lightbox": "^1.0.3",
+    "vitepress-plugin-mermaid": "^2.0.17",
     "widdershins": "^4.0.1"
   },
   "dependencies": {
-    "dotenv": "^16.0.3",
-    "posthog-js": "^1.148.2"
+    "dotenv": "^16.6.1",
+    "posthog-js": "^1.176.0"
   }
 }

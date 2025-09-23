@@ -2,10 +2,11 @@ import { defineConfig } from "vitepress";
 import dotenv from "dotenv";
 import path from "path";
 import lightbox from "vitepress-plugin-lightbox";
+import { withMermaid } from "vitepress-plugin-mermaid";
 
 dotenv.config();
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   title: "System Initiative Docs",
   description: "The documentation for System Initiative https://systeminit.com",
   markdown: {
@@ -68,6 +69,10 @@ export default defineConfig({
       },
     ],
     sidebar: [
+      {
+        text: "What is System Initiative",
+        link: "/what-is-si",
+      },
       {
         text: "Tutorials",
         collapsed: false,
@@ -211,4 +216,4 @@ export default defineConfig({
       port: parseInt(process.env.DEV_PORT!, 10),
     },
   },
-});
+}));
