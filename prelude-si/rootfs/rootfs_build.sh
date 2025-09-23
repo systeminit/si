@@ -120,7 +120,14 @@ apk update && apk add --no-cache \
   runuser \
   skopeo \
   wget \
-  xz
+  xz \
+  gcc \
+  musl-dev \
+  python3-dev \
+  libffi-dev \
+  openssl-dev \
+  cargo \
+  make
 
 # Minimal nix setup for dynamic linking
 mkdir -p /nix && cd /tmp
@@ -203,6 +210,12 @@ unzip -q deno.zip && mv deno /usr/local/bin/ && chmod +x /usr/local/bin/deno && 
 
 # Linode CLI
 pip3 install --break-system-packages linode-cli
+
+# Azure CLI
+pip3 install --break-system-packages azure-cli
+
+# Clean up build dependencies
+apk del gcc musl-dev python3-dev libffi-dev openssl-dev cargo make
 
 cd / && rm -rf /tmp/* 2>/dev/null && adduser -D app
 
