@@ -2,7 +2,9 @@
 
 ## New to System Initiative?
 
-System Initiative is an AI Native Infrastructure Automation Platform that unlocks your team's productivity
+System Initiative is an AI Native Infrastructure Automation Platform that unlocks your team's productivity.
+
+Start by [learning what System Initiative is](./what-is-si.md).
 
 Follow the [Getting Started](./tutorials/getting-started.md) guide.
 
