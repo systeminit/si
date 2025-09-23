@@ -74,7 +74,7 @@ Cypress.Commands.add('appModelPageLoaded', () => {
   const SI_WORKSPACE_ID = Cypress.env('VITE_SI_WORKSPACE_ID') || import.meta.env.VITE_SI_WORKSPACE_ID;
   
   cy.wait(3000);
-  cy.url().should("contain", SI_WORKSPACE_ID);
+  cy.url({ timeout: 60000 }).should("contain", SI_WORKSPACE_ID);
   cy.get('[data-testid="lobby"]').should('not.exist', { timeout: 180000 });
   cy.get('[data-testid="left-column-new-hotness-explore"]', { timeout: 60000 });
   cy.get('[data-testid="right-column-new-hotness-explore"]', { timeout: 60000 });
@@ -121,7 +121,7 @@ Cypress.Commands.add('basicLogin', () => {
   cy.wait(5000);
   // check to confirm that we have reached either the lobby or the app itself
   cy.get("#app-layout").should("exist", { timeout: 60000 });
-  cy.url().should("contain", SI_WORKSPACE_ID);
+  cy.url({ timeout: 60000 }).should("contain", SI_WORKSPACE_ID);
 });
 
 Cypress.Commands.add('createChangeSet', (changeSetName: string, immediatelyAbandon = false) => {

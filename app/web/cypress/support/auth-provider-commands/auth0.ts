@@ -21,7 +21,7 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
       cy.visit("/");
       cy.log('At homepage')
 
-      cy.url().should("contain", import.meta.env.VITE_AUTH0_DOMAIN);
+      cy.url({ timeout: 60000 }).should("contain", import.meta.env.VITE_AUTH0_DOMAIN);
 
       cy.visit("/");
 
@@ -33,7 +33,7 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
       });
 
       // Ensure Auth0 has redirected us back to the auth portal.
-      cy.url().should("contain", import.meta.env.VITE_AUTH_PORTAL_URL);
+      cy.url({ timeout: 60000 }).should("contain", import.meta.env.VITE_AUTH_PORTAL_URL);
 
       // Push onto the workspace requested
       cy.visit({
