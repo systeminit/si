@@ -982,9 +982,7 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
     if (indexExists) span.setAttribute("indexExists", indexExists?.toString());
     else {
       span.end();
-      debug(
-        `${msg.meta.toIndexChecksum} doesn't exist, ignoring index patch WTF`,
-      );
+      debug(`${msg.meta.toIndexChecksum} doesn't exist, ignoring index patch`);
       return;
     }
 
@@ -998,6 +996,7 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
     );
     span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
     if (previousIndexes.length === 0) {
+      span.setAttribute("ragnarok", true);
       debug(
         `Cannot patch, atom not found at ${msg.patch.fromChecksum}: ${previousIndexes}`,
       );
@@ -1013,26 +1012,12 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
       operations: msg.patch.patch,
       id: msg.meta.workspaceId,
     };
-    await patchAtom(db, atom);
+    const patchedIndex = await patchAtom(db, atom);
     const inserted = insertAtomMTM(db, atom, msg.meta.toIndexChecksum);
     span.setAttribute("insertedMTM", inserted);
     span.end();
 
     // don't move any indexes on the changeset record, thats taken care of elsewhere
-
-    const patchedIndex = get(
-      db,
-      msg.meta.workspaceId,
-      msg.meta.changeSetId,
-      EntityKind.MvIndex,
-      msg.meta.workspaceId,
-    );
-    if (patchedIndex === -1) {
-      error("Index not found after writing", msg.meta.workspaceId);
-      span.setAttribute("readFailure", true);
-      span.end();
-      return;
-    }
 
     // now delete any atom mtms that dont exist in the index
     const placeholders: string[] = [];
@@ -1042,26 +1027,28 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
       bind.push(msg.meta.toIndexChecksum, atom.kind, atom.id, atom.checksum);
     });
     bind.push(msg.meta.toIndexChecksum);
-    const sql = `
-      delete from index_mtm_atoms
-      where 
-        (
-          index_checksum,
-          kind,
-          args,
-          checksum
-        )
-      NOT IN
-        (
-          (${placeholders.join("), (")})
-        )
-      AND index_checksum = ?;
-    `;
-    db.exec({
-      sql,
-      bind,
-    });
-
+    if (placeholders.length > 0) {
+      const sql = `
+        delete from index_mtm_atoms
+        where 
+          (
+            index_checksum,
+            kind,
+            args,
+            checksum
+          )
+        NOT IN
+          (
+            (${placeholders.join("), (")})
+          )
+        AND index_checksum = ?;
+      `;
+      db.exec({
+        sql,
+        bind,
+      });
+    }
+    span.setAttribute("mvList.length", placeholders.length);
     span.end();
   });
 };
@@ -1075,7 +1062,8 @@ const handleWorkspacePatchMessage = async (
       const batchId = `${data.meta.toIndexChecksum}-${data.patches.length}`;
       debug("📦 BATCH START:", batchId);
 
-      const { changeSetId, toIndexChecksum, workspaceId } = data.meta;
+      const { changeSetId, toIndexChecksum, workspaceId, fromIndexChecksum } =
+        data.meta;
 
       span.setAttributes({
         patchKind: "workspace",
@@ -1085,6 +1073,7 @@ const handleWorkspacePatchMessage = async (
         changeSetId,
         workspaceId,
         toIndexChecksum,
+        fromIndexChecksum,
       });
       debug("RAW PATCHES", data.patches);
       if (data.patches.length === 0) {
@@ -3870,13 +3859,16 @@ const dbInterface: TabDBInterface = {
             } else if (data.kind === MessageKind.WORKSPACE_INDEXUPDATE) {
               // Index has been updated - signal lobby exit
               debug("📨 INDEX UPDATE", data.meta.changeSetId);
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              await sqlite!.transaction(async (db) =>
-                handleIndexMvPatch(db, data),
-              );
-              if (lobbyExitFn) {
-                lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
-              }
+              processPatchQueue.add(async () => {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                await sqlite!.transaction(async (db) =>
+                  handleIndexMvPatch(db, data),
+                );
+
+                if (lobbyExitFn) {
+                  lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
+                }
+              });
             } else if (data.kind === MessageKind.DEPLOYMENT_INDEXUPDATE) {
               // NOOP for now, DEPLOYMENT_PATCH does the work
               debug(
