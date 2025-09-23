@@ -6856,6 +6856,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rebuildinator"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "edda-client",
+ "si-data-nats",
+ "si-id",
+ "si-std",
+ "tokio",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -13,6 +13,7 @@ members = [
   "bin/openapi-extractor",
   "bin/pinga",
   "bin/rebaser",
+  "bin/rebuildinator",
   "bin/sdf",
   "bin/si-fs",
   "bin/veritech",

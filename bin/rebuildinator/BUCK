@@ -1,0 +1,20 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "rebuildinator",
+    deps = [
+        "//lib/edda-client:edda-client",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-id:si-id",
+        "//lib/si-std:si-std",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "rebuildinator"},
+)
+
