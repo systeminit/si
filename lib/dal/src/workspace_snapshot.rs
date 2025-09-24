@@ -73,10 +73,6 @@ use crate::{
     },
     component::{
         ComponentResult,
-        inferred_connection_graph::{
-            InferredConnectionGraph,
-            InferredConnectionGraphError,
-        },
         suggestion::{
             PropSuggestionCacheError,
             PropSuggestionsCache,
@@ -171,8 +167,6 @@ pub enum WorkspaceSnapshotError {
     CreateGraphCycle,
     #[error("cannot delete the default view")]
     DefaultViewDeletionAttempt,
-    #[error("InferredConnectionGraph error: {0}")]
-    InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("InputSocket error: {0}")]
     InputSocket(#[from] Box<InputSocketError>),
     #[error("join error: {0}")]
@@ -310,9 +304,6 @@ pub struct WorkspaceSnapshot {
     /// A hashset to prevent adding duplicate roots to the workspace in a single edit session
     dvu_roots: Arc<Mutex<HashSet<DependentValueRoot>>>,
 
-    /// A cached version of the inferred connection graph for this snapshot
-    inferred_connection_graph: Arc<RwLock<Option<InferredConnectionGraph>>>,
-
     /// A cached version of prop suggestions for autosubscribe optimization
     prop_suggestions: Arc<PropSuggestionsCache>,
 }
@@ -389,47 +380,6 @@ impl std::ops::DerefMut for SnapshotWriteGuard<'_> {
     }
 }
 
-#[must_use = "if unused the lock will be released immediately"]
-pub struct InferredConnectionsReadGuard<'a> {
-    inferred_connection_graph: RwLockReadGuard<'a, Option<InferredConnectionGraph>>,
-}
-
-#[must_use = "if unused the lock will be released immediately"]
-pub struct InferredConnectionsWriteGuard<'a> {
-    inferred_connection_graph: RwLockWriteGuard<'a, Option<InferredConnectionGraph>>,
-}
-
-impl std::ops::Deref for InferredConnectionsReadGuard<'_> {
-    type Target = InferredConnectionGraph;
-
-    fn deref(&self) -> &Self::Target {
-        let maybe = &*self.inferred_connection_graph;
-        maybe
-            .as_ref()
-            .expect("attempted to Deref inferred connection graph without creating it first")
-    }
-}
-
-impl std::ops::Deref for InferredConnectionsWriteGuard<'_> {
-    type Target = InferredConnectionGraph;
-
-    fn deref(&self) -> &Self::Target {
-        let maybe = &*self.inferred_connection_graph;
-        maybe
-            .as_ref()
-            .expect("attempted to Deref inferred connection graph without creating it first")
-    }
-}
-
-impl std::ops::DerefMut for InferredConnectionsWriteGuard<'_> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        let maybe: &mut Option<InferredConnectionGraph> = &mut self.inferred_connection_graph;
-        &mut *maybe
-            .as_mut()
-            .expect("attempted to DerefMut inferred connection graph without creating it first")
-    }
-}
-
 #[allow(dead_code)]
 pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
     match value {
@@ -457,7 +407,6 @@ impl WorkspaceSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
-            inferred_connection_graph: Arc::new(RwLock::new(None)),
             prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         };
 
@@ -699,7 +648,6 @@ impl WorkspaceSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
-            inferred_connection_graph: Arc::new(RwLock::new(None)),
             prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         })
     }
@@ -1019,7 +967,6 @@ impl WorkspaceSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
-            inferred_connection_graph: Arc::new(RwLock::new(None)),
             prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         })
     }
@@ -1428,26 +1375,6 @@ impl WorkspaceSnapshot {
         self.working_copy()
             .await
             .frame_contains_components(component_id)
-    }
-
-    pub async fn inferred_connection_graph(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<InferredConnectionsWriteGuard<'_>> {
-        let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
-        if inferred_connection_write_guard.is_none() {
-            *inferred_connection_write_guard =
-                Some(InferredConnectionGraph::new(ctx).await.map_err(Box::new)?);
-        }
-
-        Ok(InferredConnectionsWriteGuard {
-            inferred_connection_graph: inferred_connection_write_guard,
-        })
-    }
-
-    pub async fn clear_inferred_connection_graph(&self) {
-        let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
-        *inferred_connection_write_guard = None;
     }
 
     /// Get the prop suggestions cache for autosubscribe optimization

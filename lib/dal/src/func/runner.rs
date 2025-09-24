@@ -117,7 +117,6 @@ use crate::{
         },
         value::AttributeValueError,
     },
-    component::socket::ComponentInputSocket,
     func::backend::FuncBackendError,
     management::prototype::ManagementPrototypeId,
     prop::PropError,
@@ -1711,21 +1710,6 @@ impl FuncRunner {
                 match AttributePrototypeArgument::value_source(ctx, attribute_prototype_argument_id)
                     .await?
                 {
-                    // I am not the secret defining component, so find where it comes from
-                    ValueSource::InputSocket(input_socket_id) => {
-                        let component_input_socket = ComponentInputSocket::get_by_ids_or_error(
-                            ctx,
-                            component_id,
-                            input_socket_id,
-                        )
-                        .await?;
-                        if let Some(source_component_id) = component_input_socket
-                            .find_connection_arity_one(ctx)
-                            .await?
-                        {
-                            work_queue.push_back(source_component_id);
-                        }
-                    }
                     // I am not the secret defining component, but have a subscription, so let's find where it comes from
                     ValueSource::ValueSubscription(input) => {
                         // get the component for this av:
@@ -1749,6 +1733,8 @@ impl FuncRunner {
                             ordered_before_funcs_with_secret_keys.push((key, auth_funcs));
                         }
                     }
+                    // There is no such thing as a socket connection, so no value can come from here.
+                    ValueSource::InputSocket(_) => {}
                     value_source => {
                         return Err(FuncRunnerError::UnexpectedValueSourceForSecretProp(
                             value_source,

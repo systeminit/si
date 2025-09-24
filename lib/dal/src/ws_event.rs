@@ -42,8 +42,6 @@ use crate::{
         ComponentUpgradedPayload,
         ConnectionDeletedPayload,
         ConnectionUpsertedPayload,
-        InferredEdgeRemovePayload,
-        InferredEdgeUpsertPayload,
     },
     diagram::view::{
         ViewComponentsUpdatePayload,
@@ -161,8 +159,6 @@ pub enum WsPayload {
     FuncSaved(FuncWsEventPayload),
     FuncUpdated(FuncWsEventFuncSummary),
     ImportWorkspaceVote(ImportWorkspaceVotePayload),
-    InferredEdgeRemove(InferredEdgeRemovePayload),
-    InferredEdgeUpsert(InferredEdgeUpsertPayload),
     ManagementFuncExecuted(ManagementFuncExecutedPayload),
     ManagementOperationsComplete(ManagementOperationsCompletePayload),
     ManagementOperationsFailed(ManagementOperationsFailedPayload),

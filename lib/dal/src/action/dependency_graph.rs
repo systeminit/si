@@ -100,9 +100,6 @@ impl ActionDependencyGraph {
         // TODO: Account for explicitly defined dependencies between actions. These should be edges
         //       directly between two Actions, but are not implemented yet.
 
-        // Get all inferred connections up front so we don't build this tree each time
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut component_tree = workspace_snapshot.inferred_connection_graph(ctx).await?;
         let mut components_to_process =
             VecDeque::from(actions_by_component_id.keys().copied().collect_vec());
         // track which components we've already processed
@@ -116,24 +113,6 @@ impl ActionDependencyGraph {
                 .entry(component_id)
                 .or_insert_with(|| component_dependencies.add_node(component_id))
                 .to_owned();
-            for inferred_connection in component_tree
-                .inferred_incoming_connections_for_component(component_id)
-                .await?
-            {
-                // The edges of this graph go `output_socket_component (source) ->
-                // input_socket_component (target)`, matching the flow of the data between
-                // components.
-                let source_component_index = component_dependencies_index_by_id
-                    .entry(inferred_connection.source_component_id)
-                    .or_insert_with(|| {
-                        component_dependencies.add_node(inferred_connection.source_component_id)
-                    })
-                    .to_owned();
-                component_dependencies.update_edge(source_component_index, component_index, ());
-                if seen_list.insert(inferred_connection.source_component_id) {
-                    components_to_process.push_back(inferred_connection.source_component_id);
-                }
-            }
             for (_, apa_id) in Component::subscribers(ctx, component_id).await? {
                 let prototype_id = AttributePrototypeArgument::prototype_id(ctx, apa_id).await?;
                 if let Some(av_id) =

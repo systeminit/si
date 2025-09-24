@@ -67,7 +67,6 @@ use crate::{
         AttributeValueError,
         DependentValueGraph,
     },
-    component::inferred_connection_graph::InferredConnectionGraphError,
     func::FuncExecutionPk,
     implement_add_edge_to,
     workspace_snapshot::{
@@ -112,8 +111,6 @@ pub enum ActionError {
     Func(#[from] Box<FuncError>),
     #[error("Helper error: {0}")]
     Helper(#[from] Box<HelperError>),
-    #[error("InferredConnectionGraph error: {0}")]
-    InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("Layer DB error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("Node Weight error: {0}")]
@@ -186,12 +183,6 @@ impl From<FuncError> for ActionError {
 
 impl From<HelperError> for ActionError {
     fn from(value: HelperError) -> Self {
-        Box::new(value).into()
-    }
-}
-
-impl From<InferredConnectionGraphError> for ActionError {
-    fn from(value: InferredConnectionGraphError) -> Self {
         Box::new(value).into()
     }
 }
