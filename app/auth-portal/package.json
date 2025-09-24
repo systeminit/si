@@ -28,7 +28,7 @@
     "local-storage-fallback": "^5.0.0",
     "lodash-es": "^4.17.21",
     "pinia": "^2.2.4",
-    "posthog-js": "^1.176.0",
+    "posthog-js": "^1.268.0",
     "vite-ssg": "^0.23.8",
     "vue": "^3.5.13",
     "vue-router": "^4.4.5"

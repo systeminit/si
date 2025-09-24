@@ -47,8 +47,8 @@ importers:
         specifier: ^2.2.4
         version: 2.2.4(typescript@5.0.4)(vue@3.5.13(typescript@5.0.4))
       posthog-js:
-        specifier: ^1.176.0
-        version: 1.177.0
+        specifier: ^1.268.0
+        version: 1.268.4
       vite-ssg:
         specifier: ^0.23.8
         version: 0.23.8(vite@5.4.19(@types/node@18.19.59)(less@4.2.0)(terser@5.24.0))(vue-router@4.4.5(vue@3.5.13(typescript@5.0.4)))(vue@3.5.13(typescript@5.0.4))
@@ -111,8 +111,8 @@ importers:
         specifier: ^16.6.1
         version: 16.6.1
       posthog-js:
-        specifier: ^1.176.0
-        version: 1.177.0
+        specifier: ^1.268.0
+        version: 1.268.4
     devDependencies:
       '@braintree/sanitize-url':
         specifier: ^7.1.1
@@ -388,8 +388,8 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
       posthog-js:
-        specifier: ^1.155.0
-        version: 1.155.0
+        specifier: ^1.268.0
+        version: 1.268.4
       quick-lru:
         specifier: ^7.0.1
         version: 7.0.1
@@ -611,8 +611,8 @@ importers:
         specifier: ^1.0.2
         version: 1.0.2
       posthog-node:
-        specifier: ^5.5.0
-        version: 5.5.0
+        specifier: ^5.9.0
+        version: 5.9.1
       pretty-error:
         specifier: ^4.0.0
         version: 4.0.0
@@ -2732,6 +2732,9 @@ packages:
   '@pnpm/tabtab@0.5.4':
     resolution: {integrity: sha512-bWLDlHsBlgKY/05wDN/V3ETcn5G2SV/SiA2ZmNvKGGlmVX4G5li7GRDhHcgYvHJHyJ8TUStqg2xtHmCs0UbAbg==}
     engines: {node: '>=18'}
+
+  '@posthog/core@1.2.1':
+    resolution: {integrity: sha512-zNw96BipqM5/Tf161Q8/K5zpwGY3ezfb2wz+Yc3fIT5OQHW8eEzkQldPgtFKMUkqImc73ukEa2IdUpS6vEGH7w==}
 
   '@prisma/client@5.20.0':
     resolution: {integrity: sha512-CLv55ZuMuUawMsxoqxGtLT3bEZoa2W8L3Qnp6rDIFWy+ZBrUcOFKdoeGPSnbBqxc3SkdxJrF+D1veN/WNynZYA==}
@@ -9467,14 +9470,22 @@ packages:
     resolution: {integrity: sha512-dle9A3yYxlBSrt8Fu+IpjGT8SY8hN0mlaA6GY8t0P5PjIOZemULz/E2Bnm/2dcUOena75OTNkHI76uZBNUUq3A==}
     engines: {node: ^10 || ^12 || >=14}
 
-  posthog-js@1.155.0:
-    resolution: {integrity: sha512-gxi72Qcp7Vnq6efe5gNxsq84zyEFd33NUmoLSgcbMPhxU30qgc89Aw/N2mRB4mGrD3Mq0rCnDJUzGFdN59nR0g==}
-
   posthog-js@1.177.0:
     resolution: {integrity: sha512-0Qt3qTkyfsFW89bveqEzYhhX8YRNFAES9OqhzuxbvbHId/PSyxx/Pzgmgp+N5k45lon3ibwYRAbTlQ4yQacODQ==}
 
-  posthog-node@5.5.0:
-    resolution: {integrity: sha512-q+d6yuwCw88ZkcYTDlrF6eBkbRDgn4pA4Jp8ghm8uTfgxoGUKEcajnuMfmYudAXsly6UC4YccwQThey8p1jvgg==}
+  posthog-js@1.268.4:
+    resolution: {integrity: sha512-kbE8SeH4Hi6uETEzO4EVANULz1ncw+PXC/SMfDdByf4Qt0a/AKoxjlGCZwHuZuflQmBfTwwQcjHeQxnmIxti1A==}
+    peerDependencies:
+      '@rrweb/types': 2.0.0-alpha.17
+      rrweb-snapshot: 2.0.0-alpha.17
+    peerDependenciesMeta:
+      '@rrweb/types':
+        optional: true
+      rrweb-snapshot:
+        optional: true
+
+  posthog-node@5.9.1:
+    resolution: {integrity: sha512-Tydweh2Q3s2dy1b77NOYOaBfphSUNd6zmEPbU7yCuWnz8vU0nk2jObDRUQClTMGJZnr+HSj6ZVWvosrAN1d1dQ==}
     engines: {node: '>=20'}
 
   preact@10.22.1:
@@ -14135,6 +14146,8 @@ snapshots:
       untildify: 4.0.0
     transitivePeerDependencies:
       - supports-color
+
+  '@posthog/core@1.2.1': {}
 
   '@prisma/client@5.20.0(prisma@5.20.0)':
     optionalDependencies:
@@ -22295,12 +22308,6 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  posthog-js@1.155.0:
-    dependencies:
-      fflate: 0.4.8
-      preact: 10.22.1
-      web-vitals: 4.0.1
-
   posthog-js@1.177.0:
     dependencies:
       core-js: 3.38.1
@@ -22308,7 +22315,17 @@ snapshots:
       preact: 10.22.1
       web-vitals: 4.2.4
 
-  posthog-node@5.5.0: {}
+  posthog-js@1.268.4:
+    dependencies:
+      '@posthog/core': 1.2.1
+      core-js: 3.38.1
+      fflate: 0.4.8
+      preact: 10.22.1
+      web-vitals: 4.2.4
+
+  posthog-node@5.9.1:
+    dependencies:
+      '@posthog/core': 1.2.1
 
   preact@10.22.1: {}
 

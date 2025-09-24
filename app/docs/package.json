@@ -29,6 +29,6 @@
   },
   "dependencies": {
     "dotenv": "^16.6.1",
-    "posthog-js": "^1.176.0"
+    "posthog-js": "^1.268.0"
   }
 }
