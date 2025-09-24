@@ -448,7 +448,6 @@ interface AttributeDebugView {
 interface SocketDebugView extends AttributeDebugView {
   socketId: string;
   connectionAnnotations: string[];
-  inferredConnections: string[];
   name: string;
 }
 
@@ -480,7 +479,6 @@ interface FuncArgDebugView {
   name: string;
   valueSource: string;
   valueSourceId: string;
-  socketSourceKind: string | null;
   path: string | null;
   isUsed: boolean;
 }

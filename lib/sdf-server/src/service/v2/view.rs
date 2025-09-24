@@ -25,10 +25,6 @@ use dal::{
     WorkspaceSnapshotError,
     WsEventError,
     cached_module::CachedModuleError,
-    component::{
-        frame::FrameError,
-        inferred_connection_graph::InferredConnectionGraphError,
-    },
     pkg::PkgError,
     slow_rt::SlowRuntimeError,
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
@@ -73,12 +69,8 @@ pub enum ViewError {
     ComponentIsNotAFrame(ComponentId),
     #[error("dal diagram error: {0}")]
     DalDiagram(#[from] dal::diagram::DiagramError),
-    #[error("frame error: {0}")]
-    Frame(#[from] FrameError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error("inferred connection graph error: {0}")]
-    InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("invalid request: {0}")]
     InvalidRequest(String),
     #[error("join error: {0}")]

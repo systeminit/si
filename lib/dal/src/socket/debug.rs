@@ -54,7 +54,6 @@ pub struct SocketDebugView {
     pub value: Option<serde_json::Value>,
     pub view: Option<serde_json::Value>,
     pub name: String,
-    pub inferred_connections: Vec<Ulid>,
 }
 type SocketDebugViewResult<T> = Result<T, SocketDebugViewError>;
 
@@ -103,12 +102,6 @@ impl SocketDebugView {
             (AttributeValue::get_path_for_id(ctx, attribute_value_id).await?).unwrap_or_default();
 
         let view = AttributeValue::view(ctx, attribute_value_id).await?;
-        let inferred_connections: Vec<Ulid> =
-            AttributeValue::list_input_socket_sources_for_id(ctx, attribute_value_id)
-                .await?
-                .into_iter()
-                .map(Ulid::from)
-                .collect();
         Ok(SocketDebugView {
             prototype_id,
             prototype_is_component_specific: prototype_debug_view.is_component_specific,
@@ -122,7 +115,6 @@ impl SocketDebugView {
             path,
             view,
             name: output_socket.name().to_string(),
-            inferred_connections,
         })
     }
 
@@ -149,12 +141,6 @@ impl SocketDebugView {
         let path =
             (AttributeValue::get_path_for_id(ctx, attribute_value_id).await?).unwrap_or_default();
         let value_view = AttributeValue::view(ctx, attribute_value_id).await?;
-        let inferred_connections = component_input_socket
-            .find_inferred_connections(ctx)
-            .await?
-            .into_iter()
-            .map(|output_socket| Ulid::from(output_socket.attribute_value_id))
-            .collect();
         let view = SocketDebugView {
             prototype_id,
             prototype_is_component_specific: prototype_debug_view.is_component_specific,
@@ -168,7 +154,6 @@ impl SocketDebugView {
             path,
             view: value_view,
             name: input_socket.name().to_string(),
-            inferred_connections,
         };
         Ok(view)
     }

@@ -14,7 +14,6 @@ use crate::{
     AttributePrototypeId,
     AttributeValue,
     AttributeValueId,
-    Component,
     ComponentError,
     DalContext,
     Func,
@@ -34,12 +33,8 @@ use crate::{
                 },
             },
         },
-        value::{
-            AttributeValueError,
-            ValueIsFor,
-        },
+        value::AttributeValueError,
     },
-    component::socket::ComponentInputSocket,
     func::argument::{
         FuncArgument,
         FuncArgumentError,
@@ -108,16 +103,8 @@ pub struct FuncArgDebugView {
     pub name: String,
     pub value_source: String,
     pub value_source_id: Ulid,
-    pub socket_source_kind: Option<SocketSourceKind>,
     pub path: Option<String>,
     pub is_used: bool,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum SocketSourceKind {
-    Inferred,
-    Manual,
 }
 
 impl AttributePrototypeDebugView {
@@ -158,7 +145,6 @@ impl AttributePrototypeDebugView {
                         value_source: format!("{value_source:?}"),
                         value_source_id,
                         path: None,
-                        socket_source_kind: None,
                         is_used: true,
                     }]
                 }
@@ -171,7 +157,6 @@ impl AttributePrototypeDebugView {
                         value_source: format!("{value_source:?}"),
                         value_source_id: secret_id.into(),
                         path: None,
-                        socket_source_kind: None,
                         is_used: true,
                     }]
                 }
@@ -185,7 +170,6 @@ impl AttributePrototypeDebugView {
                         value_source: format!("{value_source:?}"),
                         value_source_id: static_argument_value_id.into(),
                         path: None,
-                        socket_source_kind: None,
                         is_used: true,
                     }]
                 }
@@ -206,7 +190,6 @@ impl AttributePrototypeDebugView {
                             name: func_arg_name.clone(),
                             value_source: format!("{value_source:?}"),
                             value_source_id: prop_id.into(),
-                            socket_source_kind: None,
                             path: prop_path,
                             is_used: true,
                         };
@@ -233,7 +216,6 @@ impl AttributePrototypeDebugView {
                             name: func_arg_name.clone(),
                             value_source: format!("{value_source:?}"),
                             value_source_id: input_socket_id.into(),
-                            socket_source_kind: Some(SocketSourceKind::Manual),
                             path: attribute_value_path,
                             is_used: true,
                         };
@@ -260,7 +242,6 @@ impl AttributePrototypeDebugView {
                             name: func_arg_name.clone(),
                             value_source: format!("{value_source:?}"),
                             value_source_id: output_socket_id.into(),
-                            socket_source_kind: Some(SocketSourceKind::Manual),
                             path: attribute_value_path,
                             is_used: true,
                         };
@@ -275,51 +256,6 @@ impl AttributePrototypeDebugView {
                 .entry(func_arg_name)
                 .and_modify(|values| values.extend(values_for_arg.clone()))
                 .or_insert(values_for_arg);
-        }
-        // if this attribute value is for an input socket, need to also get any inferred inputs if they exist!
-        if let ValueIsFor::InputSocket(input_socket_id) =
-            AttributeValue::is_for(ctx, attribute_value_id).await?
-        {
-            if let Some(component_input_socket) =
-                ComponentInputSocket::get_by_ids(ctx, component_id, input_socket_id).await?
-            {
-                // now get inferred func binding args and values!
-                for output_match in component_input_socket
-                    .find_inferred_connections(ctx)
-                    .await?
-                {
-                    let arg_used = Component::should_data_flow_between_components(
-                        ctx,
-                        component_input_socket.component_id,
-                        output_match.component_id,
-                    )
-                    .await?;
-                    let attribute_value_path =
-                        AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
-                    let value_view = AttributeValue::view(ctx, output_match.attribute_value_id)
-                        .await?
-                        .unwrap_or(Value::Null);
-                    let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
-                    if let Some(func_argument) =
-                        FuncArgument::list_for_func(ctx, input_func).await?.pop()
-                    {
-                        let func_arg_name = func_argument.name.clone();
-                        let func_arg_debug = FuncArgDebugView {
-                            value: value_view,
-                            name: func_argument.name,
-                            value_source: "Output Socket".to_string(),
-                            value_source_id: output_match.output_socket_id.into(),
-                            socket_source_kind: Some(SocketSourceKind::Inferred),
-                            path: attribute_value_path,
-                            is_used: arg_used,
-                        };
-                        func_binding_args
-                            .entry(func_arg_name)
-                            .and_modify(|values| values.push(func_arg_debug.clone()))
-                            .or_insert(vec![func_arg_debug]);
-                    }
-                }
-            }
         }
 
         let attribute_values = AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;

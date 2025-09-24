@@ -49,7 +49,6 @@ impl ConnectableTest {
                                 entry: { name: "ManyItem", kind: "string" },
                                 valueFrom: { kind: "inputSocket", socket_name: "Many" },
                             },
-                            { name: "Inferred", kind: "string", valueFrom: { kind: "inputSocket", socket_name: "Inferred" } },
                             { name: "Missing", kind: "string", valueFrom: { kind: "inputSocket", socket_name: "Missing" } },
                             { name: "Empty", kind: "array",
                                 entry: { name: "EmptyItem", kind: "string" },
@@ -61,7 +60,6 @@ impl ConnectableTest {
                             { name: "Many", arity: "many", connectionAnnotations: "[\"Value\"]" },
                             { name: "Missing", arity: "one", connectionAnnotations: "[\"Value\"]" },
                             { name: "Empty", arity: "many", connectionAnnotations: "[\"Value\"]" },
-                            { name: "Inferred", arity: "one", connectionAnnotations: "[\"Inferred\"]" },
                         ],
                         outputSockets: [
                             { name: "Value", arity: "one", valueFrom: { kind: "prop", prop_path: [ "root", "domain", "Value" ] }, connectionAnnotations: "[\"Value\"]" },
@@ -71,7 +69,8 @@ impl ConnectableTest {
             "#,
         )
         .await?;
-        let connectable_manager_variant_id = variant::create(ctx,
+        let connectable_manager_variant_id = variant::create(
+            ctx,
             "connectable manager",
             r#"
                 function main() {
@@ -81,9 +80,6 @@ impl ConnectableTest {
                             { name: "ManagedValues", kind: "array",
                                 entry: { name: "ManagedValuesItem", kind: "string" },
                             },
-                        ],
-                        outputSockets: [
-                            { name: "Inferred", arity: "one", valueFrom: { kind: "prop", prop_path: [ "root", "domain", "Value" ] }, connectionAnnotations: "[\"Inferred\"]" },
                         ],
                     };
                 }
@@ -166,8 +162,8 @@ impl ConnectableTest {
     }
 }
 
-// Component with output socket "Value" and input sockets "One", "Many", "Inferred", "Missing", and
-// "Empty" which can connect to "Value".
+// Component with output socket "Value" and input sockets "One", "Many", "Missing", and "Empty"
+// which can connect to "Value".
 #[derive(Debug, Copy, Clone, derive_more::From, derive_more::Into)]
 pub struct Connectable {
     pub test: ConnectableTest,
@@ -250,7 +246,6 @@ impl SubscribableTest {
                             { name: "Many", kind: "array",
                                 entry: { name: "ManyItem", kind: "string" },
                             },
-                            { name: "Inferred", kind: "string" },
                             { name: "Missing", kind: "string" },
                             { name: "Empty", kind: "array",
                                 entry: { name: "EmptyItem", kind: "string" },
@@ -377,20 +372,6 @@ impl SubscribableTest {
         .await?;
 
         Ok(Subscribable::new(self, component.id()))
-    }
-
-    pub async fn subscribe_child_to_parent(
-        self,
-        ctx: &DalContext,
-        child_name: &str,
-        parent_name: &str,
-    ) -> Result<()> {
-        value::subscribe(
-            ctx,
-            (child_name, "/domain/Inferred"),
-            (parent_name, "/domain/Value"),
-        )
-        .await
     }
 
     pub async fn create_manager(self, ctx: &DalContext, name: &str) -> Result<Subscribable> {

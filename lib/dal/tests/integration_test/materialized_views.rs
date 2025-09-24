@@ -707,7 +707,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
 //     let (_, charlie_domain_name_attribute_value_path) =
 //         AttributeValue::path_from_root(ctx, charlie_domain_name_attribute_value_id).await?;
 
-//     // Check that the attribue value paths look as we expect for the subscriptions.
+//     // Check that the attribute value paths look as we expect for the subscriptions.
 //     {
 //         assert_eq!(
 //             "/si/name",                                  // expected
