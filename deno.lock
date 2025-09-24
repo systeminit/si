@@ -63,6 +63,7 @@
     "npm:js-yaml@4.1.0": "4.1.0",
     "npm:json-schema-typed@^8.0.1": "8.0.1",
     "npm:jwt-decode@4": "4.0.0",
+    "npm:lago-javascript-client@*": "1.32.0",
     "npm:lodash-es@4.17.21": "4.17.21",
     "npm:lodash-es@^4.17.21": "4.17.21",
     "npm:lodash@*": "4.17.21",
@@ -1031,6 +1032,9 @@
       "dependencies": [
         "json-buffer"
       ]
+    },
+    "lago-javascript-client@1.32.0": {
+      "integrity": "sha512-aGlKaQgBvI1R9NdeO3OvDppXkNDSeC9Ob2uzvOQQpC/kibSJNlKoXuQm9p3V9c8Fl4fZDThX6DhpA4eCFrrGwQ=="
     },
     "levn@0.4.1": {
       "integrity": "sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==",

@@ -8,7 +8,7 @@
     "dev": "tsx watch src/main.ts",
     "dev:run": "tsx watch src/main.ts",
     "build": "tsc --incremental false -p tsconfig-build.json",
-    "boot": "node --experimental-specifier-resolution=node ./dist/main.js",
+    "boot": "tsx src/main.ts",
     "boot-ts": "tsx src/main.ts",
     "lint": "eslint src test --ext .ts,.cjs",
     "lint:strict": "pnpm run lint --max-warnings=0",
