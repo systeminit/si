@@ -24,13 +24,10 @@ RUN pnpm run build \
     && rm -rf pruned/src
 
 FROM node:$NODE_VERSION-alpine AS runner
-RUN  npm i -g pnpm@^8
+RUN  npm i -g pnpm@^8 tsx
 WORKDIR /app
 COPY ./config ./config
 COPY --from=builder /app/bin/auth-api/pruned .
-COPY --from=builder /app/bin/auth-api/dist/src ./dist
-COPY --from=builder /app/bin/auth-api/dist/node_modules/@si/ts-lib ./node_modules/@si/ts-lib
-RUN rm -rf ./dist/node_modules \
-    && sed -i.bak "s/\.ts/\.js/g" ./node_modules/@si/ts-lib/package.json \
-    && pnpm --package=prisma@5.20.0 dlx prisma generate
+COPY --from=installer /app/bin/auth-api/src ./src
+RUN pnpm --package=prisma@5.20.0 dlx prisma generate
 CMD pnpm run boot
