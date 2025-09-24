@@ -51,6 +51,13 @@ To generate all specs containing "ECS" or "S3", you can pass some services as ar
       "--force-update-existing-packages",
       "Force the existing package list to be updated",
     )
+    .option(
+      "-p, --provider=[provider]",
+      "The specific provider to generate specs for",
+      {
+        required: true,
+      },
+    )
     .env(
       "SI_BEARER_TOKEN=<value:string>",
       "Auth token for interacting with the module index",

@@ -1,9 +1,15 @@
-import type { FuncSpecData } from "../../../../lib/si-pkg/bindings/FuncSpecData.ts";
-import { FuncSpec } from "../../../../lib/si-pkg/bindings/FuncSpec.ts";
+import type { FuncSpecData } from "../../../../../../lib/si-pkg/bindings/FuncSpecData.ts";
+import { FuncSpec } from "../../../../../../lib/si-pkg/bindings/FuncSpec.ts";
 import _ from "lodash";
-import { strippedBase64 } from "../spec/funcs.ts";
-import { CREATE_ONLY_PROP_LABEL, ExpandedPropSpec } from "../spec/props.ts";
-import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
+import { strippedBase64 } from "../../../spec/funcs.ts";
+import {
+  CREATE_ONLY_PROP_LABEL,
+  ExpandedPropSpec,
+} from "../../../spec/props.ts";
+import {
+  ExpandedPkgSpec,
+  ExpandedSchemaVariantSpec,
+} from "../../../spec/pkgs.ts";
 
 export function generateAssetFuncs(
   specs: ExpandedPkgSpec[],
@@ -61,9 +67,11 @@ function generateAssetCodeFromVariantSpec(
 
     for (const prop of variant.domain.entries) {
       const varName = `${prop.name}Prop`.replaceAll(" ", "");
-      propDeclarations += `${indent(
-        1,
-      )}const ${varName} = ${generatePropBuilderString(prop, 2)};\n\n`;
+      propDeclarations += `${
+        indent(
+          1,
+        )
+      }const ${varName} = ${generatePropBuilderString(prop, 2)};\n\n`;
       propAdds += `${indent(2)}.addProp(${varName})\n`;
     }
 
@@ -85,9 +93,11 @@ function generateAssetCodeFromVariantSpec(
 
     for (const prop of variant.secrets.entries) {
       const varName = `${prop.name}SecretProp`.replaceAll(" ", "");
-      propDeclarations += `${indent(
-        1,
-      )}const ${varName} = ${generateSecretPropBuilderString(prop, 2)};\n\n`;
+      propDeclarations += `${
+        indent(
+          1,
+        )
+      }const ${varName} = ${generateSecretPropBuilderString(prop, 2)};\n\n`;
       propAdds += `${indent(2)}.addSecretProp(${varName})\n`;
     }
     declarations += propDeclarations;
@@ -103,9 +113,11 @@ function generateAssetCodeFromVariantSpec(
 
     for (const prop of variant.resourceValue.entries) {
       const varName = `${prop.name}Resource`.replaceAll(" ", "");
-      propDeclarations += `${indent(
-        1,
-      )}const ${varName} = ${generatePropBuilderString(prop, 2)};\n\n`;
+      propDeclarations += `${
+        indent(
+          1,
+        )
+      }const ${varName} = ${generatePropBuilderString(prop, 2)};\n\n`;
       propAdds += `${indent(2)}.addResourceProp(${varName})\n`;
     }
 
@@ -141,25 +153,25 @@ function generatePropBuilderString(
   switch (prop.kind) {
     case "array":
     case "map": {
-      const entryBlock =
-        `${indent(indent_level)}.setEntry(\n` +
-        `${indent(indent_level + 1)}${generatePropBuilderString(
-          prop.typeProp,
-          indent_level + 1,
-        )}\n` +
+      const entryBlock = `${indent(indent_level)}.setEntry(\n` +
+        `${indent(indent_level + 1)}${
+          generatePropBuilderString(
+            prop.typeProp,
+            indent_level + 1,
+          )
+        }\n` +
         `${indent(indent_level)})\n`;
       return generatePropBuilderStringInner(prop.kind, entryBlock);
     }
     case "object": {
       const children = prop.entries.map((p) =>
-        generatePropBuilderString(p, indent_level + 1),
+        generatePropBuilderString(p, indent_level + 1)
       );
 
       let addChildBlock = "";
 
       for (const child of children) {
-        addChildBlock +=
-          `${indent(indent_level)}.addChild(\n` +
+        addChildBlock += `${indent(indent_level)}.addChild(\n` +
           `${indent(indent_level + 1)}${child}\n` +
           `${indent(indent_level)})\n`;
       }
@@ -178,8 +190,7 @@ function generatePropBuilderString(
   function generatePropBuilderStringInner(kind: string, inner: string = "") {
     const is_create_only = prop.metadata.createOnly ?? false;
 
-    const result =
-      `new PropBuilder()\n` +
+    const result = `new PropBuilder()\n` +
       `${indent(indent_level)}.setName("${prop.name}")\n` +
       `${indent(indent_level)}.setKind("${kind}")\n` +
       `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
@@ -190,22 +201,28 @@ function generatePropBuilderString(
         prop.data?.widgetOptions,
       ) +
       (prop.data?.defaultValue
-        ? `${indent(indent_level)}.setDefaultValue(${JSON.stringify(
+        ? `${indent(indent_level)}.setDefaultValue(${
+          JSON.stringify(
             prop.data.defaultValue,
-          )})\n`
+          )
+        })\n`
         : "") +
       (prop.joiValidation
         ? `${indent(indent_level)}.setValidationFormat(${prop.joiValidation})\n`
         : "") +
       (prop.data?.docLink
-        ? `${indent(indent_level)}.setDocLink(${JSON.stringify(
+        ? `${indent(indent_level)}.setDocLink(${
+          JSON.stringify(
             prop.data.docLink,
-          )})\n`
+          )
+        })\n`
         : "") +
       (prop.data?.documentation
-        ? `${indent(indent_level)}.setDocumentation(${JSON.stringify(
+        ? `${indent(indent_level)}.setDocumentation(${
+          JSON.stringify(
             prop.data.documentation,
-          )})\n`
+          )
+        })\n`
         : "") +
       generateSuggestSourceString(prop, indent_level) +
       inner +
@@ -239,9 +256,9 @@ function generateWidgetString(
   if (options) {
     for (const option of options) {
       if (option.label === CREATE_ONLY_PROP_LABEL) continue;
-      widgetStr += `\n${indent(indentLevel + 1)}.addOption("${
-        option.label
-      }", "${option.value}")`;
+      widgetStr += `\n${
+        indent(indentLevel + 1)
+      }.addOption("${option.label}", "${option.value}")`;
     }
   }
 

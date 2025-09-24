@@ -1,7 +1,7 @@
-import _logger from "../logger.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import { bfsPropTree } from "../spec/props.ts";
-import { Inferred } from "../spec/inferred.ts";
+import _logger from "../../../logger.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
+import { bfsPropTree } from "../../../spec/props.ts";
+import { Inferred } from "../../../spec/inferred.ts";
 
 export function addInferredEnums(
   specs: ExpandedPkgSpec[],

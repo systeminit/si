@@ -1,6 +1,6 @@
-import _logger from "../logger.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import { bfsPropTree } from "../spec/props.ts";
+import _logger from "../../../logger.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
+import { bfsPropTree } from "../../../spec/props.ts";
 import { existsSync } from "node:fs";
 
 const logger = _logger.ns("siSpecs").seal();

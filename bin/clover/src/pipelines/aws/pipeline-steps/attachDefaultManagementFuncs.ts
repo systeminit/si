@@ -2,8 +2,8 @@ import _ from "lodash";
 import {
   createDefaultManagementFuncs,
   createManagementFuncSpec,
-} from "../spec/funcs.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+} from "../../../spec/funcs.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 
 export function attachDefaultManagementFuncs(
   specs: ExpandedPkgSpec[],

@@ -2,9 +2,9 @@ import _ from "lodash";
 import {
   createActionFuncSpec,
   createDefaultActionFuncs,
-} from "../spec/funcs.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import { CfHandlerKind } from "../cfDb.ts";
+} from "../../../spec/funcs.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
+import { CfHandlerKind } from "../../../cfDb.ts";
 
 export function attachDefaultActionFuncs(
   specs: ExpandedPkgSpec[],

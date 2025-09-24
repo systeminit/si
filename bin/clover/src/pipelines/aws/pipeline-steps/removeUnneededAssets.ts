@@ -1,6 +1,6 @@
-import _logger from "../logger.ts";
+import _logger from "../../../logger.ts";
 import _ from "npm:lodash";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 const IGNORED_CATEGORIES = [
   "AWS::IAM::",
   "AWS::QuickSight::",

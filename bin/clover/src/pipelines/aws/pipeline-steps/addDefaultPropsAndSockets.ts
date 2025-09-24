@@ -3,8 +3,8 @@ import {
   createObjectProp,
   createScalarProp,
   ExpandedPropSpec,
-} from "../spec/props.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+} from "../../../spec/props.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 
 export interface PropUsageMap {
   createOnly: string[];

@@ -45,7 +45,7 @@ jobs:
       - name: Generate Specs
         run: |
           cd bin/clover
-          LOG_LEVEL=debug deno task run generate-specs
+          LOG_LEVEL=debug deno task run generate-specs --provider=aws
 
       - name: Generate Diff
         run: |

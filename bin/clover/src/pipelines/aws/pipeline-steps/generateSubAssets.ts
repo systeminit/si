@@ -4,10 +4,13 @@ import {
   createDefaultProp,
   ExpandedPropSpec,
   generatePropHash,
-} from "../spec/props.ts";
+} from "../../../spec/props.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import _logger from "../logger.ts";
-import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../spec/pkgs.ts";
+import _logger from "../../../logger.ts";
+import {
+  ExpandedPkgSpec,
+  ExpandedSchemaVariantSpec,
+} from "../../../spec/pkgs.ts";
 
 const logger = _logger.ns("subAssets").seal();
 
@@ -110,10 +113,12 @@ export function generateSubAssets(
   }
 
   // Select best name and category for each subAsset
-  for (const { spec, names } of _.values(newSpecsByHash) as {
-    spec: ExpandedPkgSpec;
-    names: string[];
-  }[]) {
+  for (
+    const { spec, names } of _.values(newSpecsByHash) as {
+      spec: ExpandedPkgSpec;
+      names: string[];
+    }[]
+  ) {
     let finalObjName: string | null | undefined = undefined;
     let finalAwsCategory: string | null | undefined = undefined;
     let finalParent: string | null | undefined = undefined;

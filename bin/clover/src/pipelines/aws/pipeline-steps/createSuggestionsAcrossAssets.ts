@@ -1,10 +1,10 @@
 import _ from "npm:lodash";
 
-import { bfsPropTree } from "../spec/props.ts";
+import { bfsPropTree } from "../../../spec/props.ts";
 import pluralize from "npm:pluralize";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import { addPropSuggestSource } from "../spec/props.ts";
-import _logger from "../logger.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
+import { addPropSuggestSource } from "../../../spec/props.ts";
+import _logger from "../../../logger.ts";
 const logger = _logger.ns("test").seal();
 
 export function createSuggestionsForPrimaryIdentifiers(
@@ -83,10 +83,12 @@ export function createSuggestionsForPrimaryIdentifiers(
     bfsPropTree(
       domain,
       (prop) => {
-        for (const [
-          specName,
-          [propName, possibleNames],
-        ] of schemasToPrimaryIdents.entries()) {
+        for (
+          const [
+            specName,
+            [propName, possibleNames],
+          ] of schemasToPrimaryIdents.entries()
+        ) {
           if (spec.name != specName && possibleNames.has(prop.name)) {
             logger.debug(
               `suggest {schema:${specName}, prop:${propName}} for prop ${prop.name} on ${spec.name}`,
