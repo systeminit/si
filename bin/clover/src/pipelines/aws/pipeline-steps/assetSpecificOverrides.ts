@@ -1,6 +1,6 @@
 import _ from "npm:lodash";
-import _logger from "../logger.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import _logger from "../../../logger.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 import {
   addPropSuggestSource,
   bfsPropTree,
@@ -8,7 +8,7 @@ import {
   ExpandedPropSpec,
   ExpandedPropSpecFor,
   findPropByName,
-} from "../spec/props.ts";
+} from "../../../spec/props.ts";
 import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
 import {
   ACTION_FUNC_SPECS,
@@ -18,14 +18,14 @@ import {
   MANAGEMENT_FUNCS,
   modifyFunc,
   strippedBase64,
-} from "../spec/funcs.ts";
+} from "../../../spec/funcs.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import { FuncArgumentSpec } from "../bindings/FuncArgumentSpec.ts";
-import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
-import { FuncSpec } from "../bindings/FuncSpec.ts";
-import { ActionFuncSpec } from "../bindings/ActionFuncSpec.ts";
-import { LeafFunctionSpec } from "../bindings/LeafFunctionSpec.ts";
-import { AttrFuncInputSpec } from "../bindings/AttrFuncInputSpec.ts";
+import { FuncArgumentSpec } from "../../../bindings/FuncArgumentSpec.ts";
+import { ActionFuncSpecKind } from "../../../bindings/ActionFuncSpecKind.ts";
+import { FuncSpec } from "../../../bindings/FuncSpec.ts";
+import { ActionFuncSpec } from "../../../bindings/ActionFuncSpec.ts";
+import { LeafFunctionSpec } from "../../../bindings/LeafFunctionSpec.ts";
+import { AttrFuncInputSpec } from "../../../bindings/AttrFuncInputSpec.ts";
 
 // Easy way to create property overrides
 // Matches the schema and prop and calls the override
@@ -651,8 +651,9 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       const extraProp = objectPropForOverride(variant.domain, "extra");
 
       const propUsageMapProp = propForOverride(extraProp, "PropUsageMap");
-      if (!propUsageMapProp.data?.defaultValue)
+      if (!propUsageMapProp.data?.defaultValue) {
         throw new Error("Prop has no default value");
+      }
 
       const defaultValue = JSON.parse(
         propUsageMapProp.data.defaultValue as string,
@@ -664,10 +665,9 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
         const prop = propForOverride(variant.domain, propName);
 
         const currentWidgetOptions = prop.data.widgetOptions;
-        prop.data.widgetOptions =
-          currentWidgetOptions?.filter(
-            (w) => w.label !== "si_create_only_prop",
-          ) ?? null;
+        prop.data.widgetOptions = currentWidgetOptions?.filter(
+          (w) => w.label !== "si_create_only_prop",
+        ) ?? null;
 
         createOnly = createOnly?.filter((p: string) => p !== propName);
 
@@ -937,7 +937,6 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       ];
     },
   ],
-
   // TODO prop suggestion DistributionViewerCertificate.AcmCertificateArn <- CertificateArn
   // [
   //   "AWS::CloudFront::Distribution",
@@ -1164,8 +1163,9 @@ function propInputBinding(
 
 // Overrides for PolicyDocument JSON props
 function policyDocumentProp(prop: ExpandedPropSpec) {
-  if (prop.kind !== "string" && prop.kind !== "json")
+  if (prop.kind !== "string" && prop.kind !== "json") {
     throw new Error(`${prop.metadata.propPath} is not a string`);
+  }
   prop.kind = "json";
   prop.data.widgetKind = "CodeEditor";
   addPropSuggestSource(prop, {
@@ -1182,8 +1182,9 @@ function arnProp(suggestSchema: string, suggestProp: string = "Arn") {
 
 /// Suggestion override. If prop does not start with /, it is assumed to be under /resource_value
 function suggest(suggestSchema: string, suggestProp: string) {
-  if (!suggestProp.startsWith("/"))
+  if (!suggestProp.startsWith("/")) {
     suggestProp = `/resource_value/${suggestProp}`;
+  }
   return (addToProp: ExpandedPropSpec) =>
     addPropSuggestSource(addToProp, {
       schema: suggestSchema,

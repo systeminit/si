@@ -1,12 +1,12 @@
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import _logger from "../logger.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
+import _logger from "../../../logger.ts";
 import {
   CODE_GENERATION_FUNC_SPECS,
   createFunc,
   strippedBase64,
-} from "../spec/funcs.ts";
+} from "../../../spec/funcs.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
-import { FuncArgumentSpec } from "../bindings/FuncArgumentSpec.ts";
+import { FuncArgumentSpec } from "../../../bindings/FuncArgumentSpec.ts";
 
 const logger = _logger.ns("pruneCfAssets").seal();
 
@@ -26,7 +26,7 @@ export function pruneCfAssets(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
     variant.leafFunctions = variant.leafFunctions.filter(
       (func) =>
         func.funcUniqueId ===
-        CODE_GENERATION_FUNC_SPECS.awsCloudFormationLint.id,
+          CODE_GENERATION_FUNC_SPECS.awsCloudFormationLint.id,
     );
 
     const attrFunc = createAttributeFunc();

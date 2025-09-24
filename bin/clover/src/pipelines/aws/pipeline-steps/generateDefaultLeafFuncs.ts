@@ -2,8 +2,8 @@ import _ from "lodash";
 import {
   createDefaultCodeGenFuncs,
   createLeafFuncSpec,
-} from "../spec/funcs.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+} from "../../../spec/funcs.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 
 export function generateDefaultLeafFuncs(
   specs: ExpandedPkgSpec[],

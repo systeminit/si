@@ -1,15 +1,15 @@
-import { CfProperty, CfSchema } from "./cfDb.ts";
+import { CfProperty, CfSchema } from "../../../cfDb.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import {
   createDefaultPropFromCf,
   createDocLink,
   OnlyProperties,
-} from "./spec/props.ts";
+} from "../../../spec/props.ts";
 import {
   ExpandedPkgSpec,
   ExpandedSchemaSpec,
   ExpandedSchemaVariantSpec,
-} from "./spec/pkgs.ts";
+} from "../../../spec/pkgs.ts";
 
 export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
   const [metaCategory, category, name] = cfSchema.typeName.split("::");

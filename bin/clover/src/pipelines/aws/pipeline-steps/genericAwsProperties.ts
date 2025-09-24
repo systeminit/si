@@ -1,9 +1,9 @@
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 import {
   addPropSuggestSource,
   ExpandedPropSpecFor,
   findPropByName,
-} from "../spec/props.ts";
+} from "../../../spec/props.ts";
 
 // We want to ensure that the first suggestion for any region
 // prop in the generated assets have a suggestion of a Region schema
