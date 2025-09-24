@@ -98,7 +98,7 @@ pub enum SchemaError {
     Transactions(#[from] TransactionsError),
     #[error("validation error: {0}")]
     Validation(String),
-    #[error("variant authuring error: {0}")]
+    #[error("variant authoring error: {0}")]
     VariantAuthoring(#[from] VariantAuthoringError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),

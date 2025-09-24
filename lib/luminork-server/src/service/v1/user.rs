@@ -60,6 +60,20 @@ impl IntoResponse for UserError {
     }
 }
 
+pub enum UserResultV1 {
+    Empty
+}
+
+impl IntoResponse for UserResultV1 {
+    fn into_response(self) -> Response {
+        match self {
+            Self::Empty => {
+                StatusCode::NO_CONTENT.into_response()
+            }
+        }
+    }
+}
+
 #[utoipa::path(
     post,
     path = "/v1/w/{workspace_id}/user/set_ai_agent_executed",
@@ -68,14 +82,14 @@ impl IntoResponse for UserError {
     ),
     tag = "user",
     responses(
-        (status = 200, description = "Flag set successfully"),
+        (status = 204, description = "Flag set successfully"),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
 pub async fn set_ai_agent_executed(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
-) -> UserResult<()> {
+) -> UserResult<UserResultV1> {
     let HistoryActor::User(user_pk) = ctx.history_actor() else {
         return Err(UserError::MissingUser);
     };
@@ -96,5 +110,5 @@ pub async fn set_ai_agent_executed(
 
     ctx.commit().await?;
 
-    Ok(())
+    Ok(UserResultV1::Empty)
 }
