@@ -24,8 +24,15 @@ export async function run() {
       "fetch-schema",
       "Getch cloudformation schema from aws.",
     )
-    .action(async () => {
-      await fetchSchema();
+    .option(
+      "-p, --provider=[provider]",
+      "The specific provider to generate specs for",
+      {
+        required: true,
+      },
+    )
+    .action(async (options) => {
+      await fetchSchema(options.provider);
     })
     // generate-specs
     .command(

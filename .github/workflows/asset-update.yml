@@ -20,8 +20,9 @@ jobs:
       - name: Update Schemas
         run: |
           cd bin/clover
-          LOG_LEVEL=debug deno task run fetch-schema
+          LOG_LEVEL=debug deno task run fetch-schema --provider=aws
           LOG_LEVEL=debug deno task run infer-ai
+          LOG_LEVEL=debug deno task run fetch-schema --provider=hetzner
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
