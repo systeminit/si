@@ -15,9 +15,7 @@ use si_events::{
 use si_id::{
     AttributePrototypeId,
     AttributeValueId,
-    ComponentId,
     FuncArgumentId,
-    OutputSocketId,
     StaticArgumentValueId,
 };
 use static_value::StaticArgumentValue;
@@ -51,7 +49,6 @@ use crate::{
         },
         graph::WorkspaceSnapshotGraphError,
         node_weight::{
-            ArgumentTargets,
             AttributePrototypeArgumentNodeWeight,
             NodeWeight,
             NodeWeightDiscriminants,
@@ -581,72 +578,6 @@ impl AttributePrototypeArgument {
         for idx in apa_node_idxs {
             let node_weight = workspace_snapshot.get_node_weight(idx).await?;
             apas.push(node_weight.id().into())
-        }
-
-        Ok(apas)
-    }
-
-    pub async fn list_ids_for_prototype_and_destination(
-        ctx: &DalContext,
-        prototype_id: AttributePrototypeId,
-        destination_id: ComponentId,
-    ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentId>> {
-        let mut apas = vec![];
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let apa_node_idxs = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                prototype_id,
-                EdgeWeightKindDiscriminants::PrototypeArgument,
-            )
-            .await?;
-
-        for idx in apa_node_idxs {
-            let node_weight = workspace_snapshot.get_node_weight(idx).await?;
-            if let NodeWeight::AttributePrototypeArgument(apa_weight) = &node_weight {
-                if let Some(ArgumentTargets {
-                    destination_component_id,
-                    ..
-                }) = apa_weight.targets()
-                {
-                    if destination_component_id == destination_id {
-                        apas.push(node_weight.id().into())
-                    }
-                }
-            }
-        }
-
-        Ok(apas)
-    }
-
-    pub async fn list_ids_for_output_socket_and_source(
-        ctx: &DalContext,
-        output_socket_id: OutputSocketId,
-        source_id: ComponentId,
-    ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentId>> {
-        let mut apas = vec![];
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let apa_node_idxs = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(
-                output_socket_id,
-                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-            )
-            .await?;
-
-        for idx in apa_node_idxs {
-            let node_weight = workspace_snapshot.get_node_weight(idx).await?;
-            if let NodeWeight::AttributePrototypeArgument(apa_weight) = &node_weight {
-                if let Some(ArgumentTargets {
-                    source_component_id,
-                    ..
-                }) = apa_weight.targets()
-                {
-                    if source_component_id == source_id {
-                        apas.push(node_weight.id().into())
-                    }
-                }
-            }
         }
 
         Ok(apas)

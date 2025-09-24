@@ -109,9 +109,6 @@ impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants> for 
             NodeWeight::AttributeValue(av_node_weight) => {
                 av_node_weight.correct_transforms(graph, updates, from_different_change_set)
             }
-            NodeWeight::Content(content_node_weight) => {
-                content_node_weight.correct_transforms(graph, updates, from_different_change_set)
-            }
             NodeWeight::Component(component_node_weight) => {
                 component_node_weight.correct_transforms(graph, updates, from_different_change_set)
             }

@@ -68,7 +68,6 @@ mod get_snapshot;
 mod innit;
 mod kill_execution;
 mod list_change_sets;
-mod migrate_connections;
 mod search_workspaces;
 mod set_concurrency_limit;
 mod set_snapshot;
@@ -243,14 +242,6 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
         .route(
             "/workspaces/:workspace_id/change_sets/:change_set_id/upload_cas_data",
             post(upload_cas_data::upload_cas_data),
-        )
-        .route(
-            "/workspaces/:workspace_id/change_sets/:change_set_id/migrate_connections",
-            get(migrate_connections::migrate_connections_dry_run),
-        )
-        .route(
-            "/workspaces/:workspace_id/change_sets/:change_set_id/migrate_connections",
-            post(migrate_connections::migrate_connections),
         )
         .route(
             "/workspaces/:workspace_id/change_sets/:change_set_id/validate_snapshot",

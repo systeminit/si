@@ -17,7 +17,6 @@ use graph::{
     WorkspaceSnapshotGraph,
     correct_transforms::correct_transforms,
     detector::Update,
-    validator::connections::SocketConnection,
 };
 use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
@@ -1482,16 +1481,5 @@ impl WorkspaceSnapshot {
         Ok(graph::validator::validate_graph_with_text(
             &self.working_copy().await,
         )?)
-    }
-
-    /// Get the connection migrations that are available for this snapshot.
-    pub async fn connection_migrations(
-        &self,
-        inferred_connections: impl IntoIterator<Item = SocketConnection>,
-    ) -> WorkspaceSnapshotResult<Vec<graph::validator::connections::ConnectionMigration>> {
-        Ok(graph::validator::connections::connection_migrations(
-            &self.working_copy().await,
-            inferred_connections,
-        ))
     }
 }

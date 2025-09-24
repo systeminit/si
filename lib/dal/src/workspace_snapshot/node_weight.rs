@@ -2,10 +2,7 @@ use std::num::TryFromIntError;
 
 pub use action_node_weight::ActionNodeWeight;
 pub use action_prototype_node_weight::ActionPrototypeNodeWeight;
-pub use attribute_prototype_argument_node_weight::{
-    ArgumentTargets,
-    AttributePrototypeArgumentNodeWeight,
-};
+pub use attribute_prototype_argument_node_weight::AttributePrototypeArgumentNodeWeight;
 pub use attribute_value_node_weight::AttributeValueNodeWeight;
 use category_node_weight::CategoryNodeKind;
 pub use category_node_weight::CategoryNodeWeight;

@@ -32,7 +32,6 @@ import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
 import { FuncRunId } from "../actions.store";
 import { FuncRunLogId } from "../func_runs.store";
-import { ConnectionMigration } from "../admin.store";
 
 export type SecretId = string;
 
@@ -232,17 +231,6 @@ export type WsEventPayloadMap = {
         toComponentId: string;
       };
 
-  ConnectionMigrationStarted: {
-    dryRun: boolean;
-  };
-  ConnectionMigrationFinished: {
-    dryRun: boolean;
-    connections: number;
-    migrated: number;
-    unmigrateable: number;
-    error?: string;
-  };
-  ConnectionMigrated: ConnectionMigration;
   ManagementFuncExecuted: {
     managerComponentId: string;
     prototypeId: string;

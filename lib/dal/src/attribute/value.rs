@@ -926,7 +926,7 @@ impl AttributeValue {
         let mut inferred_connection_graph =
             workspace_snapshot.inferred_connection_graph(ctx).await?;
         let inferred_connections = inferred_connection_graph
-            .inferred_connections_for_input_socket(ctx, component_id, input_socket_id)
+            .inferred_connections_for_input_socket(component_id, input_socket_id)
             .await?;
         let mut connections = Vec::with_capacity(inferred_connections.len());
         for inferred_connection in inferred_connections {

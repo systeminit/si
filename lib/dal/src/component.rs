@@ -21,7 +21,6 @@ use frame::{
     FrameError,
 };
 use itertools::Itertools;
-use petgraph::Direction::Outgoing;
 use resource::ResourceData;
 use serde::{
     Deserialize,
@@ -174,7 +173,6 @@ use crate::{
     workspace_snapshot::{
         DependentValueRoot,
         WorkspaceSnapshotError,
-        content_address::ContentAddressDiscriminants,
         dependent_value_root::DependentValueRootError,
         edge_weight::{
             EdgeWeightKind,
@@ -1118,34 +1116,6 @@ impl Component {
 
         self.clear_resource(ctx).await?;
         Ok(())
-    }
-
-    #[instrument(
-        name = "component.input_sockets_with_connections",
-        level = "debug",
-        skip(ctx)
-    )]
-    pub async fn input_sockets_with_connections(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<Vec<InputSocketId>> {
-        let mut input_socket_ids = Vec::new();
-        for input_socket in ComponentInputSocket::list_for_component_id(ctx, component_id).await? {
-            let prototype_id =
-                AttributeValue::prototype_id(ctx, input_socket.attribute_value_id).await?;
-            if !AttributePrototypeArgument::list_ids_for_prototype_and_destination(
-                ctx,
-                prototype_id,
-                component_id,
-            )
-            .await?
-            .is_empty()
-            {
-                input_socket_ids.push(input_socket.input_socket_id);
-            }
-        }
-
-        Ok(input_socket_ids)
     }
 
     /// Produce sources for every attribute that has them.
@@ -2699,7 +2669,7 @@ impl Component {
         let mut inferred_connection_graph =
             workspace_snapshot.inferred_connection_graph(ctx).await?;
         let incoming_connections = inferred_connection_graph
-            .inferred_incoming_connections_for_component(ctx, to_component_id)
+            .inferred_incoming_connections_for_component(to_component_id)
             .await?;
 
         for incoming_connection in incoming_connections {
@@ -2739,7 +2709,7 @@ impl Component {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut inferred_connections = workspace_snapshot.inferred_connection_graph(ctx).await?;
         let mut inferred_connections_for_component_stack = inferred_connections
-            .inferred_connections_for_component_stack(ctx, self.id)
+            .inferred_connections_for_component_stack(self.id)
             .await?;
         inferred_connections_for_component_stack
             .retain(|inferred_connection| inferred_connection.source_component_id == self.id);
@@ -2767,101 +2737,6 @@ impl Component {
             });
         }
         Ok(connections)
-    }
-
-    #[instrument(level = "info", skip(ctx))]
-    pub async fn remove_connection(
-        ctx: &DalContext,
-        source_component_id: ComponentId,
-        source_output_socket_id: OutputSocketId,
-        destination_component_id: ComponentId,
-        destination_input_socket_id: InputSocketId,
-    ) -> ComponentResult<()> {
-        // InputSocket -> Prototype: AttributePrototype
-        let input_socket_prototype_id =
-            AttributePrototype::find_for_input_socket(ctx, destination_input_socket_id)
-                .await?
-                .ok_or_else(|| InputSocketError::MissingPrototype(destination_input_socket_id))?;
-
-        // -> PrototypeArgument:
-        let attribute_prototype_arguments = ctx
-            .workspace_snapshot()?
-            .edges_directed_for_edge_weight_kind(
-                input_socket_prototype_id,
-                Outgoing,
-                EdgeWeightKindDiscriminants::PrototypeArgument,
-            )
-            .await?;
-
-        for (_, _, attribute_prototype_arg_idx) in attribute_prototype_arguments {
-            // AttributePrototypeArgument { source, target }
-            let node_weight = ctx
-                .workspace_snapshot()?
-                .get_node_weight(attribute_prototype_arg_idx)
-                .await?;
-            let attribute_prototype_argument_node_weight =
-                node_weight.get_attribute_prototype_argument_node_weight()?;
-            if let Some(targets) = attribute_prototype_argument_node_weight.targets() {
-                if targets.source_component_id == source_component_id
-                    && targets.destination_component_id == destination_component_id
-                {
-                    // -> PrototypeArgumentValue:
-                    let data_sources = ctx
-                        .workspace_snapshot()?
-                        .edges_directed_for_edge_weight_kind(
-                            attribute_prototype_argument_node_weight.id(),
-                            Outgoing,
-                            EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-                        )
-                        .await?;
-
-                    for (_, _, data_source_idx) in data_sources {
-                        // OutputSocket
-                        let node_weight = ctx
-                            .workspace_snapshot()?
-                            .get_node_weight(data_source_idx)
-                            .await?;
-                        if let Ok(output_socket_node_weight) = node_weight
-                            .get_content_node_weight_of_kind(
-                                ContentAddressDiscriminants::OutputSocket,
-                            )
-                        {
-                            // OutputSocket
-                            if output_socket_node_weight.id() == source_output_socket_id.into() {
-                                AttributePrototypeArgument::remove(
-                                    ctx,
-                                    attribute_prototype_argument_node_weight.id().into(),
-                                )
-                                .await?;
-
-                                let destination_attribute_value_id =
-                                    InputSocket::component_attribute_value_id(
-                                        ctx,
-                                        destination_input_socket_id,
-                                        destination_component_id,
-                                    )
-                                    .await?;
-
-                                ctx.add_dependent_values_and_enqueue(vec![
-                                    destination_attribute_value_id,
-                                ])
-                                .await?;
-                                return Ok(());
-                            }
-                        }
-                    }
-                } else {
-                    continue;
-                }
-            } else {
-                continue;
-            }
-        }
-        ctx.workspace_snapshot()?
-            .clear_inferred_connection_graph()
-            .await;
-
-        Ok(())
     }
 
     #[instrument(level = "debug", skip(ctx))]

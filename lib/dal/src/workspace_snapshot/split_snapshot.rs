@@ -1896,9 +1896,4 @@ impl ComponentExt for SplitSnapshot {
             .await
             .external_source_count(component_id)
     }
-    async fn has_socket_connections(&self, component_id: ComponentId) -> ComponentResult<bool> {
-        self.working_copy()
-            .await
-            .has_socket_connections(component_id)
-    }
 }

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use itertools::Itertools;
 use petgraph::{
     Direction::Incoming,
@@ -15,13 +13,9 @@ use si_events::{
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
-use si_id::{
-    AttributeValueId,
-    ComponentId,
-};
+use si_id::ComponentId;
 
 use super::{
-    ArgumentTargets,
     NodeWeight,
     NodeWeightDiscriminants,
     NodeWeightDiscriminants::Component,
@@ -43,7 +37,6 @@ use crate::{
         },
         graph::{
             LineageId,
-            correct_transforms::add_dependent_value_root_updates,
             detector::Update,
         },
         node_weight::traits::CorrectTransforms,
@@ -158,149 +151,6 @@ impl From<&ComponentNodeWeight> for NodeInformation {
     }
 }
 
-fn remove_hanging_socket_connections(
-    graph: &WorkspaceSnapshotGraphVCurrent,
-    component_id: Ulid,
-    component_idx: NodeIndex,
-) -> CorrectTransformsResult<Vec<Update>> {
-    let mut new_updates = vec![];
-
-    // To find the attribute prototype arguments that need to be removed, we
-    // have to find the OutputSockets for this component. Once we find them, we
-    // need to find the incoming PrototypeArgumentValue edge from the
-    // AttributePrototypeArgument to that socket. Then we have to verify that
-    // the argument has our component as a source. Then we can issue RemoveEdge
-    // updates for all incoming edges to that attribute prototype argument. With
-    // no incoming edges, the APA will be removed from the graph.
-
-    let mut affected_attribute_values = HashSet::new();
-
-    for socket_value_target in graph
-        .edges_directed(component_idx, Outgoing)
-        .filter(|edge_ref| {
-            EdgeWeightKindDiscriminants::SocketValue == edge_ref.weight().kind().into()
-        })
-        .map(|edge_ref| edge_ref.target())
-    {
-        for output_socket_index in graph
-            .edges_directed(socket_value_target, Outgoing)
-            .filter(|edge_ref| {
-                EdgeWeightKindDiscriminants::Socket == edge_ref.weight().kind().into()
-            })
-            .filter(|edge_ref| {
-                graph
-                    .get_node_weight_opt(edge_ref.target())
-                    .is_some_and(|weight| match weight {
-                        NodeWeight::Content(inner) => {
-                            inner.content_address_discriminants()
-                                == ContentAddressDiscriminants::OutputSocket
-                        }
-                        _ => false,
-                    })
-            })
-            .map(|edge_ref| edge_ref.target())
-        {
-            for (apa_idx, apa_weight, destination_component_id) in graph
-                .edges_directed(output_socket_index, Incoming)
-                .filter(|edge_ref| {
-                    EdgeWeightKindDiscriminants::PrototypeArgumentValue
-                        == edge_ref.weight().kind().into()
-                })
-                .filter_map(|edge_ref| {
-                    graph
-                        .get_node_weight_opt(edge_ref.source())
-                        .and_then(|node_weight| match node_weight {
-                            NodeWeight::AttributePrototypeArgument(inner) => {
-                                inner.targets().and_then(|targets| {
-                                    if targets.source_component_id == component_id.into() {
-                                        Some((
-                                            edge_ref.source(),
-                                            node_weight,
-                                            targets.destination_component_id,
-                                        ))
-                                    } else {
-                                        None
-                                    }
-                                })
-                            }
-                            _ => None,
-                        })
-                })
-            {
-                for edge_ref in graph.edges_directed(apa_idx, Incoming) {
-                    if let Some(source_weight) = graph.get_node_weight_opt(edge_ref.source()) {
-                        new_updates.push(Update::RemoveEdge {
-                            source: source_weight.into(),
-                            destination: apa_weight.into(),
-                            edge_kind: edge_ref.weight().kind().into(),
-                        })
-                    }
-
-                    // Walk to the attribute value for this socket so we can add it to the DVUs
-                    graph
-                        .edges_directed(edge_ref.source(), Incoming)
-                        .for_each(|edge_ref| {
-                            graph.edges_directed(edge_ref.source(), Incoming).for_each(
-                                |edge_ref| {
-                                    if let Some(id) = graph
-                                        .get_node_weight_opt(edge_ref.source())
-                                        .and_then(|node_weight| match node_weight {
-                                            NodeWeight::AttributeValue(_) => Some(node_weight.id()),
-                                            _ => None,
-                                        })
-                                    {
-                                        // check to make sure this attribute value belongs to the destination component in question
-                                        // as this will find all attribute values for the socket in question but not all need to be updated
-                                        if socket_attribute_value_belongs_to_component(
-                                            graph,
-                                            destination_component_id,
-                                            id.into(),
-                                        ) {
-                                            affected_attribute_values.insert(id);
-                                        }
-                                    }
-                                },
-                            );
-                        });
-                }
-            }
-        }
-    }
-
-    // The input sockets that have had connections removed need to be recalculated now
-    new_updates.extend(add_dependent_value_root_updates(
-        graph,
-        &affected_attribute_values,
-    )?);
-
-    Ok(new_updates)
-}
-
-/// Given an attribute value for an output socket, and checks that it is the attribute value
-/// for the given [`ComponentId`]
-fn socket_attribute_value_belongs_to_component(
-    graph: &WorkspaceSnapshotGraphVCurrent,
-    destination_component_id: ComponentId,
-    starting_attribute_value: AttributeValueId,
-) -> bool {
-    let Some(av_index) = graph.get_node_index_by_id_opt(starting_attribute_value) else {
-        return false;
-    };
-    if let Some(component_index) = graph
-        .edges_directed(av_index, Incoming)
-        .find(|edge_ref| {
-            EdgeWeightKindDiscriminants::SocketValue == edge_ref.weight().kind().into()
-        })
-        .map(|edge| edge.source())
-    {
-        // make sure the component id matches what we're expecting
-        if let Some(component_id) = graph.node_index_to_id(component_index) {
-            return component_id == destination_component_id.into();
-        }
-    }
-    false
-}
-
 impl CorrectTransforms for ComponentNodeWeight {
     fn correct_transforms(
         &self,
@@ -385,18 +235,6 @@ impl CorrectTransforms for ComponentNodeWeight {
                     remove_edges.extend(
                         graph.outgoing_edges(component_node_idx, EdgeWeightKind::SocketValue),
                     );
-
-                    // Input and output sockets get new connection PrototypeArguments during
-                    // upgrade, but the RemoveEdge for the old ones may be stale; remove
-                    // all existing connection nodes just in case.
-                    let connections = sockets(graph, component_node_idx).flat_map(|socket| {
-                        input_socket_connections(graph, component_id, socket)
-                            .chain(output_socket_connections(graph, component_id, socket))
-                    });
-                    // To actually remove the nodes, we have to remove all incoming edges to them.
-                    remove_edges.extend(
-                        connections.flat_map(|argument| graph.edges_directed(argument, Incoming)),
-                    );
                 }
 
                 _ => {}
@@ -404,12 +242,6 @@ impl CorrectTransforms for ComponentNodeWeight {
         }
 
         if component_will_be_deleted {
-            updates.extend(remove_hanging_socket_connections(
-                graph,
-                self.id,
-                component_node_idx,
-            )?);
-
             // All edges incoming to the root attribute value node (for example, ValueSubscription edges)
             // must be deleted, so that the attribute value tree disappears from the graph on cleanup.
             if let Some((_, _, root_av_idx)) = graph
@@ -442,50 +274,7 @@ impl CorrectTransforms for ComponentNodeWeight {
     }
 }
 
-// Get all Socket nodes for a given component (by going through its SocketValues).
-//
-// <COMPONENT> -> SocketValue -> Socket: <OUTPUT SOCKET> | <INPUT SOCKET>
-fn sockets(
-    graph: &WorkspaceSnapshotGraphVCurrent,
-    component: NodeIndex,
-) -> impl Iterator<Item = NodeIndex> + '_ {
-    graph
-        .targets(component, EdgeWeightKind::SocketValue)
-        .flat_map(|out_value| graph.targets(out_value, EdgeWeightKind::Socket))
-}
-
-/// Get all connection nodes (PrototypeArguments) to an input socket on a component.
-fn input_socket_connections(
-    graph: &WorkspaceSnapshotGraphVCurrent,
-    component_id: ComponentId,
-    input_socket: NodeIndex,
-) -> impl Iterator<Item = NodeIndex> + '_ {
-    // From the Socket, find all PrototypeArguments representing the connection:
-    // - <INPUT SOCKET> --Prototype-> --PrototypeArgument-> <ARG> --PrototypeArgumentValue-> <OUTPUT SOCKET>
-    graph
-        .targets(input_socket, EdgeWeightKindDiscriminants::Prototype)
-        .flat_map(|prototype| graph.targets(prototype, EdgeWeightKind::PrototypeArgument))
-        .filter(move |&argument| {
-            argument_targets(graph, argument)
-                .is_some_and(|t| component_id == t.destination_component_id)
-        })
-}
-
-/// Get all connection nodes (PrototypeArguments) from an output socket on a component.
-fn output_socket_connections(
-    graph: &WorkspaceSnapshotGraphVCurrent,
-    component_id: ComponentId,
-    output_socket: NodeIndex,
-) -> impl Iterator<Item = NodeIndex> + '_ {
-    // From the output socket, walk back to the PrototypeArguments representing connections
-    // - <INPUT SOCKET> --Prototype-> --PrototypeArgument-> <ARG> --PrototypeArgumentValue-> <OUTPUT SOCKET>
-    graph
-        .sources(output_socket, EdgeWeightKind::PrototypeArgumentValue)
-        .filter(move |&argument| {
-            argument_targets(graph, argument).is_some_and(|t| component_id == t.source_component_id)
-        })
-}
-
+/// Get the category kind (if this is a category node)
 fn category_kind(
     graph: &WorkspaceSnapshotGraphVCurrent,
     category: &NodeInformation,
@@ -496,16 +285,6 @@ fn category_kind(
             NodeWeight::Category(inner) => Some(inner.kind()),
             _ => None,
         })
-}
-
-fn argument_targets(
-    graph: &WorkspaceSnapshotGraphVCurrent,
-    argument: NodeIndex,
-) -> Option<ArgumentTargets> {
-    match graph.get_node_weight_opt(argument) {
-        Some(NodeWeight::AttributePrototypeArgument(argument)) => argument.targets(),
-        _ => None,
-    }
 }
 
 /// Creates an Update::RemoveEdge from an EdgeReference by looking up the nodes.

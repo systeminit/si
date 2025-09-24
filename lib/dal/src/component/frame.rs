@@ -476,14 +476,14 @@ impl Frame {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut inferred_connections = workspace_snapshot.inferred_connection_graph(ctx).await?;
         let mut stack_inferred_connections: HashSet<InferredConnection> = inferred_connections
-            .inferred_connections_for_component_stack(ctx, parent_id)
+            .inferred_connections_for_component_stack(parent_id)
             .await?
             .iter()
             .copied()
             .collect();
         stack_inferred_connections.extend(
             inferred_connections
-                .inferred_connections_for_component_stack(ctx, child_id)
+                .inferred_connections_for_component_stack(child_id)
                 .await?,
         );
         for incoming_connection in stack_inferred_connections {

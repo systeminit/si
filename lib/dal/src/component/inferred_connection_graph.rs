@@ -189,7 +189,7 @@ impl InferredConnectionGraph {
         for component_id in Component::list_ids(ctx).await.map_err(Box::new)? {
             results.append(
                 &mut self
-                    .inferred_incoming_connections_for_component(ctx, component_id)
+                    .inferred_incoming_connections_for_component(component_id)
                     .await?,
             );
         }
@@ -200,11 +200,10 @@ impl InferredConnectionGraph {
     #[instrument(
         name = "component.inferred_connection_graph.inferred_connections_for_component_stack",
         level = "debug",
-        skip(self, ctx)
+        skip(self)
     )]
     pub async fn inferred_connections_for_component_stack(
         &mut self,
-        ctx: &DalContext,
         component_id: ComponentId,
     ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
         let mut inferred_connections = HashSet::new();
@@ -240,7 +239,7 @@ impl InferredConnectionGraph {
 
         for stack_component_id in stack_component_ids {
             inferred_connections.extend(
-                self.inferred_incoming_connections_for_component(ctx, stack_component_id)
+                self.inferred_incoming_connections_for_component(stack_component_id)
                     .await?,
             );
         }
@@ -251,12 +250,11 @@ impl InferredConnectionGraph {
     #[instrument(
         name = "component.inferred_connection_graph.inferred_incoming_connections_for_component",
         level = "debug",
-        skip(self, ctx),
+        skip(self),
         fields(si.inferred_connections.cache_hit = Empty)
     )]
     pub async fn inferred_incoming_connections_for_component(
         &mut self,
-        ctx: &DalContext,
         component_id: ComponentId,
     ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
         let span = Span::current();
@@ -275,14 +273,6 @@ impl InferredConnectionGraph {
         }
         span.record("si.inferred_connections.cache_hit", false);
 
-        let input_sockets_with_explicit_connections: HashSet<InputSocketId> =
-            Component::input_sockets_with_connections(ctx, component_id)
-                .await
-                .map_err(Box::new)?
-                .iter()
-                .copied()
-                .collect();
-
         // `component_index` should be the same in both the `Up` and `Down` graphs since the `Up`
         // graph is created by reversing the edges in the `Down` graph, without touching the nodes
         // at all.
@@ -296,7 +286,7 @@ impl InferredConnectionGraph {
                 // are not inside of a `Frame` (or are not do not have inferred connections to anything.
                 return Ok(Vec::new());
             };
-        let mut input_sockets = self
+        let input_sockets = self
             .up_component_graph
             .node_weight(component_index)
             .ok_or(InferredConnectionGraphError::MissingGraphNode)?
@@ -307,9 +297,6 @@ impl InferredConnectionGraph {
             .cloned()
             .map(|is| (is.id(), is))
             .collect();
-        // Any `InputSocket` with an explicit connection already made will not automatically infer
-        // any additional connections.
-        input_sockets.retain(|is| !input_sockets_with_explicit_connections.contains(&is.id()));
 
         // If all of the `InputSocket`s have explicit connections, then populate the cache with
         // empty entries, and return an empty list of `InferredConnection`s.
@@ -435,9 +422,6 @@ impl InferredConnectionGraph {
             }
         }
 
-        // We only want to keep the inferred results for the `InputSocket`s that don't already have
-        // explicit connections.
-        results.retain(|id, _| !input_sockets_with_explicit_connections.contains(id));
         self.inferred_connections_by_component_and_input_socket
             .entry(component_id)
             .and_modify(|component_cache| {
@@ -454,11 +438,10 @@ impl InferredConnectionGraph {
     #[instrument(
         name = "component.inferred_connection_graph.inferred_connections_for_input_socket",
         level = "debug",
-        skip(self, ctx)
+        skip(self)
     )]
     pub async fn inferred_connections_for_input_socket(
         &mut self,
-        ctx: &DalContext,
         component_id: ComponentId,
         input_socket_id: InputSocketId,
     ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
@@ -467,7 +450,7 @@ impl InferredConnectionGraph {
         // overlaping shape. Because of this, we can't actually determine the `InferredConnection`
         // for a single `InputSocket` in isolation, and need to calculate the `InferredConnection`
         // for all `InputSocket` with overlaping shapes at the same time.
-        self.inferred_incoming_connections_for_component(ctx, component_id)
+        self.inferred_incoming_connections_for_component(component_id)
             .await?;
 
         // Rather than iterating through all of the `InferredConnection`s across all `InputSocket`
