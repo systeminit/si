@@ -17,6 +17,7 @@ use crate::{
         node_weight::traits::{
             CorrectExclusiveOutgoingEdge,
             CorrectTransforms,
+            ExclusiveOutgoingEdges,
             SiNodeWeight,
         },
     },
@@ -51,7 +52,9 @@ impl ApprovalRequirementDefinitionNodeWeightV1 {
 
 impl CorrectTransforms for ApprovalRequirementDefinitionNodeWeightV1 {}
 
-impl CorrectExclusiveOutgoingEdge for ApprovalRequirementDefinitionNodeWeightV1 {
+impl CorrectExclusiveOutgoingEdge for ApprovalRequirementDefinitionNodeWeightV1 {}
+
+impl ExclusiveOutgoingEdges for ApprovalRequirementDefinitionNodeWeightV1 {
     fn exclusive_outgoing_edges(&self) -> &[crate::EdgeWeightKindDiscriminants] {
         &[]
     }
