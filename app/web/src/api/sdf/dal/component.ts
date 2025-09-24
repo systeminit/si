@@ -57,7 +57,7 @@ export interface RawComponent {
   resourceId: string;
   id: ComponentId;
   componentType: ComponentType;
-  parentId?: ComponentId;
+  parentId?: undefined;
   hasResource: boolean;
   schemaCategory: string;
   schemaId: string; // TODO: probably want to move this to a different store and not load it all the time

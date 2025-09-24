@@ -10,7 +10,6 @@ mod cycle_check_guard;
 mod dependent_values_update;
 mod deserialize;
 mod diagram;
-mod frame;
 mod func;
 mod input_sources;
 mod management;

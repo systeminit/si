@@ -627,18 +627,6 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
-    pub async fn frame_contains_components(
-        &self,
-        component_id: ComponentId,
-    ) -> ComponentResult<Vec<ComponentId>> {
-        match self {
-            Self::LegacySnapshot(snapshot) => {
-                snapshot.frame_contains_components(component_id).await
-            }
-            Self::SplitSnapshot(snapshot) => snapshot.frame_contains_components(component_id).await,
-        }
-    }
-
     pub async fn inferred_connection_graph(
         &self,
         ctx: &DalContext,

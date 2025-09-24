@@ -36,7 +36,6 @@ use crate::{
         node_weight::{
             AttributePrototypeArgumentNodeWeight,
             AttributeValueNodeWeight,
-            ComponentNodeWeight,
             NodeWeight,
             traits::SiNodeWeight as _,
         },
@@ -89,7 +88,6 @@ impl ValidateNode for NodeWeight {
             Self::AttributePrototypeArgument(node) => {
                 ValidateNode::validate_node(graph, issues, (node, node_index))
             }
-            Self::Component(node) => ValidateNode::validate_node(graph, issues, (node, node_index)),
             _ => Ok(()),
         }
     }
@@ -198,33 +196,11 @@ impl ValidateNode for AttributePrototypeArgumentNodeWeight {
     }
 }
 
-impl ValidateNode for ComponentNodeWeight {
-    fn validate_node(
-        graph: &WorkspaceSnapshotGraphVCurrent,
-        issues: &mut Vec<ValidationIssue>,
-        (_, component): (&Self, NodeIndex),
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        if let Some(parent) = graph.source_opt(component, EdgeWeightKind::FrameContains)? {
-            issues.push(ValidationIssue::ComponentHasParent {
-                component: graph.get_node_weight(component)?.id().into(),
-                parent: graph.get_node_weight(parent)?.id().into(),
-            });
-        }
-
-        Ok(())
-    }
-}
-
 /// A single validation issue found in the graph
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, strum::EnumDiscriminants)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ValidationIssue {
-    /// Component has a parent (should all be gone!)
-    ComponentHasParent {
-        component: ComponentId,
-        parent: ComponentId,
-    },
     /// A child prop of an object has more than one attribute value
     DuplicateAttributeValue {
         original: AttributeValueId,
@@ -318,14 +294,6 @@ impl std::fmt::Display for WithGraph<'_, &'_ ValidationIssue> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let &WithGraph(graph, issue) = self;
         match *issue {
-            ValidationIssue::ComponentHasParent { component, parent } => {
-                write!(
-                    f,
-                    "Component {} has parent {}",
-                    WithGraph(graph, component),
-                    WithGraph(graph, parent)
-                )
-            }
             ValidationIssue::DuplicateAttributeValue {
                 original,
                 duplicate,

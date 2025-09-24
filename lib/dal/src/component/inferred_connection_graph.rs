@@ -147,23 +147,6 @@ impl InferredConnectionGraph {
             let node_index = down_component_graph.add_node(component_weight);
             index_by_component_id.insert(component_id, node_index);
         }
-        // Gather the "frame contains" information for all Components to build the edges of the
-        // graph.
-        for (&component_id, &source_node_index) in &index_by_component_id {
-            for target_component_id in ctx
-                .workspace_snapshot()?
-                .frame_contains_components(component_id)
-                .await
-                .map_err(Box::new)?
-            {
-                let destination_node_index = *index_by_component_id
-                    .get(&target_component_id)
-                    .ok_or_else(|| {
-                        InferredConnectionGraphError::OrphanedComponent(target_component_id)
-                    })?;
-                down_component_graph.add_edge(source_node_index, destination_node_index, ());
-            }
-        }
 
         let mut up_component_graph = down_component_graph.clone();
         up_component_graph.reverse();

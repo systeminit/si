@@ -169,7 +169,6 @@ pub struct DiagramComponentView {
     pub component_type: String,
     pub change_status: ChangeStatus,
     pub has_resource: bool,
-    pub parent_id: Option<ComponentId>,
     pub created_info: serde_json::Value,
     pub updated_info: serde_json::Value,
     pub deleted_info: serde_json::Value,

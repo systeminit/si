@@ -175,7 +175,7 @@ pub async fn create_component_for_schema_name_with_type_on_default_view(
 
     let component =
         Component::new(ctx, name.as_ref().to_string(), schema_variant_id, view_id).await?;
-    Component::set_type_by_id_unchecked(ctx, component.id(), component_type).await?;
+    Component::set_type_by_id(ctx, component.id(), component_type).await?;
     Ok(component)
 }
 

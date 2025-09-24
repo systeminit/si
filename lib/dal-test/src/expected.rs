@@ -510,12 +510,6 @@ impl ExpectComponent {
         ExpectComponentOutputSocket(self.0, output_socket_id)
     }
 
-    pub async fn upsert_parent(self, ctx: &DalContext, parent_id: impl Into<ComponentId>) {
-        dal::component::frame::Frame::upsert_parent_for_tests(ctx, self.0, parent_id.into())
-            .await
-            .expect("could not upsert parent");
-    }
-
     pub async fn execute_management_func(self, ctx: &DalContext, func: ExpectFunc) {
         component::execute_management_func(ctx, self.0, func.id())
             .await

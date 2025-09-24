@@ -23,7 +23,6 @@ use dal::{
 use dal_test::{
     Result,
     expected::{
-        ExpectComponent,
         ExpectSchema,
         ExpectSchemaVariant,
     },
@@ -315,8 +314,6 @@ async fn upgrade_component_type(ctx: &mut DalContext) -> Result<()> {
     // Create a new component from the variant, with child
     //
     let component = variant_zero.create_component_on_default_view(ctx).await;
-    let child = ExpectComponent::create(ctx, "Docker Image").await;
-    child.upsert_parent(ctx, component).await;
 
     assert_eq!(variant_zero, component.schema_variant(ctx).await);
     assert_eq!(
