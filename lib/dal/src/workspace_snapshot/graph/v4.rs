@@ -1059,7 +1059,7 @@ impl WorkspaceSnapshotGraphV4 {
                     EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
                     EdgeWeightKindDiscriminants::DiagramObject => "black",
-                    EdgeWeightKindDiscriminants::FrameContains => "black",
+                    EdgeWeightKindDiscriminants::DeprecatedFrameContains => "black",
                     EdgeWeightKindDiscriminants::ManagementPrototype => "pink",
                     EdgeWeightKindDiscriminants::Manages => "pink",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
@@ -1726,7 +1726,7 @@ impl WorkspaceSnapshotGraphV4 {
                     | EdgeWeightKind::Action
                     | EdgeWeightKind::ActionPrototype
                     | EdgeWeightKind::Contain(None)
-                    | EdgeWeightKind::FrameContains
+                    | EdgeWeightKind::DeprecatedFrameContains
                     | EdgeWeightKind::PrototypeArgument
                     | EdgeWeightKind::PrototypeArgumentValue
                     | EdgeWeightKind::Socket

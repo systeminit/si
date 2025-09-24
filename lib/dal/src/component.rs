@@ -16,10 +16,7 @@ use std::{
     sync::Arc,
 };
 
-use frame::{
-    Frame,
-    FrameError,
-};
+use frame::FrameError;
 use itertools::Itertools;
 use resource::ResourceData;
 use serde::{
@@ -229,8 +226,6 @@ pub enum ComponentError {
     CodeView(#[from] Box<CodeViewError>),
     #[error("component {0} already has a geometry for view {1}")]
     ComponentAlreadyInView(ComponentId, ViewId),
-    #[error("component has children, cannot change to component type")]
-    ComponentHasChildren,
     #[error("component {0} has more than one value for the {1} prop")]
     ComponentHasTooManyValues(ComponentId, PropId),
     #[error("component {0} has an unexpected schema variant id")]
@@ -273,8 +268,6 @@ pub enum ComponentError {
     InputSocketNotFoundForComponentId(InputSocketId, ComponentId),
     #[error("input socket {0} has more than one attribute value")]
     InputSocketTooManyAttributeValues(InputSocketId),
-    #[error("invalid component type update from {0} to {1}")]
-    InvalidComponentTypeUpdate(ComponentType, ComponentType),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("component {0} missing attribute value for code")]
@@ -636,13 +629,6 @@ impl Component {
         destination_id: SchemaVariantId,
         add_fn: add_edge_to_schema_variant,
         discriminant: EdgeWeightKindDiscriminants::Use,
-        result: ComponentResult,
-    );
-    implement_add_edge_to!(
-        source_id: ComponentId,
-        destination_id: ComponentId,
-        add_fn: add_edge_to_frame_for_tests,
-        discriminant: EdgeWeightKindDiscriminants::FrameContains,
         result: ComponentResult,
     );
     implement_add_edge_to!(
@@ -1244,80 +1230,6 @@ impl Component {
         Ok(AttributeValue::subscribers(ctx, root_av_id).await?)
     }
 
-    pub async fn get_children_for_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<Vec<ComponentId>> {
-        let mut children: Vec<ComponentId> = vec![];
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        for children_target in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                component_id,
-                EdgeWeightKindDiscriminants::FrameContains,
-            )
-            .await?
-        {
-            children.push(
-                workspace_snapshot
-                    .get_node_weight(children_target)
-                    .await?
-                    .id()
-                    .into(),
-            );
-        }
-
-        Ok(children)
-    }
-
-    /// Returns all descendants (children of my children and on and on)
-    async fn get_all_descendants_for_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<Vec<ComponentId>> {
-        let mut all_descendants = Vec::new();
-        let mut work_queue = VecDeque::from(Self::get_children_for_id(ctx, component_id).await?);
-        while let Some(child_id) = work_queue.pop_front() {
-            all_descendants.push(child_id);
-            let children = Self::get_children_for_id(ctx, child_id).await?;
-            work_queue.extend(children);
-        }
-        Ok(all_descendants)
-    }
-
-    #[instrument(level = "debug" skip(ctx))]
-    pub async fn get_parent_by_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<Option<ComponentId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut raw_sources = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(
-                component_id,
-                EdgeWeightKindDiscriminants::FrameContains,
-            )
-            .await?;
-
-        let maybe_parent = if let Some(raw_parent) = raw_sources.pop() {
-            if !raw_sources.is_empty() {
-                return Err(ComponentError::MultipleParentsForComponent(component_id));
-            }
-            Some(
-                workspace_snapshot
-                    .get_node_weight(raw_parent)
-                    .await?
-                    .id()
-                    .into(),
-            )
-        } else {
-            None
-        };
-        Ok(maybe_parent)
-    }
-
-    pub async fn parent(&self, ctx: &DalContext) -> ComponentResult<Option<ComponentId>> {
-        Self::get_parent_by_id(ctx, self.id).await
-    }
-
     async fn try_get_node_weight_and_content(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -1744,26 +1656,6 @@ impl Component {
 
         Ok(serde_json::from_value(type_value)?)
     }
-    /// Sets the [`AttributeValue`] for root/si/type to the given [`ComponentType`]
-    /// NOTE: This does NOT ensure that this change is valid, nor does it account for
-    /// needing to update other attribute values in cases where the new type is an up or
-    /// down frame
-    pub async fn set_type_by_id_unchecked(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        new_type: ComponentType,
-    ) -> ComponentResult<()> {
-        let type_value_id =
-            Self::attribute_value_for_prop(ctx, component_id, &["root", "si", "type"]).await?;
-        let value = serde_json::to_value(new_type)?;
-
-        AttributeValue::update(ctx, type_value_id, Some(value)).await?;
-        ctx.workspace_snapshot()?
-            .clear_inferred_connection_graph()
-            .await;
-
-        Ok(())
-    }
 
     pub async fn get_type(&self, ctx: &DalContext) -> ComponentResult<ComponentType> {
         Self::get_type_by_id(ctx, self.id()).await
@@ -1779,42 +1671,19 @@ impl Component {
         // cache the current type
         let current_type = Self::get_type_by_id(ctx, component_id).await?;
 
-        let children = Self::get_children_for_id(ctx, component_id).await?;
-
-        // see if this component is a parent or child
-        let reference_id = match Self::get_parent_by_id(ctx, component_id).await? {
-            Some(parent) => Some(parent),
-            None => children.first().copied(),
-        };
-
-        // if the current component has children, and the new type is a component, return an error
-        if new_type == ComponentType::Component && !children.is_empty() {
-            return Err(ComponentError::ComponentHasChildren);
-        }
-
         // no-op if we're not actually changing the type
         if new_type == current_type {
             return Ok(());
         }
-        if let Some(reference_id) = reference_id {
-            // this means the component is a child or parent,
-            //so we need to ensure we update any necessary values
-            match (new_type, current_type) {
-                (ComponentType::Component, ComponentType::ConfigurationFrameDown)
-                | (ComponentType::Component, ComponentType::ConfigurationFrameUp)
-                | (ComponentType::ConfigurationFrameDown, ComponentType::Component)
-                | (ComponentType::ConfigurationFrameDown, ComponentType::ConfigurationFrameUp)
-                | (ComponentType::ConfigurationFrameUp, ComponentType::Component)
-                | (ComponentType::ConfigurationFrameUp, ComponentType::ConfigurationFrameDown) => {
-                    Frame::update_type_from_or_to_frame(ctx, component_id, reference_id, new_type)
-                        .await?;
-                }
-                (new, old) => return Err(ComponentError::InvalidComponentTypeUpdate(old, new)),
-            }
-        } else {
-            // this component stands alone, just set the type!
-            Self::set_type_by_id_unchecked(ctx, component_id, new_type).await?;
-        }
+
+        let type_value_id =
+            Self::attribute_value_for_prop(ctx, component_id, &["root", "si", "type"]).await?;
+        let value = serde_json::to_value(new_type)?;
+
+        AttributeValue::update(ctx, type_value_id, Some(value)).await?;
+        ctx.workspace_snapshot()?
+            .clear_inferred_connection_graph()
+            .await;
 
         Ok(())
     }
@@ -2004,25 +1873,6 @@ impl Component {
         Ok(socket_values)
     }
 
-    pub async fn remove_edge_from_frame(
-        ctx: &DalContext,
-        parent_id: ComponentId,
-        child_id: ComponentId,
-    ) -> ComponentResult<()> {
-        ctx.workspace_snapshot()?
-            .remove_edge(
-                parent_id,
-                child_id,
-                EdgeWeightKindDiscriminants::FrameContains,
-            )
-            .await?;
-        ctx.workspace_snapshot()?
-            .clear_inferred_connection_graph()
-            .await;
-
-        Ok(())
-    }
-
     pub async fn list_av_controlling_func_ids_for_id(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -2208,16 +2058,7 @@ impl Component {
     /// Remove a [Component] from the graph, and all related nodes
     #[instrument(level = "info", skip(ctx))]
     pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
-        let component = Self::get_by_id(ctx, id).await?;
         let root_attribute_value_id = Self::root_attribute_value_id(ctx, id).await?;
-
-        if component.parent(ctx).await?.is_some() {
-            // if we are removing a component with children, unparent its children as well.
-            for child_id in Component::get_children_for_id(ctx, id).await? {
-                Frame::orphan_child(ctx, child_id).await?;
-            }
-            Frame::orphan_child(ctx, id).await?;
-        }
 
         // Remove all geometries for the component
         Geometry::remove_all_for_component_id(ctx, id).await?;
@@ -2252,20 +2093,6 @@ impl Component {
                 self.id
             );
             return Ok(false);
-        }
-
-        // If I am a frame, and I have descendants with resources, I can't be removed
-        let all_descendants = Self::get_all_descendants_for_id(ctx, self.id).await?;
-        for descendant in all_descendants {
-            let descendant_component = Self::get_by_id(ctx, descendant).await?;
-            if descendant_component.resource(ctx).await?.is_some() {
-                debug!(
-                    "component {:?} cannot be removed because {:?} has resource",
-                    self.id,
-                    descendant_component.id()
-                );
-                return Ok(false);
-            }
         }
 
         // Check all inferred outgoing connections, which accounts for up and down configuration
@@ -2763,8 +2590,6 @@ impl Component {
             Component::root_attribute_value_id(ctx, original_component_id).await?;
         let original_subscriber_apas = AttributeValue::subscribers(ctx, original_root_id).await?;
 
-        let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
-
         let geometry_ids = Geometry::list_ids_by_component(ctx, original_component_id).await?;
 
         // ================================================================================
@@ -2844,12 +2669,6 @@ impl Component {
         // ========================================
         // Delete original component
         // ========================================
-        // Remove all children from the "old" frame before we delete it. We'll add them all to the
-        // new frame after we've deleted the old one.
-        for &child in &original_children {
-            Frame::orphan_child(ctx, child).await?;
-        }
-
         // Remove the original resource so that we don't queue a delete action
         original_component.clear_resource(ctx).await?;
         Self::remove(ctx, original_component.id).await?;
@@ -3325,8 +3144,6 @@ impl Component {
 
         let can_be_upgraded = self.can_be_upgraded(ctx).await?;
 
-        let maybe_parent = self.parent(ctx).await?;
-
         let geometry = if let Some(geometry) = maybe_geometry {
             let view_id = Geometry::get_view_id_by_id(ctx, geometry.id()).await?;
 
@@ -3354,7 +3171,6 @@ impl Component {
             change_status: change_status.into(),
             has_resource: self.resource(ctx).await?.is_some(),
             sockets,
-            parent_id: maybe_parent,
             updated_info,
             created_info,
             deleted_info: serde_json::Value::Null,

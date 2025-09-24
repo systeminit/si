@@ -1,7 +1,6 @@
 use dal::{
     Component,
     DalContext,
-    component::frame::Frame,
 };
 use dal_test::{
     expected::{
@@ -21,10 +20,6 @@ async fn deleting_a_component_deletes_component_in_other_change_sets(ctx: &mut D
 
     // fork this change set and place docker image in a frame
     let cs_1 = fork_from_head_change_set(ctx).await;
-    let frame_one = ExpectComponent::create_named(ctx, "small odd lego", "frame one").await;
-    Frame::upsert_parent_for_tests(ctx, docker_image_1.id(), frame_one.id())
-        .await
-        .expect("attach child to frame one");
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     // fork and delete a docker image

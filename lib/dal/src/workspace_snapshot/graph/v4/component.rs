@@ -48,7 +48,7 @@ impl WorkspaceSnapshotGraphV4 {
             .edges_directed_for_edge_weight_kind(
                 component_node_index,
                 Outgoing,
-                EdgeWeightKindDiscriminants::FrameContains,
+                EdgeWeightKindDiscriminants::DeprecatedFrameContains,
             )
         {
             let node_weight = self

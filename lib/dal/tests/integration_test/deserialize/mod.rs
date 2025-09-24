@@ -258,7 +258,9 @@ async fn make_me_one_with_everything(ctx: &DalContext) -> WorkspaceSnapshotGraph
                 EdgeWeightKind::AuthenticationPrototype
             }
             EdgeWeightKindDiscriminants::Contain => EdgeWeightKind::Contain(Some("foo".to_owned())),
-            EdgeWeightKindDiscriminants::FrameContains => EdgeWeightKind::FrameContains,
+            EdgeWeightKindDiscriminants::DeprecatedFrameContains => {
+                EdgeWeightKind::DeprecatedFrameContains
+            }
             EdgeWeightKindDiscriminants::Ordering => EdgeWeightKind::Ordering,
             EdgeWeightKindDiscriminants::Ordinal => EdgeWeightKind::Ordinal,
             EdgeWeightKindDiscriminants::Prop => EdgeWeightKind::Prop,

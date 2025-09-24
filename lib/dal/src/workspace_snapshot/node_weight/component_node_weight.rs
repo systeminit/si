@@ -171,22 +171,6 @@ impl CorrectTransforms for ComponentNodeWeight {
         let mut remove_edges = vec![];
         for update in &updates {
             match update {
-                // Single Parent Rule: Component: FrameContains <Self> <- FrameContains: Component
-                // When we're setting the parent for a component, we need to remove any existing
-                // FrameContains edges to other components.
-                Update::NewEdge {
-                    destination,
-                    edge_weight,
-                    ..
-                } if EdgeWeightKind::FrameContains == *edge_weight.kind()
-                    && is_self(destination) =>
-                {
-                    // We want to remove any existing FrameContains edges and honor this AddEdge.
-                    remove_edges.extend(
-                        graph.incoming_edges(component_node_idx, EdgeWeightKind::FrameContains),
-                    );
-                }
-
                 // If the component is being deleted, the RemoveEdges may be stale (from an old
                 // snapshot) and we need to ensure that we truly delete everything. Detected by
                 // noticing an edge was removed from the component category:

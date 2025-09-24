@@ -89,8 +89,7 @@ async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> AdminAPIResult<
             AttributeValue::remove(ctx, duplicate).await?;
             true
         }
-        ValidationIssue::ComponentHasParent { .. }
-        | ValidationIssue::MissingChildAttributeValues { .. }
+        ValidationIssue::MissingChildAttributeValues { .. }
         | ValidationIssue::MultipleValues { .. }
         | ValidationIssue::UnknownChildAttributeValue { .. } => false,
     })

@@ -2406,7 +2406,7 @@ impl SchemaVariant {
 
                 EdgeWeightKindDiscriminants::Action
                 | EdgeWeightKindDiscriminants::Contain
-                | EdgeWeightKindDiscriminants::FrameContains
+                | EdgeWeightKindDiscriminants::DeprecatedFrameContains
                 | EdgeWeightKindDiscriminants::Represents
                 | EdgeWeightKindDiscriminants::Ordering
                 | EdgeWeightKindDiscriminants::Ordinal

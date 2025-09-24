@@ -1292,31 +1292,6 @@ impl SplitSnapshot {
         Ok(sv_id)
     }
 
-    pub async fn frame_contains_components(
-        &self,
-        component_id: ComponentId,
-    ) -> ComponentResult<Vec<ComponentId>> {
-        let component_id = component_id.into();
-        let working_copy = self.working_copy().await;
-        if working_copy.node_id_to_index(component_id).is_none() {
-            return Err(ComponentError::NotFound(component_id.into()));
-        }
-
-        let contained: Vec<ComponentId> = working_copy
-            .edges_directed(component_id, Outgoing)?
-            .filter(|edge_ref| {
-                matches!(edge_ref.weight().kind(), EdgeWeightKind::FrameContains)
-                    && matches!(
-                        working_copy.node_weight(edge_ref.target()),
-                        Some(NodeWeight::Component(_))
-                    )
-            })
-            .map(|edge_ref| edge_ref.target().into())
-            .collect();
-
-        Ok(contained)
-    }
-
     pub async fn inferred_connection_graph(
         &self,
         ctx: &DalContext,

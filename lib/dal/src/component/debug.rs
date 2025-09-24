@@ -69,7 +69,6 @@ pub struct ComponentDebugView {
     pub attributes: Vec<AttributeDebugView>,
     pub input_sockets: Vec<SocketDebugView>,
     pub output_sockets: Vec<SocketDebugView>,
-    pub parent_id: Option<ComponentId>,
     pub geometry: HashMap<ViewId, Geometry>,
 }
 /// A generated view for an [`Component`](crate::Component) that contains metadata about each of
@@ -83,7 +82,6 @@ pub struct ComponentDebugData {
     pub attribute_tree: HashMap<AttributeValueId, Vec<AttributeValueId>>,
     pub input_sockets: Vec<ComponentInputSocket>,
     pub output_sockets: Vec<ComponentOutputSocket>,
-    pub parent_id: Option<ComponentId>,
 }
 
 #[remain::sorted]
@@ -194,7 +192,6 @@ impl ComponentDebugView {
             attributes,
             input_sockets,
             output_sockets,
-            parent_id: component_debug_data.parent_id,
             geometry,
         };
 
@@ -206,7 +203,6 @@ impl ComponentDebugData {
     #[instrument(level = "trace", skip_all)]
     pub async fn new(ctx: &DalContext, component: &Component) -> ComponentDebugViewResult<Self> {
         let schema_variant_id = Component::schema_variant_id(ctx, component.id()).await?;
-        let parent_id = component.parent(ctx).await?;
         let attribute_tree =
             Self::get_attribute_value_tree_for_component(ctx, component.id()).await?;
         let input_sockets =
@@ -224,7 +220,6 @@ impl ComponentDebugData {
             attribute_tree,
             input_sockets,
             output_sockets,
-            parent_id,
         };
 
         Ok(debug_view)

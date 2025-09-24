@@ -28,7 +28,9 @@ pub enum EdgeWeightKind {
     /// [`ComponentType`](crate::ComponentType).
     ///
     /// This replaces "Symbolic" edges and "Frame" sockets from the old engine.
-    FrameContains,
+    /// TODO (jkeiser) remove in a new snapshot format version
+    #[serde(rename = "FrameContains")]
+    DeprecatedFrameContains,
     /// Used to record the order that the elements of a container should be presented in.
     Ordering,
     /// Connects the node at the Ordering edge directly to the things it orders.
@@ -142,7 +144,7 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::Action
             | EdgeWeightKind::ActionPrototype
             | EdgeWeightKind::AuthenticationPrototype
-            | EdgeWeightKind::FrameContains
+            | EdgeWeightKind::DeprecatedFrameContains
             | EdgeWeightKind::Ordering
             | EdgeWeightKind::Ordinal
             | EdgeWeightKind::Prop
@@ -171,7 +173,7 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::ActionPrototype
             | EdgeWeightKind::AuthenticationPrototype
             | EdgeWeightKind::Contain(_)
-            | EdgeWeightKind::FrameContains
+            | EdgeWeightKind::DeprecatedFrameContains
             | EdgeWeightKind::Ordering
             | EdgeWeightKind::Ordinal
             | EdgeWeightKind::Prop
@@ -201,7 +203,7 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::ActionPrototype
             | EdgeWeightKind::AuthenticationPrototype
             | EdgeWeightKind::Contain(_)
-            | EdgeWeightKind::FrameContains
+            | EdgeWeightKind::DeprecatedFrameContains
             | EdgeWeightKind::Ordering
             | EdgeWeightKind::Ordinal
             | EdgeWeightKind::Prop

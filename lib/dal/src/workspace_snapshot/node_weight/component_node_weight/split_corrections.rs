@@ -44,30 +44,11 @@ impl
             return Ok(updates);
         }
 
-        let is_to_self = |update: &Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>| {
-            update.destination_has_id(self.id)
-        };
-
         let mut remove_edges = HashSet::new();
         let mut component_will_be_deleted = false;
 
         for update in &updates {
             match update {
-                // Single Parent Rule: Component: FrameContains <Self> <- FrameContains: Component
-                // When we're setting the parent for a component, we need to remove any existing
-                // FrameContains edges to other components.
-                Update::NewEdge { .. }
-                    if update
-                        .is_of_custom_edge_kind(EdgeWeightKindDiscriminants::FrameContains)
-                        && is_to_self(update) =>
-                {
-                    remove_edges.extend(
-                        graph
-                            .incoming_edges(self.id(), EdgeWeightKindDiscriminants::FrameContains)?
-                            .map(|edge_ref| edge_ref.triplet()),
-                    );
-                }
-
                 // If the component is being deleted, the RemoveEdges may be stale (from an old
                 // snapshot) and we need to ensure that we truly delete everything. Detected by
                 // noticing an edge was removed from the component category:
