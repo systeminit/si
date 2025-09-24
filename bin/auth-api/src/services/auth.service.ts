@@ -230,7 +230,7 @@ export async function beginAuthConnect(workspace: Workspace, user: User) {
 }
 
 export async function makeAuthConnectUrl(workspace: Workspace, user: User, code: string, redirect?: string) {
-  const params: { [key: string]: string } = { code };
+  const params: { [key: string]: string } = { code, workspaceId: workspace.id };
 
   params.onDemandAssets = `true`;
   if (redirect) {

@@ -39,6 +39,8 @@ export function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   const token = authStore.selectedOrDefaultAuthToken;
   if (token) {
     config.headers.authorization = `Bearer ${token}`;
+  } else {
+    authStore.localLogout(false);
   }
   return config;
 }

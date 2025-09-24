@@ -4,7 +4,6 @@ import * as _ from "lodash-es";
 import jwtDecode from "jwt-decode";
 import { ApiRequest } from "@si/vue-lib/pinia";
 import { posthog } from "@/utils/posthog";
-
 import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { useWorkspacesStore } from "./workspaces.store";
@@ -63,11 +62,28 @@ export const useAuthStore = () => {
         !_.isEmpty(state.tokens) && state.user?.pk,
       selectedWorkspaceToken: (state) => {
         const workspacesStore = useWorkspacesStore();
+        // console.log("urlSelectedWorkspaceId: ", workspacesStore.urlSelectedWorkspaceId);
         if (workspacesStore.urlSelectedWorkspaceId) {
+          // this case works in most scenarios except if we are asking for the
+          // selectedWorkspaceToken before useRouterStore is ready (like on page refresh)
           return state.tokens[workspacesStore.urlSelectedWorkspaceId];
+        } else {
+          // make sure that if we have a selected workspace token we populate it properly
+          // even if the workspaces store does not have the urlSelectedWorkspaceId ready yet
+          const path = window.location.pathname;
+          const workspaceId = path.split("/")[2];
+          // console.log(path);
+          // console.log(path.split("/"));
+          // console.log("WORKSPACE ID: ", workspaceId);
+          if (workspaceId) {
+            return state.tokens[workspaceId];
+          }
         }
+        // we don't have a token!
+        return undefined;
       },
       selectedOrDefaultAuthToken(): string | undefined {
+        // console.log("TOKEN: ", this.selectedWorkspaceToken);
         return this.selectedWorkspaceToken || _.values(this.tokens)[0];
       },
       workspaceHasOneUser(): boolean {
@@ -95,6 +111,7 @@ export const useAuthStore = () => {
           url: "/session/restore_authentication",
           onSuccess: (response) => {
             this.user = response.user;
+            // Currently restore auth is not loading the correct workspace
             this.userWorkspaceFlags = response.userWorkspaceFlags;
           },
           onFail(e) {
@@ -187,6 +204,7 @@ export const useAuthStore = () => {
           tokens: tokensByWorkspacePk,
           userPk,
         });
+
         return tokens;
       },
 

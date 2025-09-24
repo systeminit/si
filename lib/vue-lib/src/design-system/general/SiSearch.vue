@@ -25,11 +25,11 @@
         :class="
           clsx(
             'w-full text-xs pl-[32px] py-2xs h-[34px] placeholder:italic',
-            variant !== 'new' &&
+            variant === 'standard' &&
               'outline-offset-[-1px] focus:outline focus:outline-2',
             {
               dropdownmenu:
-                'text-white bg-shade-100 placeholder:text-neutral-400 rounded-t-md',
+                'text-white bg-shade-100 placeholder:text-neutral-400 rounded-t-md focus:outline-none',
               standard: themeClasses(
                 'text-black bg-shade-0 placeholder:text-neutral-500 focus:bg-neutral-50 focus:outline-action-500',
                 'text-white bg-neutral-800 placeholder:text-neutral-400 focus:bg-shade-100 focus:outline-action-300',
