@@ -133,6 +133,7 @@
     "@types/d3": "^7.4.3",
     "@types/fontfaceobserver": "^2.1.0",
     "@types/javascript-time-ago": "^2.0.3",
+    "@types/jest": "^30.0.0",
     "@types/js-beautify": "^1.14.1",
     "@types/libsodium-wrappers": "^0.7.11",
     "@types/lodash-es": "^4.17.12",

@@ -12,6 +12,7 @@
   "devDependencies": {
     "@braintree/sanitize-url": "^7.1.1",
     "@si/eslint-config": "workspace:*",
+    "@types/jest": "^30.0.0",
     "@si/tsconfig": "workspace:*",
     "@types/node": "^18.19.127",
     "cytoscape": "^3.33.1",
