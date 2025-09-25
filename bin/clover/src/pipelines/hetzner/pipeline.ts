@@ -1,7 +1,8 @@
-import { CfProperty } from "../cfDb.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
-import { ExpandedPropSpecFor, DefaultPropType, createPropFromCf } from "../../spec/props.ts";
+import { ExpandedPropSpec, ExpandedPropSpecFor, DefaultPropType, createPropFromCf, OnlyProperties } from "../../spec/props.ts";
 import rawSchema from "../../provider-schemas/hetzner.json" with { type: "json" };
+import { getExistingSpecs } from "../../specUpdates.ts";
+import { CfProperty, CfSchema } from "../../cfDb.ts";
 
 export type HetznerSchema = {
   typeName: string;
@@ -43,36 +44,37 @@ export async function generateHetznerSpecs(options: {
 
   // skipping inferred combo boxes
 
-  for (schema in pkgSpecFromHetnzer(rawSchema)) {
+  for (const schema in pkgSpecFromHetnzer(rawSchema)) {
 
   }
 
   return specs;
 }
 
-function pkgSpecFromHetnzer(allSchemas: object) {
+function pkgSpecFromHetnzer(allSchemas: any) {
   const schemas: HDB = {};
-  Object.entries(allSchemas.paths).forEach([endpoint, openApiDescription] => {
+  Object.entries(allSchemas.paths).forEach(([endpoint, _openApiDescription]) => {
+    const noun = endpoint.split("/")[1]
+    const openApiDescription = _openApiDescription as any;
     if (!openApiDescription.get) throw new Error(`WHY NO GET? ${noun}`)
 
     // skipping list endpoints for now
-    if (openApiDescription.get.operationId.startsWith("list_")) continue;
-
-    const noun = endpoint.split("/")[1]
+    if (openApiDescription.get.operationId.startsWith("list_")) return;
 
     if (schemas[noun]) {
       console.error(`ALREADY GOT ${noun}`);
-      continue;
+      return;
     }
 
     const objShape = openApiDescription.get.responses["200"].content["application/json"].schema.properties[noun];
     const properties = objShape.properties
-    const requiredProperties = new Set(objShape.required);
-    schemas[noun] = {
+    const requiredProperties = new Set(objShape.required as string[]);
+    const schema: HetznerSchema = {
       typeName: noun,
       properties,
       requiredProperties,
     }
+    schemas[noun] = schema;
   });
 
   Object.values(schemas).forEach((schema: HetznerSchema) => {
@@ -87,9 +89,11 @@ function pkgSpecFromHetnzer(allSchemas: object) {
       "domain",
       schema.properties,
       onlyProperties,
-      cfSchema,
+      schema,
     );
   });
+
+  return schemas
 }
 
 const MAX_PROP_DEPTH = 30;
@@ -103,7 +107,7 @@ function createDocLink(
 }
 
 function childIsRequired(
-  schema: HetznerSchema;
+  schema: HetznerSchema,
   parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ) {

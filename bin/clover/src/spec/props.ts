@@ -150,11 +150,11 @@ export function createDefaultPropFromCf(
     const propArgs = queue.queue.shift()!;
     if (propArgs.propPath.length > MAX_PROP_DEPTH) {
       throw new Error(
-        `Prop tree loop detected: Tried creating prop more than 10 levels deep in the prop tree: ${propArgs.propPath}`,
+        `Prop tree loop detected: Tried creating prop more than ${MAX_PROP_DEPTH} levels deep in the prop tree: ${propArgs.propPath}`,
       );
     }
 
-    const prop = createPropFromCf(propArgs, queue);
+    const prop = createPropFromCf(propArgs, queue, createDocLink, childIsRequired);
     if (!prop) continue;
     if (propArgs.addTo) propArgs.addTo(prop);
   }
@@ -182,6 +182,11 @@ export function createDefaultProp(
   return createObjectProp(name, ["root"], cfProp, required);
 }
 
+export type DocFn = (
+  { typeName }: CfSchema,
+  defName: string | undefined,
+  propName?: string,
+) => string;
 export function createDocLink(
   { typeName }: CfSchema,
   defName: string | undefined,
@@ -212,12 +217,14 @@ export function createDocLink(
   return docLink;
 }
 
-function createPropFromCf(
+export function createPropFromCf(
   { propPath, cfProp, parentProp }: CreatePropArgs,
   { cfSchema, onlyProperties, queue }: CreatePropQueue,
+  docFn: DocFn,
+  requiredFn: requiredFn,
 ): ExpandedPropSpec | undefined {
   const name = propPath[propPath.length - 1];
-  const required = childIsRequired(parentProp, name);
+  const required = requiredFn(cfSchema, parentProp, name);
   const propUniqueId = ulid();
   const data: ExpandedPropSpec["data"] = {
     name,
@@ -230,7 +237,7 @@ function createPropFromCf(
     hidden: false,
     docLink:
       parentProp?.kind === "object"
-        ? createDocLink(cfSchema, cfProp.defName, name)
+        ? docFn(cfSchema, cfProp.defName, name)
         : null,
     documentation: cfProp.description ?? null,
     uiOptionals: null,
@@ -508,7 +515,13 @@ function createPropFromCf(
   throw new Error(`no matching kind in prop with path: ${propPath}`);
 }
 
+export type requiredFn = (
+  cfSchema: CfSchema,
+  parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
+  childName: string,
+) => boolean;
 function childIsRequired(
+  cfSchema: CfSchema,
   parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ) {
