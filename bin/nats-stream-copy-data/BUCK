@@ -1,0 +1,18 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "nats-stream-copy-data",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//third-party/rust:clap",
+        "//third-party/rust:futures",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tracing",
+        "//third-party/rust:tracing-subscriber",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "nats-stream-copy-data"},
+)

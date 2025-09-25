@@ -5453,6 +5453,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nats-stream-copy-data"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "futures",
+ "si-data-nats",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "nats-subscriber"
 version = "0.1.0"
 dependencies = [

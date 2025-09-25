@@ -10,6 +10,7 @@ members = [
   "bin/innitctl",
   "bin/luminork",
   "bin/module-index",
+  "bin/nats-stream-copy-data",
   "bin/openapi-extractor",
   "bin/pinga",
   "bin/rebaser",
