@@ -3,7 +3,7 @@ import {
   ExpandedSchemaSpec,
   ExpandedSchemaVariantSpec,
 } from "../../spec/pkgs.ts";
-import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
+import _ from "npm:lodash";
 import {
   createDefaultPropFromCf,
   createPropFromCf,
@@ -17,6 +17,7 @@ import rawSchema from "../../provider-schemas/hetzner.json" with {
 };
 import { getExistingSpecs } from "../../specUpdates.ts";
 import { CfProperty, CfSchema, HDB, HetznerSchema, HQueue, SuperSchema } from "../types.ts";
+import { makeModule } from "../generic/index.ts";
 
 export async function generateHetznerSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -69,6 +70,7 @@ function pkgSpecFromHetnzer(allSchemas: any) {
       const requiredProperties = new Set(objShape.required as string[]);
       const schema: HetznerSchema = {
         typeName: noun,
+        description: "PAUL FIGURE IT OUT",
         properties,
         requiredProperties,
       };
@@ -77,12 +79,6 @@ function pkgSpecFromHetnzer(allSchemas: any) {
   );
 
   Object.values(schemas).forEach((schema: HetznerSchema) => {
-    const isBuiltin = true;
-
-    const variantUniqueKey = ulid();
-    const assetFuncUniqueKey = ulid();
-    const schemaUniqueKey = ulid();
-    const version = versionFromDate();
 
     const onlyProperties: OnlyProperties = {
       createOnly: [],
@@ -105,62 +101,18 @@ function pkgSpecFromHetnzer(allSchemas: any) {
       schema,
     );
 
-    const variant: ExpandedSchemaVariantSpec = {
-      version,
-      data: {
-        version,
-        link: schema.documentationUrl || null,
-        color: "#FF9900",
-        displayName: null, // siPkg does not store this
-        componentType: "component",
-        funcUniqueId: assetFuncUniqueKey,
-        description: null, // TODO: can we get this?
-      },
-      uniqueId: variantUniqueKey,
-      deleted: false,
-      isBuiltin,
-      actionFuncs: [],
-      authFuncs: [],
-      leafFunctions: [],
-      siPropFuncs: [],
-      managementFuncs: [],
+      const secrets =  createDefaultPropFromCf("secrets", {}, schema, onlyProperties);
+
+    const m = makeModule(
+      schema,
+      createDocLink(schema, undefined),
+      schema.description,
       domain,
-      secrets: createDefaultPropFromCf("secrets", {}, {}, onlyProperties),
-      secretDefinition: null,
       resourceValue,
-      rootPropFuncs: [],
-      cfSchema: undefined,
-    };
-
-    const moduleSchema: ExpandedSchemaSpec = {
-      name: schema.typeName,
-      data: {
-        name: schema.typeName,
-        category: `Hetzner::${schema.typeName}::${schema.typeName}`,
-        categoryName: null,
-        uiHidden: false,
-        defaultSchemaVariant: variantUniqueKey,
-      },
-      uniqueId: schemaUniqueKey,
-      deleted: false,
-      isBuiltin,
-      variants: [variant],
-    };
-
-    specs.push({
-      kind: "module",
-      name: schema.typeName,
-      version,
-      description: "",
-      createdAt: new Date().toISOString(),
-      createdBy: "Clover",
-      defaultChangeSet: null,
-      workspacePk: null,
-      workspaceName: null,
-      schemas: [moduleSchema],
-      funcs: [],
-      changeSets: [], // always empty
-    });
+      secrets,
+      hCategory,
+    );
+    specs.push(m);
   });
 
   return specs;
@@ -250,9 +202,7 @@ function createDefaultProp(
   return rootProp;
 }
 
-function versionFromDate(): string {
-  return new Date()
-    .toISOString()
-    .replace(/[-:T.Z]/g, "")
-    .slice(0, 14);
+export function hCategory(schema: SuperSchema): string {
+  const name = _.camelCase(schema.typeName.replace("_", " "));
+  return `Hetzner::${name}`;
 }

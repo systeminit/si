@@ -132,6 +132,7 @@ export type CfDb = Record<string, CfSchema>;
 
 export type HetznerSchema = {
   typeName: string;
+  description: string;
   sourceUrl?: string;
   documentationUrl?: string;
   properties: Record<string, CfProperty>;
@@ -147,3 +148,5 @@ export type HQueue = {
 };
 
 export type SuperSchema = HetznerSchema | CfSchema;
+
+export type CategoryFn = ({ typeName }: SuperSchema) => string;
