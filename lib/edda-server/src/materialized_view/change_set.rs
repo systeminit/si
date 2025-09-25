@@ -189,6 +189,8 @@ pub async fn reuse_or_rebuild_index_for_new_change_set(
         si.edda.mv.avg_build_elapsed_ms = Empty,
         si.edda.mv.max_build_elapsed_ms = Empty,
         si.edda.mv.slowest_kind = Empty,
+        si.edda.from_index_checksum = Empty,
+        si.edda.to_index_checksum = Empty,
     ),
 )]
 pub async fn build_all_mv_for_change_set(
@@ -247,13 +249,17 @@ pub async fn build_all_mv_for_change_set(
     debug!("index_entries {:?}", index_entries);
     let mv_index = ChangeSetMvIndexV2::new(snapshot_to_address.to_string(), index_entries);
     let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
+    let from_index_checksum =
+        from_index_checksum.map_or(mv_index_frontend_object.checksum.to_owned(), |check| check);
+    let to_index_checksum = mv_index_frontend_object.checksum.to_owned();
     let meta = ChangesetUpdateMeta {
         workspace_id,
         change_set_id,
-        from_index_checksum: from_index_checksum
-            .map_or(mv_index_frontend_object.checksum.to_owned(), |check| check),
-        to_index_checksum: mv_index_frontend_object.checksum.to_owned(),
+        from_index_checksum: from_index_checksum.to_owned(),
+        to_index_checksum: to_index_checksum.to_owned(),
     };
+    span.record("si.edda.from_index_checksum", from_index_checksum);
+    span.record("si.edda.to_index_checksum", &to_index_checksum);
     let patch_batch = ChangesetPatchBatch::new(meta.clone(), patches);
     let change_set_mv_id = change_set_id.to_string();
 
@@ -309,6 +315,8 @@ pub async fn map_all_nodes_to_change_objects(
         si.edda.mv.slowest_kind = Empty,
         si.edda.mv.combined_changes.count = Empty,
         si.edda.mv.outdated_mv.kind_count = Empty,
+        si.edda.from_index_checksum = Empty,
+        si.edda.to_index_checksum = Empty,
     )
 )]
 #[allow(clippy::too_many_arguments)]
@@ -474,7 +482,8 @@ pub async fn build_mv_for_changes_in_change_set(
         to_index_checksum: to_index_checksum.clone(),
     };
     let patch_batch = ChangesetPatchBatch::new(meta.clone(), patches);
-
+    span.record("si.edda.from_index_checksum", &from_index_checksum);
+    span.record("si.edda.to_index_checksum", &to_index_checksum);
     let index_patch = ObjectPatch {
         kind: ReferenceKind::ChangeSetMvIndex.to_string(),
         id: new_mv_index_frontend_object.id.clone(),
