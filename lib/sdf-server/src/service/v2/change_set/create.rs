@@ -38,7 +38,7 @@ pub async fn create_change_set(
 ) -> Result<impl IntoResponse> {
     let change_set_name = name.to_owned();
 
-    let change_set = ChangeSet::fork_head(ctx, change_set_name.clone()).await?;
+    let change_set = ChangeSet::fork_head(ctx, &change_set_name).await?;
     let change_set_id = change_set.id;
 
     tracker.track(
@@ -49,7 +49,7 @@ pub async fn create_change_set(
         }),
     );
 
-    ctx.write_audit_log(AuditLogKind::CreateChangeSet, change_set_name.to_string())
+    ctx.write_audit_log(AuditLogKind::CreateChangeSet, change_set_name.clone())
         .await?;
 
     WsEvent::change_set_created(ctx, change_set.id, change_set.workspace_snapshot_address)
@@ -59,6 +59,7 @@ pub async fn create_change_set(
 
     let change_set = change_set.into_frontend_type(ctx).await?;
     ctx.commit_no_rebase().await?;
+
     if create_index_for_new_change_set_and_watch(
         &frigg,
         &edda_client,
