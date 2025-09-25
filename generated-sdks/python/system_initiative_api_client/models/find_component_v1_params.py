@@ -27,7 +27,7 @@ class FindComponentV1Params(BaseModel):
     FindComponentV1Params
     """ # noqa: E501
     component: Optional[StrictStr] = None
-    component_id: StrictStr = Field(alias="componentId")
+    component_id: Optional[StrictStr] = Field(default=None, alias="componentId")
     __properties: ClassVar[List[str]] = ["component", "componentId"]
 
     model_config = ConfigDict(
@@ -73,6 +73,11 @@ class FindComponentV1Params(BaseModel):
         # and model_fields_set contains the field
         if self.component is None and "component" in self.model_fields_set:
             _dict['component'] = None
+
+        # set to None if component_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.component_id is None and "component_id" in self.model_fields_set:
+            _dict['componentId'] = None
 
         return _dict
 

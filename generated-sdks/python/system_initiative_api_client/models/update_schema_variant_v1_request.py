@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -28,9 +28,9 @@ class UpdateSchemaVariantV1Request(BaseModel):
     """ # noqa: E501
     category: StrictStr
     code: StrictStr
-    color: StrictStr
-    description: StrictStr
-    link: StrictStr
+    color: Optional[StrictStr] = None
+    description: Optional[StrictStr] = None
+    link: Optional[StrictStr] = None
     name: StrictStr
     __properties: ClassVar[List[str]] = ["category", "code", "color", "description", "link", "name"]
 
@@ -73,6 +73,21 @@ class UpdateSchemaVariantV1Request(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if color (nullable) is None
+        # and model_fields_set contains the field
+        if self.color is None and "color" in self.model_fields_set:
+            _dict['color'] = None
+
+        # set to None if description (nullable) is None
+        # and model_fields_set contains the field
+        if self.description is None and "description" in self.model_fields_set:
+            _dict['description'] = None
+
+        # set to None if link (nullable) is None
+        # and model_fields_set contains the field
+        if self.link is None and "link" in self.model_fields_set:
+            _dict['link'] = None
+
         return _dict
 
     @classmethod

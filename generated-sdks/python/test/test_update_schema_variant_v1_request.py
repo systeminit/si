@@ -134,9 +134,6 @@ class TestUpdateSchemaVariantV1Request(unittest.TestCase):
         message: "Region is available to use",
     };
 }',
-                color = '#FF5733',
-                description = 'Validates if an AWS region exists and is available for use',
-                link = 'https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html',
                 name = 'AWS Region Validator',
         )
         """

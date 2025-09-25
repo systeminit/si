@@ -221,9 +221,9 @@ pub struct GetSchemaVariantV1Response {
     pub color: String,
     #[schema(value_type = bool, example = false)]
     pub is_locked: bool,
-    #[schema(value_type = String, example = "Amazon EC2 Instance resource type")]
+    #[schema(value_type = Option<String>, example = "Amazon EC2 Instance resource type")]
     pub description: Option<String>,
-    #[schema(value_type = String, example = "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html")]
+    #[schema(value_type = Option<String>, example = "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html")]
     pub link: Option<String>,
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q75XY")]
     pub asset_func_id: FuncId,
@@ -518,18 +518,17 @@ pub struct PropSchemaV1 {
     pub name: String,
     #[schema(value_type = String)]
     pub prop_type: String,
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub description: Option<String>,
-    #[schema(value_type = Vec<PropSchemaV1>, no_recursion)]
+    #[schema(no_recursion)]
     pub children: Option<Vec<PropSchemaV1>>,
     // New fields from PropSpecData (excluding func/widget/ui fields)
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub validation_format: Option<String>,
-    #[schema(value_type = serde_json::Value)]
     pub default_value: Option<serde_json::Value>,
-    #[schema(value_type = bool)]
+    #[schema(value_type = Option<bool>)]
     pub hidden: Option<bool>,
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub doc_link: Option<String>,
 }
 
@@ -618,7 +617,7 @@ impl IntoResponse for SchemaResponseV1 {
 pub struct SchemaResponse {
     #[schema(example = "AWS::EC2::Instance")]
     pub schema_name: String,
-    #[schema(example = "AWS::EC2")]
+    #[schema(value_type = Option<String>, example = "AWS::EC2")]
     pub category: Option<String>,
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
     pub schema_id: SchemaId,

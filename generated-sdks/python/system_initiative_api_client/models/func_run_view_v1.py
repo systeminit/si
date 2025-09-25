@@ -27,30 +27,30 @@ class FuncRunViewV1(BaseModel):
     """
     FuncRunViewV1
     """ # noqa: E501
-    action_display_name: StrictStr = Field(alias="actionDisplayName")
-    action_id: StrictStr = Field(alias="actionId")
-    action_kind: StrictStr = Field(alias="actionKind")
-    action_originating_change_set_id: StrictStr = Field(alias="actionOriginatingChangeSetId")
-    action_originating_change_set_name: StrictStr = Field(alias="actionOriginatingChangeSetName")
-    action_prototype_id: StrictStr = Field(alias="actionPrototypeId")
-    action_result_state: StrictStr = Field(alias="actionResultState")
-    attribute_value_id: StrictStr = Field(alias="attributeValueId")
+    action_display_name: Optional[StrictStr] = Field(default=None, alias="actionDisplayName")
+    action_id: Optional[StrictStr] = Field(default=None, alias="actionId")
+    action_kind: Optional[StrictStr] = Field(default=None, alias="actionKind")
+    action_originating_change_set_id: Optional[StrictStr] = Field(default=None, alias="actionOriginatingChangeSetId")
+    action_originating_change_set_name: Optional[StrictStr] = Field(default=None, alias="actionOriginatingChangeSetName")
+    action_prototype_id: Optional[StrictStr] = Field(default=None, alias="actionPrototypeId")
+    action_result_state: Optional[StrictStr] = Field(default=None, alias="actionResultState")
+    attribute_value_id: Optional[StrictStr] = Field(default=None, alias="attributeValueId")
     backend_kind: StrictStr = Field(alias="backendKind")
     backend_response_type: StrictStr = Field(alias="backendResponseType")
-    component_id: StrictStr = Field(alias="componentId")
-    component_name: StrictStr = Field(alias="componentName")
+    component_id: Optional[StrictStr] = Field(default=None, alias="componentId")
+    component_name: Optional[StrictStr] = Field(default=None, alias="componentName")
     created_at: StrictStr = Field(alias="createdAt")
     function_args: Optional[Any] = Field(alias="functionArgs")
     function_code_base64: StrictStr = Field(alias="functionCodeBase64")
-    function_description: StrictStr = Field(alias="functionDescription")
-    function_display_name: StrictStr = Field(alias="functionDisplayName")
+    function_description: Optional[StrictStr] = Field(default=None, alias="functionDescription")
+    function_display_name: Optional[StrictStr] = Field(default=None, alias="functionDisplayName")
     function_kind: StrictStr = Field(alias="functionKind")
-    function_link: StrictStr = Field(alias="functionLink")
+    function_link: Optional[StrictStr] = Field(default=None, alias="functionLink")
     function_name: StrictStr = Field(alias="functionName")
     id: StrictStr
     logs: Optional[FuncRunLogViewV1] = None
     result_value: Optional[Any] = Field(default=None, alias="resultValue")
-    schema_name: StrictStr = Field(alias="schemaName")
+    schema_name: Optional[StrictStr] = Field(default=None, alias="schemaName")
     state: StrictStr
     updated_at: StrictStr = Field(alias="updatedAt")
     __properties: ClassVar[List[str]] = ["actionDisplayName", "actionId", "actionKind", "actionOriginatingChangeSetId", "actionOriginatingChangeSetName", "actionPrototypeId", "actionResultState", "attributeValueId", "backendKind", "backendResponseType", "componentId", "componentName", "createdAt", "functionArgs", "functionCodeBase64", "functionDescription", "functionDisplayName", "functionKind", "functionLink", "functionName", "id", "logs", "resultValue", "schemaName", "state", "updatedAt"]
@@ -97,10 +97,75 @@ class FuncRunViewV1(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of logs
         if self.logs:
             _dict['logs'] = self.logs.to_dict()
+        # set to None if action_display_name (nullable) is None
+        # and model_fields_set contains the field
+        if self.action_display_name is None and "action_display_name" in self.model_fields_set:
+            _dict['actionDisplayName'] = None
+
+        # set to None if action_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.action_id is None and "action_id" in self.model_fields_set:
+            _dict['actionId'] = None
+
+        # set to None if action_kind (nullable) is None
+        # and model_fields_set contains the field
+        if self.action_kind is None and "action_kind" in self.model_fields_set:
+            _dict['actionKind'] = None
+
+        # set to None if action_originating_change_set_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.action_originating_change_set_id is None and "action_originating_change_set_id" in self.model_fields_set:
+            _dict['actionOriginatingChangeSetId'] = None
+
+        # set to None if action_originating_change_set_name (nullable) is None
+        # and model_fields_set contains the field
+        if self.action_originating_change_set_name is None and "action_originating_change_set_name" in self.model_fields_set:
+            _dict['actionOriginatingChangeSetName'] = None
+
+        # set to None if action_prototype_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.action_prototype_id is None and "action_prototype_id" in self.model_fields_set:
+            _dict['actionPrototypeId'] = None
+
+        # set to None if action_result_state (nullable) is None
+        # and model_fields_set contains the field
+        if self.action_result_state is None and "action_result_state" in self.model_fields_set:
+            _dict['actionResultState'] = None
+
+        # set to None if attribute_value_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.attribute_value_id is None and "attribute_value_id" in self.model_fields_set:
+            _dict['attributeValueId'] = None
+
+        # set to None if component_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.component_id is None and "component_id" in self.model_fields_set:
+            _dict['componentId'] = None
+
+        # set to None if component_name (nullable) is None
+        # and model_fields_set contains the field
+        if self.component_name is None and "component_name" in self.model_fields_set:
+            _dict['componentName'] = None
+
         # set to None if function_args (nullable) is None
         # and model_fields_set contains the field
         if self.function_args is None and "function_args" in self.model_fields_set:
             _dict['functionArgs'] = None
+
+        # set to None if function_description (nullable) is None
+        # and model_fields_set contains the field
+        if self.function_description is None and "function_description" in self.model_fields_set:
+            _dict['functionDescription'] = None
+
+        # set to None if function_display_name (nullable) is None
+        # and model_fields_set contains the field
+        if self.function_display_name is None and "function_display_name" in self.model_fields_set:
+            _dict['functionDisplayName'] = None
+
+        # set to None if function_link (nullable) is None
+        # and model_fields_set contains the field
+        if self.function_link is None and "function_link" in self.model_fields_set:
+            _dict['functionLink'] = None
 
         # set to None if logs (nullable) is None
         # and model_fields_set contains the field
@@ -111,6 +176,11 @@ class FuncRunViewV1(BaseModel):
         # and model_fields_set contains the field
         if self.result_value is None and "result_value" in self.model_fields_set:
             _dict['resultValue'] = None
+
+        # set to None if schema_name (nullable) is None
+        # and model_fields_set contains the field
+        if self.schema_name is None and "schema_name" in self.model_fields_set:
+            _dict['schemaName'] = None
 
         return _dict
 

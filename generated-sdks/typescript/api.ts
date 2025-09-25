@@ -80,19 +80,19 @@ export interface ActionViewV1 {
      * @type {string}
      * @memberof ActionViewV1
      */
-    'componentId': string;
+    'componentId'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof ActionViewV1
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof ActionViewV1
      */
-    'funcRunId': string;
+    'funcRunId'?: string | null;
     /**
      * 
      * @type {string}
@@ -332,10 +332,10 @@ export interface ComponentPropViewV1 {
     'propId': string;
     /**
      * 
-     * @type {object}
+     * @type {any}
      * @memberof ComponentPropViewV1
      */
-    'value': object;
+    'value'?: any;
 }
 /**
  * @type ComponentReference
@@ -635,7 +635,7 @@ export interface CreateSecretV1Request {
      * @type {string}
      * @memberof CreateSecretV1Request
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
@@ -679,13 +679,13 @@ export interface CreateVariantActionFuncV1Request {
      * @type {string}
      * @memberof CreateVariantActionFuncV1Request
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof CreateVariantActionFuncV1Request
      */
-    'displayName': string;
+    'displayName'?: string | null;
     /**
      * 
      * @type {string}
@@ -729,13 +729,13 @@ export interface CreateVariantAuthenticationFuncV1Request {
      * @type {string}
      * @memberof CreateVariantAuthenticationFuncV1Request
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof CreateVariantAuthenticationFuncV1Request
      */
-    'displayName': string;
+    'displayName'?: string | null;
     /**
      * 
      * @type {string}
@@ -773,13 +773,13 @@ export interface CreateVariantCodegenFuncV1Request {
      * @type {string}
      * @memberof CreateVariantCodegenFuncV1Request
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof CreateVariantCodegenFuncV1Request
      */
-    'displayName': string;
+    'displayName'?: string | null;
     /**
      * 
      * @type {string}
@@ -817,13 +817,13 @@ export interface CreateVariantManagementFuncV1Request {
      * @type {string}
      * @memberof CreateVariantManagementFuncV1Request
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof CreateVariantManagementFuncV1Request
      */
-    'displayName': string;
+    'displayName'?: string | null;
     /**
      * 
      * @type {string}
@@ -861,13 +861,13 @@ export interface CreateVariantQualificationFuncV1Request {
      * @type {string}
      * @memberof CreateVariantQualificationFuncV1Request
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof CreateVariantQualificationFuncV1Request
      */
-    'displayName': string;
+    'displayName'?: string | null;
     /**
      * 
      * @type {string}
@@ -1047,7 +1047,7 @@ export interface ExecuteManagementFunctionV1Response {
      * @memberof ExecuteManagementFunctionV1Response
      * @deprecated
      */
-    'funcRunId': string;
+    'funcRunId'?: string | null;
     /**
      * 
      * @type {string}
@@ -1059,7 +1059,7 @@ export interface ExecuteManagementFunctionV1Response {
      * @type {string}
      * @memberof ExecuteManagementFunctionV1Response
      */
-    'message'?: string;
+    'message'?: string | null;
     /**
      * 
      * @type {string}
@@ -1084,7 +1084,7 @@ export interface FindComponentV1Params {
      * @type {string}
      * @memberof FindComponentV1Params
      */
-    'componentId': string;
+    'componentId'?: string | null;
 }
 /**
  * 
@@ -1103,7 +1103,7 @@ export interface FindSchemaV1Params {
      * @type {string}
      * @memberof FindSchemaV1Params
      */
-    'schemaId': string;
+    'schemaId'?: string | null;
 }
 /**
  * 
@@ -1116,7 +1116,7 @@ export interface FindSchemaV1Response {
      * @type {string}
      * @memberof FindSchemaV1Response
      */
-    'category': string;
+    'category'?: string | null;
     /**
      * 
      * @type {boolean}
@@ -1216,49 +1216,49 @@ export interface FuncRunViewV1 {
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'actionDisplayName': string;
+    'actionDisplayName'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'actionId': string;
+    'actionId'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'actionKind': string;
+    'actionKind'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'actionOriginatingChangeSetId': string;
+    'actionOriginatingChangeSetId'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'actionOriginatingChangeSetName': string;
+    'actionOriginatingChangeSetName'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'actionPrototypeId': string;
+    'actionPrototypeId'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'actionResultState': string;
+    'actionResultState'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'attributeValueId': string;
+    'attributeValueId'?: string | null;
     /**
      * 
      * @type {string}
@@ -1276,13 +1276,13 @@ export interface FuncRunViewV1 {
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'componentId': string;
+    'componentId'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'componentName': string;
+    'componentName'?: string | null;
     /**
      * 
      * @type {string}
@@ -1306,13 +1306,13 @@ export interface FuncRunViewV1 {
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'functionDescription': string;
+    'functionDescription'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'functionDisplayName': string;
+    'functionDisplayName'?: string | null;
     /**
      * 
      * @type {string}
@@ -1324,7 +1324,7 @@ export interface FuncRunViewV1 {
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'functionLink': string;
+    'functionLink'?: string | null;
     /**
      * 
      * @type {string}
@@ -1354,7 +1354,7 @@ export interface FuncRunViewV1 {
      * @type {string}
      * @memberof FuncRunViewV1
      */
-    'schemaName': string;
+    'schemaName'?: string | null;
     /**
      * 
      * @type {string}
@@ -1543,13 +1543,13 @@ export interface GetFuncV1Response {
      * @type {string}
      * @memberof GetFuncV1Response
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof GetFuncV1Response
      */
-    'displayName': string;
+    'displayName'?: string | null;
     /**
      * 
      * @type {boolean}
@@ -1567,7 +1567,7 @@ export interface GetFuncV1Response {
      * @type {string}
      * @memberof GetFuncV1Response
      */
-    'link': string;
+    'link'?: string | null;
     /**
      * 
      * @type {string}
@@ -1586,7 +1586,7 @@ export interface GetManagementFuncJobStateV1Response {
      * @type {string}
      * @memberof GetManagementFuncJobStateV1Response
      */
-    'funcRunId': string;
+    'funcRunId'?: string | null;
     /**
      * 
      * @type {string}
@@ -1648,7 +1648,7 @@ export interface GetSchemaVariantV1Response {
      * @type {string}
      * @memberof GetSchemaVariantV1Response
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
@@ -1678,7 +1678,7 @@ export interface GetSchemaVariantV1Response {
      * @type {string}
      * @memberof GetSchemaVariantV1Response
      */
-    'link': string;
+    'link'?: string | null;
     /**
      * 
      * @type {Array<string>}
@@ -2001,31 +2001,31 @@ export interface PropSchemaV1 {
      * @type {Array<PropSchemaV1>}
      * @memberof PropSchemaV1
      */
-    'children': Array<PropSchemaV1>;
+    'children'?: Array<PropSchemaV1> | null;
     /**
      * 
      * @type {any}
      * @memberof PropSchemaV1
      */
-    'defaultValue': any;
+    'defaultValue'?: any;
     /**
      * 
      * @type {string}
      * @memberof PropSchemaV1
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof PropSchemaV1
      */
-    'docLink': string;
+    'docLink'?: string | null;
     /**
      * 
      * @type {boolean}
      * @memberof PropSchemaV1
      */
-    'hidden': boolean;
+    'hidden'?: boolean | null;
     /**
      * 
      * @type {string}
@@ -2049,7 +2049,7 @@ export interface PropSchemaV1 {
      * @type {string}
      * @memberof PropSchemaV1
      */
-    'validationFormat': string;
+    'validationFormat'?: string | null;
 }
 /**
  * 
@@ -2304,7 +2304,7 @@ export interface SecretV1 {
      * @type {string}
      * @memberof SecretV1
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
@@ -2430,13 +2430,13 @@ export interface UpdateFuncV1Request {
      * @type {string}
      * @memberof UpdateFuncV1Request
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof UpdateFuncV1Request
      */
-    'displayName': string;
+    'displayName'?: string | null;
 }
 /**
  * 
@@ -2474,19 +2474,19 @@ export interface UpdateSchemaVariantV1Request {
      * @type {string}
      * @memberof UpdateSchemaVariantV1Request
      */
-    'color': string;
+    'color'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof UpdateSchemaVariantV1Request
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof UpdateSchemaVariantV1Request
      */
-    'link': string;
+    'link'?: string | null;
     /**
      * 
      * @type {string}
@@ -2505,7 +2505,7 @@ export interface UpdateSecretV1Request {
      * @type {string}
      * @memberof UpdateSecretV1Request
      */
-    'description': string;
+    'description'?: string | null;
     /**
      * 
      * @type {string}

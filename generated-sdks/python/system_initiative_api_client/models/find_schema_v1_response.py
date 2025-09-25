@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -26,7 +26,7 @@ class FindSchemaV1Response(BaseModel):
     """
     FindSchemaV1Response
     """ # noqa: E501
-    category: StrictStr
+    category: Optional[StrictStr] = None
     installed: StrictBool
     schema_id: StrictStr = Field(alias="schemaId")
     schema_name: StrictStr = Field(alias="schemaName")
@@ -71,6 +71,11 @@ class FindSchemaV1Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if category (nullable) is None
+        # and model_fields_set contains the field
+        if self.category is None and "category" in self.model_fields_set:
+            _dict['category'] = None
+
         return _dict
 
     @classmethod

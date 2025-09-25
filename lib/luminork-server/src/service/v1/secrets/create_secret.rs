@@ -117,7 +117,7 @@ pub struct CreateSecretV1Request {
     pub name: String,
     #[schema(value_type = String, example = "aws_credentials")]
     pub definition_name: String,
-    #[schema(value_type = String, example = "AWS credentials for production environment")]
+    #[schema(value_type = Option<String>, example = "AWS credentials for production environment")]
     pub description: Option<String>,
     #[schema(value_type = HashMap<String, String>, example = json!({
         "access_key_id": "AKIAIOSFODNN7EXAMPLE",

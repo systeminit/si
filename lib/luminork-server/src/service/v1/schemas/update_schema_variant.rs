@@ -150,13 +150,13 @@ pub async fn update_schema_variant(
 pub struct UpdateSchemaVariantV1Request {
     #[schema(value_type = String, example = "AWS Region Validator")]
     pub name: String,
-    #[schema(value_type = String, example = "Validates if an AWS region exists and is available for use")]
+    #[schema(value_type = Option<String>, example = "Validates if an AWS region exists and is available for use")]
     pub description: Option<String>,
-    #[schema(value_type = String, example = "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html")]
+    #[schema(value_type = Option<String>, example = "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html")]
     pub link: Option<String>,
     #[schema(value_type = String, example = "AWS::EC2")]
     pub category: String,
-    #[schema(value_type = String, example = "#FF5733")]
+    #[schema(value_type = Option<String>, example = "#FF5733")]
     pub color: Option<String>,
     #[schema(
         example = "async function main(input: Input): Promise < Output > {\n    if (!input.domain?.region) {\n        return {\n            result: \"failure\",\n            message: \"No Region Name to validate\",\n        };\n    }\n\n    const child = await siExec.waitUntilEnd(\"aws\", [\n        \"ec2\",\n        \"describe-regions\",\n        \"--region-names\",\n        input.domain?.region!,\n        \"--region\",\n        \"us-east-1\",\n    ]);\n\n    if (child.exitCode !== 0) {\n        console.error(child.stderr);\n        return {\n            result: \"failure\",\n            message: \"Error from API\"\n        }\n    }\n\n    const regionDetails = JSON.parse(child.stdout).Regions;\n    if (regionDetails.length === 0 || regionDetails.length > 1) {\n        return {\n            result: \"failure\",\n            message: \"Unable to find Region\"\n        }\n    }\n\n    if (regionDetails[0].OptInStatus === \"not-opted-in\") {\n        return {\n            result: \"failure\",\n            message: \"Region not-opted-in for use\"\n        }\n    }\n\n    return {\n        result: \"success\",\n        message: \"Region is available to use\",\n    };\n}"

@@ -122,9 +122,9 @@ pub async fn create_variant_management(
 pub struct CreateVariantManagementFuncV1Request {
     #[schema(value_type = String, example = "awsCreateMyVpc")]
     pub name: String,
-    #[schema(value_type = String, example = "Manage my VPC Components")]
+    #[schema(value_type = Option<String>, example = "Manage my VPC Components")]
     pub display_name: Option<String>,
-    #[schema(value_type = String, example = "Manages a collection of VPC components and their relationships")]
+    #[schema(value_type = Option<String>, example = "Manages a collection of VPC components and their relationships")]
     pub description: Option<String>,
     #[schema(value_type = String, example = "<!-- String escaped Typescript code here -->")]
     pub code: String,

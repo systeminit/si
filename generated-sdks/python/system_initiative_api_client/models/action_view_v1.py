@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -26,9 +26,9 @@ class ActionViewV1(BaseModel):
     """
     ActionViewV1
     """ # noqa: E501
-    component_id: StrictStr = Field(alias="componentId")
-    description: StrictStr
-    func_run_id: StrictStr = Field(alias="funcRunId")
+    component_id: Optional[StrictStr] = Field(default=None, alias="componentId")
+    description: Optional[StrictStr] = None
+    func_run_id: Optional[StrictStr] = Field(default=None, alias="funcRunId")
     id: StrictStr
     kind: StrictStr
     name: StrictStr
@@ -76,6 +76,21 @@ class ActionViewV1(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if component_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.component_id is None and "component_id" in self.model_fields_set:
+            _dict['componentId'] = None
+
+        # set to None if description (nullable) is None
+        # and model_fields_set contains the field
+        if self.description is None and "description" in self.model_fields_set:
+            _dict['description'] = None
+
+        # set to None if func_run_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.func_run_id is None and "func_run_id" in self.model_fields_set:
+            _dict['funcRunId'] = None
+
         return _dict
 
     @classmethod

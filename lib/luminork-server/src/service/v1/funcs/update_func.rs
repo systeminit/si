@@ -114,9 +114,9 @@ pub async fn update_func(
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateFuncV1Request {
-    #[schema(value_type = String, example = "Updated Display Name")]
+    #[schema(value_type = Option<String>, example = "Updated Display Name")]
     pub display_name: Option<String>,
-    #[schema(value_type = String, example = "Updated Description")]
+    #[schema(value_type = Option<String>, example = "Updated Description")]
     pub description: Option<String>,
     #[schema(value_type = String, example = "<!-- String escaped Typescript code here -->")]
     pub code: String,

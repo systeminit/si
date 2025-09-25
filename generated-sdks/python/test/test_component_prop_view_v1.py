@@ -45,7 +45,6 @@ class TestComponentPropViewV1(unittest.TestCase):
                 id = '',
                 path = 'path/to/prop',
                 prop_id = '',
-                value = None,
         )
         """
 

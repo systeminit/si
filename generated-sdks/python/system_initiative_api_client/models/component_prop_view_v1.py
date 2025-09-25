@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -29,7 +29,7 @@ class ComponentPropViewV1(BaseModel):
     id: StrictStr
     path: StrictStr
     prop_id: StrictStr = Field(alias="propId")
-    value: Dict[str, Any]
+    value: Optional[Any] = None
     __properties: ClassVar[List[str]] = ["id", "path", "propId", "value"]
 
     model_config = ConfigDict(
@@ -71,6 +71,11 @@ class ComponentPropViewV1(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if value (nullable) is None
+        # and model_fields_set contains the field
+        if self.value is None and "value" in self.model_fields_set:
+            _dict['value'] = None
+
         return _dict
 
     @classmethod

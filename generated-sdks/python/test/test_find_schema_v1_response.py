@@ -42,7 +42,6 @@ class TestFindSchemaV1Response(unittest.TestCase):
             )
         else:
             return FindSchemaV1Response(
-                category = '',
                 installed = True,
                 schema_id = '',
                 schema_name = '',

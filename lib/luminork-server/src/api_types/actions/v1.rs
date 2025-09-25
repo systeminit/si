@@ -22,11 +22,11 @@ pub struct ActionViewV1 {
     pub id: ActionId,
     #[schema(value_type = String)]
     pub prototype_id: ActionPrototypeId,
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub component_id: Option<ComponentId>,
     #[schema(value_type = String)]
     pub name: String,
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub description: Option<String>,
     #[schema(value_type = String)]
     pub kind: ActionKind,
@@ -34,6 +34,6 @@ pub struct ActionViewV1 {
     pub state: ActionState,
     #[schema(value_type = String)]
     pub originating_change_set_id: ChangeSetId,
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub func_run_id: Option<FuncRunId>,
 }

@@ -26,7 +26,7 @@ class ExecuteManagementFunctionV1Response(BaseModel):
     """
     ExecuteManagementFunctionV1Response
     """ # noqa: E501
-    func_run_id: StrictStr = Field(alias="funcRunId")
+    func_run_id: Optional[StrictStr] = Field(default=None, alias="funcRunId")
     management_func_job_state_id: StrictStr = Field(alias="managementFuncJobStateId")
     message: Optional[StrictStr] = None
     status: StrictStr
@@ -71,6 +71,16 @@ class ExecuteManagementFunctionV1Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if func_run_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.func_run_id is None and "func_run_id" in self.model_fields_set:
+            _dict['funcRunId'] = None
+
+        # set to None if message (nullable) is None
+        # and model_fields_set contains the field
+        if self.message is None and "message" in self.model_fields_set:
+            _dict['message'] = None
+
         return _dict
 
     @classmethod

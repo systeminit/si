@@ -134,11 +134,8 @@ class TestGetFuncV1Response(unittest.TestCase):
         message: "Region is available to use",
     };
 }',
-                description = 'Validates if an AWS region exists and is available for use',
-                display_name = 'Validate Region',
                 is_locked = False,
                 kind = 'Qualification',
-                link = 'https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html',
                 name = 'AWS Region Validator',
         )
         """

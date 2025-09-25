@@ -30,12 +30,12 @@ class GetSchemaVariantV1Response(BaseModel):
     asset_func_id: StrictStr = Field(alias="assetFuncId")
     category: StrictStr
     color: StrictStr
-    description: StrictStr
+    description: Optional[StrictStr] = None
     display_name: StrictStr = Field(alias="displayName")
     domain_props: Optional[PropSchemaV1] = Field(default=None, alias="domainProps")
     is_default_variant: StrictBool = Field(alias="isDefaultVariant")
     is_locked: StrictBool = Field(alias="isLocked")
-    link: StrictStr
+    link: Optional[StrictStr] = None
     variant_func_ids: List[StrictStr] = Field(alias="variantFuncIds")
     variant_id: StrictStr = Field(alias="variantId")
     __properties: ClassVar[List[str]] = ["assetFuncId", "category", "color", "description", "displayName", "domainProps", "isDefaultVariant", "isLocked", "link", "variantFuncIds", "variantId"]
@@ -82,10 +82,20 @@ class GetSchemaVariantV1Response(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of domain_props
         if self.domain_props:
             _dict['domainProps'] = self.domain_props.to_dict()
+        # set to None if description (nullable) is None
+        # and model_fields_set contains the field
+        if self.description is None and "description" in self.model_fields_set:
+            _dict['description'] = None
+
         # set to None if domain_props (nullable) is None
         # and model_fields_set contains the field
         if self.domain_props is None and "domain_props" in self.model_fields_set:
             _dict['domainProps'] = None
+
+        # set to None if link (nullable) is None
+        # and model_fields_set contains the field
+        if self.link is None and "link" in self.model_fields_set:
+            _dict['link'] = None
 
         return _dict
 

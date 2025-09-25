@@ -40,7 +40,6 @@ class TestGetManagementFuncJobStateV1Response(unittest.TestCase):
             )
         else:
             return GetManagementFuncJobStateV1Response(
-                func_run_id = '01H9ZQD35JPMBGHH69BT0Q79VY',
                 state = 'Executing',
         )
         """

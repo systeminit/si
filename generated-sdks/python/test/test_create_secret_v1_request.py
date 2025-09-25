@@ -43,7 +43,6 @@ class TestCreateSecretV1Request(unittest.TestCase):
         else:
             return CreateSecretV1Request(
                 definition_name = 'aws_credentials',
-                description = 'AWS credentials for production environment',
                 name = 'AWS Access Key',
         )
         """

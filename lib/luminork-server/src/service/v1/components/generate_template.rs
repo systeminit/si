@@ -97,7 +97,7 @@ pub struct GenerateTemplateV1Request {
     pub asset_name: String,
     #[schema(example = "Generate My Template")]
     pub func_name: String,
-    #[schema(example = "Templates", required = false)]
+    #[schema(value_type = Option<String>, example = "Templates", required = false)]
     pub category: Option<String>,
 }
 

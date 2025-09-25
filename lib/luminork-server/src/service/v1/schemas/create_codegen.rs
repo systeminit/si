@@ -135,9 +135,9 @@ pub async fn create_variant_codegen(
 pub struct CreateVariantCodegenFuncV1Request {
     #[schema(value_type = String, example = "awsEC2InstanceGenerateCode")]
     pub name: String,
-    #[schema(value_type = String, example = "Generate EC2 Instance Create Payload")]
+    #[schema(value_type = Option<String>, example = "Generate EC2 Instance Create Payload")]
     pub display_name: Option<String>,
-    #[schema(value_type = String, example = "Generates the payload required for creating an EC2 instance")]
+    #[schema(value_type = Option<String>, example = "Generates the payload required for creating an EC2 instance")]
     pub description: Option<String>,
     #[schema(value_type = String, example = "<!-- String escaped Typescript code here -->")]
     pub code: String,

@@ -188,13 +188,13 @@ pub struct ExecuteManagementFunctionV1Request {
 #[serde(rename_all = "camelCase")]
 pub struct ExecuteManagementFunctionV1Response {
     #[deprecated(note = "Result has been moved to management_func_job_state_id")]
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub func_run_id: Option<FuncRunId>,
 
     #[schema(value_type = String, example = "Ok")]
     pub status: ManagementFuncStatus,
 
-    #[schema(value_type = String, example = "enqueued", required = false)]
+    #[schema(value_type = Option<String>, example = "enqueued", required = false)]
     pub message: Option<String>,
 
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]

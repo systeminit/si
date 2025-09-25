@@ -40,7 +40,6 @@ class TestFindComponentV1Params(unittest.TestCase):
             )
         else:
             return FindComponentV1Params(
-                component_id = '',
         )
         """
 

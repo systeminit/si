@@ -99,9 +99,13 @@ pub async fn create_schema(
 #[serde(rename_all = "camelCase")]
 pub struct CreateSchemaV1Request {
     pub name: String,
+    #[schema(value_type = Option<String>)]
     pub description: Option<String>,
+    #[schema(value_type = Option<String>)]
     pub link: Option<String>,
+    #[schema(value_type = Option<String>)]
     pub category: Option<String>,
+    #[schema(value_type = Option<String>)]
     pub color: Option<String>,
     pub code: String,
 }

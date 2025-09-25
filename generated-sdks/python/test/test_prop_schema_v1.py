@@ -37,18 +37,6 @@ class TestPropSchemaV1(unittest.TestCase):
             return PropSchemaV1(
                 children = [
                     system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
-                        children = [
-                            system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
-                                children = , 
-                                default_value = null, 
-                                description = '', 
-                                doc_link = '', 
-                                hidden = True, 
-                                name = '', 
-                                prop_id = '', 
-                                prop_type = '', 
-                                validation_format = '', )
-                            ], 
                         default_value = null, 
                         description = '', 
                         doc_link = '', 
@@ -69,37 +57,9 @@ class TestPropSchemaV1(unittest.TestCase):
             )
         else:
             return PropSchemaV1(
-                children = [
-                    system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
-                        children = [
-                            system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
-                                children = , 
-                                default_value = null, 
-                                description = '', 
-                                doc_link = '', 
-                                hidden = True, 
-                                name = '', 
-                                prop_id = '', 
-                                prop_type = '', 
-                                validation_format = '', )
-                            ], 
-                        default_value = null, 
-                        description = '', 
-                        doc_link = '', 
-                        hidden = True, 
-                        name = '', 
-                        prop_id = '', 
-                        prop_type = '', 
-                        validation_format = '', )
-                    ],
-                default_value = None,
-                description = '',
-                doc_link = '',
-                hidden = True,
                 name = '',
                 prop_id = '',
                 prop_type = '',
-                validation_format = '',
         )
         """
 

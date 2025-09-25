@@ -44,8 +44,6 @@ class TestCreateVariantActionFuncV1Request(unittest.TestCase):
         else:
             return CreateVariantActionFuncV1Request(
                 code = '<!-- String escaped Typescript code here -->',
-                description = 'Creates an EC2 Instance',
-                display_name = 'Create EC2 Instance',
                 kind = 'Create',
                 name = 'awsEC2InstanceCreate',
         )

@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -27,11 +27,11 @@ class GetFuncV1Response(BaseModel):
     GetFuncV1Response
     """ # noqa: E501
     code: StrictStr
-    description: StrictStr
-    display_name: StrictStr = Field(alias="displayName")
+    description: Optional[StrictStr] = None
+    display_name: Optional[StrictStr] = Field(default=None, alias="displayName")
     is_locked: StrictBool = Field(alias="isLocked")
     kind: StrictStr
-    link: StrictStr
+    link: Optional[StrictStr] = None
     name: StrictStr
     __properties: ClassVar[List[str]] = ["code", "description", "displayName", "isLocked", "kind", "link", "name"]
 
@@ -74,6 +74,21 @@ class GetFuncV1Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if description (nullable) is None
+        # and model_fields_set contains the field
+        if self.description is None and "description" in self.model_fields_set:
+            _dict['description'] = None
+
+        # set to None if display_name (nullable) is None
+        # and model_fields_set contains the field
+        if self.display_name is None and "display_name" in self.model_fields_set:
+            _dict['displayName'] = None
+
+        # set to None if link (nullable) is None
+        # and model_fields_set contains the field
+        if self.link is None and "link" in self.model_fields_set:
+            _dict['link'] = None
+
         return _dict
 
     @classmethod

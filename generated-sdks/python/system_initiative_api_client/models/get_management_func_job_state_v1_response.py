@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -26,7 +26,7 @@ class GetManagementFuncJobStateV1Response(BaseModel):
     """
     GetManagementFuncJobStateV1Response
     """ # noqa: E501
-    func_run_id: StrictStr = Field(alias="funcRunId")
+    func_run_id: Optional[StrictStr] = Field(default=None, alias="funcRunId")
     state: StrictStr
     __properties: ClassVar[List[str]] = ["funcRunId", "state"]
 
@@ -69,6 +69,11 @@ class GetManagementFuncJobStateV1Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if func_run_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.func_run_id is None and "func_run_id" in self.model_fields_set:
+            _dict['funcRunId'] = None
+
         return _dict
 
     @classmethod

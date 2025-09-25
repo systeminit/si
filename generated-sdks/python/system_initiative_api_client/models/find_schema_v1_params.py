@@ -27,7 +27,7 @@ class FindSchemaV1Params(BaseModel):
     FindSchemaV1Params
     """ # noqa: E501
     var_schema: Optional[StrictStr] = Field(default=None, alias="schema")
-    schema_id: StrictStr = Field(alias="schemaId")
+    schema_id: Optional[StrictStr] = Field(default=None, alias="schemaId")
     __properties: ClassVar[List[str]] = ["schema", "schemaId"]
 
     model_config = ConfigDict(
@@ -73,6 +73,11 @@ class FindSchemaV1Params(BaseModel):
         # and model_fields_set contains the field
         if self.var_schema is None and "var_schema" in self.model_fields_set:
             _dict['schema'] = None
+
+        # set to None if schema_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.schema_id is None and "schema_id" in self.model_fields_set:
+            _dict['schemaId'] = None
 
         return _dict
 
