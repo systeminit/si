@@ -56,7 +56,7 @@ pub struct SecretV1 {
     pub name: String,
     #[schema(value_type = String, example = "aws_credentials")]
     pub definition: String,
-    #[schema(value_type = String, example = "AWS credentials for production environment")]
+    #[schema(value_type = Option<String>, example = "AWS credentials for production environment")]
     pub description: Option<String>,
 }
 

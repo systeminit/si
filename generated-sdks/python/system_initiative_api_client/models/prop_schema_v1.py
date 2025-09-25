@@ -26,15 +26,15 @@ class PropSchemaV1(BaseModel):
     """
     PropSchemaV1
     """ # noqa: E501
-    children: List[PropSchemaV1]
-    default_value: Optional[Any] = Field(alias="defaultValue")
-    description: StrictStr
-    doc_link: StrictStr = Field(alias="docLink")
-    hidden: StrictBool
+    children: Optional[List[PropSchemaV1]] = None
+    default_value: Optional[Any] = Field(default=None, alias="defaultValue")
+    description: Optional[StrictStr] = None
+    doc_link: Optional[StrictStr] = Field(default=None, alias="docLink")
+    hidden: Optional[StrictBool] = None
     name: StrictStr
     prop_id: StrictStr = Field(alias="propId")
     prop_type: StrictStr = Field(alias="propType")
-    validation_format: StrictStr = Field(alias="validationFormat")
+    validation_format: Optional[StrictStr] = Field(default=None, alias="validationFormat")
     __properties: ClassVar[List[str]] = ["children", "defaultValue", "description", "docLink", "hidden", "name", "propId", "propType", "validationFormat"]
 
     model_config = ConfigDict(
@@ -83,10 +83,35 @@ class PropSchemaV1(BaseModel):
                 if _item_children:
                     _items.append(_item_children.to_dict())
             _dict['children'] = _items
+        # set to None if children (nullable) is None
+        # and model_fields_set contains the field
+        if self.children is None and "children" in self.model_fields_set:
+            _dict['children'] = None
+
         # set to None if default_value (nullable) is None
         # and model_fields_set contains the field
         if self.default_value is None and "default_value" in self.model_fields_set:
             _dict['defaultValue'] = None
+
+        # set to None if description (nullable) is None
+        # and model_fields_set contains the field
+        if self.description is None and "description" in self.model_fields_set:
+            _dict['description'] = None
+
+        # set to None if doc_link (nullable) is None
+        # and model_fields_set contains the field
+        if self.doc_link is None and "doc_link" in self.model_fields_set:
+            _dict['docLink'] = None
+
+        # set to None if hidden (nullable) is None
+        # and model_fields_set contains the field
+        if self.hidden is None and "hidden" in self.model_fields_set:
+            _dict['hidden'] = None
+
+        # set to None if validation_format (nullable) is None
+        # and model_fields_set contains the field
+        if self.validation_format is None and "validation_format" in self.model_fields_set:
+            _dict['validationFormat'] = None
 
         return _dict
 

@@ -43,9 +43,6 @@ class TestGetSchemaVariantV1Response(unittest.TestCase):
                 domain_props = system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
                     children = [
                         system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
-                            children = [
-                                
-                                ], 
                             default_value = null, 
                             description = '', 
                             doc_link = '', 
@@ -74,11 +71,9 @@ class TestGetSchemaVariantV1Response(unittest.TestCase):
                 asset_func_id = '01H9ZQD35JPMBGHH69BT0Q75XY',
                 category = 'AWS::EC2',
                 color = '#FF5733',
-                description = 'Amazon EC2 Instance resource type',
                 display_name = 'AWS EC2 Instance',
                 is_default_variant = True,
                 is_locked = False,
-                link = 'https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html',
                 variant_func_ids = [01H9ZQD35JPMBGHH69BT0Q75AA, 01H9ZQD35JPMBGHH69BT0Q75BB],
                 variant_id = '01H9ZQD35JPMBGHH69BT0Q79VZ',
         )

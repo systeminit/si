@@ -43,8 +43,6 @@ class TestCreateVariantManagementFuncV1Request(unittest.TestCase):
         else:
             return CreateVariantManagementFuncV1Request(
                 code = '<!-- String escaped Typescript code here -->',
-                description = 'Manages a collection of VPC components and their relationships',
-                display_name = 'Manage my VPC Components',
                 name = 'awsCreateMyVpc',
         )
         """

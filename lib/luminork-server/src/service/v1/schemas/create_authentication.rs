@@ -119,9 +119,9 @@ pub async fn create_variant_authentication(
 pub struct CreateVariantAuthenticationFuncV1Request {
     #[schema(value_type = String, example = "awsSetCredentials")]
     pub name: String,
-    #[schema(value_type = String, example = "Set AWS credentials")]
+    #[schema(value_type = Option<String>, example = "Set AWS credentials")]
     pub display_name: Option<String>,
-    #[schema(value_type = String, example = "Function to manage AWS Credentials")]
+    #[schema(value_type = Option<String>, example = "Function to manage AWS Credentials")]
     pub description: Option<String>,
     #[schema(value_type = String, example = "<!-- String escaped Typescript code here -->")]
     pub code: String,

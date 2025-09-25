@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -27,7 +27,7 @@ class SecretV1(BaseModel):
     SecretV1
     """ # noqa: E501
     definition: StrictStr
-    description: StrictStr
+    description: Optional[StrictStr] = None
     id: StrictStr
     name: StrictStr
     __properties: ClassVar[List[str]] = ["definition", "description", "id", "name"]
@@ -71,6 +71,11 @@ class SecretV1(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if description (nullable) is None
+        # and model_fields_set contains the field
+        if self.description is None and "description" in self.model_fields_set:
+            _dict['description'] = None
+
         return _dict
 
     @classmethod

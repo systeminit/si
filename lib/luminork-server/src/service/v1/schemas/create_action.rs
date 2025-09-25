@@ -124,9 +124,9 @@ pub async fn create_variant_action(
 pub struct CreateVariantActionFuncV1Request {
     #[schema(value_type = String, example = "awsEC2InstanceCreate")]
     pub name: String,
-    #[schema(value_type = String, example = "Create EC2 Instance")]
+    #[schema(value_type = Option<String>, example = "Create EC2 Instance")]
     pub display_name: Option<String>,
-    #[schema(value_type = String, example = "Creates an EC2 Instance")]
+    #[schema(value_type = Option<String>, example = "Creates an EC2 Instance")]
     pub description: Option<String>,
     #[schema(value_type = String, example = "Create", pattern = "^(Create|Destroy|Manual|Refresh|Update)$")]
     pub kind: ActionKind,

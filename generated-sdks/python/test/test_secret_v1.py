@@ -43,7 +43,6 @@ class TestSecretV1(unittest.TestCase):
         else:
             return SecretV1(
                 definition = 'aws_credentials',
-                description = 'AWS credentials for production environment',
                 id = '01HAXYZF3GC9CYA6ZVSM3E4YHH',
                 name = 'Production AWS Key',
         )

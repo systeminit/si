@@ -42,7 +42,6 @@ class TestUpdateSecretV1Request(unittest.TestCase):
             )
         else:
             return UpdateSecretV1Request(
-                description = 'Updated AWS Secret Key for EC2 access',
                 id = '01HAXYZF3GC9CYA6ZVSM3E4YHH',
                 name = 'AWS Access Key',
         )

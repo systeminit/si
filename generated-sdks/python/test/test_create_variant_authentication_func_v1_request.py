@@ -43,8 +43,6 @@ class TestCreateVariantAuthenticationFuncV1Request(unittest.TestCase):
         else:
             return CreateVariantAuthenticationFuncV1Request(
                 code = '<!-- String escaped Typescript code here -->',
-                description = 'Function to manage AWS Credentials',
-                display_name = 'Set AWS credentials',
                 name = 'awsSetCredentials',
         )
         """

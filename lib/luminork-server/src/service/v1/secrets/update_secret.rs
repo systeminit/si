@@ -136,9 +136,9 @@ pub struct UpdateSecretV1Request {
     pub id: SecretId,
     #[schema(value_type = String, example = "AWS Access Key")]
     pub name: String,
-    #[schema(value_type = String, example = "Updated AWS Secret Key for EC2 access")]
+    #[schema(value_type = Option<String>, example = "Updated AWS Secret Key for EC2 access")]
     pub description: Option<String>,
-    #[schema(value_type = HashMap<String, String>, example = json!({
+    #[schema(value_type = Option<HashMap<String, String>>, example = json!({
         "access_key_id": "AKIAIOSFODNN7EXAMPLE",
         "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
         "region": "us-west-2",

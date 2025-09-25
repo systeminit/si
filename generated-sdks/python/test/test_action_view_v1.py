@@ -47,9 +47,6 @@ class TestActionViewV1(unittest.TestCase):
             )
         else:
             return ActionViewV1(
-                component_id = '',
-                description = '',
-                func_run_id = '',
                 id = '',
                 kind = '',
                 name = '',

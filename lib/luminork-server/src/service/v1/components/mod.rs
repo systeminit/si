@@ -453,7 +453,6 @@ pub struct ComponentPropViewV1 {
     pub id: AttributeValueId, // I know prop view with an id for an AV...
     #[schema(value_type = String)]
     pub prop_id: PropId,
-    #[schema(value_type = Object)]
     pub value: Option<Value>,
     #[schema(value_type = String, example = "path/to/prop")]
     pub path: String,

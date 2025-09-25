@@ -42,7 +42,6 @@ class TestExecuteManagementFunctionV1Response(unittest.TestCase):
             )
         else:
             return ExecuteManagementFunctionV1Response(
-                func_run_id = '',
                 management_func_job_state_id = '01H9ZQD35JPMBGHH69BT0Q79VY',
                 status = 'Ok',
         )

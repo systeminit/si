@@ -42,8 +42,6 @@ class TestUpdateFuncV1Request(unittest.TestCase):
         else:
             return UpdateFuncV1Request(
                 code = '<!-- String escaped Typescript code here -->',
-                description = 'Updated Description',
-                display_name = 'Updated Display Name',
         )
         """
 

@@ -43,27 +43,27 @@ pub struct FuncRunViewV1 {
     id: FuncRunId,
     #[schema(value_type = String, example = "Success")]
     state: FuncRunState,
-    #[schema(value_type = String, example = "null")]
+    #[schema(value_type = Option<String>, example = "null")]
     attribute_value_id: Option<AttributeValueId>,
-    #[schema(value_type = String, example = "01JP8KHZP3DZKGNXRP83Q6WTQ5")]
+    #[schema(value_type = Option<String>, example = "01JP8KHZP3DZKGNXRP83Q6WTQ5")]
     component_id: Option<ComponentId>,
-    #[schema(value_type = String, example = "NAT Gateway IP 1")]
+    #[schema(value_type = Option<String>, example = "NAT Gateway IP 1")]
     component_name: Option<String>,
-    #[schema(value_type = String, example = "AWS::EC2::EIP")]
+    #[schema(value_type = Option<String>, example = "AWS::EC2::EIP")]
     schema_name: Option<String>,
-    #[schema(value_type = String, example = "01JQCHZZY99G3R0C1FA3W4AFR6")]
+    #[schema(value_type = Option<String>, example = "01JQCHZZY99G3R0C1FA3W4AFR6")]
     action_id: Option<ActionId>,
-    #[schema(value_type = String, example = "01JPNHEE9Z3DFW48XVZ1FX04KA")]
+    #[schema(value_type = Option<String>, example = "01JPNHEE9Z3DFW48XVZ1FX04KA")]
     action_prototype_id: Option<ActionPrototypeId>,
-    #[schema(value_type = String, example = "Destroy")]
+    #[schema(value_type = Option<String>, example = "Destroy")]
     action_kind: Option<ActionKind>,
-    #[schema(value_type = String, example = "Destroy")]
+    #[schema(value_type = Option<String>, example = "Destroy")]
     action_display_name: Option<String>,
-    #[schema(value_type = String, example = "01JQCHZZVTAHHZ7DG0ZSCB9RXB")]
+    #[schema(value_type = Option<String>, example = "01JQCHZZVTAHHZ7DG0ZSCB9RXB")]
     action_originating_change_set_id: Option<ChangeSetId>,
-    #[schema(value_type = String, example = "2025-03-27-19:41")]
+    #[schema(value_type = Option<String>, example = "2025-03-27-19:41")]
     action_originating_change_set_name: Option<String>,
-    #[schema(value_type = String, example = "Success")]
+    #[schema(value_type = Option<String>, example = "Success")]
     action_result_state: Option<ActionResultState>,
     #[schema(value_type = String, example = "JsAction")]
     backend_kind: FuncBackendKind,
@@ -71,13 +71,13 @@ pub struct FuncRunViewV1 {
     backend_response_type: FuncBackendResponseType,
     #[schema(value_type = String, example = "Delete Asset")]
     function_name: String,
-    #[schema(value_type = String, example = "null")]
+    #[schema(value_type = Option<String>, example = "null")]
     function_display_name: Option<String>,
     #[schema(value_type = String, example = "Action")]
     function_kind: FuncKind,
-    #[schema(value_type = String, example = "null")]
+    #[schema(value_type = Option<String>, example = "null")]
     function_description: Option<String>,
-    #[schema(value_type = String, example = "null")]
+    #[schema(value_type = Option<String>, example = "null")]
     function_link: Option<String>,
     #[schema(example = json!({
         "properties": {

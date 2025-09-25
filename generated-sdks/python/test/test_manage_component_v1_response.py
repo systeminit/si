@@ -46,7 +46,7 @@ class TestManageComponentV1Response(unittest.TestCase):
                             id = '', 
                             path = 'path/to/prop', 
                             prop_id = '', 
-                            value = system_initiative_api_client.models.value.value(), )
+                            value = null, )
                         ], 
                     id = '', 
                     name = '', 
@@ -56,7 +56,7 @@ class TestManageComponentV1Response(unittest.TestCase):
                             id = '', 
                             path = 'path/to/prop', 
                             prop_id = '', 
-                            value = system_initiative_api_client.models.value.value(), )
+                            value = null, )
                         ], 
                     schema_id = '', 
                     schema_variant_id = '', 
@@ -81,7 +81,7 @@ class TestManageComponentV1Response(unittest.TestCase):
                             id = '', 
                             path = 'path/to/prop', 
                             prop_id = '', 
-                            value = system_initiative_api_client.models.value.value(), )
+                            value = null, )
                         ], 
                     id = '', 
                     name = '', 
@@ -91,7 +91,7 @@ class TestManageComponentV1Response(unittest.TestCase):
                             id = '', 
                             path = 'path/to/prop', 
                             prop_id = '', 
-                            value = system_initiative_api_client.models.value.value(), )
+                            value = null, )
                         ], 
                     schema_id = '', 
                     schema_variant_id = '', 

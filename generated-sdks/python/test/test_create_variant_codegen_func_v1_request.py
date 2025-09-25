@@ -43,8 +43,6 @@ class TestCreateVariantCodegenFuncV1Request(unittest.TestCase):
         else:
             return CreateVariantCodegenFuncV1Request(
                 code = '<!-- String escaped Typescript code here -->',
-                description = 'Generates the payload required for creating an EC2 instance',
-                display_name = 'Generate EC2 Instance Create Payload',
                 name = 'awsEC2InstanceGenerateCode',
         )
         """

@@ -68,7 +68,7 @@ pub async fn get_management_func_run_state(
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetManagementFuncJobStateV1Response {
-    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
+    #[schema(value_type = Option<String>, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
     pub func_run_id: Option<FuncRunId>,
     #[schema(value_type = String, example = "Executing")]
     pub state: ManagementState,

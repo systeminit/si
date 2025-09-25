@@ -40,7 +40,6 @@ class TestFindSchemaV1Params(unittest.TestCase):
             )
         else:
             return FindSchemaV1Params(
-                schema_id = '',
         )
         """
 

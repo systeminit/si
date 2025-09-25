@@ -40,7 +40,7 @@ pub struct FindComponentV1Params {
 
     #[serde(rename = "componentId")]
     #[param(value_type = String, required = false, nullable = true)]
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub component_id: Option<String>,
 }
 

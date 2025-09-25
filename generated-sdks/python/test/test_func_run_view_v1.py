@@ -70,28 +70,14 @@ class TestFuncRunViewV1(unittest.TestCase):
             )
         else:
             return FuncRunViewV1(
-                action_display_name = 'Destroy',
-                action_id = '01JQCHZZY99G3R0C1FA3W4AFR6',
-                action_kind = 'Destroy',
-                action_originating_change_set_id = '01JQCHZZVTAHHZ7DG0ZSCB9RXB',
-                action_originating_change_set_name = '2025-03-27-19:41',
-                action_prototype_id = '01JPNHEE9Z3DFW48XVZ1FX04KA',
-                action_result_state = 'Success',
-                attribute_value_id = 'null',
                 backend_kind = 'JsAction',
                 backend_response_type = 'Action',
-                component_id = '01JP8KHZP3DZKGNXRP83Q6WTQ5',
-                component_name = 'NAT Gateway IP 1',
                 created_at = '2025-03-27T19:41:58.493298051Z',
                 function_args = None,
                 function_code_base64 = 'YXN5bmMgZnVuY3Rpb24gbWFpbihjb21wb2...',
-                function_description = 'null',
-                function_display_name = 'null',
                 function_kind = 'Action',
-                function_link = 'null',
                 function_name = 'Delete Asset',
                 id = '01JQCJ0AAXGX5M9QY10AVF4GK1',
-                schema_name = 'AWS::EC2::EIP',
                 state = 'Success',
                 updated_at = '2025-03-27T19:42:02.192033089Z',
         )

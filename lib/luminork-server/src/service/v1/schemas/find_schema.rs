@@ -39,7 +39,7 @@ pub struct FindSchemaV1Params {
 
     #[serde(rename = "schemaId")]
     #[param(value_type = String, required = false, nullable = true)]
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub schema_id: Option<String>,
 }
 
@@ -156,7 +156,7 @@ pub struct FindSchemaV1Response {
     pub schema_name: String,
     #[schema(value_type = String)]
     pub schema_id: SchemaId,
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     pub category: Option<String>,
     #[schema(value_type = bool)]
     pub installed: bool,

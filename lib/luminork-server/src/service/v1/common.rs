@@ -119,9 +119,10 @@ pub struct ComponentIdParam {
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PaginationParams {
-    #[schema(example = "50", nullable = true, value_type = Option<String>)]
+    #[schema(example = "50", nullable = true, value_type = Option<u32>)]
     pub limit: Option<u32>,
     #[schema(example = "01H9ZQD35JPMBGHH69BT0Q79VY", nullable = true, value_type = Option<String>)]
     pub cursor: Option<String>,
+    #[schema(value_type = Option<bool>)]
     pub include_codegen: Option<bool>,
 }

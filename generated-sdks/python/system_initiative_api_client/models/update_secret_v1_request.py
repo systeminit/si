@@ -26,7 +26,7 @@ class UpdateSecretV1Request(BaseModel):
     """
     UpdateSecretV1Request
     """ # noqa: E501
-    description: StrictStr
+    description: Optional[StrictStr] = None
     id: StrictStr
     name: StrictStr
     raw_data: Optional[Dict[str, StrictStr]] = Field(default=None, alias="rawData")
@@ -71,6 +71,11 @@ class UpdateSecretV1Request(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if description (nullable) is None
+        # and model_fields_set contains the field
+        if self.description is None and "description" in self.model_fields_set:
+            _dict['description'] = None
+
         return _dict
 
     @classmethod

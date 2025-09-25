@@ -90,9 +90,9 @@ pub async fn duplicate_components(
 pub struct DuplicateComponentsV1Request {
     #[schema(value_type = Vec<Vec<String>>, example = json!(["01H9ZQD35JPMBGHH69BT0Q79AA", "01H9ZQD35JPMBGHH69BT0Q79BB", "01H9ZQD35JPMBGHH69BT0Q79CC"]))]
     pub components: Vec<ComponentId>,
-    #[schema(example = "copy-of-", required = false)]
+    #[schema(value_type = Option<String>, example = "copy-of-", required = false)]
     pub prefix: Option<String>,
-    #[schema(example = "MyView")]
+    #[schema(value_type = Option<String>, example = "MyView")]
     pub view_name: Option<String>,
 }
 
