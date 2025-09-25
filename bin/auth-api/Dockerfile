@@ -24,7 +24,7 @@ RUN pnpm run build \
     && PRISMA_SKIP_POSTINSTALL_GENERATE=1 pnpm --prod --filter @si/auth-api deploy pruned \
     && rm -rf pruned/src
 
-FROM node:$NODE_VERSION-slim AS runner
+FROM node:$NODE_VERSION AS runner
 RUN npm i -g pnpm@^8 tsx
 WORKDIR /app
 COPY ./config ./config
