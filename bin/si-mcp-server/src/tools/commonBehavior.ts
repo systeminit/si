@@ -31,17 +31,16 @@ export function generateDescription(
 }
 
 export function successResponse(
-  // deno-lint-ignore no-explicit-any
-  rawResponse: any,
+  rawResponse: unknown,
   hints?: string,
 ): CallToolResult {
   const structuredResponse = {
     status: "success",
     data: rawResponse,
   };
-  let textResponse = `<response>${
-    JSON.stringify(structuredResponse)
-  }</response>`;
+  let textResponse = `<response>${JSON.stringify(
+    structuredResponse,
+  )}</response>`;
   if (hints) {
     textResponse += `\n<hints>${hints}</hints>`;
   }
@@ -61,9 +60,11 @@ export function errorResponse(error: any): CallToolResult {
   if (error.response) {
     const errorResponse = {
       status: "failure",
-      errorMessage: `Error Status: ${error.response.status}\nError Data: ${
-        JSON.stringify(error.response.data)
-      }\nMessage:${error.message}`,
+      errorMessage: `Error Status: ${
+        error.response.status
+      }\nError Data: ${JSON.stringify(error.response.data)}\nMessage:${
+        error.message
+      }`,
     };
     return {
       content: [
