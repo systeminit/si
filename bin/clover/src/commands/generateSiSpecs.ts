@@ -34,7 +34,7 @@ export async function generateSiSpecs(options: {
       specs = await generateHetznerSpecs(options);
       break;
     default:
-      console.log(`Unsupported provider type: ${options.provider}`);
+      console.log(`Unsupported provider type: "${options.provider}"`);
       Deno.exit();
   }
 

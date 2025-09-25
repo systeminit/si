@@ -55,6 +55,8 @@ function pkgSpecFromHetnzer(allSchemas: any) {
   const schemas: HDB = {};
   Object.entries(allSchemas.paths).forEach(([endpoint, _openApiDescription]) => {
     const noun = endpoint.split("/")[1]
+    // skipping actions for now
+    if (endpoint.includes("actions")) return;
     const openApiDescription = _openApiDescription as any;
     if (!openApiDescription.get) throw new Error(`WHY NO GET? ${noun}`)
 
@@ -66,7 +68,13 @@ function pkgSpecFromHetnzer(allSchemas: any) {
       return;
     }
 
-    const objShape = openApiDescription.get.responses["200"].content["application/json"].schema.properties[noun];
+    const content = openApiDescription.get.responses["200"].content["application/json"]
+    // the key of `properties` seems to be the singular form of the noun, but its alone, so just popping
+    const objShape = Object.values(content.schema.properties).pop() as any | undefined;
+    if (!objShape) {
+      console.error("SHAPE EXPECTED", content)
+      return;
+    }
     const properties = objShape.properties
     const requiredProperties = new Set(objShape.required as string[]);
     const schema: HetznerSchema = {
