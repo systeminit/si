@@ -7,7 +7,7 @@ RUN npm i -g turbo
 COPY . .
 RUN turbo prune --scope=@si/auth-api --docker
 
-FROM node:$NODE_VERSION-slim AS installer
+FROM node:$NODE_VERSION AS installer
 WORKDIR /app
 COPY --from=base /app/out/json/ ./
 COPY --from=base /app/out/pnpm-lock.yaml ./app/out/pnpm-workspace.yaml ./
@@ -16,7 +16,6 @@ COPY --from=base /app/out/full/ .
 
 FROM installer AS builder
 WORKDIR /app/bin/auth-api
-RUN apt-get update -y && apt-get install -y openssl ca-certificates || true
 # Install all dependencies first (including workspace deps)
 RUN pnpm install
 RUN pnpm --package=prisma@5.20.0 dlx prisma generate
