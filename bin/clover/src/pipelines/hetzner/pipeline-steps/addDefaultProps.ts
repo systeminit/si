@@ -1,7 +1,12 @@
-import { ExpandedPkgSpec } from "../../../spec/pkgs";
-import { addPropSuggestSource, createObjectProp, createScalarProp, findPropByName } from "../../../spec/props";
+import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
+import {
+  addPropSuggestSource,
+  createObjectProp,
+  createScalarProp,
+  findPropByName,
+} from "../../../spec/props.ts";
 
-export function addDefaultPropsAndSockets(
+export function addDefaultProps(
   specs: ExpandedPkgSpec[],
 ): ExpandedPkgSpec[] {
   const newSpecs = [] as ExpandedPkgSpec[];
@@ -19,7 +24,7 @@ export function addDefaultPropsAndSockets(
       true,
     );
 
-        {
+    {
       const credProp = createScalarProp(
         "Hetzner Credential",
         "string",
@@ -44,7 +49,7 @@ export function addDefaultPropsAndSockets(
       schemaVariant.secrets.entries.push(credProp);
     }
 
-        const variant = spec.schemas[0].variants[0];
+    const variant = spec.schemas[0].variants[0];
 
     const secretsProp = variant.secrets;
     let credentialProp = findPropByName(secretsProp, "Hetzner Credential");
@@ -62,3 +67,4 @@ export function addDefaultPropsAndSockets(
 
   return newSpecs;
 }
+

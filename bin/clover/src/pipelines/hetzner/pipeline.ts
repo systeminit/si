@@ -18,6 +18,7 @@ import { generateDefaultActionFuncs } from "./pipeline-steps/generateDefaultActi
 import { generateDefaultLeafFuncs } from "./pipeline-steps/generateDefaultLeafFuncs.ts";
 import { generateDefaultManagementFuncs } from "./pipeline-steps/generateDefaultManagementFuncs.ts";
 import { generateDefaultQualificationFuncs } from "./pipeline-steps/generateQualificationFuncs.ts";
+import { addDefaultProps } from "./pipeline-steps/addDefaultProps.ts";
 
 export async function generateHetznerSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -34,6 +35,7 @@ export async function generateHetznerSpecs(options: {
 
   specs = pkgSpecFromHetnzer(rawSchema);
   specs = generateCredentialModule(specs);
+  specs = addDefaultProps(specs);
 
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
@@ -47,7 +49,6 @@ export async function generateHetznerSpecs(options: {
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
 
-  console.log(specs);
   return specs;
 }
 
@@ -61,6 +62,14 @@ function pkgSpecFromHetnzer(allSchemas: any) {
       if (endpoint.includes("actions")) return;
       const openApiDescription = _openApiDescription as any;
       if (!openApiDescription.get) throw new Error(`WHY NO GET? ${noun}`);
+      console.log(noun);
+      Object.keys(openApiDescription).forEach((key) => {
+        console.log(key);
+        if (openApiDescription[key]?.operationId) {
+          console.log(openApiDescription[key].operationId);
+        }
+      });
+      console.log("------");
 
       // skipping list endpoints for now
       if (openApiDescription.get.operationId.startsWith("list_")) return;

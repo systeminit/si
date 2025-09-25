@@ -61,7 +61,7 @@ export function generateCredentialModule(
     onlyProperties,
   );
 
-  let spec = makeModule(
+  const spec = makeModule(
     credential,
     createDocLink(credential, undefined),
     credential.description,
@@ -75,6 +75,7 @@ export function generateCredentialModule(
   const [schemaVariant] = schema.variants;
   const funcs = spec.funcs;
   const leafFuncs = schemaVariant.leafFunctions;
+  const authFuncs = schemaVariant.authFuncs;
 
   for (const func of createQualificationFuncs(domain.uniqueId!)) {
     funcs.push(func);
@@ -88,7 +89,7 @@ export function generateCredentialModule(
 
   for (const func of createAuthenticationFuncs()) {
     funcs.push(func);
-    leafFuncs.push(
+    authFuncs.push(
       createAuthenticationFuncSpec("authenticate", func.uniqueId),
     );
   }

@@ -35,7 +35,22 @@ export const CODE_GENERATION_FUNC_SPECS = {} as const satisfies Record<
   FuncSpecInfo
 >;
 
-export const MANAGEMENT_FUNCS = {} as const satisfies Record<
+export const MANAGEMENT_FUNCS = {
+  "Discover on Hetzner": {
+    id: "f92d6e959c63b34406ad8c23444edf15a2ec4be3380afcd6a12136f33ce65e9b",
+    backendKind: "management",
+    responseType: "management",
+    displayName: "Discover all of a certain Hetzner asset",
+    path: "./src/pipelines/hetzner/funcs/management/discover.ts",
+  },
+  "Import from Hetzner": {
+    id: "3f99f0c682e7bd0b82d0533d170e9475a38a64f86bfe73bbe17b15abf8773d58",
+    backendKind: "management",
+    responseType: "management",
+    displayName: "Import a certain Hetzner asset",
+    path: "./src/pipelines/hetzner/funcs/management/import.ts",
+  },
+} as const satisfies Record<
   string,
   FuncSpecInfo
 >;
