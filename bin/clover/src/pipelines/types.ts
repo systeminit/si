@@ -143,6 +143,7 @@ export type HDB = Record<string, HetznerSchema>;
 
 export type HQueue = {
   cfSchema: HetznerSchema;
+  primaryIdentifier: JSONPointer[];
   onlyProperties: OnlyProperties;
   queue: CreatePropArgs[];
 };

@@ -11,14 +11,16 @@ import {
 } from "../../../spec/props.ts";
 import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
 import {
-  ACTION_FUNC_SPECS,
   createActionFuncSpec,
   createFunc,
   createLeafFuncSpec,
-  MANAGEMENT_FUNCS,
   modifyFunc,
   strippedBase64,
 } from "../../../spec/funcs.ts";
+import {
+  ACTION_FUNC_SPECS,
+  MANAGEMENT_FUNCS,
+} from "../funcs.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { FuncArgumentSpec } from "../../../bindings/FuncArgumentSpec.ts";
 import { ActionFuncSpecKind } from "../../../bindings/ActionFuncSpecKind.ts";

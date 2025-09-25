@@ -16,8 +16,13 @@ import rawSchema from "../../provider-schemas/hetzner.json" with {
   type: "json",
 };
 import { getExistingSpecs } from "../../specUpdates.ts";
-import { CfProperty, CfSchema, HDB, HetznerSchema, HQueue, SuperSchema } from "../types.ts";
+import { CfProperty, HDB, HetznerSchema, HQueue, SuperSchema } from "../types.ts";
 import { makeModule } from "../generic/index.ts";
+import { generateIntrinsicFuncs } from "../generic/generateIntrinsicFuncs.ts";
+import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggestionsAcrossAssets.ts";
+import { reorderProps } from "../generic//reorderProps.ts";
+import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
+import { generateAssetFuncs } from "../generic//generateAssetFuncs.ts";
 
 export async function generateHetznerSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -33,6 +38,21 @@ export async function generateHetznerSpecs(options: {
   // skipping inferred combo boxes
 
   specs = pkgSpecFromHetnzer(rawSchema);
+  
+  // TODO deal with credential, that isn't here, we need to make it
+
+  specs = generateIntrinsicFuncs(specs);
+  specs = createSuggestionsForPrimaryIdentifiers(specs);
+
+  // TODO
+  // specs = attachDefaultActionFuncs(specs);
+  // specs = generateDefaultLeafFuncs(specs);
+  // specs = attachDefaultManagementFuncs(specs);
+  // specs = generateDefaultQualificationFuncs(specs);
+
+  specs = reorderProps(specs);
+  specs = generateAssetFuncs(specs);
+  specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
 
   return specs;
 }
@@ -152,6 +172,7 @@ function createDefaultProp(
   const queue: HQueue = {
     cfSchema,
     onlyProperties,
+    primaryIdentifier: ["id"],
     queue: [
       {
         propPath: ["root", name],

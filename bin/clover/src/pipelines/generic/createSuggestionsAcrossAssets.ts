@@ -1,10 +1,10 @@
 import _ from "npm:lodash";
 
-import { bfsPropTree } from "../../../spec/props.ts";
+import { bfsPropTree } from "../../spec/props.ts";
 import pluralize from "npm:pluralize";
-import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
-import { addPropSuggestSource } from "../../../spec/props.ts";
-import _logger from "../../../logger.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
+import { addPropSuggestSource } from "../../spec/props.ts";
+import _logger from "../../logger.ts";
 const logger = _logger.ns("test").seal();
 
 export function createSuggestionsForPrimaryIdentifiers(
