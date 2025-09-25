@@ -3859,15 +3859,17 @@ const dbInterface: TabDBInterface = {
             } else if (data.kind === MessageKind.WORKSPACE_INDEXUPDATE) {
               // Index has been updated - signal lobby exit
               debug("📨 INDEX UPDATE", data.meta.changeSetId);
+
+              // this part doesn't go into the queue, tell the app an index is ready right away
+              // it will be re-requested
+              if (lobbyExitFn) {
+                lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
+              }
               processPatchQueue.add(async () => {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 await sqlite!.transaction(async (db) =>
                   handleIndexMvPatch(db, data),
                 );
-
-                if (lobbyExitFn) {
-                  lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
-                }
               });
             } else if (data.kind === MessageKind.DEPLOYMENT_INDEXUPDATE) {
               // NOOP for now, DEPLOYMENT_PATCH does the work
