@@ -6,6 +6,10 @@ A Model Context Protocol (MCP) server that provides Claude Code with direct acce
 
 ### Environment Variables
 
+To permanently set these variables for local development you will need to add them to the `env` property of the `si-mcp-server-dev` mcp server inside of your .claude.json file.
+
+You can also set these variables in the terminal directly.
+
 Required:
 
 ```bash
