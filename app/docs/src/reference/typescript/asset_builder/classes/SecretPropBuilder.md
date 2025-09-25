@@ -6,7 +6,7 @@
 
 # Class: SecretPropBuilder
 
-Creates a prop [and a socket] in an asset with which to connect a secret
+Creates a prop in an asset with which to connect a secret
 
 ## Example
 
@@ -115,28 +115,6 @@ this
 
 ***
 
-### setConnectionAnnotation()
-
-> **setConnectionAnnotation**(`annotation`): `this`
-
-#### Parameters
-
-• **annotation**: `string`
-
-#### Returns
-
-`this`
-
-#### Implementation of
-
-[`ISecretPropBuilder`](../interfaces/ISecretPropBuilder.md).[`setConnectionAnnotation`](../interfaces/ISecretPropBuilder.md#setconnectionannotation)
-
-#### Defined in
-
-[asset\_builder.ts:862](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L862)
-
-***
-
 ### setDocLinkRef()
 
 > **setDocLinkRef**(`ref`): `this`
@@ -178,34 +156,6 @@ this
 #### Defined in
 
 [asset\_builder.ts:872](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L872)
-
-***
-
-### skipInputSocket()
-
-> **skipInputSocket**(): `this`
-
-Whether the prop should disable the auto-creation of an input socket
-
-#### Returns
-
-`this`
-
-this
-
-#### Example
-
-```ts
-.skipInputSocket()
-```
-
-#### Implementation of
-
-[`ISecretPropBuilder`](../interfaces/ISecretPropBuilder.md).[`skipInputSocket`](../interfaces/ISecretPropBuilder.md#skipinputsocket)
-
-#### Defined in
-
-[asset\_builder.ts:885](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L885)
 
 ***
 

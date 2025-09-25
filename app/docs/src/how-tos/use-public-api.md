@@ -617,13 +617,6 @@ interface FuncRunResponse {
 
 interface ComponentOptions {
   domain?: Record<string, any>;
-  connections?: Array<{
-    from: {
-      component: string;
-      socketName: string;
-    };
-    to: string;
-  }>;
   secrets?: Record<string, string>;
 }
 

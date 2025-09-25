@@ -6,7 +6,7 @@
 
 # Type Alias: ValueFromKind
 
-> **ValueFromKind**: `"inputSocket"` \| `"outputSocket"` \| `"prop"`
+> **ValueFromKind**: ``"prop"`
 
 ## Defined in
 

@@ -5,6 +5,7 @@ export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
 
 export interface ValueFrom {
   kind: ValueFromKind;
+  /** @deprecated Sockets are no longer supported and will be removed. */
   socket_name?: string;
   prop_path?: string[];
 }
@@ -12,6 +13,7 @@ export interface ValueFrom {
 export interface IValueFromBuilder {
   setKind(kind: ValueFromKind): this;
 
+  /** @deprecated Sockets are no longer supported and will be removed. */
   setSocketName(name: string): this;
 
   setPropPath(path: string[]): this;
@@ -20,7 +22,7 @@ export interface IValueFromBuilder {
 }
 
 /**
- * Gets a value from a socket or prop
+ * Gets a value from a prop
  *
  * @example
  * const value = new ValueFromBuilder()
@@ -38,7 +40,7 @@ export class ValueFromBuilder implements IValueFromBuilder {
   /**
    * The type of the builder
    *
-   * @param kind {string} [inputSocket | outputSocket | prop]
+   * @param kind {string} [prop]
    *
    * @returns this
    *
@@ -56,6 +58,8 @@ export class ValueFromBuilder implements IValueFromBuilder {
    * @param {string} name
    *
    * @returns this
+   *
+   * @deprecated Sockets are no longer supported and will be removed.
    *
    * @example
    * .setSocketName("Region")
@@ -102,8 +106,10 @@ export class ValueFromBuilder implements IValueFromBuilder {
   }
 }
 
+/** @deprecated Sockets are no longer supported and will be removed. */
 export type SocketDefinitionArityType = "many" | "one";
 
+/** @deprecated Sockets are no longer supported and will be removed. */
 export interface SocketDefinition {
   name: string;
   arity: SocketDefinitionArityType;
@@ -112,6 +118,7 @@ export interface SocketDefinition {
   valueFrom?: ValueFrom;
 }
 
+/** @deprecated Sockets are no longer supported and will be removed. */
 export interface ISocketDefinitionBuilder {
   setName(name: string): this;
 
@@ -129,6 +136,8 @@ export interface ISocketDefinitionBuilder {
 /**
  * Defines an input or output socket for passing values between components
  *
+ * @deprecated Sockets are no longer supported and will be removed.
+ *
  * @example
  * const regionSocket = new SocketDefinitionBuilder()
  *  .setName("Region")
@@ -145,6 +154,8 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
 
   /**
    * Build the object
+   *
+   * @deprecated Sockets are no longer supported and will be removed.
    *
    * @example
    *  .build()
@@ -169,6 +180,8 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    * @param {string} arity - [one | many]
    *
    * @returns this
+   *
+   * @deprecated Sockets are no longer supported and will be removed.
    *
    * @example
    *  .setArity("one")
@@ -197,6 +210,8 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    *
    * @returns this
    *
+   * @deprecated Sockets are no longer supported and will be removed.
+   *
    * @example
    *  .setConnectionAnnotation("EC2<IAM<string>>")
    */
@@ -216,6 +231,8 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    *
    * @returns this
    *
+   * @deprecated Sockets are no longer supported and will be removed.
+   *
    * @example
    *  .setName("Subnet ID")
    */
@@ -231,6 +248,8 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    *
    * @returns this
    *
+   * @deprecated Sockets are no longer supported and will be removed.
+   *
    * @example
    *  .setName("Subnet ID")
    */
@@ -244,19 +263,16 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    * when executing the asset function. Please use the asset editing
    * interface to perform equivalent functionality.
    *
-   * If the socket is new, you will need to regenerate the asset first!
-   *
-   * In the past, this was used to set the value of this socket using a
-   * ValueFromBuilder.
-   *
    * @param {ValueFrom} valueFrom
    *
    * @returns this
    *
+   * @deprecated Sockets are no longer supported and will be removed.
+   *
    * @example
    *  .setValueFrom(new ValueFromBuilder()
-   *    .setKind("inputSocket")
-   *    .setSocketName("Region")
+   *    .setKind("prop")
+   *    .setPropPath(["root", "si", "name"])
    *    .build())
    */
   setValueFrom(valueFrom: ValueFrom): this {
@@ -805,8 +821,8 @@ export class PropBuilder implements IPropBuilder {
    *
    * @example
    *  .setValueFrom(new ValueFromBuilder()
-   *    .setKind("inputSocket")
-   *    .setSocketName("Region")
+   *    .setKind("prop")
+   *    .setPropPath(["root", "si", "name"])
    *    .build())
    */
   setValueFrom(valueFrom: ValueFrom): this {
@@ -896,7 +912,9 @@ export interface PropSuggestion {
 }
 
 export interface SecretPropDefinition extends PropDefinition {
+  /** @deprecated Sockets are no longer supported and will be removed. */
   hasInputSocket: boolean;
+  /** @deprecated Sockets are no longer supported and will be removed. */
   connectionAnnotation: string;
 }
 
@@ -905,12 +923,14 @@ export interface ISecretPropBuilder {
 
   setSecretKind(kind: string): this;
 
+  /** @deprecated Sockets are no longer supported and will be removed. */
   setConnectionAnnotation(annotation: string): this;
 
   setDocLinkRef(ref: string): this;
 
   setDocLink(link: string): this;
 
+  /** @deprecated Sockets are no longer supported and will be removed. */
   skipInputSocket(): this;
 
   suggestSource(suggestion: PropSuggestion): this;
@@ -971,6 +991,7 @@ export class SecretPropBuilder implements ISecretPropBuilder {
     return this;
   }
 
+  /** @deprecated Sockets are no longer supported and will be removed. */
   setConnectionAnnotation(annotation: string): this {
     this.prop.connectionAnnotation = annotation;
     return this;
@@ -1027,6 +1048,8 @@ export class SecretPropBuilder implements ISecretPropBuilder {
    *
    * @returns this
    *
+   * @deprecated Sockets are no longer supported and will be removed.
+   *
    * @example
    *  .skipInputSocket()
    */
@@ -1051,6 +1074,7 @@ export class SecretPropBuilder implements ISecretPropBuilder {
 export interface SecretDefinition {
   name: string;
   props: PropDefinition[];
+  /** @deprecated Sockets are no longer supported and will be removed. */
   connectionAnnotations?: string;
 }
 
@@ -1068,7 +1092,6 @@ export interface ISecretDefinitionBuilder {
  * @example
  * const secretDefinition = new SecretDefinitionBuilder()
  *          .setName("DigitalOcean Token")
- *         .setConnectionAnnotations("Registry Token")
  *         .addProp(
  *             new PropBuilder()
  *             .setKind("string")
@@ -1133,6 +1156,8 @@ export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
    *
    * @returns this
    *
+   * @deprecated Sockets are no longer supported and will be removed.
+   *
    * @example
    * .setConnectionAnnotation("Registry Token")
    */
@@ -1162,7 +1187,9 @@ export interface Asset {
   secretDefinition?: PropDefinition[];
   resourceProps: PropDefinition[];
   siPropValueFroms: SiPropValueFromDefinition[];
+  /** @deprecated Sockets are no longer supported and will be removed. */
   inputSockets: SocketDefinition[];
+  /** @deprecated Sockets are no longer supported and will be removed. */
   outputSockets: SocketDefinition[];
   docLinks: Record<string, string>;
 }
@@ -1176,8 +1203,10 @@ export interface IAssetBuilder {
 
   addResourceProp(prop: PropDefinition): this;
 
+  /** @deprecated Sockets are no longer supported and will be removed. */
   addInputSocket(socket: SocketDefinition): this;
 
+  /** @deprecated Sockets are no longer supported and will be removed. */
   addOutputSocket(socket: SocketDefinition): this;
 
   addSiPropValueFrom(siPropValueFrom: SiPropValueFromDefinition): this;
@@ -1315,6 +1344,8 @@ export class AssetBuilder implements IAssetBuilder {
   /**
    * Adds an input socket to the asset.
    *
+   * @deprecated Sockets are no longer supported and will be removed.
+   *
    * @param socket - The socket definition to add
    * @returns This AssetBuilder instance for method chaining
    */
@@ -1328,6 +1359,8 @@ export class AssetBuilder implements IAssetBuilder {
 
   /**
    * Adds an output socket to the asset.
+   *
+   * @deprecated Sockets are no longer supported and will be removed.
    *
    * @param socket - The socket definition to add
    * @returns This AssetBuilder instance for method chaining

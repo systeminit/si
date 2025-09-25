@@ -414,7 +414,7 @@ In this tutorial you learned:
 To learn more, explore the reference documentation:
 
 - [Asset Schema Reference](/reference/asset/schema.md) for more information on
-  how to author Asset Schema, including Input Sockets and Output Sockets.
+  how to author Asset Schema.
 - [Asset Function Reference](/reference/asset/function.md) for more information
   on how to write functions
 

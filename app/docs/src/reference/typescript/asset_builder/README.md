@@ -11,7 +11,6 @@
 ### Classes
 
 - [ValueFromBuilder](classes/ValueFromBuilder.md)
-- [SocketDefinitionBuilder](classes/SocketDefinitionBuilder.md)
 - [PropWidgetDefinitionBuilder](classes/PropWidgetDefinitionBuilder.md)
 - [MapKeyFuncBuilder](classes/MapKeyFuncBuilder.md)
 - [SiPropValueFromDefinitionBuilder](classes/SiPropValueFromDefinitionBuilder.md)
@@ -24,8 +23,6 @@
 
 - [ValueFrom](interfaces/ValueFrom.md)
 - [IValueFromBuilder](interfaces/IValueFromBuilder.md)
-- [SocketDefinition](interfaces/SocketDefinition.md)
-- [ISocketDefinitionBuilder](interfaces/ISocketDefinitionBuilder.md)
 - [Option](interfaces/Option.md)
 - [PropWidgetDefinition](interfaces/PropWidgetDefinition.md)
 - [IPropWidgetDefinitionBuilder](interfaces/IPropWidgetDefinitionBuilder.md)
@@ -45,7 +42,6 @@
 ### Type Aliases
 
 - [ValueFromKind](type-aliases/ValueFromKind.md)
-- [SocketDefinitionArityType](type-aliases/SocketDefinitionArityType.md)
 - [PropWidgetDefinitionKind](type-aliases/PropWidgetDefinitionKind.md)
 - [SiPropValueFromDefinitionKind](type-aliases/SiPropValueFromDefinitionKind.md)
 - [PropDefinitionKind](type-aliases/PropDefinitionKind.md)

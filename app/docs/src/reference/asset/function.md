@@ -368,8 +368,7 @@ async function main(component: Input) {
 
 ## Attribute functions
 
-Attribute functions are used to set properties on components, either from other
-properties or input sockets, and to set the value of output sockets.
+Attribute functions are used to set properties on components from other properties.
 
 ### Attribute function arguments
 
@@ -397,14 +396,12 @@ Each attribute function has a binding, which specifies:
 
 - The output location as a path where this attribute functions return will be
   stored
-- A source for each function argument, taken from Input Sockets or other
-  Attributes
+- A source for each function argument, taken from other Attributes
 
 For example, an attribute function that writes to the `snack` attribute from the
-value of the `Yummy` input socket would:
+value of the `yummy` attribute would:
 
-- Have a single function argument, `yummy`, whose source is the `Yummy` input
-  socket
+- Have a single function argument, `yummy`, whose source is `/root/domain/yummy`
 - An output location of `/root/domain/snack`
 
 Bindings can be set from the `Bindings` sub-panel of the functions meta-data.
@@ -875,7 +872,7 @@ contains:
   This object contains all of the components that a management
   function is connected to, keyed by the component id. Each of these components
   exposes the component type, which is essentially the schema name, the `properties`,
-  `geometry`, `parent` and, an array `connections`.
+  and `geometry`.
 
 The entire structure of the input is:
 
@@ -965,14 +962,6 @@ type Input = {
         deleted_at?: string | null;
       };
       geometry?: { [key: string]: Geometry };
-      connect?: {
-        from: string;
-        to: {
-          component: string;
-          socket: string;
-        };
-      }[];
-      parent?: string;
     };
   };
 };
@@ -1039,28 +1028,12 @@ type Output = {
           deleted_at?: string | null;
         };
         geometry?: Geometry;
-        connect?: {
-          from: string;
-          to: {
-            component: string;
-            socket: string;
-          };
-        }[];
-        parent?: string;
       };
     };
     update?: {
       [key: string]: {
         properties?: { [key: string]: unknown };
         geometry?: { [key: string]: Geometry };
-        connect?: {
-          add?: { from: string; to: { component: string; socket: string } }[];
-          remove?: {
-            from: string;
-            to: { component: string; socket: string };
-          }[];
-        };
-        parent?: string;
       };
     };
     actions?: {
@@ -1247,7 +1220,7 @@ async function main({ thisComponent, components }: Input): Promise<Output> {
   }
 
   // Create a Public route table
-  // Set it's parent to be the VPC
+  // Set its parent to be the VPC
   const publicRouteTableName = `${baseName}-public-route-table`;
   if (
     !_.some(

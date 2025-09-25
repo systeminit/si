@@ -26,24 +26,6 @@
 
 ***
 
-### setSocketName()
-
-> **setSocketName**(`name`): `this`
-
-#### Parameters
-
-• **name**: `string`
-
-#### Returns
-
-`this`
-
-#### Defined in
-
-[asset\_builder.ts:15](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L15)
-
-***
-
 ### setPropPath()
 
 > **setPropPath**(`path`): `this`

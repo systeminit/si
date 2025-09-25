@@ -13,7 +13,6 @@ Creates a secret to be used with a set of assets
 ```ts
 const secretDefinition = new SecretDefinitionBuilder()
          .setName("DigitalOcean Token")
-        .setConnectionAnnotations("Registry Token")
         .addProp(
             new PropBuilder()
             .setKind("string")
@@ -127,36 +126,6 @@ this
 #### Defined in
 
 [asset\_builder.ts:976](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L976)
-
-***
-
-### setConnectionAnnotation()
-
-> **setConnectionAnnotation**(`connectionAnnotations`): `this`
-
-Adds the specified connection annotations to the output socket for the secret
-
-#### Parameters
-
-• **connectionAnnotations**: `string`
-
-the connection annotations to create for the output socket.
-
-#### Returns
-
-`this`
-
-this
-
-#### Example
-
-```ts
-.setConnectionAnnotation("Registry Token")
-```
-
-#### Defined in
-
-[asset\_builder.ts:991](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L991)
 
 ***
 

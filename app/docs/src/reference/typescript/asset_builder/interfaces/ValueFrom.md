@@ -18,16 +18,6 @@
 
 ***
 
-### socket\_name?
-
-> `optional` **socket\_name**: `string`
-
-#### Defined in
-
-[asset\_builder.ts:8](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L8)
-
-***
-
 ### prop\_path?
 
 > `optional` **prop\_path**: `string`[]

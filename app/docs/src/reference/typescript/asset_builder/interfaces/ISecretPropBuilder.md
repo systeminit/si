@@ -44,24 +44,6 @@
 
 ***
 
-### setConnectionAnnotation()
-
-> **setConnectionAnnotation**(`annotation`): `this`
-
-#### Parameters
-
-• **annotation**: `string`
-
-#### Returns
-
-`this`
-
-#### Defined in
-
-[asset\_builder.ts:799](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L799)
-
-***
-
 ### setDocLinkRef()
 
 > **setDocLinkRef**(`ref`): `this`
@@ -95,20 +77,6 @@
 #### Defined in
 
 [asset\_builder.ts:803](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L803)
-
-***
-
-### skipInputSocket()
-
-> **skipInputSocket**(): `this`
-
-#### Returns
-
-`this`
-
-#### Defined in
-
-[asset\_builder.ts:805](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L805)
 
 ***
 

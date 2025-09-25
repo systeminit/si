@@ -191,23 +191,3 @@
 #### Defined in
 
 [asset\_builder.ts:501](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L501)
-
-***
-
-### hasInputSocket
-
-> **hasInputSocket**: `boolean`
-
-#### Defined in
-
-[asset\_builder.ts:790](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L790)
-
-***
-
-### connectionAnnotation
-
-> **connectionAnnotation**: `string`
-
-#### Defined in
-
-[asset\_builder.ts:791](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L791)

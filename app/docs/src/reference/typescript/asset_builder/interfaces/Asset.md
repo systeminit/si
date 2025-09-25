@@ -58,26 +58,6 @@
 
 ***
 
-### inputSockets
-
-> **inputSockets**: [`SocketDefinition`](SocketDefinition.md)[]
-
-#### Defined in
-
-[asset\_builder.ts:1017](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L1017)
-
-***
-
-### outputSockets
-
-> **outputSockets**: [`SocketDefinition`](SocketDefinition.md)[]
-
-#### Defined in
-
-[asset\_builder.ts:1018](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L1018)
-
-***
-
 ### docLinks
 
 > **docLinks**: `Record`\<`string`, `string`\>

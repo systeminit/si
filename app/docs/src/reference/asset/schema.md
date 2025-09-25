@@ -11,7 +11,6 @@ Asset Schema define:
 
 * Component properties
 * Resource properties
-* Input and Output sockets
 * Secrets the asset requires
 * Secrets the asset defines
 
@@ -331,8 +330,8 @@ the `setOption()` method on the builder.
 ## Resource Properties
 
 Resource Properties are used to extract information from Resources, and store
-them as hidden properties. They are generally used as sources for output
-sockets.
+them as hidden properties. They are generally used as sources for subscriptions
+from other components.
 
 They are defined the same way as component properties, but with the
 `setHidden(true)` option set on the `PropBuilder`, and are added to the asset
@@ -352,69 +351,16 @@ asset.addResourceProp(instanceIdProp);
 Would extract the `InstanceId` from the resource information if it exists, and
 populate this property.
 
-## Input and Output Sockets
-
-Sockets are defined with the [SocketDefinitionBuilder
-API](/reference/typescript/asset_builder/classes/SocketDefinitionBuilder). They consist of:
-
-* Names, that appear next to the sockets
-* Arity, which defines if one or many other components can connect to this socket
-* Connection annotations, which specify what other sockets are allowed to connect to this socket
-
-The only difference between an Input and Output socket is how it is added to
-the asset. Input sockets are added with `asset.addInputSocket(..)`, and Output
-sockets are added with `asset.addOutputSocket(..)`.
-
-Here is an example of an Image ID socket input, that accepts many inputs:
-
-```typescript
-const imageIdSocket = new SocketDefinitionBuilder()
-     .setName("Image ID")
-     .setArity("many")
-     .build();
-asset.addInputSocket(imageIdSocket);
-```
-
-Or an Instance ID output socket with a connection annotation and a single output:
-
-```typescript
-const instanceProfileSocket = new SocketDefinitionBuilder()
-    .setName("Instance Profile")
-    .setArity("one")
-    .setConnectionAnnotation("Arn<string>")
-    .build();
-asset.addOutputSocket(instanceProfileSocket);
-```
-
-### Connection Annotations
-
-Connections annotations are used as simple type signatures for sockets that
-allow for matching less specific to more specific annotations. Each socket can
-have multiple connection annotations. By default, sockets have a connection
-annotation that matches their name.
-
-Given a connection annotation like:
-
-```typescript
-setConnectionAnnotation(port<string>)
-```
-
-The socket would accept connections of `docker<port<string>>` (more specific),
-`port<string>>` (exactly the annotation) but not `string` (less specific)
-alone.
-
 ## Secrets the asset requires
 
 When an asset requires a secret, it is specified with the [SecretPropBuilder
 API](/reference/typescript/asset_builder/classes/SecretPropBuilder). It creates
-both a property that allows a secret of the given kind to be set, but also an
-input socket that populates it.
+a property that allows a secret of the given kind to be set.
 
 They consist of:
 
 * The name of the secret prop
 * The secret kind, which corresponds to the name of its secret definition
-* Connection annotations for the secret properties associated input socket.
 
 Here is an example of an AWS Credential:
 
@@ -437,7 +383,6 @@ method. They consist of:
 
 * A name for the credential
 * Props that define the shape of the secret itself
-* Connection annotations that apply to the output socket for the secret
 
 For example, the Docker Hub Credential:
 
@@ -572,12 +517,6 @@ function main() {
     .build();
   asset.addSecretProp(credentialProp);
 
-  const regionSocket = new SocketDefinitionBuilder()
-    .setArity("one")
-    .setName("Region")
-    .build();
-  asset.addInputSocket(regionSocket);
-
   // Add any props needed for information that isn't
   // strictly part of the object domain here.
   const extraProp = new PropBuilder()
@@ -587,12 +526,7 @@ function main() {
       new PropBuilder()
         .setKind("string")
         .setName("Region")
-        .setValueFrom(
-          new ValueFromBuilder()
-            .setKind("inputSocket")
-            .setSocketName("Region")
-            .build(),
-        ).build(),
+        .build(),
     )
     .build();
 

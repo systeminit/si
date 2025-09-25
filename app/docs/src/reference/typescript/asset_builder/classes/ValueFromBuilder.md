@@ -6,7 +6,7 @@
 
 # Class: ValueFromBuilder
 
-Gets a value from a socket or prop
+Gets a value from a prop
 
 ## Example
 
@@ -57,7 +57,7 @@ The type of the builder
 
 • **kind**: [`ValueFromKind`](../type-aliases/ValueFromKind.md)
 
-{string} [inputSocket | outputSocket | prop]
+{string} [prop]
 
 #### Returns
 
@@ -78,38 +78,6 @@ this
 #### Defined in
 
 [asset\_builder.ts:48](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L48)
-
-***
-
-### setSocketName()
-
-> **setSocketName**(`name`): `this`
-
-Specify the socket name if using an inputSocket or outputSocket
-
-#### Parameters
-
-• **name**: `string`
-
-#### Returns
-
-`this`
-
-this
-
-#### Example
-
-```ts
-.setSocketName("Region")
-```
-
-#### Implementation of
-
-[`IValueFromBuilder`](../interfaces/IValueFromBuilder.md).[`setSocketName`](../interfaces/IValueFromBuilder.md#setsocketname)
-
-#### Defined in
-
-[asset\_builder.ts:63](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L63)
 
 ***
 

@@ -80,42 +80,6 @@
 
 ***
 
-### addInputSocket()
-
-> **addInputSocket**(`socket`): `this`
-
-#### Parameters
-
-• **socket**: [`SocketDefinition`](SocketDefinition.md)
-
-#### Returns
-
-`this`
-
-#### Defined in
-
-[asset\_builder.ts:1031](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L1031)
-
-***
-
-### addOutputSocket()
-
-> **addOutputSocket**(`socket`): `this`
-
-#### Parameters
-
-• **socket**: [`SocketDefinition`](SocketDefinition.md)
-
-#### Returns
-
-`this`
-
-#### Defined in
-
-[asset\_builder.ts:1033](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L1033)
-
-***
-
 ### addSiPropValueFrom()
 
 > **addSiPropValueFrom**(`siPropValueFrom`): `this`

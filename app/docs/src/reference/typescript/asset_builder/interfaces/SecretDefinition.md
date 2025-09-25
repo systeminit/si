@@ -25,13 +25,3 @@
 #### Defined in
 
 [asset\_builder.ts:905](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L905)
-
-***
-
-### connectionAnnotations?
-
-> `optional` **connectionAnnotations**: `string`
-
-#### Defined in
-
-[asset\_builder.ts:906](https://github.com/systeminit/si/blob/main/bin/lang-js/src/asset_builder.ts#L906)

@@ -456,8 +456,8 @@ this
 
 ```ts
 .setValueFrom(new ValueFromBuilder()
-   .setKind("inputSocket")
-   .setSocketName("Region")
+   .setKind("prop")
+   .setPropPath(["root", "si", "name"])
    .build())
 ```
 
