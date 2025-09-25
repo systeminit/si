@@ -1,6 +1,6 @@
-import _logger from "../../../logger.ts";
-import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
-import { ExpandedPropSpec } from "../../../spec/props.ts";
+import _logger from "../../logger.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
+import { ExpandedPropSpec } from "../../spec/props.ts";
 
 export function reorderProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
   for (const { schemas: [{ variants: [variant] }] } of specs) {

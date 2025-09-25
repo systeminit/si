@@ -11,7 +11,7 @@ export const ACTION_FUNC_SPECS = {
     responseType: "action",
     actionKind: "create",
     displayName: "Create a Cloud Control Asset",
-    path: "./src/cloud-control-funcs/actions/awsCloudControlCreate.ts",
+    path: "./src/pipelines/aws/funcs/actions/awsCloudControlCreate.ts",
   },
   "Delete Asset": {
     id: "8987ae62887646ccb55303cf82d69364dadd07a817580b57cb292988a64867d1",
@@ -19,7 +19,7 @@ export const ACTION_FUNC_SPECS = {
     responseType: "action",
     actionKind: "delete",
     displayName: "Delete a Cloud Control Asset",
-    path: "./src/cloud-control-funcs/actions/awsCloudControlDelete.ts",
+    path: "./src/pipelines/aws/funcs/actions/awsCloudControlDelete.ts",
   },
   "Refresh Asset": {
     id: "b161c855b802f5da7d96fb8cbda0195170d4769da9953cc5b5fb352fd441628c",
@@ -27,7 +27,7 @@ export const ACTION_FUNC_SPECS = {
     responseType: "action",
     actionKind: "refresh",
     displayName: "Refresh a Cloud Control Asset",
-    path: "./src/cloud-control-funcs/actions/awsCloudControlRefresh.ts",
+    path: "./src/pipelines/aws/funcs/actions/awsCloudControlRefresh.ts",
   },
   "Update Asset": {
     id: "125cf080759938d293470dfe97268e1600375bb3e22fc162d1a3b5bb0f18a67b",
@@ -35,7 +35,7 @@ export const ACTION_FUNC_SPECS = {
     responseType: "action",
     actionKind: "update",
     displayName: "Update a Cloud Control Asset",
-    path: "./src/cloud-control-funcs/actions/awsCloudControlUpdate.ts",
+    path: "./src/pipelines/aws/funcs/actions/awsCloudControlUpdate.ts",
   },
 } as const satisfies Record<
   string,
@@ -49,21 +49,21 @@ export const CODE_GENERATION_FUNC_SPECS = {
     backendKind: "jsAttribute",
     responseType: "codeGeneration",
     displayName: "Code Gen for creating a Cloud Control Asset",
-    path: "./src/cloud-control-funcs/code-gen/awsCloudControlCodeGenCreate.ts",
+    path: "./src/pipelines/aws/funcs/code-gen/awsCloudControlCodeGenCreate.ts",
   },
   awsCloudControlUpdate: {
     id: "f170263ef3fbb0e8017b47221c5d70ae412b2eaa33e75e1a98525c9a070d60f6",
     backendKind: "jsAttribute",
     responseType: "codeGeneration",
     displayName: "Code Gen for updating a Cloud Control Asset",
-    path: "./src/cloud-control-funcs/code-gen/awsCloudControlCodeGenUpdate.ts",
+    path: "./src/pipelines/aws/funcs/code-gen/awsCloudControlCodeGenUpdate.ts",
   },
   awsCloudFormationLint: {
     id: "fdef639540613ce1639df4153f9bb5a8929e9815477eb57beb3616af48a74335",
     backendKind: "jsAttribute",
     responseType: "codeGeneration",
     displayName: "Code Gen for use in validating a Cloudformation document",
-    path: "./src/cloud-control-funcs/code-gen/awsCloudFormationLint.ts",
+    path: "./src/pipelines/aws/funcs/code-gen/awsCloudFormationLint.ts",
   },
 } as const satisfies Record<string, FuncSpecInfo>;
 
@@ -74,7 +74,7 @@ export const MANAGEMENT_FUNCS = {
     backendKind: "management",
     responseType: "management",
     displayName: "Discover all of a certain Cloud Control Asset",
-    path: "./src/cloud-control-funcs/management/awsCloudControlDiscover.ts",
+    path: "./src/pipelines/aws/funcs/management/awsCloudControlDiscover.ts",
     handlers: ["list", "read"],
   },
   "Import from AWS": {
@@ -82,7 +82,7 @@ export const MANAGEMENT_FUNCS = {
     backendKind: "management",
     responseType: "management",
     displayName: "Import a Cloud Control Asset",
-    path: "./src/cloud-control-funcs/management/awsCloudControlImport.ts",
+    path: "./src/pipelines/aws/funcs/management/awsCloudControlImport.ts",
     handlers: ["read"],
   },
 } as const satisfies Record<
@@ -144,4 +144,3 @@ export function createDefaultManagementFuncs() {
     handlers: spec.handlers,
   }));
 }
-

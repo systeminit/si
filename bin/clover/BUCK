@@ -43,7 +43,10 @@ deno_test(
     name = "test-unit",
     srcs = glob(
         ["**/*.ts", "**/test/*.ts"],
-        exclude = ["src/cloud-control-funcs/**/*"]
+        exclude = [
+            "src/pipelines/aws/funcs/**/*",
+            "src/pipelines/hetzner/funcs/**/*",
+        ]
     ),
     ignore = [
         "node_modules",

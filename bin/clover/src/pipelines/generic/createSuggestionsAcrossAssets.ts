@@ -52,6 +52,7 @@ export function createSuggestionsForPrimaryIdentifiers(
 
         const nameVariants = new Set<string>();
         for (const name of possibleNames) {
+          if (!name) continue;
           const plural = pluralize(name);
           const spaced = camelToSpaced(name);
           const pluralSpaced = pluralize(spaced);

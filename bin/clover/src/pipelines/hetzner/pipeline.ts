@@ -1,8 +1,4 @@
-import {
-  ExpandedPkgSpec,
-  ExpandedSchemaSpec,
-  ExpandedSchemaVariantSpec,
-} from "../../spec/pkgs.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import _ from "npm:lodash";
 import { createDefaultPropFromCf, OnlyProperties } from "../../spec/props.ts";
 import rawSchema from "../../provider-schemas/hetzner.json" with {
@@ -13,11 +9,15 @@ import { HDB, HetznerSchema, SuperSchema } from "../types.ts";
 import { makeModule } from "../generic/index.ts";
 import { generateIntrinsicFuncs } from "../generic/generateIntrinsicFuncs.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggestionsAcrossAssets.ts";
-import { reorderProps } from "../generic//reorderProps.ts";
+import { reorderProps } from "../generic/reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
-import { generateAssetFuncs } from "../generic//generateAssetFuncs.ts";
+import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
 import { createDefaultProp } from "./prop.ts";
 import { generateCredentialModule } from "./credential.ts";
+import { generateDefaultActionFuncs } from "./pipeline-steps/generateDefaultActionFuncs.ts";
+import { generateDefaultLeafFuncs } from "./pipeline-steps/generateDefaultLeafFuncs.ts";
+import { generateDefaultManagementFuncs } from "./pipeline-steps/generateDefaultManagementFuncs.ts";
+import { generateDefaultQualificationFuncs } from "./pipeline-steps/generateQualificationFuncs.ts";
 
 export async function generateHetznerSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -35,21 +35,19 @@ export async function generateHetznerSpecs(options: {
   specs = pkgSpecFromHetnzer(rawSchema);
   specs = generateCredentialModule(specs);
 
-  // TODO deal with credential, that isn't here, we need to make it
-
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
 
-  // TODO
-  // specs = attachDefaultActionFuncs(specs);
-  // specs = generateDefaultLeafFuncs(specs);
-  // specs = attachDefaultManagementFuncs(specs);
-  // specs = generateDefaultQualificationFuncs(specs);
+  specs = generateDefaultActionFuncs(specs);
+  specs = generateDefaultLeafFuncs(specs);
+  specs = generateDefaultManagementFuncs(specs);
+  specs = generateDefaultQualificationFuncs(specs);
 
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
 
+  console.log(specs);
   return specs;
 }
 

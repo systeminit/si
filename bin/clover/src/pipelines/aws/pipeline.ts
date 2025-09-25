@@ -16,9 +16,9 @@ import { addInferredEnums } from "./pipeline-steps/addInferredEnums.ts";
 import { pruneCfAssets } from "./pipeline-steps/pruneCfAssets.ts";
 import { removeUnneededAssets } from "./pipeline-steps/removeUnneededAssets.ts";
 import { removeBadDocLinks } from "./pipeline-steps/removeBadDocLinks.ts";
-import { reorderProps } from "../generic//reorderProps.ts";
+import { reorderProps } from "../generic/reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
-import { generateAssetFuncs } from "../generic//generateAssetFuncs.ts";
+import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggestionsAcrossAssets.ts";
 import {
   createCredentialSuggestion,

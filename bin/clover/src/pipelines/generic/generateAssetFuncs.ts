@@ -1,15 +1,9 @@
-import type { FuncSpecData } from "../../../../../../lib/si-pkg/bindings/FuncSpecData.ts";
-import { FuncSpec } from "../../../../../../lib/si-pkg/bindings/FuncSpec.ts";
+import type { FuncSpecData } from "../../../../../lib/si-pkg/bindings/FuncSpecData.ts";
+import { FuncSpec } from "../../../../../lib/si-pkg/bindings/FuncSpec.ts";
 import _ from "lodash";
-import { strippedBase64 } from "../../../spec/funcs.ts";
-import {
-  CREATE_ONLY_PROP_LABEL,
-  ExpandedPropSpec,
-} from "../../../spec/props.ts";
-import {
-  ExpandedPkgSpec,
-  ExpandedSchemaVariantSpec,
-} from "../../../spec/pkgs.ts";
+import { strippedBase64 } from "../../spec/funcs.ts";
+import { CREATE_ONLY_PROP_LABEL, ExpandedPropSpec } from "../../spec/props.ts";
+import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../../spec/pkgs.ts";
 
 export function generateAssetFuncs(
   specs: ExpandedPkgSpec[],
