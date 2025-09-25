@@ -59,7 +59,6 @@ use crate::{
             ComponentDeletionStatus,
             delete_components,
         },
-        frame::FrameError,
         resource::ResourceData,
     },
     diagram::{
@@ -120,8 +119,6 @@ pub enum ManagementError {
     Diagram(#[from] Box<DiagramError>),
     #[error("Duplicate component placeholder {0}")]
     DuplicateComponentPlaceholder(String),
-    #[error("frame error: {0}")]
-    Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
     Func(#[from] Box<FuncError>),
     #[error("input socket error: {0}")]
@@ -1493,12 +1490,6 @@ impl From<crate::attribute::attributes::AttributesError> for ManagementError {
 
 impl From<DiagramError> for ManagementError {
     fn from(value: DiagramError) -> Self {
-        Box::new(value).into()
-    }
-}
-
-impl From<FrameError> for ManagementError {
-    fn from(value: FrameError) -> Self {
         Box::new(value).into()
     }
 }

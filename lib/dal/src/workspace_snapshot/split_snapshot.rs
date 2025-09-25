@@ -77,7 +77,6 @@ use super::{
     CycleCheckGuard,
     DependentValueRoot,
     EntityKindExt,
-    InferredConnectionsWriteGuard,
     InputSocketExt,
     SchemaVariantExt,
     WorkspaceSnapshotError,
@@ -110,10 +109,7 @@ use crate::{
         ApprovalRequirementApprover,
         ApprovalRequirementDefinition,
     },
-    component::{
-        ComponentResult,
-        inferred_connection_graph::InferredConnectionGraph,
-    },
+    component::ComponentResult,
     entity_kind::{
         EntityKindError,
         EntityKindResult,
@@ -272,7 +268,6 @@ pub struct SplitSnapshot {
     working_copy: Arc<RwLock<Option<SplitSnapshotGraphVCurrent>>>,
     cycle_check: Arc<AtomicBool>,
     dvu_roots: Arc<Mutex<HashSet<DependentValueRoot>>>,
-    inferred_connection_graph: Arc<RwLock<Option<InferredConnectionGraph>>>,
     prop_suggestions: Arc<PropSuggestionsCache>,
 }
 
@@ -288,7 +283,6 @@ impl SplitSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
-            inferred_connection_graph: Arc::new(RwLock::new(None)),
             prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         }
     }
@@ -372,7 +366,6 @@ impl SplitSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
-            inferred_connection_graph: Arc::new(RwLock::new(None)),
             prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         };
 
@@ -486,7 +479,6 @@ impl SplitSnapshot {
             working_copy: Arc::new(RwLock::new(None)),
             cycle_check: Arc::new(AtomicBool::new(false)),
             dvu_roots: Arc::new(Mutex::new(HashSet::new())),
-            inferred_connection_graph: Arc::new(RwLock::new(None)),
             prop_suggestions: Arc::new(PropSuggestionsCache::default()),
         })
     }
@@ -1290,26 +1282,6 @@ impl SplitSnapshot {
             .ok_or(ComponentError::SchemaVariantNotFound(component_id.into()))?;
 
         Ok(sv_id)
-    }
-
-    pub async fn inferred_connection_graph(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<InferredConnectionsWriteGuard<'_>> {
-        let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
-        if inferred_connection_write_guard.is_none() {
-            *inferred_connection_write_guard =
-                Some(InferredConnectionGraph::new(ctx).await.map_err(Box::new)?);
-        }
-
-        Ok(InferredConnectionsWriteGuard {
-            inferred_connection_graph: inferred_connection_write_guard,
-        })
-    }
-
-    pub async fn clear_inferred_connection_graph(&self) {
-        let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
-        *inferred_connection_write_guard = None;
     }
 
     /// Get the prop suggestions cache for autosubscribe optimization

@@ -28,8 +28,6 @@ use si_id::{
     AttributeValueId,
     ComponentId,
     GeometryId,
-    InputSocketId,
-    OutputSocketId,
     SchemaId,
     SchemaVariantId,
     ViewId,
@@ -68,13 +66,7 @@ use crate::{
         value::AttributeValueError,
     },
     change_status::ChangeStatus,
-    component::{
-        ComponentError,
-        ComponentResult,
-        Connection,
-        InferredConnection,
-        inferred_connection_graph::InferredConnectionGraphError,
-    },
+    component::ComponentError,
     diagram::{
         geometry::{
             Geometry,
@@ -158,8 +150,6 @@ pub enum DiagramError {
     GeometryNotFoundForViewObjectAndView(ViewId, ViewId),
     #[error("Helper error: {0}")]
     Helper(#[from] Box<HelperError>),
-    #[error("InferredConnectionGraph error: {0}")]
-    InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("input socket error: {0}")]
     InputSocket(#[from] Box<InputSocketError>),
     #[error("layerdb error: {0}")]
@@ -254,12 +244,6 @@ impl From<HelperError> for DiagramError {
     }
 }
 
-impl From<InferredConnectionGraphError> for DiagramError {
-    fn from(value: InferredConnectionGraphError) -> Self {
-        Box::new(value).into()
-    }
-}
-
 impl From<InputSocketError> for DiagramError {
     fn from(value: InputSocketError) -> Self {
         Box::new(value).into()
@@ -303,66 +287,6 @@ impl From<WorkspaceSnapshotError> for DiagramError {
 }
 
 pub type DiagramResult<T> = Result<T, DiagramError>;
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all(serialize = "camelCase"))]
-pub struct SummaryDiagramEdge {
-    pub from_component_id: ComponentId,
-    pub from_socket_id: OutputSocketId,
-    pub to_component_id: ComponentId,
-    pub to_socket_id: InputSocketId,
-    pub change_status: ChangeStatus,
-    pub created_info: serde_json::Value,
-    pub deleted_info: serde_json::Value,
-    pub to_delete: bool,
-    pub from_base_change_set: bool,
-}
-
-impl SummaryDiagramEdge {
-    pub fn assemble_just_added(incoming_connection: Connection) -> ComponentResult<Self> {
-        Ok(SummaryDiagramEdge {
-            from_component_id: incoming_connection.from_component_id,
-            from_socket_id: incoming_connection.from_output_socket_id,
-            to_component_id: incoming_connection.to_component_id,
-            to_socket_id: incoming_connection.to_input_socket_id,
-            change_status: ChangeStatus::Added,
-            created_info: serde_json::to_value(incoming_connection.created_info)?,
-            deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
-            to_delete: false,
-            from_base_change_set: false,
-        })
-    }
-
-    pub fn assemble(
-        incoming_connection: Connection,
-        from_component: &Component,
-        to_component: &Component,
-        change_status: ChangeStatus,
-    ) -> ComponentResult<Self> {
-        Ok(SummaryDiagramEdge {
-            from_component_id: incoming_connection.from_component_id,
-            from_socket_id: incoming_connection.from_output_socket_id,
-            to_component_id: incoming_connection.to_component_id,
-            to_socket_id: incoming_connection.to_input_socket_id,
-            change_status,
-            created_info: serde_json::to_value(incoming_connection.created_info)?,
-            deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
-            to_delete: from_component.to_delete() || to_component.to_delete(),
-            from_base_change_set: false,
-        })
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-#[serde(rename_all(serialize = "camelCase"))]
-pub struct SummaryDiagramInferredEdge {
-    pub from_component_id: ComponentId,
-    pub from_socket_id: OutputSocketId,
-    pub to_component_id: ComponentId,
-    pub to_socket_id: InputSocketId,
-    // this is inferred by if either the to or from component is marked to_delete
-    pub to_delete: bool,
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all(serialize = "camelCase"))]
@@ -442,25 +366,10 @@ struct ComponentInfo {
 
 type ComponentInfoCache = HashMap<ComponentId, ComponentInfo>;
 
-impl SummaryDiagramInferredEdge {
-    pub fn assemble(inferred_incoming_connection: InferredConnection) -> Self {
-        SummaryDiagramInferredEdge {
-            from_component_id: inferred_incoming_connection.from_component_id,
-            from_socket_id: inferred_incoming_connection.from_output_socket_id,
-            to_component_id: inferred_incoming_connection.to_component_id,
-            to_socket_id: inferred_incoming_connection.to_input_socket_id,
-            to_delete: inferred_incoming_connection.to_delete,
-        }
-    }
-}
-
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Diagram {
     pub components: Vec<DiagramComponentView>,
-    // TODO REMOVE (always empty now but kept for serialization)
-    pub edges: Vec<SummaryDiagramEdge>,
-    pub inferred_edges: Vec<SummaryDiagramInferredEdge>,
     pub management_edges: Vec<SummaryDiagramManagementEdge>,
     pub attribute_subscription_edges: Vec<SummaryDiagramAttributeSubscriptionEdge>,
     pub views: Vec<ViewObjectView>,
@@ -600,50 +509,6 @@ impl Diagram {
                 _ => None,
             })
             .collect()
-    }
-
-    #[instrument(level = "info", skip_all)]
-    async fn assemble_inferred_connection_views(
-        ctx: &DalContext,
-        components: &ComponentInfoCache,
-    ) -> DiagramResult<Vec<SummaryDiagramInferredEdge>> {
-        let mut diagram_inferred_edges = vec![];
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut component_tree = workspace_snapshot.inferred_connection_graph(ctx).await?;
-
-        for incoming_connection in component_tree
-            .inferred_connections_for_all_components(ctx)
-            .await?
-        {
-            let to_delete = components
-                .get(&incoming_connection.source_component_id)
-                .zip(components.get(&incoming_connection.destination_component_id))
-                .is_some_and(
-                    |(
-                        ComponentInfo {
-                            component: source_component,
-                            ..
-                        },
-                        ComponentInfo {
-                            component: destination_component,
-                            ..
-                        },
-                    )| {
-                        source_component.to_delete() || destination_component.to_delete()
-                    },
-                );
-
-            diagram_inferred_edges.push(SummaryDiagramInferredEdge {
-                from_component_id: incoming_connection.source_component_id,
-                from_socket_id: incoming_connection.output_socket_id,
-                to_component_id: incoming_connection.destination_component_id,
-                to_socket_id: incoming_connection.input_socket_id,
-                to_delete,
-            });
-        }
-
-        Ok(diagram_inferred_edges)
     }
 
     #[instrument(level = "info", skip_all)]
@@ -901,9 +766,6 @@ impl Diagram {
         )
         .await?;
 
-        let diagram_inferred_edges =
-            Self::assemble_inferred_connection_views(ctx, &component_info_cache).await?;
-
         if not_on_head {
             let removed_component_summaries = Self::assemble_removed_components(
                 ctx,
@@ -929,9 +791,7 @@ impl Diagram {
         }
 
         Ok(Self {
-            edges: vec![],
             components: diagram_component_views.component_views,
-            inferred_edges: diagram_inferred_edges,
             management_edges: diagram_component_views.management_edges,
             attribute_subscription_edges: diagram_component_views.attribute_subscription_edges,
             views,

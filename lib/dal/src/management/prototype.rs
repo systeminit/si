@@ -10,7 +10,6 @@ use serde::{
     Serialize,
 };
 use si_events::FuncRunId;
-use si_id::OutputSocketId;
 use strum::Display;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -25,7 +24,6 @@ use super::{
     SocketRef,
 };
 use crate::{
-    AttributeValue,
     Component,
     ComponentError,
     ComponentId,
@@ -38,7 +36,6 @@ use crate::{
     HelperError,
     InputSocket,
     NodeWeightDiscriminants,
-    OutputSocket,
     Schema,
     SchemaError,
     SchemaId,
@@ -126,8 +123,6 @@ pub enum ManagementPrototypeError {
     ManagementExecution(#[from] si_db::ManagementFuncExecutionError),
     #[error("management prototype {0} has no use edge to a function")]
     MissingFunction(ManagementPrototypeId),
-    #[error("More than one connection to input socket with arity one: {0}")]
-    MoreThanOneInputConnection(String),
     #[error("No pending management func execution found")]
     NoPendingManagementFuncExecution,
     #[error("management prototype {0} not found")]
@@ -326,22 +321,12 @@ async fn build_incoming_connections(
 ) -> ManagementPrototypeResult<HashMap<String, SocketRefsAndValues>> {
     let mut incoming_connections = HashMap::new();
     for input_socket in ComponentInputSocket::list_for_component_id(ctx, component_id).await? {
-        // Collect inferred connections for this input socket
-        let mut socket_connections = Vec::new();
-        for from in input_socket.find_inferred_connections(ctx).await? {
-            socket_connections
-                .push(build_connection(ctx, from.component_id, from.output_socket_id).await?);
-        }
-
         // Create an array or single connection value depending on arity
         let input_socket = InputSocket::get_by_id(ctx, input_socket.input_socket_id).await?;
         let name = input_socket.name().to_owned();
         let socket_connections = match input_socket.arity() {
-            SocketArity::One if socket_connections.len() > 1 => {
-                return Err(ManagementPrototypeError::MoreThanOneInputConnection(name));
-            }
-            SocketArity::One => SocketRefsAndValues::One(socket_connections.pop()),
-            SocketArity::Many => SocketRefsAndValues::Many(socket_connections),
+            SocketArity::One => SocketRefsAndValues::One(None),
+            SocketArity::Many => SocketRefsAndValues::Many(vec![]),
         };
 
         // If there are multiple sockets with the same name, this will only keep the last one.
@@ -349,25 +334,6 @@ async fn build_incoming_connections(
         incoming_connections.insert(name, socket_connections);
     }
     Ok(incoming_connections)
-}
-
-async fn build_connection(
-    ctx: &DalContext,
-    from_component_id: ComponentId,
-    from_socket_id: OutputSocketId,
-) -> ManagementPrototypeResult<SocketRefAndValue> {
-    let component = from_component_id.to_string();
-    let socket = OutputSocket::get_by_id(ctx, from_socket_id)
-        .await?
-        .name()
-        .to_owned();
-    let av_id =
-        OutputSocket::component_attribute_value_id(ctx, from_socket_id, from_component_id).await?;
-    let value = AttributeValue::view(ctx, av_id).await?;
-    Ok(SocketRefAndValue {
-        socket_ref: SocketRef { component, socket },
-        value,
-    })
 }
 
 impl ManagedComponent {

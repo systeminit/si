@@ -182,7 +182,7 @@ pub async fn create_component(
             &mut diagram_sockets,
         )
         .await?;
-    WsEvent::component_created_with_inferred_edges(&ctx, payload, None)
+    WsEvent::component_created(&ctx, payload)
         .await?
         .publish_on_commit(&ctx)
         .await?;

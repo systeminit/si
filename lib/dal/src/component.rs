@@ -16,8 +16,6 @@ use std::{
     sync::Arc,
 };
 
-use frame::FrameError;
-use itertools::Itertools;
 use resource::ResourceData;
 use serde::{
     Deserialize,
@@ -51,10 +49,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
-use self::{
-    inferred_connection_graph::InferredConnectionGraphError,
-    suggestion::PropSuggestionCacheError,
-};
+use self::suggestion::PropSuggestionCacheError;
 use crate::{
     AttributePrototype,
     AttributePrototypeId,
@@ -125,8 +120,6 @@ use crate::{
     code_view::CodeViewError,
     diagram::{
         DiagramError,
-        SummaryDiagramEdge,
-        SummaryDiagramInferredEdge,
         SummaryDiagramManagementEdge,
         geometry::Geometry,
         view::{
@@ -190,8 +183,6 @@ pub mod code;
 pub mod debug;
 pub mod delete;
 pub mod diff;
-pub mod frame;
-pub mod inferred_connection_graph;
 pub mod new;
 pub mod properties;
 pub mod qualification;
@@ -250,8 +241,6 @@ pub enum ComponentError {
     Diagram(#[from] Box<DiagramError>),
     #[error("entity kind error: {0}")]
     EntityKind(#[from] Box<EntityKindError>),
-    #[error("frame error: {0}")]
-    Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
     Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
@@ -260,8 +249,6 @@ pub enum ComponentError {
     FuncBinding(#[from] Box<FuncBindingError>),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
-    #[error("InferredConnectionGraph Error: {0}")]
-    InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("input socket error: {0}")]
     InputSocket(#[from] Box<InputSocketError>),
     #[error("input socket {0} not found for component id {1}")]
@@ -334,24 +321,12 @@ pub enum ComponentError {
     SiDb(#[from] si_db::Error),
     #[error("split graph error: {0}")]
     SplitGraph(#[from] SplitGraphError),
-    #[error(
-        "too many explicit connection sources ({0:?}) for component ({1}) and input socket ({2}) with an arity of one"
-    )]
-    TooManyExplicitConnectionSources(Vec<ComponentId>, ComponentId, InputSocketId),
-    #[error(
-        "too many inferred connections ({0:?}) for input socket match ({1:?}) with an arity of one"
-    )]
-    TooManyInferredConnections(Vec<ComponentOutputSocket>, ComponentInputSocket),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
     #[error("ulid decode error: {0}")]
     Ulid(#[from] ulid::DecodeError),
-    #[error(
-        "unexpected explicit source ({0}) and inferred source ({1}) for input socket match ({2:?}) with an arity of one"
-    )]
-    UnexpectedExplicitAndInferredSources(ComponentId, ComponentId, ComponentInputSocket),
     #[error("validation error: {0}")]
     Validation(#[from] Box<ValidationError>),
     #[error("value source for known prop attribute value {0} is not a prop id")]
@@ -394,11 +369,6 @@ impl From<EntityKindError> for ComponentError {
     }
 }
 
-impl From<FrameError> for ComponentError {
-    fn from(err: FrameError) -> Self {
-        Box::new(err).into()
-    }
-}
 impl From<FuncBindingError> for ComponentError {
     fn from(err: FuncBindingError) -> Self {
         Box::new(err).into()
@@ -437,12 +407,6 @@ impl From<FuncError> for ComponentError {
 
 impl From<FuncArgumentError> for ComponentError {
     fn from(value: FuncArgumentError) -> Self {
-        Box::new(value).into()
-    }
-}
-
-impl From<InferredConnectionGraphError> for ComponentError {
-    fn from(value: InferredConnectionGraphError) -> Self {
         Box::new(value).into()
     }
 }
@@ -509,26 +473,6 @@ impl From<attributes::AttributesError> for ComponentError {
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
 pub use si_id::ComponentId;
-
-#[derive(Clone, Debug)]
-pub struct Connection {
-    pub attribute_prototype_argument_id: AttributePrototypeArgumentId,
-    pub to_component_id: ComponentId,
-    pub to_input_socket_id: InputSocketId,
-    pub from_component_id: ComponentId,
-    pub from_output_socket_id: OutputSocketId,
-    pub created_info: HistoryEventMetadata,
-    pub deleted_info: Option<HistoryEventMetadata>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct InferredConnection {
-    pub to_component_id: ComponentId,
-    pub to_input_socket_id: InputSocketId,
-    pub from_component_id: ComponentId,
-    pub from_output_socket_id: OutputSocketId,
-    pub to_delete: bool,
-}
 
 /// A [`Component`] is an instantiation of a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -1681,9 +1625,6 @@ impl Component {
         let value = serde_json::to_value(new_type)?;
 
         AttributeValue::update(ctx, type_value_id, Some(value)).await?;
-        ctx.workspace_snapshot()?
-            .clear_inferred_connection_graph()
-            .await;
 
         Ok(())
     }
@@ -2095,22 +2036,6 @@ impl Component {
             return Ok(false);
         }
 
-        // Check all inferred outgoing connections, which accounts for up and down configuration
-        // frames alike due to the direction of the connection.
-        let inferred_outgoing_connections = self.inferred_outgoing_connections(ctx).await?;
-        for inferred_outgoing in inferred_outgoing_connections {
-            let connected_to_component =
-                Self::get_by_id(ctx, inferred_outgoing.to_component_id).await?;
-            if connected_to_component.resource(ctx).await?.is_some() {
-                debug!(
-                    "component {:?} cannot be removed because {:?} has resource",
-                    self.id,
-                    connected_to_component.id()
-                );
-                return Ok(false);
-            }
-        }
-
         // Check subscribers too
         let subscribers = Self::subscribers(ctx, self.id()).await?;
         for (_, subscriber_apa_id) in subscribers {
@@ -2179,19 +2104,6 @@ impl Component {
             modified.input_socket_attribute_values(ctx).await?;
 
         ctx.add_dependent_values_and_enqueue(input_av_ids).await?;
-
-        // We always want to make sure that everything "downstream" of us reacts appropriately
-        // regardless of whether we're setting, or clearing the `to_delete` flag.
-        //
-        // We can't use self.output_socket_attribute_values here, and just enqueue a dependent
-        // values update for those IDs, as the DVU explicitly *does not* update a not-to_delete AV,
-        // using a source from a to_delete AV, and we want the not-to_delete AVs to be updated to
-        // reflect that they're not getting data from this to_delete Component any more.
-
-        let downstream_av_ids = modified.downstream_attribute_value_ids(ctx).await?;
-
-        ctx.add_dependent_values_and_enqueue(downstream_av_ids)
-            .await?;
 
         // Deal with deletion actions, but only if we're transitioning from not being to_delete
         // into being to_delete.
@@ -2262,31 +2174,6 @@ impl Component {
             }
         }
         Ok(None)
-    }
-
-    /// `AttributeValueId`s of all input sockets connected to any output socket of this component.
-    async fn downstream_attribute_value_ids(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<AttributeValueId>> {
-        let mut results = Vec::new();
-
-        let output_sockets: Vec<ComponentOutputSocket> =
-            ComponentOutputSocket::list_for_component_id(ctx, self.id()).await?;
-        for output_socket_match in output_sockets {
-            // also need to make sure inferred sockets are re-ran if there are any
-            let inferred_inputs = ComponentOutputSocket::find_inferred_connections(
-                ctx,
-                output_socket_match.attribute_value_id,
-            )
-            .await?
-            .into_iter()
-            .map(|input| input.attribute_value_id)
-            .collect_vec();
-            results.extend(inferred_inputs)
-        }
-
-        Ok(results)
     }
 
     pub async fn duplicate_without_connections(
@@ -2479,91 +2366,6 @@ impl Component {
         geometry.update(ctx, raw_geometry).await?;
 
         Ok(())
-    }
-
-    /// Finds all inferred incoming connections for the [`Component`]
-    /// A connection is inferred if it's input socket is being driven
-    /// by another component's output socket as a result of lineage
-    /// via FrameContains Edges.
-    #[instrument(level = "debug", skip(ctx))]
-    pub async fn inferred_incoming_connections(
-        ctx: &DalContext,
-        to_component_id: ComponentId,
-    ) -> ComponentResult<Vec<InferredConnection>> {
-        let mut connections = vec![];
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut inferred_connection_graph =
-            workspace_snapshot.inferred_connection_graph(ctx).await?;
-        let incoming_connections = inferred_connection_graph
-            .inferred_incoming_connections_for_component(to_component_id)
-            .await?;
-
-        for incoming_connection in incoming_connections {
-            // add the check for to_delete on either to or from component
-            // Both "deleted" and not deleted Components can feed data into
-            // "deleted" Components. **ONLY** not deleted Components can feed
-            // data into not deleted Components.
-            let to_delete = !Self::should_data_flow_between_components(
-                ctx,
-                to_component_id,
-                incoming_connection.source_component_id,
-            )
-            .await?;
-
-            connections.push(InferredConnection {
-                to_component_id,
-                to_input_socket_id: incoming_connection.input_socket_id,
-                from_component_id: incoming_connection.source_component_id,
-                from_output_socket_id: incoming_connection.output_socket_id,
-                to_delete,
-            });
-        }
-
-        Ok(connections)
-    }
-
-    /// Finds all inferred outgoing connections for the [`Component`]. A connection is inferred if
-    /// its output sockets are driving another [`Component's`](Component) [`InputSocket`] as a
-    /// result of lineage via an [`EdgeWeightKind::FrameContains`] edge.
-    #[instrument(level = "info", skip(ctx))]
-    pub async fn inferred_outgoing_connections(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<InferredConnection>> {
-        let mut connections = vec![];
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut inferred_connections = workspace_snapshot.inferred_connection_graph(ctx).await?;
-        let mut inferred_connections_for_component_stack = inferred_connections
-            .inferred_connections_for_component_stack(self.id)
-            .await?;
-        inferred_connections_for_component_stack
-            .retain(|inferred_connection| inferred_connection.source_component_id == self.id);
-
-        for outgoing_connection in inferred_connections_for_component_stack {
-            // add the check for to_delete on either to or from component
-            // Both "deleted" and not deleted Components can feed data into
-            // "deleted" Components. **ONLY** not deleted Components can feed
-            // data into not deleted Components.
-            let destination_component = outgoing_connection.destination_component_id;
-            let source_component = self.id();
-
-            let to_delete = !Self::should_data_flow_between_components(
-                ctx,
-                destination_component,
-                source_component,
-            )
-            .await?;
-            connections.push(InferredConnection {
-                to_component_id: outgoing_connection.destination_component_id,
-                to_input_socket_id: outgoing_connection.input_socket_id,
-                from_component_id: outgoing_connection.source_component_id,
-                from_output_socket_id: outgoing_connection.output_socket_id,
-                to_delete,
-            });
-        }
-        Ok(connections)
     }
 
     #[instrument(level = "debug", skip(ctx))]
@@ -3220,7 +3022,6 @@ impl Component {
 #[serde(rename_all = "camelCase")]
 pub struct ComponentCreatedPayload {
     pub component: DiagramComponentView,
-    pub inferred_edges: Option<Vec<SummaryDiagramInferredEdge>>,
     change_set_id: ChangeSetId,
 }
 
@@ -3250,36 +3051,16 @@ pub struct ComponentDeletedPayload {
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum ConnectionDeletedPayload {
     #[serde(rename_all = "camelCase")]
-    AttributeValueEdge {
-        from_component_id: ComponentId,
-        to_component_id: ComponentId,
-        from_socket_id: OutputSocketId,
-        to_socket_id: InputSocketId,
-    },
-    #[serde(rename_all = "camelCase")]
     ManagementEdge {
         from_component_id: ComponentId,
         to_component_id: ComponentId,
     },
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, derive_more::From)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum ConnectionUpsertedPayload {
-    AttribueValueEdge(SummaryDiagramEdge),
     ManagementEdge(SummaryDiagramManagementEdge),
-}
-
-impl From<SummaryDiagramEdge> for ConnectionUpsertedPayload {
-    fn from(value: SummaryDiagramEdge) -> Self {
-        ConnectionUpsertedPayload::AttribueValueEdge(value)
-    }
-}
-
-impl From<SummaryDiagramManagementEdge> for ConnectionUpsertedPayload {
-    fn from(value: SummaryDiagramManagementEdge) -> Self {
-        ConnectionUpsertedPayload::ManagementEdge(value)
-    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -3322,61 +3103,7 @@ impl ComponentSetPositionPayload {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct InferredEdgeRemovePayload {
-    change_set_id: ChangeSetId,
-    edges: Vec<SummaryDiagramInferredEdge>,
-}
-
-impl InferredEdgeRemovePayload {
-    pub fn change_set_id(&self) -> ChangeSetId {
-        self.change_set_id
-    }
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct InferredEdgeUpsertPayload {
-    change_set_id: ChangeSetId,
-    edges: Vec<SummaryDiagramInferredEdge>,
-}
-
-impl InferredEdgeUpsertPayload {
-    pub fn change_set_id(&self) -> ChangeSetId {
-        self.change_set_id
-    }
-}
-
 impl WsEvent {
-    pub async fn remove_inferred_edges(
-        ctx: &DalContext,
-        edges: Vec<SummaryDiagramInferredEdge>,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::InferredEdgeRemove(InferredEdgeRemovePayload {
-                change_set_id: ctx.change_set_id(),
-                edges,
-            }),
-        )
-        .await
-    }
-
-    pub async fn upsert_inferred_edges(
-        ctx: &DalContext,
-        edges: Vec<SummaryDiagramInferredEdge>,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::InferredEdgeUpsert(InferredEdgeUpsertPayload {
-                change_set_id: ctx.change_set_id(),
-                edges,
-            }),
-        )
-        .await
-    }
-
     pub async fn reflect_component_position(
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
@@ -3421,16 +3148,14 @@ impl WsEvent {
         .await
     }
 
-    pub async fn component_created_with_inferred_edges(
+    pub async fn component_created(
         ctx: &DalContext,
         component: DiagramComponentView,
-        inferred_edges: Option<Vec<SummaryDiagramInferredEdge>>,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ComponentCreated(ComponentCreatedPayload {
                 change_set_id: ctx.change_set_id(),
-                inferred_edges,
                 component,
             }),
         )
@@ -3442,25 +3167,6 @@ impl WsEvent {
         payload: ConnectionUpsertedPayload,
     ) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::ConnectionUpserted(payload)).await
-    }
-
-    pub async fn connection_deleted(
-        ctx: &DalContext,
-        from_component_id: ComponentId,
-        to_component_id: ComponentId,
-        from_socket_id: OutputSocketId,
-        to_socket_id: InputSocketId,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ConnectionDeleted(ConnectionDeletedPayload::AttributeValueEdge {
-                from_component_id,
-                to_component_id,
-                from_socket_id,
-                to_socket_id,
-            }),
-        )
-        .await
     }
 
     pub async fn manages_edge_deleted(

@@ -172,6 +172,7 @@ export type ComponentsAndEdges = {
   components: RawComponent[];
   // TODO REMOVE this is empty now
   edges: RawSocketEdge[];
+  // TODO REMOVE this is empty now
   inferredEdges: RawSocketEdge[];
   managementEdges: RawSocketEdge[];
   attributeSubscriptionEdges: RawSubscriptionEdge[];

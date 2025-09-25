@@ -3,7 +3,6 @@
 
 use std::collections::{
     HashMap,
-    HashSet,
     VecDeque,
 };
 
@@ -23,7 +22,6 @@ use crate::{
     ComponentId,
     DalContext,
     EdgeWeightKind,
-    InputSocketId,
     Prop,
     PropId,
     Secret,
@@ -57,13 +55,6 @@ impl PropertyEditorValues {
         component_id: ComponentId,
     ) -> PropertyEditorResult<Self> {
         let component = Component::get_by_id(ctx, component_id).await?;
-
-        let sockets_on_component: HashSet<InputSocketId> =
-            Component::inferred_incoming_connections(ctx, component_id)
-                .await?
-                .iter()
-                .map(|c| c.to_input_socket_id)
-                .collect();
 
         let controlling_ancestors_for_av_id =
             Component::list_av_controlling_func_ids_for_id(ctx, component_id).await?;
@@ -126,9 +117,6 @@ impl PropertyEditorValues {
                 let sockets_for_av =
                     AttributeValue::list_input_socket_sources_for_id(ctx, av_id).await?;
                 let can_be_set_by_socket = !sockets_for_av.is_empty();
-                let is_from_external_source = sockets_for_av
-                    .into_iter()
-                    .any(|s| sockets_on_component.contains(&s));
 
                 let controlling_func = *controlling_ancestors_for_av_id
                     .get(&av_id)
@@ -215,7 +203,7 @@ impl PropertyEditorValues {
                     value,
                     validation,
                     can_be_set_by_socket,
-                    is_from_external_source,
+                    is_from_external_source: false,
                     is_controlled_by_ancestor: controlling_func.av_id != av_id,
                     is_controlled_by_dynamic_func: controlling_func.is_dynamic_func,
                     overridden,

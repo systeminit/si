@@ -93,10 +93,6 @@ pub enum Error {
     IndexNotFoundAfterFreshBuild(WorkspacePk, ChangeSetId),
     #[error("index not found after rebuild; workspace_pk={0}, change_set_id={1}")]
     IndexNotFoundAfterRebuild(WorkspacePk, ChangeSetId),
-    #[error("inferred connection graph error: {0}")]
-    InferredConnectionGraph(
-        #[from] dal::component::inferred_connection_graph::InferredConnectionGraphError,
-    ),
     #[error("item with checksum not found; workspace_pk={0}, change_set_id={1}, kind={2}")]
     ItemWithChecksumNotFound(WorkspacePk, ChangeSetId, String),
     #[error("latest item not found; workspace_pk={0}, change_set_id={1}, kind={2}")]

@@ -99,14 +99,8 @@ pub enum AdminAPIError {
     Component(#[from] dal::component::ComponentError),
     #[error("edda client error: {0}")]
     Edda(#[from] edda_client::ClientError),
-    #[error("frame error: {0}")]
-    Frame(#[from] dal::component::frame::FrameError),
     #[error("func runner error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
-    #[error("inferred connection graph error: {0}")]
-    InferredConnectionGraph(
-        #[from] dal::component::inferred_connection_graph::InferredConnectionGraphError,
-    ),
     #[error("innit error: {0}")]
     Innit(#[from] InnitClientError),
     #[error("layer db error: {0}")]

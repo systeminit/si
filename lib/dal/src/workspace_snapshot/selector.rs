@@ -46,7 +46,6 @@ use super::{
     CycleCheckGuard,
     DependentValueRoot,
     EntityKindExt,
-    InferredConnectionsWriteGuard,
     InputSocketExt,
     SchemaVariantExt,
     WorkspaceSnapshot,
@@ -624,23 +623,6 @@ impl WorkspaceSnapshotSelector {
                     .schema_variant_id_for_component_id(component_id)
                     .await
             }
-        }
-    }
-
-    pub async fn inferred_connection_graph(
-        &self,
-        ctx: &DalContext,
-    ) -> WorkspaceSnapshotResult<InferredConnectionsWriteGuard<'_>> {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.inferred_connection_graph(ctx).await,
-            Self::SplitSnapshot(snapshot) => snapshot.inferred_connection_graph(ctx).await,
-        }
-    }
-
-    pub async fn clear_inferred_connection_graph(&self) {
-        match self {
-            Self::LegacySnapshot(snapshot) => snapshot.clear_inferred_connection_graph().await,
-            Self::SplitSnapshot(snapshot) => snapshot.clear_inferred_connection_graph().await,
         }
     }
 

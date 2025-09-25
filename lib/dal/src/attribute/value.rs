@@ -75,7 +75,6 @@ use crate::{
         AttributePrototypeSource,
     },
     change_set::ChangeSetError,
-    component::inferred_connection_graph::InferredConnectionGraphError,
     func::{
         FuncExecutionPk,
         argument::{
@@ -212,8 +211,6 @@ pub enum AttributeValueError {
     Helper(#[from] HelperError),
     #[error("attempt to access out-of-range element {0} of array {1} with length {2}")]
     IndexOutOfRange(usize, AttributeValueId, usize),
-    #[error("InferredConnectionGraph error: {0}")]
-    InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] Box<InputSocketError>),
     #[error("cannot insert for prop kind: {0}")]
@@ -855,20 +852,6 @@ impl AttributeValue {
                 .and_modify(|values| values.extend(values_for_arg.clone()))
                 .or_insert(values_for_arg);
         }
-        // if we haven't found func binding args by now, let's see if there are any inferred inputs
-        // Note: a given input only takes args through inferences (i.e. frames) if it doesn't have any
-        // explicitly configured args
-
-        if func_binding_args.is_empty() {
-            let inferred_inputs = Self::get_inferred_input_values(ctx, attribute_value_id).await?;
-
-            if !inferred_inputs.is_empty() {
-                let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
-                if let Some(func_arg) = FuncArgument::list_for_func(ctx, input_func).await?.pop() {
-                    func_binding_args.insert(func_arg.name, inferred_inputs);
-                }
-            }
-        }
 
         // The value map above could possibly have multiple values per func
         // argument name if there are multiple inputs (for example, more than
@@ -902,65 +885,6 @@ impl AttributeValue {
             prepared_func_binding_args,
             input_attribute_value_ids,
         ))
-    }
-
-    #[instrument(level = "info", skip(ctx))]
-    async fn get_inferred_input_values(
-        ctx: &DalContext,
-        input_attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Vec<Value>> {
-        let maybe_input_socket_id = match Self::is_for(ctx, input_attribute_value_id).await? {
-            ValueIsFor::InputSocket(input_socket_id) => Some(input_socket_id),
-            _ => None,
-        };
-
-        let Some(input_socket_id) = maybe_input_socket_id else {
-            return Ok(vec![]);
-        };
-
-        let component_id = Self::component_id(ctx, input_attribute_value_id).await?;
-
-        let mut inputs = vec![];
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut inferred_connection_graph =
-            workspace_snapshot.inferred_connection_graph(ctx).await?;
-        let inferred_connections = inferred_connection_graph
-            .inferred_connections_for_input_socket(component_id, input_socket_id)
-            .await?;
-        let mut connections = Vec::with_capacity(inferred_connections.len());
-        for inferred_connection in inferred_connections {
-            // Both deleted and non deleted components can feed data into deleted components.
-            // ** ONLY ** non-deleted components can feed data into non-deleted components
-            if Component::should_data_flow_between_components(
-                ctx,
-                inferred_connection.destination_component_id,
-                inferred_connection.source_component_id,
-            )
-            .await?
-            {
-                connections.push(inferred_connection);
-            }
-        }
-        connections.sort_by_key(|conn| conn.source_component_id);
-
-        for inferred_connection in connections {
-            // XXX: We need to properly handle the difference between "there is
-            // XXX: no value" vs "the value is null", but right now we collapse
-            // XXX: the two to just be "null" when passing these to a function.
-            let av_id = OutputSocket::component_attribute_value_id(
-                ctx,
-                inferred_connection.output_socket_id,
-                inferred_connection.source_component_id,
-            )
-            .await?;
-            let view = AttributeValue::view(ctx, av_id)
-                .await?
-                .unwrap_or(Value::Null);
-            inputs.push(view);
-        }
-
-        Ok(inputs)
     }
 
     pub async fn prototype_func_id(
@@ -1035,7 +959,6 @@ impl AttributeValue {
     ) -> AttributeValueResult<()> {
         // this lock is never locked for writing so is effectively a no-op here
         let read_lock = Arc::new(RwLock::new(()));
-        // Don't need to pass in an Inferred Dependency Graph for one off updates, we can just calculate
         let (execution_result, func, _) =
             Self::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
 

@@ -17,14 +17,12 @@ use telemetry::prelude::*;
 
 use super::{
     AttributeValue,
-    AttributeValueError,
     AttributeValueId,
     AttributeValueResult,
     subscription::ValueSubscription,
 };
 use crate::{
     Component,
-    ComponentError,
     ComponentId,
     DalContext,
     EdgeWeightKind,
@@ -38,10 +36,7 @@ use crate::{
         },
         value::ValueIsFor,
     },
-    component::{
-        ControllingFuncData,
-        socket::ComponentOutputSocket,
-    },
+    component::ControllingFuncData,
     dependency_graph::DependencyGraph,
     workspace_snapshot::{
         DependentValueRoot,
@@ -254,10 +249,7 @@ impl DependentValueGraph {
     /// includes the entire parent tree of each value discovered, up to the root for every value's
     /// component, as well as any dependencies of values discovered while walking the graph
     /// (e.g. if a value's prototype takes one of the passed values as an input, we also need to
-    /// find the values for the other inputs to the prototype, etc.). The graph also includes any
-    /// inferred dependencies based on parentage, for example if a component gets its inputs from a
-    /// parent frame, and that frame's output sockets change, we add those downstream input sockets
-    /// to the graph.
+    /// find the values for the other inputs to the prototype, etc.).
     async fn populate_for_values(
         &mut self,
         ctx: &DalContext,
@@ -333,75 +325,23 @@ impl DependentValueGraph {
                 relevant_apas
             };
 
-            match value_is_for {
-                ValueIsFor::Prop(prop_id) => {
-                    let prop = Prop::get_by_id(ctx, prop_id).await?;
-                    if prop.kind == PropKind::Object {
-                        // The children of an object might themselves be the
-                        // input to another function, so we have to add them to
-                        // the calculation of the graph, as we encounter them.
-                        // We use `seen_list` to ensure we don't reprocess these
-                        // values or the parents of these values.
-                        for child_value_id in AttributeValue::get_child_av_ids_in_order(
-                            ctx,
-                            current_attribute_value.id(),
-                        )
-                        .await?
-                        {
-                            if !seen_list.contains(&child_value_id) {
-                                work_queue.push_back(WorkQueueValue::ObjectChild(child_value_id));
-                            }
+            if let ValueIsFor::Prop(prop_id) = value_is_for {
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                if prop.kind == PropKind::Object {
+                    // The children of an object might themselves be the
+                    // input to another function, so we have to add them to
+                    // the calculation of the graph, as we encounter them.
+                    // We use `seen_list` to ensure we don't reprocess these
+                    // values or the parents of these values.
+                    for child_value_id in
+                        AttributeValue::get_child_av_ids_in_order(ctx, current_attribute_value.id())
+                            .await?
+                    {
+                        if !seen_list.contains(&child_value_id) {
+                            work_queue.push_back(WorkQueueValue::ObjectChild(child_value_id));
                         }
                     }
                 }
-                // Check if this value is an output socket as the attribute
-                // value might have implicit dependendcies based on the ancestry
-                // (aka frames/nested frames) note: we filter out non-deleted
-                // targets if the source component is set to be deleted
-                ValueIsFor::OutputSocket(_) => {
-                    let maybe_values_depend_on =
-                        match ComponentOutputSocket::find_inferred_connections(
-                            ctx,
-                            current_attribute_value.id(),
-                        )
-                        .await
-                        {
-                            Ok(values) => values,
-                            // When we first run dvu, the component type might not be set yet.
-                            // In this case, we can assume there aren't downstream inputs that need to
-                            // be queued up.
-                            Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                                vec![]
-                            }
-                            Err(err) => return Err(AttributeValueError::Component(Box::new(err))),
-                        };
-
-                    for component_input_socket in maybe_values_depend_on {
-                        // Both "deleted" and not deleted Components can feed data into
-                        // "deleted" Components. **ONLY** not deleted Components can feed
-                        // data into not deleted Components.
-                        let destination_component_id = self
-                            .component_id_for_av(ctx, current_attribute_value.id())
-                            .await?;
-                        if Component::should_data_flow_between_components(
-                            ctx,
-                            destination_component_id,
-                            component_input_socket.component_id,
-                        )
-                        .await
-                        .map_err(|e| AttributeValueError::Component(Box::new(e)))?
-                        {
-                            work_queue.push_back(WorkQueueValue::Discovered(
-                                component_input_socket.attribute_value_id,
-                            ));
-                            self.value_depends_on(
-                                component_input_socket.attribute_value_id,
-                                current_attribute_value.id(),
-                            );
-                        }
-                    }
-                }
-                _ => {}
             }
 
             // Find the values that are set by the prototype for the relevant

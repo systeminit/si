@@ -8,7 +8,6 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use telemetry::prelude::*;
 
 use super::{
     ComponentError,
@@ -21,9 +20,7 @@ use crate::{
     ComponentId,
     DalContext,
     InputSocketId,
-    OutputSocket,
     OutputSocketId,
-    attribute::value::ValueIsFor,
 };
 
 /// Represents a given [`Component`]'s [`crate::InputSocket`], identified by its
@@ -45,62 +42,6 @@ pub struct ComponentOutputSocket {
 }
 
 impl ComponentOutputSocket {
-    /// Find all inferred [`ComponentInputSocket`]s that are pulling data from the provided
-    /// [`AttributeValueId`] that represents an [`crate::OutputSocket`] for a specific [`Component`]
-    ///
-    /// Output sockets can drive Input Sockets through inference based on the following logic:
-    ///
-    /// Components, Down Frames, and Up Frames can drive Input Sockets of their parents if the parent is an
-    /// Up Frame.
-    ///
-    /// Down Frames can drive Input Sockets of their children if the child is a Down Frame
-    /// or a Component or an Up Frame.
-    #[instrument(level = "debug", name="component.component_output_socket.find_inferred_connections" skip(ctx))]
-    pub async fn find_inferred_connections(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> ComponentResult<Vec<ComponentInputSocket>> {
-        // let's make sure this av is actually for an output socket
-        let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
-        let output_socket_id = match value_is_for {
-            ValueIsFor::Prop(_) | ValueIsFor::InputSocket(_) => {
-                return Err(ComponentError::WrongAttributeValueType(
-                    attribute_value_id,
-                    value_is_for,
-                ));
-            }
-            ValueIsFor::OutputSocket(sock) => sock,
-        };
-        let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut inferred_connection_graph =
-            workspace_snapshot.inferred_connection_graph(ctx).await?;
-        let mut connections = inferred_connection_graph
-            .inferred_connections_for_component_stack(component_id)
-            .await?;
-        connections.retain(|inferred_connection| {
-            inferred_connection.source_component_id == component_id
-                && inferred_connection.output_socket_id == output_socket_id
-        });
-        let mut input_sockets = Vec::new();
-        for connection in connections {
-            if let Some(input_socket) = ComponentInputSocket::get_by_ids(
-                ctx,
-                connection.destination_component_id,
-                connection.input_socket_id,
-            )
-            .await?
-            {
-                input_sockets.push(input_socket);
-            }
-        }
-
-        // sort by component id for consistent ordering
-        input_sockets.sort_by_key(|input| input.component_id);
-        Ok(input_sockets)
-    }
-
     /// Given a [`ComponentId`] and [`OutputSocketId`] find the [`ComponentOutputSocket`]
     pub async fn get_by_ids(
         ctx: &DalContext,
@@ -207,48 +148,6 @@ impl ComponentOutputSocket {
 }
 
 impl ComponentInputSocket {
-    /// Find all inferred [`ComponentOutputSocket`]s for the provided
-    /// [`ComponentInputSocket`] is pulling data from.
-    ///
-    /// [`crate::InputSocket`]s pull data through inference based on the following logic:
-    ///
-    /// Components and Down Frames find the closest [`crate::OutputSocket`] in their
-    /// ancestors they can connect to
-    ///
-    /// Depending on the [`crate::SocketArity`], Up Frames can connect to ancestors AND descendants.
-    /// If there is ever ambiguity about which [`crate::InputSocket`] they should connect to, we default
-    /// to none, forcing the user to explicity configure a connection by drawing an Edge
-    #[instrument(level = "debug", name="component.component_output_socket.find_inferred_connections" skip(ctx))]
-    pub async fn find_inferred_connections(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<ComponentOutputSocket>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let mut inferred_connection_graph =
-            workspace_snapshot.inferred_connection_graph(ctx).await?;
-        let mut connections = Vec::new();
-        for inferred_connection in inferred_connection_graph
-            .inferred_connections_for_input_socket(self.component_id, self.input_socket_id)
-            .await?
-        {
-            let attribute_value_id = OutputSocket::component_attribute_value_id(
-                ctx,
-                inferred_connection.output_socket_id,
-                inferred_connection.source_component_id,
-            )
-            .await?;
-            connections.push(ComponentOutputSocket {
-                component_id: inferred_connection.source_component_id,
-                output_socket_id: inferred_connection.output_socket_id,
-                attribute_value_id,
-            });
-        }
-
-        connections.sort_by_key(|output| output.component_id);
-
-        Ok(connections)
-    }
-
     /// List all [`ComponentInputSocket`]s for a given [`ComponentId`]
     pub async fn list_for_component_id(
         ctx: &DalContext,
@@ -338,41 +237,6 @@ impl ComponentInputSocket {
             .into_values()
             .map(|input_socket| input_socket.attribute_value_id)
             .collect_vec())
-    }
-
-    /// Finds the source [`Component`] of any [`crate::ComponentType`] for a given [`ComponentInputSocket`] where the
-    /// [`crate::InputSocket`] has [`crate::SocketArity::One`]
-    #[instrument(
-        name = "component.component_input_socket.find_connection_arity_one",
-        level = "debug",
-        skip_all
-    )]
-    pub async fn find_connection_arity_one(
-        self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Option<ComponentId>> {
-        let maybe_inferred_connection_source = {
-            let inferred_connections = match self.find_inferred_connections(ctx).await {
-                Ok(inferred_connections) => inferred_connections,
-                Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                    debug!(
-                        ?self,
-                        "component type not yet set when finding available inferred connections to input socket"
-                    );
-                    Vec::new()
-                }
-                Err(other_err) => Err(other_err)?,
-            };
-            if inferred_connections.len() > 1 {
-                return Err(ComponentError::TooManyInferredConnections(
-                    inferred_connections,
-                    self,
-                ));
-            }
-            inferred_connections.first().map(|c| c.component_id)
-        };
-
-        Ok(maybe_inferred_connection_source)
     }
 
     pub async fn value_for_input_socket_id_for_component_id_opt(
