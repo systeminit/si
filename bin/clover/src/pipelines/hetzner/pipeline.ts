@@ -4,19 +4,12 @@ import {
   ExpandedSchemaVariantSpec,
 } from "../../spec/pkgs.ts";
 import _ from "npm:lodash";
-import {
-  createDefaultPropFromCf,
-  createPropFromCf,
-  DefaultPropType,
-  ExpandedPropSpec,
-  ExpandedPropSpecFor,
-  OnlyProperties,
-} from "../../spec/props.ts";
+import { createDefaultPropFromCf, OnlyProperties } from "../../spec/props.ts";
 import rawSchema from "../../provider-schemas/hetzner.json" with {
   type: "json",
 };
 import { getExistingSpecs } from "../../specUpdates.ts";
-import { CfProperty, HDB, HetznerSchema, HQueue, SuperSchema } from "../types.ts";
+import { HDB, HetznerSchema, SuperSchema } from "../types.ts";
 import { makeModule } from "../generic/index.ts";
 import { generateIntrinsicFuncs } from "../generic/generateIntrinsicFuncs.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggestionsAcrossAssets.ts";
@@ -41,7 +34,7 @@ export async function generateHetznerSpecs(options: {
 
   specs = pkgSpecFromHetnzer(rawSchema);
   specs = generateCredentialModule(specs);
-  
+
   // TODO deal with credential, that isn't here, we need to make it
 
   specs = generateIntrinsicFuncs(specs);
@@ -96,13 +89,13 @@ function pkgSpecFromHetnzer(allSchemas: any) {
         description: "PAUL FIGURE IT OUT",
         properties,
         requiredProperties,
+        primaryIdentifier: ["id"],
       };
       schemas[noun] = schema;
     },
   );
 
   Object.values(schemas).forEach((schema: HetznerSchema) => {
-
     const onlyProperties: OnlyProperties = {
       createOnly: [],
       readOnly: [],
@@ -124,7 +117,12 @@ function pkgSpecFromHetnzer(allSchemas: any) {
       schema,
     );
 
-    const secrets =  createDefaultPropFromCf("secrets", {}, schema, onlyProperties);
+    const secrets = createDefaultPropFromCf(
+      "secrets",
+      {},
+      schema,
+      onlyProperties,
+    );
 
     const m = makeModule(
       schema,

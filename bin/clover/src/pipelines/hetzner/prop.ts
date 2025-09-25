@@ -1,5 +1,12 @@
-import { DefaultPropType, OnlyProperties, ExpandedPropSpecFor, ExpandedPropSpec, createPropFromCf, createDocLink } from "../../spec/props";
-import { CfProperty, HetznerSchema, HQueue, SuperSchema } from "../types";
+import {
+  createDocLink,
+  createPropFromCf,
+  DefaultPropType,
+  ExpandedPropSpec,
+  ExpandedPropSpecFor,
+  OnlyProperties,
+} from "../../spec/props.ts";
+import { CfProperty, HetznerSchema, HQueue, SuperSchema } from "../types.ts";
 
 const MAX_PROP_DEPTH = 30;
 
@@ -67,7 +74,7 @@ export function createDefaultProp(
 
 function childIsRequired(
   schema: SuperSchema,
-  parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
+  _parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ) {
   // not correctly accounting for depth here, parent prop path is missing

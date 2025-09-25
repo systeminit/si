@@ -1,6 +1,6 @@
 import { ActionFuncSpecKind } from "../../bindings/ActionFuncSpecKind.ts";
 import { FuncSpec } from "../../bindings/FuncSpec.ts";
-import { FuncSpecInfo, createDefaultFuncSpec } from "../../spec/funcs.ts";
+import { createDefaultFuncSpec, FuncSpecInfo } from "../../spec/funcs.ts";
 import { CfHandlerKind } from "../types.ts";
 
 export const ACTION_FUNC_SPECS = {
@@ -116,7 +116,7 @@ export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
         uniqueId: domain_id,
         deleted: false,
       },
-    ]),
+    ])
   );
 }
 
@@ -134,7 +134,7 @@ export function createDefaultQualificationFuncs(domain_id: string): FuncSpec[] {
         uniqueId: domain_id,
         deleted: false,
       },
-    ]),
+    ])
   );
 }
 
@@ -144,3 +144,4 @@ export function createDefaultManagementFuncs() {
     handlers: spec.handlers,
   }));
 }
+

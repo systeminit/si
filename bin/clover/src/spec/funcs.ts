@@ -1,3 +1,4 @@
+import { AuthenticationFuncSpec } from "../bindings/AuthenticationFuncSpec.ts";
 import { FuncSpec } from "../bindings/FuncSpec.ts";
 import { FuncSpecData } from "../bindings/FuncSpecData.ts";
 import { FuncSpecBackendKind } from "../bindings/FuncSpecBackendKind.ts";
@@ -106,6 +107,18 @@ export function createManagementFuncSpec(
   };
 }
 
+export function createAuthenticationFuncSpec(
+  name: string,
+  funcUniqueId: string,
+): AuthenticationFuncSpec {
+  return {
+    name,
+    deleted: false,
+    funcUniqueId,
+    uniqueId: null,
+  };
+}
+
 export function modifyFunc(
   spec: ExpandedPkgSpec,
   targetId: string,
@@ -128,8 +141,9 @@ export function modifyFunc(
   if (func_spec && func) {
     func_spec.funcUniqueId = newId;
     func.uniqueId = newId;
-    if (func.data)
+    if (func.data) {
       func.data.codeBase64 = codeBase64;
+    }
   }
 }
 

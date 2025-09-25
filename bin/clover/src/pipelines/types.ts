@@ -1,8 +1,6 @@
 import { CreatePropArgs, OnlyProperties } from "../spec/props.ts";
-import type {
-  JSONSchema,
-} from "./draft_07.ts";
-import type { Extend } from "./extend.ts";
+import type { JSONSchema } from "./draft_07.ts";
+import type { Extend } from "../extend.ts";
 
 type JSONPointer = string;
 
@@ -137,6 +135,7 @@ export type HetznerSchema = {
   documentationUrl?: string;
   properties: Record<string, CfProperty>;
   requiredProperties: Set<string>;
+  primaryIdentifier: JSONPointer[];
 };
 
 export type HDB = Record<string, HetznerSchema>;
@@ -151,3 +150,4 @@ export type HQueue = {
 export type SuperSchema = HetznerSchema | CfSchema;
 
 export type CategoryFn = ({ typeName }: SuperSchema) => string;
+
