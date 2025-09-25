@@ -948,8 +948,9 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
       span.setAttribute("no_patch", true);
       return;
     }
+
     const data = {
-      kind: msg.patch.kind, // EntityKind.MvIndex
+      kind: msg.patch.kind,
       fromChecksum: msg.patch.fromChecksum,
       toChecksum: msg.patch.toChecksum,
       workspaceId: msg.meta.workspaceId,
@@ -963,6 +964,12 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
       indexExists: false,
       previousIndexes: "",
     });
+
+    if (msg.patch.kind !== EntityKind.MvIndex) {
+      span.end();
+      throw new Error("This is not an index patch");
+    }
+
     // should always be present
     if (!msg.patch.fromChecksum) {
       span.end();
@@ -998,7 +1005,7 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
     if (previousIndexes.length === 0) {
       span.setAttribute("ragnarok", true);
       debug(
-        `Cannot patch, atom not found at ${msg.patch.fromChecksum}: ${previousIndexes}`,
+        `Cannot patch ${msg.meta.toIndexChecksum}, atom not found at ${msg.patch.fromChecksum}: ${previousIndexes}`,
       );
       await niflheim(db, msg.meta.workspaceId, msg.meta.changeSetId);
       span.end();
@@ -1022,7 +1029,14 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
     // now delete any atom mtms that dont exist in the index
     const placeholders: string[] = [];
     const bind: string[] = [];
-    (patchedIndex as StoredMvIndex).mvList.forEach((atom) => {
+    const mvList = (patchedIndex as StoredMvIndex).mvList;
+    // add the MvIndex atom to the list of atoms so we don't delete it
+    const common: Common = {
+      ...atom,
+      checksum: msg.patch.toChecksum,
+    };
+    mvList.push(common);
+    mvList.forEach((atom) => {
       placeholders.push("(?, ?, ?, ?)");
       bind.push(msg.meta.toIndexChecksum, atom.kind, atom.id, atom.checksum);
     });

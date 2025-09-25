@@ -67,6 +67,7 @@ export const bustQueueAdd = (
 ) => {
   const key = `${workspaceId}-${changeSetId}-${kind}-${id}`;
   if (!_bustQueue.has(key)) {
+    _bustQueue.add(key);
     bustQueue.add(() => {
       fn(workspaceId, changeSetId, kind, id);
       _bustQueue.delete(key);
@@ -86,11 +87,14 @@ processMjolnirQueue.on("add", () => {
 processMjolnirQueue.on("active", () => {
   debug("⚙️ mjolnir size", processMjolnirQueue.size);
 });
+let msgFlag = 0;
 bustQueue.on("add", () => {
-  debug("🧹 busts size", bustQueue.size);
+  if (msgFlag === 0 || msgFlag === -1) debug("🧹 busts queued", bustQueue.size);
+  msgFlag = 1;
 });
 bustQueue.on("active", () => {
-  debug("🧹 busts size", bustQueue.size);
+  if (msgFlag === 0 || msgFlag === -1) debug("🧹 busts queued", bustQueue.size);
+  msgFlag = 1;
 });
 
 processPatchQueue.on("empty", () => {
@@ -110,10 +114,13 @@ processMjolnirQueue.on("empty", () => {
   bustQueue.start();
 });
 bustQueue.on("empty", () => {
-  debug("🧹 busts processed");
-  const ctx = context.active();
-  const span = trace.getSpan(ctx);
-  if (span) span.setAttribute("bustQueueEmpty", true);
+  if (msgFlag === 0 || msgFlag === 1) {
+    debug("🧹 busts processed");
+    const ctx = context.active();
+    const span = trace.getSpan(ctx);
+    if (span) span.setAttribute("bustQueueEmpty", true);
+  }
+  msgFlag = -1;
 });
 
 // ensure that when we get patches we process them fully
