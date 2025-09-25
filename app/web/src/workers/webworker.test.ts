@@ -5371,6 +5371,15 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     `atom checksum not updated: ${atomChecksum?.toString()} != ${indexChecksum}`,
   );
 
+  // get the index mv, assures that the atom and MTM are in place!
+  const indexListAtom = (await db.get(
+    workspaceId,
+    changeSetId,
+    EntityKind.MvIndex,
+    workspaceId,
+  )) as object | -1;
+  assert(indexListAtom !== -1, `MvIndex Atom doesn't exist when it should`);
+
   log("index update patched");
 };
 
