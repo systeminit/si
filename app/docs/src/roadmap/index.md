@@ -10,6 +10,17 @@ Updated August 27, 2025.
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
 
+## Provider Coverage (In-development)
+
+We are extending our supported providers starting with Azure and Google Cloud.
+These new providers will be available during Q4 2025.
+
+## AI Authoring (In-development)
+
+We are adding the ability for our AI Agent to be able to author schemas and
+functions. This will allow users to be able to create their own customizations
+to schemas using natural language. This will be available during Q4 2025.
+
 ## Job specific interface (Generally Available)
 
 We are adding a more purpose-built job specific user interface for interacting
