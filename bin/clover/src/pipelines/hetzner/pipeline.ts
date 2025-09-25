@@ -23,6 +23,8 @@ import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggest
 import { reorderProps } from "../generic//reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
 import { generateAssetFuncs } from "../generic//generateAssetFuncs.ts";
+import { createDefaultProp } from "./prop.ts";
+import { generateCredentialModule } from "./credential.ts";
 
 export async function generateHetznerSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -38,6 +40,7 @@ export async function generateHetznerSpecs(options: {
   // skipping inferred combo boxes
 
   specs = pkgSpecFromHetnzer(rawSchema);
+  specs = generateCredentialModule(specs);
   
   // TODO deal with credential, that isn't here, we need to make it
 
@@ -104,7 +107,7 @@ function pkgSpecFromHetnzer(allSchemas: any) {
       createOnly: [],
       readOnly: [],
       writeOnly: [],
-      primaryIdentifier: [],
+      primaryIdentifier: ["id"],
     };
 
     const domain = createDefaultProp(
@@ -121,7 +124,7 @@ function pkgSpecFromHetnzer(allSchemas: any) {
       schema,
     );
 
-      const secrets =  createDefaultPropFromCf("secrets", {}, schema, onlyProperties);
+    const secrets =  createDefaultPropFromCf("secrets", {}, schema, onlyProperties);
 
     const m = makeModule(
       schema,
@@ -138,89 +141,12 @@ function pkgSpecFromHetnzer(allSchemas: any) {
   return specs;
 }
 
-const MAX_PROP_DEPTH = 30;
-
 function createDocLink(
   { typeName }: SuperSchema,
   defName: string | undefined,
   propName?: string,
 ): string {
   return "https://LATERGATOR";
-}
-
-function childIsRequired(
-  schema: SuperSchema,
-  parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
-  childName: string,
-) {
-  // not correctly accounting for depth here, parent prop path is missing
-  // probably need to embed `required` into the record of properties somehow
-  if (!("requiredProperties" in schema)) {
-    throw new Error("Gave me the wrong schema!");
-  }
-  return schema.requiredProperties.has(childName);
-}
-
-function createDefaultProp(
-  name: DefaultPropType,
-  properties: Record<string, CfProperty>,
-  onlyProperties: OnlyProperties,
-  cfSchema: HetznerSchema,
-) {
-  let rootProp: ExpandedPropSpecFor["object"] | undefined;
-
-  const queue: HQueue = {
-    cfSchema,
-    onlyProperties,
-    primaryIdentifier: ["id"],
-    queue: [
-      {
-        propPath: ["root", name],
-        // Pretend the prop only has the specified properties (since we split it up)
-        cfProp: { ...cfSchema, properties },
-        parentProp: undefined,
-        addTo: (prop: ExpandedPropSpec) => {
-          if (prop.kind !== "object") {
-            throw new Error(`${name} prop is not an object`);
-          }
-          // Set "rootProp" before returning it
-          rootProp = prop;
-        },
-      },
-    ],
-  };
-
-  while (queue.queue.length > 0) {
-    const propArgs = queue.queue.shift()!;
-    if (propArgs.propPath.length > MAX_PROP_DEPTH) {
-      throw new Error(
-        `Prop tree loop detected: Tried creating prop more than ${MAX_PROP_DEPTH} levels deep in the prop tree: ${propArgs.propPath}`,
-      );
-    }
-
-    const prop = createPropFromCf(
-      propArgs,
-      queue,
-      createDocLink,
-      childIsRequired,
-    );
-    if (!prop) continue;
-    if (propArgs.addTo) propArgs.addTo(prop);
-  }
-
-  if (!rootProp) {
-    throw new Error(
-      `createProp for ${cfSchema.typeName} did not generate a ${name} prop`,
-    );
-  }
-
-  // Top level prop doesn't actually get the generated doc; we add that to the schema instead
-  rootProp.data.inputs = null;
-  rootProp.data.widgetOptions = null;
-  rootProp.data.hidden = false;
-  rootProp.data.documentation = null;
-
-  return rootProp;
 }
 
 export function hCategory(schema: SuperSchema): string {
