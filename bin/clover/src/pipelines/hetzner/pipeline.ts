@@ -44,8 +44,10 @@ export async function generateHetznerSpecs(options: {
 
   // skipping inferred combo boxes
 
-  for (const schema in pkgSpecFromHetnzer(rawSchema)) {
-
+  const db = pkgSpecFromHetnzer(rawSchema);
+  const schemas = Object.values(db);
+  for (const schema of schemas) {
+    specs.push(schema);
   }
 
   return specs;

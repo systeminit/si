@@ -373,6 +373,12 @@ export function createPropFromCf(
           // We don't validate the whole thing there, but we at least check that it starts with slash!
           validation += `.pattern(/^\\//)`;
           break;
+        case "iso-8601":
+          // TODO
+          break;
+        case "decimal":
+          // TODO
+          break;
         case "string":
           // This seems meaningless (actually, the two fields that use it, QuickSight::DataSet::CreatedAt
           // and QuickSight::DataSet::LastUpdatedAt, are both number types in the actual API, so
