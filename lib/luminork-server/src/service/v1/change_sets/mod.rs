@@ -36,6 +36,8 @@ pub enum ChangeSetError {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set apply error: {0}")]
     ChangeSetApply(#[from] dal::ChangeSetApplyError),
+    #[error("change set mvs error: {0}")]
+    ChangeSetMvs(#[from] sdf_core::change_set_mvs::ChangeSetMvsError),
     #[error("change set not found: {0}")]
     ChangeSetNotFound(ChangeSetId),
     #[error("component error: {0}")]
