@@ -529,58 +529,6 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
   //     setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
   //   },
   // ],
-  [
-    "Listener DefaultActions",
-    (spec: ExpandedPkgSpec) => {
-      const targetGroupArnToListAttributeFunc = Deno.readTextFileSync(
-        "./src/cloud-control-funcs/overrides/Listener DefaultActions/attribute/setTargetGroupArns.ts",
-      );
-      const targetGroupArnToListFuncArgs: FuncArgumentSpec[] = [
-        {
-          name: "targetGroupArn",
-          kind: "string",
-          elementKind: null,
-          uniqueId: ulid(),
-          deleted: false,
-        },
-        {
-          name: "type",
-          kind: "string",
-          elementKind: null,
-          uniqueId: ulid(),
-          deleted: false,
-        },
-      ];
-
-      const attrFuncId =
-        "2930eb8752c80c973163b3dec9cc2465b98d6257a49469c823429da4031a1c32";
-      const targetGroupArnToListFunc = createFunc(
-        "Set Forward Config if Target Group Arn is set",
-        "jsAttribute",
-        "json",
-        strippedBase64(targetGroupArnToListAttributeFunc),
-        attrFuncId,
-        targetGroupArnToListFuncArgs,
-      );
-      spec.funcs.push(targetGroupArnToListFunc);
-
-      const variant = spec.schemas[0].variants[0];
-      const forwardConfigProp = objectPropForOverride(
-        variant.domain,
-        "ForwardConfig",
-      );
-
-      const targetGroupsProp = propForOverride(
-        forwardConfigProp,
-        "TargetGroups",
-      );
-      targetGroupsProp.data.funcUniqueId = attrFuncId;
-      targetGroupsProp.data.inputs = [
-        propInputBinding("/domain/Type", "type"),
-        propInputBinding("/domain/TargetGroupArn", "targetGroupArn"),
-      ];
-    },
-  ],
   // TODO prop suggestions Image -> RepositoryUri
   // [
   //   "TaskDefinition ContainerDefinitions",
@@ -765,53 +713,6 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
   //     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
   //   },
   // ],
-  [
-    "VPNConnection VpnTunnelOptionsSpecifications",
-    (spec: ExpandedPkgSpec) => {
-      const variant = spec.schemas[0].variants[0];
-      const domainId = variant.domain.uniqueId;
-
-      if (!domainId) return;
-
-      const { func, leafFuncSpec } = attachQualificationFunction(
-        "./src/cloud-control-funcs/overrides/VPNConnection VpnTunnelOptionsSpecifications/qualifications/presharedKeyValidations.ts",
-        "Validate PresharedKey",
-        "4e1243bd22c67dd61b0a4c86e9f3c89c84baf7b37a45f93ee4e5ed8a9d7f1c2f",
-        domainId,
-      );
-
-      spec.funcs.push(func);
-      variant.leafFunctions.push(leafFuncSpec);
-
-      const propsToFix = [
-        "IKEVersions",
-        "Phase1DHGroupNumbers",
-        "Phase1EncryptionAlgorithms",
-        "Phase1IntegrityAlgorithms",
-        "Phase2DHGroupNumbers",
-        "Phase2EncryptionAlgorithms",
-        "Phase2IntegrityAlgorithms",
-      ];
-
-      for (const propName of propsToFix) {
-        const arrayProp = arrayPropForOverride(variant.domain, propName);
-
-        arrayProp.data.widgetKind = "Array";
-        arrayProp.data.inputs = [];
-        arrayProp.data.funcUniqueId = null;
-
-        if (arrayProp.typeProp.kind === "object") {
-          const valueProp = arrayProp.typeProp.entries.find(
-            (p) => p.name === "Value",
-          );
-          if (valueProp) {
-            valueProp.data.widgetKind = "ComboBox";
-          }
-        }
-      }
-    },
-  ],
-
   // TODO prop suggestion SubnetIds <- SubnetId/Subnets
   // [
   //   "AWS::ElastiCache::ServerlessCache",
@@ -1144,21 +1045,6 @@ function stringPropForOverride(
     throw new Error(`Prop ${propName} is not a string!`);
   }
   return prop;
-}
-
-function propInputBinding(
-  attributePath: string,
-  name: string,
-): AttrFuncInputSpec {
-  const PROP_PATH_SEPARATOR = "\u{b}";
-  const prop_path = `root${attributePath}`.replaceAll("/", PROP_PATH_SEPARATOR);
-  return {
-    kind: "prop",
-    name,
-    prop_path,
-    unique_id: ulid(),
-    deleted: false,
-  };
 }
 
 // Overrides for PolicyDocument JSON props
