@@ -514,7 +514,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -525,7 +525,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -658,7 +658,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -669,7 +669,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -853,7 +853,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -864,7 +864,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -972,7 +972,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -983,7 +983,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -1237,7 +1237,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -1248,7 +1248,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -1356,7 +1356,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -1367,7 +1367,7 @@ Components management endpoints
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -2828,9 +2828,9 @@ xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|componentId|string|true|none|none|
-|description|string|true|none|none|
-|funcRunId|string|true|none|none|
+|componentId|string,null|false|none|none|
+|description|string,null|false|none|none|
+|funcRunId|string,null|false|none|none|
 |id|string|true|none|none|
 |kind|string|true|none|none|
 |name|string|true|none|none|
@@ -3064,7 +3064,7 @@ xor
   "id": "string",
   "path": "path/to/prop",
   "propId": "string",
-  "value": {}
+  "value": null
 }
 
 ```
@@ -3076,7 +3076,7 @@ xor
 |id|string|true|none|none|
 |path|string|true|none|none|
 |propId|string|true|none|none|
-|value|object|true|none|none|
+|value|any|false|none|none|
 
 ## [ComponentReference](#tocS_ComponentReference)
 
@@ -3160,7 +3160,7 @@ xor
       "id": "string",
       "path": "path/to/prop",
       "propId": "string",
-      "value": {}
+      "value": null
     }
   ],
   "id": "string",
@@ -3171,7 +3171,7 @@ xor
       "id": "string",
       "path": "path/to/prop",
       "propId": "string",
-      "value": {}
+      "value": null
     }
   ],
   "schemaId": "string",
@@ -3366,7 +3366,7 @@ xor
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -3377,7 +3377,7 @@ xor
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -3458,7 +3458,7 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |definitionName|string|true|none|none|
-|description|string|true|none|none|
+|description|string,null|false|none|none|
 |name|string|true|none|none|
 |rawData|object|false|none|none|
 |» **additionalProperties**|string|false|none|none|
@@ -3511,8 +3511,8 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |code|string|true|none|none|
-|description|string|true|none|none|
-|displayName|string|true|none|none|
+|description|string,null|false|none|none|
+|displayName|string,null|false|none|none|
 |kind|string|true|none|none|
 |name|string|true|none|none|
 
@@ -3558,8 +3558,8 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |code|string|true|none|none|
-|description|string|true|none|none|
-|displayName|string|true|none|none|
+|description|string,null|false|none|none|
+|displayName|string,null|false|none|none|
 |name|string|true|none|none|
 
 ## [CreateVariantAuthenticationFuncV1Response](#tocS_CreateVariantAuthenticationFuncV1Response)
@@ -3604,8 +3604,8 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |code|string|true|none|none|
-|description|string|true|none|none|
-|displayName|string|true|none|none|
+|description|string,null|false|none|none|
+|displayName|string,null|false|none|none|
 |name|string|true|none|none|
 
 ## [CreateVariantCodegenFuncV1Response](#tocS_CreateVariantCodegenFuncV1Response)
@@ -3650,8 +3650,8 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |code|string|true|none|none|
-|description|string|true|none|none|
-|displayName|string|true|none|none|
+|description|string,null|false|none|none|
+|displayName|string,null|false|none|none|
 |name|string|true|none|none|
 
 ## [CreateVariantManagementFuncV1Response](#tocS_CreateVariantManagementFuncV1Response)
@@ -3696,8 +3696,8 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |code|string|true|none|none|
-|description|string|true|none|none|
-|displayName|string|true|none|none|
+|description|string,null|false|none|none|
+|displayName|string,null|false|none|none|
 |name|string|true|none|none|
 
 ## [CreateVariantQualificationFuncV1Response](#tocS_CreateVariantQualificationFuncV1Response)
@@ -3965,9 +3965,9 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|funcRunId|string|true|none|none|
+|funcRunId|string,null|false|none|none|
 |managementFuncJobStateId|string|true|none|none|
-|message|string|false|none|none|
+|message|string,null|false|none|none|
 |status|string|true|none|none|
 
 ## [FindComponentV1Params](#tocS_FindComponentV1Params)
@@ -3990,7 +3990,7 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |component|string,null|false|none|none|
-|componentId|string|true|none|none|
+|componentId|string,null|false|none|none|
 
 ## [FindSchemaV1Params](#tocS_FindSchemaV1Params)
 
@@ -4012,7 +4012,7 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |schema|string,null|false|none|none|
-|schemaId|string|true|none|none|
+|schemaId|string,null|false|none|none|
 
 ## [FindSchemaV1Response](#tocS_FindSchemaV1Response)
 
@@ -4035,7 +4035,7 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|category|string|true|none|none|
+|category|string,null|false|none|none|
 |installed|boolean|true|none|none|
 |schemaId|string|true|none|none|
 |schemaName|string|true|none|none|
@@ -4170,25 +4170,25 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|actionDisplayName|string|true|none|none|
-|actionId|string|true|none|none|
-|actionKind|string|true|none|none|
-|actionOriginatingChangeSetId|string|true|none|none|
-|actionOriginatingChangeSetName|string|true|none|none|
-|actionPrototypeId|string|true|none|none|
-|actionResultState|string|true|none|none|
-|attributeValueId|string|true|none|none|
+|actionDisplayName|string,null|false|none|none|
+|actionId|string,null|false|none|none|
+|actionKind|string,null|false|none|none|
+|actionOriginatingChangeSetId|string,null|false|none|none|
+|actionOriginatingChangeSetName|string,null|false|none|none|
+|actionPrototypeId|string,null|false|none|none|
+|actionResultState|string,null|false|none|none|
+|attributeValueId|string,null|false|none|none|
 |backendKind|string|true|none|none|
 |backendResponseType|string|true|none|none|
-|componentId|string|true|none|none|
-|componentName|string|true|none|none|
+|componentId|string,null|false|none|none|
+|componentName|string,null|false|none|none|
 |createdAt|string|true|none|none|
 |functionArgs|any|true|none|none|
 |functionCodeBase64|string|true|none|none|
-|functionDescription|string|true|none|none|
-|functionDisplayName|string|true|none|none|
+|functionDescription|string,null|false|none|none|
+|functionDisplayName|string,null|false|none|none|
 |functionKind|string|true|none|none|
-|functionLink|string|true|none|none|
+|functionLink|string,null|false|none|none|
 |functionName|string|true|none|none|
 |id|string|true|none|none|
 |logs|any|false|none|none|
@@ -4210,7 +4210,7 @@ continued
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |resultValue|any|false|none|none|
-|schemaName|string|true|none|none|
+|schemaName|string,null|false|none|none|
 |state|string|true|none|none|
 |updatedAt|string|true|none|none|
 
@@ -4364,7 +4364,7 @@ continued
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -4375,7 +4375,7 @@ continued
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -4523,11 +4523,11 @@ continued
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |code|string|true|none|none|
-|description|string|true|none|none|
-|displayName|string|true|none|none|
+|description|string,null|false|none|none|
+|displayName|string,null|false|none|none|
 |isLocked|boolean|true|none|none|
 |kind|string|true|none|none|
-|link|string|true|none|none|
+|link|string,null|false|none|none|
 |name|string|true|none|none|
 
 ## [GetManagementFuncJobStateV1Response](#tocS_GetManagementFuncJobStateV1Response)
@@ -4549,7 +4549,7 @@ continued
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|funcRunId|string|true|none|none|
+|funcRunId|string,null|false|none|none|
 |state|string|true|none|none|
 
 ## [GetSchemaV1Response](#tocS_GetSchemaV1Response)
@@ -4613,7 +4613,7 @@ continued
 |assetFuncId|string|true|none|none|
 |category|string|true|none|none|
 |color|string|true|none|none|
-|description|string|true|none|none|
+|description|string,null|false|none|none|
 |displayName|string|true|none|none|
 |domainProps|any|false|none|none|
 
@@ -4635,7 +4635,7 @@ continued
 |---|---|---|---|---|
 |isDefaultVariant|boolean|true|none|none|
 |isLocked|boolean|true|none|none|
-|link|string|true|none|none|
+|link|string,null|false|none|none|
 |variantFuncIds|[string]|true|none|none|
 |variantId|string|true|none|none|
 
@@ -4853,7 +4853,7 @@ continued
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -4864,7 +4864,7 @@ continued
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -5167,15 +5167,15 @@ Component details in action response
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|children|[[PropSchemaV1](#schemapropschemav1)]|true|none|none|
-|defaultValue|any|true|none|none|
-|description|string|true|none|none|
-|docLink|string|true|none|none|
-|hidden|boolean|true|none|none|
+|children|array,null|false|none|none|
+|defaultValue|any|false|none|none|
+|description|string,null|false|none|none|
+|docLink|string,null|false|none|none|
+|hidden|boolean,null|false|none|none|
 |name|string|true|none|none|
 |propId|string|true|none|none|
 |propType|string|true|none|none|
-|validationFormat|string|true|none|none|
+|validationFormat|string,null|false|none|none|
 
 ## [PurgeOpenChangeSetsV1Response](#tocS_PurgeOpenChangeSetsV1Response)
 
@@ -5561,7 +5561,7 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |definition|string|true|none|none|
-|description|string|true|none|none|
+|description|string,null|false|none|none|
 |id|string|true|none|none|
 |name|string|true|none|none|
 
@@ -5708,7 +5708,7 @@ xor
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -5719,7 +5719,7 @@ xor
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
@@ -5764,8 +5764,8 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |code|string|true|none|none|
-|description|string|true|none|none|
-|displayName|string|true|none|none|
+|description|string,null|false|none|none|
+|displayName|string,null|false|none|none|
 
 ## [UpdateFuncV1Response](#tocS_UpdateFuncV1Response)
 
@@ -5812,9 +5812,9 @@ xor
 |---|---|---|---|---|
 |category|string|true|none|none|
 |code|string|true|none|none|
-|color|string|true|none|none|
-|description|string|true|none|none|
-|link|string|true|none|none|
+|color|string,null|false|none|none|
+|description|string,null|false|none|none|
+|link|string,null|false|none|none|
 |name|string|true|none|none|
 
 ## [UpdateSecretV1Request](#tocS_UpdateSecretV1Request)
@@ -5843,10 +5843,10 @@ xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|description|string|true|none|none|
+|description|string,null|false|none|none|
 |id|string|true|none|none|
 |name|string|true|none|none|
-|rawData|object|false|none|none|
+|rawData|object,null|false|none|none|
 |» **additionalProperties**|string|false|none|none|
 
 ## [UpdateSecretV1Response](#tocS_UpdateSecretV1Response)
@@ -5907,7 +5907,7 @@ xor
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "id": "string",
@@ -5918,7 +5918,7 @@ xor
         "id": "string",
         "path": "path/to/prop",
         "propId": "string",
-        "value": {}
+        "value": null
       }
     ],
     "schemaId": "string",
