@@ -106,7 +106,7 @@ export function addDefaultPropsAndSockets(
       );
 
       permissionsMapProp.data.defaultValue = JSON.stringify(
-        schemaVariant.cfSchema.handlers,
+        schemaVariant.superSchema.handlers,
       );
       permissionsMapProp.data.hidden = true;
 

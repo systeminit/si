@@ -5,7 +5,13 @@ import rawSchema from "../../provider-schemas/hetzner.json" with {
   type: "json",
 };
 import { getExistingSpecs } from "../../specUpdates.ts";
-import { HDB, HetznerSchema, SuperSchema } from "../types.ts";
+import {
+  CfHandler,
+  CfHandlerKind,
+  HDB,
+  HetznerSchema,
+  SuperSchema,
+} from "../types.ts";
 import { makeModule } from "../generic/index.ts";
 import { generateIntrinsicFuncs } from "../generic/generateIntrinsicFuncs.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggestionsAcrossAssets.ts";
@@ -14,11 +20,17 @@ import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForEx
 import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
 import { createDefaultProp } from "./prop.ts";
 import { generateCredentialModule } from "./credential.ts";
-import { generateDefaultActionFuncs } from "./pipeline-steps/generateDefaultActionFuncs.ts";
-import { generateDefaultLeafFuncs } from "./pipeline-steps/generateDefaultLeafFuncs.ts";
-import { generateDefaultManagementFuncs } from "./pipeline-steps/generateDefaultManagementFuncs.ts";
-import { generateDefaultQualificationFuncs } from "./pipeline-steps/generateQualificationFuncs.ts";
+import { generateDefaultActionFuncs } from "../generic/generateDefaultActionFuncs.ts";
+import { generateDefaultLeafFuncs } from "../generic/generateDefaultLeafFuncs.ts";
+import { generateDefaultManagementFuncs } from "../generic/generateDefaultManagementFuncs.ts";
+import { generateDefaultQualificationFuncs } from "../generic/generateDefaultQualificationFuncs.ts";
 import { addDefaultProps } from "./pipeline-steps/addDefaultProps.ts";
+import {
+  createDefaultActionFuncs,
+  createDefaultCodeGenFuncs,
+  createDefaultManagementFuncs,
+  createDefaultQualificationFuncs,
+} from "./funcs.ts";
 
 export async function generateHetznerSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -40,10 +52,13 @@ export async function generateHetznerSpecs(options: {
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
 
-  specs = generateDefaultActionFuncs(specs);
-  specs = generateDefaultLeafFuncs(specs);
-  specs = generateDefaultManagementFuncs(specs);
-  specs = generateDefaultQualificationFuncs(specs);
+  specs = generateDefaultActionFuncs(specs, createDefaultActionFuncs);
+  specs = generateDefaultLeafFuncs(specs, createDefaultCodeGenFuncs);
+  specs = generateDefaultManagementFuncs(specs, createDefaultManagementFuncs);
+  specs = generateDefaultQualificationFuncs(
+    specs,
+    createDefaultQualificationFuncs,
+  );
 
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
@@ -61,15 +76,31 @@ function pkgSpecFromHetnzer(allSchemas: any) {
       // skipping actions for now
       if (endpoint.includes("actions")) return;
       const openApiDescription = _openApiDescription as any;
-      if (!openApiDescription.get) throw new Error(`WHY NO GET? ${noun}`);
-      console.log(noun);
+
+      const handlers: Record<CfHandlerKind, CfHandler> = {};
       Object.keys(openApiDescription).forEach((key) => {
-        console.log(key);
-        if (openApiDescription[key]?.operationId) {
-          console.log(openApiDescription[key].operationId);
+        const handler = { permissions: [], timeoutInMinutes: 60 };
+        switch (key) {
+          case "get":
+            handlers[
+              openApiDescription.get.operationId.startsWith("list_")
+                ? "list"
+                : "read"
+            ] = handler;
+            break;
+          case "put":
+            handlers["update"] = handler;
+            break;
+          case "post":
+            handlers["create"] = handler;
+            break;
+          case "delete":
+            handlers["delete"] = handler;
+            break;
         }
       });
-      console.log("------");
+
+      if (!openApiDescription.get) throw new Error(`WHY NO GET? ${noun}`);
 
       // skipping list endpoints for now
       if (openApiDescription.get.operationId.startsWith("list_")) return;
@@ -97,6 +128,7 @@ function pkgSpecFromHetnzer(allSchemas: any) {
         properties,
         requiredProperties,
         primaryIdentifier: ["id"],
+        handlers,
       };
       schemas[noun] = schema;
     },

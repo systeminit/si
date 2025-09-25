@@ -29,7 +29,7 @@ export type ExpandedSchemaVariantSpec = Omit<
       secrets: ExpandedPropSpecFor["object"];
       secretDefinition: ExpandedPropSpec | null;
       resourceValue: ExpandedPropSpecFor["object"];
-      cfSchema: SuperSchema;
+      superSchema: SuperSchema;
     }
   >,
   "sockets"

@@ -14,19 +14,19 @@ export function createDefaultProp(
   name: DefaultPropType,
   properties: Record<string, CfProperty>,
   onlyProperties: OnlyProperties,
-  cfSchema: HetznerSchema,
+  superSchema: HetznerSchema,
 ) {
   let rootProp: ExpandedPropSpecFor["object"] | undefined;
 
   const queue: HQueue = {
-    cfSchema,
+    superSchema,
     onlyProperties,
     primaryIdentifier: ["id"],
     queue: [
       {
         propPath: ["root", name],
         // Pretend the prop only has the specified properties (since we split it up)
-        cfProp: { ...cfSchema, properties },
+        cfProp: { ...superSchema, properties },
         parentProp: undefined,
         addTo: (prop: ExpandedPropSpec) => {
           if (prop.kind !== "object") {
@@ -59,7 +59,7 @@ export function createDefaultProp(
 
   if (!rootProp) {
     throw new Error(
-      `createProp for ${cfSchema.typeName} did not generate a ${name} prop`,
+      `createProp for ${superSchema.typeName} did not generate a ${name} prop`,
     );
   }
 

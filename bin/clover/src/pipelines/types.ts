@@ -136,12 +136,13 @@ export type HetznerSchema = {
   properties: Record<string, CfProperty>;
   requiredProperties: Set<string>;
   primaryIdentifier: JSONPointer[];
+  handlers?: Record<CfHandlerKind, CfHandler>;
 };
 
 export type HDB = Record<string, HetznerSchema>;
 
 export type HQueue = {
-  cfSchema: HetznerSchema;
+  superSchema: HetznerSchema;
   primaryIdentifier: JSONPointer[];
   onlyProperties: OnlyProperties;
   queue: CreatePropArgs[];
@@ -150,4 +151,3 @@ export type HQueue = {
 export type SuperSchema = HetznerSchema | CfSchema;
 
 export type CategoryFn = ({ typeName }: SuperSchema) => string;
-

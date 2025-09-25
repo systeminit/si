@@ -1,6 +1,7 @@
 import { ActionFuncSpecKind } from "../../bindings/ActionFuncSpecKind.ts";
 import { FuncSpec } from "../../bindings/FuncSpec.ts";
 import { createDefaultFuncSpec, FuncSpecInfo } from "../../spec/funcs.ts";
+import { CfHandlerKind } from "../types.ts";
 
 export const ACTION_FUNC_SPECS = {
   // Actions
@@ -42,6 +43,7 @@ export const MANAGEMENT_FUNCS = {
     responseType: "management",
     displayName: "Discover all of a certain Hetzner asset",
     path: "./src/pipelines/hetzner/funcs/management/discover.ts",
+    handlers: ["list", "read"],
   },
   "Import from Hetzner": {
     id: "3f99f0c682e7bd0b82d0533d170e9475a38a64f86bfe73bbe17b15abf8773d58",
@@ -49,10 +51,11 @@ export const MANAGEMENT_FUNCS = {
     responseType: "management",
     displayName: "Import a certain Hetzner asset",
     path: "./src/pipelines/hetzner/funcs/management/import.ts",
+    handlers: ["read"],
   },
 } as const satisfies Record<
   string,
-  FuncSpecInfo
+  FuncSpecInfo & { handlers: CfHandlerKind[] }
 >;
 
 export const QUALIFICATION_FUNC_SPECS = {
@@ -114,7 +117,7 @@ export function createDefaultQualificationFuncs(domain_id: string): FuncSpec[] {
 
 export function createDefaultManagementFuncs() {
   return Object.entries(MANAGEMENT_FUNCS).map(([func, spec]) => ({
-    func: createDefaultFuncSpec(func, spec as FuncSpecInfo, []),
+    func: createDefaultFuncSpec(func, spec, []),
     handlers: spec.handlers,
   }));
 }

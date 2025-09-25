@@ -1,10 +1,10 @@
 import { assetSpecificOverrides } from "./pipeline-steps/assetSpecificOverrides.ts";
 import { loadCfDatabase } from "../../cfDb.ts";
 import { pkgSpecFromCf } from "./pipeline-steps/specPipeline.ts";
-import { attachDefaultActionFuncs } from "./pipeline-steps/attachDefaultActionFuncs.ts";
-import { generateDefaultLeafFuncs } from "./pipeline-steps/generateDefaultLeafFuncs.ts";
-import { generateDefaultQualificationFuncs } from "./pipeline-steps/generateQualificationFuncs.ts";
-import { attachDefaultManagementFuncs } from "./pipeline-steps/attachDefaultManagementFuncs.ts";
+import { generateDefaultActionFuncs } from "../generic/generateDefaultActionFuncs.ts";
+import { generateDefaultLeafFuncs } from "../generic/generateDefaultLeafFuncs.ts";
+import { generateDefaultQualificationFuncs } from "../generic/generateDefaultQualificationFuncs.ts";
+import { generateDefaultManagementFuncs } from "../generic/generateDefaultManagementFuncs.ts";
 import { addDefaultPropsAndSockets } from "./pipeline-steps/addDefaultPropsAndSockets.ts";
 import { generateIntrinsicFuncs } from "./../generic/generateIntrinsicFuncs.ts";
 import { getExistingSpecs } from "../../specUpdates.ts";
@@ -24,6 +24,7 @@ import {
   createCredentialSuggestion,
   createRegionSuggestion,
 } from "./pipeline-steps/genericAwsProperties.ts";
+import { createDefaultActionFuncs, createDefaultManagementFuncs, createDefaultCodeGenFuncs, createDefaultQualificationFuncs } from "./funcs.ts";
 
 export async function generateAwsSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -55,10 +56,10 @@ export async function generateAwsSpecs(options: {
   specs = await removeBadDocLinks(specs, options.docLinkCache);
   specs = addInferredEnums(specs, inferred);
   specs = addDefaultPropsAndSockets(specs);
-  specs = attachDefaultActionFuncs(specs);
-  specs = generateDefaultLeafFuncs(specs);
-  specs = attachDefaultManagementFuncs(specs);
-  specs = generateDefaultQualificationFuncs(specs);
+  specs = generateDefaultActionFuncs(specs, createDefaultActionFuncs);
+  specs = generateDefaultLeafFuncs(specs, createDefaultCodeGenFuncs);
+  specs = generateDefaultManagementFuncs(specs, createDefaultManagementFuncs);
+  specs = generateDefaultQualificationFuncs(specs, createDefaultQualificationFuncs);
 
   // subAssets should not have any of the above, but need an asset func and
   // intrinsics

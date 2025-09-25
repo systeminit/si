@@ -12,7 +12,7 @@ export function pruneCfAssets(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
     const [schema] = spec.schemas;
     const [variant] = schema.variants;
 
-    if (!spec.name.includes("::") || variant.cfSchema.handlers) {
+    if (!spec.name.includes("::") || variant.superSchema.handlers) {
       continue;
     }
 

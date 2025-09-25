@@ -1,4 +1,7 @@
-import { ExpandedSchemaSpec, ExpandedSchemaVariantSpec } from "../../spec/pkgs.ts";
+import {
+  ExpandedSchemaSpec,
+  ExpandedSchemaVariantSpec,
+} from "../../spec/pkgs.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { CategoryFn, SuperSchema } from "../types.ts";
 import { ExpandedPropSpecFor } from "../../spec/props.ts";
@@ -51,7 +54,7 @@ export function makeModule(
     secretDefinition: null,
     resourceValue,
     rootPropFuncs: [],
-    cfSchema: schema,
+    superSchema: schema,
   };
 
   const moduleSchema: ExpandedSchemaSpec = {
@@ -84,3 +87,4 @@ export function makeModule(
     changeSets: [], // always empty
   };
 }
+

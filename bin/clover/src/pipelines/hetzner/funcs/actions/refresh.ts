@@ -32,7 +32,7 @@ async function main(component: Input): Promise<Output> {
   }
 
   return {
-    payload: response.json(),
+    payload: await response.json(),
     status: "ok",
   };
 }

@@ -1,28 +1,36 @@
 import _ from "lodash";
-import {
-  createDefaultActionFuncs,
-} from "../funcs.ts";
 import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 import { CfHandlerKind } from "../../types.ts";
 import { createActionFuncSpec } from "../../../spec/funcs.ts";
+import { FuncSpec } from "../../../bindings/FuncSpec.ts";
+import { ActionFuncSpecKind } from "../../../bindings/ActionFuncSpecKind.ts";
 
-export function attachDefaultActionFuncs(
+export function generateDefaultActionFuncs(
   specs: ExpandedPkgSpec[],
+  fn: Fn,
 ): ExpandedPkgSpec[] {
   // AWS Specific
-  const defaultActionFuncs = createDefaultActionFuncs();
+  const defaultActionFuncs = fn();
 
   for (const spec of specs) {
     const {
       funcs,
       schemas: [{ variants: [variant] }],
     } = spec;
-    const { actionFuncs, cfSchema } = variant;
+    const { actionFuncs, superSchema } = variant;
 
     for (const { spec: actionFunc, kind } of defaultActionFuncs) {
       // Make sure the Cloud Formation can handle the action too!
-      const handlerKind: CfHandlerKind = kind === "refresh" ? "read" : kind;
-      if (!cfSchema.handlers?.[handlerKind]) continue;
+      let handlerKind: CfHandlerKind;
+      switch (kind) {
+        case "refresh":
+        case "other":
+          handlerKind = "read";
+          break;
+        default:
+          handlerKind = kind;
+      }
+      if (!superSchema.handlers?.[handlerKind]) continue;
 
       // clone otherwise modifications to these cause changes on all
       // specs
@@ -34,3 +42,5 @@ export function attachDefaultActionFuncs(
 
   return specs;
 }
+
+export type Fn = () => { spec: FuncSpec; kind: ActionFuncSpecKind }[];
