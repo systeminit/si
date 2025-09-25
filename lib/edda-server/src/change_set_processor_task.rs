@@ -534,6 +534,21 @@ mod handlers {
                 .await
                 .map_err(Into::into)
             }
+            CompressedChangeSetRequest::RebuildChangedDefinitions { .. } => {
+                // Rebuild only change set MVs with outdated definition checksums
+                // Since we're not processing incremental changes, use build_all_mv_for_change_set
+                // which will detect and rebuild only outdated definitions
+                materialized_view::build_all_mv_for_change_set(
+                    ctx,
+                    frigg,
+                    edda_updates,
+                    parallel_build_limit,
+                    None,
+                    "selective rebuild based on definition checksums",
+                )
+                .await
+                .map_err(Into::into)
+            }
             CompressedChangeSetRequest::Update {
                 src_requests_count: _,
                 from_snapshot_address,
@@ -547,7 +562,26 @@ mod handlers {
                     .map_err(|err| span.record_err(err))?
                     .is_some()
                 {
-                    process_incremental_updates(
+                    // Always use unified approach that deduplicates work between explicit updates and changed definitions
+                    let mut changes = Vec::new();
+
+                    // Load all change batches and concatenate all changes from all batches
+                    for change_batch_address in change_batch_addresses {
+                        let change_batch = ctx
+                            .layer_db()
+                            .change_batch()
+                            .read_wait_for_memory(&change_batch_address)
+                            .await
+                            .map_err(|err| span.record_err(err))?
+                            .ok_or(HandlerError::ChangeBatchNotFound(change_batch_address))?;
+                        changes.extend_from_slice(change_batch.changes());
+                    }
+
+                    changes = deduplicate_changes(changes);
+
+                    // build_mv_for_changes_in_change_set now automatically combines
+                    // explicit changes and outdated definitions
+                    materialized_view::build_mv_for_changes_in_change_set(
                         ctx,
                         frigg,
                         edda_updates,
@@ -555,21 +589,23 @@ mod handlers {
                         change_set_id,
                         from_snapshot_address,
                         to_snapshot_address,
-                        change_batch_addresses,
+                        &changes,
                     )
                     .await
+                    .map_err(Into::into)
                 }
                 // Index does not exist
                 else {
                     // todo: this is where we'd handle reusing an index from another change set if
                     // the snapshots match!
+                    let build_reason = "initial build with changed definitions";
                     materialized_view::build_all_mv_for_change_set(
                         ctx,
                         frigg,
                         edda_updates,
                         parallel_build_limit,
                         None,
-                        "initial build",
+                        build_reason,
                     )
                     .await
                     .map_err(Into::into)

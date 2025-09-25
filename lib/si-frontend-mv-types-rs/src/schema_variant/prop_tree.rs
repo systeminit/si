@@ -16,6 +16,7 @@ use crate::secret::SecretDefinition;
     Eq,
     PartialEq,
     Serialize,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 pub struct WidgetOption {
@@ -25,7 +26,15 @@ pub struct WidgetOption {
 
 pub type WidgetOptions = Vec<WidgetOption>;
 
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[derive(
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    Serialize,
+    PartialEq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Prop {
     pub id: PropId,
@@ -48,7 +57,16 @@ pub struct Prop {
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Display, Eq, Serialize, PartialEq)]
+#[derive(
+    Clone,
+    Debug,
+    Deserialize,
+    Display,
+    Eq,
+    Serialize,
+    PartialEq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum PropKind {
     Any,
@@ -62,7 +80,16 @@ pub enum PropKind {
     String,
 }
 #[remain::sorted]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
+#[derive(
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Display,
+    si_frontend_mv_types_macros::DefinitionChecksum,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum PropWidgetKind {
     Array,
@@ -86,6 +113,7 @@ pub enum PropWidgetKind {
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
@@ -101,6 +129,7 @@ pub struct PropTree {
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 pub struct PropTreeInfo {

@@ -208,6 +208,15 @@ mod helpers {
 
                     (info, payload)
                 }
+                ChangeSetRequest::RebuildChangedDefinitions(request) => {
+                    let mut info = ContentInfo::from(&request);
+                    let (content_type, payload) =
+                        request.to_vec().expect("failed to serialize request");
+                    info.content_type = content_type.into();
+                    let payload: Bytes = payload.into();
+
+                    (info, payload)
+                }
             };
 
             let mut headers = HeaderMap::new();

@@ -25,6 +25,7 @@ use crate::{
     Deserialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
     si_frontend_mv_types_macros::FrontendObject,
     si_frontend_mv_types_macros::Refer,
@@ -59,6 +60,7 @@ pub struct ComponentDiff {
     Deserialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(untagged, rename_all = "camelCase", deny_unknown_fields)]
@@ -147,6 +149,7 @@ pub enum AttributeDiff {
     Deserialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -176,6 +179,7 @@ pub struct AttributeSourceAndValue {
     Deserialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 // TODO add deny_unknown_fields
@@ -205,6 +209,7 @@ pub struct AttributeSource {
     Deserialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(untagged, rename_all = "camelCase", deny_unknown_fields)]

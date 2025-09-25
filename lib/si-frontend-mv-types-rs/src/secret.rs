@@ -13,6 +13,7 @@ use crate::schema_variant::prop_tree::PropWidgetKind;
     Deserialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all(serialize = "camelCase"))]
@@ -29,6 +30,7 @@ pub struct SecretFormDataView {
     Deserialize,
     PartialEq,
     Eq,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all(serialize = "camelCase"))]
@@ -44,6 +46,7 @@ pub struct SecretDefinition {
     PartialEq,
     Eq,
     Clone,
+    si_frontend_mv_types_macros::DefinitionChecksum,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]

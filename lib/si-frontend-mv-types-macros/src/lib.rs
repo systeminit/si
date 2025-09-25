@@ -1,17 +1,28 @@
 use manyhow::manyhow;
 use quote::ToTokens as _;
 
+mod definition_checksum;
 mod frontend_checksum;
 mod frontend_object;
 mod materialized_view;
 mod refer;
 
 use crate::{
+    definition_checksum::derive_definition_checksum,
     frontend_checksum::derive_frontend_checksum,
     frontend_object::derive_frontend_object,
     materialized_view::derive_materialized_view,
     refer::derive_refer,
 };
+
+#[manyhow]
+#[proc_macro_derive(DefinitionChecksum, attributes(definition_checksum))]
+pub fn definition_checksum_derive(
+    input: proc_macro::TokenStream,
+    errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    derive_definition_checksum(input, errors)
+}
 
 #[manyhow]
 #[proc_macro_derive(FrontendChecksum, attributes(frontend_checksum))]
