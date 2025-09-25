@@ -18,7 +18,7 @@ export type SchemaVariantSpec = {
   actionFuncs: Array<ActionFuncSpec>;
   authFuncs: Array<AuthenticationFuncSpec>;
   leafFunctions: Array<LeafFunctionSpec>;
-  sockets: Array<SocketSpec>;
+  sockets?: Array<SocketSpec>;
   siPropFuncs: Array<SiPropFuncSpec>;
   managementFuncs: Array<ManagementFuncSpec>;
   domain: PropSpec;

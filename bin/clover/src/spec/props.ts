@@ -1,4 +1,4 @@
-import { CfObjectProperty, CfProperty, normalizeProperty } from "../cfDb.ts";
+import { normalizeProperty } from "../cfDb.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
@@ -6,10 +6,10 @@ import { PropSpec } from "../bindings/PropSpec.ts";
 import _ from "npm:lodash";
 import ImportedJoi from "joi";
 import { Extend } from "../extend.ts";
-import { CfSchema } from "../cfDb.ts";
 const { createHash } = await import("node:crypto");
 import { cfPcreToRegexp } from "../pcre.ts";
 import { ExpandedPkgSpec } from "./pkgs.ts";
+import { CfObjectProperty, CfProperty, CfSchema, HetznerSchema, SuperSchema } from "../pipelines/types.ts";
 
 export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
 
@@ -85,7 +85,7 @@ interface PropSpecOverrides {
     | undefined;
 }
 
-type CreatePropArgs = {
+export type CreatePropArgs = {
   // The path to this prop, e.g. ["root", "domain"]
   propPath: string[];
   // The definition for this prop in the schema
@@ -97,7 +97,7 @@ type CreatePropArgs = {
 };
 
 export type CreatePropQueue = {
-  cfSchema: CfSchema;
+  cfSchema: SuperSchema;
   onlyProperties: OnlyProperties;
   queue: CreatePropArgs[];
 };
@@ -121,7 +121,7 @@ export function findPropByName(
 export function createDefaultPropFromCf(
   name: DefaultPropType,
   properties: Record<string, CfProperty>,
-  cfSchema: CfSchema,
+  cfSchema: SuperSchema,
   onlyProperties: OnlyProperties,
 ): ExpandedPropSpecFor["object"] {
   // Enqueue the root prop only, and then iterate over its children
@@ -183,12 +183,12 @@ export function createDefaultProp(
 }
 
 export type DocFn = (
-  { typeName }: CfSchema,
+  { typeName }: SuperSchema,
   defName: string | undefined,
   propName?: string,
 ) => string;
 export function createDocLink(
-  { typeName }: CfSchema,
+  { typeName }: SuperSchema,
   defName: string | undefined,
   propName?: string,
 ): string {
@@ -522,12 +522,12 @@ export function createPropFromCf(
 }
 
 export type requiredFn = (
-  cfSchema: CfSchema,
+  cfSchema: SuperSchema,
   parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ) => boolean;
 function childIsRequired(
-  cfSchema: CfSchema,
+  cfSchema: SuperSchema,
   parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ) {

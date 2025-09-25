@@ -16,34 +16,7 @@ import rawSchema from "../../provider-schemas/hetzner.json" with {
   type: "json",
 };
 import { getExistingSpecs } from "../../specUpdates.ts";
-import { CfProperty, CfSchema } from "../../cfDb.ts";
-
-export type HetznerSchema = {
-  typeName: string;
-  sourceUrl?: string;
-  documentationUrl?: string;
-  properties: Record<string, CfProperty>;
-  requiredProperties: Set<string>;
-};
-
-export type HDB = Record<string, HetznerSchema>;
-
-type CreatePropArgs = {
-  // The path to this prop, e.g. ["root", "domain"]
-  propPath: string[];
-  // The definition for this prop in the schema
-  cfProp: CfProperty & { defName?: string };
-  // The parent prop's definition
-  parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined;
-  // A handler to add the prop to its parent after it has been created
-  addTo?: (data: ExpandedPropSpec) => undefined;
-};
-
-export type HQueue = {
-  cfSchema: HetznerSchema;
-  onlyProperties: OnlyProperties;
-  queue: CreatePropArgs[];
-};
+import { CfProperty, CfSchema, HDB, HetznerSchema, HQueue, SuperSchema } from "../types.ts";
 
 export async function generateHetznerSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -196,7 +169,7 @@ function pkgSpecFromHetnzer(allSchemas: any) {
 const MAX_PROP_DEPTH = 30;
 
 function createDocLink(
-  { typeName }: CfSchema,
+  { typeName }: SuperSchema,
   defName: string | undefined,
   propName?: string,
 ): string {
@@ -204,12 +177,15 @@ function createDocLink(
 }
 
 function childIsRequired(
-  schema: HetznerSchema,
+  schema: SuperSchema,
   parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ) {
   // not correctly accounting for depth here, parent prop path is missing
   // probably need to embed `required` into the record of properties somehow
+  if (!("requiredProperties" in schema)) {
+    throw new Error("Gave me the wrong schema!");
+  }
   return schema.requiredProperties.has(childName);
 }
 
