@@ -11,6 +11,7 @@ pub enum Commands {
     GetDiffSummary(GetDiffSummaryArgs),
     UploadAllSpecs(UploadAllSpecsArgs),
     UploadSpec(UploadSpecArgs),
+    ValidateSpecs(ValidateSpecsArgs),
     WriteAllSpecs(WriteAllSpecsArgs),
     WriteExistingModulesSpec(WriteExistingModulesSpecArgs),
     WriteSpec(WriteSpecArgs),
@@ -146,6 +147,18 @@ pub struct UploadSpecArgs {
         action = clap::ArgAction::SetTrue
     )]
     pub non_interactive: bool,
+}
+
+#[derive(clap::Args, Debug)]
+#[command(about = "Validate that specs in {target_dir} can be loaded and converted")]
+pub struct ValidateSpecsArgs {
+    #[arg(
+        long,
+        short = 't',
+        required = true,
+        help = "Path to the directory containing specs to validate"
+    )]
+    pub target_dir: PathBuf,
 }
 
 #[derive(clap::Args, Debug)]
