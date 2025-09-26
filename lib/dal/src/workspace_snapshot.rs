@@ -4,7 +4,10 @@
 //! of how the internals of that specific version of the graph work.
 
 use std::{
-    collections::HashSet,
+    collections::{
+        HashSet,
+        VecDeque,
+    },
     sync::{
         Arc,
         atomic::AtomicBool,
@@ -18,6 +21,7 @@ use graph::{
     correct_transforms::correct_transforms,
     detector::Update,
 };
+use itertools::Itertools as _;
 use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
 use selector::WorkspaceSnapshotSelectorDiscriminants;
@@ -55,6 +59,7 @@ use crate::{
     ComponentError,
     ComponentId,
     DalContext,
+    EdgeWeightKind,
     SchemaVariantError,
     SchemaVariantId,
     TransactionsError,
@@ -97,6 +102,7 @@ use crate::{
             WorkspaceSnapshotGraphError,
         },
         node_weight::{
+            AttributeValueNodeWeight,
             NodeWeight,
             NodeWeightError,
             category_node_weight::CategoryNodeKind,
@@ -1357,6 +1363,75 @@ impl WorkspaceSnapshot {
             dvu_roots.insert(root);
             false
         }
+    }
+
+    pub async fn matching_avs(
+        &self,
+        component_id: ComponentId,
+        attr_name: &str,
+    ) -> ComponentResult<Vec<AttributeValueNodeWeight>> {
+        self.working_copy()
+            .await
+            .matching_avs(component_id, attr_name)
+    }
+
+    pub async fn matching_avs_with_async(
+        &self,
+        component_id: ComponentId,
+        attr_name: &str,
+    ) -> ComponentResult<Vec<AttributeValueNodeWeight>> {
+        let component = {
+            let graph = self.read_only_graph.clone();
+            tokio::spawn(async move { graph.get_node_index_by_id(component_id) }).await??
+        };
+        let root = {
+            let graph = self.read_only_graph.clone();
+            tokio::spawn(async move { graph.target(component, EdgeWeightKind::Root) }).await??
+        };
+        let mut results = vec![];
+        let mut work_queue = VecDeque::from({
+            let graph = self.read_only_graph.clone();
+            tokio::spawn(async move {
+                graph
+                    .targets(root, EdgeWeightKindDiscriminants::Contain)
+                    .collect_vec()
+            })
+            .await?
+        });
+        while let Some(av) = work_queue.pop_front() {
+            let prop_name = {
+                let graph = self.read_only_graph.clone();
+                tokio::spawn(async move {
+                    graph
+                        .target(av, EdgeWeightKind::Prop)
+                        .and_then(|prop| graph.get_node_weight(prop))
+                        .and_then(|node| node.as_prop_node_weight().map_err(Into::into))
+                        .map(|prop_node| prop_node.name().to_owned())
+                })
+                .await??
+            };
+            if prop_name == attr_name {
+                results.push({
+                    let graph = self.read_only_graph.clone();
+                    tokio::spawn(async move {
+                        graph.get_node_weight(av).and_then(|node| {
+                            node.get_attribute_value_node_weight().map_err(Into::into)
+                        })
+                    })
+                    .await??
+                });
+            }
+            work_queue.extend({
+                let graph = self.read_only_graph.clone();
+                tokio::spawn(async move {
+                    graph
+                        .targets(av, EdgeWeightKindDiscriminants::Contain)
+                        .collect_vec()
+                })
+                .await?
+            });
+        }
+        Ok(results)
     }
 
     pub async fn schema_variant_id_for_component_id(

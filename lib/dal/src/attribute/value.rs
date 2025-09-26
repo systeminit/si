@@ -2196,7 +2196,7 @@ impl AttributeValue {
         Ok(prop_id_opt)
     }
 
-    async fn fetch_value_from_store(
+    pub async fn fetch_value_from_store(
         ctx: &DalContext,
         maybe_content_address: Option<ContentAddress>,
     ) -> AttributeValueResult<Option<serde_json::Value>> {

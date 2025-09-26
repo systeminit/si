@@ -49,8 +49,10 @@ use serde::{
 use serde_json::Value;
 use si_id::{
     AttributeValueId,
+    ChangeSetId,
     PropId,
     ViewId,
+    WorkspacePk,
 };
 use strum::{
     AsRefStr,
@@ -74,6 +76,7 @@ pub mod list_components;
 pub mod manage_component;
 pub mod restore_component;
 pub mod search_components;
+pub mod search_components_spike;
 pub mod update_component;
 pub mod upgrade_component;
 
@@ -96,8 +99,12 @@ pub enum ComponentsError {
     AttributeValueNotFromComponent(AttributeValueId, ComponentId),
     #[error("cached module error: {0}")]
     CachedModule(#[from] dal::cached_module::CachedModuleError),
+    #[error("change set index not found: workspace_id={0}, change_set_id={1}")]
+    ChangeSetIndexNotFound(WorkspacePk, ChangeSetId),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("component mv data error: {0}")]
+    ComponentMvData(String),
     #[error("component not found: {0}")]
     ComponentNotFound(String),
     #[error("component not marked for deletion: {0}")]
@@ -116,6 +123,8 @@ pub enum ComponentsError {
         "ambiguous management function name reference: {0} (found multiple management functions with this name)"
     )]
     DuplicateManagementFunctionName(String),
+    #[error("frigg error: {0}")]
+    Frigg(#[from] frigg::Error),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
     #[error("generate template error: {0}")]
@@ -124,6 +133,8 @@ pub enum ComponentsError {
     InputSocket(#[from] dal::socket::input::InputSocketError),
     #[error("invalid secret value: {0}")]
     InvalidSecretValue(String),
+    #[error("join error: {0}")]
+    Join(#[from] tokio::task::JoinError),
     #[error("management func error: {0}")]
     ManagementFuncExecution(#[from] si_db::ManagementFuncExecutionError),
     #[error("management function already running for this component")]
@@ -134,6 +145,8 @@ pub enum ComponentsError {
     ManagementFunctionNotFound(String),
     #[error("prop error: {0}")]
     ManagementPrototype(#[from] dal::management::prototype::ManagementPrototypeError),
+    #[error("mv item not found: {0}, {1}, {2} (kind, id, checksum)")]
+    MvNotFound(String, String, String), // kind, id, checksum
     #[error("changes not permitted on HEAD change set")]
     NotPermittedOnHead,
     #[error(
@@ -608,6 +621,10 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(list_components::list_components))
         .route("/find", get(find_component::find_component))
         .route("/search", post(search_components::search_components))
+        .route(
+            "/search_spike",
+            post(search_components_spike::search_components_spike),
+        )
         .route(
             "/generate_template",
             post(generate_template::generate_template),

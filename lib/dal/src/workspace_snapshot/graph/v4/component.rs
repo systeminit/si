@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use petgraph::{
     prelude::*,
     visit::{
@@ -30,7 +32,10 @@ use crate::{
                 entity_kind::EntityKindExt,
             },
         },
-        node_weight::NodeWeightDiscriminants,
+        node_weight::{
+            AttributeValueNodeWeight,
+            NodeWeightDiscriminants,
+        },
     },
 };
 
@@ -57,6 +62,31 @@ impl WorkspaceSnapshotGraphV4 {
             if NodeWeightDiscriminants::from(node_weight) == NodeWeightDiscriminants::Component {
                 results.push(node_weight.id().into());
             }
+        }
+
+        Ok(results)
+    }
+
+    pub fn matching_avs(
+        &self,
+        component_id: ComponentId,
+        attr_name: &str,
+    ) -> ComponentResult<Vec<AttributeValueNodeWeight>> {
+        let component = self.get_node_index_by_id(component_id)?;
+        let root = self.target(component, EdgeWeightKind::Root)?;
+        let mut results = vec![];
+        let mut work_queue =
+            VecDeque::from_iter(self.outgoing_edges(root, EdgeWeightKindDiscriminants::Contain));
+        while let Some(edge) = work_queue.pop_front() {
+            let av = edge.target();
+            let prop = self.target(av, EdgeWeightKind::Prop)?;
+            if self.get_node_weight(prop)?.as_prop_node_weight()?.name() == attr_name {
+                results.push(
+                    self.get_node_weight(av)?
+                        .get_attribute_value_node_weight()?,
+                );
+            }
+            work_queue.extend(self.outgoing_edges(av, EdgeWeightKindDiscriminants::Contain));
         }
 
         Ok(results)

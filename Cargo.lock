@@ -3498,6 +3498,7 @@ dependencies = [
  "futures",
  "nats-std",
  "remain",
+ "serde",
  "serde_json",
  "si-data-nats",
  "si-events",

@@ -47,7 +47,7 @@ pub struct AttributeValueNodeWeight {
     unprocessed_value: Option<ContentAddress>,
     /// The processed return value.
     /// Example: empty array.
-    value: Option<ContentAddress>,
+    pub value: Option<ContentAddress>,
 }
 
 impl AttributeValueNodeWeight {

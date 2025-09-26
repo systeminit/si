@@ -79,15 +79,18 @@ use crate::{
     entity_kind::EntityKindResult,
     func::FuncResult,
     prop::PropResult,
-    workspace_snapshot::traits::{
-        approval_requirement::ApprovalRequirementExt,
-        attribute_prototype::AttributePrototypeExt,
-        attribute_prototype_argument::AttributePrototypeArgumentExt,
-        attribute_value::AttributeValueExt,
-        component::ComponentExt,
-        diagram::view::ViewExt,
-        func::FuncExt,
-        prop::PropExt,
+    workspace_snapshot::{
+        node_weight::AttributeValueNodeWeight,
+        traits::{
+            approval_requirement::ApprovalRequirementExt,
+            attribute_prototype::AttributePrototypeExt,
+            attribute_prototype_argument::AttributePrototypeArgumentExt,
+            attribute_value::AttributeValueExt,
+            component::ComponentExt,
+            diagram::view::ViewExt,
+            func::FuncExt,
+            prop::PropExt,
+        },
     },
 };
 
@@ -605,6 +608,32 @@ impl WorkspaceSnapshotSelector {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.dvu_root_check(root).await,
             Self::SplitSnapshot(snapshot) => snapshot.dvu_root_check(root).await,
+        }
+    }
+
+    pub async fn matching_avs(
+        &self,
+        component_id: ComponentId,
+        attr_name: &str,
+    ) -> ComponentResult<Vec<AttributeValueNodeWeight>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.matching_avs(component_id, attr_name).await,
+            Self::SplitSnapshot(_) => Ok(vec![]),
+        }
+    }
+
+    pub async fn matching_avs_with_async(
+        &self,
+        component_id: ComponentId,
+        attr_name: &str,
+    ) -> ComponentResult<Vec<AttributeValueNodeWeight>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => {
+                snapshot
+                    .matching_avs_with_async(component_id, attr_name)
+                    .await
+            }
+            Self::SplitSnapshot(_) => Ok(vec![]),
         }
     }
 

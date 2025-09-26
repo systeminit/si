@@ -112,10 +112,10 @@ def si_buck2_resource(
 
     # Get Buck2 build command
     mode_and_targets = buck2_mode_and_targets([target])
-    cmd = "buck2 build {}".format(mode_and_targets)
+    cmd = "buck2 build {} --local-only".format(mode_and_targets)
 
     # Get Buck2 run command
-    serve_cmd = "buck2 run {}".format(mode_and_targets)
+    serve_cmd = "buck2 run {} --local-only".format(mode_and_targets)
     if buck2_serve_args != None:
         serve_cmd += " -- {}".format(buck2_serve_args)
 
@@ -418,7 +418,7 @@ local_resource(
     "rust-initial-build",
     allow_parallel = True,
     labels = resource_labels("rust-initial-build"),
-    cmd = "buck2 build {}".format(buck2_mode_and_targets(rust_build_targets)),
+    cmd = "buck2 build {} --local-only".format(buck2_mode_and_targets(rust_build_targets)),
     deps = buck2_build_deps(rust_build_targets),
     **RUST_RESOURCE_ARGS
 )

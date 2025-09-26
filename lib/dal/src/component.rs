@@ -255,6 +255,8 @@ pub enum ComponentError {
     InputSocketNotFoundForComponentId(InputSocketId, ComponentId),
     #[error("input socket {0} has more than one attribute value")]
     InputSocketTooManyAttributeValues(InputSocketId),
+    #[error("si layer cache error: {0}")]
+    Join(#[from] tokio::task::JoinError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("component {0} missing attribute value for code")]
