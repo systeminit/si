@@ -9,7 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-async-openai = { workspace = true }
 async-trait = { workspace = true }
 audit-database = { path = "../../lib/audit-database" }
 auth-api-client = { path = "../../lib/auth-api-client" }

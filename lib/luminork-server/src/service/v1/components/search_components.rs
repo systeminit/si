@@ -1,18 +1,25 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    sync::Arc,
+};
 
 use axum::response::Json;
 use dal::{
     Component,
-    ComponentId,
     DalContext,
     Schema,
     SchemaVariant,
+};
+use sdf_extract::{
+    FriggStore,
+    change_set::ChangeSetAuthorization,
 };
 use serde::{
     Deserialize,
     Serialize,
 };
 use serde_json::json;
+use si_id::ComponentId;
 use utoipa::{
     self,
     ToSchema,
@@ -23,6 +30,10 @@ use crate::{
     extract::{
         PosthogEventTracker,
         change_set::ChangeSetDalContext,
+    },
+    search::{
+        self,
+        SearchQuery,
     },
     service::v1::ComponentsError,
 };
@@ -46,12 +57,21 @@ use crate::{
 )]
 pub async fn search_components(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    FriggStore(ref frigg): FriggStore,
+    ChangeSetAuthorization {
+        workspace_id,
+        change_set_id,
+        ..
+    }: ChangeSetAuthorization,
     tracker: PosthogEventTracker,
     payload: Result<Json<SearchComponentsV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<SearchComponentsV1Response>, ComponentsError> {
     let Json(payload) = payload?;
 
-    let mut component_ids = Component::list_ids(ctx).await?;
+    let query: SearchQuery = payload.query_string.as_deref().unwrap_or("").parse()?;
+    let query = Arc::new(query);
+    let mut component_ids =
+        search::component::search(frigg, workspace_id, change_set_id, &query).await?;
 
     if let Some(schema_name) = payload.schema_name.clone() {
         component_ids = apply_schema_filter(ctx, component_ids, schema_name).await?;
@@ -69,8 +89,10 @@ pub async fn search_components(
         ctx,
         "api_search_components",
         json!({
-            "schema_name": payload.schema_name,
-            "schema_category": payload.schema_category,
+            "query_string": payload.query_string.as_ref(),
+            "schema_name": payload.schema_name.as_ref(),
+            "upgradable": payload.upgradable.as_ref(),
+            "schema_category": payload.schema_category.as_ref(),
         }),
     );
 
@@ -156,9 +178,12 @@ async fn apply_schema_filter(
 pub struct SearchComponentsV1Request {
     #[schema(example = "AWS::EC2::Instance", required = false)]
     pub schema_name: Option<String>,
+    #[schema(required = false)]
     pub upgradable: Option<bool>,
     #[schema(example = "AWS::EC2", required = false)]
     pub schema_category: Option<String>,
+    #[schema(required = false)]
+    pub query_string: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]

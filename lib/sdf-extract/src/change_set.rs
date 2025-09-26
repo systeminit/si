@@ -11,6 +11,7 @@ use dal::{
     ChangeSet,
     ChangeSetId,
     DalContext,
+    WorkspacePk,
 };
 use derive_more::{
     Deref,
@@ -21,6 +22,8 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::User;
+use si_jwt_public_key::SiJwtClaimRole;
 
 use super::{
     ErrorResponse,
@@ -47,10 +50,47 @@ impl FromRequestParts<AppState> for ChangeSetDalContext {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         // Get the workspace we are accessing (and authorized for)
+        let ChangeSetAuthorization { ctx, .. } = parts.extract_with_state(state).await?;
+
+        Ok(Self(ctx))
+    }
+}
+
+///
+/// Handles the whole endpoint authorization (checking if the user has access to the target
+/// workspace with the desired role, *and* that the user is a member of the workspace), and
+/// checks that the TargetChangeSetId is within the given workspace.
+///
+/// This uses WorkspaceAuthorization to do the checking; see docs for that.
+///
+#[derive(Clone, derive_more::Deref)]
+pub struct ChangeSetAuthorization {
+    #[deref]
+    pub ctx: DalContext,
+    pub user: User,
+    pub workspace_id: WorkspacePk,
+    pub change_set_id: ChangeSetId,
+    pub authorized_role: SiJwtClaimRole,
+}
+
+#[async_trait]
+impl FromRequestParts<AppState> for ChangeSetAuthorization {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        if let Some(result) = parts.extensions.get::<Self>() {
+            return Ok(result.clone());
+        }
+
+        // Get the workspace we are accessing (and authorized for)
         let WorkspaceAuthorization {
             mut ctx,
+            user,
             workspace_id,
-            ..
+            authorized_role,
         } = parts.extract_with_state(state).await?;
 
         // Validate the change set id is within that workspace
@@ -64,11 +104,21 @@ impl FromRequestParts<AppState> for ChangeSetDalContext {
         }
 
         // Update the DalContext to the given changeset.
+        // TODO(jkeiser) don't expose a DalContext at all here! It only needs pg, we shouldn't
+        // build anything else. Requires refactoring though.
+        // As long as we *do* expose a DalContext, though, we should make sure it has the right
+        // visibility
         ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
             .await
             .map_err(internal_error)?;
 
-        Ok(Self(ctx))
+        Ok(Self {
+            ctx,
+            user,
+            workspace_id,
+            change_set_id,
+            authorized_role,
+        })
     }
 }
 
