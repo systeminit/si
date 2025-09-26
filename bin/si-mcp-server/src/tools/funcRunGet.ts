@@ -188,6 +188,7 @@ export function funcRunGetTool(server: McpServer) {
 
         const siApi = new FuncsApi(apiConfig);
         try {
+          // ohai
           const response = await siApi.getFuncRun({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
