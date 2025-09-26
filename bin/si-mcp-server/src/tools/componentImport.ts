@@ -135,7 +135,9 @@ export function componentImportTool(server: McpServer) {
                     importResponse.data.managementFuncJobStateId,
                 });
                 importState = status.data.state;
-                result["funcRunId"] = status.data.funcRunId;
+                if (status.data.funcRunId) {
+                  result["funcRunId"] = status.data.funcRunId;
+                }
                 currentCount += 1;
               } catch (error) {
                 return errorResponse({

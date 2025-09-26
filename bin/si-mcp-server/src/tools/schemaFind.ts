@@ -44,6 +44,7 @@ const FindSchemaOutputSchemaRaw = {
       schemaName: z.string().describe("the name of the schema"),
       description: z
         .string()
+        .nullable()
         .optional()
         .describe(
           "a description of the schema, frequently containing documentation",

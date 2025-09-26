@@ -1,4 +1,7 @@
-import { GetSchemaVariantV1Response } from "@systeminit/api-client";
+import {
+  GetSchemaVariantV1Response,
+  PropSchemaV1,
+} from "@systeminit/api-client";
 
 // ---------- Your existing types ----------
 type PropNode = {
@@ -54,12 +57,7 @@ function isRequiredFromValidationFormat(input: unknown): boolean {
 function addLeaf(
   outAttrs: FlatAttribute[],
   outDocs: DocsIndex | null,
-  node: {
-    name: string;
-    validationFormat?: unknown;
-    description: string | null;
-    docLink?: string | null;
-  },
+  node: PropSchemaV1,
   path: string,
 ): void {
   outAttrs.push({
@@ -80,7 +78,7 @@ function addLeaf(
  * Optionally also builds a docs index { path -> {description, docLink} } in the same pass.
  */
 function collectFlatAttributes(
-  nodes: PropNode[] | null | undefined,
+  nodes: PropSchemaV1[] | null | undefined,
   basePath: string,
   outAttrs: FlatAttribute[],
   outDocs: DocsIndex | null, // pass a Map to collect docs, or null to skip
@@ -92,8 +90,8 @@ function collectFlatAttributes(
 
     switch (node.propType) {
       case "object": {
-        const hasChildren = Array.isArray(node.children) &&
-          node.children.length > 0;
+        const hasChildren =
+          Array.isArray(node.children) && node.children.length > 0;
         if (hasChildren) {
           collectFlatAttributes(node.children!, nodePath, outAttrs, outDocs);
         } else {
@@ -104,8 +102,8 @@ function collectFlatAttributes(
 
       case "array": {
         const arrayPath = `${nodePath}/[array]`;
-        const hasChildren = Array.isArray(node.children) &&
-          node.children.length > 0;
+        const hasChildren =
+          Array.isArray(node.children) && node.children.length > 0;
 
         if (!hasChildren) {
           addLeaf(outAttrs, outDocs, node, arrayPath);
@@ -114,8 +112,8 @@ function collectFlatAttributes(
 
         for (const item of node.children!) {
           if (item.propType === "object") {
-            const itemHasChildren = Array.isArray(item.children) &&
-              item.children.length > 0;
+            const itemHasChildren =
+              Array.isArray(item.children) && item.children.length > 0;
             if (itemHasChildren) {
               collectFlatAttributes(
                 item.children!,
@@ -145,20 +143,15 @@ export function buildAttributesStructure(
 ): FlatSchema {
   const attributes: FlatAttribute[] = [];
   const root = input.domainProps;
-  if (!root) {
-    // We can't build the attributesStructure so we return it empty!
-    return {
-      schemaName: input.displayName,
+  if (root?.children) {
+    const basePath = `/${root.name ?? ""}`;
+    collectFlatAttributes(
+      root.children,
+      basePath,
       attributes,
-    };
+      /* outDocs */ null,
+    );
   }
-  const basePath = `/${root.name}`;
-  collectFlatAttributes(
-    root.children,
-    basePath,
-    attributes,
-    /* outDocs */ null,
-  );
   return { schemaName: input.displayName, attributes };
 }
 
@@ -169,12 +162,10 @@ export function buildAttributeDocsIndex(
   const attributesSink: FlatAttribute[] = []; // unused but cheap
   const docsIndex: DocsIndex = new Map();
   const root = input.domainProps;
-  if (!root) {
-    // We can't build the docIndex so we return it empty!
-    return docsIndex;
+  if (root?.children) {
+    const basePath = `/${root.name ?? ""}`;
+    collectFlatAttributes(root.children, basePath, attributesSink, docsIndex);
   }
-  const basePath = `/${root.name}`;
-  collectFlatAttributes(root.children, basePath, attributesSink, docsIndex);
   return docsIndex;
 }
 
@@ -213,7 +204,8 @@ export function buildDocumentationForPaths(
 ): SchemaDocumentationData {
   const docsIndex = buildAttributeDocsIndex(variant);
   const attributes = schemaAttributePaths.map((p) => {
-    const documentation = formatDocumentation(docsIndex, p) ??
+    const documentation =
+      formatDocumentation(docsIndex, p) ??
       "There is no documentation for this attribute; if it is an AWS schema, consider looking up the data for the corresponding cloudformation resource";
     return { schemaAttributePath: p, documentation };
   });
