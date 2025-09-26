@@ -62,7 +62,6 @@ export const useAuthStore = () => {
         !_.isEmpty(state.tokens) && state.user?.pk,
       selectedWorkspaceToken: (state) => {
         const workspacesStore = useWorkspacesStore();
-        // console.log("urlSelectedWorkspaceId: ", workspacesStore.urlSelectedWorkspaceId);
         if (workspacesStore.urlSelectedWorkspaceId) {
           // this case works in most scenarios except if we are asking for the
           // selectedWorkspaceToken before useRouterStore is ready (like on page refresh)
@@ -71,12 +70,30 @@ export const useAuthStore = () => {
           // make sure that if we have a selected workspace token we populate it properly
           // even if the workspaces store does not have the urlSelectedWorkspaceId ready yet
           const path = window.location.pathname;
-          const workspaceId = path.split("/")[2];
-          // console.log(path);
-          // console.log(path.split("/"));
-          // console.log("WORKSPACE ID: ", workspaceId);
-          if (workspaceId) {
-            return state.tokens[workspaceId];
+
+          if (path.includes("auth-connect")) {
+            // this case handles when we are arriving from the /go endpoint of the auth api
+            // currently just parsing the string manually to avoid using URLSearchParams
+            // TODO(Wendy) - replace this with URLSearchParams when we can
+            const queryString = window.location.search.replace("?", ""); // grab the whole query string, removing the starting ?
+            const queryParts = queryString.split("&"); // split each of the individual parts
+            const workspacePartString = queryParts.find((part) =>
+              part.includes("workspaceId="),
+            ); // find the part we care about
+            if (workspacePartString) {
+              const workspaceId = workspacePartString.replace(
+                "workspaceId=",
+                "",
+              ); // strip out unnecessary data
+              return state.tokens[workspaceId];
+            }
+          } else if (path.startsWith("/n/") || path.startsWith("/w/")) {
+            // this case attempts to handle standard workspace urls for the old and new ui
+            const pathParts = path.split("/");
+            const workspaceId = pathParts[2];
+            if (workspaceId) {
+              return state.tokens[workspaceId];
+            }
           }
         }
         // we don't have a token!
