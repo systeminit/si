@@ -2096,6 +2096,27 @@ const getSdfClientForWorkspace = (workspaceId: string, span?: Span) => {
   return sdf;
 };
 
+const sleep = async (ms: number) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+};
+
+type AxiosFn<T> = () => Promise<AxiosResponse<T>>;
+const ONE_MIN = 1000 * 60;
+const retry = async <T>(
+  fn: AxiosFn<T>,
+  retryNum?: number,
+): Promise<AxiosResponse<T>> => {
+  const r = await fn();
+  if (r.status >= 500) {
+    retryNum = retryNum ? retryNum + 1 : 1;
+    const ms = retryNum ** 2 * 2000;
+    await sleep(Math.min(ms, ONE_MIN));
+    return retry(fn, retryNum);
+  } else return r;
+};
+
 const niflheim = async (
   db: Database,
   workspaceId: string,
@@ -2121,9 +2142,12 @@ const niflheim = async (
     const [url, desc] = describePattern(pattern);
     const frigg = tracer.startSpan(`GET ${desc}`);
     frigg.setAttributes({ workspaceId, changeSetId });
-    const req = await sdf<IndexObjectMeta>({
-      method: "get",
-      url,
+    const req = await retry<IndexObjectMeta>(async () => {
+      const req = await sdf<IndexObjectMeta>({
+        method: "get",
+        url,
+      });
+      return req;
     });
 
     // Check for 202 status - user needs to go to lobby
