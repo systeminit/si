@@ -37,7 +37,7 @@ const SchemaCreateInputSchemaRaw = {
     .optional()
     .describe("A link to documentation about the thing the schema represents."),
   category: z.string().optional().describe("The category of the schema"),
-  color: z.string().optional().describe("The color "),
+  color: z.string().optional().describe("The color "), // TODO - force the AI agent to only use hex colors, not words!
   definitionFunction: z
     .string()
     .describe(

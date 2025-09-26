@@ -6,7 +6,6 @@ import { changeSetUpdateTool } from "./tools/changeSetUpdateStatus.ts";
 import { schemaFindTool } from "./tools/schemaFind.ts";
 import { schemaAttributesListTool } from "./tools/schemaAttributesList.ts";
 import { schemaAttributesDocumentationTool } from "./tools/schemaAttributesDocumentation.ts";
-// import { schemaCreateTool } from "./tools/schemaCreate.ts"; // uncomment for local development
 import { actionListTool } from "./tools/actionList.ts";
 import { actionUpdateTool } from "./tools/actionUpdateStatus.ts";
 import { funcRunGetTool } from "./tools/funcRunGet.ts";
@@ -30,6 +29,9 @@ import { templateListTool } from "./tools/templateList.ts";
 import { changeSetAbandonTool } from "./tools/changeSetAbandon.ts";
 import { changeSetForceApplyTool } from "./tools/changeSetForceApply.ts";
 
+// import { schemaCreateTool } from "./tools/schemaCreate.ts"; // uncomment for local development
+// import { funcCreateTool } from "./tools/funcCreate.ts"; // uncomment for local development
+
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "si-server",
@@ -44,7 +46,6 @@ export function createServer(): McpServer {
   schemaFindTool(server);
   schemaAttributesListTool(server);
   schemaAttributesDocumentationTool(server);
-  // schemaCreateTool(server); // uncomment for local development
   actionListTool(server);
   actionUpdateTool(server);
   funcRunGetTool(server);
@@ -65,6 +66,9 @@ export function createServer(): McpServer {
   upgradeComponentsTool(server);
   importPrompt(server);
   discoverPrompt(server);
+  
+  // schemaCreateTool(server); // uncomment for local development
+  // funcCreateTool(server); // uncomment for local development
 
   return server;
 }

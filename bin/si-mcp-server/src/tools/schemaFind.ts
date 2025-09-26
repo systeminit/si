@@ -163,7 +163,7 @@ export function schemaFindTool(server: McpServer) {
           }
 
           const responseData: NonNullable<FindSchemaOutput["data"]> = {
-            schemaId: schemaNameOrId,
+            schemaId,
             schemaName: response.data.displayName,
             description: response.data.description,
           };
