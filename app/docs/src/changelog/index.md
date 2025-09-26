@@ -2,6 +2,35 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## September 22nd to 28th 2025
+
+### ✨ Added
+- Added more **user-facing documentation** in the onboarding flow.  
+- Users can now see the **code and arguments** for a queued action in the web app.  
+- Added **Azure CLI** back to the execution environment.  
+- Added extra **telemetry information** for Edda.  
+
+### 🔄 Changed
+- Upgraded the **Axios dependency** in the MCP server.  
+- Implemented a better **MV rebuild system**.  
+- Upgraded the **Auth API** to TypeScript 5.x.  
+- Removed generation of **composable assets** from Clover.  
+- Cleaned up **ArgumentTargets** from the graph after connection removal.  
+- Cleaned up **parentage code** from the codebase after connection removal.  
+- Cleaned up **inferred connections** from the codebase after connection removal.  
+
+### 🐞 Fixed
+- Fixed an issue in the **Auth Portal** where users weren’t redirected to their default workspace.  
+- Fixed an issue in the **Auth Portal** to prevent 404s when accessing the download link.  
+- Fixed an issue where a **function used in a subscription** failed to load in the UI.  
+- Fixed an issue in the **Auth API** to return the correct `workspaceId` for navigation.  
+- Fixed an issue where users could be **pushed to the lobby incorrectly** due to background activity.  
+- Fixed an issue where the **lobby exit event** waited for all processes to complete.  
+- Fixed an issue in the **Auth API Dockerfile** for TypeScript 5.x compatibility.  
+- Fixed an issue in **Public API** to show optional values correctly in API responses.  
+- Fixed an issue where the **App and Webworker** made too many requests.  
+- Fixed an issue where **create change set in Luminork** didn’t wait for MV to build. 
+
 ## September 15th to 21st 2025
 
 ### ✨ Added
