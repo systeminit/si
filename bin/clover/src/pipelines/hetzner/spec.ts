@@ -54,16 +54,23 @@ export function pkgSpecFromHetnzer(allSchemas: JsonSchema): ExpandedPkgSpec[] {
   });
 
   resourceResults.forEach(({ schema, onlyProperties }) => {
+    const normalizedOnlyProperties: OnlyProperties = {
+      createOnly: normalizeOnlyProperties(onlyProperties.createOnly),
+      readOnly: normalizeOnlyProperties(onlyProperties.readOnly),
+      writeOnly: normalizeOnlyProperties(onlyProperties.writeOnly),
+      primaryIdentifier: onlyProperties.primaryIdentifier,
+    };
+
     const domain = createDefaultProp(
       "domain",
-      schema.properties,
-      onlyProperties,
+      pruneDomainValues(schema.properties, onlyProperties),
+      normalizedOnlyProperties,
       schema,
     );
     const resourceValue = createDefaultProp(
       "resource_value",
-      schema.properties,
-      onlyProperties,
+      pruneResourceValues(schema.properties, onlyProperties),
+      normalizedOnlyProperties,
       schema,
     );
     const secrets = createDefaultPropFromCf(
@@ -315,4 +322,51 @@ export function createDocLink(
 export function hCategory(schema: SuperSchema): string {
   const name = _.camelCase(schema.typeName.replace("_", " "));
   return `Hetzner::${name}`;
+}
+
+function normalizeOnlyProperties(props: string[]): string[] {
+  const newProps: string[] = [];
+  for (const prop of props ?? []) {
+    const newProp = prop.split("/").pop();
+    if (newProp) {
+      newProps.push(newProp);
+    }
+  }
+  return newProps;
+}
+
+function pruneDomainValues(
+  properties: Record<string, unknown>,
+  onlyProperties: OnlyProperties,
+): Record<string, unknown> {
+  if (!properties || !onlyProperties.readOnly) {
+    return {};
+  }
+
+  const readOnlySet = new Set(onlyProperties.readOnly);
+  return Object.fromEntries(
+    Object.entries(properties)
+      .filter(
+        ([name, prop]) =>
+          prop && !readOnlySet.has(`/${name}`),
+      ),
+  );
+}
+
+function pruneResourceValues(
+  properties: Record<string, unknown>,
+  onlyProperties: OnlyProperties,
+): Record<string, unknown> {
+  if (!properties || !onlyProperties?.readOnly) {
+    return {};
+  }
+
+  const readOnlySet = new Set(onlyProperties.readOnly);
+  return Object.fromEntries(
+    Object.entries(properties)
+      .filter(
+        ([name, prop]) =>
+          prop && readOnlySet.has(`/${name}`),
+      ),
+  );
 }
