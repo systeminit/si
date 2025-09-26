@@ -6,7 +6,7 @@ import time
 
 API_TOKEN = os.environ.get('SI_API_TOKEN')
 WORKSPACE_ID = os.environ.get("SI_WORKSPACE_ID")
-API_URL = "https://api.systeminit.com"
+API_URL = "https://api.tools.systeminit.com"
 
 if not API_TOKEN or not WORKSPACE_ID:
     error_msg = "Missing required environment variables: SI_API_TOKEN or SI_WORKSPACE_ID"
@@ -337,10 +337,6 @@ def delete_change_set(change_set_id):
     response.raise_for_status()
     return response.json()
 
-
-MANAGER_COMPONENT_ID = "01JY7K7ZBMPHG22RVTNSA6GB0Z"
-
-
 def main():
     try:
         print('Starting System Initiative Environment Setup')
@@ -394,19 +390,6 @@ def main():
             print(error_msg)
             sys.exit(1)
 
-        print(
-            f'Setting manager for Userdata component {userdata_component_id}...'
-        )
-        try:
-            manage_component(change_set_id, userdata_component_id,
-                             MANAGER_COMPONENT_ID)
-            print('Userdata component now managed.')
-        except Exception as e:
-            error_msg = f"Failed to set manager for Userdata component: {str(e)}"
-            write_error_to_file(error_msg)
-            print(error_msg)
-            sys.exit(1)
-
         ec2_options = {
             "attributes": {
                 "/domain/InstanceType": "c6i.16xlarge",
@@ -424,7 +407,7 @@ def main():
                 },
                 "/domain/SecurityGroupIds/0": {
                     "$source": {
-                        "component": "frontend-ci-validation-sg",
+                        "component": "sg-0e50ac4c9ceafb97c",
                         "path": "/resource_value/GroupId",
                     }
                 },
@@ -436,7 +419,7 @@ def main():
                 },
                 "/domain/SubnetId": {
                     "$source": {
-                        "component": "frontend-ci-validation-subnet-pub-1",
+                        "component": "subnet-0f44d2c9f1fb2ff59",
                         "path": "/resource_value/SubnetId",
                     }
                 },
@@ -452,12 +435,6 @@ def main():
                         "path": "/domain/region"
                     }
                 },
-                "/domain/UserData": {
-                    "$source": {
-                        "component": f'userdata-{str(environment_uuid)}',
-                        "path": "/domain/userdataContentBase64"
-                    }
-                },
                 "/domain/IamInstanceProfile": {
                     "$source": {
                         "component": "ci-validation-instance-instance-profile",
@@ -466,7 +443,7 @@ def main():
                 },
                 "/secrets/AWS Credential": {
                     "$source": {
-                        "component": "si-tools-sandbox",
+                        "component": "si-apps-sandbox",
                         "path": "/secrets/AWS Credential"
                     }
                 }
@@ -486,17 +463,6 @@ def main():
             print(f'EC2 component ID: {ec2_component_id}')
         except Exception as e:
             error_msg = f"Failed to create EC2 instance component: {str(e)}"
-            write_error_to_file(error_msg)
-            print(error_msg)
-            sys.exit(1)
-
-        print(f'Setting manager for EC2 component {ec2_component_id}...')
-        try:
-            manage_component(change_set_id, ec2_component_id,
-                             MANAGER_COMPONENT_ID)
-            print('EC2 component now managed.')
-        except Exception as e:
-            error_msg = f"Failed to set manager for EC2 component: {str(e)}"
             write_error_to_file(error_msg)
             print(error_msg)
             sys.exit(1)

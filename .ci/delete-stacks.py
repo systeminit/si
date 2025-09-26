@@ -5,7 +5,7 @@ import time
 
 API_TOKEN = os.environ.get('SI_API_TOKEN')
 WORKSPACE_ID = os.environ.get("SI_WORKSPACE_ID")
-API_URL = "https://api.systeminit.com"
+API_URL = "https://api.tools.systeminit.com"
 
 if not API_TOKEN or not WORKSPACE_ID:
     raise ValueError(
