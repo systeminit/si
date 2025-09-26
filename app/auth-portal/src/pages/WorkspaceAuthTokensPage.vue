@@ -42,7 +42,7 @@
               inlineLabel
               label="Expiration"
               required
-              placeholder="48h, 1d, 1m, 1y, etc."
+              placeholder="60m, 48h, 3d, 1y, etc."
               type="time-string"
               :maxLength="99"
               @keydown.enter.prevent="onFormSubmit"
