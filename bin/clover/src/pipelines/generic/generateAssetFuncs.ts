@@ -17,7 +17,7 @@ export function generateAssetFuncs(
     const assetFuncUniqueKey = schemaVariant.data.funcUniqueId;
     const assetFuncName = spec.name;
 
-    const assetFuncCode = generateAssetCodeFromVariantSpec(schemaVariant);
+    const assetFuncCode = generateAssetCodeFromVariantSpec(schemaVariant, schema.name);
 
     const assetFuncData: FuncSpecData = {
       name: assetFuncName,
@@ -50,6 +50,7 @@ export function generateAssetFuncs(
 
 function generateAssetCodeFromVariantSpec(
   variant: ExpandedSchemaVariantSpec,
+  schemaName: string,
 ): string {
   let declarations = "";
   let adds = "";
@@ -98,6 +99,29 @@ function generateAssetCodeFromVariantSpec(
     adds += propAdds;
   }
 
+  // Code for Secret Definitions
+
+  {
+    if (
+      variant.secretDefinition && variant.secretDefinition.kind === "object"
+    ) {
+      let propDeclarations = `${indent(1)}// Secret Definitions\n`;
+      let propAdds = "";
+
+      for (const prop of variant.secretDefinition.entries) {
+        const varName = `${prop.name.replaceAll(" ", "")}`;
+        propDeclarations += `${
+          indent(
+            1,
+          )
+        }const ${varName} = ${generateSecretDefinitionBuilderString(prop, variant, schemaName, 2)};\n\n`;
+        propAdds += `${indent(2)}.defineSecret(${varName})\n`;
+      }
+      declarations += propDeclarations;
+      adds += propAdds;
+    }
+  }
+
   declarations += "\n";
 
   // Code for Resource Value
@@ -136,6 +160,25 @@ function generateSecretPropBuilderString(
     `new SecretPropBuilder()\n` +
     `${indent(indent_level)}.setName("${prop.name}")\n` +
     `${indent(indent_level)}.setSecretKind("${prop.name}")\n` +
+    `${indent(indent_level)}.build()`
+  );
+}
+
+function generateSecretDefinitionBuilderString(
+  prop: ExpandedPropSpec,
+  variant: ExpandedSchemaVariantSpec,
+  schemaName: string,
+  indent_level: number,
+): string {
+  // Each prop passed to this function should be added as a prop to the SecretDefinitionBuilder
+  const addPropBlock = `${indent(indent_level)}.addProp(\n` +
+    `${indent(indent_level + 1)}${generatePropBuilderString(prop, indent_level + 1)}\n` +
+    `${indent(indent_level)})\n`;
+
+  return (
+    `new SecretDefinitionBuilder()\n` +
+    `${indent(indent_level)}.setName("${schemaName}")\n` +
+    addPropBlock +
     `${indent(indent_level)}.build()`
   );
 }
