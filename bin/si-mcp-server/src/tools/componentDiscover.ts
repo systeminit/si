@@ -168,7 +168,9 @@ export function componentDiscoverTool(server: McpServer) {
                     discoverResponse.data.managementFuncJobStateId,
                 });
                 discoverState = status.data.state;
-                discoverTemplateResult["funcRunId"] = status.data.funcRunId;
+                if (status.data.funcRunId) {
+                  discoverTemplateResult["funcRunId"] = status.data.funcRunId;
+                }
                 currentCount += 1;
               } catch (error) {
                 return errorResponse({

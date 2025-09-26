@@ -41,7 +41,7 @@ const TemplateRunOutputSchemaRaw = {
     managementFuncJobStateId: z.string().describe(
       "The job state ID for the enqueued or executed management function",
     ),
-    message: z.string().optional().describe(
+    message: z.string().nullable().optional().describe(
       "Optional message from the management function execution",
     ),
   }).describe(

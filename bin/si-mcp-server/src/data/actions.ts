@@ -2,12 +2,12 @@ import { z } from "zod";
 
 export const ActionSchemaRaw = {
   actionId: z.string().describe("the action id"),
-  componentId: z.string().describe("the component id the action is on"),
-  componentName: z.string().describe("the component name the action is on"),
+  componentId: z.string().nullable().optional().describe("the component id the action is on"),
+  componentName: z.string().optional().describe("the component name the action is on"),
   funcRunId: z.string().nullable().optional().describe(
     "the function run id for the last executed function for this action",
   ),
-  schemaName: z.string().describe(
+  schemaName: z.string().optional().describe(
     "the schema name of the component the action is on",
   ),
   name: z.string().describe("The name of the Action"),
