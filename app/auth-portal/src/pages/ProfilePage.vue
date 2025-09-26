@@ -209,6 +209,7 @@ watch(storeUser, checkUserOnboarding, { immediate: true });
 watch([refreshAuth0ReqStatus, storeUser], () => {
   if (storeUser.value?.emailVerified) {
     failedEmailVerify.value = false;
+    saveButtonLabel.value = "Save";
   }
 });
 
