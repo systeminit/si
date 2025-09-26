@@ -172,7 +172,7 @@ function generateSecretDefinitionBuilderString(
 ): string {
   // Each prop passed to this function should be added as a prop to the SecretDefinitionBuilder
   const addPropBlock = `${indent(indent_level)}.addProp(\n` +
-    `${indent(indent_level + 1)}${generatePropBuilderString(prop, indent_level + 1)}\n` +
+    `${indent(indent_level + 1)}${generateSecretDefinitionPropBuilderString(prop, indent_level + 1)}\n` +
     `${indent(indent_level)})\n`;
 
   return (
@@ -181,6 +181,38 @@ function generateSecretDefinitionBuilderString(
     addPropBlock +
     `${indent(indent_level)}.build()`
   );
+}
+
+function generateSecretDefinitionPropBuilderString(
+  prop: ExpandedPropSpec,
+  indent_level: number,
+): string {
+  const is_create_only = prop.metadata?.createOnly ?? false;
+
+  const result = `new PropBuilder()\n` +
+    `${indent(indent_level)}.setName("${prop.name}")\n` +
+    `${indent(indent_level)}.setKind("${prop.kind}")\n` +
+    `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
+    generateWidgetString(
+      "password", // Always use password widget for secret definition props
+      is_create_only,
+      indent_level,
+      prop.data?.widgetOptions,
+    ) +
+    (prop.data?.defaultValue
+      ? `${indent(indent_level)}.setDefaultValue(${
+        JSON.stringify(
+          prop.data.defaultValue,
+        )
+      })\n`
+      : "") +
+    (prop.joiValidation
+      ? `${indent(indent_level)}.setValidationFormat(${prop.joiValidation})\n`
+      : "") +
+    generateSuggestSourceString(prop, indent_level) +
+    `${indent(indent_level)}.build()`;
+
+  return result;
 }
 
 function generatePropBuilderString(

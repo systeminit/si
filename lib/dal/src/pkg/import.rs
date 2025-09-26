@@ -1415,6 +1415,8 @@ pub(crate) async fn import_schema_variant(
         .await?;
         let secret_definition_prop_id = secret_definition_prop.id();
 
+        dbg!(&secret_definition_prop);
+
         side_effects.extend(
             create_props(
                 ctx,

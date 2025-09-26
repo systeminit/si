@@ -21,12 +21,12 @@ export function generateCredentialModule(
   specs: ExpandedPkgSpec[],
 ) {
   const credential: HetznerSchema = {
-    typeName: "Hetzner Credential",
-    description: "A Hetzner cloud bearer token",
+    typeName: "Hetzner::Credential::ApiToken",
+    description: "A Hetzner cloud credential connection",
     properties: {
-      "ApiToken": { type: "string" },
+      "HetznerApiToken": { type: "string" },
     },
-    requiredProperties: new Set(["ApiToken"]),
+    requiredProperties: new Set([]),
     primaryIdentifier: [],
   };
 
@@ -37,6 +37,16 @@ export function generateCredentialModule(
     primaryIdentifier: [],
   };
 
+  const credentialSpec = createCredentialSpec(credential, onlyProperties);
+  specs.push(credentialSpec);
+
+  return specs;
+}
+
+function createCredentialSpec(
+  credential: HetznerSchema,
+  onlyProperties: OnlyProperties,
+): ExpandedPkgSpec {
   const domain = createDefaultProp(
     "domain",
     {},
@@ -59,7 +69,7 @@ export function generateCredentialModule(
   );
 
   const secretDefinition = createDefaultPropFromCf(
-    "secrets",
+    "secret_definition",
     credential.properties,
     credential,
     onlyProperties,
@@ -77,12 +87,26 @@ export function generateCredentialModule(
 
   const [schema] = spec.schemas;
   const [schemaVariant] = schema.variants;
-
-  schemaVariant.secretDefinition = secretDefinition;
-
   const funcs = spec.funcs;
   const leafFuncs = schemaVariant.leafFunctions;
   const authFuncs = schemaVariant.authFuncs;
+
+  schemaVariant.secretDefinition = secretDefinition;
+
+  if (schemaVariant.secretDefinition.kind === "object") {
+    const apiTokenProp = schemaVariant.secretDefinition.entries.find((p) =>
+      p.name === "HetznerApiToken"
+    );
+    if (apiTokenProp) {
+      apiTokenProp.data.widgetKind = "Password";
+      apiTokenProp.data.widgetOptions = [
+        {
+          label: "secretKind",
+          value: "HetznerApiToken",
+        },
+      ];
+    }
+  }
 
   for (const func of createQualificationFuncs(domain.uniqueId!)) {
     funcs.push(func);
@@ -101,8 +125,7 @@ export function generateCredentialModule(
     );
   }
 
-  specs.push(spec);
-  return specs;
+  return spec;
 }
 
 export function createQualificationFuncs(domain_id: string): FuncSpec[] {
@@ -131,7 +154,7 @@ export const AUTHENTICATION_FUNC_SPECS = {
     displayName: "Authentication with Hetzner Cloud",
     path: "./src/pipelines/hetzner/funcs/authentication/authenticateHetzner.ts",
     backendKind: "jsAuthentication",
-    responseType: "action",
+    responseType: "void",
   },
 } as const satisfies Record<
   string,

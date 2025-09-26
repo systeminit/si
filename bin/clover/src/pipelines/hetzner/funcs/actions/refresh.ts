@@ -14,7 +14,7 @@ async function main(component: Input): Promise<Output> {
     };
   }
 
-  const endpoint = component.properties?.si?.type;
+  const endpoint = _.get(component.properties, ["domain", "extra", "endpoint"], "");
   const id = component.properties?.domain?.id;
 
   const response = await fetch(

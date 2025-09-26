@@ -581,7 +581,11 @@ function setCreateOnlyProp(data: ExpandedPropSpec["data"]) {
   });
 }
 
-export type DefaultPropType = "domain" | "secrets" | "resource_value";
+export type DefaultPropType =
+  | "domain"
+  | "secrets"
+  | "secret_definition"
+  | "resource_value";
 
 export function createObjectProp(
   name: string,

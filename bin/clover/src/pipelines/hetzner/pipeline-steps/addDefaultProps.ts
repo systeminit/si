@@ -24,9 +24,24 @@ export function addDefaultProps(
       true,
     );
 
+    // Create Endpoint prop
+    {
+      const endpointProp = createScalarProp(
+        "endpoint",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+
+      endpointProp.data.defaultValue = schema.name;
+      endpointProp.data.hidden = true;
+
+      extraProp.entries.push(endpointProp);
+    }
+
     {
       const credProp = createScalarProp(
-        "Hetzner Credential",
+        "Hetzner::Credential::ApiToken",
         "string",
         extraProp.metadata.propPath,
         true,
@@ -35,7 +50,7 @@ export function addDefaultProps(
       credProp.data.widgetOptions = [
         {
           label: "secretKind",
-          value: "Hetzner Credential",
+          value: "Hetzner::Crendential::ApiToken",
         },
       ];
 
@@ -52,12 +67,15 @@ export function addDefaultProps(
     const variant = spec.schemas[0].variants[0];
 
     const secretsProp = variant.secrets;
-    let credentialProp = findPropByName(secretsProp, "Hetzner Credential");
+    let credentialProp = findPropByName(
+      secretsProp,
+      "Hetzner::Credential::ApiToken",
+    );
     if (!credentialProp) continue;
 
     credentialProp = addPropSuggestSource(credentialProp, {
-      schema: "Hetzner Credential",
-      prop: "/secrets/Hetzner Credential",
+      schema: "Hetzner::Crendential::ApiToken",
+      prop: "/secrets/Hetzner::Credential::ApiToken",
     });
 
     // Finalize
@@ -67,4 +85,3 @@ export function addDefaultProps(
 
   return newSpecs;
 }
-

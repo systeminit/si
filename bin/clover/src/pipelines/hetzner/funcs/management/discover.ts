@@ -6,14 +6,17 @@ async function main({ thisComponent }: Input): Promise<Output> {
     );
   }
 
-  const component = thisComponent.properties;
-  const resourceType = _.get(component, ["si", "type"], "locations");
+  const endpoint = _.get(thisComponent.properties, ["domain", "extra", "endpoint"], "");
+
+  if (!endpoint) {
+    throw new Error("Endpoint not found in extra properties");
+  }
 
   const create: Output["ops"]["create"] = {};
   const actions = {};
 
   const response = await fetch(
-    `https://api.hetzner.cloud/v1/${resourceType}`,
+    `https://api.hetzner.cloud/v1/${endpoint}`,
     {
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -27,17 +30,17 @@ async function main({ thisComponent }: Input): Promise<Output> {
   }
 
   const data = await response.json();
-  const resources = data[resourceType] || [];
+  const resources = data[endpoint] || [];
   let importCount = 0;
 
   for (const resource of resources) {
     const resourceId = resource.id?.toString() || resource.name;
-    console.log(`Importing ${resourceType} ${resourceId}`);
+    console.log(`Importing ${endpoint} ${resourceId}`);
 
     const properties = {
       si: {
         resourceId,
-        type: resourceType,
+        type: endpoint,
       },
       domain: {
         ...resource,
@@ -53,7 +56,7 @@ async function main({ thisComponent }: Input): Promise<Output> {
     }
 
     create[resourceId] = {
-      kind: resourceType,
+      kind: endpoint,
       properties,
       attributes: newAttributes,
     };
@@ -65,7 +68,7 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
   return {
     status: "ok",
-    message: `Discovered ${importCount} ${resourceType}`,
+    message: `Discovered ${importCount} ${endpoint}`,
     ops: {
       create,
       actions,
