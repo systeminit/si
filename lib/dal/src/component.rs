@@ -2109,14 +2109,14 @@ impl Component {
         // into being to_delete.
         if to_delete && !original_to_delete {
             // Enqueue delete actions for component
-            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
+            for prototype in ActionPrototype::find_by_kind_for_schema_or_variant(
                 ctx,
-                schema_variant_id,
                 ActionKind::Destroy,
+                schema_variant_id,
             )
             .await?
             {
-                Action::new(ctx, prototype_id, Some(component_id)).await?;
+                Action::new(ctx, prototype.id(), Some(component_id)).await?;
             }
         } else if !to_delete {
             // Remove delete actions for component
@@ -2148,25 +2148,26 @@ impl Component {
                 {
                     // then if the current component has an update action, enqueue it
                     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-                    let mut prototypes_for_variant = SchemaVariant::find_action_prototypes_by_kind(
-                        ctx,
-                        schema_variant_id,
-                        ActionKind::Update,
-                    )
-                    .await?;
+                    let mut prototypes_for_variant =
+                        ActionPrototype::find_by_kind_for_schema_or_variant(
+                            ctx,
+                            ActionKind::Update,
+                            schema_variant_id,
+                        )
+                        .await?;
 
                     if prototypes_for_variant.len() > 1 {
                         // if there are multiple update funcs, not sure which one to enqueue!
                         return Ok(None);
                     }
-                    if let Some(prototype_id) = prototypes_for_variant.pop() {
+                    if let Some(prototype) = prototypes_for_variant.pop() {
                         // Don't enqueue an update if there is already an Action of any kind enqueued for this Component.
                         if Action::find_for_component_id(ctx, component_id)
                             .await?
                             .is_empty()
                         {
                             let new_action =
-                                Action::new(ctx, prototype_id, Some(component_id)).await?;
+                                Action::new(ctx, prototype.id(), Some(component_id)).await?;
                             return Ok(Some(new_action));
                         }
                     }

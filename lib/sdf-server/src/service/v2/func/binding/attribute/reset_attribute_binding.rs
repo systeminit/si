@@ -109,6 +109,7 @@ pub async fn reset_attribute_binding(
                 )
                 .await?;
             }
+            EventualParent::Schema(_) => {}
         }
     }
 
