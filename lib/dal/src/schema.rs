@@ -16,6 +16,7 @@ use si_events::{
     ContentHash,
     Timestamp,
 };
+use si_id::ActionPrototypeId;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -178,6 +179,14 @@ impl Schema {
         destination_id: SchemaVariantId,
         add_fn: add_edge_to_variant,
         discriminant: EdgeWeightKindDiscriminants::Use,
+        result: SchemaResult,
+    );
+
+    implement_add_edge_to!(
+        source_id: SchemaId,
+        destination_id: ActionPrototypeId,
+        add_fn: add_edge_to_action_prototype,
+        discriminant: EdgeWeightKindDiscriminants::ActionPrototype,
         result: SchemaResult,
     );
 

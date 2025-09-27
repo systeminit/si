@@ -84,6 +84,7 @@ pub async fn reset_attribute_binding(
                         func_id,
                         func_display_name: func.display_name.clone(),
                         schema_variant_id: Some(schema_variant_id),
+                        schema_ids: None,
                         component_id: None,
                         subject_name: schema_variant.display_name().to_owned(),
                     },
@@ -102,8 +103,23 @@ pub async fn reset_attribute_binding(
                         func_id,
                         func_display_name: func.display_name.clone(),
                         schema_variant_id: None,
+                        schema_ids: None,
                         component_id: Some(component_id),
                         subject_name: component.name(&ctx).await?.to_owned(),
+                    },
+                    func.name.clone(),
+                )
+                .await?;
+            }
+            EventualParent::Schemas(schema_ids) => {
+                ctx.write_audit_log(
+                    AuditLogKind::DetachFunc {
+                        func_id,
+                        func_display_name: func.display_name.clone(),
+                        schema_variant_id: None,
+                        schema_ids: Some(schema_ids),
+                        component_id: None,
+                        subject_name: func.name.clone(),
                     },
                     func.name.clone(),
                 )

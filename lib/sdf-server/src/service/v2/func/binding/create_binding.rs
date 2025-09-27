@@ -120,7 +120,7 @@ pub async fn create_binding(
                                 AttributeBinding::upsert_attribute_binding(
                                     &ctx,
                                     func_id.into_raw_id().into(),
-                                    eventual_parent,
+                                    eventual_parent.clone(),
                                     attribute_output_location,
                                     arguments,
                                 )
@@ -162,6 +162,7 @@ pub async fn create_binding(
                                         Some(component_id),
                                         None,
                                     ),
+                                    EventualParent::Schemas(_) => (String::new(), None, None),
                                 },
                                 None => (String::new(), None, None),
                             };

@@ -1403,6 +1403,7 @@ impl From<&NodeWeight> for EntityKind {
                 CategoryNodeKind::View => EntityKind::CategoryView,
                 CategoryNodeKind::DiagramObject => EntityKind::CategoryDiagramObject,
                 CategoryNodeKind::DefaultSubscriptionSources => EntityKind::CategoryDiagramObject,
+                CategoryNodeKind::Overlays => EntityKind::CategoryOverlay,
             },
             NodeWeight::Component(_) => EntityKind::Component,
             NodeWeight::Content(content_node_weight) => match content_node_weight

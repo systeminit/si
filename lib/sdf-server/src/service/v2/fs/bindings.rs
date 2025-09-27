@@ -981,6 +981,7 @@ async fn delete_binding(
                 func_id,
                 func_display_name: func.display_name.clone(),
                 schema_variant_id: Some(schema_variant_id),
+                schema_ids: None,
                 component_id: None,
                 subject_name: schema_variant.display_name().to_owned(),
             },
