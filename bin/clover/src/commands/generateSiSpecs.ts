@@ -3,6 +3,7 @@ import _logger from "../logger.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { SchemaSpec } from "../bindings/SchemaSpec.ts";
+import { Provider } from "../types.ts";
 import { bfsPropTree, ExpandedPropSpec } from "../spec/props.ts";
 import {
   ExpandedPkgSpec,
@@ -11,6 +12,7 @@ import {
 } from "../spec/pkgs.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { generateAwsSpecs } from "../pipelines/aws/pipeline.ts";
+import { generateHetznerSpecs } from "../pipelines/hetzner/pipeline.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -21,15 +23,18 @@ export async function generateSiSpecs(options: {
   docLinkCache: string;
   inferred: string;
   services?: string[];
-  provider: string;
+  provider: Provider;
 }) {
   let specs: ExpandedPkgSpec[] = [];
   switch (options.provider) {
     case "aws":
       specs = await generateAwsSpecs(options);
       break;
+    case "hetzner":
+      specs = await generateHetznerSpecs(options);
+      break;
     default:
-      console.log(`Unsupported provider type: ${options.provider}`);
+      console.log(`Unsupported provider type: "${options.provider}"`);
       Deno.exit();
   }
 
@@ -79,7 +84,7 @@ function unexpandSchema(expanded: ExpandedSchemaSpec): SchemaSpec {
 function unexpandVariant(
   expanded: ExpandedSchemaVariantSpec,
 ): SchemaVariantSpec {
-  const { cfSchema: _, ...variant } = expanded;
+  const { ...variant } = expanded;
   bfsPropTree(
     [
       variant.domain,

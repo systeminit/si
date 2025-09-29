@@ -1,11 +1,8 @@
 import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 import _logger from "../../../logger.ts";
-import {
-  CODE_GENERATION_FUNC_SPECS,
-  createFunc,
-  strippedBase64,
-} from "../../../spec/funcs.ts";
-import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
+import { createFunc, strippedBase64 } from "../../../spec/funcs.ts";
+import { CODE_GENERATION_FUNC_SPECS } from "../funcs.ts";
+import { ulid } from "ulid";
 import { FuncArgumentSpec } from "../../../bindings/FuncArgumentSpec.ts";
 
 const logger = _logger.ns("pruneCfAssets").seal();
@@ -15,7 +12,7 @@ export function pruneCfAssets(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
     const [schema] = spec.schemas;
     const [variant] = schema.variants;
 
-    if (!spec.name.includes("::") || variant.cfSchema.handlers) {
+    if (!spec.name.includes("::") || variant.superSchema.handlers) {
       continue;
     }
 
@@ -37,7 +34,7 @@ export function pruneCfAssets(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
 
 function createAttributeFunc() {
   const code = Deno.readTextFileSync(
-    "./src/cloud-control-funcs/attribute/awsCloudControlCfAssetAttr.ts",
+    "./src/pipelines/aws/funcs/attribute/awsCloudControlCfAssetAttr.ts",
   );
   const codeBase64: string = strippedBase64(code);
   const args: FuncArgumentSpec[] = [

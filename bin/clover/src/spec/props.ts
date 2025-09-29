@@ -1,15 +1,19 @@
-import { CfObjectProperty, CfProperty, normalizeProperty } from "../cfDb.ts";
-import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
+import { normalizeProperty } from "../cfDb.ts";
+import { ulid } from "ulid";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
-import _ from "npm:lodash";
+import _ from "lodash";
 import ImportedJoi from "joi";
 import { Extend } from "../extend.ts";
-import { CfSchema } from "../cfDb.ts";
 const { createHash } = await import("node:crypto");
 import { cfPcreToRegexp } from "../pcre.ts";
 import { ExpandedPkgSpec } from "./pkgs.ts";
+import {
+  CfObjectProperty,
+  CfProperty,
+  SuperSchema,
+} from "../pipelines/types.ts";
 
 export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
 
@@ -79,13 +83,13 @@ interface PropSpecOverrides {
   joiValidation?: string;
   cfProp:
     | (CfProperty & {
-        // The name of the definition this property lives under
-        defName?: string;
-      })
+      // The name of the definition this property lives under
+      defName?: string;
+    })
     | undefined;
 }
 
-type CreatePropArgs = {
+export type CreatePropArgs = {
   // The path to this prop, e.g. ["root", "domain"]
   propPath: string[];
   // The definition for this prop in the schema
@@ -97,7 +101,7 @@ type CreatePropArgs = {
 };
 
 export type CreatePropQueue = {
-  cfSchema: CfSchema;
+  superSchema: SuperSchema;
   onlyProperties: OnlyProperties;
   queue: CreatePropArgs[];
 };
@@ -121,19 +125,19 @@ export function findPropByName(
 export function createDefaultPropFromCf(
   name: DefaultPropType,
   properties: Record<string, CfProperty>,
-  cfSchema: CfSchema,
+  superSchema: SuperSchema,
   onlyProperties: OnlyProperties,
 ): ExpandedPropSpecFor["object"] {
   // Enqueue the root prop only, and then iterate over its children
   let rootProp: ExpandedPropSpecFor["object"] | undefined;
   const queue: CreatePropQueue = {
-    cfSchema,
+    superSchema,
     onlyProperties,
     queue: [
       {
         propPath: ["root", name],
         // Pretend the prop only has the specified properties (since we split it up)
-        cfProp: { ...cfSchema, properties },
+        cfProp: { ...superSchema, properties },
         parentProp: undefined,
         addTo: (prop: ExpandedPropSpec) => {
           if (prop.kind !== "object") {
@@ -150,18 +154,23 @@ export function createDefaultPropFromCf(
     const propArgs = queue.queue.shift()!;
     if (propArgs.propPath.length > MAX_PROP_DEPTH) {
       throw new Error(
-        `Prop tree loop detected: Tried creating prop more than 10 levels deep in the prop tree: ${propArgs.propPath}`,
+        `Prop tree loop detected: Tried creating prop more than ${MAX_PROP_DEPTH} levels deep in the prop tree: ${propArgs.propPath}`,
       );
     }
 
-    const prop = createPropFromCf(propArgs, queue);
+    const prop = createPropFromCf(
+      propArgs,
+      queue,
+      createDocLink,
+      childIsRequired,
+    );
     if (!prop) continue;
     if (propArgs.addTo) propArgs.addTo(prop);
   }
 
   if (!rootProp) {
     throw new Error(
-      `createProp for ${cfSchema.typeName} did not generate a ${name} prop`,
+      `createProp for ${superSchema.typeName} did not generate a ${name} prop`,
     );
   }
 
@@ -182,8 +191,13 @@ export function createDefaultProp(
   return createObjectProp(name, ["root"], cfProp, required);
 }
 
+export type DocFn = (
+  { typeName }: SuperSchema,
+  defName: string | undefined,
+  propName?: string,
+) => string;
 export function createDocLink(
-  { typeName }: CfSchema,
+  { typeName }: SuperSchema,
   defName: string | undefined,
   propName?: string,
 ): string {
@@ -212,12 +226,14 @@ export function createDocLink(
   return docLink;
 }
 
-function createPropFromCf(
+export function createPropFromCf(
   { propPath, cfProp, parentProp }: CreatePropArgs,
-  { cfSchema, onlyProperties, queue }: CreatePropQueue,
+  { superSchema, onlyProperties, queue }: CreatePropQueue,
+  docFn: DocFn,
+  requiredFn: requiredFn,
 ): ExpandedPropSpec | undefined {
   const name = propPath[propPath.length - 1];
-  const required = childIsRequired(parentProp, name);
+  const required = requiredFn(superSchema, parentProp, name);
   const propUniqueId = ulid();
   const data: ExpandedPropSpec["data"] = {
     name,
@@ -228,10 +244,9 @@ function createPropFromCf(
     widgetKind: null,
     widgetOptions: [],
     hidden: false,
-    docLink:
-      parentProp?.kind === "object"
-        ? createDocLink(cfSchema, cfProp.defName, name)
-        : null,
+    docLink: parentProp?.kind === "object"
+      ? docFn(superSchema, cfProp.defName, name)
+      : null,
     documentation: cfProp.description ?? null,
     uiOptionals: null,
   };
@@ -366,6 +381,12 @@ function createPropFromCf(
           // We don't validate the whole thing there, but we at least check that it starts with slash!
           validation += `.pattern(/^\\//)`;
           break;
+        case "iso-8601":
+          // TODO
+          break;
+        case "decimal":
+          // TODO
+          break;
         case "string":
           // This seems meaningless (actually, the two fields that use it, QuickSight::DataSet::CreatedAt
           // and QuickSight::DataSet::LastUpdatedAt, are both number types in the actual API, so
@@ -373,9 +394,11 @@ function createPropFromCf(
           break;
         // This is a special case (and seems likely wrong), but may as well support it
         case "(^arn:[a-z\\d-]+:rekognition:[a-z\\d-]+:\\d{12}:collection\\/([a-zA-Z0-9_.\\-]+){1,255})":
-          validation += `.pattern(new RegExp(${JSON.stringify(
-            normalizedCfProp.format,
-          )}))`;
+          validation += `.pattern(new RegExp(${
+            JSON.stringify(
+              normalizedCfProp.format,
+            )
+          }))`;
           break;
         case undefined:
           break;
@@ -391,9 +414,11 @@ function createPropFromCf(
       if (normalizedCfProp.pattern !== undefined) {
         const toRegexp = cfPcreToRegexp(normalizedCfProp.pattern);
         if (toRegexp) {
-          validation += `.pattern(new RegExp(${JSON.stringify(
-            toRegexp.pattern,
-          )}${toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""}))`;
+          validation += `.pattern(new RegExp(${
+            JSON.stringify(
+              toRegexp.pattern,
+            )
+          }${toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""}))`;
         }
       }
       if (required) validation += ".required()";
@@ -468,9 +493,11 @@ function createPropFromCf(
       prop.kind = "object";
       prop.data.widgetKind = "Header";
       prop.entries = [];
-      for (const [name, childCfProp] of Object.entries(
-        normalizedCfProp.properties,
-      )) {
+      for (
+        const [name, childCfProp] of Object.entries(
+          normalizedCfProp.properties,
+        )
+      ) {
         queue.push({
           cfProp: childCfProp,
           propPath: [...propPath, name],
@@ -508,7 +535,13 @@ function createPropFromCf(
   throw new Error(`no matching kind in prop with path: ${propPath}`);
 }
 
+export type requiredFn = (
+  superSchema: SuperSchema,
+  parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
+  childName: string,
+) => boolean;
 function childIsRequired(
+  superSchema: SuperSchema,
   parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ) {
@@ -546,7 +579,11 @@ function setCreateOnlyProp(data: ExpandedPropSpec["data"]) {
   });
 }
 
-export type DefaultPropType = "domain" | "secrets" | "resource_value";
+export type DefaultPropType =
+  | "domain"
+  | "secrets"
+  | "secret_definition"
+  | "resource_value";
 
 export function createObjectProp(
   name: string,

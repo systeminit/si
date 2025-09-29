@@ -1,12 +1,11 @@
 import _ from "lodash";
-import {
-  createDefaultCodeGenFuncs,
-  createLeafFuncSpec,
-} from "../../../spec/funcs.ts";
-import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
+import { createLeafFuncSpec } from "../../spec/funcs.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
+import { FuncSpec } from "../../bindings/FuncSpec.ts";
 
 export function generateDefaultLeafFuncs(
   specs: ExpandedPkgSpec[],
+  fn: LeafFn,
 ): ExpandedPkgSpec[] {
   for (const spec of specs) {
     const [schema] = spec.schemas;
@@ -22,7 +21,7 @@ export function generateDefaultLeafFuncs(
       continue;
     }
 
-    const defaultCodeGenFuncs = createDefaultCodeGenFuncs(domain_id);
+    const defaultCodeGenFuncs = fn(domain_id);
 
     for (const codeGenFunc of defaultCodeGenFuncs) {
       // clone otherwise modifications to these cause changes on all
@@ -36,3 +35,5 @@ export function generateDefaultLeafFuncs(
 
   return specs;
 }
+
+export type LeafFn = (domain_id: string) => FuncSpec[];

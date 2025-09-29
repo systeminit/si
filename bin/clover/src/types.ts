@@ -1,1 +1,1 @@
-export const Provider = "aws" | "hetzner";
+export type Provider = "aws" | "hetzner";

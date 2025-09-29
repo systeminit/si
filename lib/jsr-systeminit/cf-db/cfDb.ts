@@ -15,93 +15,13 @@ import $RefParser from "npm:@apidevtools/json-schema-ref-parser@11.9.3";
 import _logger from "./logger.ts";
 import { ServiceMissing } from "./errors.ts";
 import _ from "npm:lodash@4.17.21";
-import type { Extend } from "./extend.ts";
 import rawCfSchema from "./cf-schema.json" with { type: "json" };
+import { CfDb, CfObjectProperty, CfProperty, CfPropertyType, CfSchema } from "../../../bin/clover/src/pipelines/types.ts";
+
+export type { CfDb, CfObjectProperty, CfProperty, CfPropertyType, CfSchema };
 
 const logger = _logger.ns("cfDb").seal();
 
-type JSONPointer = string;
-
-const CF_PROPERTY_TYPES = [
-  "boolean",
-  "string",
-  "number",
-  "integer",
-  "object",
-  "array",
-  "json",
-] as const;
-export type CfPropertyType = typeof CF_PROPERTY_TYPES[number];
-
-export type CfProperty =
-  | Extend<CfBooleanProperty, { type: "boolean" }>
-  | Extend<CfStringProperty, { type: "string" }>
-  | Extend<CfNumberProperty, { type: "number" }>
-  | Extend<CfIntegerProperty, { type: "integer" }>
-  | Extend<CfArrayProperty, { type: "array" }>
-  | CfObjectProperty // We may infer object-ness if type is undefined but other props are there
-  | Omit<JSONSchema.String, "type"> & { type: "json" }
-  | CfMultiTypeProperty
-  // Then we have this mess of array typed properties
-  | Extend<JSONSchema.Interface, {
-    properties?: Record<string, CfProperty>;
-    type: ["string", CfPropertyType] | [
-      CfPropertyType,
-      "string",
-    ];
-  }>;
-
-export type CfBooleanProperty = JSONSchema.Boolean;
-
-export type CfStringProperty = JSONSchema.String;
-
-export type CfNumberProperty = JSONSchema.Number & {
-  format?: string;
-};
-
-export type CfIntegerProperty = JSONSchema.Integer & {
-  format?: string;
-};
-
-export type CfArrayProperty = Extend<JSONSchema.Array, {
-  // For properties of type array, defines the data structure of each array item.
-  // Contains a single schema. A list of schemas is not allowed.
-  items: CfProperty;
-  // For properties of type array, set to true to specify that the order in which array items are specified must be honored, and that changing the order of the array will indicate a change in the property.
-  // The default is true.
-  insertionOrder?: boolean;
-}>;
-
-export type CfObjectProperty = Extend<JSONSchema.Object, {
-  properties?: Record<string, CfProperty>;
-  // e.g. patternProperties: { "^[a-z]+": { type: "string" } }
-  patternProperties?: Record<string, CfProperty>;
-  // Any properties that are required if this property is specified.
-  dependencies?: Record<string, string[]>;
-  oneOf?: CfObjectProperty[];
-  anyOf?: CfObjectProperty[];
-  allOf?: CfObjectProperty[];
-}>;
-
-type CfMultiTypeProperty =
-  & Pick<JSONSchema.Interface, "$ref" | "$comment" | "title" | "description">
-  & {
-    type?: undefined;
-    oneOf?: CfProperty[];
-    allOf?: CfProperty[];
-    anyOf?: CfProperty[];
-  };
-
-type StringPair =
-  | ["string", "object"]
-  | ["string", "boolean"]
-  | ["string", "number"]
-  | ["string", "integer"]
-  | ["object", "string"]
-  | ["boolean", "string"]
-  | ["number", "string"]
-  | ["string", "array"]
-  | ["integer", "string"];
 
 /**
  * Normalizes a CloudFormation property to ensure consistent structure.
@@ -328,48 +248,6 @@ function isCfObjectProperty(prop: CfProperty): prop is CfObjectProperty {
     "patternProperties" in prop;
 }
 
-export type CfSchema = Extend<CfObjectProperty, {
-  typeName: string;
-  description: string;
-  primaryIdentifier: JSONPointer[];
-  sourceUrl?: string;
-  documentationUrl?: string;
-  replacementStrategy?: "create_then_delete" | "delete_then_create";
-  taggable?: boolean;
-  tagging?: {
-    taggable: boolean;
-    tagOnCreate?: boolean;
-    tagUpdatable?: boolean;
-    cloudFormationSystemTags?: boolean;
-    tagProperty?: string;
-  };
-  handlers?: Record<CfHandlerKind, CfHandler>;
-  remote?: unknown;
-  definitions?: Record<string, CfProperty>;
-  properties: Record<string, CfProperty>;
-  readOnlyProperties?: JSONPointer[];
-  writeOnlyProperties?: JSONPointer[];
-  conditionalCreateOnlyProperties?: JSONPointer[];
-  nonPublicProperties?: JSONPointer[];
-  nonPublicDefinitions?: JSONPointer[];
-  createOnlyProperties?: JSONPointer[];
-  deprecatedProperties?: JSONPointer[];
-  additionalIdentifiers?: JSONPointer[];
-  resourceLink?: {
-    "$comment": JSONSchema.Interface["$comment"];
-    templateUri: string;
-    mappings: Record<string, JSONPointer>;
-  };
-  propertyTransform?: Record<string, string>;
-}>;
-
-export type CfHandlerKind = "create" | "read" | "update" | "delete" | "list";
-export type CfHandler = {
-  permissions: string[];
-  timeoutInMinutes: number;
-};
-
-type CfDb = Record<string, CfSchema>;
 const DB: CfDb = {};
 const DEFAULT_PATH = "./cloudformation-schema";
 const MODULE_URL = new URL(import.meta.url);
