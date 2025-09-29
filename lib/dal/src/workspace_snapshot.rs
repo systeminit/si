@@ -149,6 +149,8 @@ pub enum WorkspaceSnapshotError {
     AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("AttributeValue error: {0}")]
     AttributeValue(#[from] Box<AttributeValueError>),
+    #[error("Cannot create a category node on demand for kind: {0:?}")]
+    CannotCreateOnDemandCategoryNode(CategoryNodeKind),
     #[error("could not find category node of kind: {0:?}")]
     CategoryNodeNotFound(CategoryNodeKind),
     #[error("change set error: {0}")]

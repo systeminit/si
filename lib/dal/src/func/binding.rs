@@ -240,10 +240,11 @@ impl AttributeFuncDestination {
 }
 
 /// Represents at what level a given Prototype is attached to
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EventualParent {
     SchemaVariant(SchemaVariantId),
     Component(ComponentId),
+    Schemas(Vec<SchemaId>),
 }
 impl EventualParent {
     /// Returns an error if the [`EventualParent`] is a locked [`SchemaVariant`]
@@ -252,7 +253,7 @@ impl EventualParent {
             EventualParent::SchemaVariant(schema_variant_id) => {
                 Ok(SchemaVariant::error_if_locked(ctx, *schema_variant_id).await?)
             }
-            EventualParent::Component(_) => Ok(()),
+            EventualParent::Schemas(_) | EventualParent::Component(_) => Ok(()),
         }
     }
 }
@@ -260,8 +261,17 @@ impl EventualParent {
 impl From<EventualParent> for Option<si_events::ComponentId> {
     fn from(value: EventualParent) -> Self {
         match value {
-            EventualParent::SchemaVariant(_) => None,
+            EventualParent::SchemaVariant(_) | EventualParent::Schemas(_) => None,
             EventualParent::Component(component_id) => Some(component_id),
+        }
+    }
+}
+
+impl From<&EventualParent> for Option<si_events::ComponentId> {
+    fn from(value: &EventualParent) -> Self {
+        match value {
+            EventualParent::SchemaVariant(_) | EventualParent::Schemas(_) => None,
+            EventualParent::Component(component_id) => Some(*component_id),
         }
     }
 }
@@ -270,7 +280,16 @@ impl From<EventualParent> for Option<si_events::SchemaVariantId> {
     fn from(value: EventualParent) -> Self {
         match value {
             EventualParent::SchemaVariant(schema_variant_id) => Some(schema_variant_id),
-            EventualParent::Component(_) => None,
+            EventualParent::Component(_) | EventualParent::Schemas(_) => None,
+        }
+    }
+}
+
+impl From<&EventualParent> for Option<si_events::SchemaVariantId> {
+    fn from(value: &EventualParent) -> Self {
+        match value {
+            EventualParent::SchemaVariant(schema_variant_id) => Some(*schema_variant_id),
+            EventualParent::Component(_) | EventualParent::Schemas(_) => None,
         }
     }
 }
@@ -305,8 +324,8 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
             FuncBinding::Attribute(attribute) => si_frontend_types::FuncBinding::Attribute {
                 func_id: Some(attribute.func_id),
                 attribute_prototype_id: Some(attribute.attribute_prototype_id),
-                component_id: attribute.eventual_parent.into(),
-                schema_variant_id: attribute.eventual_parent.into(),
+                component_id: (&attribute.eventual_parent).into(),
+                schema_variant_id: (&attribute.eventual_parent).into(),
                 prop_id: attribute.output_location.into(),
                 output_socket_id: attribute.output_location.into(),
                 argument_bindings: attribute
@@ -326,8 +345,8 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
             },
             FuncBinding::CodeGeneration(code_gen) => {
                 si_frontend_types::FuncBinding::CodeGeneration {
-                    schema_variant_id: code_gen.eventual_parent.into(),
-                    component_id: code_gen.eventual_parent.into(),
+                    schema_variant_id: (&code_gen.eventual_parent).into(),
+                    component_id: (&code_gen.eventual_parent).into(),
                     func_id: Some(code_gen.func_id),
                     attribute_prototype_id: Some(code_gen.attribute_prototype_id),
                     inputs: code_gen
@@ -339,8 +358,8 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
             }
             FuncBinding::Qualification(qualification) => {
                 si_frontend_types::FuncBinding::Qualification {
-                    schema_variant_id: qualification.eventual_parent.into(),
-                    component_id: qualification.eventual_parent.into(),
+                    schema_variant_id: (&qualification.eventual_parent).into(),
+                    component_id: (&qualification.eventual_parent).into(),
                     func_id: Some(qualification.func_id),
                     attribute_prototype_id: Some(qualification.attribute_prototype_id),
                     inputs: qualification
@@ -409,7 +428,7 @@ impl FuncBinding {
                     new_func_id,
                     code_gen.attribute_prototype_id,
                     LeafKind::CodeGeneration,
-                    code_gen.eventual_parent,
+                    code_gen.eventual_parent.clone(),
                     &code_gen.inputs,
                 )
                 .await?
@@ -420,7 +439,7 @@ impl FuncBinding {
                     new_func_id,
                     qualification.attribute_prototype_id,
                     LeafKind::Qualification,
-                    qualification.eventual_parent,
+                    qualification.eventual_parent.clone(),
                     &qualification.inputs,
                 )
                 .await?

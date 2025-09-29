@@ -666,7 +666,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
         HashSet::from_iter(
             bindings
                 .iter()
-                .map(|p| (p.attribute_prototype_id, p.eventual_parent)),
+                .map(|p| (p.attribute_prototype_id, p.eventual_parent.clone())),
         );
     assert_eq!(
         actual_prototype_pairs,                   // expected
@@ -677,7 +677,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     let expected_schema_variant_ids_in_pairs: HashSet<EventualParent> =
         HashSet::from([EventualParent::SchemaVariant(second_updated_variant_id)]);
     let actual_schema_variant_ids_in_pairs: HashSet<EventualParent> =
-        HashSet::from_iter(actual_prototype_pairs.iter().map(|pair| pair.1));
+        HashSet::from_iter(actual_prototype_pairs.iter().map(|pair| pair.1.clone()));
     assert_eq!(
         expected_schema_variant_ids_in_pairs, // expected
         actual_schema_variant_ids_in_pairs    // actual
@@ -866,7 +866,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         bindings.len(), // actual
     );
     let bag = bindings.first().expect("no bags found");
-    let bag_schema_variant_id = bag.eventual_parent;
+    let bag_schema_variant_id = bag.eventual_parent.clone();
     assert_eq!(
         EventualParent::SchemaVariant(first_update_variant_id), // expected
         bag_schema_variant_id                                   // actual

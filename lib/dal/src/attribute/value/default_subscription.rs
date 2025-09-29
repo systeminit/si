@@ -5,7 +5,6 @@ use si_id::{
     AttributeValueId,
     ComponentId,
     PropId,
-    ulid::Ulid,
 };
 
 use super::{
@@ -15,58 +14,16 @@ use super::{
 use crate::{
     Component,
     DalContext,
-    EdgeWeight,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
     Prop,
     PropKind,
     SchemaVariant,
     workspace_snapshot::node_weight::{
-        CategoryNodeWeight,
-        NodeWeight,
         category_node_weight::CategoryNodeKind,
         reason_node_weight::Reason,
     },
 };
-
-async fn get_or_create_default_subscription_category(
-    ctx: &DalContext,
-) -> AttributeValueResult<Ulid> {
-    let snapshot = ctx.workspace_snapshot()?;
-
-    Ok(
-        match snapshot
-            .get_category_node(CategoryNodeKind::DefaultSubscriptionSources)
-            .await?
-        {
-            Some(id) => id,
-            None => {
-                let static_id = CategoryNodeKind::DefaultSubscriptionSources
-                    .static_id()
-                    .unwrap_or_default();
-
-                let node_weight = CategoryNodeWeight::new(
-                    static_id,
-                    static_id,
-                    CategoryNodeKind::DefaultSubscriptionSources,
-                );
-                snapshot
-                    .add_or_replace_node(NodeWeight::Category(node_weight))
-                    .await?;
-                let root_id = snapshot.root().await?;
-                snapshot
-                    .add_edge(
-                        root_id,
-                        EdgeWeight::new(EdgeWeightKind::new_use()),
-                        static_id,
-                    )
-                    .await?;
-
-                static_id
-            }
-        },
-    )
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Hash)]
 pub struct PropSuggestion {
@@ -219,7 +176,10 @@ impl AttributeValue {
         ctx: &DalContext,
         id: AttributeValueId,
     ) -> AttributeValueResult<()> {
-        let category_id = get_or_create_default_subscription_category(ctx).await?;
+        let category_id = ctx
+            .workspace_snapshot()?
+            .get_or_create_static_category_node(CategoryNodeKind::DefaultSubscriptionSources)
+            .await?;
 
         ctx.workspace_snapshot()?
             .remove_edge(
@@ -236,7 +196,10 @@ impl AttributeValue {
         ctx: &DalContext,
         id: AttributeValueId,
     ) -> AttributeValueResult<()> {
-        let category_id = get_or_create_default_subscription_category(ctx).await?;
+        let category_id = ctx
+            .workspace_snapshot()?
+            .get_or_create_static_category_node(CategoryNodeKind::DefaultSubscriptionSources)
+            .await?;
 
         AttributeValue::add_default_subscription_source_edge(
             ctx,
@@ -253,7 +216,10 @@ impl AttributeValue {
         ctx: &DalContext,
         id: AttributeValueId,
     ) -> AttributeValueResult<bool> {
-        let category_id = get_or_create_default_subscription_category(ctx).await?;
+        let category_id = ctx
+            .workspace_snapshot()?
+            .get_or_create_static_category_node(CategoryNodeKind::DefaultSubscriptionSources)
+            .await?;
 
         Ok(ctx
             .workspace_snapshot()?

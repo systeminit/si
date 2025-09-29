@@ -1157,6 +1157,7 @@ impl WorkspaceSnapshotGraphV4 {
                             "Default Subscription Sources (Category)".to_string(),
                             "black",
                         ),
+                        CategoryNodeKind::Overlays => ("Overlay (Category)".into(), "black"),
                     },
                     NodeWeight::Component(component) => (
                         "Component".to_string(),

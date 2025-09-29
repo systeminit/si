@@ -227,6 +227,10 @@ async fn process_execution_result(
         if run_result.status == ResourceStatus::Ok {
             success = true;
 
+            // We have to call this before we remove the action from the graph
+            let prototype_to_trigger =
+                ActionPrototype::get_prototypes_to_trigger(ctx, action_id, prototype.id()).await?;
+
             // Remove `ActionId` from graph as the execution succeeded
             Action::remove_by_id(ctx, action_id).await?;
 
@@ -272,9 +276,7 @@ async fn process_execution_result(
                     .await?;
             }
 
-            let triggered_prototypes =
-                ActionPrototype::get_prototypes_to_trigger(ctx, prototype.id()).await?;
-            for dependency_prototype_id in triggered_prototypes {
+            for dependency_prototype_id in prototype_to_trigger {
                 Action::new(ctx, dependency_prototype_id, Some(component_id)).await?;
             }
         } else {

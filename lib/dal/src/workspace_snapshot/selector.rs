@@ -61,6 +61,7 @@ use super::{
 use crate::{
     DalContext,
     EdgeWeight,
+    EdgeWeightKind,
     EdgeWeightKindDiscriminants,
     InputSocket,
     approval_requirement::{
@@ -79,15 +80,18 @@ use crate::{
     entity_kind::EntityKindResult,
     func::FuncResult,
     prop::PropResult,
-    workspace_snapshot::traits::{
-        approval_requirement::ApprovalRequirementExt,
-        attribute_prototype::AttributePrototypeExt,
-        attribute_prototype_argument::AttributePrototypeArgumentExt,
-        attribute_value::AttributeValueExt,
-        component::ComponentExt,
-        diagram::view::ViewExt,
-        func::FuncExt,
-        prop::PropExt,
+    workspace_snapshot::{
+        node_weight::CategoryNodeWeight,
+        traits::{
+            approval_requirement::ApprovalRequirementExt,
+            attribute_prototype::AttributePrototypeExt,
+            attribute_prototype_argument::AttributePrototypeArgumentExt,
+            attribute_value::AttributeValueExt,
+            component::ComponentExt,
+            diagram::view::ViewExt,
+            func::FuncExt,
+            prop::PropExt,
+        },
     },
 };
 
@@ -353,6 +357,42 @@ impl WorkspaceSnapshotSelector {
             Self::LegacySnapshot(snapshot) => snapshot.get_category_node(kind).await,
             Self::SplitSnapshot(snapshot) => snapshot.get_category_node(kind).await,
         }
+    }
+
+    /// Create category nodes on demand. Only works for For category node kinds
+    /// with static ids. If a category node kind without a static id is
+    /// requested, and does not yet exist, this will produce an error.
+    pub async fn get_or_create_static_category_node(
+        &self,
+        kind: CategoryNodeKind,
+    ) -> WorkspaceSnapshotResult<Ulid> {
+        Ok(match self.get_category_node(kind).await? {
+            Some(id) => id,
+            None => {
+                let Some(static_id) = kind.static_id() else {
+                    return Err(WorkspaceSnapshotError::CannotCreateOnDemandCategoryNode(
+                        kind,
+                    ));
+                };
+
+                let node_weight = CategoryNodeWeight::new(
+                    static_id,
+                    static_id,
+                    CategoryNodeKind::DefaultSubscriptionSources,
+                );
+                self.add_or_replace_node(super::NodeWeight::Category(node_weight))
+                    .await?;
+                let root_id = self.root().await?;
+                self.add_edge(
+                    root_id,
+                    EdgeWeight::new(EdgeWeightKind::new_use()),
+                    static_id,
+                )
+                .await?;
+
+                static_id
+            }
+        })
     }
 
     pub async fn edges_directed(

@@ -20,12 +20,15 @@ use crate::{
     },
 };
 
-/// NOTE: adding new categories can be done in a backwards compatible way, so long as we don't
-/// assume the new categories already exists on the graph. In places where you need to access the
-/// category, check if it exists, and if it doesn't exist, create it (if it makes sense to do so in
-/// the given context). Note that a race to create the category will result in a broken graph(since
-/// having two of the same category would leave the graph in an inconsistent state), so you should
-/// implement the ability to merge your category nodes together.
+/// NOTE: adding new categories can be done in a backwards compatible way, so
+/// long as we don't assume the new categories already exists on the graph. In
+/// places where you need to access the category, check if it exists, and if it
+/// doesn't exist, create it (if it makes sense to do so in the given context).
+/// By giving the new categories a static Ulid, (see below), you can avoid any
+/// conflicts with duplicate category nodes, since the static ids for the
+/// category nodes will have all of their outgoing edges merged on rebase. When
+/// generating a static ulid, use a timestamp far in the past, so that there is
+/// no potential of conflict with an existing Ulid in the system.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Display, EnumIter, Hash)]
 pub enum CategoryNodeKind {
     Action,
@@ -39,9 +42,11 @@ pub enum CategoryNodeKind {
     View,
     DiagramObject,
     DefaultSubscriptionSources,
+    Overlays,
 }
 
 const DEFAULT_SUBSCRIPTION_SOURCE_CATEGORY_ID_STR: &str = "0000DNP8N22X0A8S4CV2APWX3A";
+const OVERLAY_CATEGORY_ID_STR: &str = "0000BQJPTG3PZ3XQG9M3W7BSDR";
 
 impl CategoryNodeKind {
     /// Adding a new category node to an existing workspacewithout migrating a
@@ -60,6 +65,7 @@ impl CategoryNodeKind {
             | CategoryNodeKind::DependentValueRoots
             | CategoryNodeKind::View
             | CategoryNodeKind::DiagramObject => None,
+            CategoryNodeKind::Overlays => Ulid::from_string(OVERLAY_CATEGORY_ID_STR).ok(),
             CategoryNodeKind::DefaultSubscriptionSources => {
                 Ulid::from_string(DEFAULT_SUBSCRIPTION_SOURCE_CATEGORY_ID_STR).ok()
             }

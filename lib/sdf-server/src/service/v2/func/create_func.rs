@@ -160,7 +160,7 @@ pub async fn create_func(
                         let func = FuncAuthoringClient::create_new_attribute_func(
                             ctx,
                             request.name,
-                            eventual_parent,
+                            eventual_parent.clone(),
                             output_location,
                             arg_bindings,
                         )
