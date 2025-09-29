@@ -55,7 +55,7 @@ const FuncCreateInputSchemaRaw = {
       `A typescript function definition. Documentation on functions can be found at https://docs.systeminit.com/reference/asset/function`,
     )
     .optional(),
-  actionKind: z.enum(["Create", "Destroy", "Refresh", "Update"]).optional(),
+  actionKind: z.enum(["Create", "Destroy", "Refresh", "Update", "Manual"]).optional(),
 };
 
 const FuncCreateOutputSchemaRaw = {
@@ -127,6 +127,14 @@ export function funcCreateTool(server: McpServer) {
               },
             });
           } else if (functionType === "action") {
+            if (!actionKind) {
+              return errorResponse({
+                message: "Action kind is required for action functions."
+              });
+            }
+            // else if (actionKind !== "Manual") {
+            //   TODO: Aaron - protect the user against duplicated action functions
+            // }
             await siSchemasApi.createVariantAction({
               ...request,
               createVariantActionFuncV1Request: {
@@ -145,6 +153,13 @@ export function funcCreateTool(server: McpServer) {
           const data: FuncCreateOutputData = {};
           return successResponse(data);
         } catch (error) {
+          const anyError = error as any;
+          if (anyError?.response?.data && JSON.stringify(anyError.response.data).includes("action with kind")) {
+            return errorResponse({
+              message: "An action of the same kind already exists and only one action of each kind is allowed, except for Manual.",
+              hints: "Tell the user that they can't make more than one of this kind of action and ask if they want to make an action of a different kind."
+            });
+          }
           return errorResponse(error);
         }
       });
