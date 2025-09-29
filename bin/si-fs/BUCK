@@ -16,6 +16,10 @@ rust_binary(
     ],
     srcs = glob(["src/**/*.rs"]),
     env = {"CARGO_BIN_NAME": "si-fs"},
+    rustc_flags = select({
+        "config//os:macos": ["-C", "link-arg=-L/usr/local/lib", "-C", "link-arg=-lfuse"],
+        "DEFAULT": [],
+    }),
 )
 
 rust_binary_pkg(

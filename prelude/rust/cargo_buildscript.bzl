@@ -196,6 +196,12 @@ def buildscript_run(
             for path in glob(["{}/**".format(local_manifest_dir)])
         }
 
+    # platform is not supported by the _cargo_buildscript_rule function, so remove it before adding the target
+    #   The error without this - error: Found `platform` extra named parameter(s) for call to _cargo_buildscript_rule
+    #
+    # not sure how to stop it being added by reindeer
+    kwargs.pop("platform", None)
+
     _cargo_buildscript_rule(
         name = name,
         buildscript = buildscript_rule,

@@ -208,3 +208,6 @@ spicedb-grpc = { git = "https://github.com/systeminit/spicedb-client.git", branc
 tokio-postgres-rustls = { git = "https://github.com/jbg/tokio-postgres-rustls.git", branch = "master" }
 
 # END: DEPENDENCIES
+
+[target.'cfg(target_os = "macos")'.dependencies]
+fuser = { version = "0.16.0", features = ["libfuse", "pkg-config"] }
