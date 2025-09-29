@@ -386,17 +386,26 @@ impl ManagementPrototype {
     ) -> ManagementPrototypeResult<ManagementFuncKind> {
         let func_id = Self::func_id(ctx, id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
-        // TODO: Make Management Func Kinds a real thing
+        // TODO: (Brit) Make Management Func Kinds a real thing
         let kind = {
-            if func.name == *"Import from AWS"
+            if func.name.starts_with("Import from ")
                 || func.display_name == Some(("Import from AWS").to_string())
             {
                 ManagementFuncKind::Import
-            } else if func.name == *"Discover on AWS"
-                || func.display_name == Some(("Discover on AWS").to_string())
+            } else if func.name.starts_with("Discover on ")
+                || func
+                    .display_name
+                    .as_ref()
+                    .map(|d| d.starts_with("Discover on "))
+                    .unwrap_or(false)
             {
                 ManagementFuncKind::Discover
-            } else if func.display_name == Some(("Run Template").to_string()) {
+            } else if func
+                .display_name
+                .as_ref()
+                .map(|d| d.starts_with("Run Template"))
+                .unwrap_or(false)
+            {
                 ManagementFuncKind::RunTemplate
             } else {
                 ManagementFuncKind::Other
