@@ -9269,6 +9269,9 @@
   "The Auth type of PartnerApp.": {
     "enum": null
   },
+  "The Autonomous System Number(ASN) for the local Border Gateway Protocol (BGP)": {
+    "enum": null
+  },
   "The Availability Zone (AZ) where the database will be created. For information on AWS-Regions and Availability Zones, see [Regions and Availability Zones](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html).\n For Amazon Aurora, each Aurora DB cluster hosts copies of its storage in three separate Availability Zones. Specify one of these Availability Zones. Aurora automatically chooses an appropriate Availability Zone if you don't specify one.\n Default: A random, system-chosen Availability Zone in the endpoint's AWS-Region.\n Constraints:\n  +  The ``AvailabilityZone`` parameter can't be specified if the DB instance is a Multi-AZ deployment.\n  +  The specified Availability Zone must be in the same AWS-Region as the current endpoint.\n  \n Example: ``us-east-1d``": {
     "enum": null
   },
@@ -9785,6 +9788,9 @@
   "The ID of the Resolver rule that you associated with the VPC that is specified by ``VPCId``.": {
     "enum": null
   },
+  "The ID of the VLAN.": {
+    "enum": null
+  },
   "The ID of the VPC endpoint that the agent has access to.": {
     "enum": null
   },
@@ -9998,6 +10004,9 @@
   "The ID of the link": {
     "enum": null
   },
+  "The ID of the local gateway": {
+    "enum": null
+  },
   "The ID of the local gateway route table virtual interface group.": {
     "enum": null
   },
@@ -10152,6 +10161,9 @@
     "enum": null
   },
   "The ID of the user.": {
+    "enum": null
+  },
+  "The ID of the virtual interface group": {
     "enum": null
   },
   "The ID of the virtual interface group.": {
@@ -10449,6 +10461,9 @@
     "enum": null
   },
   "The Outpost ARN.": {
+    "enum": null
+  },
+  "The Outpost LAG ID.": {
     "enum": null
   },
   "The OutpostResolver instance type.": {
@@ -12137,6 +12152,12 @@
   "The expression determines how often EC2 Image Builder evaluates your pipelineExecutionStartCondition.": {
     "enum": null
   },
+  "The extended 32-bit ASN for the local BGP configuration": {
+    "enum": null
+  },
+  "The extended 32-bit ASN of the BGP peer for use with larger ASN values.": {
+    "enum": null
+  },
   "The external ID of the asset model.": {
     "enum": null
   },
@@ -12723,6 +12744,9 @@
     "enum": null
   },
   "The limit of how many bytes that a message can contain before SQS rejects it. You can specify an integer value from ``1,024`` bytes (1 KiB) to ``262,144`` bytes (256 KiB). The default value is ``262,144`` (256 KiB).": {
+    "enum": null
+  },
+  "The local address.": {
     "enum": null
   },
   "The locality (such as a city or town) in which the certificate subject is located.": {
@@ -15431,7 +15455,13 @@
   "The path you provided to perform the load balancer health check. If you didn't specify a health check path, Lightsail uses the root path of your website (e.g., \"/\").": {
     "enum": null
   },
+  "The peer BGP ASN.": {
+    "enum": null
+  },
   "The peer IP address (GRE outer IP address) on the appliance side of the Connect peer.": {
+    "enum": null
+  },
+  "The peer address.": {
     "enum": null
   },
   "The percentage of matching requests to instrument, after the reservoir is exhausted.": {
