@@ -766,7 +766,7 @@ const startBulkEdit = async () => {
       routes.CreateChangeSet,
     );
     const { req } = await call.post({
-      changeSetName: `Bulk Edit by ${ctx.user?.name}`,
+      name: `Bulk Edit by ${ctx.user?.name}`,
     });
     if (!bulkChangeSet.ok(req)) {
       toast("Creating change set failed");
