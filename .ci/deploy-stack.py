@@ -528,8 +528,8 @@ def main():
         ip_output_file = './ip'
 
         try:
-            public_ip = get_public_ip(base_change_set_id, ec2_component_id, 60,
-                                      5)
+            public_ip = get_public_ip(base_change_set_id, ec2_component_id,
+                                      120, 5)
             print(f"Instance is reachable at: {public_ip}")
             with open(ip_output_file, 'w') as f:
                 f.write(f'{public_ip}')
