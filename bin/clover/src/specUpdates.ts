@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import _logger from "./logger.ts";
-import _ from "npm:lodash";
+import _ from "lodash";
 
 const logger = _logger.ns("packageGen").seal();
 export const EXISTING_PACKAGES = "existing-packages/spec.json";

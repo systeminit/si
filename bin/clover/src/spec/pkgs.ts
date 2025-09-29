@@ -4,7 +4,7 @@ import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { ExpandedPropSpec, ExpandedPropSpecFor } from "./props.ts";
 import { Extend } from "../extend.ts";
 import { SchemaVariantSpecData } from "../bindings/SchemaVariantSpecData.ts";
-import { CfSchema } from "../cfDb.ts";
+import { SuperSchema } from "../pipelines/types.ts";
 
 export type ExpandedPkgSpec = Extend<
   PkgSpec,
@@ -29,7 +29,7 @@ export type ExpandedSchemaVariantSpec = Omit<
       secrets: ExpandedPropSpecFor["object"];
       secretDefinition: ExpandedPropSpec | null;
       resourceValue: ExpandedPropSpecFor["object"];
-      cfSchema: CfSchema;
+      superSchema: SuperSchema;
     }
   >,
   "sockets"

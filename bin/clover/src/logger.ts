@@ -1,4 +1,4 @@
-import adze, { setup } from "npm:adze";
+import adze, { setup } from "adze";
 
 const activeLevel = Deno.env.get("LOG_LEVEL") ?? "info";
 

@@ -1,10 +1,10 @@
-import _ from "npm:lodash";
+import _ from "lodash";
 
-import { bfsPropTree } from "../../../spec/props.ts";
-import pluralize from "npm:pluralize";
-import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
-import { addPropSuggestSource } from "../../../spec/props.ts";
-import _logger from "../../../logger.ts";
+import { bfsPropTree } from "../../spec/props.ts";
+import pluralize from "pluralize";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
+import { addPropSuggestSource } from "../../spec/props.ts";
+import _logger from "../../logger.ts";
 const logger = _logger.ns("test").seal();
 
 export function createSuggestionsForPrimaryIdentifiers(
@@ -52,6 +52,7 @@ export function createSuggestionsForPrimaryIdentifiers(
 
         const nameVariants = new Set<string>();
         for (const name of possibleNames) {
+          if (!name) continue;
           const plural = pluralize(name);
           const spaced = camelToSpaced(name);
           const pluralSpaced = pluralize(spaced);

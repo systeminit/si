@@ -1,12 +1,13 @@
 import _ from "lodash";
 import {
-  createDefaultQualificationFuncs,
   createLeafFuncSpec,
-} from "../../../spec/funcs.ts";
-import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
+} from "../../spec/funcs.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
+import { FuncSpec } from "../../bindings/FuncSpec.ts";
 
 export function generateDefaultQualificationFuncs(
   specs: ExpandedPkgSpec[],
+  fn: QualificationFn,
 ): ExpandedPkgSpec[] {
   const newSpecs = [] as ExpandedPkgSpec[];
 
@@ -24,9 +25,7 @@ export function generateDefaultQualificationFuncs(
       continue;
     }
 
-    const defaultQualificationFuncs = createDefaultQualificationFuncs(
-      domain_id,
-    );
+    const defaultQualificationFuncs = fn(domain_id);
 
     for (const func of defaultQualificationFuncs) {
       // clone otherwise modifications to these cause changes on all
@@ -45,3 +44,5 @@ export function generateDefaultQualificationFuncs(
 
   return newSpecs;
 }
+
+export type QualificationFn = (domain_id: string) => FuncSpec[];

@@ -12,6 +12,8 @@
     "json-schema-typed": "npm:json-schema-typed@^8.0.1",
     "lodash": "npm:lodash@^4.17.21",
     "openai": "npm:openai@^4.85.1",
+    "ulid": "https://deno.land/x/ulid@v0.3.0/mod.ts",
+    "pluralize": "npm:pluralize@^8.0.0",
     "cf-db": "../../lib/jsr-systeminit/cf-db"
   }
 }

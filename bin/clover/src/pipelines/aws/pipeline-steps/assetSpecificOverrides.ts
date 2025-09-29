@@ -1,4 +1,4 @@
-import _ from "npm:lodash";
+import _ from "lodash";
 import _logger from "../../../logger.ts";
 import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 import {
@@ -10,22 +10,20 @@ import {
   findPropByName,
 } from "../../../spec/props.ts";
 import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
-import {
-  ACTION_FUNC_SPECS,
-  createActionFuncSpec,
-  createFunc,
-  createLeafFuncSpec,
-  MANAGEMENT_FUNCS,
-  modifyFunc,
-  strippedBase64,
-} from "../../../spec/funcs.ts";
-import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
+import { ACTION_FUNC_SPECS, MANAGEMENT_FUNCS } from "../funcs.ts";
+import { ulid } from "ulid";
 import { FuncArgumentSpec } from "../../../bindings/FuncArgumentSpec.ts";
 import { ActionFuncSpecKind } from "../../../bindings/ActionFuncSpecKind.ts";
 import { FuncSpec } from "../../../bindings/FuncSpec.ts";
 import { ActionFuncSpec } from "../../../bindings/ActionFuncSpec.ts";
 import { LeafFunctionSpec } from "../../../bindings/LeafFunctionSpec.ts";
-import { AttrFuncInputSpec } from "../../../bindings/AttrFuncInputSpec.ts";
+import {
+  createActionFuncSpec,
+  createFunc,
+  createLeafFuncSpec,
+  modifyFunc,
+  strippedBase64,
+} from "../../../spec/funcs.ts";
 
 // Easy way to create property overrides
 // Matches the schema and prop and calls the override
@@ -232,7 +230,7 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       const variant = spec.schemas[0].variants[0];
 
       const overrideUserDataAttributeFuncCode = Deno.readTextFileSync(
-        "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/attribute/base64EncodeUserData.ts",
+        "./src/pipelines/aws/funcs/overrides/AWS::EC2::Instance/attribute/base64EncodeUserData.ts",
       );
       const overrideUserDataAttributeFuncArgs: FuncArgumentSpec[] = [
         {
@@ -260,7 +258,7 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       // Create the Reboot Action
       const { func: rebootFunc, actionFuncSpec: rebootActionFuncSpec } =
         attachExtraActionFunction(
-          "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/reboot.ts",
+          "./src/pipelines/aws/funcs/overrides/AWS::EC2::Instance/actions/reboot.ts",
           "Reboot Ec2 Instance",
           "other",
           "5e38470604abb5c3ccc2ab60b31c5c0a05e9b381a2db73a15f4f8d55ec441bbd",
@@ -271,7 +269,7 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       // Create the Stop Action
       const { func: stopFunc, actionFuncSpec: stopActionFuncSpec } =
         attachExtraActionFunction(
-          "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/stop.ts",
+          "./src/pipelines/aws/funcs/overrides/AWS::EC2::Instance/actions/stop.ts",
           "Stop Ec2 Instance",
           "other",
           "de2c03b1caff5e7a1011a8c0ac6dc6dc99af77d15d0bc1f93e7c4eb9d7307f22",
@@ -282,7 +280,7 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       // Create the Start Action
       const { func: startFunc, actionFuncSpec: startActionFuncSpec } =
         attachExtraActionFunction(
-          "./src/cloud-control-funcs/overrides/AWS::EC2::Instance/actions/start.ts",
+          "./src/pipelines/aws/funcs/overrides/AWS::EC2::Instance/actions/start.ts",
           "Start Ec2 Instance",
           "other",
           "f78a129cebfdb45c688df8622056e5ee2b81a41d8896c2ce7b24d0a709102d1f",
@@ -308,7 +306,7 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       const newImportId =
         "0583c411a5b41594706ae8af473ed6d881357a1e692fb53981417f625f99374b";
       const importPath =
-        "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/import.ts";
+        "./src/pipelines/aws/funcs/overrides/AWS::EC2::LaunchTemplate/import.ts";
 
       modifyFunc(spec, importTargetId, newImportId, importPath);
 
@@ -316,7 +314,7 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       const newDiscoverId =
         "cfebba8fc2d7cd88e5fc2b0c47a777b3737b8c2bcb88fbbb143be48018f22836";
       const discoverPath =
-        "./src/cloud-control-funcs/overrides/AWS::EC2::LaunchTemplate/discover.ts";
+        "./src/pipelines/aws/funcs/overrides/AWS::EC2::LaunchTemplate/discover.ts";
 
       modifyFunc(spec, discoverTargetId, newDiscoverId, discoverPath);
     },
@@ -366,7 +364,7 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       if (!domainId) return;
 
       const { func, leafFuncSpec } = attachQualificationFunction(
-        "./src/cloud-control-funcs/overrides/AWS::EC2::SecurityGroupIngress/qualifications/checkForEitherGroupIdOrGroupName.ts",
+        "./src/pipelines/aws/funcs/overrides/AWS::EC2::SecurityGroupIngress/qualifications/checkForEitherGroupIdOrGroupName.ts",
         "GroupId OR GroupName",
         "23f026310223509f053b55bfa386772eecc2d00e3090dbeb65766ac63f8c53a2",
         domainId,
@@ -387,14 +385,14 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       const newUpdateId =
         "c7e6bf82e9d7fa438f6a9151a1b1f4c6f4b18ae50eacf462bc81d2b31278e1c5";
       const updatePath =
-        "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/awsCloudControlUpdate.ts";
+        "./src/pipelines/aws/funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/awsCloudControlUpdate.ts";
       modifyFunc(spec, updateTargetId, newUpdateId, updatePath);
 
       const {
         func: refreshInstancesFunc,
         actionFuncSpec: refreshInstancesFuncSpec,
       } = attachExtraActionFunction(
-        "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/instanceRefresh.ts",
+        "./src/pipelines/aws/funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/instanceRefresh.ts",
         "Refresh Autoscaling Group Instances",
         "other",
         "300d62f40cb1268e6f4cd2320be8c373da7f148d0d9e6e69d1b2879202794b5f",
@@ -630,7 +628,7 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       const newUpdateId =
         "7eb4e58626f9fd7ee003bb9a1de814ab31cbb8ea2ae87d844864058bc4296c63";
       const newUpdatePath =
-        "./src/cloud-control-funcs/overrides/AWS::ECS::TaskDefinition/actions/update.ts";
+        "./src/pipelines/aws/funcs/overrides/AWS::ECS::TaskDefinition/actions/update.ts";
       modifyFunc(spec, updateTargetId, newUpdateId, newUpdatePath);
     },
   ],
@@ -789,7 +787,7 @@ const SCHEMA_OVERRIDES = new Map<string, OverrideFn>([
       const newRefreshId =
         "fd3706e543528a703c674f42c07d3f2443b2e3c40bfc88a81a7f4501af5e7122";
       const refreshPath =
-        "./src/cloud-control-funcs/overrides/AWS::EC2::VPNConnection/actions/refresh.ts";
+        "./src/pipelines/aws/funcs/overrides/AWS::EC2::VPNConnection/actions/refresh.ts";
       modifyFunc(spec, refreshTargetId, newRefreshId, refreshPath);
     },
   ],

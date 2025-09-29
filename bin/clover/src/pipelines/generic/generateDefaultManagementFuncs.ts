@@ -1,22 +1,24 @@
 import _ from "lodash";
-import {
-  createDefaultManagementFuncs,
-  createManagementFuncSpec,
-} from "../../../spec/funcs.ts";
-import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
+import { createManagementFuncSpec } from "../../spec/funcs.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
+import { CfHandlerKind } from "../types.ts";
+import { FuncSpec } from "../../bindings/FuncSpec.ts";
 
-export function attachDefaultManagementFuncs(
+export function generateDefaultManagementFuncs(
   specs: ExpandedPkgSpec[],
+  fn: ManagementFn,
 ): ExpandedPkgSpec[] {
-  const defaultMgmtFuncs = createDefaultManagementFuncs();
+  const defaultMgmtFuncs = fn();
 
   for (const spec of specs) {
     const { funcs, schemas: [{ variants: [variant] }] } = spec;
-    const { cfSchema } = variant;
+    const { superSchema } = variant;
 
     for (const { func, handlers } of defaultMgmtFuncs) {
       // Skip management funcs that require handlers we don't have
-      if (!handlers.every((handler) => cfSchema.handlers?.[handler])) continue;
+      if (!handlers.every((handler) => superSchema.handlers?.[handler])) {
+        continue;
+      }
 
       // clone otherwise modifications to these cause changes on all
       // specs
@@ -29,3 +31,5 @@ export function attachDefaultManagementFuncs(
 
   return specs;
 }
+
+export type ManagementFn = () => { func: FuncSpec; handlers: CfHandlerKind[] }[];

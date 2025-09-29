@@ -3,6 +3,7 @@ import { fetchSchema } from "./commands/fetchSchema.ts";
 import { generateSiSpecs } from "./commands/generateSiSpecs.ts";
 import { generateTarFromSpec } from "./commands/generateTarFromSpec.ts";
 import { inferAi } from "./commands/inferAi.ts";
+import type { Provider } from "./types.ts";
 
 const DEFAULT_MODULE_INDEX_URL = "http://0.0.0.0:5157";
 
@@ -32,7 +33,7 @@ export async function run() {
       },
     )
     .action(async (options) => {
-      await fetchSchema(options.provider);
+      await fetchSchema(options.provider as Provider);
     })
     // generate-specs
     .command(
@@ -79,6 +80,7 @@ To generate all specs containing "ECS" or "S3", you can pass some services as ar
       await generateSiSpecs(
         {
           ...options,
+          provider: options.provider as Provider,
           moduleIndexUrl: options.moduleIndexUrl ?? DEFAULT_MODULE_INDEX_URL,
           services: services?.length > 0 ? services : undefined,
         },

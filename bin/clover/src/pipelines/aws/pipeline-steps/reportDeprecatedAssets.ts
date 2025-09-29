@@ -1,5 +1,5 @@
 import _logger from "../../../logger.ts";
-import _ from "npm:lodash";
+import _ from "lodash";
 import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 const logger = _logger.ns("reportDeprecated").seal();
 

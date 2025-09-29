@@ -1,15 +1,9 @@
-import type { FuncSpecData } from "../../../../../../lib/si-pkg/bindings/FuncSpecData.ts";
-import { FuncSpec } from "../../../../../../lib/si-pkg/bindings/FuncSpec.ts";
+import type { FuncSpecData } from "../../../../../lib/si-pkg/bindings/FuncSpecData.ts";
+import { FuncSpec } from "../../../../../lib/si-pkg/bindings/FuncSpec.ts";
 import _ from "lodash";
-import { strippedBase64 } from "../../../spec/funcs.ts";
-import {
-  CREATE_ONLY_PROP_LABEL,
-  ExpandedPropSpec,
-} from "../../../spec/props.ts";
-import {
-  ExpandedPkgSpec,
-  ExpandedSchemaVariantSpec,
-} from "../../../spec/pkgs.ts";
+import { strippedBase64 } from "../../spec/funcs.ts";
+import { CREATE_ONLY_PROP_LABEL, ExpandedPropSpec } from "../../spec/props.ts";
+import { ExpandedPkgSpec, ExpandedSchemaVariantSpec } from "../../spec/pkgs.ts";
 
 export function generateAssetFuncs(
   specs: ExpandedPkgSpec[],
@@ -23,7 +17,7 @@ export function generateAssetFuncs(
     const assetFuncUniqueKey = schemaVariant.data.funcUniqueId;
     const assetFuncName = spec.name;
 
-    const assetFuncCode = generateAssetCodeFromVariantSpec(schemaVariant);
+    const assetFuncCode = generateAssetCodeFromVariantSpec(schemaVariant, schema.name);
 
     const assetFuncData: FuncSpecData = {
       name: assetFuncName,
@@ -56,6 +50,7 @@ export function generateAssetFuncs(
 
 function generateAssetCodeFromVariantSpec(
   variant: ExpandedSchemaVariantSpec,
+  schemaName: string,
 ): string {
   let declarations = "";
   let adds = "";
@@ -104,6 +99,29 @@ function generateAssetCodeFromVariantSpec(
     adds += propAdds;
   }
 
+  // Code for Secret Definitions
+
+  {
+    if (
+      variant.secretDefinition && variant.secretDefinition.kind === "object"
+    ) {
+      let propDeclarations = `${indent(1)}// Secret Definitions\n`;
+      let propAdds = "";
+
+      for (const prop of variant.secretDefinition.entries) {
+        const varName = `${prop.name.replaceAll(" ", "")}`;
+        propDeclarations += `${
+          indent(
+            1,
+          )
+        }const ${varName} = ${generateSecretDefinitionBuilderString(prop, schemaName, 2)};\n\n`;
+        propAdds += `${indent(2)}.defineSecret(${varName})\n`;
+      }
+      declarations += propDeclarations;
+      adds += propAdds;
+    }
+  }
+
   declarations += "\n";
 
   // Code for Resource Value
@@ -144,6 +162,56 @@ function generateSecretPropBuilderString(
     `${indent(indent_level)}.setSecretKind("${prop.name}")\n` +
     `${indent(indent_level)}.build()`
   );
+}
+
+function generateSecretDefinitionBuilderString(
+  prop: ExpandedPropSpec,
+  schemaName: string,
+  indent_level: number,
+): string {
+  // Each prop passed to this function should be added as a prop to the SecretDefinitionBuilder
+  const addPropBlock = `${indent(indent_level)}.addProp(\n` +
+    `${indent(indent_level + 1)}${generateSecretDefinitionPropBuilderString(prop, indent_level + 1)}\n` +
+    `${indent(indent_level)})\n`;
+
+  return (
+    `new SecretDefinitionBuilder()\n` +
+    `${indent(indent_level)}.setName("${schemaName}")\n` +
+    addPropBlock +
+    `${indent(indent_level)}.build()`
+  );
+}
+
+function generateSecretDefinitionPropBuilderString(
+  prop: ExpandedPropSpec,
+  indent_level: number,
+): string {
+  const is_create_only = prop.metadata?.createOnly ?? false;
+
+  const result = `new PropBuilder()\n` +
+    `${indent(indent_level)}.setName("${prop.name}")\n` +
+    `${indent(indent_level)}.setKind("${prop.kind}")\n` +
+    `${indent(indent_level)}.setHidden(${prop.data?.hidden ?? false})\n` +
+    generateWidgetString(
+      "password", // Always use password widget for secret definition props
+      is_create_only,
+      indent_level,
+      prop.data?.widgetOptions,
+    ) +
+    (prop.data?.defaultValue
+      ? `${indent(indent_level)}.setDefaultValue(${
+        JSON.stringify(
+          prop.data.defaultValue,
+        )
+      })\n`
+      : "") +
+    (prop.joiValidation
+      ? `${indent(indent_level)}.setValidationFormat(${prop.joiValidation})\n`
+      : "") +
+    generateSuggestSourceString(prop, indent_level) +
+    `${indent(indent_level)}.build()`;
+
+  return result;
 }
 
 function generatePropBuilderString(

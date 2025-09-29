@@ -58,7 +58,12 @@ const CLOVER_DEFAULT_CREATOR: &str = "Clover";
 #[command(name = "hoist", version = "0.1")]
 #[command(about = "Gets and puts cloud control assets from the module index")]
 struct Args {
-    #[arg(long, short = 'e', env = "SI_MODULE_INDEX_URL")]
+    #[arg(
+        long,
+        short = 'e',
+        default_value = "https://localhost:5157",
+        env = "SI_MODULE_INDEX_URL"
+    )]
     endpoint: String,
     #[arg(long, short = 't', env = "SI_BEARER_TOKEN", hide_env_values(true))]
     token: String,
@@ -75,6 +80,7 @@ async fn main() -> Result<()> {
     let endpoint = &args.endpoint;
     let token = &args.token;
     let client = ModuleIndexClient::new(Url::parse(endpoint)?, token)?;
+    println!("Working with Module Index at: {endpoint}");
 
     match args.command {
         Some(Commands::AnonymizeSpecs(args)) => anonymize_specs(args.target_dir, args.out).await?,
@@ -98,6 +104,7 @@ async fn main() -> Result<()> {
             )
             .await?
         }
+        Some(Commands::ValidateSpecs(args)) => validate_specs(args.target_dir).await?,
         Some(Commands::WriteExistingModulesSpec(args)) => {
             write_existing_modules_spec(client, args.out).await?
         }
@@ -180,6 +187,52 @@ enum ModuleState {
     HashesMatch,
     NeedsUpdate(String), // Contains Remote Module Id
     New,
+}
+
+async fn validate_specs(target_dir: PathBuf) -> Result<()> {
+    let specs = spec_from_dir_or_file(target_dir)?;
+    let mut success_count = 0;
+    let mut error_count = 0;
+
+    println!("Validating {} spec(s)...", specs.len());
+
+    for spec_entry in specs {
+        let spec_path = spec_entry.path();
+        let spec_name = spec_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("unknown");
+
+        match json_to_pkg(spec_path.clone()) {
+            Ok(pkg) => match pkg.metadata() {
+                Ok(metadata) => {
+                    println!(
+                        "✅ {}: {} ({})",
+                        spec_name,
+                        metadata.name(),
+                        metadata.version()
+                    );
+                    success_count += 1;
+                }
+                Err(e) => {
+                    println!("❌ {spec_name}: Failed to get metadata - {e}");
+                    error_count += 1;
+                }
+            },
+            Err(e) => {
+                println!("❌ {spec_name}: Failed to load spec - {e}");
+                error_count += 1;
+            }
+        }
+    }
+
+    println!("\nValidation complete: {success_count} successful, {error_count} failed");
+
+    if error_count > 0 {
+        std::process::exit(1);
+    }
+
+    Ok(())
 }
 
 async fn anonymize_specs(target_dir: PathBuf, out: PathBuf) -> Result<()> {

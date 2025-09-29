@@ -1,5 +1,4 @@
 import { CfProperty, CfSchema } from "../../../cfDb.ts";
-import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import {
   createDefaultPropFromCf,
   createDocLink,
@@ -7,9 +6,13 @@ import {
 } from "../../../spec/props.ts";
 import {
   ExpandedPkgSpec,
-  ExpandedSchemaSpec,
-  ExpandedSchemaVariantSpec,
 } from "../../../spec/pkgs.ts";
+import { makeModule } from "../../generic/index.ts";
+
+export function cfCategory(schema: CfSchema): string {
+  const [metaCategory, category] = schema.typeName.split("::");
+  return `${metaCategory}::${category}`;
+}
 
 export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
   const [metaCategory, category, name] = cfSchema.typeName.split("::");
@@ -17,13 +20,6 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
   if (!["AWS", "Alexa"].includes(metaCategory) || !category || !name) {
     throw `Bad typeName: ${cfSchema.typeName}`;
   }
-
-  const isBuiltin = true;
-
-  const variantUniqueKey = ulid();
-  const assetFuncUniqueKey = ulid();
-  const schemaUniqueKey = ulid();
-  const version = versionFromDate();
 
   const onlyProperties: OnlyProperties = {
     createOnly: normalizeOnlyProperties(cfSchema.createOnlyProperties),
@@ -46,71 +42,18 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
     onlyProperties,
   );
 
-  const variant: ExpandedSchemaVariantSpec = {
-    version,
-    data: {
-      version,
-      link: createDocLink(cfSchema, undefined),
-      color: "#FF9900",
-      displayName: null, // siPkg does not store this
-      componentType: "component",
-      funcUniqueId: assetFuncUniqueKey,
-      description: cfSchema.description,
-    },
-    uniqueId: variantUniqueKey,
-    deleted: false,
-    isBuiltin,
-    actionFuncs: [],
-    authFuncs: [],
-    leafFunctions: [],
-    siPropFuncs: [],
-    managementFuncs: [],
-    domain,
-    secrets: createDefaultPropFromCf("secrets", {}, cfSchema, onlyProperties),
-    secretDefinition: null,
-    resourceValue,
-    rootPropFuncs: [],
+  const secrets =  createDefaultPropFromCf("secrets", {}, cfSchema, onlyProperties);
+
+  return makeModule(
     cfSchema,
-  };
-
-  const schema: ExpandedSchemaSpec = {
-    name: cfSchema.typeName,
-    data: {
-      name: cfSchema.typeName,
-      category: `${metaCategory}::${category}`,
-      categoryName: null,
-      uiHidden: false,
-      defaultSchemaVariant: variantUniqueKey,
-    },
-    uniqueId: schemaUniqueKey,
-    deleted: false,
-    isBuiltin,
-    variants: [variant],
-  };
-
-  return {
-    kind: "module",
-    name: cfSchema.typeName,
-    version,
-    description: cfSchema.description,
-    createdAt: new Date().toISOString(),
-    createdBy: "Clover",
-    defaultChangeSet: null,
-    workspacePk: null,
-    workspaceName: null,
-    schemas: [schema],
-    funcs: [],
-    changeSets: [], // always empty
-  };
+    createDocLink(cfSchema, undefined),
+    cfSchema.description,
+    domain,
+    resourceValue,
+    secrets,
+    cfCategory,
+  )
 }
-
-function versionFromDate(): string {
-  return new Date()
-    .toISOString()
-    .replace(/[-:T.Z]/g, "")
-    .slice(0, 14);
-}
-
 // Remove all read only props from this list, since readonly props go on the
 // resource value tree
 function pruneDomainValues(

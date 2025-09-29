@@ -5,7 +5,7 @@ const logger = _logger.ns("fetchSchema").seal();
 
 export async function fetchSchema(provider: Provider) {
   switch (provider) {
-    case "aws":
+    case "aws": {
       const td = new TextDecoder();
       const child = await new Deno.Command(
         Deno.execPath(),
@@ -23,7 +23,8 @@ export async function fetchSchema(provider: Provider) {
         throw new CommandFailed("failed to fetch schema");
       }
       break;
-    case "hetzner":
+    }
+    case "hetzner": {
       const url = "https://docs.hetzner.cloud/cloud.spec.json";
       const resp = await fetch(url);
       if (resp.ok) {
@@ -36,6 +37,7 @@ export async function fetchSchema(provider: Provider) {
         throw new CommandFailed(`Hetzner unreachable at: ${url}`);
       }
       break;
+    }
     default:
       console.log(`Unsupported provider type: ${provider}`);
       Deno.exit();
