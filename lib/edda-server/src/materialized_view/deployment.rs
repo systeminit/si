@@ -629,13 +629,22 @@ where
 {
     // For deployment MVs, check if object exists in deployment storage
     let op = {
-        let maybe_previous_version = frigg
+        let maybe_previous_version = match frigg
             .get_current_deployment_object_with_index(
                 mv_kind,
                 &mv_id,
                 (*maybe_deployment_mv_index).clone(),
             )
-            .await?;
+            .await
+        {
+            Ok(maybe_previous) => maybe_previous,
+            Err(err) => {
+                warn!(
+                    "Unable to retreive previous deployment MV version; proceeding without: {err}"
+                );
+                None
+            }
+        };
 
         if let Some(previous_version) = maybe_previous_version {
             BuildMvOp::UpdateFrom {
