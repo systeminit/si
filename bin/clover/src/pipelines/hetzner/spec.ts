@@ -64,13 +64,19 @@ export function pkgSpecFromHetnzer(allSchemas: JsonSchema): ExpandedPkgSpec[] {
 
     const domain = createDefaultProp(
       "domain",
-      pruneDomainValues(schema.properties as Record<string, CfProperty>, onlyProperties),
+      pruneDomainValues(
+        schema.properties as Record<string, CfProperty>,
+        onlyProperties,
+      ),
       normalizedOnlyProperties,
       schema,
     );
     const resourceValue = createDefaultProp(
       "resource_value",
-      pruneResourceValues(schema.properties as Record<string, CfProperty>, onlyProperties),
+      pruneResourceValues(
+        schema.properties as Record<string, CfProperty>,
+        onlyProperties,
+      ),
       normalizedOnlyProperties,
       schema,
     );
@@ -266,11 +272,10 @@ export function mergeResourceOperations(
     primaryIdentifier: ["id"],
   };
 
-  // createOnly: only in POST, not in PUT/GET/DELETE
+  // createOnly: only in POST, not in PUT
   createProperties.forEach((prop) => {
     if (
-      !updateProperties.has(prop) && !getProperties.has(prop) &&
-      !deleteProperties.has(prop)
+      !updateProperties.has(prop)
     ) {
       onlyProperties.createOnly.push(`/${prop}`);
     }
@@ -348,8 +353,7 @@ function pruneDomainValues(
   return Object.fromEntries(
     Object.entries(properties)
       .filter(
-        ([name, prop]) =>
-          prop && !readOnlySet.has(`/${name}`),
+        ([name, prop]) => prop && !readOnlySet.has(`/${name}`),
       ),
   );
 }
@@ -366,8 +370,7 @@ function pruneResourceValues(
   return Object.fromEntries(
     Object.entries(properties)
       .filter(
-        ([name, prop]) =>
-          prop && readOnlySet.has(`/${name}`),
+        ([name, prop]) => prop && readOnlySet.has(`/${name}`),
       ),
   );
 }
