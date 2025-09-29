@@ -1,10 +1,17 @@
+import _ from "lodash";
 import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 import {
   addPropSuggestSource,
   createObjectProp,
   createScalarProp,
+  ExpandedPropSpec,
   findPropByName,
 } from "../../../spec/props.ts";
+
+export interface PropUsageMap {
+  createOnly: string[];
+  updatable: string[];
+}
 
 export function addDefaultProps(
   specs: ExpandedPkgSpec[],
@@ -34,14 +41,48 @@ export function addDefaultProps(
       );
 
       endpointProp.data.defaultValue = schema.name;
-      endpointProp.data.hidden = true;
 
       extraProp.entries.push(endpointProp);
     }
 
+    // Create PropUsageMap
+    {
+      const propUsageMapProp = createScalarProp(
+        "PropUsageMap",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      const propUsageMap: PropUsageMap = {
+        createOnly: [],
+        updatable: [],
+      };
+
+      const queue: ExpandedPropSpec[] = _.cloneDeep(domain.entries);
+
+      while (queue.length > 0) {
+        const prop = queue.pop();
+        if (!prop) break;
+
+        if (prop.metadata.createOnly) {
+          propUsageMap.createOnly.push(prop.name);
+        } else if (!prop.metadata.readOnly) {
+          propUsageMap.updatable.push(prop.name);
+        }
+
+        if (prop.kind === "object") {
+          prop.entries.forEach((p) => queue.unshift(p));
+        }
+      }
+
+      propUsageMapProp.data.defaultValue = JSON.stringify(propUsageMap);
+      propUsageMapProp.data.hidden = true;
+      extraProp.entries.push(propUsageMapProp);
+    }
+
     {
       const credProp = createScalarProp(
-        "Hetzner::Credential::ApiToken",
+        "Hetzner Api Token",
         "string",
         extraProp.metadata.propPath,
         true,
@@ -50,7 +91,7 @@ export function addDefaultProps(
       credProp.data.widgetOptions = [
         {
           label: "secretKind",
-          value: "Hetzner::Crendential::ApiToken",
+          value: "Hetzner::Credential::ApiToken",
         },
       ];
 
@@ -69,7 +110,7 @@ export function addDefaultProps(
     const secretsProp = variant.secrets;
     let credentialProp = findPropByName(
       secretsProp,
-      "Hetzner::Credential::ApiToken",
+      "Hetzner Api Token",
     );
     if (!credentialProp) continue;
 

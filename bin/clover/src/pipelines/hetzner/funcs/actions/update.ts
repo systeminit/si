@@ -10,7 +10,7 @@ async function main(component: Input): Promise<Output> {
   if (!resource) {
     return {
       status: component.properties.resource?.status ?? "error",
-      message: "Could not refresh, no resourceId present",
+      message: "Could not update, no resource present",
     };
   }
 
@@ -20,14 +20,31 @@ async function main(component: Input): Promise<Output> {
     "",
   );
   const id = component.properties?.resource?.payload.id;
+  const updatePayload = component.properties.domain;
+
+  if (!endpoint) {
+    return {
+      status: "error",
+      message: "No endpoint found in domain configuration",
+    };
+  }
+
+  if (!id) {
+    return {
+      status: "error",
+      message: "No resource ID found for update",
+    };
+  }
 
   const response = await fetch(
     `https://api.hetzner.cloud/v1/${endpoint}/${id}`,
     {
+      method: "PUT",
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
+      body: JSON.stringify(updatePayload),
     },
   );
 

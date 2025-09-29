@@ -10,7 +10,7 @@ async function main(component: Input): Promise<Output> {
   if (!resource) {
     return {
       status: component.properties.resource?.status ?? "error",
-      message: "Could not refresh, no resourceId present",
+      message: "Could not delete, no resourceId present",
     };
   }
 
@@ -24,6 +24,7 @@ async function main(component: Input): Promise<Output> {
   const response = await fetch(
     `https://api.hetzner.cloud/v1/${endpoint}/${id}`,
     {
+      method: "DELETE",
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -35,10 +36,7 @@ async function main(component: Input): Promise<Output> {
     throw new Error(`API Error: ${response.status} ${response.statusText}`);
   }
 
-  const result = await response.json();
-  const noun = endpoint.slice(0, -1);
   return {
-    payload: result[noun],
     status: "ok",
   };
 }
