@@ -173,7 +173,7 @@ tower-http = { version = "0.4.4", features = ["compression-br", "compression-def
 tracing = { version = "0.1.41" }
 tracing-appender = "0.2.3"
 tracing-opentelemetry = "0.27.0"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json", "std"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json", "std"] }
 tracing-tunnel = "0.1.0"
 trybuild = { version = "1.0.101", features = ["diff"] }
 tryhard = "0.5.1"
