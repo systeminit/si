@@ -14,7 +14,6 @@ use dal::{
     SchemaVariant,
     SchemaVariantId,
     WorkspacePk,
-    WsEvent,
     func::authoring::FuncAuthoringClient,
 };
 use serde::{
@@ -80,17 +79,13 @@ pub async fn create_unlocked_copy(
         FuncAuthoringClient::create_unlocked_func_copy(&ctx, func_id, request.schema_variant_id)
             .await?;
     let code = get_code_response(&ctx, new_func.id).await?;
-    let summary = new_func.into_frontend_type(&ctx).await?;
+    let summary = FuncAuthoringClient::publish_func_create_event(&ctx, &new_func).await?;
 
     let variant = if let Some(schema_variant_id) = request.schema_variant_id {
         SchemaVariant::get_by_id_opt(&ctx, schema_variant_id).await?
     } else {
         None
     };
-    WsEvent::func_created(&ctx, summary.clone())
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     track(
         &posthog_client,

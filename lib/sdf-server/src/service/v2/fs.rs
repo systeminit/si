@@ -1032,11 +1032,7 @@ async fn create_func(
     ctx.write_audit_log(attach_audit_log, func.name.clone())
         .await?;
 
-    let summary = func.into_frontend_type(&ctx).await?;
-    WsEvent::func_created(&ctx, summary)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    FuncAuthoringClient::publish_func_create_event(&ctx, &func).await?;
 
     let bindings_size = get_bindings(&ctx, func.id, schema_id).await?.0.byte_size();
     let types_size = func_types_size(&ctx, func.id).await?;
@@ -1501,11 +1497,7 @@ async fn unlock_func(
         variant
     };
 
-    let summary = new_func.into_frontend_type(&ctx).await?;
-    WsEvent::func_created(&ctx, summary.clone())
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    FuncAuthoringClient::publish_func_create_event(&ctx, &new_func).await?;
 
     ctx.write_audit_log(
         AuditLogKind::UnlockFunc {
