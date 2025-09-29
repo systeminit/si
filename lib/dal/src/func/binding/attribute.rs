@@ -440,6 +440,7 @@ impl AttributeBinding {
                             .await?;
                         }
                     }
+                    EventualParent::Schema(_) => {}
                 }
             }
             AttributeFuncDestination::OutputSocket(output_socket_id) => {
@@ -493,6 +494,7 @@ impl AttributeBinding {
                         )
                         .await?;
                     }
+                    EventualParent::Schema(_) => {}
                 }
             }
             // we don't let users configure this right now

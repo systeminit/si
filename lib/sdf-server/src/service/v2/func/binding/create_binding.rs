@@ -162,6 +162,7 @@ pub async fn create_binding(
                                         Some(component_id),
                                         None,
                                     ),
+                                    EventualParent::Schema(_) => (String::new(), None, None),
                                 },
                                 None => (String::new(), None, None),
                             };

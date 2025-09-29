@@ -175,6 +175,7 @@ pub async fn delete_binding(
                 )
                 .await?;
             }
+            EventualParent::Schema(_) => {}
         }
     }
 
