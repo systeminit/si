@@ -35,6 +35,7 @@ use base64::{
 };
 use chrono::Utc;
 use si_events::FuncRunId;
+use si_frontend_types::FuncSummary;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -773,5 +774,19 @@ impl FuncAuthoringClient {
         func_id: FuncId,
     ) -> FuncAuthoringResult<String> {
         Ok(FuncBinding::compile_types(ctx, func_id).await?)
+    }
+
+    /// Publishes a "func created" event, which requies a generated summary that will be generated
+    /// internally. After the summary is generated, it is returned in case the caller wants it.
+    pub async fn publish_func_create_event(
+        ctx: &DalContext,
+        func: &Func,
+    ) -> FuncAuthoringResult<FuncSummary> {
+        let summary = func.into_frontend_type(ctx).await?;
+        WsEvent::func_created(ctx, summary.clone())
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        Ok(summary)
     }
 }

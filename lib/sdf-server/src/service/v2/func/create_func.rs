@@ -402,11 +402,7 @@ pub async fn create_func(
     };
 
     let code = get_code_response(ctx, func.id).await?;
-    let summary = func.into_frontend_type(ctx).await?;
-    WsEvent::func_created(ctx, summary.clone())
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
+    let summary = FuncAuthoringClient::publish_func_create_event(ctx, &func).await?;
     track(
         &posthog_client,
         ctx,
@@ -415,9 +411,9 @@ pub async fn create_func(
         "created_func",
         serde_json::json!({
             "how": "/func/created_func",
-            "func_id": summary.func_id,
-            "func_name": summary.name.to_owned(),
-            "func_kind": summary.kind,
+            "func_id": func.id,
+            "func_name": func.name.to_owned(),
+            "func_kind": func.kind,
         }),
     );
 
