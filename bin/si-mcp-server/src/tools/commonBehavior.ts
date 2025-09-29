@@ -56,9 +56,10 @@ export function successResponse(
 }
 
 // deno-lint-ignore no-explicit-any
-export function errorResponse(error: any): CallToolResult {
+export function errorResponse(error: any, hints?: string): CallToolResult {
+  let textResponse, structuredContent;
   if (error.response) {
-    const errorResponse = {
+    structuredContent = {
       status: "failure",
       errorMessage: `Error Status: ${
         error.response.status
@@ -66,45 +67,33 @@ export function errorResponse(error: any): CallToolResult {
         error.message
       }`,
     };
-    return {
-      content: [
-        {
-          type: "text",
-          text: `<response>${JSON.stringify(errorResponse)}</response>`,
-        },
-      ],
-      structuredContent: errorResponse,
-      isError: true,
-    };
+    textResponse = `<response>${JSON.stringify(structuredContent)}</response>`;
   } else if (error.request) {
-    const errorResponse = {
+    structuredContent = {
       status: "failure",
       errorMessage: `No response recieved, but request failed`,
     };
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(errorResponse),
-        },
-      ],
-      structuredContent: errorResponse,
-      isError: true,
-    };
+    textResponse = JSON.stringify(structuredContent);
   } else {
-    const errorResponse = {
+    structuredContent = {
       status: "failure",
       errorMessage: `Error setting up request: ${error.message}`,
     };
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(errorResponse),
-        },
-      ],
-      structuredContent: errorResponse,
-      isError: true,
-    };
+    textResponse = JSON.stringify(structuredContent);
   }
+
+  if (hints) {
+    textResponse += `\n<hints>${hints}</hints>`;
+  }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: textResponse,
+      },
+    ],
+    structuredContent,
+    isError: true,
+  };
 }
