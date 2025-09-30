@@ -70,7 +70,7 @@ export default withMermaid(defineConfig({
     ],
     sidebar: [
       {
-        text: "What is System Initiative",
+        text: "What is System Initiative?",
         link: "/what-is-si",
       },
       {
@@ -161,8 +161,39 @@ export default withMermaid(defineConfig({
             link: "/reference/iac-comparison",
           },
           {
-            text: "System Initiative Architecture",
+            text: "Architecture",
             link: "/reference/architecture/index",
+            collapsed: true,
+            items: [
+              {
+                text: "The Distributed Exection Engine",
+                link: "/reference/architecture/engine",
+              },
+              {
+                text: "The Data Model",
+                link: "/reference/architecture/snapshot",
+              },
+              {
+                text: "Change Control",
+                link: "/reference/architecture/change-control",
+              },
+              {
+                text: "Digital Twin",
+                link: "/reference/architecture/digital-twin",
+              },
+              {
+                text: "Function Execution Framework",
+                link: "/reference/architecture/functions",
+              },
+              {
+                text: "Tenancy and Access Control",
+                link: "/reference/architecture/tenancy",
+              },
+              {
+                text: "AI Native Collaboration",
+                link: "/reference/architecture/ai",
+              },
+            ]
           },
         ],
       },

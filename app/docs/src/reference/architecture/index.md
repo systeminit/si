@@ -4,7 +4,7 @@ next:
   link: '/reference/architecture/engine'
 ---
 
-# What is System Initiative?
+# System Initiative Architecture
 
 System Initiative is an AI native infrastructure automation platform built on a distributed execution engine that manages the full lifecycle of the system state through an immutable directed acyclic graph (DAG).
 
