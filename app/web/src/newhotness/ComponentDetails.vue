@@ -966,7 +966,19 @@ const restoreComponent = async () => {
   restoreLoading.value = true;
   const result = await restoreComponents([component.value.id]);
   if (result.success) {
-    close();
+    if (result.newChangeSetId) {
+      // Navigate to the same component details page in the new change set
+      router.push({
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: result.newChangeSetId,
+          componentId: component.value.id,
+        },
+      });
+    } else {
+      close();
+    }
   }
   restoreLoading.value = false;
 };
