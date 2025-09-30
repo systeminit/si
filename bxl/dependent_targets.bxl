@@ -273,7 +273,13 @@ def _dependent_modified_file_targets(ctx: bxl.Context) -> bxl.UnconfiguredTarget
     for results in results_set.values():
         targets = targets + results
 
-    return _rdeps_for_targets(ctx, map(lambda e: "{}".format(e.label), targets))
+    rdeps = _rdeps_for_targets(ctx, map(lambda e: "{}".format(e.label), targets))
+
+    # If only si-mcp-server files changed, exclude other bin/* services
+    if all([f.startswith("bin/si-mcp-server/") for f in ctx.cli_args.modified_file]):
+        return ctx.uquery().filter("^(?!//bin/)|^//bin/si-mcp-server:", rdeps)
+
+    return rdeps
 
 # Computes a list of targets which are reverse dependencies of given targets within a universe.
 def _rdeps_for_targets(ctx: bxl.Context, targets: list[str]) -> bxl.UnconfiguredTargetSet:
