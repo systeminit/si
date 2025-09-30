@@ -1,17 +1,47 @@
 import { CfProperty, CfSchema } from "../../../cfDb.ts";
 import {
   createDefaultPropFromCf,
-  createDocLink,
   OnlyProperties,
 } from "../../../spec/props.ts";
 import {
   ExpandedPkgSpec,
 } from "../../../spec/pkgs.ts";
 import { makeModule } from "../../generic/index.ts";
+import { SuperSchema } from "../../types.ts";
 
 export function cfCategory(schema: CfSchema): string {
   const [metaCategory, category] = schema.typeName.split("::");
   return `${metaCategory}::${category}`;
+}
+
+export function createDocLink(
+  { typeName }: SuperSchema,
+  defName: string | undefined,
+  propName?: string,
+): string {
+  // Figure out the snake case name of the resource to link to
+
+  // AWS::EC2::SecurityGroup -> aws, ec2-securitygroup
+  const [topLevelRef, ...typeRefParts] = typeName.toLowerCase().split("::");
+  let kebabRef = typeRefParts.join("-");
+
+  let docLink =
+    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide";
+
+  // If the document refers to a definition, the link is a little different
+  if (defName) {
+    // AWS::EC2::SecurityGroup #/definitions/Ingress -> /aws-properties-ec2-securitygroup-ingress
+    kebabRef += `-${defName.toLowerCase()}`;
+    docLink += `/${topLevelRef}-properties-${kebabRef}.html`;
+  } else {
+    docLink += `/${topLevelRef}-resource-${kebabRef}.html`;
+  }
+
+  // If a property name is provided, reference the property with a fragment
+  if (propName) {
+    docLink += `#cfn-${kebabRef}-${propName.toLowerCase()}`;
+  }
+  return docLink;
 }
 
 export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
@@ -33,6 +63,7 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
     pruneDomainValues(cfSchema.properties, onlyProperties),
     cfSchema,
     onlyProperties,
+    createDocLink,
   );
 
   const resourceValue = createDefaultPropFromCf(
@@ -40,9 +71,10 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
     pruneResourceValues(cfSchema.properties, onlyProperties),
     cfSchema,
     onlyProperties,
+    createDocLink,
   );
 
-  const secrets =  createDefaultPropFromCf("secrets", {}, cfSchema, onlyProperties);
+  const secrets =  createDefaultPropFromCf("secrets", {}, cfSchema, onlyProperties, createDocLink);
 
   return makeModule(
     cfSchema,

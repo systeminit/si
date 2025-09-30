@@ -70,6 +70,7 @@ export function pkgSpecFromHetnzer(allSchemas: JsonSchema): ExpandedPkgSpec[] {
       ),
       normalizedOnlyProperties,
       schema,
+      createDocLink,
     );
     const resourceValue = createDefaultProp(
       "resource_value",
@@ -79,12 +80,14 @@ export function pkgSpecFromHetnzer(allSchemas: JsonSchema): ExpandedPkgSpec[] {
       ),
       normalizedOnlyProperties,
       schema,
+      createDocLink,
     );
     const secrets = createDefaultPropFromCf(
       "secrets",
       {},
       schema,
       onlyProperties,
+      createDocLink,
     );
 
     const module = makeModule(
@@ -384,11 +387,29 @@ export function mergeResourceOperations(
 }
 
 export function createDocLink(
-  { typeName: _typeName }: SuperSchema,
-  _defName: string | undefined,
-  _propName?: string,
+  { typeName }: SuperSchema,
+  defName: string | undefined,
+  propName?: string,
 ): string {
-  return "https://LATERGATOR";
+  // Hetzner Cloud API reference base URL
+  const docLink = "https://docs.hetzner.cloud/reference/cloud";
+
+  // Convert resource name to use dashes (e.g., "ssh_keys" -> "ssh-keys")
+  const resourceName = typeName.toLowerCase().replace(/_/g, "-");
+
+  // Build the fragment identifier
+  // For definitions (nested types), append the definition name
+  if (defName) {
+    return `${docLink}#${resourceName}-${defName.toLowerCase()}`;
+  }
+
+  // For specific properties, append the property name
+  if (propName) {
+    return `${docLink}#${resourceName}-${propName.toLowerCase()}`;
+  }
+
+  // Base resource link
+  return `${docLink}#${resourceName}`;
 }
 
 export function hCategory(schema: SuperSchema): string {

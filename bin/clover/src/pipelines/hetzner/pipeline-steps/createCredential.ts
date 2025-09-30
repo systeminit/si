@@ -3,7 +3,6 @@ import { FuncSpec } from "../../../bindings/FuncSpec.ts";
 import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 import {
   createDefaultPropFromCf,
-  createDocLink,
   OnlyProperties,
 } from "../../../spec/props.ts";
 import {
@@ -14,7 +13,7 @@ import {
 } from "../../../spec/funcs.ts";
 import { makeModule } from "../../generic/index.ts";
 import { HetznerSchema } from "../../types.ts";
-import { hCategory } from "./../spec.ts";
+import { createDocLink, hCategory } from "./../spec.ts";
 import { createDefaultProp } from "./../prop.ts";
 
 export function generateCredentialModule(
@@ -52,6 +51,7 @@ function createCredentialSpec(
     {},
     onlyProperties,
     credential,
+    createDocLink,
   );
 
   const resourceValue = createDefaultProp(
@@ -59,6 +59,7 @@ function createCredentialSpec(
     {},
     onlyProperties,
     credential,
+    createDocLink,
   );
 
   const secrets = createDefaultPropFromCf(
@@ -66,6 +67,7 @@ function createCredentialSpec(
     {},
     credential,
     onlyProperties,
+    createDocLink,
   );
 
   const secretDefinition = createDefaultPropFromCf(
@@ -73,6 +75,7 @@ function createCredentialSpec(
     credential.properties,
     credential,
     onlyProperties,
+    createDocLink,
   );
 
   const spec = makeModule(
