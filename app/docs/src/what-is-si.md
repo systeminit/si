@@ -1,4 +1,4 @@
-# What is System Initiative
+# What is System Initiative?
 
 System Initiative is an AI Native Infrastructure Automation platform. To break that down:
 
@@ -112,5 +112,5 @@ Ask the Agent to review your existing infrastructure for security or architectur
 ## Learn More
 
 - [Understand the System Initiative Architecture](./reference/architecture/index.md).
-- [Leverage your Infrastructure as Code knowledge to learn System Initiative](./reference/index.md).
+- [Leverage your Infrastructure as Code knowledge to learn System Initiative](./reference/iac-comparison.md).
 - [Follow the Getting Started Tutorial](./tutorials/getting-started.md).
