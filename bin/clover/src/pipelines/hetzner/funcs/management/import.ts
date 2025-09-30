@@ -1,4 +1,7 @@
-async function main(component: Input): Promise<Output> {
+async function main({
+  thisComponent,
+}: Input): Promise<Output> {
+  const component = thisComponent;
   const token = requestStorage.getEnv("HETZNER_API_TOKEN");
   if (!token) {
     throw new Error(
@@ -6,19 +9,23 @@ async function main(component: Input): Promise<Output> {
     );
   }
 
-  const endpoint = _.get(component.properties, ["domain", "extra", "endpoint"], "");
-  const id = component.properties?.domain?.id;
+  const endpoint = _.get(
+    component.properties,
+    ["domain", "extra", "endpoint"],
+    "",
+  );
+  const resourceId = _.get(component.properties, ["si", "resourceId"], "");
 
   if (!endpoint) {
     throw new Error("Endpoint not found in extra properties");
   }
 
-  if (!id) {
-    throw new Error("Resource ID not found in domain properties");
+  if (!resourceId) {
+    throw new Error("Resource ID not found in si properties");
   }
 
   const response = await fetch(
-    `https://api.hetzner.cloud/v1/${endpoint}/${id}`,
+    `https://api.hetzner.cloud/v1/${endpoint}/${resourceId}`,
     {
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -32,9 +39,8 @@ async function main(component: Input): Promise<Output> {
   }
 
   const data = await response.json();
-  const resource = data[endpoint.slice(0, -1)] || data; // Handle singular vs plural endpoint names
+  const resource = data[endpoint.slice(0, -1)] || data;
 
-  const resourceId = resource.id?.toString() || resource.name || id;
   console.log(`Importing ${endpoint} ${resourceId}`);
 
   const create: Output["ops"]["create"] = {};
