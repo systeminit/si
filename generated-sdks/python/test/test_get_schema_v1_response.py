@@ -37,12 +37,14 @@ class TestGetSchemaV1Response(unittest.TestCase):
             return GetSchemaV1Response(
                 default_variant_id = '01H9ZQD35JPMBGHH69BT0Q79VZ',
                 name = 'AWS::EC2::Instance',
+                schema_id = '',
                 variant_ids = [01H9ZQD35JPMBGHH69BT0Q79VZ, 01H9ZQD35JPMBGHH69BT0Q79VY]
             )
         else:
             return GetSchemaV1Response(
                 default_variant_id = '01H9ZQD35JPMBGHH69BT0Q79VZ',
                 name = 'AWS::EC2::Instance',
+                schema_id = '',
                 variant_ids = [01H9ZQD35JPMBGHH69BT0Q79VZ, 01H9ZQD35JPMBGHH69BT0Q79VY],
         )
         """
