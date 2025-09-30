@@ -2243,6 +2243,9 @@ impl Component {
             pasted_component_ids.push(pasted_component.id());
             to_pasted_id.insert(component_id, pasted_component.id());
         }
+
+        ctx.workspace_snapshot()?.cleanup().await?;
+
         // Copy correct connections (prop to prop and management)
         for (&og_component_id, &pasted_component_id) in &to_pasted_id {
             // Copy manager connections

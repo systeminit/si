@@ -70,10 +70,7 @@ use crate::{
     Secret,
     SecretError,
     TransactionsError,
-    attribute::prototype::{
-        AttributePrototypeError,
-        AttributePrototypeSource,
-    },
+    attribute::prototype::AttributePrototypeError,
     change_set::ChangeSetError,
     func::{
         FuncExecutionPk,
@@ -1969,42 +1966,6 @@ impl AttributeValue {
             }
 
             Self::set_component_prototype_id(ctx, dest_av_id, dest_prototype.id, None).await?;
-
-            let sources = AttributePrototype::input_sources(ctx, dest_prototype.id).await?;
-            for source in sources {
-                match source {
-                    AttributePrototypeSource::AttributeValue(_, _) => {
-                        continue;
-                    }
-                    AttributePrototypeSource::Prop(prop_id, key) => {
-                        Prop::add_edge_to_attribute_prototype(
-                            ctx,
-                            prop_id,
-                            dest_prototype.id,
-                            EdgeWeightKind::Prototype(key),
-                        )
-                        .await?;
-                    }
-                    AttributePrototypeSource::InputSocket(socket_id, key) => {
-                        InputSocket::add_edge_to_attribute_prototype(
-                            ctx,
-                            socket_id,
-                            dest_prototype.id,
-                            EdgeWeightKind::Prototype(key),
-                        )
-                        .await?;
-                    }
-                    AttributePrototypeSource::OutputSocket(socket_id, key) => {
-                        OutputSocket::add_edge_to_attribute_prototype(
-                            ctx,
-                            socket_id,
-                            dest_prototype.id,
-                            EdgeWeightKind::Prototype(key),
-                        )
-                        .await?;
-                    }
-                }
-            }
         } else if let Some(existing_prototype_id) =
             Self::component_prototype_id(ctx, dest_av_id).await?
         {
