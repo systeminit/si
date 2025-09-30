@@ -29,7 +29,7 @@ import { templateListTool } from "./tools/templateList.ts";
 import { changeSetAbandonTool } from "./tools/changeSetAbandon.ts";
 import { changeSetForceApplyTool } from "./tools/changeSetForceApply.ts";
 
-// import { schemaCreateTool } from "./tools/schemaCreate.ts"; // uncomment for local development
+// import { schemaUpsertTool } from "./tools/schemaUpsert.ts"; // uncomment for local development
 // import { funcCreateTool } from "./tools/funcCreate.ts"; // uncomment for local development
 
 export function createServer(): McpServer {
@@ -67,7 +67,7 @@ export function createServer(): McpServer {
   importPrompt(server);
   discoverPrompt(server);
   
-  // schemaCreateTool(server); // uncomment for local development
+  // schemaUpsertTool(server); // uncomment for local development
   // funcCreateTool(server); // uncomment for local development
 
   return server;

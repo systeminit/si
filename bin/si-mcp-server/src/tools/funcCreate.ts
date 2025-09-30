@@ -48,7 +48,7 @@ const FuncCreateInputSchemaRaw = {
   schemaId: z.string().describe("The schema id the function is for"),
   name: z.string().describe("The name of the function").min(1),
   description: z.string().describe("A description for the function"),
-  functionType: z.enum(["qualification", "codegen", "management", "action"]),
+  functionType: z.enum(["qualification", "codegen", "management", "action"]).describe("the kind of the function"),
   functionCode: z
     .string()
     .describe(
