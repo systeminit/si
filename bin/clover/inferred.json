@@ -454,6 +454,17 @@
       "Sunday"
     ]
   },
+  "_Allowed Values_: <code>MONDAY</code> | <code>TUESDAY</code> | <code>WEDNESDAY</code> | <code>THURSDAY</code> | <code>FRIDAY</code> | <code>SATURDAY</code> | <code>SUNDAY</code>\n": {
+    "enum": [
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+      "SUNDAY"
+    ]
+  },
   "The arithmetic operation to use when comparing the specified statistic and threshold. The specified statistic value is used as the first operand.": {
     "enum": [
       "GreaterThanOrEqualToThreshold",
@@ -8306,6 +8317,9 @@
   "The ARN of the policy used to set the permissions boundary for the role.\n For more information about permissions boundaries, see [Permissions boundaries for IAM identities](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) in the *IAM User Guide*.": {
     "enum": null
   },
+  "The ARN of the primary broker that is used to replicate data from in a data replication pair when creating a replica.\nThis field is only used at creation-time. Changes to it subsequently are ignored by CloudFormation.\nInformation on the current primary is available on the DataReplicationMetadata object returned by the API.\n": {
+    "enum": null
+  },
   "The ARN of the principal (user, role, or group).": {
     "enum": null
   },
@@ -11271,6 +11285,9 @@
     "enum": null
   },
   "The custom port to use when connecting to a workgroup. Valid port ranges are 5431-5455 and 8191-8215. The default is 5439.": {
+    "enum": null
+  },
+  "The customer master key (CMK) to use for the A KMS (KMS). \nThis key is used to encrypt your data at rest. If not provided, Amazon MQ will use a default CMK to encrypt your data.\nThe Key ARN is recommended so that drift can be detected,\nbut a key ID or key alias will also be accepted for API compatibility reasons.\n": {
     "enum": null
   },
   "The customer role associated with the command.": {
@@ -16718,6 +16735,12 @@
   "The time zone of the hours of operation.": {
     "enum": null
   },
+  "The time zone, UTC by default, in either the Country/City format, or the UTC offset format.": {
+    "enum": null
+  },
+  "The time, in 24-hour format, and use only numbers separated by a colon, HH:MM or HH:MM:SS. Example: 13:05.\nWhen writing YAML this may need to be quoted to prevent a timestamp being read and converted to a number of minutes or seconds.\n": {
+    "enum": null
+  },
   "The time, in seconds, before an Aurora DB cluster in ``serverless`` mode is paused.\n Specify a value between 300 and 86,400 seconds.": {
     "enum": null
   },
@@ -17469,6 +17492,9 @@
     "enum": null
   },
   "The version of this environment tier. When you don't set a value to it, Elastic Beanstalk uses the latest compatible worker tier version.": {
+    "enum": null
+  },
+  "The version specified to use. See also EngineVersionCurrent.": {
     "enum": null
   },
   "The version that is associated with a script. Version strings do not need to be unique.": {
