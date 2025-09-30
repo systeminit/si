@@ -43,8 +43,6 @@
               @keydown.enter.prevent="onEnter"
               @keydown.up.prevent="onUp"
               @keydown.down.prevent="onDown"
-              @keydown.left.prevent="onLeft"
-              @keydown.right.prevent="onRight"
               @keydown.tab.prevent="onTab"
             >
               <template #right>
@@ -422,13 +420,17 @@ const onDown = (e: KeyboardEvent) => {
   }
   selectAssetByIndex();
 };
-const onLeft = () => {
+const changeFilterLeft = () => {
   let currentFilterIndex = componentFilters.value.findIndex(
     (filter) => filter.name === selectedFilter.value,
   );
 
   if (currentFilterIndex < 1) {
-    selectedFilter.value = undefined;
+    currentFilterIndex = componentFilters.value.length - 1;
+    const newFilter = componentFilters.value[currentFilterIndex];
+    if (newFilter) {
+      selectedFilter.value = newFilter.name;
+    }
   } else {
     currentFilterIndex--;
     const newFilter = componentFilters.value[currentFilterIndex];
@@ -437,13 +439,17 @@ const onLeft = () => {
     }
   }
 };
-const onRight = () => {
+const changeFilterRight = () => {
   let currentFilterIndex = componentFilters.value.findIndex(
     (filter) => filter.name === selectedFilter.value,
   );
 
   if (currentFilterIndex === componentFilters.value.length - 1) {
-    return;
+    currentFilterIndex = 0;
+    const newFilter = componentFilters.value[currentFilterIndex];
+    if (newFilter) {
+      selectedFilter.value = newFilter.name;
+    }
   } else {
     if (currentFilterIndex < 1) currentFilterIndex = 1;
     else currentFilterIndex++;
@@ -456,8 +462,8 @@ const onRight = () => {
 const onTab = (e: KeyboardEvent) => {
   if (!showResults.value) return;
 
-  if (e.shiftKey) onUp(e);
-  else onDown(e);
+  if (e.shiftKey) changeFilterLeft();
+  else changeFilterRight();
 };
 const selectAssetByIndex = () => {
   if (
