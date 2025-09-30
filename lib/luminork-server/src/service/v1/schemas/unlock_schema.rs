@@ -56,9 +56,15 @@ pub async fn unlock_schema(
         return Err(SchemaError::NotPermittedOnHead);
     }
 
-    let schema = Schema::get_by_id_opt(ctx, schema_id)
-        .await?
-        .ok_or(SchemaError::SchemaNotFound(schema_id))?;
+    let schema = if let Some(installed_schema) = Schema::get_by_id_opt(ctx, schema_id).await? {
+        installed_schema
+    } else {
+        // Let's try and install the schema and ensure that we installed it correctly
+        Schema::get_or_install_default_variant(ctx, schema_id).await?;
+        Schema::get_by_id_opt(ctx, schema_id)
+            .await?
+            .ok_or(SchemaError::SchemaNotFound(schema_id))?
+    };
 
     let default_variant_id = Schema::default_variant_id(ctx, schema_id).await?;
     let variants = SchemaVariant::list_for_schema(ctx, schema_id).await?;
