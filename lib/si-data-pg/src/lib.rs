@@ -2940,10 +2940,18 @@ async fn evict_old_and_idle_pgpool_connections(
         tokio::time::sleep(check_interval).await;
         let connection_count = Rc::new(RefCell::new(0));
         let evicted_connections = Rc::new(RefCell::new(0));
+        let oldest_used = Rc::new(RefCell::new(Duration::default()));
+        let oldest_created = Rc::new(RefCell::new(Duration::default()));
 
         info!("Locking pool for eviction loop");
         pg_pool.retain(|_, metrics| {
             *connection_count.borrow_mut() += 1;
+            if *oldest_used.borrow() < metrics.last_used() {
+                *oldest_used.borrow_mut() = metrics.last_used()
+            }
+            if *oldest_created.borrow() < metrics.age() {
+                *oldest_created.borrow_mut() = metrics.age()
+            }
             if metrics.last_used() > max_idle_time {
                 debug!("Evicting connection due to idle time");
                 *evicted_connections.borrow_mut() += 1;
@@ -2957,9 +2965,11 @@ async fn evict_old_and_idle_pgpool_connections(
             }
         });
         info!(
-            "Checked {} connection(s), evicted {}",
+            "Checked {} connection(s), evicted {}, oldest {:?}, least recently used {:?}",
             connection_count.borrow(),
-            evicted_connections.borrow()
+            evicted_connections.borrow(),
+            oldest_created.borrow(),
+            oldest_used.borrow(),
         );
     }
 }
