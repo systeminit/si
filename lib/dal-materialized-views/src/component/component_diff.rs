@@ -35,6 +35,12 @@ use si_id::{
 };
 use telemetry::prelude::*;
 
+enum DeletionDiff {
+    Restored,
+    Ghosted,
+    NoChange,
+}
+
 /// Generates a [`ComponentDiff`] MV.
 pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<ComponentDiff> {
     // If we are already on HEAD, it's unmodified; short circuit!
@@ -74,6 +80,15 @@ pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<Com
     };
     let attribute_diffs = diff_attributes(old_ctx, old_root_av_id, new_ctx, new_root_av_id).await?;
 
+    let is_set_to_delete_diff = match (
+        Component::is_set_to_delete(old_ctx, id).await?,
+        Component::is_set_to_delete(new_ctx, id).await?,
+    ) {
+        (Some(true), Some(false)) => DeletionDiff::Restored,
+        (Some(false), Some(true)) => DeletionDiff::Ghosted,
+        _ => DeletionDiff::NoChange,
+    };
+
     // Figure out diff status
     let (diff_status, resource_diff) = if new_root_av_id.is_some() {
         let resource_diff = {
@@ -89,8 +104,12 @@ pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<Com
         };
         let diff_status = if old_root_av_id.is_none() {
             ComponentDiffStatus::Added
-        } else if !attribute_diffs.is_empty() {
+        } else if !attribute_diffs.is_empty()
+            || matches!(is_set_to_delete_diff, DeletionDiff::Restored)
+        {
             ComponentDiffStatus::Modified
+        } else if matches!(is_set_to_delete_diff, DeletionDiff::Ghosted) {
+            ComponentDiffStatus::Removed
         } else {
             ComponentDiffStatus::None
         };

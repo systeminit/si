@@ -551,6 +551,9 @@ const componentList = computed(() => {
       const actionDiffs = componentActionDiffs[component.id];
       const attributeDiffTree = toAttributeDiffTree(componentDiff);
 
+      // Store the original diffStatus before we modify it
+      const originalDiffStatus = componentDiff?.diffStatus;
+
       // Figure out diffStatus
       let diffStatus = componentDiff?.diffStatus;
       // If the diffStatus *was* Modified, but none of the diffs were worth showing, then we
@@ -561,6 +564,9 @@ const componentList = computed(() => {
         !attributeDiffTree.diff &&
         !attributeDiffTree.children
       ) {
+        // There's an issue here where we skip restored components! They won't have an attributeDiffTree diff
+        // or children but we are intentionall skipping them!
+        // We may want to revist this behaviour - I am not 100% sure why it was added this way
         diffStatus = "None";
       }
 
@@ -572,8 +578,10 @@ const componentList = computed(() => {
         diffStatus = "Modified";
       }
 
-      // If it's toDelete, put it in the Removed category
-      if (component.toDelete) {
+      // If it's toDelete and has a componentDiff with original Modified status, it was deleted in this change set
+      // we want to skip anything that's not removed in this change set so that we avoid components
+      // that are marked as toDelete on HEAD (which would have originalDiffStatus === "None")
+      if (component.toDelete && originalDiffStatus === "Removed") {
         diffStatus = "Removed";
       }
 
