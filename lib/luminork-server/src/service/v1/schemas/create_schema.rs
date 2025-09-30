@@ -92,6 +92,7 @@ pub async fn create_schema(
         name: payload.name,
         default_variant_id: created_schema_variant.id,
         variant_ids: variants.into_iter().map(|v| v.id).collect(),
+        schema_id: schema.id(),
     }))
 }
 

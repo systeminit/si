@@ -71,6 +71,7 @@ pub async fn get_schema(
         );
 
         return Ok(SchemaResponseV1::Success(GetSchemaV1Response {
+            schema_id,
             name: schema.name,
             default_variant_id,
             variant_ids: variants.into_iter().map(|v| v.id).collect_vec(),
@@ -96,6 +97,7 @@ pub async fn get_schema(
                 );
 
                 return Ok(SchemaResponseV1::Success(GetSchemaV1Response {
+                    schema_id,
                     name: cached_schema.name,
                     default_variant_id: cached_schema.default_variant_id,
                     variant_ids: cached_schema.variant_ids,

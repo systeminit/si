@@ -553,6 +553,8 @@ impl From<CachedPropSchemaV1> for PropSchemaV1 {
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSchemaV1Response {
+    #[schema(value_type = String)]
+    pub schema_id: SchemaId,
     #[schema(value_type = String, example = "AWS::EC2::Instance")]
     pub name: String,
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VZ")]
