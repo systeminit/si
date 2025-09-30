@@ -453,29 +453,35 @@ export function createPropFromCf(
 
     return prop;
   } else if (normalizedCfProp.type === "object") {
-    if (normalizedCfProp.patternProperties) {
+    if (normalizedCfProp.patternProperties || normalizedCfProp.additionalProperties) {
       const prop = partialProp as ExpandedPropSpecFor["map"];
       prop.kind = "map";
       prop.data.widgetKind = "Map";
 
-      const patternProps = Object.entries(normalizedCfProp.patternProperties);
-
       let cfItemProp;
-      if (patternProps.length === 1) {
-        const [_thing, patternProp] = patternProps[0];
-        cfItemProp = patternProp;
-      } else if (patternProps.length === 2) {
-        // If there is 2 pattern props, that means we have a validation for the key and another one for the value of the map.
-        // We take the second one as the type of the value, since it's the thing we can store right now
-        const [_thing, patternProp] = patternProps[1];
-        cfItemProp = patternProp;
-      } else {
-        console.log(patternProps);
-        throw new Error("too many pattern props you fool");
+
+      if (normalizedCfProp.patternProperties) {
+        const patternProps = Object.entries(normalizedCfProp.patternProperties);
+
+        if (patternProps.length === 1) {
+          const [_thing, patternProp] = patternProps[0];
+          cfItemProp = patternProp;
+        } else if (patternProps.length === 2) {
+          // If there is 2 pattern props, that means we have a validation for the key and another one for the value of the map.
+          // We take the second one as the type of the value, since it's the thing we can store right now
+          const [_thing, patternProp] = patternProps[1];
+          cfItemProp = patternProp;
+        } else {
+          console.log(patternProps);
+          throw new Error("too many pattern props you fool");
+        }
+      } else if (normalizedCfProp.additionalProperties) {
+        // Use additionalProperties as the map value type
+        cfItemProp = normalizedCfProp.additionalProperties;
       }
 
       if (!cfItemProp) {
-        throw new Error("could not extract type from pattern prop");
+        throw new Error("could not extract type from pattern prop or additionalProperties");
       }
 
       queue.push({
