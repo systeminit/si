@@ -1112,21 +1112,6 @@ const handleWorkspacePatchMessage = async (
         ),
       );
 
-      // Check for duplicate patches in the same batch
-      // const patchKeys = data.patches.map(
-      //   (p) => `${p.kind}.${p.id}.${p.fromChecksum}.${p.toChecksum}`,
-      // );
-      // const uniquePatchKeys = new Set(patchKeys);
-      // if (patchKeys.length !== uniquePatchKeys.size) {
-      //   debug("📦 WARNING: Duplicate patches detected in batch!", {
-      //     total: patchKeys.length,
-      //     unique: uniquePatchKeys.size,
-      //     duplicates: patchKeys.filter(
-      //       (key, index) => patchKeys.indexOf(key) !== index,
-      //     ),
-      //   });
-      // }
-
       let indexChecksum: string;
       try {
         indexChecksum = initIndexAndChangeSet(db, data.meta, span);
@@ -1183,20 +1168,18 @@ const handleWorkspacePatchMessage = async (
         listAtomsDesc,
       });
       debug("📦 Processing list atoms:", listAtoms.length, listAtomsDesc);
+      
+      // At times we get hundreds of patches within a batch
+      // We need to process these as separate batches
+      // so that we can periodically bust the cache within 
+      // a patch so we can keep the UI up to date
 
-      // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
-      // from a view without it.
+      // reminder: lists dont bust, they get updated one by one
       const listAtomsToBust = await Promise.all(
         listAtoms.map(async (atom) => {
           return applyWorkspacePatch(db, atom, indexChecksum);
         }),
       );
-      // not busting these
-      // await Promise.all(
-      //   listAtoms.map(async (atom) => {
-      //     return applyWorkspacePatch(db, atom, indexChecksum);
-      //   }),
-      // );
 
       // non-list atoms
       // non-connections (e.g. components need to go before connections)
@@ -1337,6 +1320,7 @@ const applyWorkspacePatch = async (
       let patchRequired = true;
 
       // Check if we actually have the atom data, not just the MTM relationship
+      // TODO: dont call this query twice within the fn, give this fn a bag
       const upToDateAtomIndexes = workspaceAtomExistsOnIndexes(
         db,
         atom.kind,
@@ -1382,6 +1366,7 @@ const applyWorkspacePatch = async (
           atom.fromChecksum,
         );
 
+        // TODO: Add timings for each specific fn here
         if (atom.fromChecksum === "0") {
           if (!exists) {
             // if i already have it, this is a NOOP
@@ -1461,6 +1446,7 @@ const applyWorkspacePatch = async (
           "indexChecksum:",
           indexChecksum,
         );
+        // TODO, can we do this outside the batch?
         initIndexAndChangeSet(db, atom, span);
         const inserted = insertAtomMTM(db, atom, indexChecksum);
         span.setAttribute("insertedMTM", inserted);
