@@ -454,7 +454,9 @@ const removeAtom = (
   kind: EntityKind,
   id: string,
   checksum: string,
+  span?: Span,
 ) => {
+  const start = performance.now();
   db.exec({
     sql: `
     DELETE FROM index_mtm_atoms
@@ -462,6 +464,8 @@ const removeAtom = (
     `,
     bind: [indexChecksum, kind, id, checksum],
   });
+  const end = performance.now();
+  span?.setAttribute("performance.removeAtom", end - start);
 };
 
 const createAtomFromPatch = async (
@@ -472,8 +476,11 @@ const createAtomFromPatch = async (
   const doc = {};
   let afterDoc = {};
   if (atom.operations) {
+    const start = performance.now();
     const applied = applyOperations(doc, atom.operations);
     afterDoc = applied.newDocument;
+    const end = performance.now();
+    span?.setAttribute("performance.applyOperations", end - start);
   }
   await createAtom(db, atom, afterDoc, span);
   return afterDoc;
@@ -483,12 +490,13 @@ const createAtom = async (
   db: Database,
   atom: Omit<WorkspaceAtom, "toIndexChecksum" | "fromIndexChecksum">,
   doc: object,
-  _span?: Span,
+  span?: Span,
 ) => {
   debug("createAtom", atom, doc);
 
   const encodedDoc = await encodeDocumentForDB(doc);
   try {
+    const start = performance.now();
     db.exec({
       sql: `insert into atoms
         (kind, checksum, args, data)
@@ -499,6 +507,8 @@ const createAtom = async (
       ;`,
       bind: [atom.kind, atom.toChecksum, atom.id, encodedDoc],
     });
+    const end = performance.now();
+    span?.setAttribute("performance.createAtom", end - start);
 
     debug("✅ createAtom successful:", atom.kind, atom.id, atom.toChecksum);
   } catch (err) {
@@ -1168,15 +1178,15 @@ const handleWorkspacePatchMessage = async (
         listAtomsDesc,
       });
       debug("📦 Processing list atoms:", listAtoms.length, listAtomsDesc);
-      
+
       // At times we get hundreds of patches within a batch
       // We need to process these as separate batches
-      // so that we can periodically bust the cache within 
+      // so that we can periodically bust the cache within
       // a patch so we can keep the UI up to date
 
       // reminder: lists dont bust, they get updated one by one
       const listAtomsToBust = await Promise.all(
-        listAtoms.map(async (atom) => {
+        listAtoms.map((atom) => {
           return applyWorkspacePatch(db, atom, indexChecksum);
         }),
       );
@@ -1202,7 +1212,7 @@ const handleWorkspacePatchMessage = async (
       );
 
       const atomsToBust = await Promise.all(
-        nonListAtoms.map(async (atom) => {
+        nonListAtoms.map((atom) => {
           return applyWorkspacePatch(db, atom, indexChecksum);
         }),
       );
@@ -1223,8 +1233,8 @@ const handleWorkspacePatchMessage = async (
         connectionAtomsDesc,
       );
       const connAtomsToBust = await Promise.all(
-        connectionAtoms.map(async (atom) => {
-          return await applyWorkspacePatch(db, atom, indexChecksum);
+        connectionAtoms.map((atom) => {
+          return applyWorkspacePatch(db, atom, indexChecksum);
         }),
       );
 
@@ -1366,7 +1376,6 @@ const applyWorkspacePatch = async (
           atom.fromChecksum,
         );
 
-        // TODO: Add timings for each specific fn here
         if (atom.fromChecksum === "0") {
           if (!exists) {
             // if i already have it, this is a NOOP
@@ -1389,6 +1398,7 @@ const applyWorkspacePatch = async (
               atom.kind,
               atom.id,
               atom.fromChecksum,
+              span,
             );
             bustCache = true;
             removed = true;
@@ -1400,7 +1410,7 @@ const applyWorkspacePatch = async (
           if (exists) {
             debug("🔧 Patching existing atom:", atom.kind, atom.id);
             span.setAttribute("patchAtom", true);
-            doc = await patchAtom(db, atom);
+            doc = await patchAtom(db, atom, span);
             needToInsertMTM = true;
             bustCache = true;
           } // otherwise, fire the small hammer to get the full object
@@ -1487,7 +1497,12 @@ const applyWorkspacePatch = async (
   });
 };
 
-const patchAtom = async (db: Database, atom: Required<WorkspaceAtom>) => {
+const patchAtom = async (
+  db: Database,
+  atom: Required<WorkspaceAtom>,
+  span?: Span,
+) => {
+  const start = performance.now();
   const atomRows = db.exec({
     sql: `SELECT kind, args, checksum, data
       FROM atoms
@@ -1499,6 +1514,8 @@ const patchAtom = async (db: Database, atom: Required<WorkspaceAtom>) => {
     bind: [atom.kind, atom.id, atom.fromChecksum],
     returnValue: "resultRows",
   });
+  const end = performance.now();
+  span?.setAttribute("perf.patchAtom", end - start);
   if (atomRows.length === 0) throw new Error("Cannot find atom");
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const atomRow = atomRows[0]!;
