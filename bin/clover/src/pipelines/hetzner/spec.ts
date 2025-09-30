@@ -47,7 +47,7 @@ export function pkgSpecFromHetnzer(allSchemas: JsonSchema): ExpandedPkgSpec[] {
     onlyProperties: OnlyProperties;
   }[] = [];
   Object.entries(resourceOperations).forEach(([noun, operations]) => {
-    const result = mergeResourceOperations(noun, operations);
+    const result = mergeResourceOperations(noun, operations, allSchemas);
     if (result) {
       schemas[noun] = result.schema;
       resourceResults.push(result);
@@ -253,6 +253,7 @@ export function mergePropertyDefinitions(
 export function mergeResourceOperations(
   noun: string,
   operations: OperationData[],
+  allSchemas: JsonSchema,
 ): { schema: HetznerSchema; onlyProperties: OnlyProperties } | null {
   // Extract handlers and operations using the dedicated function
   const {
@@ -267,6 +268,20 @@ export function mergeResourceOperations(
   if (!getOperation) {
     console.error(`No GET operation found for ${noun}`);
     return null;
+  }
+
+  // Get description from the tag
+  const tags = getOperation.tags as string[] | undefined;
+  const tagName = tags?.[0];
+  let description = `Hetzner Cloud ${noun} resource`;
+
+  if (tagName && allSchemas.tags) {
+    const tag = (allSchemas.tags as JsonSchema[]).find(
+      (t) => t.name === tagName,
+    );
+    if (tag?.description) {
+      description = tag.description as string;
+    }
   }
 
   // Extract properties from GET response
@@ -376,8 +391,8 @@ export function mergeResourceOperations(
 
   const schema: HetznerSchema = {
     typeName: noun,
-    description: "PAUL FIGURE IT OUT",
-    properties: normalizedProperties as Record<string, CfProperty>,
+    description,
+    properties: mergedProperties as Record<string, CfProperty>,
     requiredProperties,
     primaryIdentifier: ["id"],
     handlers,
