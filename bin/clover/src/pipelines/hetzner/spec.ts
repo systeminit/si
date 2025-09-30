@@ -169,6 +169,64 @@ export function buildHandlersFromOperations(
   };
 }
 
+export function normalizeHetznerProperty(prop: JsonSchema): JsonSchema {
+  if (prop.type) {
+    // normalize nested properties
+    const normalized = { ...prop };
+
+    if (normalized.properties) {
+      normalized.properties = Object.fromEntries(
+        Object.entries(normalized.properties as Record<string, JsonSchema>).map(
+          (
+            [key, value],
+          ) => [key, normalizeHetznerProperty(value)],
+        ),
+      );
+    }
+
+    if (normalized.additionalProperties) {
+      normalized.additionalProperties = normalizeHetznerProperty(
+        normalized.additionalProperties as JsonSchema,
+      );
+    }
+
+    if (normalized.items) {
+      normalized.items = normalizeHetznerProperty(
+        normalized.items as JsonSchema,
+      );
+    }
+
+    return normalized;
+  }
+
+  // handle oneOf with primitive types - smoosh them like cfDb does for array types
+  if (prop.oneOf) {
+    const allPrimitives = (prop.oneOf as JsonSchema[]).every((member) => {
+      const type = member.type;
+      return (
+        type === "string" ||
+        type === "number" ||
+        type === "integer" ||
+        type === "boolean"
+      );
+    });
+
+    if (allPrimitives) {
+      // Pick the non-string type (prefer number, integer, boolean over string)
+      const nonStringMember = (prop.oneOf as JsonSchema[]).find(
+        (member) => member.type !== "string",
+      );
+      const smooshed = nonStringMember
+        ? { ...prop, type: nonStringMember.type, oneOf: undefined }
+        : { ...prop, type: "string", oneOf: undefined };
+
+      return normalizeHetznerProperty(smooshed);
+    }
+  }
+
+  return prop;
+}
+
 export function mergePropertyDefinitions(
   existing: JsonSchema | undefined,
   newProp: JsonSchema,
@@ -305,10 +363,18 @@ export function mergeResourceOperations(
     ),
   ];
 
+  // Normalize properties to handle oneOf with primitives
+  const normalizedProperties = Object.fromEntries(
+    Object.entries(mergedProperties).map(([key, prop]) => [
+      key,
+      normalizeHetznerProperty(prop as JsonSchema),
+    ]),
+  );
+
   const schema: HetznerSchema = {
     typeName: noun,
     description: "PAUL FIGURE IT OUT",
-    properties: mergedProperties as Record<string, CfProperty>,
+    properties: normalizedProperties as Record<string, CfProperty>,
     requiredProperties,
     primaryIdentifier: ["id"],
     handlers,
