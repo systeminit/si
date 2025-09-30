@@ -1456,8 +1456,6 @@ const applyWorkspacePatch = async (
           "indexChecksum:",
           indexChecksum,
         );
-        // TODO, can we do this outside the batch?
-        initIndexAndChangeSet(db, atom, span);
         const inserted = insertAtomMTM(db, atom, indexChecksum);
         span.setAttribute("insertedMTM", inserted);
         debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
