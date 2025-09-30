@@ -1103,6 +1103,11 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
   });
 };
 
+const chunkArray = <T>(arr: Array<T>, size: number): Array<Array<T>> =>
+  Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+    arr.slice(i * size, i * size + size),
+  );
+
 const handleWorkspacePatchMessage = async (
   db: Database,
   data: WorkspacePatchBatch,
@@ -1196,131 +1201,140 @@ const handleWorkspacePatchMessage = async (
         );
       }
 
-      // lists first now
-      const listAtoms = atoms.filter((a) => LISTABLE.includes(a.kind));
-      const listAtomsDesc = listAtoms.map(
-        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-      );
-      span.setAttributes({
-        listAtomsLength: listAtoms.length,
-        listAtomsDesc,
-      });
-      debug("📦 Processing list atoms:", listAtoms.length, listAtomsDesc);
+      // apply 45 changes at time and bust
+      // after each in order for the UI
+      // to remain responsive...
+      const chunkedAtoms = chunkArray<Required<WorkspaceAtom>>(atoms, 45);
 
-      // At times we get hundreds of patches within a batch
-      // We need to process these as separate batches
-      // so that we can periodically bust the cache within
-      // a patch so we can keep the UI up to date
+      await Promise.all(
+        chunkedAtoms.map(async (atoms) => {
+          // lists first now
+          const listAtoms = atoms.filter((a) => LISTABLE.includes(a.kind));
+          const listAtomsDesc = listAtoms.map(
+            (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+          );
+          span.setAttributes({
+            listAtomsLength: listAtoms.length,
+            listAtomsDesc,
+          });
+          debug("📦 Processing list atoms:", listAtoms.length, listAtomsDesc);
 
-      // reminder: lists dont bust, they get updated one by one
-      const listAtomsToBust = await Promise.all(
-        listAtoms.map((atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
+          // At times we get hundreds of patches within a batch
+          // We need to process these as separate batches
+          // so that we can periodically bust the cache within
+          // a patch so we can keep the UI up to date
+
+          // reminder: lists dont bust, they get updated one by one
+          const listAtomsToBust = await Promise.all(
+            listAtoms.map((atom) => {
+              return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
+            }),
+          );
+
+          // non-list atoms
+          // non-connections (e.g. components need to go before connections)
+          const nonListAtoms = atoms.filter(
+            (a) =>
+              !LISTABLE.includes(a.kind) &&
+              a.kind !== EntityKind.IncomingConnections,
+          );
+          const nonListAtomsDesc = nonListAtoms.map(
+            (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+          );
+          span.setAttributes({
+            nonListAtomsLength: nonListAtoms.length,
+            nonListAtomsDesc,
+          });
+          debug(
+            "📦 Processing non-list atoms:",
+            nonListAtoms.length,
+            nonListAtomsDesc,
+          );
+
+          const atomsToBust = await Promise.all(
+            nonListAtoms.map((atom) => {
+              return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
+            }),
+          );
+
+          const connectionAtoms = atoms.filter(
+            (a) => a.kind === EntityKind.IncomingConnections,
+          );
+          const connectionAtomsDesc = connectionAtoms.map(
+            (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+          );
+          span.setAttributes({
+            connectionAtomsLength: connectionAtoms.length,
+            connectionAtomsDesc,
+          });
+          debug(
+            "📦 Processing connection atoms:",
+            connectionAtoms.length,
+            connectionAtomsDesc,
+          );
+          const connAtomsToBust = await Promise.all(
+            connectionAtoms.map((atom) => {
+              return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
+            }),
+          );
+
+          updateChangeSetWithNewIndex(db, data.meta);
+          span.setAttribute("updatedWithNewIndex", true);
+          removeOldIndex(db, span);
+
+          debug(
+            "🧹 Busting cache for atoms:",
+            atomsToBust.length + connAtomsToBust.length,
+          );
+
+          span.setAttributes({
+            bustCacheLength: atomsToBust.length + connAtomsToBust.length,
+            bustCache: JSON.stringify(
+              [...atomsToBust, ...connAtomsToBust]
+                .filter((a): a is Required<WorkspaceAtom> => !!a)
+                .map((a) => [a.kind, a.id]),
+            ),
+          });
+          atomsToBust.forEach((atom) => {
+            if (atom) {
+              debug("🧹 Busting cache for atom:", atom.kind, atom.id);
+              bustCacheAndReferences(
+                db,
+                atom.workspaceId,
+                atom.changeSetId,
+                atom.kind,
+                atom.id,
+              );
+            }
+          });
+          // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
+          // from a view without it.
+          listAtomsToBust.forEach((atom) => {
+            if (atom && atom.kind === EntityKind.ViewComponentList) {
+              debug("🧹 Busting cache for listable atom:", atom.kind, atom.id);
+              bustCacheAndReferences(
+                db,
+                atom.workspaceId,
+                atom.changeSetId,
+                atom.kind,
+                atom.id,
+              );
+            }
+          });
+          connAtomsToBust.forEach((atom) => {
+            if (atom) {
+              debug("🧹 Busting cache for connection:", atom.kind, atom.id);
+              bustCacheAndReferences(
+                db,
+                atom.workspaceId,
+                atom.changeSetId,
+                atom.kind,
+                atom.id,
+              );
+            }
+          });
         }),
       );
-
-      // non-list atoms
-      // non-connections (e.g. components need to go before connections)
-      const nonListAtoms = atoms.filter(
-        (a) =>
-          !LISTABLE.includes(a.kind) &&
-          a.kind !== EntityKind.IncomingConnections,
-      );
-      const nonListAtomsDesc = nonListAtoms.map(
-        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-      );
-      span.setAttributes({
-        nonListAtomsLength: nonListAtoms.length,
-        nonListAtomsDesc,
-      });
-      debug(
-        "📦 Processing non-list atoms:",
-        nonListAtoms.length,
-        nonListAtomsDesc,
-      );
-
-      const atomsToBust = await Promise.all(
-        nonListAtoms.map((atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
-        }),
-      );
-
-      const connectionAtoms = atoms.filter(
-        (a) => a.kind === EntityKind.IncomingConnections,
-      );
-      const connectionAtomsDesc = connectionAtoms.map(
-        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-      );
-      span.setAttributes({
-        connectionAtomsLength: connectionAtoms.length,
-        connectionAtomsDesc,
-      });
-      debug(
-        "📦 Processing connection atoms:",
-        connectionAtoms.length,
-        connectionAtomsDesc,
-      );
-      const connAtomsToBust = await Promise.all(
-        connectionAtoms.map((atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
-        }),
-      );
-
-      updateChangeSetWithNewIndex(db, data.meta);
-      span.setAttribute("updatedWithNewIndex", true);
-      removeOldIndex(db, span);
-
-      debug(
-        "🧹 Busting cache for atoms:",
-        atomsToBust.length + connAtomsToBust.length,
-      );
-
-      span.setAttributes({
-        bustCacheLength: atomsToBust.length + connAtomsToBust.length,
-        bustCache: JSON.stringify(
-          [...atomsToBust, ...connAtomsToBust]
-            .filter((a): a is Required<WorkspaceAtom> => !!a)
-            .map((a) => [a.kind, a.id]),
-        ),
-      });
-      atomsToBust.forEach((atom) => {
-        if (atom) {
-          debug("🧹 Busting cache for atom:", atom.kind, atom.id);
-          bustCacheAndReferences(
-            db,
-            atom.workspaceId,
-            atom.changeSetId,
-            atom.kind,
-            atom.id,
-          );
-        }
-      });
-      // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
-      // from a view without it.
-      listAtomsToBust.forEach((atom) => {
-        if (atom && atom.kind === EntityKind.ViewComponentList) {
-          debug("🧹 Busting cache for listable atom:", atom.kind, atom.id);
-          bustCacheAndReferences(
-            db,
-            atom.workspaceId,
-            atom.changeSetId,
-            atom.kind,
-            atom.id,
-          );
-        }
-      });
-      connAtomsToBust.forEach((atom) => {
-        if (atom) {
-          debug("🧹 Busting cache for connection:", atom.kind, atom.id);
-          bustCacheAndReferences(
-            db,
-            atom.workspaceId,
-            atom.changeSetId,
-            atom.kind,
-            atom.id,
-          );
-        }
-      });
 
       debug("📦 BATCH COMPLETE:", batchId);
     } finally {
