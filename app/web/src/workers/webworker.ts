@@ -354,6 +354,32 @@ const workspaceAtomExistsOnIndexes = (
   return rows.flat().filter(nonNullable) as Checksum[];
 };
 
+const constructMtmKey = (kind: string, args: string, checksum: string) =>
+  `${kind}-${args}-${checksum}`;
+
+const indexChecksumForMtms = (db: Database, changeSetId: string) => {
+  const mtm = db.exec({
+    sql: `select index_mtm_atoms.* from index_mtm_atoms
+        inner join changesets
+          on index_mtm_atoms.index_checksum = changesets.index_checksum
+        where changesets.change_set_id = ?;
+  `,
+    bind: [changeSetId],
+    returnValue: "resultRows",
+  });
+  const map: DefaultMap<string, string[]> = new DefaultMap(() => []);
+  mtm.forEach((row) => {
+    const [indexChecksum, kind, args, checksum] = row as string[];
+    if (indexChecksum && kind && args && checksum) {
+      const key = constructMtmKey(kind, args, checksum);
+      const vals = map.get(key);
+      vals.push(indexChecksum);
+      map.set(key, vals);
+    }
+  });
+  return map;
+};
+
 /**
  * Create a new index, as a copy of an existing index (fromIndexChecksum) if we have it.
  *
@@ -1161,6 +1187,8 @@ const handleWorkspacePatchMessage = async (
             !!rawAtom.fromChecksum && !!rawAtom.operations,
         );
 
+      const mtmMap = indexChecksumForMtms(db, data.meta.changeSetId);
+
       span.setAttribute("numAtoms", atoms.length);
       if (!indexChecksum) {
         throw new Error(
@@ -1187,7 +1215,7 @@ const handleWorkspacePatchMessage = async (
       // reminder: lists dont bust, they get updated one by one
       const listAtomsToBust = await Promise.all(
         listAtoms.map((atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum);
+          return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
         }),
       );
 
@@ -1213,7 +1241,7 @@ const handleWorkspacePatchMessage = async (
 
       const atomsToBust = await Promise.all(
         nonListAtoms.map((atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum);
+          return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
         }),
       );
 
@@ -1234,7 +1262,7 @@ const handleWorkspacePatchMessage = async (
       );
       const connAtomsToBust = await Promise.all(
         connectionAtoms.map((atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum);
+          return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
         }),
       );
 
@@ -1306,6 +1334,7 @@ const applyWorkspacePatch = async (
   db: Database,
   atom: Required<WorkspaceAtom>,
   indexChecksum: Checksum,
+  mtmMap: DefaultMap<string, string[]>,
 ) => {
   return await tracer.startActiveSpan("applyWorkspacePatch", async (span) => {
     try {
@@ -1330,13 +1359,8 @@ const applyWorkspacePatch = async (
       let patchRequired = true;
 
       // Check if we actually have the atom data, not just the MTM relationship
-      // TODO: dont call this query twice within the fn, give this fn a bag
-      const upToDateAtomIndexes = workspaceAtomExistsOnIndexes(
-        db,
-        atom.kind,
-        atom.id,
-        atom.toChecksum,
-      );
+      const afterKey = constructMtmKey(atom.kind, atom.id, atom.toChecksum);
+      const upToDateAtomIndexes = mtmMap.get(afterKey);
       if (upToDateAtomIndexes.length > 0) {
         patchRequired = false;
         debug(
@@ -1360,12 +1384,12 @@ const applyWorkspacePatch = async (
 
       if (patchRequired) {
         // do we have an index with the fromChecksum (without we cannot patch)
-        const previousIndexes = workspaceAtomExistsOnIndexes(
-          db,
+        const beforeKey = constructMtmKey(
           atom.kind,
           atom.id,
           atom.fromChecksum,
         );
+        const previousIndexes = mtmMap.get(beforeKey);
         span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
         const exists = previousIndexes.length > 0;
         span.setAttribute("exists", exists);
@@ -1457,6 +1481,11 @@ const applyWorkspacePatch = async (
           indexChecksum,
         );
         const inserted = insertAtomMTM(db, atom, indexChecksum);
+        const afterKey = constructMtmKey(atom.kind, atom.id, atom.toChecksum);
+        // when we make an MTM, also add the index checksum to keep our map up to date for future patches
+        const indexes = mtmMap.get(afterKey);
+        indexes.push(indexChecksum);
+        mtmMap.set(afterKey, indexes);
         span.setAttribute("insertedMTM", inserted);
         debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
       }
