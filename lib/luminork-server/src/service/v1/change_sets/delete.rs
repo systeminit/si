@@ -33,22 +33,15 @@ pub async fn abandon_change_set(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
 ) -> ChangeSetResult<Json<DeleteChangeSetV1Response>> {
-    let maybe_head_changeset = ctx.get_workspace_default_change_set_id().await?;
-    if maybe_head_changeset == ctx.change_set_id() {
+    if ctx.is_head().await? {
         return Err(ChangeSetError::CannotAbandonHead);
     }
 
     let mut change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
     let old_status = change_set.status;
-    ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
-        .await?;
+    // Skipping the load of the snapshot here as it is not required and be expensive
+    ctx.update_visibility_deprecated(change_set.id.into());
     change_set.abandon(ctx).await?;
-
-    tracker.track(
-        ctx,
-        "api_create_change_set",
-        json!({"abandoned_change_set": ctx.change_set_id()}),
-    );
 
     ctx.write_audit_log(
         AuditLogKind::AbandonChangeSet {
@@ -57,6 +50,12 @@ pub async fn abandon_change_set(
         change_set.name,
     )
     .await?;
+
+    tracker.track(
+        ctx,
+        "api_create_change_set",
+        json!({"abandoned_change_set": ctx.change_set_id()}),
+    );
 
     ctx.commit_no_rebase().await?;
 
