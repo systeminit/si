@@ -127,6 +127,7 @@ export function createDefaultPropFromCf(
   properties: Record<string, CfProperty>,
   superSchema: SuperSchema,
   onlyProperties: OnlyProperties,
+  docFn: DocFn,
 ): ExpandedPropSpecFor["object"] {
   // Enqueue the root prop only, and then iterate over its children
   let rootProp: ExpandedPropSpecFor["object"] | undefined;
@@ -161,7 +162,7 @@ export function createDefaultPropFromCf(
     const prop = createPropFromCf(
       propArgs,
       queue,
-      createDocLink,
+      docFn,
       childIsRequired,
     );
     if (!prop) continue;
@@ -196,35 +197,6 @@ export type DocFn = (
   defName: string | undefined,
   propName?: string,
 ) => string;
-export function createDocLink(
-  { typeName }: SuperSchema,
-  defName: string | undefined,
-  propName?: string,
-): string {
-  // Figure out the snake case name of the resource to link to
-
-  // AWS::EC2::SecurityGroup -> aws, ec2-securitygroup
-  const [topLevelRef, ...typeRefParts] = typeName.toLowerCase().split("::");
-  let kebabRef = typeRefParts.join("-");
-
-  let docLink =
-    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide";
-
-  // If the document refers to a definition, the link is a little different
-  if (defName) {
-    // AWS::EC2::SecurityGroup #/definitions/Ingress -> /aws-properties-ec2-securitygroup-ingress
-    kebabRef += `-${defName.toLowerCase()}`;
-    docLink += `/${topLevelRef}-properties-${kebabRef}.html`;
-  } else {
-    docLink += `/${topLevelRef}-resource-${kebabRef}.html`;
-  }
-
-  // If a property name is provided, reference the property with a fragment
-  if (propName) {
-    docLink += `#cfn-${kebabRef}-${propName.toLowerCase()}`;
-  }
-  return docLink;
-}
 
 export function createPropFromCf(
   { propPath, cfProp, parentProp }: CreatePropArgs,

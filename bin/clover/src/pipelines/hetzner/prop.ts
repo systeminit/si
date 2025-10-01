@@ -1,7 +1,7 @@
 import {
-  createDocLink,
   createPropFromCf,
   DefaultPropType,
+  DocFn,
   ExpandedPropSpec,
   ExpandedPropSpecFor,
   OnlyProperties,
@@ -15,6 +15,7 @@ export function createDefaultProp(
   properties: Record<string, CfProperty>,
   onlyProperties: OnlyProperties,
   superSchema: HetznerSchema,
+  docFn: DocFn,
 ) {
   let rootProp: ExpandedPropSpecFor["object"] | undefined;
 
@@ -50,7 +51,7 @@ export function createDefaultProp(
     const prop = createPropFromCf(
       propArgs,
       queue,
-      createDocLink,
+      docFn,
       childIsRequired,
     );
     if (!prop) continue;
