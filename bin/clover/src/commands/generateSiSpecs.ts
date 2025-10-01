@@ -27,19 +27,44 @@ export async function generateSiSpecs(options: {
   provider: Provider;
 }) {
   let specs: ExpandedPkgSpec[] = [];
-  switch (options.provider) {
-    case "aws":
-      specs = await generateAwsSpecs(options);
-      break;
-    case "hetzner":
-      specs = await generateHetznerSpecs(options);
-      break;
-    case "dummy":
-      specs = await generateDummySpecs(options);
-      break;
-    default:
-      console.log(`Unsupported provider type: "${options.provider}"`);
-      Deno.exit();
+
+  if (options.provider === "all") {
+    // Generate specs for all providers
+    const providers: Array<Exclude<Provider, "all">> = ["aws", "hetzner"];
+    for (const provider of providers) {
+      logger.info(`Generating specs for provider: ${provider}`);
+      const providerOptions = { ...options, provider };
+      let providerSpecs: ExpandedPkgSpec[] = [];
+
+      switch (provider) {
+        case "aws":
+          providerSpecs = await generateAwsSpecs(providerOptions);
+          break;
+        case "hetzner":
+          providerSpecs = await generateHetznerSpecs(providerOptions);
+          break;
+        case "dummy":
+          providerSpecs = await generateDummySpecs(providerOptions);
+          break;
+      }
+
+      specs.push(...providerSpecs);
+    }
+  } else {
+    switch (options.provider) {
+      case "aws":
+        specs = await generateAwsSpecs(options);
+        break;
+      case "hetzner":
+        specs = await generateHetznerSpecs(options);
+        break;
+      case "dummy":
+        specs = await generateDummySpecs(options);
+        break;
+      default:
+        console.log(`Unsupported provider type: "${options.provider}"`);
+        Deno.exit();
+    }
   }
 
   // WRITE OUT SPECS

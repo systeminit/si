@@ -68,6 +68,12 @@ pub struct GetDiffSummaryArgs {
         help = "Path to the directory containing specs to diff"
     )]
     pub target_dir: PathBuf,
+    #[arg(
+        long,
+        short = 'm',
+        help = "Output in markdown format with collapsible sections"
+    )]
+    pub markdown: bool,
 }
 
 #[derive(clap::Args, Debug)]

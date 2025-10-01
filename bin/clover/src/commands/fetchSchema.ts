@@ -4,6 +4,16 @@ import { Provider } from "../types.ts";
 const logger = _logger.ns("fetchSchema").seal();
 
 export async function fetchSchema(provider: Provider) {
+  if (provider === "all") {
+    // Fetch schemas for all providers
+    const providers: Array<Exclude<Provider, "all">> = ["aws", "hetzner"];
+    for (const p of providers) {
+      logger.info(`Fetching schema for provider: ${p}`);
+      await fetchSchema(p);
+    }
+    return;
+  }
+
   switch (provider) {
     case "aws": {
       const td = new TextDecoder();

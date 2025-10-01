@@ -23,7 +23,7 @@ jobs:
       - name: Generate Specs
         run: |
           cd bin/clover
-          LOG_LEVEL=debug deno task run generate-specs --provider=aws
+          LOG_LEVEL=debug deno task run generate-specs --provider=all
 
       - name: Push Specs
         run: |

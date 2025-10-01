@@ -44,6 +44,7 @@ use si_pkg::{
     PkgSpec,
     SiPkg,
 };
+use tokio::sync::Mutex;
 use ulid::Ulid;
 use url::Url;
 
@@ -125,7 +126,7 @@ async fn main() -> Result<()> {
             compare_specs(args.source_path, args.target_path).await?
         }
         Some(Commands::GetDiffSummary(args)) => {
-            diff_summaries_with_module_index(&client, args.target_dir).await?
+            diff_summaries_with_module_index(&client, args.target_dir, args.markdown).await?
         }
         Some(Commands::GetDiffForAsset(args)) => {
             detailed_diff_with_module_index(&client, args.target_path).await?
@@ -344,6 +345,7 @@ async fn compare_specs(source: PathBuf, target: PathBuf) -> Result<()> {
 async fn diff_summaries_with_module_index(
     client: &ModuleIndexClient,
     target_dir: PathBuf,
+    markdown: bool,
 ) -> Result<()> {
     let specs: Vec<_> = spec_from_dir_or_file(target_dir)?;
 
@@ -355,12 +357,20 @@ async fn diff_summaries_with_module_index(
     let changes_with_summary = Arc::new(AtomicUsize::new(0));
     let total_added = Arc::new(AtomicUsize::new(0));
 
+    // Collect messages to print later, organized by provider
+    let new_modules: Arc<Mutex<HashMap<String, Vec<String>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+    let changed_modules: Arc<Mutex<HashMap<String, Vec<String>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+
     let max_concurrent = 100;
     futures::stream::iter(specs)
         .for_each_concurrent(max_concurrent, |spec| {
             let hash_mismatches = hash_mismatches.clone();
             let changes_with_summary = changes_with_summary.clone();
             let total_added = total_added.clone();
+            let new_modules = new_modules.clone();
+            let changed_modules = changed_modules.clone();
 
             async move {
                 let pkg = json_to_pkg(spec.path()).unwrap();
@@ -377,7 +387,18 @@ async fn diff_summaries_with_module_index(
                     }
                     ModuleState::New => {
                         total_added.fetch_add(1, Ordering::SeqCst);
-                        println!("[{}]: new module", metadata.name());
+                        let provider = metadata
+                            .name()
+                            .split("::")
+                            .next()
+                            .unwrap_or("Unknown")
+                            .to_string();
+                        new_modules
+                            .lock()
+                            .await
+                            .entry(provider)
+                            .or_insert_with(Vec::new)
+                            .push(format!("[{}]: new module", metadata.name()));
                         return;
                     }
                 };
@@ -402,14 +423,30 @@ async fn diff_summaries_with_module_index(
                 let (maybe_change_summary, _this_changed_funcs) =
                     patch_list_to_summary(metadata.name(), patch.clone());
 
+                let provider = metadata
+                    .name()
+                    .split("::")
+                    .next()
+                    .unwrap_or("Unknown")
+                    .to_string();
                 if let Some(summary) = maybe_change_summary {
                     changes_with_summary.fetch_add(1, Ordering::SeqCst);
-                    println!("{summary}");
+                    changed_modules
+                        .lock()
+                        .await
+                        .entry(provider)
+                        .or_insert_with(Vec::new)
+                        .push(summary);
                 } else {
-                    println!(
-                        "[{}]: hash mismatch but no summary generated",
-                        metadata.name()
-                    );
+                    changed_modules
+                        .lock()
+                        .await
+                        .entry(provider)
+                        .or_insert_with(Vec::new)
+                        .push(format!(
+                            "[{}]: hash mismatch but no summary generated",
+                            metadata.name()
+                        ));
                 }
             }
         })
@@ -419,7 +456,74 @@ async fn diff_summaries_with_module_index(
     let changes_with_summary = changes_with_summary.load(Ordering::SeqCst);
     let hash_mismatches = hash_mismatches.load(Ordering::SeqCst);
 
+    // Print summary
     println!("Total: {total_added} new asset(s), {hash_mismatches} changed asset(s)");
+
+    let new_modules = new_modules.lock().await;
+    let changed_modules = changed_modules.lock().await;
+
+    if markdown {
+        // Print new modules organized by provider
+        if !new_modules.is_empty() {
+            let mut providers: Vec<_> = new_modules.keys().collect();
+            providers.sort();
+
+            for provider in providers {
+                let modules = &new_modules[provider];
+                println!("\n<details>");
+                println!(
+                    "<summary>📦 {} - {} new asset(s)</summary>\n",
+                    provider,
+                    modules.len()
+                );
+                println!("```");
+                for module in modules {
+                    println!("{module}");
+                }
+                println!("```");
+                println!("</details>");
+            }
+        }
+
+        // Print changed modules organized by provider
+        if !changed_modules.is_empty() {
+            let mut providers: Vec<_> = changed_modules.keys().collect();
+            providers.sort();
+
+            for provider in providers {
+                let modules = &changed_modules[provider];
+                println!("\n<details>");
+                println!(
+                    "<summary>🔀 {} - {} changed asset(s)</summary>\n",
+                    provider,
+                    modules.len()
+                );
+                println!("```");
+                for module in modules {
+                    println!("{module}");
+                }
+                println!("```");
+                println!("</details>");
+            }
+        }
+    } else {
+        // Print plain text output organized by provider
+        let mut providers: Vec<_> = new_modules.keys().collect();
+        providers.sort();
+        for provider in providers {
+            for module in &new_modules[provider] {
+                println!("{module}");
+            }
+        }
+
+        let mut providers: Vec<_> = changed_modules.keys().collect();
+        providers.sort();
+        for provider in providers {
+            for module in &changed_modules[provider] {
+                println!("{module}");
+            }
+        }
+    }
 
     if changes_with_summary != hash_mismatches {
         println!(

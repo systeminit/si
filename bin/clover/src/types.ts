@@ -1,1 +1,1 @@
-export type Provider = "aws" | "hetzner" | "dummy";
+export type Provider = "aws" | "hetzner" | "dummy" | "all";

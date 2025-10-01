@@ -23,19 +23,17 @@ jobs:
       - name: Generate Specs
         run: |
           cd bin/clover
-          LOG_LEVEL=debug deno task run generate-specs --provider=aws
+          LOG_LEVEL=debug deno task run generate-specs --provider=all
 
       - name: Generate Diff
         run: |
           cd bin/hoist
           cargo build
-          printf '```\n' > diff.md
-          if ../../target/debug/hoist get-diff-summary -t ../clover/si-specs > out.log 2> err.log; then
-            cat out.log >> diff.md
+          if ../../target/debug/hoist get-diff-summary -t ../clover/si-specs --markdown > diff.md 2> err.log; then
+            echo "Diff generated successfully"
           else
-            cat err.log >> diff.md
+            cat err.log > diff.md
           fi
-          printf '```' >> diff.md
 
       - name: Post Diff to PR
         uses: actions/github-script@v7
