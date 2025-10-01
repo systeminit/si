@@ -137,6 +137,7 @@ export type HetznerSchema = {
   requiredProperties: Set<string>;
   primaryIdentifier: JSONPointer[];
   handlers?: Record<CfHandlerKind, CfHandler>;
+  endpoint?: string;
 };
 
 export type HDB = Record<string, HetznerSchema>;

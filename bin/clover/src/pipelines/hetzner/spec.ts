@@ -389,13 +389,17 @@ export function mergeResourceOperations(
     ]),
   );
 
+  // Convert noun to PascalCase for the resource name (e.g., "certificates" -> "Certificate")
+  const resourceName = _.startCase(_.camelCase(noun)).replace(/ /g, "");
+
   const schema: HetznerSchema = {
-    typeName: noun,
+    typeName: `Hetzner::Resource::${resourceName}`,
     description,
-    properties: mergedProperties as Record<string, CfProperty>,
+    properties: normalizedProperties as Record<string, CfProperty>,
     requiredProperties,
     primaryIdentifier: ["id"],
     handlers,
+    endpoint: noun,
   };
 
   return { schema, onlyProperties };
@@ -428,8 +432,12 @@ export function createDocLink(
 }
 
 export function hCategory(schema: SuperSchema): string {
-  const name = _.camelCase(schema.typeName.replace("_", " "));
-  return `Hetzner::${name}`;
+  // Split by :: to extract the category (e.g., "Hetzner::Resource::Certificate" -> "Hetzner::Resource")
+  const parts = schema.typeName.split("::");
+  if (parts.length >= 2) {
+    return `${parts[0]}::${parts[1]}`;
+  }
+  return schema.typeName;
 }
 
 function normalizeOnlyProperties(props: string[]): string[] {

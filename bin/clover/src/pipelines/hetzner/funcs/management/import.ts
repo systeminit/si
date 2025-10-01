@@ -14,10 +14,19 @@ async function main({
     ["domain", "extra", "endpoint"],
     "",
   );
+  const resourceType = _.get(
+    component.properties,
+    ["domain", "extra", "HetznerResourceType"],
+    "",
+  );
   const resourceId = _.get(component.properties, ["si", "resourceId"], "");
 
   if (!endpoint) {
     throw new Error("Endpoint not found in extra properties");
+  }
+
+  if (!resourceType) {
+    throw new Error("HetznerResourceType not found in extra properties");
   }
 
   if (!resourceId) {
@@ -49,7 +58,7 @@ async function main({
   const properties = {
     si: {
       resourceId,
-      type: endpoint,
+      type: resourceType,
     },
     domain: {
       ...resource,
@@ -65,7 +74,7 @@ async function main({
   }
 
   create[resourceId] = {
-    kind: endpoint,
+    kind: resourceType,
     properties,
     attributes: newAttributes,
   };
