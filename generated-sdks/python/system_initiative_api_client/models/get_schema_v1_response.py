@@ -28,8 +28,9 @@ class GetSchemaV1Response(BaseModel):
     """ # noqa: E501
     default_variant_id: StrictStr = Field(alias="defaultVariantId")
     name: StrictStr
+    schema_id: StrictStr = Field(alias="schemaId")
     variant_ids: List[StrictStr] = Field(alias="variantIds")
-    __properties: ClassVar[List[str]] = ["defaultVariantId", "name", "variantIds"]
+    __properties: ClassVar[List[str]] = ["defaultVariantId", "name", "schemaId", "variantIds"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -84,6 +85,7 @@ class GetSchemaV1Response(BaseModel):
         _obj = cls.model_validate({
             "defaultVariantId": obj.get("defaultVariantId"),
             "name": obj.get("name"),
+            "schemaId": obj.get("schemaId"),
             "variantIds": obj.get("variantIds")
         })
         return _obj

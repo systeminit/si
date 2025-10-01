@@ -1477,6 +1477,7 @@ Schemas management endpoints
 {
   "defaultVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
   "name": "AWS::EC2::Instance",
+  "schemaId": "string",
   "variantIds": [
     "01H9ZQD35JPMBGHH69BT0Q79VZ",
     "01H9ZQD35JPMBGHH69BT0Q79VY"
@@ -1606,6 +1607,7 @@ Schemas management endpoints
 {
   "defaultVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
   "name": "AWS::EC2::Instance",
+  "schemaId": "string",
   "variantIds": [
     "01H9ZQD35JPMBGHH69BT0Q79VZ",
     "01H9ZQD35JPMBGHH69BT0Q79VY"
@@ -4563,6 +4565,7 @@ continued
 {
   "defaultVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
   "name": "AWS::EC2::Instance",
+  "schemaId": "string",
   "variantIds": [
     "01H9ZQD35JPMBGHH69BT0Q79VZ",
     "01H9ZQD35JPMBGHH69BT0Q79VY"
@@ -4577,6 +4580,7 @@ continued
 |---|---|---|---|---|
 |defaultVariantId|string|true|none|none|
 |name|string|true|none|none|
+|schemaId|string|true|none|none|
 |variantIds|[string]|true|none|none|
 
 ## [GetSchemaVariantV1Response](#tocS_GetSchemaVariantV1Response)

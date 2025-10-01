@@ -1614,6 +1614,12 @@ export interface GetSchemaV1Response {
     'name': string;
     /**
      * 
+     * @type {string}
+     * @memberof GetSchemaV1Response
+     */
+    'schemaId': string;
+    /**
+     * 
      * @type {Array<string>}
      * @memberof GetSchemaV1Response
      */
