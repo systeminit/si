@@ -23,11 +23,7 @@ use si_events::{
     ulid::Ulid,
 };
 use si_layer_cache::LayerDbError;
-use strum::{
-    AsRefStr,
-    Display,
-    EnumDiscriminants,
-};
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -702,76 +698,6 @@ impl AttributePrototype {
         Ok(eventual_parent)
     }
 
-    pub async fn input_sources(
-        ctx: &DalContext,
-        id: AttributePrototypeId,
-    ) -> AttributePrototypeResult<Vec<AttributePrototypeSource>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let prototypes = workspace_snapshot
-            .edges_directed(id, Direction::Incoming)
-            .await?;
-        let mut sources = Vec::with_capacity(prototypes.len());
-        for (edge_weight, prototype_edge_source, _) in prototypes {
-            let key = match edge_weight.kind() {
-                EdgeWeightKind::Prototype(key) => key.clone(),
-                _ => continue,
-            };
-
-            match workspace_snapshot
-                .get_node_weight(prototype_edge_source)
-                .await?
-            {
-                NodeWeight::AttributeValue(av) => {
-                    sources.push(AttributePrototypeSource::AttributeValue(
-                        av.id().into(),
-                        key,
-                    ));
-                }
-                NodeWeight::Prop(prop) => {
-                    sources.push(AttributePrototypeSource::Prop(prop.id().into(), key));
-                }
-                NodeWeight::Content(content_inner) => match content_inner.content_address() {
-                    ContentAddress::InputSocket(_) => {
-                        sources.push(AttributePrototypeSource::InputSocket(
-                            content_inner.id().into(),
-                            key,
-                        ));
-                    }
-                    ContentAddress::OutputSocket(_) => {
-                        sources.push(AttributePrototypeSource::OutputSocket(
-                            content_inner.id().into(),
-                            key,
-                        ));
-                    }
-                    _ => {
-                        return Err(WorkspaceSnapshotError::UnexpectedEdgeSource(
-                            content_inner.id(),
-                            id.into(),
-                            EdgeWeightKindDiscriminants::Prototype,
-                        )
-                        .into());
-                    }
-                },
-                NodeWeight::InputSocket(input_socket) => {
-                    sources.push(AttributePrototypeSource::InputSocket(
-                        input_socket.id().into(),
-                        key,
-                    ));
-                }
-                other => {
-                    return Err(WorkspaceSnapshotError::UnexpectedEdgeSource(
-                        other.id(),
-                        id.into(),
-                        EdgeWeightKindDiscriminants::Prototype,
-                    )
-                    .into());
-                }
-            }
-        }
-        Ok(sources)
-    }
-
     pub async fn list_arguments(
         ctx: &DalContext,
         ap_id: AttributePrototypeId,
@@ -858,15 +784,4 @@ impl AttributePrototype {
         title.push(')');
         Ok(title)
     }
-}
-
-#[remain::sorted]
-#[derive(AsRefStr, Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum AttributePrototypeSource {
-    AttributeValue(AttributeValueId, Option<String>),
-    InputSocket(InputSocketId, Option<String>),
-    OutputSocket(OutputSocketId, Option<String>),
-    Prop(PropId, Option<String>),
 }
