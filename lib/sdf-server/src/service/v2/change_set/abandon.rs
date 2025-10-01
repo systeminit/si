@@ -26,8 +26,8 @@ pub async fn abandon(
 
     let mut change_set = ChangeSet::get_by_id(ctx, change_set_id).await?;
     let old_status = change_set.status;
-    ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
-        .await?;
+    // Skipping the load of the snapshot here as it is not required and be expensive
+    ctx.update_visibility_deprecated(change_set.id.into());
     change_set.abandon(ctx).await?;
 
     ctx.write_audit_log(
