@@ -1,55 +1,51 @@
 import { CommandFailed } from "../errors.ts";
 import _logger from "../logger.ts";
 import { Provider } from "../types.ts";
+import { PROVIDER_REGISTRY } from "../pipelines/types.ts";
+import "../pipelines/aws/spec.ts";
+import "../pipelines/hetzner/provider.ts";
+import "../pipelines/dummy/spec.ts";
+
 const logger = _logger.ns("fetchSchema").seal();
 
 export async function fetchSchema(provider: Provider) {
   if (provider === "all") {
-    // Fetch schemas for all providers
-    const providers: Array<Exclude<Provider, "all">> = ["aws", "hetzner"];
-    for (const p of providers) {
-      logger.info(`Fetching schema for provider: ${p}`);
-      await fetchSchema(p);
+    for (const [name, config] of Object.entries(PROVIDER_REGISTRY)) {
+      if (config.fetchSchema) {
+        logger.info(`Fetching schema for provider: ${name}`);
+        try {
+          await config.fetchSchema();
+          logger.info(`✓ Successfully fetched schema for ${name}`);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          logger.error(`✗ Failed to fetch schema for ${name}: ${message}`);
+          throw new CommandFailed(`Failed to fetch schema for ${name}`);
+        }
+      } else {
+        logger.debug(`Skipping ${name} (no fetchSchema implementation)`);
+      }
     }
     return;
   }
 
-  switch (provider) {
-    case "aws": {
-      const td = new TextDecoder();
-      const child = await new Deno.Command(
-        Deno.execPath(),
-        {
-          args: ["run", "updateSchema"],
-        },
-      ).output();
+  const config = PROVIDER_REGISTRY[provider];
+  if (!config) {
+    throw new CommandFailed(`Unknown provider: ${provider}`);
+  }
 
-      const stdout = td.decode(child.stdout).trim();
-      logger.debug(stdout);
-      const stderr = td.decode(child.stderr).trim();
-      logger.debug(stderr);
+  if (!config.fetchSchema) {
+    throw new CommandFailed(
+      `Provider ${provider} does not support schema fetching`,
+    );
+  }
 
-      if (!child.success) {
-        throw new CommandFailed("failed to fetch schema");
-      }
-      break;
-    }
-    case "hetzner": {
-      const url = "https://docs.hetzner.cloud/cloud.spec.json";
-      const resp = await fetch(url);
-      if (resp.ok) {
-        try {
-          await Deno.writeTextFile("./src/provider-schemas/hetzner.json", JSON.stringify(await resp.json(), null, 2));
-        } catch (err) {
-          throw err;
-        }
-      } else {
-        throw new CommandFailed(`Hetzner unreachable at: ${url}`);
-      }
-      break;
-    }
-    default:
-      console.log(`Unsupported provider type: ${provider}`);
-      Deno.exit();
+  try {
+    logger.info(`Fetching schema for provider: ${provider}`);
+    await config.fetchSchema();
+    logger.info(`✓ Successfully fetched schema for ${provider}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`✗ Failed to fetch schema for ${provider}: ${message}`);
+    throw new CommandFailed(`Failed to fetch schema for ${provider}`);
   }
 }

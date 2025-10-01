@@ -1,4 +1,3 @@
-import { normalizeProperty } from "../cfDb.ts";
 import { ulid } from "ulid";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
@@ -12,6 +11,7 @@ import { ExpandedPkgSpec } from "./pkgs.ts";
 import {
   CfObjectProperty,
   CfProperty,
+  ProviderConfig,
   SuperSchema,
 } from "../pipelines/types.ts";
 
@@ -136,6 +136,7 @@ export function createDefaultPropFromCf(
   superSchema: SuperSchema,
   onlyProperties: OnlyProperties,
   docFn: DocFn,
+  providerConfig: ProviderConfig,
 ): ExpandedPropSpecFor["object"] {
   // Enqueue the root prop only, and then iterate over its children
   let rootProp: ExpandedPropSpecFor["object"] | undefined;
@@ -159,6 +160,9 @@ export function createDefaultPropFromCf(
     ],
   };
 
+  // Use provider's required function
+  const requiredFn = providerConfig.isChildRequired;
+
   while (queue.queue.length > 0) {
     const propArgs = queue.queue.shift()!;
     if (propArgs.propPath.length > MAX_PROP_DEPTH) {
@@ -171,7 +175,8 @@ export function createDefaultPropFromCf(
       propArgs,
       queue,
       docFn,
-      childIsRequired,
+      requiredFn,
+      providerConfig,
     );
     if (!prop) continue;
     if (propArgs.addTo) propArgs.addTo(prop);
@@ -211,6 +216,7 @@ export function createPropFromCf(
   { superSchema, onlyProperties, queue }: CreatePropQueue,
   docFn: DocFn,
   requiredFn: requiredFn,
+  providerConfig: ProviderConfig,
 ): ExpandedPropSpec | undefined {
   const name = propPath[propPath.length - 1];
   const required = requiredFn(superSchema, parentProp, name);
@@ -253,7 +259,12 @@ export function createPropFromCf(
     cfProp.title = name;
   }
 
-  const normalizedCfProp = normalizeProperty(cfProp);
+  // Apply provider-specific normalization
+  const normalizedCfProp = providerConfig.normalizeProperty(cfProp, {
+    propPath,
+    schema: superSchema,
+    parentProp,
+  });
 
   if (
     normalizedCfProp.type === "integer" ||

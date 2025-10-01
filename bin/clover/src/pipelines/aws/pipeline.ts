@@ -1,9 +1,7 @@
 import { loadCfDatabase } from "../../cfDb.ts";
-import { pkgSpecFromCf } from "./pipeline-steps/specPipeline.ts";
-import { generateDefaultActionFuncs } from "../generic/generateDefaultActionFuncs.ts";
-import { generateDefaultLeafFuncs } from "../generic/generateDefaultLeafFuncs.ts";
-import { generateDefaultQualificationFuncs } from "../generic/generateDefaultQualificationFuncs.ts";
-import { generateDefaultManagementFuncs } from "../generic/generateDefaultManagementFuncs.ts";
+import { pkgSpecFromCf } from "./spec.ts";
+import { awsProviderConfig } from "./provider.ts";
+import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { addDefaultPropsAndSockets } from "./pipeline-steps/addDefaultPropsAndSockets.ts";
 import { generateIntrinsicFuncs } from "./../generic/generateIntrinsicFuncs.ts";
 import { getExistingSpecs } from "../../specUpdates.ts";
@@ -24,12 +22,6 @@ import {
   createCredentialSuggestion,
   createRegionSuggestion,
 } from "./pipeline-steps/genericAwsProperties.ts";
-import {
-  createDefaultActionFuncs,
-  createDefaultCodeGenFuncs,
-  createDefaultManagementFuncs,
-  createDefaultQualificationFuncs,
-} from "./funcs.ts";
 
 export async function generateAwsSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -61,13 +53,7 @@ export async function generateAwsSpecs(options: {
   specs = await removeBadDocLinks(specs, options.docLinkCache);
   specs = addInferredEnums(specs, inferred);
   specs = addDefaultPropsAndSockets(specs);
-  specs = generateDefaultActionFuncs(specs, createDefaultActionFuncs);
-  specs = generateDefaultLeafFuncs(specs, createDefaultCodeGenFuncs);
-  specs = generateDefaultManagementFuncs(specs, createDefaultManagementFuncs);
-  specs = generateDefaultQualificationFuncs(
-    specs,
-    createDefaultQualificationFuncs,
-  );
+  specs = generateDefaultFuncsFromConfig(specs, awsProviderConfig);
   specs = generateIntrinsicFuncs(specs);
   specs = removeUnneededAssets(specs);
 

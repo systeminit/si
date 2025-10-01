@@ -1,8 +1,11 @@
-import { CreatePropArgs, OnlyProperties } from "../spec/props.ts";
 import type { JSONSchema } from "./draft_07.ts";
+import type { HetznerSchema } from "./hetzner/schema.ts";
 import type { Extend } from "../extend.ts";
-
-type JSONPointer = string;
+import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
+import { FuncSpecInfo } from "../spec/funcs.ts";
+import type { CfSchema } from "./aws/schema.ts";
+import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import { ExpandedPropSpecFor, OnlyProperties } from "../spec/props.ts";
 
 const CF_PROPERTY_TYPES = [
   "boolean",
@@ -74,81 +77,236 @@ type CfMultiTypeProperty =
     anyOf?: CfProperty[];
   };
 
-type StringPair =
-  | ["string", "object"]
-  | ["string", "boolean"]
-  | ["string", "number"]
-  | ["string", "integer"]
-  | ["object", "string"]
-  | ["boolean", "string"]
-  | ["number", "string"]
-  | ["string", "array"]
-  | ["integer", "string"];
-
-export type CfSchema = {
-  typeName: string;
-  description: string;
-  primaryIdentifier: JSONPointer[];
-  sourceUrl?: string;
-  documentationUrl?: string;
-  replacementStrategy?: "create_then_delete" | "delete_then_create";
-  taggable?: boolean;
-  tagging?: {
-    taggable: boolean;
-    tagOnCreate?: boolean;
-    tagUpdatable?: boolean;
-    cloudFormationSystemTags?: boolean;
-    tagProperty?: string;
-  };
-  handlers?: Record<CfHandlerKind, CfHandler>;
-  remote?: unknown;
-  definitions?: Record<string, CfProperty>;
-  properties: Record<string, CfProperty>;
-  readOnlyProperties?: JSONPointer[];
-  writeOnlyProperties?: JSONPointer[];
-  conditionalCreateOnlyProperties?: JSONPointer[];
-  nonPublicProperties?: JSONPointer[];
-  nonPublicDefinitions?: JSONPointer[];
-  createOnlyProperties?: JSONPointer[];
-  deprecatedProperties?: JSONPointer[];
-  additionalIdentifiers?: JSONPointer[];
-  resourceLink?: {
-    "$comment": JSONSchema.Interface["$comment"];
-    templateUri: string;
-    mappings: Record<string, JSONPointer>;
-  };
-  propertyTransform?: Record<string, string>;
-};
-
 export type CfHandlerKind = "create" | "read" | "update" | "delete" | "list";
 export type CfHandler = {
   permissions: string[];
   timeoutInMinutes: number;
 };
 
-export type CfDb = Record<string, CfSchema>;
-
-export type HetznerSchema = {
-  typeName: string;
-  description: string;
-  sourceUrl?: string;
-  documentationUrl?: string;
-  properties: Record<string, CfProperty>;
-  requiredProperties: Set<string>;
-  primaryIdentifier: JSONPointer[];
-  handlers?: Record<CfHandlerKind, CfHandler>;
-  endpoint?: string;
-};
-
-export type HDB = Record<string, HetznerSchema>;
-
-export type HQueue = {
-  superSchema: HetznerSchema;
-  primaryIdentifier: JSONPointer[];
-  onlyProperties: OnlyProperties;
-  queue: CreatePropArgs[];
-};
+export type { CfDb, CfSchema } from "./aws/schema.ts";
 
 export type SuperSchema = HetznerSchema | CfSchema;
 
 export type CategoryFn = ({ typeName }: SuperSchema) => string;
+
+/**
+ * Provider-specific functions that must be implemented for each provider.
+ * These functions handle provider-specific logic for transforming schemas
+ * into the unified spec format.
+ */
+export interface ProviderFunctions {
+  /**
+   * Creates a documentation link for a schema, definition, or property.
+   * @param schema - The schema to create a link for
+   * @param defName - Optional definition name within the schema
+   * @param propName - Optional property name within the schema or definition
+   * @returns A URL string pointing to the provider's documentation
+   */
+  createDocLink: (
+    schema: SuperSchema,
+    defName?: string,
+    propName?: string,
+  ) => string;
+
+  /**
+   * Determines the category for a schema (e.g., "AWS::EC2", "Hetzner::Resource").
+   * @param schema - The schema to categorize
+   * @returns A category string used for organizing resources
+   */
+  getCategory: (schema: SuperSchema) => string;
+}
+
+/**
+ * Provider-specific func spec definitions that define the actions, code generation,
+ * management, and qualification functions available for a provider.
+ */
+export interface ProviderFuncSpecs {
+  /**
+   * Action func specs (create, update, delete, refresh, etc.)
+   * Maps function names to their specs with action kinds
+   */
+  actions: Record<string, FuncSpecInfo & { actionKind: ActionFuncSpecKind }>;
+
+  /**
+   * Code generation func specs
+   * Maps function names to their specs
+   */
+  codeGeneration: Record<string, FuncSpecInfo>;
+
+  /**
+   * Management func specs (discover, import, etc.)
+   * Maps function names to their specs with handler requirements
+   */
+  management: Record<string, FuncSpecInfo & { handlers: CfHandlerKind[] }>;
+
+  /**
+   * Qualification func specs
+   * Maps function names to their specs
+   */
+  qualification: Record<string, FuncSpecInfo>;
+}
+
+/**
+ * Options passed to provider pipeline functions
+ */
+export interface PipelineOptions {
+  forceUpdateExistingPackages?: boolean;
+  moduleIndexUrl: string;
+  docLinkCache: string;
+  inferred: string;
+  services?: string[];
+}
+
+/**
+ * Visual and descriptive metadata for a provider
+ */
+export interface ProviderMetadata {
+  /**
+   * Display color for UI elements (hex code, e.g., "#FF9900")
+   * Defaults to "#FF9900" (AWS orange) if not specified
+   */
+  color?: string;
+
+  /**
+   * Human-readable display name for the provider
+   * If not specified, the provider name will be capitalized
+   */
+  displayName?: string;
+
+  /**
+   * Brief description of the provider
+   */
+  description?: string;
+}
+
+/**
+ * Context passed to property normalization hooks
+ */
+export interface PropertyNormalizationContext {
+  /**
+   * Path to this property from the root (e.g., ["root", "domain", "propertyName"])
+   */
+  propPath: string[];
+
+  /**
+   * The schema containing this property
+   */
+  schema: SuperSchema;
+
+  /**
+   * The parent property, if this property is nested
+   */
+  parentProp?: ExpandedPropSpecFor["object" | "array" | "map"];
+}
+
+/**
+ * Configuration object for a provider that groups all provider-specific
+ * functionality and metadata. This serves as the single source of truth
+ * for how a provider transforms its schemas into the unified spec format.
+ */
+export interface ProviderConfig {
+  /**
+   * Unique identifier for this provider (e.g., "aws", "hetzner", "dummy")
+   */
+  name: string;
+
+  /**
+   * Provider-specific functions for documentation, categorization, and normalization
+   */
+  functions: ProviderFunctions;
+
+  /**
+   * Provider-specific func spec definitions
+   */
+  funcSpecs: ProviderFuncSpecs;
+
+  /**
+   * Provider-specific schema loading and transformation function.
+   * This function should load the provider's schemas from their source format
+   * and transform them into ExpandedPkgSpec[] format, applying any
+   * provider-specific pipeline steps.
+   * @param options - Pipeline options including paths and filters
+   * @returns Promise of array of expanded package specs
+   */
+  loadSchemas: (
+    options: PipelineOptions,
+  ) => Promise<ExpandedPkgSpec[]>;
+
+  /**
+   * Optional function to fetch/update the provider's schema from its source.
+   * If not provided, the provider doesn't support schema fetching.
+   * @returns Promise that resolves when schema is fetched and saved
+   */
+  fetchSchema?: () => Promise<void>;
+
+  /**
+   * Visual and descriptive metadata for the provider
+   * Used for UI display and documentation
+   */
+  metadata?: ProviderMetadata;
+
+  /**
+   * Function to normalize a single property before it's processed.
+   * Called during prop creation for every property in the schema.
+   * This allows providers to handle schema-specific quirks (e.g., OpenAPI oneOf,
+   * CloudFormation multi-type arrays) before the property is transformed into
+   * an SI prop spec.
+   *
+   * @param prop - The raw property from the provider's schema
+   * @param context - Additional context (property path, parent schema, etc.)
+   * @returns Normalized CfProperty that can be processed by createPropFromCf
+   */
+  normalizeProperty: (
+    prop: CfProperty,
+    context: PropertyNormalizationContext,
+  ) => CfProperty;
+
+  /**
+   * Function to determine if a child property is required.
+   *
+   * This is provider-specific because different schema formats store required
+   * information differently (e.g., Hetzner uses a Set at schema level,
+   * CloudFormation uses an array in the parent property's definition).
+   *
+   * @param schema - The schema containing the property
+   * @param parentProp - The parent property (if any)
+   * @param childName - The name of the child property
+   * @returns true if the property is required
+   */
+  isChildRequired: (
+    schema: SuperSchema,
+    parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
+    childName: string,
+  ) => boolean;
+
+  /**
+   * Optional function to parse raw provider schema(s) into normalized SuperSchema(s).
+   * This is where provider-specific parsing and inference happens (e.g., parsing
+   * OpenAPI specs, inferring property classifications from HTTP methods).
+   *
+   * If not provided, the provider is expected to handle schema parsing elsewhere
+   * (e.g., AWS uses a pre-built CloudFormation database).
+   *
+   * @param rawSchema - The raw schema in provider's native format
+   * @returns Array of normalized SuperSchemas ready for makeModule
+   */
+  parseRawSchema?: (rawSchema: unknown) => SuperSchema[];
+
+  /**
+   * Function to extract OnlyProperties classification from a schema.
+   * This determines which properties are createOnly, readOnly, writeOnly,
+   * and what the primaryIdentifier is.
+   *
+   * @param schema - The normalized SuperSchema
+   * @returns Classification of properties by mutability
+   */
+  classifyProperties: (
+    schema: SuperSchema,
+  ) => OnlyProperties;
+}
+
+/**
+ * Registry of all available providers.
+ * To add a new provider, simply add its config to this registry.
+ */
+export const PROVIDER_REGISTRY: Record<string, ProviderConfig> = {};

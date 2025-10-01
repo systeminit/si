@@ -7,7 +7,7 @@ import {
   ExpandedPropSpec,
   findPropByName,
 } from "../../../spec/props.ts";
-import { HetznerSchema, SuperSchema } from "../../types.ts";
+import { HetznerSchema } from "../schema.ts";
 
 export interface PropUsageMap {
   createOnly: string[];

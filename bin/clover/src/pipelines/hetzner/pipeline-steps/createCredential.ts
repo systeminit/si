@@ -12,9 +12,8 @@ import {
   FuncSpecInfo,
 } from "../../../spec/funcs.ts";
 import { makeModule } from "../../generic/index.ts";
-import { HetznerSchema } from "../../types.ts";
-import { createDocLink, hCategory } from "./../spec.ts";
-import { createDefaultProp } from "./../prop.ts";
+import { HetznerSchema } from "../schema.ts";
+import { hetznerProviderConfig } from "./../provider.ts";
 
 export function generateCredentialModule(
   specs: ExpandedPkgSpec[],
@@ -46,46 +45,11 @@ function createCredentialSpec(
   credential: HetznerSchema,
   onlyProperties: OnlyProperties,
 ): ExpandedPkgSpec {
-  const domain = createDefaultProp(
-    "domain",
-    {},
-    onlyProperties,
-    credential,
-    createDocLink,
-  );
-
-  const resourceValue = createDefaultProp(
-    "resource_value",
-    {},
-    onlyProperties,
-    credential,
-    createDocLink,
-  );
-
-  const secrets = createDefaultPropFromCf(
-    "secrets",
-    {},
-    credential,
-    onlyProperties,
-    createDocLink,
-  );
-
-  const secretDefinition = createDefaultPropFromCf(
-    "secret_definition",
-    credential.properties,
-    credential,
-    onlyProperties,
-    createDocLink,
-  );
-
   const spec = makeModule(
     credential,
-    createDocLink(credential, undefined),
     credential.description,
-    domain,
-    resourceValue,
-    secrets,
-    hCategory,
+    onlyProperties,
+    hetznerProviderConfig,
   );
 
   const [schema] = spec.schemas;
@@ -93,6 +57,16 @@ function createCredentialSpec(
   const funcs = spec.funcs;
   const leafFuncs = schemaVariant.leafFunctions;
   const authFuncs = schemaVariant.authFuncs;
+
+  // Create the secret definition manually since it needs special handling
+  const secretDefinition = createDefaultPropFromCf(
+    "secret_definition",
+    credential.properties,
+    credential,
+    onlyProperties,
+    hetznerProviderConfig.functions.createDocLink,
+    hetznerProviderConfig,
+  );
 
   schemaVariant.secretDefinition = secretDefinition;
 
@@ -111,7 +85,7 @@ function createCredentialSpec(
     }
   }
 
-  for (const func of createQualificationFuncs(domain.uniqueId!)) {
+  for (const func of createQualificationFuncs(schemaVariant.domain.uniqueId!)) {
     funcs.push(func);
     leafFuncs.push(
       createLeafFuncSpec("qualification", func.uniqueId, [

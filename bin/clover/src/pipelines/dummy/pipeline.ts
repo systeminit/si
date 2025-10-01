@@ -5,17 +5,11 @@ import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggest
 import { reorderProps } from "../generic/reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
 import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
-import { generateDefaultActionFuncs } from "../generic/generateDefaultActionFuncs.ts";
-import { generateDefaultLeafFuncs } from "../generic/generateDefaultLeafFuncs.ts";
-import { generateDefaultManagementFuncs } from "../generic/generateDefaultManagementFuncs.ts";
-import { generateDefaultQualificationFuncs } from "../generic/generateDefaultQualificationFuncs.ts";
 import {
-  createDefaultActionFuncs,
-  createDefaultCodeGenFuncs,
-  createDefaultManagementFuncs,
-  createDefaultQualificationFuncs,
-} from "./funcs.ts";
-import { pkgSpecFromDummy } from "./spec.ts";
+  generateDefaultFuncsFromConfig,
+  generateSpecsFromRawSchema,
+} from "../generic/index.ts";
+import { dummyProviderConfig } from "./provider.ts";
 
 export async function generateDummySpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -28,20 +22,15 @@ export async function generateDummySpecs(options: {
 
   const existing_specs = await getExistingSpecs(options);
 
-  // Generate base specs from dummy schemas
-  specs = pkgSpecFromDummy();
+  // Generate base specs from dummy schemas using the new generic helper
+  // Pass null as rawSchema since dummy uses parseRawSchema to return hardcoded schemas
+  specs = generateSpecsFromRawSchema(null, dummyProviderConfig);
 
   // Run through standard pipeline steps
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
 
-  specs = generateDefaultActionFuncs(specs, createDefaultActionFuncs);
-  specs = generateDefaultLeafFuncs(specs, createDefaultCodeGenFuncs);
-  specs = generateDefaultManagementFuncs(specs, createDefaultManagementFuncs);
-  specs = generateDefaultQualificationFuncs(
-    specs,
-    createDefaultQualificationFuncs,
-  );
+  specs = generateDefaultFuncsFromConfig(specs, dummyProviderConfig);
 
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
