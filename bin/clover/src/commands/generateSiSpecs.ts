@@ -13,6 +13,7 @@ import {
 import { PropSpec } from "../bindings/PropSpec.ts";
 import { generateAwsSpecs } from "../pipelines/aws/pipeline.ts";
 import { generateHetznerSpecs } from "../pipelines/hetzner/pipeline.ts";
+import { generateDummySpecs } from "../pipelines/dummy/pipeline.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -32,6 +33,9 @@ export async function generateSiSpecs(options: {
       break;
     case "hetzner":
       specs = await generateHetznerSpecs(options);
+      break;
+    case "dummy":
+      specs = await generateDummySpecs(options);
       break;
     default:
       console.log(`Unsupported provider type: "${options.provider}"`);

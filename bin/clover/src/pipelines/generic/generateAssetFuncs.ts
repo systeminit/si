@@ -345,9 +345,9 @@ function generateSuggestSourceString(
   indent_level: number,
 ): string {
   const suggestSources = prop.data?.uiOptionals?.suggestSources;
-  if (!suggestSources) return "";
+  if (!suggestSources || !Array.isArray(suggestSources)) return "";
 
-  return suggestSources
+  return (suggestSources as Array<{ schema: string; prop: string }>)
     .map(
       (src: { schema: string; prop: string }) =>
         `${indent(indent_level)}.suggestSource({\n` +

@@ -63,6 +63,14 @@ export interface PropSuggestion {
   prop: string;
 }
 
+// Type guard to check if a JsonValue is a PropSuggestion array
+function isPropSuggestionArray(value: unknown): value is PropSuggestion[] {
+  return Array.isArray(value) &&
+    (value.length === 0 ||
+     (typeof value[0] === 'object' && value[0] !== null &&
+      'schema' in value[0] && 'prop' in value[0]));
+}
+
 interface PropSpecOverrides {
   data: Extend<
     PropSpecData,
@@ -457,7 +465,7 @@ export function createPropFromCf(
       }
 
       queue.push({
-        cfProp: cfItemProp,
+        cfProp: cfItemProp as CfProperty,
         propPath: [...propPath, `${name}Item`],
         parentProp: prop,
         addTo: (data: ExpandedPropSpec) => {
@@ -711,10 +719,12 @@ export function addPropSuggestSource(
 ): ExpandedPropSpec {
   prop.data.uiOptionals ??= {};
 
+  const existing = prop.data.uiOptionals.suggestSources;
+  const existingArray = isPropSuggestionArray(existing) ? existing : [];
   prop.data.uiOptionals.suggestSources = [
-    ...(prop.data.uiOptionals.suggestSources ?? []),
+    ...existingArray,
     suggestion,
-  ];
+  ] as unknown as any;
   return prop;
 }
 
@@ -724,10 +734,12 @@ export function addPropSuggestAsSourceFor(
 ): ExpandedPropSpec {
   prop.data.uiOptionals ??= {};
 
+  const existing = prop.data.uiOptionals.suggestAsSourceFor;
+  const existingArray = isPropSuggestionArray(existing) ? existing : [];
   prop.data.uiOptionals.suggestAsSourceFor = [
-    ...(prop.data.uiOptionals.suggestAsSourceFor ?? []),
+    ...existingArray,
     suggestion,
-  ];
+  ] as unknown as any;
   return prop;
 }
 

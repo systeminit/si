@@ -6,6 +6,7 @@ import { ulid } from "ulid";
 import { CategoryFn, SuperSchema } from "../types.ts";
 import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import { SiPkgKind } from "../../bindings/SiPkgKind.ts";
+import { FuncSpec } from "../../bindings/FuncSpec.ts";
 
 function versionFromDate(): string {
   return new Date()
@@ -83,7 +84,7 @@ export function makeModule(
     workspacePk: null,
     workspaceName: null,
     schemas: [moduleSchema] as [ExpandedSchemaSpec],
-    funcs: [],
+    funcs: [] as FuncSpec[],
     changeSets: [], // always empty
   };
 }

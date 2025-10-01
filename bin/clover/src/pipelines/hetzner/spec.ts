@@ -187,7 +187,7 @@ export function normalizeHetznerProperty(prop: JsonSchema): JsonSchema {
       );
     }
 
-    if (normalized.additionalProperties) {
+    if (normalized.additionalProperties && typeof normalized.additionalProperties === "object") {
       normalized.additionalProperties = normalizeHetznerProperty(
         normalized.additionalProperties as JsonSchema,
       );

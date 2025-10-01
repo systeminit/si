@@ -258,6 +258,12 @@ def deno_test_impl(ctx: AnalysisContext) -> list[Provider]:
     return [
         DefaultInfo(),
         RunInfo(args=cmd),
+        ExternalRunnerTestInfo(
+            type="custom",
+            command=[cmd],
+            env={},
+            run_from_project_root=False,
+        ),
     ]
 
 

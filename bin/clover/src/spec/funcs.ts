@@ -56,7 +56,23 @@ export function createDefaultFuncSpec(
   spec: FuncSpecInfo,
   args: FuncArgumentSpec[],
 ): FuncSpec {
-  const code = Deno.readTextFileSync(spec.path);
+  // Try the path as-is first, then with bin/clover/ prepended
+  // This handles both local dev and CI environments
+  let resolvedPath = spec.path;
+  try {
+    Deno.statSync(resolvedPath);
+  } catch {
+    // If relative path doesn't work, try from project root
+    const pathFromRoot = spec.path.replace(/^\.\//, "bin/clover/");
+    try {
+      Deno.statSync(pathFromRoot);
+      resolvedPath = pathFromRoot;
+    } catch {
+      // Use original path and let readTextFileSync throw the error
+    }
+  }
+
+  const code = Deno.readTextFileSync(resolvedPath);
   const codeBase64: string = strippedBase64(code);
 
   return createFunc(
