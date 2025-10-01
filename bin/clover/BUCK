@@ -46,6 +46,7 @@ deno_test(
         exclude = [
             "src/pipelines/aws/funcs/**/*",
             "src/pipelines/hetzner/funcs/**/*",
+            "src/pipelines/dummy/funcs/**/*",
         ]
     ),
     ignore = [

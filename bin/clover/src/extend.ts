@@ -1,2 +1,2 @@
-// Extend a type, ensuring that the overridden types extend the original
-export type Extend<T, F extends Partial<T>> = Omit<T, keyof F> & F;
+// Extend a type, allowing overriding with compatible types
+export type Extend<T, F> = Omit<T, keyof F> & F;

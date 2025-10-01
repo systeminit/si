@@ -959,8 +959,9 @@ function addSecretProp(
     const propUsageMapProp = extraProp.entries.find(
       (p) => p.name === "PropUsageMap",
     );
+    const defaultValue = propUsageMapProp?.data.defaultValue;
     const propUsageMap = JSON.parse(
-      propUsageMapProp?.data.defaultValue,
+      typeof defaultValue === "string" ? defaultValue : "{}",
     ) as PropUsageMap;
 
     if (!propUsageMapProp || !Array.isArray(propUsageMap?.secrets)) {

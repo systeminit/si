@@ -19,7 +19,8 @@ export function createSuggestionsForPrimaryIdentifiers(
     const [schemaVariant] = schema.variants;
     const resource = schemaVariant.resourceValue;
     const specName = spec.name;
-    const category = schema.data.category.split("::")[1];
+    const categoryStr = typeof schema.data?.category === "string" ? schema.data.category : "";
+    const category = categoryStr.split("::")[1];
     const variantName = specName.split("::")[2];
 
     bfsPropTree(

@@ -1,17 +1,17 @@
 {
   "tasks": {
     "updateSchema": "../../lib/jsr-systeminit/cf-db/update-schema.sh",
-    "run": "deno run --allow-all main.ts"
+    "run": "deno run --allow-all main.ts",
   },
   "imports": {
-    "@apidevtools/json-schema-ref-parser": "npm:@apidevtools/json-schema-ref-parser@^11.7.3",
-    "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.7",
-    "@std/assert": "jsr:@std/assert@1",
-    "@types/lodash": "npm:@types/lodash@^4.17.15",
-    "adze": "npm:adze@^2.2.0",
+    "@apidevtools/json-schema-ref-parser": "npm:@apidevtools/json-schema-ref-parser@^11.9.3",
+    "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
+    "@std/assert": "jsr:@std/assert@^1.0.14",
+    "@types/lodash": "npm:@types/lodash@^4.17.20",
+    "adze": "npm:adze@^2.2.5",
     "json-schema-typed": "npm:json-schema-typed@^8.0.1",
     "lodash": "npm:lodash@^4.17.21",
-    "openai": "npm:openai@^4.85.1",
+    "openai": "npm:openai@^4.104.0",
     "ulid": "https://deno.land/x/ulid@v0.3.0/mod.ts",
     "pluralize": "npm:pluralize@^8.0.0",
     "cf-db": "../../lib/jsr-systeminit/cf-db"

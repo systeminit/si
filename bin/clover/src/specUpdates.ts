@@ -56,6 +56,10 @@ export async function getExistingSpecs(
     logger.info(`Fetching builtin modules from ${options.moduleIndexUrl}`);
     const moduleMap = await getModuleMap(options.moduleIndexUrl);
 
+    // Ensure parent directory exists
+    const dir = EXISTING_PACKAGES.split("/").slice(0, -1).join("/");
+    await Deno.mkdir(dir, { recursive: true });
+
     await Deno.writeTextFile(
       EXISTING_PACKAGES,
       JSON.stringify(moduleMap, null, 2),
