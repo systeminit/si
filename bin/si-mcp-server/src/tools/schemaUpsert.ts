@@ -154,26 +154,26 @@ export function schemaUpsertTool(server: McpServer) {
             // edit an existing schema
 
             // first we need to make sure we have an unlocked schema variant
-            const response = await siSchemasApi.unlockSchema({
+            const responseUnlock = await siSchemasApi.unlockSchema({
               workspaceId: WORKSPACE_ID,
               changeSetId,
               schemaId,
             });
 
-            const schemaVariantId = response.data.unlockedVariantId;
+            const schemaVariantId = responseUnlock.data.unlockedVariantId;
 
             // then we need to get the info about that unlocked variant
-            const response2 = await siSchemasApi.getVariant({
+            const responseGetVariant = await siSchemasApi.getVariant({
               workspaceId: WORKSPACE_ID,
               changeSetId,
               schemaId,
               schemaVariantId,
             });
 
-            const assetFuncId = response2.data.assetFuncId;
+            const assetFuncId = responseGetVariant.data.assetFuncId;
 
             // then we need to get the current asset func code
-            const response3 = await siFuncsApi.getFunc({
+            const responseGetFunc = await siFuncsApi.getFunc({
               workspaceId: WORKSPACE_ID,
               changeSetId,
               funcId: assetFuncId,
@@ -181,12 +181,12 @@ export function schemaUpsertTool(server: McpServer) {
 
             // so that we can build the final request with the current data as the default
             const updateSchemaVariantV1Request = {
-              name: response2.data.displayName,
-              description: response2.data.description,
-              category: response2.data.category,
-              color: response2.data.color,
-              link: response2.data.link,
-              code: response3.data.code,
+              name: responseGetVariant.data.displayName,
+              description: responseGetVariant.data.description,
+              category: responseGetVariant.data.category,
+              color: responseGetVariant.data.color,
+              link: responseGetVariant.data.link,
+              code: responseGetFunc.data.code,
               // then injecting our new data to overwrite any field we put a value for
               ...upsertSchemaV1Request,
             };
@@ -217,8 +217,8 @@ export function schemaUpsertTool(server: McpServer) {
               });
             }
 
-            // then we call the endpoint to create a new schema
-            await siSchemasApi.createSchema({
+            // finally we call the endpoint to create a new schema
+            const responseCreate = await siSchemasApi.createSchema({
               workspaceId: WORKSPACE_ID,
               changeSetId: changeSetId,
               createSchemaV1Request: {
@@ -226,14 +226,7 @@ export function schemaUpsertTool(server: McpServer) {
                 code: definitionFunction ?? DEFAULT_SCHEMA_DEFINITION_FUNCTION,
               },
             });
-
-            // after creating the new schema, we need to get its id to return to Claude
-            const response = await siSchemasApi.findSchema({
-              workspaceId: WORKSPACE_ID,
-              changeSetId: changeSetId!,
-              schema: upsertSchemaV1Request.name,
-            });
-            touchedSchemaId = response.data.schemaId;
+            touchedSchemaId = responseCreate.data.schemaId;
           }
           const data: SchemaUpsertOutputData = {
             schemaId: touchedSchemaId,
