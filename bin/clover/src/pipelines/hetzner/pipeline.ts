@@ -8,7 +8,6 @@ import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggest
 import { reorderProps } from "../generic/reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
 import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
-import { generateCredentialModule } from "./pipeline-steps/createCredential.ts";
 import { generateDefaultActionFuncs } from "../generic/generateDefaultActionFuncs.ts";
 import { generateDefaultLeafFuncs } from "../generic/generateDefaultLeafFuncs.ts";
 import { generateDefaultManagementFuncs } from "../generic/generateDefaultManagementFuncs.ts";
@@ -36,7 +35,6 @@ export async function generateHetznerSpecs(options: {
   // Generate base specs from Hetzner schema
   specs = pkgSpecFromHetnzer(rawSchema);
   specs = addDefaultProps(specs);
-  specs = generateCredentialModule(specs);
 
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
