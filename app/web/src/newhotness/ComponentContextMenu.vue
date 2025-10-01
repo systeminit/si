@@ -547,6 +547,10 @@ const deleteComponentIds = ref<ComponentId[]>([]);
 const deleteModalRef = ref<InstanceType<typeof DeleteModal>>();
 
 const componentsStartDelete = (components: ComponentInList[]) => {
+  const atLeastOneGhostedComponent = components.some((c) => c.toDelete);
+  const atLeastOneNormalComponent = components.some((c) => !c.toDelete);
+  if (atLeastOneGhostedComponent && atLeastOneNormalComponent) return;
+  if (components.length < 1) return;
   deleteComponentIds.value = componentIds.value;
   deleteModalRef.value?.open(components);
   close();
