@@ -67,8 +67,8 @@ export interface PropSuggestion {
 function isPropSuggestionArray(value: unknown): value is PropSuggestion[] {
   return Array.isArray(value) &&
     (value.length === 0 ||
-     (typeof value[0] === 'object' && value[0] !== null &&
-      'schema' in value[0] && 'prop' in value[0]));
+      (typeof value[0] === "object" && value[0] !== null &&
+        "schema" in value[0] && "prop" in value[0]));
 }
 
 interface PropSpecOverrides {
@@ -433,7 +433,10 @@ export function createPropFromCf(
 
     return prop;
   } else if (normalizedCfProp.type === "object") {
-    if (normalizedCfProp.patternProperties || normalizedCfProp.additionalProperties) {
+    if (
+      normalizedCfProp.patternProperties ||
+      normalizedCfProp.additionalProperties
+    ) {
       const prop = partialProp as ExpandedPropSpecFor["map"];
       prop.kind = "map";
       prop.data.widgetKind = "Map";
@@ -461,7 +464,9 @@ export function createPropFromCf(
       }
 
       if (!cfItemProp) {
-        throw new Error("could not extract type from pattern prop or additionalProperties");
+        throw new Error(
+          "could not extract type from pattern prop or additionalProperties",
+        );
       }
 
       queue.push({

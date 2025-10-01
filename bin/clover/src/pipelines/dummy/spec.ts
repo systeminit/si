@@ -170,3 +170,4 @@ export function pkgSpecFromDummy(): ExpandedPkgSpec[] {
 function dummyCategory(schema: SuperSchema): string {
   return schema.typeName;
 }
+

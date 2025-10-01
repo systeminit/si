@@ -7,9 +7,14 @@ async function main({ thisComponent }: Input): Promise<Output> {
   }
 
   const endpoint = _.get(thisComponent.properties, ["domain", "extra", "endpoint"], "");
+  const resourceType = _.get(thisComponent.properties, ["domain", "extra", "HetznerResourceType"], "");
 
   if (!endpoint) {
     throw new Error("Endpoint not found in extra properties");
+  }
+
+  if (!resourceType) {
+    throw new Error("HetznerResourceType not found in extra properties");
   }
 
   const create: Output["ops"]["create"] = {};
@@ -40,7 +45,7 @@ async function main({ thisComponent }: Input): Promise<Output> {
     const properties = {
       si: {
         resourceId,
-        type: endpoint,
+        type: resourceType,
       },
       domain: {
         ...resource,
@@ -56,7 +61,7 @@ async function main({ thisComponent }: Input): Promise<Output> {
     }
 
     create[resourceId] = {
-      kind: endpoint,
+      kind: resourceType,
       properties,
       attributes: newAttributes,
     };

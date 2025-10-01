@@ -7,6 +7,7 @@ import {
   ExpandedPropSpec,
   findPropByName,
 } from "../../../spec/props.ts";
+import { HetznerSchema, SuperSchema } from "../../types.ts";
 
 export interface PropUsageMap {
   createOnly: string[];
@@ -31,6 +32,8 @@ export function addDefaultProps(
       true,
     );
 
+    extraProp.data.hidden = true;
+
     // Create Endpoint prop
     {
       const endpointProp = createScalarProp(
@@ -40,9 +43,26 @@ export function addDefaultProps(
         false,
       );
 
-      endpointProp.data.defaultValue = schema.name;
+      // Get endpoint from the HetznerSchema stored in the variant's superSchema
+      const hSchema = schemaVariant.superSchema as HetznerSchema;
+      endpointProp.data.defaultValue = hSchema?.endpoint || schema.name;
 
       extraProp.entries.push(endpointProp);
+    }
+
+    // Create HetznerResourceType prop
+    {
+      const resourceTypeProp = createScalarProp(
+        "HetznerResourceType",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+
+      resourceTypeProp.data.defaultValue = schema.name;
+      resourceTypeProp.data.hidden = true;
+
+      extraProp.entries.push(resourceTypeProp);
     }
 
     // Create PropUsageMap
