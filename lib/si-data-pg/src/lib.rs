@@ -179,7 +179,7 @@ pub struct PgPoolConfig {
     pub pool_total_connection_lifetime_secs: u64,
     pub pool_idle_connection_lifetime_secs: u64,
     /// If set to `None`, the eviction task won't be started
-    pub pool_lifetime_check_interval_secs: Option<u64>,
+    pub pool_lifetime_check_interval_secs: u64,
     pub recycling_method: Option<RecyclingMethodConfig>,
 }
 
@@ -201,7 +201,7 @@ impl Default for PgPoolConfig {
             pool_timeout_recycle_secs: None,
             pool_total_connection_lifetime_secs: 20 * 3600, // 20 hours (RDS Proxy has a 24-hour max)
             pool_idle_connection_lifetime_secs: 6 * 3600,   // 6 hours
-            pool_lifetime_check_interval_secs: None,
+            pool_lifetime_check_interval_secs: 2 * 3600,    // 2 hours
             recycling_method: None,
         }
     }
@@ -347,23 +347,20 @@ impl PgPool {
         span.record("net.peer.port", metadata.net_peer_port);
         span.record("net.transport", metadata.net_transport);
 
-        // If we get a lifetime check interval config, set a loop to evict old connections.
         // We need this to get rid of connections that may have been dropped by other systems,
         // such as RDS proxy. Initially we didn't have a limit on the total lifetime of connections,
         // but this causes some bugs since AWS very much does.
-        if let Some(check_interval_seconds) = settings.pool_lifetime_check_interval_secs {
-            let check_interval = Duration::from_secs(check_interval_seconds);
+        let check_interval = Duration::from_secs(settings.pool_lifetime_check_interval_secs);
 
-            let max_age = Duration::from_secs(settings.pool_total_connection_lifetime_secs);
-            let max_idle_time = Duration::from_secs(settings.pool_idle_connection_lifetime_secs);
+        let max_age = Duration::from_secs(settings.pool_total_connection_lifetime_secs);
+        let max_idle_time = Duration::from_secs(settings.pool_idle_connection_lifetime_secs);
 
-            tokio::spawn(evict_old_and_idle_pgpool_connections(
-                pool.clone(),
-                check_interval,
-                max_age,
-                max_idle_time,
-            ));
-        }
+        tokio::spawn(evict_old_and_idle_pgpool_connections(
+            pool.clone(),
+            check_interval,
+            max_age,
+            max_idle_time,
+        ));
 
         let pg_pool = Self {
             pool,
