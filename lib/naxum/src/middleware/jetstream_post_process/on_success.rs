@@ -1,13 +1,19 @@
 use std::sync::Arc;
 
+use async_nats::StatusCode;
 use futures::future::BoxFuture;
 use tracing::trace;
 
 use super::Info;
 use crate::Head;
 
-pub trait OnSuccess {
-    fn call(&mut self, head: Arc<Head>, info: Arc<Info>) -> BoxFuture<'static, ()>;
+pub trait OnSuccess: Clone {
+    fn call(
+        &mut self,
+        head: Arc<Head>,
+        info: Arc<Info>,
+        status: StatusCode,
+    ) -> BoxFuture<'static, ()>;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -20,7 +26,12 @@ impl DefaultOnSuccess {
 }
 
 impl OnSuccess for DefaultOnSuccess {
-    fn call(&mut self, _head: Arc<Head>, _info: Arc<Info>) -> BoxFuture<'static, ()> {
+    fn call(
+        &mut self,
+        _head: Arc<Head>,
+        _info: Arc<Info>,
+        _status: StatusCode,
+    ) -> BoxFuture<'static, ()> {
         Box::pin(async move {
             trace!("message on success");
         })

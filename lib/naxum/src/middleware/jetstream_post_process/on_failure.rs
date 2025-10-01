@@ -1,13 +1,19 @@
 use std::sync::Arc;
 
+use async_nats::StatusCode;
 use futures::future::BoxFuture;
 use tracing::error;
 
 use super::Info;
 use crate::Head;
 
-pub trait OnFailure {
-    fn call(&mut self, head: Arc<Head>, info: Arc<Info>) -> BoxFuture<'static, ()>;
+pub trait OnFailure: Clone {
+    fn call(
+        &mut self,
+        head: Arc<Head>,
+        info: Arc<Info>,
+        status: Option<StatusCode>,
+    ) -> BoxFuture<'static, ()>;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -20,7 +26,12 @@ impl DefaultOnFailure {
 }
 
 impl OnFailure for DefaultOnFailure {
-    fn call(&mut self, head: Arc<Head>, info: Arc<Info>) -> BoxFuture<'static, ()> {
+    fn call(
+        &mut self,
+        head: Arc<Head>,
+        info: Arc<Info>,
+        _status: Option<StatusCode>,
+    ) -> BoxFuture<'static, ()> {
         Box::pin(async move {
             error!(
                 subject = head.subject.as_str(),
