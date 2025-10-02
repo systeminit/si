@@ -23,9 +23,9 @@ export const AttributesSchema = z.record(
       "a subscription to a source attribute on another component",
     ),
     z.string().describe("a string value"),
-    z.array(z.any()).describe("an array of values"),
+    z.array(z.unknown()).describe("an array of values"),
     z.boolean().describe("a boolean value"),
-    z.record(z.any()).describe("an object value"),
+    z.record(z.unknown()).describe("an object value"),
     z.number().describe("a number value"),
   ]),
 ).describe(

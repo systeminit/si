@@ -79,6 +79,10 @@ export default withMermaid(defineConfig({
         link: "/tutorials/",
         items: [
           {
+            text: "Set Up",
+            link: "/tutorials/setup",
+          },
+          {
             text: "Getting Started",
             link: "/tutorials/getting-started",
           },
@@ -144,6 +148,22 @@ export default withMermaid(defineConfig({
         link: "/reference/",
         collapsed: false,
         items: [
+          {
+            text: "AI Agent",
+            link: "/reference/ai-agent",
+          },
+          {
+            text: "Users",
+            link: "/reference/users",
+          },
+          {
+            text: "Workspaces",
+            link: "/reference/workspaces",
+          },
+          {
+            text: "Secrets",
+            link: "/reference/secrets",
+          },
           {
             text: "Vocabulary",
             link: "/reference/vocabulary",

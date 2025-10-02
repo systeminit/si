@@ -53,6 +53,7 @@
   "files": [
     "dist/esm",
     "dist/cjs",
+    "dist/esm",
     "README.md",
     "LICENSE",
     "package.json"
