@@ -1,6 +1,6 @@
 {
   "name": "@systeminit/api-client",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "TypeScript/JavaScript SDK for the System Initiative Public API",
   "exports": {
     ".": "./index.ts"
