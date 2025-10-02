@@ -30,7 +30,7 @@ import { changeSetAbandonTool } from "./tools/changeSetAbandon.ts";
 import { changeSetForceApplyTool } from "./tools/changeSetForceApply.ts";
 
 // import { schemaUpsertTool } from "./tools/schemaUpsert.ts"; // uncomment for local development
-// import { funcCreateTool } from "./tools/funcCreate.ts"; // uncomment for local development
+// import { funcUpsertTool } from "./tools/funcUpsert.ts"; // uncomment for local development
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -66,9 +66,9 @@ export function createServer(): McpServer {
   upgradeComponentsTool(server);
   importPrompt(server);
   discoverPrompt(server);
-  
+
   // schemaUpsertTool(server); // uncomment for local development
-  // funcCreateTool(server); // uncomment for local development
+  // funcUpsertTool(server); // uncomment for local development
 
   return server;
 }
