@@ -71,6 +71,10 @@ async function dummyLoadSchemas(
   return await generateDummySpecs(options);
 }
 
+async function dummyFetchSchema() {
+  console.log("Dummy provider uses hardcoded schemas - no fetching needed");
+}
+
 const dummyProviderFunctions: ProviderFunctions = {
   createDocLink,
   getCategory: dummyCategory,
@@ -88,6 +92,7 @@ export const dummyProviderConfig: ProviderConfig = {
   functions: dummyProviderFunctions,
   funcSpecs: dummyProviderFuncSpecs,
   loadSchemas: dummyLoadSchemas,
+  fetchSchema: dummyFetchSchema,
   parseRawSchema: dummyParseRawSchema,
   classifyProperties: dummyClassifyProperties,
   metadata: {

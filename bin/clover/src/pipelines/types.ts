@@ -1,5 +1,6 @@
 import type { JSONSchema } from "./draft_07.ts";
 import type { HetznerSchema } from "./hetzner/schema.ts";
+import type { AzureSchema } from "./azure/schema.ts";
 import type { Extend } from "../extend.ts";
 import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
 import { FuncSpecInfo } from "../spec/funcs.ts";
@@ -85,7 +86,7 @@ export type CfHandler = {
 
 export type { CfDb, CfSchema } from "./aws/schema.ts";
 
-export type SuperSchema = HetznerSchema | CfSchema;
+export type SuperSchema = HetznerSchema | CfSchema | AzureSchema;
 
 export type CategoryFn = ({ typeName }: SuperSchema) => string;
 
@@ -233,11 +234,10 @@ export interface ProviderConfig {
   ) => Promise<ExpandedPkgSpec[]>;
 
   /**
-   * Optional function to fetch/update the provider's schema from its source.
-   * If not provided, the provider doesn't support schema fetching.
-   * @returns Promise that resolves when schema is fetched and saved
+   * Function to fetch/update the provider's schema from its source.
+   * Should download or generate the provider's schema file and save it to src/provider-schemas/
    */
-  fetchSchema?: () => Promise<void>;
+  fetchSchema: () => Promise<void>;
 
   /**
    * Visual and descriptive metadata for the provider
