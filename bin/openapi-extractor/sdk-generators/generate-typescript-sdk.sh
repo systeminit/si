@@ -146,6 +146,7 @@ EOL
     "access": "public"
   },
   "files": [
+    "dist/esm",
     "dist/cjs",
     "README.md",
     "LICENSE",
