@@ -5,21 +5,21 @@ outline:
 
 # Road map
 
-Updated August 27, 2025.
+Updated September 25, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
 
 ## Provider Coverage (In-development)
 
-We are expanding our list of supported providers, starting with Azure and Google Cloud.
-These new providers will be available in Q4 2025.
+We are expanding our list of supported providers, starting with Azure and Google
+Cloud. These new providers will be available in Q4 2025.
 
 ## AI Authoring (In-development)
 
-We are adding the ability for our AI Agent to author schemas and
-functions. This will allow users to create their own customizations
-to schemas using natural language. This will be available in Q4 2025.
+We are adding the ability for our AI Agent to author schemas and functions. This
+will allow users to create their own customizations to schemas using natural
+language. This will be available in Q4 2025.
 
 ## Job-specific interface (Generally Available)
 
@@ -63,8 +63,8 @@ the infrastructure.
 
 Management functions allow a model to manage its own attributes; create, update,
 and delete components; and enqueue actions. In their first iteration, they’ll be
-used for three significant use cases: importing existing cloud resources, modular
-templating, and management of existing components.
+used for three significant use cases: importing existing cloud resources,
+modular templating, and management of existing components.
 
 Read our
 [announcement blog post](https://www.systeminit.com/blog/announcing-management-functions)
@@ -89,8 +89,8 @@ cloud environment
 
 Visual templates will allow you to model your infrastructure and then extract
 that to a management function. The management function will keep all the
-geometry and connections between the components, as well as the properties of the
-components. The management function will get added to a newly created asset,
+geometry and connections between the components, as well as the properties of
+the components. The management function will get added to a newly created asset,
 which you can reuse on the diagram.
 
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-visual-templates)
@@ -155,10 +155,9 @@ the status of the resulting action.
 
 ## Editor Integration (Generally Available)
 
-We are building a FUSE-based file system to allow a user to mount a
-workspace and get access to all of the schemas and functions within their
-workspace. This means a user can use their local IDE to author in
-System Initiative.
+We are building a FUSE-based file system to allow a user to mount a workspace
+and get access to all of the schemas and functions within their workspace. This
+means a user can use their local IDE to author in System Initiative.
 
 [Read the blog post to learn more.](https://www.systeminit.com/blog/opportunity-editor-integration-with-system-initiative)
 
