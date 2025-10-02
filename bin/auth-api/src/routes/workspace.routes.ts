@@ -37,7 +37,7 @@ import {
 } from "../services/auth.service";
 import { tracker } from "../lib/tracker";
 import { findLatestTosForUser } from "../services/tos.service";
-import { extractAuthUser, router } from ".";
+import { automationApiRouter, extractAuthUser, router } from ".";
 
 router.get("/workspaces", async (ctx) => {
   const authUser = extractAuthUser(ctx);
@@ -93,7 +93,7 @@ export async function authorizeWorkspaceRoute(
   };
 }
 
-router.get("/workspaces/:workspaceId", async (ctx) => {
+automationApiRouter.get("/workspaces/:workspaceId", async (ctx) => {
   const { workspace } = await authorizeWorkspaceRoute(ctx);
   ctx.body = workspace;
 });
