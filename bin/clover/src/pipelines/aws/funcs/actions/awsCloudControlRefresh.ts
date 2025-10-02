@@ -11,38 +11,81 @@ async function main(component: Input): Promise<Output> {
     };
   }
 
-  const child = await siExec.waitUntilEnd("aws", [
-    "cloudcontrol",
-    "get-resource",
-    "--region",
-    _.get(component, "properties.domain.extra.Region", ""),
-    "--type-name",
-    _.get(component, "properties.domain.extra.AwsResourceType", ""),
-    "--identifier",
-    name,
-  ]);
+  const delay = (time: number) => {
+    return new Promise((res) => {
+      setTimeout(res, time);
+    });
+  };
 
-  if (child.exitCode !== 0) {
-    console.log("Failed to refresh cloud control resource");
-    console.log(child.stdout);
-    console.error(child.stderr);
-    // FIXME: should track down what happens when the resource doesnt exist
-    //if (child.stderr.includes("ResourceNotFoundException")) {
-    //    console.log("EKS Cluster not found  upstream (ResourceNotFoundException) so removing the resource")
-    //    return {
-    //        status: "ok",
-    //        payload: null,
-    //    };
-    //}
-    return {
-      status: "error",
-      payload: resource,
-      message:
-        `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-    };
+  let refreshAttempt = 0;
+  const baseDelay = 1000;
+  const maxDelay = 120000;
+  let resourceResponse;
+
+  console.log(`Starting refresh operation for resourceId: ${name}, region: ${_.get(component, "properties.domain.extra.Region", "")}`);
+
+  // Retry refresh operation if rate limited
+  while (refreshAttempt < 10) {
+    const child = await siExec.waitUntilEnd("aws", [
+      "cloudcontrol",
+      "get-resource",
+      "--region",
+      _.get(component, "properties.domain.extra.Region", ""),
+      "--type-name",
+      _.get(component, "properties.domain.extra.AwsResourceType", ""),
+      "--identifier",
+      name,
+    ]);
+
+    console.log(`Refresh attempt ${refreshAttempt + 1}: AWS CLI exit code: ${child.exitCode}`);
+
+    if (child.exitCode !== 0) {
+      const isRateLimited = child.stderr.includes("Throttling") || 
+                           child.stderr.includes("TooManyRequests") ||
+                           child.stderr.includes("RequestLimitExceeded") ||
+                           child.stderr.includes("ThrottlingException");
+      
+      if (isRateLimited && refreshAttempt < 9) {
+        console.log(`Refresh attempt ${refreshAttempt + 1} rate limited, will retry`);
+      } else {
+        console.log("Failed to refresh cloud control resource");
+        console.log(child.stdout);
+        console.error(`Refresh attempt ${refreshAttempt + 1} failed:`, child.stderr);
+      }
+      
+      if (isRateLimited && refreshAttempt < 9) {
+        refreshAttempt++;
+        const exponentialDelay = Math.min(baseDelay * Math.pow(2, refreshAttempt - 1), maxDelay);
+        const jitter = Math.random() * 0.3 * exponentialDelay;
+        const finalDelay = exponentialDelay + jitter;
+        
+        console.log(`[REFRESH] Rate limited on attempt ${refreshAttempt}, waiting ${Math.round(finalDelay)}ms before retry`);
+        await delay(finalDelay);
+        continue;
+      } else {
+        // FIXME: should track down what happens when the resource doesnt exist
+        //if (child.stderr.includes("ResourceNotFoundException")) {
+        //    console.log("EKS Cluster not found  upstream (ResourceNotFoundException) so removing the resource")
+        //    return {
+        //        status: "ok",
+        //        payload: null,
+        //    };
+        //}
+        return {
+          status: "error",
+          payload: resource,
+          message:
+            `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+        };
+      }
+    } else {
+      console.log(`[REFRESH] Refresh successful on attempt ${refreshAttempt + 1}`);
+      resourceResponse = JSON.parse(child.stdout);
+      break;
+    }
   }
 
-  const resourceResponse = JSON.parse(child.stdout);
+  console.log(`[REFRESH] Final result: success, parsing resource response`);
   const payload = JSON.parse(
     resourceResponse["ResourceDescription"]["Properties"],
   );
