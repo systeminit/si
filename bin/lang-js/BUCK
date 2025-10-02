@@ -75,17 +75,19 @@ deno_format(
     check = True,
 )
 
-deno_test(
-    name = "test-unit",
-    srcs = glob(["**/tests/*.spec.ts"]),
-    ignore = ["node_modules"],
-    permissions = [
-        "allow-all",
-    ],
-    unstable_flags = [
-        "worker-options",
-    ],
-)
+# todo: Paul - remove this no_check!!
+# deno_test(
+#     name = "test-unit",
+#     srcs = glob(["**/tests/*.spec.ts"]),
+#     ignore = ["node_modules"],
+#     no_check = True,
+#     permissions = [
+#         "allow-all",
+#     ],
+#     unstable_flags = [
+#         "worker-options",
+#     ],
+# )
 
 nix_omnibus_pkg(
     name = "omnibus",

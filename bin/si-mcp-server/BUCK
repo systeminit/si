@@ -56,6 +56,10 @@ deno_test(
     permissions = [
         "allow-all",
     ],
+    env = [
+        "SI_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3b3Jrc3BhY2VJZCI6InRlc3Qtd29ya3NwYWNlLWlkIiwidXNlcklkIjoidGVzdC11c2VyLWlkIn0.fakesignature",
+        "SI_WORKSPACE_ID=test-workspace-id"
+    ],
 )
 
 docker_image(

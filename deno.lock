@@ -11,7 +11,6 @@
     "jsr:@deno/graph@~0.73.1": "0.73.1",
     "jsr:@luca/esbuild-deno-loader@~0.11.1": "0.11.1",
     "jsr:@onjara/optic@^2.0.3": "2.0.3",
-    "jsr:@openai/openai@^4.87.3": "4.102.0",
     "jsr:@std/assert@*": "1.0.13",
     "jsr:@std/assert@0.223": "0.223.0",
     "jsr:@std/assert@1": "1.0.13",
@@ -63,6 +62,7 @@
     "npm:lago-javascript-client@*": "1.32.0",
     "npm:lodash-es@4.17.21": "4.17.21",
     "npm:lodash-es@^4.17.21": "4.17.21",
+    "npm:lodash@4": "4.17.21",
     "npm:lodash@4.17.21": "4.17.21",
     "npm:lodash@^4.17.21": "4.17.21",
     "npm:mcp-jest@1": "1.0.13",
@@ -139,12 +139,6 @@
       "dependencies": [
         "jsr:@std/fmt@^1.0.2",
         "jsr:@std/path@^1.0.6"
-      ]
-    },
-    "@openai/openai@4.102.0": {
-      "integrity": "ea5201bc5c8a696d3a5139a9cd2252e3ab9b2b880769a9cd7f05602ea1a02acf",
-      "dependencies": [
-        "npm:zod@3"
       ]
     },
     "@std/assert@0.223.0": {
@@ -1486,6 +1480,9 @@
     "https://esm.sh/isexe@^3.1.1?target=denonext": "https://esm.sh/isexe@3.1.1?target=denonext"
   },
   "remote": {
+    "https://deno.land/std@0.220.1/dotenv/mod.ts": "0180eaeedaaf88647318811cdaa418cc64dc51fb08354f91f5f480d0a1309f7d",
+    "https://deno.land/std@0.220.1/dotenv/parse.ts": "09977ff88dfd1f24f9973a338f0f91bbdb9307eb5ff6085446e7c423e4c7ba0c",
+    "https://deno.land/std@0.220.1/dotenv/stringify.ts": "0047ad7068289735d08964046aea267a750c141b494ca0e38831b89be6c020c2",
     "https://deno.land/std@0.224.0/assert/assert.ts": "09d30564c09de846855b7b071e62b5974b001bb72a4b797958fe0660e7849834",
     "https://deno.land/std@0.224.0/assert/assertion_error.ts": "ba8752bd27ebc51f723702fac2f54d3e94447598f54264a6653d6413738a8917",
     "https://deno.land/std@0.224.0/path/_common/assert_path.ts": "dbdd757a465b690b2cc72fc5fb7698c51507dec6bfafce4ca500c46b76ff7bd8",
@@ -1690,13 +1687,6 @@
             "npm:mcp-jest@1"
           ]
         }
-      },
-      "lib/jsr-systeminit/ai-agent": {
-        "dependencies": [
-          "jsr:@openai/openai@^4.87.3",
-          "jsr:@std/assert@1",
-          "jsr:@systeminit/cf-db@~0.1.4"
-        ]
       },
       "lib/jsr-systeminit/cf-db": {
         "dependencies": [

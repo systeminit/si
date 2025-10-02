@@ -128,7 +128,6 @@ deno_workspace(
         "//lib/jsr-systeminit/remove-empty:srcs",
         "//lib/jsr-systeminit/ecs-template-qualification:srcs",
         "//lib/jsr-systeminit/cf-db:srcs",
-        "//lib/jsr-systeminit/ai-agent:srcs",
         "//bin/si-luminork-api-tests:srcs",
         "//bin/si-mcp-server:srcs",
     ],

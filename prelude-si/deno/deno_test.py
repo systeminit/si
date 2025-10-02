@@ -52,6 +52,15 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="List of unstable flags to enable",
     )
+    parser.add_argument(
+        "--env",
+        nargs="*",
+        default=[],
+        help="Environment variables to set (format: KEY=VALUE)",
+    )
+    parser.add_argument("--no-check",
+                        action="store_true",
+                        help="Skip type checking")
 
     return parser.parse_args()
 
@@ -75,6 +84,8 @@ def run_tests(
     parallel: bool,
     permissions: List[str],
     watch: bool,
+    env_vars: List[str],
+    no_check: bool,
 ) -> None:
     """Run deno test with the specified arguments."""
     cmd = [str(deno_binary), "test"]
@@ -91,6 +102,9 @@ def run_tests(
     if watch:
         cmd.append("--watch")
 
+    if no_check:
+        cmd.append("--no-check")
+
     if permissions:
         cmd.extend(permissions)
 
@@ -99,8 +113,15 @@ def run_tests(
 
     cmd.extend(input_paths)
 
+    # Parse environment variables
+    env = os.environ.copy()
+    for env_var in env_vars:
+        if "=" in env_var:
+            key, value = env_var.split("=", 1)
+            env[key] = value
+
     try:
-        result = subprocess.run(cmd, check=True, text=True)
+        result = subprocess.run(cmd, check=True, text=True, env=env)
         if result.stdout:
             print(result.stdout)
     except subprocess.CalledProcessError as e:
@@ -139,6 +160,8 @@ def main() -> int:
             args.parallel,
             permissions_list,
             args.watch,
+            args.env,
+            args.no_check,
         )
 
         print("Tests completed successfully.")

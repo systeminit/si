@@ -3,7 +3,8 @@
   "tasks": {
     "dev": "deno run -A --watch main.ts stdio",
     "inspector": "npx @modelcontextprotocol/inspector deno run -A ./main.ts stdio",
-    "build": "deno compile --allow-env --allow-net main.ts"
+    "build": "deno compile --allow-env --allow-net main.ts",
+    "test": "SI_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3b3Jrc3BhY2VJZCI6InRlc3Qtd29ya3NwYWNlLWlkIiwidXNlcklkIjoidGVzdC11c2VyLWlkIn0.fakesignature SI_WORKSPACE_ID=test-workspace-id deno test --allow-env"
   },
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
