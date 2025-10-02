@@ -1556,6 +1556,18 @@
       "perMessageGroupId"
     ]
   },
+  "Specifies the authentication type for the master user. With IAM master user authentication, you can configure the master DB user with IAM database authentication when you create a DB cluster.\n You can specify one of the following values:\n  +  ``password`` - Use standard database authentication with a password.\n  +  ``iam-db-auth`` - Use IAM database authentication for the master user.\n  \n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n This option is only valid for RDS for MySQL, RDS for MariaDB, RDS for PostgreSQL, Aurora MySQL, and Aurora PostgreSQL engines.": {
+    "enum": [
+      "password",
+      "iam-db-auth"
+    ]
+  },
+  "Specifies the authentication type for the master user. With IAM master user authentication, you can configure the master DB user with IAM database authentication when you create a DB instance.\n You can specify one of the following values:\n  +  ``password`` - Use standard database authentication with a password.\n  +  ``iam-db-auth`` - Use IAM database authentication for the master user.\n  \n This option is only valid for RDS for MySQL, RDS for MariaDB, RDS for PostgreSQL, Aurora MySQL, and Aurora PostgreSQL engines.": {
+    "enum": [
+      "password",
+      "iam-db-auth"
+    ]
+  },
   "This property applies only when you use OpenAPI to define your REST API. The ``Mode`` determines how API Gateway handles resource updates.\n Valid values are ``overwrite`` or ``merge``. \n For ``overwrite``, the new API definition replaces the existing one. The existing API identifier remains unchanged.\n  For ``merge``, the new API definition is merged with the existing API.\n If you don't specify this property, a default value is chosen. For REST APIs created before March 29, 2021, the default is ``overwrite``. For REST APIs created after March 29, 2021, the new API definition takes precedence, but any container types such as endpoint configurations and binary media types are merged with the existing API. \n Use the default mode to define top-level ``RestApi`` properties in addition to using OpenAPI. Generally, it's preferred to use API Gateway's OpenAPI extensions to model these properties.": {
     "enum": [
       "overwrite",
@@ -1860,6 +1872,12 @@
     "enum": [
       "disabled",
       "enabled"
+    ]
+  },
+  "This field specifies whether the connection mode is through a standard distribution (direct) or a multi-tenant distribution with distribution tenants (tenant-only).": {
+    "enum": [
+      "direct",
+      "tenant-only"
     ]
   },
   "This field specifies whether the connection mode is through a standard distribution (direct) or a multi-tenant distribution with distribution tenants(tenant-only).": {
