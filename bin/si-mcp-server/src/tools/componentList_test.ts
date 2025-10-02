@@ -1,9 +1,4 @@
 import { assertEquals } from "jsr:@std/assert";
-
-// Stub environment variables before importing
-Deno.env.set("SI_API_TOKEN", "test-token");
-Deno.env.set("SI_WORKSPACE_ID", "test-workspace-id");
-
 import { applyFilters } from "./componentList.ts";
 
 // Test data

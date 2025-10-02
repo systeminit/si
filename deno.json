@@ -5,7 +5,6 @@
     "./bin/clover",
     "./lib/jsr-systeminit/ecs-template-qualification",
     "./lib/jsr-systeminit/remove-empty",
-    "./lib/jsr-systeminit/ai-agent",
     "./lib/jsr-systeminit/cf-db",
     "./bin/si-luminork-api-tests",
     "./bin/si-mcp-server"

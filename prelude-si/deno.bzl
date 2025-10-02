@@ -248,12 +248,16 @@ def deno_test_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd.add("--watch")
 
     if ctx.attrs.permissions:
-        cmd.add("--permissions")
-        cmd.add(ctx.attrs.permissions)
+        cmd.add("--permissions", *ctx.attrs.permissions)
 
     if ctx.attrs.unstable_flags:
-        cmd.add("--unstable-flags")
-        cmd.add(ctx.attrs.unstable_flags)
+        cmd.add("--unstable-flags", *ctx.attrs.unstable_flags)
+
+    if ctx.attrs.env:
+        cmd.add("--env", *ctx.attrs.env)
+
+    if ctx.attrs.no_check:
+        cmd.add("--no-check")
 
     return [
         DefaultInfo(),
@@ -309,6 +313,17 @@ deno_test = rule(
         attrs.bool(
             default=False,
             doc="Watch for file changes and restart tests",
+        ),
+        "env":
+        attrs.list(
+            attrs.string(),
+            default=[],
+            doc="Environment variables to set (format: KEY=VALUE)",
+        ),
+        "no_check":
+        attrs.bool(
+            default=False,
+            doc="Skip type checking",
         ),
         "_python_toolchain":
         attrs.toolchain_dep(
