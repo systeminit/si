@@ -45,8 +45,13 @@ async function main(component: Input): Promise<Output> {
                            child.stderr.includes("RequestLimitExceeded") ||
                            child.stderr.includes("ThrottlingException");
       
+      // Check if this is a ResourceNotFoundException (valid case for deleted resources)
+      const isResourceNotFound = child.stderr.includes("ResourceNotFoundException");
+      
       if (isRateLimited && refreshAttempt < 9) {
         console.log(`Refresh attempt ${refreshAttempt + 1} rate limited, will retry`);
+      } else if (isResourceNotFound) {
+        console.log("Resource not found upstream, will handle as deletion");
       } else {
         console.log("Failed to refresh cloud control resource");
         console.log(child.stdout);
@@ -63,20 +68,20 @@ async function main(component: Input): Promise<Output> {
         await delay(finalDelay);
         continue;
       } else {
-        // FIXME: should track down what happens when the resource doesnt exist
-        //if (child.stderr.includes("ResourceNotFoundException")) {
-        //    console.log("EKS Cluster not found  upstream (ResourceNotFoundException) so removing the resource")
-        //    return {
-        //        status: "ok",
-        //        payload: null,
-        //    };
-        //}
-        return {
-          status: "error",
-          payload: resource,
-          message:
-            `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
-        };
+        if (child.stderr.includes("ResourceNotFoundException")) {
+           console.log("Component not found upstream (ResourceNotFoundException) so removing the resource")
+           return {
+               status: "ok",
+               payload: null,
+           };
+        } else {
+          return {
+            status: "error",
+            payload: resource,
+            message:
+              `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+          };
+        }
       }
     } else {
       console.log(`[REFRESH] Refresh successful on attempt ${refreshAttempt + 1}`);
