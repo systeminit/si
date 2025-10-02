@@ -1,109 +1,13 @@
-import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import _ from "lodash";
-import { createDefaultPropFromCf, OnlyProperties } from "../../spec/props.ts";
+import { OnlyProperties } from "../../spec/props.ts";
 import type { CfProperty } from "../types.ts";
+import { CfHandler, CfHandlerKind } from "../types.ts";
 import {
-  CfHandler,
-  CfHandlerKind,
-  HDB,
-  HetznerSchema,
-  SuperSchema,
-} from "../types.ts";
-import { makeModule } from "../generic/index.ts";
-import { createDefaultProp } from "./prop.ts";
-
-export type JsonSchema = Record<string, unknown>;
-export type PropertySet = Set<string>;
-
-export interface OperationData {
-  endpoint: string;
-  openApiDescription: JsonSchema;
-}
-
-export function pkgSpecFromHetnzer(allSchemas: JsonSchema): ExpandedPkgSpec[] {
-  const schemas: HDB = {};
-  const specs: ExpandedPkgSpec[] = [];
-
-  // Group all operations by resource noun
-  const resourceOperations: Record<string, OperationData[]> = {};
-  Object.entries((allSchemas.paths as JsonSchema) || {}).forEach(
-    ([endpoint, openApiDescription]) => {
-      const noun = endpoint.split("/")[1];
-      if (endpoint.includes("actions")) return; // TODO: should we be skipping these?
-
-      if (!resourceOperations[noun]) {
-        resourceOperations[noun] = [];
-      }
-      resourceOperations[noun].push({
-        endpoint,
-        openApiDescription: openApiDescription as JsonSchema,
-      });
-    },
-  );
-
-  // Process each resource and merge all its operations
-  const resourceResults: {
-    schema: HetznerSchema;
-    onlyProperties: OnlyProperties;
-  }[] = [];
-  Object.entries(resourceOperations).forEach(([noun, operations]) => {
-    const result = mergeResourceOperations(noun, operations, allSchemas);
-    if (result) {
-      schemas[noun] = result.schema;
-      resourceResults.push(result);
-    }
-  });
-
-  resourceResults.forEach(({ schema, onlyProperties }) => {
-    const normalizedOnlyProperties: OnlyProperties = {
-      createOnly: normalizeOnlyProperties(onlyProperties.createOnly),
-      readOnly: normalizeOnlyProperties(onlyProperties.readOnly),
-      writeOnly: normalizeOnlyProperties(onlyProperties.writeOnly),
-      primaryIdentifier: onlyProperties.primaryIdentifier,
-    };
-
-    const domain = createDefaultProp(
-      "domain",
-      pruneDomainValues(
-        schema.properties as Record<string, CfProperty>,
-        onlyProperties,
-      ),
-      normalizedOnlyProperties,
-      schema,
-      createDocLink,
-    );
-    const resourceValue = createDefaultProp(
-      "resource_value",
-      pruneResourceValues(
-        schema.properties as Record<string, CfProperty>,
-        onlyProperties,
-      ),
-      normalizedOnlyProperties,
-      schema,
-      createDocLink,
-    );
-    const secrets = createDefaultPropFromCf(
-      "secrets",
-      {},
-      schema,
-      onlyProperties,
-      createDocLink,
-    );
-
-    const module = makeModule(
-      schema,
-      createDocLink(schema, undefined),
-      schema.description,
-      domain,
-      resourceValue,
-      secrets,
-      hCategory,
-    );
-    specs.push(module);
-  });
-
-  return specs;
-}
+  type HetznerSchema,
+  type JsonSchema,
+  type OperationData,
+  type PropertySet,
+} from "./schema.ts";
 
 export function extractPropertiesFromRequestBody(
   operation: JsonSchema | null,
@@ -187,7 +91,10 @@ export function normalizeHetznerProperty(prop: JsonSchema): JsonSchema {
       );
     }
 
-    if (normalized.additionalProperties && typeof normalized.additionalProperties === "object") {
+    if (
+      normalized.additionalProperties &&
+      typeof normalized.additionalProperties === "object"
+    ) {
       normalized.additionalProperties = normalizeHetznerProperty(
         normalized.additionalProperties as JsonSchema,
       );
@@ -403,84 +310,4 @@ export function mergeResourceOperations(
   };
 
   return { schema, onlyProperties };
-}
-
-export function createDocLink(
-  { typeName }: SuperSchema,
-  defName: string | undefined,
-  propName?: string,
-): string {
-  // Hetzner Cloud API reference base URL
-  const docLink = "https://docs.hetzner.cloud/reference/cloud";
-
-  // Convert resource name to use dashes (e.g., "ssh_keys" -> "ssh-keys")
-  const resourceName = typeName.toLowerCase().replace(/_/g, "-");
-
-  // Build the fragment identifier
-  // For definitions (nested types), append the definition name
-  if (defName) {
-    return `${docLink}#${resourceName}-${defName.toLowerCase()}`;
-  }
-
-  // For specific properties, append the property name
-  if (propName) {
-    return `${docLink}#${resourceName}-${propName.toLowerCase()}`;
-  }
-
-  // Base resource link
-  return `${docLink}#${resourceName}`;
-}
-
-export function hCategory(schema: SuperSchema): string {
-  // Split by :: to extract the category (e.g., "Hetzner::Resource::Certificate" -> "Hetzner::Resource")
-  const parts = schema.typeName.split("::");
-  if (parts.length >= 2) {
-    return `${parts[0]}::${parts[1]}`;
-  }
-  return schema.typeName;
-}
-
-function normalizeOnlyProperties(props: string[]): string[] {
-  const newProps: string[] = [];
-  for (const prop of props ?? []) {
-    const newProp = prop.split("/").pop();
-    if (newProp) {
-      newProps.push(newProp);
-    }
-  }
-  return newProps;
-}
-
-function pruneDomainValues(
-  properties: Record<string, CfProperty>,
-  onlyProperties: OnlyProperties,
-): Record<string, CfProperty> {
-  if (!properties || !onlyProperties.readOnly) {
-    return {};
-  }
-
-  const readOnlySet = new Set(onlyProperties.readOnly);
-  return Object.fromEntries(
-    Object.entries(properties)
-      .filter(
-        ([name, prop]) => prop && !readOnlySet.has(`/${name}`),
-      ),
-  );
-}
-
-function pruneResourceValues(
-  properties: Record<string, CfProperty>,
-  onlyProperties: OnlyProperties,
-): Record<string, CfProperty> {
-  if (!properties || !onlyProperties?.readOnly) {
-    return {};
-  }
-
-  const readOnlySet = new Set(onlyProperties.readOnly);
-  return Object.fromEntries(
-    Object.entries(properties)
-      .filter(
-        ([name, prop]) => prop && readOnlySet.has(`/${name}`),
-      ),
-  );
 }

@@ -1,12 +1,29 @@
 import {
+  ExpandedPkgSpec,
   ExpandedSchemaSpec,
   ExpandedSchemaVariantSpec,
 } from "../../spec/pkgs.ts";
 import { ulid } from "ulid";
-import { CategoryFn, SuperSchema } from "../types.ts";
-import { ExpandedPropSpecFor } from "../../spec/props.ts";
+import {
+  CategoryFn,
+  CfProperty,
+  ProviderConfig,
+  ProviderFunctions,
+  SuperSchema,
+} from "../types.ts";
+import { createDefaultPropFromCf, OnlyProperties } from "../../spec/props.ts";
 import { SiPkgKind } from "../../bindings/SiPkgKind.ts";
 import { FuncSpec } from "../../bindings/FuncSpec.ts";
+import { generateDefaultActionFuncs } from "./generateDefaultActionFuncs.ts";
+import { generateDefaultLeafFuncs } from "./generateDefaultLeafFuncs.ts";
+import { generateDefaultManagementFuncs } from "./generateDefaultManagementFuncs.ts";
+import { generateDefaultQualificationFuncs } from "./generateDefaultQualificationFuncs.ts";
+import {
+  createActionFuncs,
+  createCodeGenFuncs,
+  createManagementFuncs,
+  createQualificationFuncs,
+} from "./funcFactories.ts";
 
 function versionFromDate(): string {
   return new Date()
@@ -15,15 +32,87 @@ function versionFromDate(): string {
     .slice(0, 14);
 }
 
+/**
+ * Normalizes property paths from JSON Pointer format to simple property names.
+ * E.g., "/properties/foo" or "/foo" -> "foo"
+ * @param props - Array of property paths (may be undefined)
+ * @returns Array of normalized property names
+ */
+export function normalizeOnlyProperties(props: string[] | undefined): string[] {
+  const newProps: string[] = [];
+  for (const prop of props ?? []) {
+    const newProp = prop.split("/").pop();
+    if (newProp) {
+      newProps.push(newProp);
+    }
+  }
+  return newProps;
+}
+
+type DocFn = (
+  schema: SuperSchema,
+  defName?: string,
+  propName?: string,
+) => string;
+
 export function makeModule(
   schema: SuperSchema,
-  docLink: string,
   description: string,
-  domain: ExpandedPropSpecFor["object"],
-  resourceValue: ExpandedPropSpecFor["object"],
-  secrets: ExpandedPropSpecFor["object"],
-  categoryFn: CategoryFn,
+  onlyProperties: OnlyProperties,
+  providerConfig: ProviderConfig,
 ) {
+  const { createDocLink: docFn, getCategory: categoryFn } =
+    providerConfig.functions;
+  const color = providerConfig.metadata?.color || "#FF9900"; // Default to AWS orange
+  // Prune properties based on readOnly classification
+  // Only include properties that have a type or schema composition (oneOf/anyOf)
+  const domainProperties: Record<string, CfProperty> = {};
+  const resourceValueProperties: Record<string, CfProperty> = {};
+  const readOnlySet = new Set(onlyProperties.readOnly);
+
+  for (const [name, prop] of Object.entries(schema.properties)) {
+    if (!prop) continue;
+
+    const cfProp = prop as CfProperty;
+    // Filter out properties that don't have type, oneOf, or anyOf
+    if (!cfProp.type && !cfProp.oneOf && !cfProp.anyOf) continue;
+
+    if (readOnlySet.has(name)) {
+      resourceValueProperties[name] = cfProp;
+    } else {
+      domainProperties[name] = cfProp;
+    }
+  }
+
+  // Create prop specs using the pruned properties
+  const domain = createDefaultPropFromCf(
+    "domain",
+    domainProperties,
+    schema,
+    onlyProperties,
+    docFn,
+    providerConfig,
+  );
+
+  const resourceValue = createDefaultPropFromCf(
+    "resource_value",
+    resourceValueProperties,
+    schema,
+    onlyProperties,
+    docFn,
+    providerConfig,
+  );
+
+  const secrets = createDefaultPropFromCf(
+    "secrets",
+    {},
+    schema,
+    onlyProperties,
+    docFn,
+    providerConfig,
+  );
+
+  const docLink = docFn(schema, undefined);
   const isBuiltin = true;
 
   const variantUniqueKey = ulid();
@@ -36,7 +125,7 @@ export function makeModule(
     data: {
       version,
       link: docLink,
-      color: "#FF9900",
+      color,
       displayName: null, // siPkg does not store this
       componentType: "component",
       funcUniqueId: assetFuncUniqueKey,
@@ -89,3 +178,62 @@ export function makeModule(
   };
 }
 
+/**
+ * Generates all default funcs (actions, leaf, management, qualification) from a ProviderConfig.
+ * This helper eliminates the need to call each generateDefault* function separately.
+ * @param specs - Array of expanded package specs to process
+ * @param config - Provider configuration containing func specs
+ * @returns Updated array of specs with funcs added
+ */
+export function generateDefaultFuncsFromConfig(
+  specs: ExpandedPkgSpec[],
+  config: ProviderConfig,
+): ExpandedPkgSpec[] {
+  specs = generateDefaultActionFuncs(
+    specs,
+    () => createActionFuncs(config.funcSpecs.actions),
+  );
+  specs = generateDefaultLeafFuncs(
+    specs,
+    (domainId: string) =>
+      createCodeGenFuncs(config.funcSpecs.codeGeneration, domainId),
+  );
+  specs = generateDefaultManagementFuncs(
+    specs,
+    () => createManagementFuncs(config.funcSpecs.management),
+  );
+  specs = generateDefaultQualificationFuncs(
+    specs,
+    (domainId: string) =>
+      createQualificationFuncs(config.funcSpecs.qualification, domainId),
+  );
+
+  return specs;
+}
+
+/**
+ * Generate ExpandedPkgSpecs from raw schemas using a ProviderConfig.
+ * This is a generic helper that can be used by any provider that has
+ * implemented parseRawSchema and classifyProperties hooks.
+ *
+ * @param rawSchema - Raw schema data in provider's native format
+ * @param config - Provider configuration with parsing and classification hooks
+ * @returns Array of ExpandedPkgSpecs ready for pipeline processing
+ */
+export function generateSpecsFromRawSchema(
+  rawSchema: unknown,
+  config: ProviderConfig,
+): ExpandedPkgSpec[] {
+  // Parse raw schema into normalized SuperSchemas
+  const schemas = config.parseRawSchema
+    ? config.parseRawSchema(rawSchema)
+    : (rawSchema as SuperSchema[]);
+
+  // Transform each schema into a spec
+  const specs: ExpandedPkgSpec[] = schemas.map((schema) => {
+    const onlyProperties = config.classifyProperties(schema);
+    return makeModule(schema, schema.description, onlyProperties, config);
+  });
+
+  return specs;
+}

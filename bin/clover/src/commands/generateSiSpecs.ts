@@ -11,9 +11,11 @@ import {
   ExpandedSchemaVariantSpec,
 } from "../spec/pkgs.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
-import { generateAwsSpecs } from "../pipelines/aws/pipeline.ts";
-import { generateHetznerSpecs } from "../pipelines/hetzner/pipeline.ts";
-import { generateDummySpecs } from "../pipelines/dummy/pipeline.ts";
+import { PROVIDER_REGISTRY } from "../pipelines/types.ts";
+// Import all providers to ensure they register themselves
+import "../pipelines/aws/spec.ts";
+import "../pipelines/hetzner/provider.ts";
+import "../pipelines/dummy/spec.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -30,41 +32,23 @@ export async function generateSiSpecs(options: {
 
   if (options.provider === "all") {
     // Generate specs for all providers
-    const providers: Array<Exclude<Provider, "all">> = ["aws", "hetzner"];
-    for (const provider of providers) {
-      logger.info(`Generating specs for provider: ${provider}`);
-      const providerOptions = { ...options, provider };
-      let providerSpecs: ExpandedPkgSpec[] = [];
+    for (const [providerName, config] of Object.entries(PROVIDER_REGISTRY)) {
+      // Skip dummy provider
+      if (providerName === "dummy") continue;
 
-      switch (provider) {
-        case "aws":
-          providerSpecs = await generateAwsSpecs(providerOptions);
-          break;
-        case "hetzner":
-          providerSpecs = await generateHetznerSpecs(providerOptions);
-          break;
-        case "dummy":
-          providerSpecs = await generateDummySpecs(providerOptions);
-          break;
-      }
-
+      logger.info(`Generating specs for provider: ${providerName}`);
+      const providerSpecs = await config.loadSchemas(options);
       specs.push(...providerSpecs);
     }
   } else {
-    switch (options.provider) {
-      case "aws":
-        specs = await generateAwsSpecs(options);
-        break;
-      case "hetzner":
-        specs = await generateHetznerSpecs(options);
-        break;
-      case "dummy":
-        specs = await generateDummySpecs(options);
-        break;
-      default:
-        console.log(`Unsupported provider type: "${options.provider}"`);
-        Deno.exit();
+    // Generate specs for specific provider
+    const config = PROVIDER_REGISTRY[options.provider];
+    if (!config) {
+      console.log(`Unsupported provider type: "${options.provider}"`);
+      console.log(`Available providers: ${Object.keys(PROVIDER_REGISTRY).join(", ")}`);
+      Deno.exit();
     }
+    specs = await config.loadSchemas(options);
   }
 
   // WRITE OUT SPECS

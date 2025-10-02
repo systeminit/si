@@ -8,18 +8,9 @@ import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggest
 import { reorderProps } from "../generic/reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
 import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
-import { generateDefaultActionFuncs } from "../generic/generateDefaultActionFuncs.ts";
-import { generateDefaultLeafFuncs } from "../generic/generateDefaultLeafFuncs.ts";
-import { generateDefaultManagementFuncs } from "../generic/generateDefaultManagementFuncs.ts";
-import { generateDefaultQualificationFuncs } from "../generic/generateDefaultQualificationFuncs.ts";
+import { generateDefaultFuncsFromConfig, generateSpecsFromRawSchema } from "../generic/index.ts";
 import { addDefaultProps } from "./pipeline-steps/addDefaultProps.ts";
-import {
-  createDefaultActionFuncs,
-  createDefaultCodeGenFuncs,
-  createDefaultManagementFuncs,
-  createDefaultQualificationFuncs,
-} from "./funcs.ts";
-import { pkgSpecFromHetnzer } from "./spec.ts";
+import { hetznerProviderConfig } from "./provider.ts";
 
 export async function generateHetznerSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -32,20 +23,13 @@ export async function generateHetznerSpecs(options: {
 
   const existing_specs = await getExistingSpecs(options);
 
-  // Generate base specs from Hetzner schema
-  specs = pkgSpecFromHetnzer(rawSchema);
+  // Generate base specs from Hetzner schema using the new generic helper
+  specs = generateSpecsFromRawSchema(rawSchema, hetznerProviderConfig);
   specs = addDefaultProps(specs);
 
+  specs = generateDefaultFuncsFromConfig(specs, hetznerProviderConfig);
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
-
-  specs = generateDefaultActionFuncs(specs, createDefaultActionFuncs);
-  specs = generateDefaultLeafFuncs(specs, createDefaultCodeGenFuncs);
-  specs = generateDefaultManagementFuncs(specs, createDefaultManagementFuncs);
-  specs = generateDefaultQualificationFuncs(
-    specs,
-    createDefaultQualificationFuncs,
-  );
 
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);

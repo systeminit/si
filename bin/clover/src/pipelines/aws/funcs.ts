@@ -1,6 +1,5 @@
 import { ActionFuncSpecKind } from "../../bindings/ActionFuncSpecKind.ts";
-import { FuncSpec } from "../../bindings/FuncSpec.ts";
-import { createDefaultFuncSpec, FuncSpecInfo } from "../../spec/funcs.ts";
+import { FuncSpecInfo } from "../../spec/funcs.ts";
 import { CfHandlerKind } from "../types.ts";
 
 export const ACTION_FUNC_SPECS = {
@@ -95,52 +94,3 @@ export const QUALIFICATION_FUNC_SPECS = {} as const as Record<
   FuncSpecInfo
 >;
 
-export function createDefaultActionFuncs() {
-  return Object.entries(ACTION_FUNC_SPECS).map(([func, spec]) => ({
-    spec: createDefaultFuncSpec(func, spec, []),
-    kind: spec.actionKind,
-  }));
-}
-
-export function createDefaultCodeGenFuncs(domain_id: string): FuncSpec[] {
-  if (!domain_id) {
-    throw new Error("no domain id provided for codegen func!");
-  }
-
-  return Object.entries(CODE_GENERATION_FUNC_SPECS).map(([func, spec]) =>
-    createDefaultFuncSpec(func, spec, [
-      {
-        name: "domain",
-        kind: "object",
-        elementKind: null,
-        uniqueId: domain_id,
-        deleted: false,
-      },
-    ])
-  );
-}
-
-export function createDefaultQualificationFuncs(domain_id: string): FuncSpec[] {
-  if (!domain_id) {
-    throw new Error("no domain id provided for qualification func!");
-  }
-
-  return Object.entries(QUALIFICATION_FUNC_SPECS).map(([func, spec]) =>
-    createDefaultFuncSpec(func, spec, [
-      {
-        name: "domain",
-        kind: "object",
-        elementKind: null,
-        uniqueId: domain_id,
-        deleted: false,
-      },
-    ])
-  );
-}
-
-export function createDefaultManagementFuncs() {
-  return Object.entries(MANAGEMENT_FUNCS).map(([func, spec]) => ({
-    func: createDefaultFuncSpec(func, spec, []),
-    handlers: spec.handlers,
-  }));
-}
