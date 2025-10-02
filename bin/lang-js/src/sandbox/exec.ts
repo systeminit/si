@@ -1,5 +1,5 @@
 import { setTimeout } from "node:timers/promises";
-import { execa, type ExecaReturnValue, type Options } from "npm:execa";
+import { execa, type Result, type Options } from "npm:execa";
 
 export interface WatchArgs {
   cmd: string;
@@ -7,7 +7,7 @@ export interface WatchArgs {
   execaOptions?: Options;
   retryMs?: number;
   maxRetryCount?: number;
-  callback: (child: ExecaReturnValue<string>) => Promise<boolean>;
+  callback: (child: Result) => Promise<boolean>;
 }
 
 export interface WatchResult {
@@ -18,7 +18,7 @@ export interface WatchResult {
 // import readline from "readline";
 // import WebSocket from "ws";
 
-export type SiExecResult = ExecaReturnValue<string>;
+export type SiExecResult = Result;
 
 const defaultOptions: Options = {
   all: true,

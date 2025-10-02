@@ -31,7 +31,7 @@ const sandboxContext = sandbox.createSandbox("${func_kind}", "${execution_id}");
 Object.assign(globalThis, sandboxContext);
 
 const storage = requestStorage.rawStorage();
-const storedState = JSON.parse('${storedState}');
+const storedState = JSON.parse(${JSON.stringify(storedState)});
 if (storedState.env) {
   Object.assign(storage.env, storedState.env);
 }
@@ -122,19 +122,33 @@ export async function runCode(
 
   const process = command.spawn();
 
-  const timeoutId = setTimeout(() => {
-    process.kill();
-    throw new TimeoutError(timeout);
-  }, timeout * 1000);
+  // Create a promise that rejects on timeout
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      process.kill();
+      reject(new TimeoutError(timeout));
+    }, timeout * 1000);
+  });
 
-  // Handle streams
-  const [stdout, stderr] = await Promise.all([
-    handleStream(process.stdout.getReader(), console, "stdout"),
-    handleStream(process.stderr.getReader(), console, "stderr"),
-    process.status,
-  ]);
+  // Handle streams - race against timeout
+  let result;
+  try {
+    result = await Promise.race([
+      Promise.all([
+        handleStream(process.stdout.getReader(), console, "stdout"),
+        handleStream(process.stderr.getReader(), console, "stderr"),
+        process.status,
+      ]),
+      timeoutPromise,
+    ]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
 
-  clearTimeout(timeoutId);
+  const [stdout, stderr] = result;
 
   if (stderr.trim()) {
     throw new Error(stderr.trim());

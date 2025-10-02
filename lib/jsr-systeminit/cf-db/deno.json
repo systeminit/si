@@ -10,7 +10,15 @@
   },
   "imports": {
     "@apidevtools/json-schema-ref-parser": "npm:@apidevtools/json-schema-ref-parser@^11.9.3",
+    "@hapi/hoek": "npm:@hapi/hoek@9.3.0",
+    "@hapi/topo": "npm:@hapi/topo@5.1.0",
+    "@sideway/address": "npm:@sideway/address@4.1.5",
+    "@sideway/formula": "npm:@sideway/formula@3.0.1",
+    "@sideway/pinpoint": "npm:@sideway/pinpoint@2.0.0",
+    "@std/assert": "jsr:@std/assert@^1.0.14",
     "adze": "npm:adze@^2.2.1",
-    "lodash": "npm:lodash@^4.17.21"
+    "joi": "npm:joi@17.13.3",
+    "lodash": "npm:lodash@^4.17.21",
+    "ulid": "https://deno.land/x/ulid@v0.3.0/mod.ts"
   }
 }

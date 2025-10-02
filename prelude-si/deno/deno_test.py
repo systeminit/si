@@ -5,6 +5,7 @@ Runs Deno tests.
 import argparse
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 from typing import List
@@ -24,6 +25,12 @@ def parse_args() -> argparse.Namespace:
         required=True,
         type=pathlib.Path,
         help="The test file to run (can be specified multiple times)",
+    )
+    parser.add_argument(
+        "--extra-srcs",
+        nargs='*',
+        default=[],
+        help="Sources that will be copied into the source tree",
     )
     parser.add_argument(
         "--filter",
@@ -90,6 +97,18 @@ def run_tests(
     """Run deno test with the specified arguments."""
     cmd = [str(deno_binary), "test"]
 
+    # Auto-detect deno.json in the test file's directory tree
+    if input_paths:
+        test_file = pathlib.Path(input_paths[0]).resolve()
+        # Walk up the directory tree to find deno.json
+        current_dir = test_file.parent
+        while current_dir != current_dir.parent:
+            deno_config = current_dir / "deno.json"
+            if deno_config.exists():
+                cmd.extend(["--config", str(deno_config)])
+                break
+            current_dir = current_dir.parent
+
     if filter_pattern:
         cmd.extend(["--filter", filter_pattern])
 
@@ -138,6 +157,35 @@ def run_tests(
 def main() -> int:
     try:
         args = parse_args()
+
+        # Copy extra sources to src/ directory relative to project root
+        # This makes generated files (like bundle.js) available to source files
+        if args.extra_srcs and args.input:
+            # Find the project root by locating deno.json
+            test_file = pathlib.Path(args.input[0]).resolve()
+            project_root = None
+            current_dir = test_file.parent
+            while current_dir != current_dir.parent:
+                deno_config = current_dir / "deno.json"
+                if deno_config.exists():
+                    project_root = current_dir
+                    break
+                current_dir = current_dir.parent
+
+            if project_root:
+                # Copy extra sources to the src/ directory
+                src_dir = project_root / "src"
+                src_dir.mkdir(parents=True, exist_ok=True)
+                for src in args.extra_srcs:
+                    src_path = pathlib.Path(src)
+                    target_path = src_dir / src_path.name
+                    shutil.copy2(src, target_path)
+            else:
+                # Fallback to old behavior if no deno.json found
+                input_dir = pathlib.Path(args.input[0]).resolve().parent
+                input_dir.mkdir(parents=True, exist_ok=True)
+                for src in args.extra_srcs:
+                    shutil.copy2(src, input_dir)
 
         input_paths = []
         for input_path in args.input:

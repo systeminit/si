@@ -3,7 +3,7 @@ import {
   ExpandedSchemaSpec,
   ExpandedSchemaVariantSpec,
 } from "../../spec/pkgs.ts";
-import { ulid } from "ulid";
+import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import {
   CategoryFn,
   CfProperty,

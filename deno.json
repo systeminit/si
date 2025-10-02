@@ -1,14 +1,4 @@
 {
-  "workspace": [
-    "./bin/lang-js",
-    "./lib/ts-lib-deno",
-    "./bin/clover",
-    "./lib/jsr-systeminit/ecs-template-qualification",
-    "./lib/jsr-systeminit/remove-empty",
-    "./lib/jsr-systeminit/cf-db",
-    "./bin/si-luminork-api-tests",
-    "./bin/si-mcp-server"
-  ],
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.7",
     "@deno/emit": "jsr:@deno/emit@^0.46.0",

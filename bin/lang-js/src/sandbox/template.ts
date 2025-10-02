@@ -46,8 +46,8 @@ export function checkUniqueNamePrefix(namePrefix: string, components: Record<str
   return true;
 }
 
-type ComponentWithSiNameAttributeValue = string | { '$source': any } | bool | number;
-interface ComponentWithSiName {
+type ComponentWithSiNameAttributeValue = string | { '$source': any } | boolean | number;
+interface ComponentScaffold {
   attributes: {
     [path: string]: ComponentWithSiNameAttributeValue;
   }
@@ -56,7 +56,7 @@ interface ComponentWithSiName {
 export function getComponentName(component: ComponentScaffold): string {
   const siName = component.attributes["/si/name"];
   if (_.isString(siName)) {
-    return siName;
+    return siName as string;
   } else if (_.isBoolean(siName)) {
     return `${siName}`;
   } else if (_.isNumber(siName)) {

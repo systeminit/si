@@ -224,15 +224,24 @@ def deno_test_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd=cmd_args(deno_toolchain.deno_binary),
     )
 
+    # Build list of hidden inputs
+    hidden_inputs = list(ctx.attrs.srcs)
+    if ctx.attrs.extra_srcs:
+        hidden_inputs.extend(ctx.attrs.extra_srcs)
+
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         deno_toolchain.deno_test[DefaultInfo].default_outputs[0],
         "--deno-binary",
         deno_toolchain.deno_binary,
+        hidden=hidden_inputs,
     )
 
     for src in ctx.attrs.srcs:
         cmd.add("--input", src)
+
+    if ctx.attrs.extra_srcs:
+        cmd.add("--extra-srcs", *ctx.attrs.extra_srcs)
 
     if ctx.attrs.filter:
         cmd.add("--filter", ctx.attrs.filter)
@@ -279,6 +288,12 @@ deno_test = rule(
             attrs.source(),
             default=[],
             doc="The test files to run",
+        ),
+        "extra_srcs":
+        attrs.list(
+            attrs.source(),
+            default=[],
+            doc="Additional source files needed but not to be tested",
         ),
         "filter":
         attrs.option(
