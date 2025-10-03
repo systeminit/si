@@ -818,6 +818,7 @@ pub async fn rebaser_server(
         config.quiescent_period(),
         shutdown_token,
         config.features(),
+        config.snapshot_eviction_grace_period(),
     )
     .await
     .wrap_err("failed to create Rebaser server")?;

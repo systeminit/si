@@ -1141,6 +1141,55 @@ impl ChangeSet {
         if count > 0 { Ok(true) } else { Ok(false) }
     }
 
+    /// Checks if a workspace snapshot was created within the specified grace period.
+    /// Returns true if the snapshot is recent (within grace period), false otherwise.
+    #[instrument(
+        name = "change_set.snapshot_is_recently_created",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace_snapshot_address = %workspace_snapshot_address,
+            si.grace_period_secs = grace_period.as_secs(),
+        ),
+    )]
+    pub async fn snapshot_is_recently_created(
+        ctx: &DalContext,
+        workspace_snapshot_address: &WorkspaceSnapshotAddress,
+        grace_period: std::time::Duration,
+    ) -> ChangeSetResult<bool> {
+        // Query the workspace_snapshots table in si_layer_db
+        // PostgreSQL performs the age comparison directly
+        let key = workspace_snapshot_address.to_string();
+        let grace_period_secs = grace_period.as_secs_f64();
+
+        let row = ctx
+            .layer_db()
+            .workspace_snapshot()
+            .cache
+            .pg()
+            .query_opt(
+                "SELECT (CLOCK_TIMESTAMP() - created_at) < make_interval(secs => $2) AS is_recent FROM workspace_snapshots WHERE key = $1",
+                &[&key, &grace_period_secs],
+            )
+            .await?;
+
+        match row {
+            Some(row) => {
+                let is_recent: bool = row.get("is_recent");
+                Ok(is_recent)
+            }
+            None => {
+                // If we can't find the snapshot in the table, assume it's not recent
+                // (it may have already been evicted or never existed)
+                debug!(
+                    %workspace_snapshot_address,
+                    "Snapshot not found in workspace_snapshots table",
+                );
+                Ok(false)
+            }
+        }
+    }
+
     /// Walk the graph of change sets up to the change set that has no "base
     /// change set id" and return the set.
     pub async fn ancestors(
