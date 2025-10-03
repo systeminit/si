@@ -9,7 +9,7 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 
-const name = "schema-upsert";
+const name = "schema-create-or-edit";
 const title = "Create or edit a schema";
 const description = `
 <description>
@@ -25,7 +25,7 @@ const DEFAULT_SCHEMA_DEFINITION_FUNCTION = `function main() {
     return asset.build();
 }`;
 
-const SchemaUpsertInputSchemaRaw = {
+const schemaCreateOrEditInputSchemaRaw = {
   changeSetId: z
     .string()
     .describe(
@@ -114,7 +114,7 @@ const SchemaUpsertInputSchemaRaw = {
     ),
 };
 
-const SchemaUpsertOutputSchemaRaw = {
+const schemaCreateOrEditOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
   errorMessage: z
     .string()
@@ -126,23 +126,23 @@ const SchemaUpsertOutputSchemaRaw = {
     schemaId: z.string().describe("the schema id"),
   }),
 };
-const SchemaUpsertOutputSchema = z.object(SchemaUpsertOutputSchemaRaw);
-type SchemaUpsertOutputData = z.infer<typeof SchemaUpsertOutputSchema>["data"];
+const schemaCreateOrEditOutputSchema = z.object(schemaCreateOrEditOutputSchemaRaw);
+type SchemaCreateOrEditOutputData = z.infer<typeof schemaCreateOrEditOutputSchema>["data"];
 
-export function schemaUpsertTool(server: McpServer) {
+export function schemaCreateOrEditTool(server: McpServer) {
   server.registerTool(
     name,
     {
       title,
       description: generateDescription(
         description,
-        "schemaUpsert",
-        SchemaUpsertOutputSchema,
+        "schemaCreateOrEdit",
+        schemaCreateOrEditOutputSchema,
       ),
-      inputSchema: SchemaUpsertInputSchemaRaw,
-      outputSchema: SchemaUpsertOutputSchemaRaw,
+      inputSchema: schemaCreateOrEditInputSchemaRaw,
+      outputSchema: schemaCreateOrEditOutputSchemaRaw,
     },
-    async ({ changeSetId, definitionFunction, schemaId, ...upsertSchemaV1Request }) => {
+    async ({ changeSetId, definitionFunction, schemaId, ...createOrEditSchemaV1Request }) => {
       return await withAnalytics(name, async () => {
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
@@ -188,7 +188,7 @@ export function schemaUpsertTool(server: McpServer) {
               link: responseGetVariant.data.link,
               code: responseGetFunc.data.code,
               // then injecting our new data to overwrite any field we put a value for
-              ...upsertSchemaV1Request,
+              ...createOrEditSchemaV1Request,
             };
 
             // then if we gave new asset function code, overwrite the old code here
@@ -210,7 +210,7 @@ export function schemaUpsertTool(server: McpServer) {
             // create a new schema
 
             // a new schema must have a name
-            if (!upsertSchemaV1Request.name) {
+            if (!createOrEditSchemaV1Request.name) {
               return errorResponse({
                 message: "A name is required to make a new schema.",
                 hints: "Ask the user to give this new schema a name."
@@ -222,13 +222,13 @@ export function schemaUpsertTool(server: McpServer) {
               workspaceId: WORKSPACE_ID,
               changeSetId: changeSetId,
               createSchemaV1Request: {
-                ...upsertSchemaV1Request,
+                ...createOrEditSchemaV1Request,
                 code: definitionFunction ?? DEFAULT_SCHEMA_DEFINITION_FUNCTION,
               },
             });
             touchedSchemaId = responseCreate.data.schemaId;
           }
-          const data: SchemaUpsertOutputData = {
+          const data: SchemaCreateOrEditOutputData = {
             schemaId: touchedSchemaId,
           };
           return successResponse(data);
