@@ -110,8 +110,8 @@ pub async fn set_snapshot(
         &original_uri,
         &host_name,
         ctx.history_actor().distinct_id(),
-        Some(workspace_id.to_string()),
-        Some(change_set_id.to_string()),
+        workspace_id,
+        change_set_id,
         "admin.set_snapshot",
         serde_json::json!({
             "workspace_snapshot_address": workspace_snapshot_address.to_string(),

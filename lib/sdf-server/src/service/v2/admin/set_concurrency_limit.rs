@@ -23,7 +23,7 @@ use crate::{
         AdminAPIResult,
         AdminUserContext,
     },
-    track_no_ctx,
+    track_no_ctx_workspace,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -75,13 +75,12 @@ pub async fn set_concurrency_limit(
 
     ctx.commit_no_rebase().await?;
 
-    track_no_ctx(
+    track_no_ctx_workspace(
         &posthog_client,
         &original_uri,
         &host_name,
         ctx.history_actor().distinct_id(),
-        Some(workspace_id.to_string()),
-        None,
+        workspace_id,
         "admin.set_concurrency_limit",
         serde_json::json!({
             "concurrency_limit": workspace.raw_component_concurrency_limit(),
