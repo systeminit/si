@@ -1,0 +1,8 @@
+{
+  "tasks": {
+    "dev": "deno run --allow-net --allow-env --allow-read --env-file=.env.local main.ts"
+  },
+  "imports": {
+    "@systeminit/api-client": "jsr:@systeminit/api-client@^1.1.7"
+  }
+}

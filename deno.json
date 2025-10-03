@@ -3,6 +3,7 @@
     "./bin/lang-js",
     "./lib/ts-lib-deno",
     "./bin/clover",
+    "./bin/si-conduit",
     "./lib/jsr-systeminit/ecs-template-qualification",
     "./lib/jsr-systeminit/remove-empty",
     "./lib/jsr-systeminit/ai-agent",
