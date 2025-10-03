@@ -2,34 +2,102 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## September 29th to October 5th 2025
+
+### ✨ Added
+
+- Added ability to **create action functions as overlays to schemas**.
+- Added a **Hetzner Cloud asset pipeline**.
+- Added **WsEvents** to the Public API for creating functions to keep the web
+  app updated.
+- Updated the Public API to **install a schema variant automatically** if not
+  installed when unlocking.
+- Added extra **telemetry information** to PgPool connection eviction logic.
+- Added support for **Hetzner Cloud**.
+- Returned **workspace details** when a user calls the API `whoami` endpoint.
+- Exposed the **function kinds** available for each type of function in a schema
+  variant.
+
+### 🔄 Changed
+
+- Updated the **MCP server** to adhere to correct API types for optional
+  parameters.
+- Updated **DeploymentMVs** to only build the default variant for a schema.
+- Changed **AWS assets** so refresh functions no longer trigger API limits on
+  actions, and remove the resource if the refresh fails with `ResourceNotFound`.
+- Allowed users to use **special characters in workspace names** in the Auth
+  Portal.
+- Allowed the **rebaser** to trigger request retry loops for specific error
+  messages.
+
+### 🐞 Fixed
+
+- Fixed an issue where the **web app** showed the AI Agent banner if the wrong
+  token was retrieved.
+- Fixed an issue in the **Auth Portal** where the save button text was incorrect
+  for manually verified users.
+- Fixed misleading behavior in the **Auth Portal** where setting `1m` was
+  interpreted as 1 minute, not 1 month.
+- Fixed an issue where the **web app retried 500/503 index responses** properly.
+- Fixed an issue where restoring a component from the **component details page
+  on HEAD** didn’t redirect to the new change set.
+- Fixed an issue where **bulk editing on HEAD** didn’t create the change set
+  correctly.
+- Fixed an issue where building the **deployment MV** failed if the previous
+  version was missing.
+- Fixed an issue where **multiple selected components** in a `toDelete` state
+  were confusing in the UI.
+- Fixed an issue where **components marked as toDelete on HEAD** leaked into
+  change set reviews.
+- Fixed an issue with using **duplicate component + default subscriptions**
+  together.
+- Fixed an issue where **abandoning a change set** via web app or Public API
+  failed if the snapshot didn’t exist.
+
 ## September 22nd to 28th 2025
 
 ### ✨ Added
-- Added more **user-facing documentation** in the onboarding flow.  
-- Users can now see the **code and arguments** for a queued action in the web app.  
-- Added **Azure CLI** back to the execution environment.  
-- Added extra **telemetry information** for Edda.  
+
+- Added more **user-facing documentation** in the onboarding flow.
+- Users can now see the **code and arguments** for a queued action in the web
+  app.
+- Added **Azure CLI** back to the execution environment.
+- Added extra **telemetry information** for Edda.
 
 ### 🔄 Changed
-- Upgraded the **Axios dependency** in the MCP server.  
-- Implemented a better **MV rebuild system**.  
-- Upgraded the **Auth API** to TypeScript 5.x.  
-- Removed generation of **composable assets** from Clover.  
-- Cleaned up **ArgumentTargets** from the graph after connection removal.  
-- Cleaned up **parentage code** from the codebase after connection removal.  
-- Cleaned up **inferred connections** from the codebase after connection removal.  
+
+- Upgraded the **Axios dependency** in the MCP server.
+- Implemented a better **MV rebuild system**.
+- Upgraded the **Auth API** to TypeScript 5.x.
+- Removed generation of **composable assets** from Clover.
+- Cleaned up **ArgumentTargets** from the graph after connection removal.
+- Cleaned up **parentage code** from the codebase after connection removal.
+- Cleaned up **inferred connections** from the codebase after connection
+  removal.
 
 ### 🐞 Fixed
-- Fixed an issue in the **Auth Portal** where users weren’t redirected to their default workspace.  
-- Fixed an issue in the **Auth Portal** to prevent 404s when accessing the download link.  
-- Fixed an issue where a **function used in a subscription** failed to load in the UI.  
-- Fixed an issue in the **Auth API** to return the correct `workspaceId` for navigation.  
-- Fixed an issue where users could be **pushed to the lobby incorrectly** due to background activity.  
-- Fixed an issue where the **lobby exit event** waited for all processes to complete.  
-- Fixed an issue in the **Auth API Dockerfile** for TypeScript 5.x compatibility.  
-- Fixed an issue in **Public API** to show optional values correctly in API responses.  
-- Fixed an issue where the **App and Webworker** made too many requests.  
-- Fixed an issue where **create change set in Luminork** didn’t wait for MV to build. 
+
+- Fixed an issue in the **Auth Portal** where users weren’t redirected to their
+  default workspace.
+- Fixed an issue in the **Auth Portal** to prevent 404s when accessing the
+  download link.
+- Fixed an issue where a **function used in a subscription** failed to load in
+  the UI.
+- Fixed an issue in the **Auth API** to return the correct `workspaceId` for
+  navigation.
+- Fixed an issue where users could be **pushed to the lobby incorrectly** due to
+  background activity.
+- Fixed an issue where the **lobby exit event** waited for all processes to
+  complete.
+- Fixed an issue in the **Auth API Dockerfile** for TypeScript 5.x
+  compatibility.
+- Fixed an issue in **Public API** to show optional values correctly in API
+  responses.
+- Fixed an issue where the **App and Webworker** made too many requests.
+- Fixed an issue where **create change set in Luminork** didn’t wait for MV to
+  build.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/CnR3KL2OBxg?si=aU4t20K6bfBKy7kc" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## September 15th to 21st 2025
 
@@ -71,6 +139,8 @@ All notable changes to System Initiative will be documented in this file.
 - Fixed an issue where users could get **stuck in the lobby** if the
   `checkOnboardingApi` call failed.
 - Fixed an issue where **buttons changed size** during loading states.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/djEE7OGEVQI?si=Kn3Q-LbhkZ1karmA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## September 2nd to 7th 2025
 
