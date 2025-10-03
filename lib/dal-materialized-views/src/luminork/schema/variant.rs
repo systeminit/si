@@ -1,12 +1,29 @@
+use std::collections::HashMap;
+
 use dal::{
     DalContext,
+    Func,
+    FuncId,
     Prop,
     SchemaVariant,
     SchemaVariantId,
+    action::prototype::ActionPrototype,
+    func::FuncKind,
+    management::prototype::{
+        ManagementFuncKind as dalMgmtFuncKind,
+        ManagementPrototype,
+    },
     schema::variant::root_prop::RootPropChild,
     workspace_snapshot::traits::prop::PropExt,
 };
-use si_frontend_mv_types::luminork_schema_variant::LuminorkSchemaVariant as LuminorkSchemaVariantMv;
+use si_frontend_mv_types::{
+    luminork_schema_variant::LuminorkSchemaVariant as LuminorkSchemaVariantMv,
+    luminork_schema_variant_func::{
+        FuncKindVariant,
+        LuminorkSchemaVariantFunc,
+    },
+    management::ManagementFuncKind,
+};
 use telemetry::prelude::*;
 
 pub mod default;
@@ -26,6 +43,9 @@ pub async fn assemble(
         .await?
         .into_iter()
         .collect();
+
+    let func_details =
+        build_func_details(&ctx, schema_variant.id(), variant_func_ids.clone()).await?;
 
     let domain_props = {
         let domain = Prop::find_prop_by_path(&ctx, id, &RootPropChild::Domain.prop_path()).await?;
@@ -51,7 +71,63 @@ pub async fn assemble(
         schema_variant.link(),
         asset_func_id,
         variant_func_ids,
+        func_details,
         is_default_variant,
         domain_props,
     ))
+}
+
+pub async fn build_func_details(
+    ctx: &DalContext,
+    schema_variant_id: SchemaVariantId,
+    variant_func_ids: Vec<FuncId>,
+) -> crate::Result<Vec<LuminorkSchemaVariantFunc>> {
+    let action_prototypes = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+    let management_prototypes =
+        ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await?;
+
+    let mut index: HashMap<FuncId, FuncKindVariant> = HashMap::new();
+
+    for prototype in action_prototypes {
+        let func_id = ActionPrototype::func_id(ctx, prototype.id).await?;
+        index.insert(func_id, FuncKindVariant::Action(prototype.kind.into()));
+    }
+
+    for mp in management_prototypes {
+        let func_id = ManagementPrototype::func_id(ctx, mp.id).await?;
+        let kind = ManagementPrototype::kind_by_id(ctx, mp.id).await?;
+        index.insert(func_id, FuncKindVariant::Management(convert_kind(kind)));
+    }
+
+    let mut func_details = Vec::with_capacity(variant_func_ids.len());
+
+    for func_id in variant_func_ids {
+        if let Some(kind) = index.remove(&func_id) {
+            // We already know it's Action/Management
+            func_details.push(LuminorkSchemaVariantFunc {
+                id: func_id,
+                func_kind: kind,
+            });
+        } else {
+            // We are defaulting to other now
+            let func = Func::get_by_id(ctx, func_id).await?;
+            if func.kind != FuncKind::Intrinsic {
+                func_details.push(LuminorkSchemaVariantFunc {
+                    id: func.id,
+                    func_kind: FuncKindVariant::Other(func.kind.into()),
+                });
+            }
+        }
+    }
+
+    Ok(func_details)
+}
+
+fn convert_kind(kind: dalMgmtFuncKind) -> ManagementFuncKind {
+    match kind {
+        dalMgmtFuncKind::Discover => ManagementFuncKind::Discover,
+        dalMgmtFuncKind::Import => ManagementFuncKind::Import,
+        dalMgmtFuncKind::Other => ManagementFuncKind::Other,
+        dalMgmtFuncKind::RunTemplate => ManagementFuncKind::RunTemplate,
+    }
 }

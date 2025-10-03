@@ -58,6 +58,7 @@ pub enum ReferenceKind {
     IncomingConnectionsList,
     LuminorkDefaultVariant,
     LuminorkSchemaVariant,
+    LuminorkSchemaVariantFunc,
     ManagementConnections,
     SchemaMembers,
     SchemaVariant,

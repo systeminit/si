@@ -20,6 +20,7 @@ use super::{
     GetSchemaVariantV1Response,
     SchemaError,
     SchemaResult,
+    SchemaVariantFunc,
     SchemaVariantResponseV1,
     SchemaVariantV1RequestPath,
 };
@@ -48,7 +49,7 @@ use crate::extract::{
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
-
+#[allow(deprecated)]
 pub async fn get_variant(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     frigg: FriggStore,
@@ -76,6 +77,12 @@ pub async fn get_variant(
                 let display_name_for_log = luminork_variant.display_name.clone();
                 let category_for_log = luminork_variant.category.clone();
 
+                let variant_funcs: Vec<SchemaVariantFunc> = luminork_variant
+                    .variant_funcs
+                    .into_iter()
+                    .map(SchemaVariantFunc::from)
+                    .collect();
+
                 let response = GetSchemaVariantV1Response {
                     variant_id: luminork_variant.variant_id,
                     display_name: luminork_variant.display_name,
@@ -86,6 +93,7 @@ pub async fn get_variant(
                     link: luminork_variant.link,
                     asset_func_id: luminork_variant.asset_func_id,
                     variant_func_ids: luminork_variant.variant_func_ids,
+                    variant_funcs,
                     is_default_variant: luminork_variant.is_default_variant,
                     domain_props: luminork_variant.domain_props.map(Into::into),
                 };
@@ -154,7 +162,8 @@ pub async fn get_variant(
                     link: cached_variant.link,
                     asset_func_id: cached_variant.asset_func_id,
                     variant_func_ids: cached_variant.variant_func_ids,
-                    is_default_variant: true, // CachedDefaultVariant is always the default variant for the schema
+                    variant_funcs: vec![],
+                    is_default_variant: true,
                     domain_props: cached_variant.domain_props.map(Into::into),
                 };
 

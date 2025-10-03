@@ -21,6 +21,7 @@ use super::{
     SchemaError,
     SchemaResult,
     SchemaV1RequestPath,
+    SchemaVariantFunc,
     SchemaVariantResponseV1,
 };
 use crate::extract::{
@@ -46,7 +47,7 @@ use crate::extract::{
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
-
+#[allow(deprecated)]
 pub async fn get_default_variant(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     FriggStore(frigg): FriggStore,
@@ -71,6 +72,12 @@ pub async fn get_default_variant(
                 let display_name_for_log = luminork_default_variant.display_name.clone();
                 let category_for_log = luminork_default_variant.category.clone();
 
+                let variant_funcs: Vec<SchemaVariantFunc> = luminork_default_variant
+                    .variant_funcs
+                    .into_iter()
+                    .map(SchemaVariantFunc::from)
+                    .collect();
+
                 let response = GetSchemaVariantV1Response {
                     variant_id: luminork_default_variant.variant_id,
                     display_name: luminork_default_variant.display_name,
@@ -81,6 +88,7 @@ pub async fn get_default_variant(
                     link: luminork_default_variant.link,
                     asset_func_id: luminork_default_variant.asset_func_id,
                     variant_func_ids: luminork_default_variant.variant_func_ids,
+                    variant_funcs,
                     is_default_variant: true, // Always true for default variant endpoint
                     domain_props: luminork_default_variant.domain_props.map(Into::into),
                 };
@@ -154,6 +162,7 @@ pub async fn get_default_variant(
                     link: cached_default_variant.link,
                     asset_func_id: cached_default_variant.asset_func_id,
                     variant_func_ids: cached_default_variant.variant_func_ids,
+                    variant_funcs: vec![],
                     is_default_variant: true, // Always true for default variant endpoint
                     domain_props: cached_default_variant.domain_props.map(Into::into),
                 };

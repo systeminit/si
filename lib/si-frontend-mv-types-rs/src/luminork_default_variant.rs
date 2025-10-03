@@ -10,6 +10,7 @@ use si_events::{
 };
 
 use crate::{
+    luminork_schema_variant_func::LuminorkSchemaVariantFunc,
     prop_schema::PropSchemaV1,
     reference::ReferenceKind,
 };
@@ -43,6 +44,7 @@ pub struct LuminorkDefaultVariant {
     pub link: Option<String>,
     pub asset_func_id: FuncId,
     pub variant_func_ids: Vec<FuncId>,
+    pub variant_funcs: Vec<LuminorkSchemaVariantFunc>,
     pub domain_props: Option<PropSchemaV1>,
 }
 
@@ -59,6 +61,7 @@ impl LuminorkDefaultVariant {
         link: Option<String>,
         asset_func_id: FuncId,
         variant_func_ids: Vec<FuncId>,
+        variant_funcs: Vec<LuminorkSchemaVariantFunc>,
         domain_props: Option<PropSchemaV1>,
     ) -> Self {
         Self {
@@ -73,6 +76,7 @@ impl LuminorkDefaultVariant {
             link,
             asset_func_id,
             variant_func_ids,
+            variant_funcs,
             domain_props,
         }
     }

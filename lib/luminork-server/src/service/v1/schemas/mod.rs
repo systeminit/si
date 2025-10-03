@@ -23,8 +23,12 @@ use dal::{
     SchemaVariant,
     SchemaVariantId,
     TransactionsError,
+    action::prototype::ActionKind,
     cached_module::CachedModule,
-    func::authoring::FuncAuthoringError,
+    func::{
+        FuncKind,
+        authoring::FuncAuthoringError,
+    },
     prop::PropError,
     schema::variant::authoring::VariantAuthoringError,
 };
@@ -33,7 +37,14 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_frontend_mv_types::prop_schema::PropSchemaV1 as CachedPropSchemaV1;
+use si_frontend_mv_types::{
+    luminork_schema_variant_func::{
+        FuncKindVariant,
+        LuminorkSchemaVariantFunc,
+    },
+    management::ManagementFuncKind,
+    prop_schema::PropSchemaV1 as CachedPropSchemaV1,
+};
 use thiserror::Error;
 use utoipa::{
     self,
@@ -208,6 +219,60 @@ pub fn routes() -> Router<AppState> {
         )
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantFunc {
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VZ")]
+    pub id: FuncId,
+    pub func_kind: SchemaVariantFuncKind,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, ToSchema)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum SchemaVariantFuncKind {
+    /// Action function; carries the specific `ActionKind`.
+    #[serde(rename_all = "camelCase")]
+    Action {
+        /// Specific action kind
+        #[schema(value_type = String, example = "Create")]
+        action_kind: ActionKind,
+    },
+
+    /// Management function; carries the specific `ManagementFuncKind`.
+    #[serde(rename_all = "camelCase")]
+    Management {
+        /// Specific management function kind
+        #[schema(value_type = String, example = "Import")]
+        management_func_kind: ManagementFuncKind,
+    },
+
+    /// Any other function; exposes the raw `FuncKind` category.
+    #[serde(rename_all = "camelCase")]
+    Other {
+        #[schema(value_type = String, example = "Qualification")]
+        func_kind: FuncKind,
+    },
+}
+
+impl From<LuminorkSchemaVariantFunc> for SchemaVariantFunc {
+    fn from(inner: LuminorkSchemaVariantFunc) -> Self {
+        SchemaVariantFunc {
+            id: inner.id,
+            func_kind: match inner.func_kind {
+                FuncKindVariant::Action(k) => SchemaVariantFuncKind::Action {
+                    action_kind: k.into(),
+                },
+                FuncKindVariant::Management(k) => SchemaVariantFuncKind::Management {
+                    management_func_kind: k,
+                },
+                FuncKindVariant::Other(k) => SchemaVariantFuncKind::Other {
+                    func_kind: k.into(),
+                },
+            },
+        }
+    }
+}
+
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSchemaVariantV1Response {
@@ -228,7 +293,11 @@ pub struct GetSchemaVariantV1Response {
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q75XY")]
     pub asset_func_id: FuncId,
     #[schema(value_type = Vec<String>, example = json!(["01H9ZQD35JPMBGHH69BT0Q75AA", "01H9ZQD35JPMBGHH69BT0Q75BB"]))]
+    #[deprecated(
+        note = "variant_func_ids deprecated in favour of using variant_funcs parameter and will be removed in a future version of the API"
+    )]
     pub variant_func_ids: Vec<FuncId>,
+    pub variant_funcs: Vec<SchemaVariantFunc>,
     #[schema(value_type = bool, example = true)]
     pub is_default_variant: bool,
     #[schema(example = json!({"propId": "01JT71H84S37APM40BJR4KRCVP","name": "domain",

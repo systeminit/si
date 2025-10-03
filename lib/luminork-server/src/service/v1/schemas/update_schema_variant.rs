@@ -27,6 +27,7 @@ use super::{
     GetSchemaVariantV1Response,
     SchemaError,
     SchemaResult,
+    SchemaVariantFunc,
     SchemaVariantV1RequestPath,
 };
 
@@ -50,6 +51,7 @@ use super::{
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
+#[allow(deprecated)]
 pub async fn update_schema_variant(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
@@ -128,6 +130,12 @@ pub async fn update_schema_variant(
     )?
     .await??;
 
+    let variant_funcs: Vec<SchemaVariantFunc> = luminork_variant
+        .variant_funcs
+        .into_iter()
+        .map(SchemaVariantFunc::from)
+        .collect();
+
     let response = GetSchemaVariantV1Response {
         variant_id: luminork_variant.variant_id,
         display_name: luminork_variant.display_name,
@@ -138,6 +146,7 @@ pub async fn update_schema_variant(
         link: luminork_variant.link,
         asset_func_id: luminork_variant.asset_func_id,
         variant_func_ids: luminork_variant.variant_func_ids,
+        variant_funcs,
         is_default_variant: luminork_variant.is_default_variant,
         domain_props: luminork_variant.domain_props.map(Into::into),
     };
