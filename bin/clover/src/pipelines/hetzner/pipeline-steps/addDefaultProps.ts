@@ -135,7 +135,7 @@ export function addDefaultProps(
     if (!credentialProp) continue;
 
     credentialProp = addPropSuggestSource(credentialProp, {
-      schema: "Hetzner::Crendential::ApiToken",
+      schema: "Hetzner::Credential::ApiToken",
       prop: "/secrets/Hetzner::Credential::ApiToken",
     });
 

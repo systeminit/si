@@ -300,7 +300,7 @@ export function mergeResourceOperations(
   const resourceName = _.startCase(_.camelCase(noun)).replace(/ /g, "");
 
   const schema: HetznerSchema = {
-    typeName: `Hetzner::Resource::${resourceName}`,
+    typeName: `Hetzner::Cloud::${resourceName}`,
     description,
     properties: normalizedProperties as Record<string, CfProperty>,
     requiredProperties,
