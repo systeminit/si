@@ -1,0 +1,24 @@
+{
+  "name": "@si/public-api-examples-typescript",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Test coverage for System Initiative TypeScript SDK",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "system-initiative-api-client": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

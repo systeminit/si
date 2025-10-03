@@ -1,0 +1,7 @@
+# Core dependency
+system-initiative-api-client>=1.0.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+python-dotenv>=1.0.0
