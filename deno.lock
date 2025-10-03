@@ -30,7 +30,7 @@
     "jsr:@std/path@^1.0.6": "1.1.1",
     "jsr:@std/text@~1.0.7": "1.0.16",
     "jsr:@systeminit/api-client@^1.1.6": "1.1.6",
-    "jsr:@systeminit/api-client@^1.1.7": "1.1.7",
+    "jsr:@systeminit/api-client@^1.2.0": "1.2.0",
     "jsr:@systeminit/cf-db@~0.1.4": "0.1.4",
     "jsr:@systeminit/remove-empty@0.1.3": "0.1.3",
     "npm:@apidevtools/json-schema-ref-parser@11.9.3": "11.9.3",
@@ -215,8 +215,8 @@
         "npm:axios@^1.6.1"
       ]
     },
-    "@systeminit/api-client@1.1.7": {
-      "integrity": "8563f2a6f9b34a21fd92da6498bee15483e05866bcdbff10735a4f67cba0ef98",
+    "@systeminit/api-client@1.2.0": {
+      "integrity": "c2e622d73ef8c8df57d21480f57718f0d21bb29db7f49e4e0c4e9b446ecbcc68",
       "dependencies": [
         "npm:axios@^1.6.1"
       ]
@@ -1682,7 +1682,7 @@
       },
       "bin/si-conduit": {
         "dependencies": [
-          "jsr:@systeminit/api-client@^1.1.7"
+          "jsr:@systeminit/api-client@^1.2.0"
         ]
       },
       "bin/si-mcp-server": {

@@ -30,6 +30,10 @@ export class AuthApiClient {
 
     const { instanceUrl, displayName, id, instanceEnvType } = await response.json();
 
+    if (!instanceUrl || !displayName || !id || !instanceEnvType) {
+      throw new Error('Failed to fetch workspace details: missing required fields');
+    }
+
     return {
       instanceUrl,
       displayName,

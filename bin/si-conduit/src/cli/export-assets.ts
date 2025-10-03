@@ -2,13 +2,15 @@ import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
 import { CliContext } from "../cli.ts";
 import { AxiosError } from "npm:axios@1.11.0";
 import { Log } from "../log.ts";
+import { unknownValueToErrorMessage } from "../helpers.ts";
 
-export async function exportAssets(context: CliContext, assetsPath?: string, skipConfirmation?: boolean) {
-  const { log, authApi } = context;
+export async function exportAssets(context: CliContext, assetsPath: string, skipConfirmation?: boolean) {
+  const { apiConfiguration, log, workspace } = context;
 
-  const { instanceUrl: workspaceUrlPrefix } = await authApi.getWorkspaceDetails();
-
-  assetsPath = assetsPath || new URL("../../assets", import.meta.url).pathname;
+  const {
+    instanceUrl: workspaceUrlPrefix,
+    id: workspaceId,
+  } = workspace;
 
   const schemas = [] as {name: string, code: string, category: string, description: string, link?: string}[]
 
@@ -60,7 +62,7 @@ export async function exportAssets(context: CliContext, assetsPath?: string, ski
       }
     }
   } catch (error) {
-    log.error(`Error reading assets directory: ${error.message}`);
+    log.error(`Error reading assets directory: ${unknownValueToErrorMessage(error)}`);
     Deno.exit(1);
   }
 
@@ -74,7 +76,7 @@ export async function exportAssets(context: CliContext, assetsPath?: string, ski
 
       const buf = new Uint8Array(1024);
       const n = await Deno.stdin.read(buf);
-      const line = new TextDecoder().decode(buf.subarray(0, n)).trim();
+      const line = new TextDecoder().decode(buf.subarray(0, n ?? 0)).trim();
       const input = line.charAt(0).toLowerCase();
 
       if (input === 'l') {
@@ -84,14 +86,12 @@ export async function exportAssets(context: CliContext, assetsPath?: string, ski
       } else if (input === 'y') {
         confirmed = true;
       } else {
-        console.log("Import cancelled.");
         Deno.exit(0);
       }
     }
   }
 
   // Create schemas on the server
-  const { apiConfiguration, workspaceId } = context;
   const changeSetsApi = new ChangeSetsApi(apiConfiguration);
 
   const changeSetName = "Import Assets " + new Date().toISOString();
@@ -126,7 +126,8 @@ export async function exportAssets(context: CliContext, assetsPath?: string, ski
         existingSchemaId = response.data.schemaId;
         existingSchemaIsInstalled = response.data.installed;
       } catch (error) {
-        if (error.status !== 404) {
+        // Swallow error if it's a schema not found error, as we will create the schema
+        if (!(error instanceof AxiosError) || error.status !== 404) {
           throw error;
         }
       }
@@ -184,6 +185,9 @@ export async function exportAssets(context: CliContext, assetsPath?: string, ski
       // Create action funcs from actions folder
       const actions = await parseActions(`${assetsPath}/${name}/actions`, name, log);
 
+
+      siSchemasApi.getVariantAction({})
+
       for (const action of actions) {
         // TODO check if the actions already exist
 
@@ -206,7 +210,7 @@ export async function exportAssets(context: CliContext, assetsPath?: string, ski
       log.error(`API error creating schemas: (${error.status}) ${error.response?.data.message}`);
       log.error(`Request: ${error.request.method} ${error.request.path}`);
     } else {
-      log.error(`Error creating schemas: ${error.message}`);
+      log.error(`Error creating schemas: ${unknownValueToErrorMessage(error)}`);
     }
     log.info("Deleting changeset...");
     changeSetsApi.abandonChangeSet({
@@ -242,7 +246,7 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
     }
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) {
-      throw new Error(`Error reading actions directory for asset "${assetName}": ${error.message}`);
+      throw new Error(`Error reading actions directory for asset "${assetName}": ${unknownValueToErrorMessage(error)}`);
     }
     // If actions folder doesn't exist, that's ok - just continue
     return [];
@@ -300,7 +304,7 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
 
       actions.push(actionObject);
     } catch (error) {
-      log.error(`Error processing action "${strippedFileName}" for asset "${assetName}": ${error.message}, skipping...`);
+      log.error(`Error processing action "${strippedFileName}" for asset "${assetName}": ${unknownValueToErrorMessage(error)}, skipping...`);
     }
   }
 

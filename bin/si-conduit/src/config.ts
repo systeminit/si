@@ -1,3 +1,5 @@
+import { unknownValueToErrorMessage } from "./helpers.ts";
+
 export interface Config {
   apiUrl: string;
   apiToken: string;
@@ -14,7 +16,7 @@ function decodeJWT(token: string): Record<string, unknown> {
     const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
     return JSON.parse(decoded);
   } catch (error) {
-    throw new Error(`Failed to decode JWT: ${error.message}`);
+    throw new Error(`Failed to decode JWT: ${unknownValueToErrorMessage(error)}`);
   }
 }
 
@@ -39,7 +41,7 @@ export function extractConfig(): Config {
         Deno.exit(1);
       }
     } catch (error) {
-      console.error(`Error: ${error.message}`);
+      console.error(`Error: ${unknownValueToErrorMessage(error)}`);
       Deno.exit(1);
     }
   }
