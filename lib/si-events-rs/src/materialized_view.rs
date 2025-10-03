@@ -1,6 +1,16 @@
 #[remain::sorted]
 #[derive(
-    Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Default, strum::Display, strum::EnumString,
+    Debug,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    PartialEq,
+    Eq,
+    Default,
+    strum::Display,
+    strum::EnumString,
+    Hash,
 )]
 /// The build priority for MVs is:
 ///   * List

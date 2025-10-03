@@ -104,6 +104,7 @@ pub use change_set::{
 pub use deployment::{
     build_all_mvs_for_deployment,
     build_outdated_mvs_for_deployment,
+    build_specific_for_deployment,
 };
 
 #[remain::sorted]
@@ -360,7 +361,7 @@ where
 
 pub type MvBuilderResult =
     Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>;
-
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum BuildMvOp {
     Create,
     Delete { id: String, checksum: String },

@@ -52,21 +52,10 @@ pub async fn assemble(ctx: DalContext, id: SchemaId) -> crate::Result<CachedSche
         .parse::<SchemaVariantId>()
         .map_err(|_| crate::Error::Schema(dal::SchemaError::UninstalledSchemaNotFound(id)))?;
 
-    // Collect all variant IDs from their unique_ids
-    let mut variant_ids = Vec::new();
-    for variant in &variants {
-        if let Some(unique_id) = variant.unique_id() {
-            if let Ok(variant_id) = unique_id.parse::<SchemaVariantId>() {
-                variant_ids.push(variant_id);
-            }
-        }
-    }
-
     Ok(CachedSchemaMv::new(
         id,
         module.schema_name,
         default_variant_id,
-        variant_ids,
     ))
 }
 

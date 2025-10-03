@@ -78,6 +78,13 @@ async fn multiple_rebuilds() {
         CompressedDeploymentRequest::RebuildChangedDefinitions { .. } => {
             panic!("Received unexpected RebuildChangedDefinitions.");
         }
+        CompressedDeploymentRequest::RebuildSpecific {
+            src_requests_count: _,
+            removed_schema_ids: _,
+            new_modules: _,
+        } => {
+            panic!("specific rebuild requests are not expected");
+        }
     }
 }
 
@@ -113,6 +120,9 @@ mod helpers {
                 }
                 DeploymentRequest::RebuildChangedDefinitions { .. } => {
                     panic!("Received unexpected RebuildChangeDefinitions.");
+                }
+                DeploymentRequest::RebuildSpecific(_) => {
+                    panic!("specific rebuild requests are not expected");
                 }
             };
 

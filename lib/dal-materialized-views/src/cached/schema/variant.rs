@@ -191,7 +191,6 @@ pub async fn assemble(
     ctx: DalContext,
     id: SchemaVariantId,
 ) -> crate::Result<CachedSchemaVariantMv> {
-    info!("Assembling CachedSchemaVariantMv: {id}");
     // Find the cached module containing this variant by storing the module info
     for mut module in CachedModule::latest_modules(&ctx).await? {
         let si_pkg = module.si_pkg(&ctx).await?;

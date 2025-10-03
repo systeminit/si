@@ -385,6 +385,20 @@ mod handlers {
                 .await
                 .map_err(Into::into)
             }
+            CompressedDeploymentRequest::RebuildSpecific {
+                src_requests_count: _,
+                removed_schema_ids,
+                new_modules,
+            } => materialized_view::build_specific_for_deployment(
+                ctx,
+                frigg,
+                edda_updates,
+                parallel_build_limit,
+                Some((removed_schema_ids, new_modules)),
+                "selective build based on changes",
+            )
+            .await
+            .map_err(Into::into),
         }
         .inspect(|_| span.record_ok())
         .map_err(|err| span.record_err(err))

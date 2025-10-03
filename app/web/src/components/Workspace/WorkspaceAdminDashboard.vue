@@ -21,6 +21,18 @@
               @click="updateModuleCache"
             />
           </div>
+          <div class="flex flex-row-reverse gap-sm">
+            <VButton
+              :disabled="adminStore.updatingModuleCacheOperationRunning"
+              class="flex-grow"
+              icon="plus-circle"
+              label="Update module cache and FORCE REBUILD"
+              loadingText="Updating module cache"
+              :loading="adminStore.updatingModuleCacheOperationRunning"
+              tone="success"
+              @click="updateAndRebuildModuleCache"
+            />
+          </div>
         </Stack>
         <Stack class="max-w-xl">
           <h2 class="font-bold text-lg">CLEAR INNIT PARAMETER CACHE</h2>
@@ -114,6 +126,10 @@ onBeforeMount(async () => {
 
 const updateModuleCache = async () => {
   await adminStore.UPDATE_MODULE_CACHE();
+};
+
+const updateAndRebuildModuleCache = async () => {
+  await adminStore.UPDATE_MODULE_CACHE(true);
 };
 
 const clearInnitCache = async () => {

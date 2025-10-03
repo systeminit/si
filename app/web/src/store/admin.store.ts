@@ -141,14 +141,14 @@ export const useAdminStore = () => {
             url: `${API_PREFIX}/func/runs/${funcRunId}/kill_execution`,
           });
         },
-        async UPDATE_MODULE_CACHE() {
+        async UPDATE_MODULE_CACHE(forceRebuild = false) {
           this.updatingModuleCacheOperationRunning = true;
           this.updatingModuleCacheOperationId = null;
           this.updatingModuleCacheOperationError = undefined;
 
           return new ApiRequest<{ id: string }>({
             method: "post",
-            url: `${API_PREFIX}/update_module_cache`,
+            url: `${API_PREFIX}/update_module_cache?forceRebuild=${forceRebuild}`,
             onSuccess: (response) => {
               this.updatingModuleCacheOperationId = response.id;
             },
