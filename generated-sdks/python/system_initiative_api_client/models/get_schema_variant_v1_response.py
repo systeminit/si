@@ -20,6 +20,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from system_initiative_api_client.models.prop_schema_v1 import PropSchemaV1
+from system_initiative_api_client.models.schema_variant_func import SchemaVariantFunc
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -37,8 +38,9 @@ class GetSchemaVariantV1Response(BaseModel):
     is_locked: StrictBool = Field(alias="isLocked")
     link: Optional[StrictStr] = None
     variant_func_ids: List[StrictStr] = Field(alias="variantFuncIds")
+    variant_funcs: List[SchemaVariantFunc] = Field(alias="variantFuncs")
     variant_id: StrictStr = Field(alias="variantId")
-    __properties: ClassVar[List[str]] = ["assetFuncId", "category", "color", "description", "displayName", "domainProps", "isDefaultVariant", "isLocked", "link", "variantFuncIds", "variantId"]
+    __properties: ClassVar[List[str]] = ["assetFuncId", "category", "color", "description", "displayName", "domainProps", "isDefaultVariant", "isLocked", "link", "variantFuncIds", "variantFuncs", "variantId"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -82,6 +84,13 @@ class GetSchemaVariantV1Response(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of domain_props
         if self.domain_props:
             _dict['domainProps'] = self.domain_props.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of each item in variant_funcs (list)
+        _items = []
+        if self.variant_funcs:
+            for _item_variant_funcs in self.variant_funcs:
+                if _item_variant_funcs:
+                    _items.append(_item_variant_funcs.to_dict())
+            _dict['variantFuncs'] = _items
         # set to None if description (nullable) is None
         # and model_fields_set contains the field
         if self.description is None and "description" in self.model_fields_set:
@@ -119,6 +128,7 @@ class GetSchemaVariantV1Response(BaseModel):
             "isLocked": obj.get("isLocked"),
             "link": obj.get("link"),
             "variantFuncIds": obj.get("variantFuncIds"),
+            "variantFuncs": [SchemaVariantFunc.from_dict(_item) for _item in obj["variantFuncs"]] if obj.get("variantFuncs") is not None else None,
             "variantId": obj.get("variantId")
         })
         return _obj
