@@ -11,7 +11,11 @@ use axum::{
         request::Parts,
     },
 };
-use dal::DalContext;
+use dal::{
+    ChangeSetId,
+    DalContext,
+    WorkspacePk,
+};
 use derive_more::{
     Deref,
     Into,
@@ -100,6 +104,25 @@ impl PosthogEventTracker {
             ctx,
             &self.original_uri,
             &self.host,
+            event_name,
+            properties,
+        )
+    }
+
+    pub fn track_no_ctx(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        event_name: impl AsRef<str>,
+        properties: serde_json::Value,
+    ) {
+        sdf_core::tracking::track_no_ctx(
+            &self.posthog_client,
+            &self.original_uri,
+            &self.host,
+            "anonymous".to_string(),
+            workspace_id,
+            change_set_id,
             event_name,
             properties,
         )

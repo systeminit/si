@@ -70,8 +70,11 @@ pub async fn search_components(
 
     let query: SearchQuery = payload.query_string.as_deref().unwrap_or("").parse()?;
     let query = Arc::new(query);
-    let mut component_ids =
-        search::component::search(frigg, workspace_id, change_set_id, &query).await?;
+    let mut component_ids = search::component::search(frigg, workspace_id, change_set_id, &query)
+        .await?
+        .into_iter()
+        .map(|component| component.id)
+        .collect();
 
     if let Some(schema_name) = payload.schema_name.clone() {
         component_ids = apply_schema_filter(ctx, component_ids, schema_name).await?;
