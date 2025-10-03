@@ -109,7 +109,7 @@ export interface ProviderFunctions {
   ) => string;
 
   /**
-   * Determines the category for a schema (e.g., "AWS::EC2", "Hetzner::Resource").
+   * Determines the category for a schema (e.g., "AWS::EC2", "Hetzner::Cloud").
    * @param schema - The schema to categorize
    * @returns A category string used for organizing resources
    */
