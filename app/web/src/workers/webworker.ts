@@ -354,6 +354,32 @@ const workspaceAtomExistsOnIndexes = (
   return rows.flat().filter(nonNullable) as Checksum[];
 };
 
+const constructMtmKey = (kind: string, args: string, checksum: string) =>
+  `${kind}-${args}-${checksum}`;
+
+const indexChecksumForMtms = (db: Database, changeSetId: string) => {
+  const mtm = db.exec({
+    sql: `select index_mtm_atoms.* from index_mtm_atoms
+        inner join changesets
+          on index_mtm_atoms.index_checksum = changesets.index_checksum
+        where changesets.change_set_id = ?;
+  `,
+    bind: [changeSetId],
+    returnValue: "resultRows",
+  });
+  const map: DefaultMap<string, string[]> = new DefaultMap(() => []);
+  mtm.forEach((row) => {
+    const [indexChecksum, kind, args, checksum] = row as string[];
+    if (indexChecksum && kind && args && checksum) {
+      const key = constructMtmKey(kind, args, checksum);
+      const vals = map.get(key);
+      vals.push(indexChecksum);
+      map.set(key, vals);
+    }
+  });
+  return map;
+};
+
 /**
  * Create a new index, as a copy of an existing index (fromIndexChecksum) if we have it.
  *
@@ -454,7 +480,9 @@ const removeAtom = (
   kind: EntityKind,
   id: string,
   checksum: string,
+  span?: Span,
 ) => {
+  const start = performance.now();
   db.exec({
     sql: `
     DELETE FROM index_mtm_atoms
@@ -462,6 +490,8 @@ const removeAtom = (
     `,
     bind: [indexChecksum, kind, id, checksum],
   });
+  const end = performance.now();
+  span?.setAttribute("performance.removeAtom", end - start);
 };
 
 const createAtomFromPatch = async (
@@ -472,8 +502,11 @@ const createAtomFromPatch = async (
   const doc = {};
   let afterDoc = {};
   if (atom.operations) {
+    const start = performance.now();
     const applied = applyOperations(doc, atom.operations);
     afterDoc = applied.newDocument;
+    const end = performance.now();
+    span?.setAttribute("performance.applyOperations", end - start);
   }
   await createAtom(db, atom, afterDoc, span);
   return afterDoc;
@@ -483,12 +516,13 @@ const createAtom = async (
   db: Database,
   atom: Omit<WorkspaceAtom, "toIndexChecksum" | "fromIndexChecksum">,
   doc: object,
-  _span?: Span,
+  span?: Span,
 ) => {
   debug("createAtom", atom, doc);
 
   const encodedDoc = await encodeDocumentForDB(doc);
   try {
+    const start = performance.now();
     db.exec({
       sql: `insert into atoms
         (kind, checksum, args, data)
@@ -499,6 +533,8 @@ const createAtom = async (
       ;`,
       bind: [atom.kind, atom.toChecksum, atom.id, encodedDoc],
     });
+    const end = performance.now();
+    span?.setAttribute("performance.createAtom", end - start);
 
     debug("✅ createAtom successful:", atom.kind, atom.id, atom.toChecksum);
   } catch (err) {
@@ -1067,6 +1103,11 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
   });
 };
 
+const chunkArray = <T>(arr: Array<T>, size: number): Array<Array<T>> =>
+  Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+    arr.slice(i * size, i * size + size),
+  );
+
 const handleWorkspacePatchMessage = async (
   db: Database,
   data: WorkspacePatchBatch,
@@ -1112,21 +1153,6 @@ const handleWorkspacePatchMessage = async (
         ),
       );
 
-      // Check for duplicate patches in the same batch
-      // const patchKeys = data.patches.map(
-      //   (p) => `${p.kind}.${p.id}.${p.fromChecksum}.${p.toChecksum}`,
-      // );
-      // const uniquePatchKeys = new Set(patchKeys);
-      // if (patchKeys.length !== uniquePatchKeys.size) {
-      //   debug("📦 WARNING: Duplicate patches detected in batch!", {
-      //     total: patchKeys.length,
-      //     unique: uniquePatchKeys.size,
-      //     duplicates: patchKeys.filter(
-      //       (key, index) => patchKeys.indexOf(key) !== index,
-      //     ),
-      //   });
-      // }
-
       let indexChecksum: string;
       try {
         indexChecksum = initIndexAndChangeSet(db, data.meta, span);
@@ -1166,6 +1192,8 @@ const handleWorkspacePatchMessage = async (
             !!rawAtom.fromChecksum && !!rawAtom.operations,
         );
 
+      const mtmMap = indexChecksumForMtms(db, data.meta.changeSetId);
+
       span.setAttribute("numAtoms", atoms.length);
       if (!indexChecksum) {
         throw new Error(
@@ -1173,133 +1201,140 @@ const handleWorkspacePatchMessage = async (
         );
       }
 
-      // lists first now
-      const listAtoms = atoms.filter((a) => LISTABLE.includes(a.kind));
-      const listAtomsDesc = listAtoms.map(
-        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-      );
-      span.setAttributes({
-        listAtomsLength: listAtoms.length,
-        listAtomsDesc,
-      });
-      debug("📦 Processing list atoms:", listAtoms.length, listAtomsDesc);
+      // apply 45 changes at time and bust
+      // after each in order for the UI
+      // to remain responsive...
+      const chunkedAtoms = chunkArray<Required<WorkspaceAtom>>(atoms, 45);
 
-      // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
-      // from a view without it.
-      const listAtomsToBust = await Promise.all(
-        listAtoms.map(async (atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum);
+      await Promise.all(
+        chunkedAtoms.map(async (atoms) => {
+          // lists first now
+          const listAtoms = atoms.filter((a) => LISTABLE.includes(a.kind));
+          const listAtomsDesc = listAtoms.map(
+            (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+          );
+          span.setAttributes({
+            listAtomsLength: listAtoms.length,
+            listAtomsDesc,
+          });
+          debug("📦 Processing list atoms:", listAtoms.length, listAtomsDesc);
+
+          // At times we get hundreds of patches within a batch
+          // We need to process these as separate batches
+          // so that we can periodically bust the cache within
+          // a patch so we can keep the UI up to date
+
+          // reminder: lists dont bust, they get updated one by one
+          const listAtomsToBust = await Promise.all(
+            listAtoms.map((atom) => {
+              return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
+            }),
+          );
+
+          // non-list atoms
+          // non-connections (e.g. components need to go before connections)
+          const nonListAtoms = atoms.filter(
+            (a) =>
+              !LISTABLE.includes(a.kind) &&
+              a.kind !== EntityKind.IncomingConnections,
+          );
+          const nonListAtomsDesc = nonListAtoms.map(
+            (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+          );
+          span.setAttributes({
+            nonListAtomsLength: nonListAtoms.length,
+            nonListAtomsDesc,
+          });
+          debug(
+            "📦 Processing non-list atoms:",
+            nonListAtoms.length,
+            nonListAtomsDesc,
+          );
+
+          const atomsToBust = await Promise.all(
+            nonListAtoms.map((atom) => {
+              return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
+            }),
+          );
+
+          const connectionAtoms = atoms.filter(
+            (a) => a.kind === EntityKind.IncomingConnections,
+          );
+          const connectionAtomsDesc = connectionAtoms.map(
+            (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+          );
+          span.setAttributes({
+            connectionAtomsLength: connectionAtoms.length,
+            connectionAtomsDesc,
+          });
+          debug(
+            "📦 Processing connection atoms:",
+            connectionAtoms.length,
+            connectionAtomsDesc,
+          );
+          const connAtomsToBust = await Promise.all(
+            connectionAtoms.map((atom) => {
+              return applyWorkspacePatch(db, atom, indexChecksum, mtmMap);
+            }),
+          );
+
+          updateChangeSetWithNewIndex(db, data.meta);
+          span.setAttribute("updatedWithNewIndex", true);
+          removeOldIndex(db, span);
+
+          debug(
+            "🧹 Busting cache for atoms:",
+            atomsToBust.length + connAtomsToBust.length,
+          );
+
+          span.setAttributes({
+            bustCacheLength: atomsToBust.length + connAtomsToBust.length,
+            bustCache: JSON.stringify(
+              [...atomsToBust, ...connAtomsToBust]
+                .filter((a): a is Required<WorkspaceAtom> => !!a)
+                .map((a) => [a.kind, a.id]),
+            ),
+          });
+          atomsToBust.forEach((atom) => {
+            if (atom) {
+              debug("🧹 Busting cache for atom:", atom.kind, atom.id);
+              bustCacheAndReferences(
+                db,
+                atom.workspaceId,
+                atom.changeSetId,
+                atom.kind,
+                atom.id,
+              );
+            }
+          });
+          // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
+          // from a view without it.
+          listAtomsToBust.forEach((atom) => {
+            if (atom && atom.kind === EntityKind.ViewComponentList) {
+              debug("🧹 Busting cache for listable atom:", atom.kind, atom.id);
+              bustCacheAndReferences(
+                db,
+                atom.workspaceId,
+                atom.changeSetId,
+                atom.kind,
+                atom.id,
+              );
+            }
+          });
+          connAtomsToBust.forEach((atom) => {
+            if (atom) {
+              debug("🧹 Busting cache for connection:", atom.kind, atom.id);
+              bustCacheAndReferences(
+                db,
+                atom.workspaceId,
+                atom.changeSetId,
+                atom.kind,
+                atom.id,
+              );
+            }
+          });
         }),
       );
-      // not busting these
-      // await Promise.all(
-      //   listAtoms.map(async (atom) => {
-      //     return applyWorkspacePatch(db, atom, indexChecksum);
-      //   }),
-      // );
-
-      // non-list atoms
-      // non-connections (e.g. components need to go before connections)
-      const nonListAtoms = atoms.filter(
-        (a) =>
-          !LISTABLE.includes(a.kind) &&
-          a.kind !== EntityKind.IncomingConnections,
-      );
-      const nonListAtomsDesc = nonListAtoms.map(
-        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-      );
-      span.setAttributes({
-        nonListAtomsLength: nonListAtoms.length,
-        nonListAtomsDesc,
-      });
-      debug(
-        "📦 Processing non-list atoms:",
-        nonListAtoms.length,
-        nonListAtomsDesc,
-      );
-
-      const atomsToBust = await Promise.all(
-        nonListAtoms.map(async (atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum);
-        }),
-      );
-
-      const connectionAtoms = atoms.filter(
-        (a) => a.kind === EntityKind.IncomingConnections,
-      );
-      const connectionAtomsDesc = connectionAtoms.map(
-        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-      );
-      span.setAttributes({
-        connectionAtomsLength: connectionAtoms.length,
-        connectionAtomsDesc,
-      });
-      debug(
-        "📦 Processing connection atoms:",
-        connectionAtoms.length,
-        connectionAtomsDesc,
-      );
-      const connAtomsToBust = await Promise.all(
-        connectionAtoms.map(async (atom) => {
-          return await applyWorkspacePatch(db, atom, indexChecksum);
-        }),
-      );
-
-      updateChangeSetWithNewIndex(db, data.meta);
-      span.setAttribute("updatedWithNewIndex", true);
-      removeOldIndex(db, span);
-
-      debug(
-        "🧹 Busting cache for atoms:",
-        atomsToBust.length + connAtomsToBust.length,
-      );
-
-      span.setAttributes({
-        bustCacheLength: atomsToBust.length + connAtomsToBust.length,
-        bustCache: JSON.stringify(
-          [...atomsToBust, ...connAtomsToBust]
-            .filter((a): a is Required<WorkspaceAtom> => !!a)
-            .map((a) => [a.kind, a.id]),
-        ),
-      });
-      atomsToBust.forEach((atom) => {
-        if (atom) {
-          debug("🧹 Busting cache for atom:", atom.kind, atom.id);
-          bustCacheAndReferences(
-            db,
-            atom.workspaceId,
-            atom.changeSetId,
-            atom.kind,
-            atom.id,
-          );
-        }
-      });
-      // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
-      // from a view without it.
-      listAtomsToBust.forEach((atom) => {
-        if (atom && atom.kind === EntityKind.ViewComponentList) {
-          debug("🧹 Busting cache for listable atom:", atom.kind, atom.id);
-          bustCacheAndReferences(
-            db,
-            atom.workspaceId,
-            atom.changeSetId,
-            atom.kind,
-            atom.id,
-          );
-        }
-      });
-      connAtomsToBust.forEach((atom) => {
-        if (atom) {
-          debug("🧹 Busting cache for connection:", atom.kind, atom.id);
-          bustCacheAndReferences(
-            db,
-            atom.workspaceId,
-            atom.changeSetId,
-            atom.kind,
-            atom.id,
-          );
-        }
-      });
 
       debug("📦 BATCH COMPLETE:", batchId);
     } finally {
@@ -1313,6 +1348,7 @@ const applyWorkspacePatch = async (
   db: Database,
   atom: Required<WorkspaceAtom>,
   indexChecksum: Checksum,
+  mtmMap: DefaultMap<string, string[]>,
 ) => {
   return await tracer.startActiveSpan("applyWorkspacePatch", async (span) => {
     try {
@@ -1337,12 +1373,8 @@ const applyWorkspacePatch = async (
       let patchRequired = true;
 
       // Check if we actually have the atom data, not just the MTM relationship
-      const upToDateAtomIndexes = workspaceAtomExistsOnIndexes(
-        db,
-        atom.kind,
-        atom.id,
-        atom.toChecksum,
-      );
+      const afterKey = constructMtmKey(atom.kind, atom.id, atom.toChecksum);
+      const upToDateAtomIndexes = mtmMap.get(afterKey);
       if (upToDateAtomIndexes.length > 0) {
         patchRequired = false;
         debug(
@@ -1366,12 +1398,12 @@ const applyWorkspacePatch = async (
 
       if (patchRequired) {
         // do we have an index with the fromChecksum (without we cannot patch)
-        const previousIndexes = workspaceAtomExistsOnIndexes(
-          db,
+        const beforeKey = constructMtmKey(
           atom.kind,
           atom.id,
           atom.fromChecksum,
         );
+        const previousIndexes = mtmMap.get(beforeKey);
         span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
         const exists = previousIndexes.length > 0;
         span.setAttribute("exists", exists);
@@ -1404,6 +1436,7 @@ const applyWorkspacePatch = async (
               atom.kind,
               atom.id,
               atom.fromChecksum,
+              span,
             );
             bustCache = true;
             removed = true;
@@ -1415,7 +1448,7 @@ const applyWorkspacePatch = async (
           if (exists) {
             debug("🔧 Patching existing atom:", atom.kind, atom.id);
             span.setAttribute("patchAtom", true);
-            doc = await patchAtom(db, atom);
+            doc = await patchAtom(db, atom, span);
             needToInsertMTM = true;
             bustCache = true;
           } // otherwise, fire the small hammer to get the full object
@@ -1461,8 +1494,12 @@ const applyWorkspacePatch = async (
           "indexChecksum:",
           indexChecksum,
         );
-        initIndexAndChangeSet(db, atom, span);
         const inserted = insertAtomMTM(db, atom, indexChecksum);
+        const afterKey = constructMtmKey(atom.kind, atom.id, atom.toChecksum);
+        // when we make an MTM, also add the index checksum to keep our map up to date for future patches
+        const indexes = mtmMap.get(afterKey);
+        indexes.push(indexChecksum);
+        mtmMap.set(afterKey, indexes);
         span.setAttribute("insertedMTM", inserted);
         debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
       }
@@ -1501,7 +1538,12 @@ const applyWorkspacePatch = async (
   });
 };
 
-const patchAtom = async (db: Database, atom: Required<WorkspaceAtom>) => {
+const patchAtom = async (
+  db: Database,
+  atom: Required<WorkspaceAtom>,
+  span?: Span,
+) => {
+  const start = performance.now();
   const atomRows = db.exec({
     sql: `SELECT kind, args, checksum, data
       FROM atoms
@@ -1513,6 +1555,8 @@ const patchAtom = async (db: Database, atom: Required<WorkspaceAtom>) => {
     bind: [atom.kind, atom.id, atom.fromChecksum],
     returnValue: "resultRows",
   });
+  const end = performance.now();
+  span?.setAttribute("perf.patchAtom", end - start);
   if (atomRows.length === 0) throw new Error("Cannot find atom");
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const atomRow = atomRows[0]!;
