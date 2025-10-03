@@ -9,7 +9,7 @@ use sdf_extract::{
 };
 use serde_json::json;
 use si_frontend_mv_types::{
-    cached_schema_variant::CachedSchemaVariant,
+    cached_default_variant::CachedDefaultVariant,
     luminork_schema_variant::LuminorkSchemaVariant,
     reference::ReferenceKind,
 };
@@ -133,16 +133,13 @@ pub async fn get_variant(
         }
     }
 
-    // Phase 1 Fallback: Try CachedSchemaVariant MV (deployment-level, for uninstalled modules)
+    // Phase 1 Fallback: Try CachedDefaultVariant MV (deployment-level, for uninstalled modules)
     match frigg
-        .get_current_deployment_object(
-            ReferenceKind::CachedSchemaVariant,
-            &schema_variant_id.to_string(),
-        )
+        .get_current_deployment_object(ReferenceKind::CachedDefaultVariant, &schema_id.to_string())
         .await?
     {
         Some(obj) => {
-            if let Ok(cached_variant) = serde_json::from_value::<CachedSchemaVariant>(obj.data) {
+            if let Ok(cached_variant) = serde_json::from_value::<CachedDefaultVariant>(obj.data) {
                 // Clone values for logging before moving them
                 let display_name_for_log = cached_variant.display_name.clone();
                 let category_for_log = cached_variant.category.clone();
@@ -157,7 +154,7 @@ pub async fn get_variant(
                     link: cached_variant.link,
                     asset_func_id: cached_variant.asset_func_id,
                     variant_func_ids: cached_variant.variant_func_ids,
-                    is_default_variant: cached_variant.is_default_variant,
+                    is_default_variant: true, // CachedDefaultVariant is always the default variant for the schema
                     domain_props: cached_variant.domain_props.map(Into::into),
                 };
 
@@ -177,10 +174,10 @@ pub async fn get_variant(
             }
         }
         None => {
-            // CachedSchemaVariant not found - check if schema exists in cached_modules DB table
+            // CachedDefaultVariant not found - check if schema exists in cached_modules DB table
             match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
                 Ok(Some(_)) => {
-                    // Schema exists in cached_modules but CachedSchemaVariant MV not built yet
+                    // Schema exists in cached_modules but CachedDefaultVariant MV not built yet
                     return Ok(SchemaVariantResponseV1::Building(BuildingResponseV1 {
                         status: "building".to_string(),
                         message: "Schema variant data is being generated from cached modules, please retry shortly".to_string(),

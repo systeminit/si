@@ -389,7 +389,11 @@ impl CachedModule {
 
         Ok(())
     }
-    #[instrument(name = "cached_module.install_from_module", level = "info", skip_all)]
+    #[instrument(
+        name = "cached_module.find_latest_for_schema_id",
+        level = "debug",
+        skip_all
+    )]
     pub async fn find_latest_for_schema_id(
         ctx: &DalContext,
         schema_id: SchemaId,
