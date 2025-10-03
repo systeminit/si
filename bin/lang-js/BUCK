@@ -38,7 +38,6 @@ deno_run(
     permissions = [
         "allow-all",
     ],
-    deno_cache = "//:deno_workspace",
     visibility = ["PUBLIC"],
 )
 
@@ -59,7 +58,6 @@ deno_compile(
     unstable_flags = [
         "node-globals"
     ],
-    deno_cache = "//:deno_workspace",
     visibility = ["PUBLIC"],
 )
 
@@ -75,19 +73,21 @@ deno_format(
     check = True,
 )
 
-# todo: Paul - remove this no_check!!
-# deno_test(
-#     name = "test-unit",
-#     srcs = glob(["**/tests/*.spec.ts"]),
-#     ignore = ["node_modules"],
-#     no_check = True,
-#     permissions = [
-#         "allow-all",
-#     ],
-#     unstable_flags = [
-#         "worker-options",
-#     ],
-# )
+deno_test(
+    name = "test-unit",
+    srcs = glob(["**/tests/**/*.ts"]),
+    extra_srcs = [
+        ":build",
+    ],
+    ignore = ["node_modules"],
+    permissions = [
+        "allow-all",
+    ],
+    unstable_flags = [
+        "worker-options",
+    ],
+    parallel = False,
+)
 
 nix_omnibus_pkg(
     name = "omnibus",

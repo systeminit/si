@@ -118,21 +118,6 @@ pnpm_workspace(
     ],
 )
 
-deno_workspace(
-    name = "deno_workspace",
-    root_config = ":deno.json",
-    srcs = [
-        "//bin/clover:srcs",
-        "//bin/lang-js:srcs",
-        "//lib/ts-lib-deno:srcs",
-        "//lib/jsr-systeminit/remove-empty:srcs",
-        "//lib/jsr-systeminit/ecs-template-qualification:srcs",
-        "//lib/jsr-systeminit/cf-db:srcs",
-        "//bin/si-luminork-api-tests:srcs",
-        "//bin/si-mcp-server:srcs",
-    ],
-    visibility = ["PUBLIC"],
-)
 
 pnpm_lock(
     name = "pnpm-lock.yaml",

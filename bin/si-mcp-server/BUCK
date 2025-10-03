@@ -15,6 +15,10 @@ export_file(
     name = "deno.json",
 )
 
+export_file(
+    name = "deno.lock",
+)
+
 filegroup(
     name = "srcs",
     srcs = glob([

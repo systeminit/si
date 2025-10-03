@@ -11,7 +11,7 @@ import {
 } from "../../../spec/props.ts";
 import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
 import { ACTION_FUNC_SPECS, MANAGEMENT_FUNCS } from "../funcs.ts";
-import { ulid } from "ulid";
+import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { FuncArgumentSpec } from "../../../bindings/FuncArgumentSpec.ts";
 import { ActionFuncSpecKind } from "../../../bindings/ActionFuncSpecKind.ts";
 import { FuncSpec } from "../../../bindings/FuncSpec.ts";

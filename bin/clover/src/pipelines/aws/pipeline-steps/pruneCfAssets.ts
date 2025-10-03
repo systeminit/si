@@ -2,7 +2,7 @@ import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 import _logger from "../../../logger.ts";
 import { createFunc, strippedBase64 } from "../../../spec/funcs.ts";
 import { CODE_GENERATION_FUNC_SPECS } from "../funcs.ts";
-import { ulid } from "ulid";
+import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { FuncArgumentSpec } from "../../../bindings/FuncArgumentSpec.ts";
 
 const logger = _logger.ns("pruneCfAssets").seal();

@@ -1,4 +1,5 @@
 {
+  "workspace": [],
   "tasks": {
     "test": "deno test --allow-run",
     "dev": "deno run --watch main.ts",

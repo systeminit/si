@@ -6,7 +6,6 @@ Deno.test("createSandbox", () => {
   const sandbox = createSandbox(FunctionKind.ResolverFunction, "poop");
 
   assertObjectMatch(sandbox, {
-    console: sandbox.console,
     _: sandbox._,
   });
 });

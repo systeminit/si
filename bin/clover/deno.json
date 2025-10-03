@@ -1,4 +1,5 @@
 {
+  "workspace": [],
   "tasks": {
     "updateSchema": "../../lib/jsr-systeminit/cf-db/update-schema.sh",
     "run": "deno run --allow-all main.ts",
@@ -14,6 +15,12 @@
     "openai": "npm:openai@^4.104.0",
     "ulid": "https://deno.land/x/ulid@v0.3.0/mod.ts",
     "pluralize": "npm:pluralize@^8.0.0",
-    "cf-db": "../../lib/jsr-systeminit/cf-db"
+    "cf-db": "../../lib/jsr-systeminit/cf-db",
+    "joi": "npm:joi@17.13.3",
+    "@sideway/formula": "npm:@sideway/formula@3.0.1",
+    "@hapi/topo": "npm:@hapi/topo@5.1.0",
+    "@sideway/address": "npm:@sideway/address@4.1.5",
+    "@sideway/pinpoint": "npm:@sideway/pinpoint@2.0.0",
+    "@hapi/hoek": "npm:@hapi/hoek@9.3.0"
   }
 }

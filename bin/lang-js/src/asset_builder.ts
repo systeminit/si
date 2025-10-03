@@ -1,4 +1,3 @@
-import { parseConnectionAnnotation } from "@scope/ts-lib-deno";
 import Joi from "npm:joi";
 
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
@@ -201,9 +200,6 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    *  .setConnectionAnnotation("EC2<IAM<string>>")
    */
   setConnectionAnnotation(annotation: string): this {
-    // Throws if not able to match annotation
-    parseConnectionAnnotation(annotation);
-
     this.connectionAnnotations.push(annotation);
     return this;
   }

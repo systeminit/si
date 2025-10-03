@@ -4,6 +4,9 @@
   "exports": "./src/index.ts",
   "fmt": {
     "semiColons": false
+  },
+  "imports": {
+    "lodash-es": "npm:lodash-es@4.17.21"
   }
 }
 
