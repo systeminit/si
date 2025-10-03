@@ -755,6 +755,18 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   `);
   await db.handleWorkspacePatchMessage(patch3);
 
+  const afterDVUIndexExists = oneInOne(
+    await db.exec({
+      sql: "select checksum from indexes where checksum = ?",
+      returnValue: "resultRows",
+      bind: ["55dee56fd5dedebec8bcd4f2eeb92964"],
+    }),
+  );
+  assert(
+    afterDVUIndexExists === "55dee56fd5dedebec8bcd4f2eeb92964",
+    "DVU patch didn't create index",
+  );
+
   const avAfterDVU = (await db.get(
     workspaceId,
     avChangeSetId,
@@ -790,7 +802,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   "meta": {
     "workspaceId": "01HRFEV0S23R1G23RP75QQDCA7",
     "changeSetId": "01K4ZF6QXKB3ZV3124ER2C0TFT",
-    "toIndexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd",
+    "toIndexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd-different",
     "fromIndexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd"
   },
   "kind": "PatchMessage",
@@ -799,12 +811,27 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   `) as WorkspacePatchBatch;
   await db.handleWorkspacePatchMessage(noOpPatch);
 
+  const noOpIndexExists = oneInOne(
+    await db.exec({
+      sql: "select checksum from indexes where checksum = ?",
+      returnValue: "resultRows",
+      bind: ["8601f40a5bc4b73e90dba9d1a4126bfd-different"],
+    }),
+  );
+  assert(
+    noOpIndexExists === "8601f40a5bc4b73e90dba9d1a4126bfd-different",
+    "noOp patch didn't create index",
+  );
+
+  // NOTE: i am changing this data's `toIndexChecksum` to a new value
+  // representing other behavior we've seen in the wild, even though
+  // the particular run i am copying here didn't exhibit it
   const noOpIndex = JSON.parse(`
 {
   "meta": {
     "workspaceId": "01HRFEV0S23R1G23RP75QQDCA7",
     "changeSetId": "01K4ZF6QXKB3ZV3124ER2C0TFT",
-    "toIndexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd",
+    "toIndexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd-different",
     "fromIndexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd"
   },
   "kind": "IndexUpdate",
@@ -813,7 +840,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     "kind": "ChangeSetMvIndex",
     "id": "cfe344c9242085c961e343a835de646f409e1b0e9f63290c6415dc7c52ef9b9b",
     "fromChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd",
-    "toChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd",
+    "toChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd-different",
     "patch": []
   }
 }
@@ -828,7 +855,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     "workspaceId": "01HRFEV0S23R1G23RP75QQDCA7",
     "changeSetId": "01K4ZF6QXKB3ZV3124ER2C0TFT",
     "toIndexChecksum": "03ce85f750506ee4f9d64396fdbacad0",
-    "fromIndexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd"
+    "fromIndexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd-different"
   },
   "kind": "PatchMessage",
   "patches": [

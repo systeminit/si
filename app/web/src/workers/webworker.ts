@@ -1,5 +1,5 @@
 import * as Comlink from "comlink";
-import { applyPatch as applyOperations } from "fast-json-patch";
+import { applyPatch as applyOperations, Operation } from "fast-json-patch";
 import QuickLRU from "quick-lru";
 import sqlite3InitModule, {
   Database,
@@ -32,6 +32,7 @@ import Axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
+import * as _ from "lodash-es";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { DefaultMap } from "@/utils/defaultmap";
@@ -133,12 +134,12 @@ const _START_FRESH = false;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function debug(...args: any | any[]) {
   // eslint-disable-next-line no-console
-  if (_DEBUG) console.debug(args);
+  if (_DEBUG) console.debug(...args);
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function log(...args: any | any[]) {
   // eslint-disable-next-line no-console
-  if (_DEBUG) console.log(args);
+  if (_DEBUG) console.log(...args);
 }
 
 /**
@@ -307,8 +308,10 @@ const exec = (
 /**
  * A few small utilities
  */
+const textEncoder = new TextEncoder();
 const encodeDocumentForDB = async (doc: object) => {
-  return await new Blob([JSON.stringify(doc)]).arrayBuffer();
+  const docJson = JSON.stringify(doc);
+  return textEncoder.encode(docJson);
 };
 
 const decodeDocumentFromDB = (doc: ArrayBuffer): AtomDocument => {
@@ -454,7 +457,9 @@ const removeAtom = (
   kind: EntityKind,
   id: string,
   checksum: string,
+  span?: Span,
 ) => {
+  const start = performance.now();
   db.exec({
     sql: `
     DELETE FROM index_mtm_atoms
@@ -462,33 +467,21 @@ const removeAtom = (
     `,
     bind: [indexChecksum, kind, id, checksum],
   });
-};
-
-const createAtomFromPatch = async (
-  db: Database,
-  atom: WorkspaceAtom,
-  span?: Span,
-) => {
-  const doc = {};
-  let afterDoc = {};
-  if (atom.operations) {
-    const applied = applyOperations(doc, atom.operations);
-    afterDoc = applied.newDocument;
-  }
-  await createAtom(db, atom, afterDoc, span);
-  return afterDoc;
+  const end = performance.now();
+  span?.setAttribute("performance.removeAtom", end - start);
 };
 
 const createAtom = async (
   db: Database,
   atom: Omit<WorkspaceAtom, "toIndexChecksum" | "fromIndexChecksum">,
   doc: object,
-  _span?: Span,
+  span?: Span,
 ) => {
   debug("createAtom", atom, doc);
 
   const encodedDoc = await encodeDocumentForDB(doc);
   try {
+    const start = performance.now();
     db.exec({
       sql: `insert into atoms
         (kind, checksum, args, data)
@@ -499,6 +492,8 @@ const createAtom = async (
       ;`,
       bind: [atom.kind, atom.toChecksum, atom.id, encodedDoc],
     });
+    const end = performance.now();
+    span?.setAttribute("performance.createAtom", end - start);
 
     debug("✅ createAtom successful:", atom.kind, atom.id, atom.toChecksum);
   } catch (err) {
@@ -765,7 +760,7 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
 };
 
 // Insert atoms in chunks of 2000 per query
-const bulkCreateAtomsFromBulkMjolnir = async (
+const bulkCreateAtoms = async (
   db: Database,
   indexObjects: (IndexObjectMeta | AtomWithDocument)[],
   chunkSize = 2000,
@@ -985,12 +980,13 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
       returnValue: "resultRows",
       bind: [msg.meta.toIndexChecksum],
     });
-    const indexExists = oneInOne(indexQuery);
-    if (indexExists) span.setAttribute("indexExists", indexExists?.toString());
-    else {
+    const indexNotThere = oneInOne(indexQuery) === NOROW;
+    if (indexNotThere) {
       span.end();
       debug(`${msg.meta.toIndexChecksum} doesn't exist, ignoring index patch`);
       return;
+    } else {
+      span.setAttribute("indexExists", msg.meta.toIndexChecksum);
     }
 
     // if we don't have the fromChecksum, we can't patch
@@ -1044,7 +1040,7 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
     if (placeholders.length > 0) {
       const sql = `
         delete from index_mtm_atoms
-        where 
+        where
           (
             index_checksum,
             kind,
@@ -1067,13 +1063,54 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
   });
 };
 
+const existingWorkspaceAtoms = (
+  db: Database,
+  atoms: Required<WorkspaceAtom>[],
+) => {
+  const placeholders = [];
+  const bind: string[] = [];
+
+  for (const atom of atoms) {
+    placeholders.push("(?, ?, ?)");
+    bind.push(atom.kind, atom.id, atom.toChecksum);
+  }
+
+  const sql = `
+    select atoms.kind, atoms.args, atoms.checksum
+    from atoms
+    where (atoms.kind, atoms.args, atoms.checksum) in (${placeholders.join(
+      ",",
+    )})
+  `;
+
+  const rows = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+
+  const result: { [key: string]: Common } = {};
+  for (const row of rows) {
+    const [kind, id, checksum] = row;
+    const atom = {
+      kind: kind as EntityKind,
+      id: id as string,
+      checksum: checksum as string,
+    };
+    result[atomCacheKey(atom)] = atom;
+  }
+
+  return result;
+};
+
 const handleWorkspacePatchMessage = async (
   db: Database,
   data: WorkspacePatchBatch,
 ) => {
   await tracer.startActiveSpan("PatchBatch", async (span) => {
+    const batchId = `${data.meta.toIndexChecksum}-${data.patches.length}`;
+    const perfStart = performance.now();
     try {
-      const batchId = `${data.meta.toIndexChecksum}-${data.patches.length}`;
       debug("📦 BATCH START:", batchId);
 
       const { changeSetId, toIndexChecksum, workspaceId, fromIndexChecksum } =
@@ -1089,8 +1126,15 @@ const handleWorkspacePatchMessage = async (
         toIndexChecksum,
         fromIndexChecksum,
       });
-      debug("RAW PATCHES", data.patches);
+      debug("RAW PATCHES", batchId, data.patches.length);
+      // log(changeSetId);
       if (data.patches.length === 0) {
+        try {
+          initIndexAndChangeSet(db, data.meta, span);
+          updateChangeSetWithNewIndex(db, data.meta);
+        } catch (err) {
+          error("Failed to handle empty patch", data);
+        }
         span.end();
         return;
       }
@@ -1111,21 +1155,6 @@ const handleWorkspacePatchMessage = async (
             `[${i}] ${p.kind}.${p.id}: ${p.fromChecksum} -> ${p.toChecksum}`,
         ),
       );
-
-      // Check for duplicate patches in the same batch
-      // const patchKeys = data.patches.map(
-      //   (p) => `${p.kind}.${p.id}.${p.fromChecksum}.${p.toChecksum}`,
-      // );
-      // const uniquePatchKeys = new Set(patchKeys);
-      // if (patchKeys.length !== uniquePatchKeys.size) {
-      //   debug("📦 WARNING: Duplicate patches detected in batch!", {
-      //     total: patchKeys.length,
-      //     unique: uniquePatchKeys.size,
-      //     duplicates: patchKeys.filter(
-      //       (key, index) => patchKeys.indexOf(key) !== index,
-      //     ),
-      //   });
-      // }
 
       let indexChecksum: string;
       try {
@@ -1173,335 +1202,375 @@ const handleWorkspacePatchMessage = async (
         );
       }
 
-      // lists first now
-      const listAtoms = atoms.filter((a) => LISTABLE.includes(a.kind));
-      const listAtomsDesc = listAtoms.map(
-        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-      );
-      span.setAttributes({
-        listAtomsLength: listAtoms.length,
-        listAtomsDesc,
-      });
-      debug("📦 Processing list atoms:", listAtoms.length, listAtomsDesc);
+      const existingAtoms = existingWorkspaceAtoms(db, atoms);
+      const handlePatchBatch = async (
+        workspaceAtoms: Required<WorkspaceAtom>[],
+      ) => {
+        const ops = workspaceAtoms.map((atom) =>
+          preprocessPatch(atom, existingAtoms),
+        );
+        return await handlePatchOperations(
+          db,
+          workspaceId,
+          changeSetId,
+          indexChecksum,
+          ops,
+          span,
+        );
+      };
 
-      // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
-      // from a view without it.
-      const listAtomsToBust = await Promise.all(
-        listAtoms.map(async (atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum);
-        }),
-      );
-      // not busting these
-      // await Promise.all(
-      //   listAtoms.map(async (atom) => {
-      //     return applyWorkspacePatch(db, atom, indexChecksum);
-      //   }),
-      // );
+      const atomsToBust = await handlePatchBatch(atoms);
 
-      // non-list atoms
-      // non-connections (e.g. components need to go before connections)
-      const nonListAtoms = atoms.filter(
+      const listAtomsToBust = atomsToBust.filter((a) =>
+        LISTABLE.includes(a.kind),
+      );
+      const nonListAtomsToBust = atomsToBust.filter(
         (a) =>
           !LISTABLE.includes(a.kind) &&
           a.kind !== EntityKind.IncomingConnections,
       );
-      const nonListAtomsDesc = nonListAtoms.map(
-        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-      );
-      span.setAttributes({
-        nonListAtomsLength: nonListAtoms.length,
-        nonListAtomsDesc,
-      });
-      debug(
-        "📦 Processing non-list atoms:",
-        nonListAtoms.length,
-        nonListAtomsDesc,
-      );
-
-      const atomsToBust = await Promise.all(
-        nonListAtoms.map(async (atom) => {
-          return applyWorkspacePatch(db, atom, indexChecksum);
-        }),
-      );
-
-      const connectionAtoms = atoms.filter(
+      const connAtomsToBust = atomsToBust.filter(
         (a) => a.kind === EntityKind.IncomingConnections,
-      );
-      const connectionAtomsDesc = connectionAtoms.map(
-        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-      );
-      span.setAttributes({
-        connectionAtomsLength: connectionAtoms.length,
-        connectionAtomsDesc,
-      });
-      debug(
-        "📦 Processing connection atoms:",
-        connectionAtoms.length,
-        connectionAtomsDesc,
-      );
-      const connAtomsToBust = await Promise.all(
-        connectionAtoms.map(async (atom) => {
-          return await applyWorkspacePatch(db, atom, indexChecksum);
-        }),
       );
 
       updateChangeSetWithNewIndex(db, data.meta);
       span.setAttribute("updatedWithNewIndex", true);
       removeOldIndex(db, span);
 
-      debug(
-        "🧹 Busting cache for atoms:",
-        atomsToBust.length + connAtomsToBust.length,
-      );
+      nonListAtomsToBust.forEach((atom) => {
+        bustCacheAndReferences(
+          db,
+          workspaceId,
+          changeSetId,
+          atom.kind,
+          atom.id,
+        );
+      });
 
-      span.setAttributes({
-        bustCacheLength: atomsToBust.length + connAtomsToBust.length,
-        bustCache: JSON.stringify(
-          [...atomsToBust, ...connAtomsToBust]
-            .filter((a): a is Required<WorkspaceAtom> => !!a)
-            .map((a) => [a.kind, a.id]),
-        ),
-      });
-      atomsToBust.forEach((atom) => {
-        if (atom) {
-          debug("🧹 Busting cache for atom:", atom.kind, atom.id);
-          bustCacheAndReferences(
-            db,
-            atom.workspaceId,
-            atom.changeSetId,
-            atom.kind,
-            atom.id,
-          );
-        }
-      });
-      // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
-      // from a view without it.
       listAtomsToBust.forEach((atom) => {
         if (atom && atom.kind === EntityKind.ViewComponentList) {
-          debug("🧹 Busting cache for listable atom:", atom.kind, atom.id);
           bustCacheAndReferences(
             db,
-            atom.workspaceId,
-            atom.changeSetId,
-            atom.kind,
-            atom.id,
-          );
-        }
-      });
-      connAtomsToBust.forEach((atom) => {
-        if (atom) {
-          debug("🧹 Busting cache for connection:", atom.kind, atom.id);
-          bustCacheAndReferences(
-            db,
-            atom.workspaceId,
-            atom.changeSetId,
+            workspaceId,
+            changeSetId,
             atom.kind,
             atom.id,
           );
         }
       });
 
-      debug("📦 BATCH COMPLETE:", batchId);
+      connAtomsToBust.forEach((atom) => {
+        bustCacheAndReferences(
+          db,
+          workspaceId,
+          changeSetId,
+          atom.kind,
+          atom.id,
+        );
+      });
     } finally {
       // this always runs regardless of return, throw, etc
+      debug("BATCH END", batchId, "took", performance.now() - perfStart, "ms");
+
       span.end();
     }
   });
 };
 
-const applyWorkspacePatch = async (
+interface PatchOperation {
+  kind: "NoOp" | "Create" | "Remove" | "Patch";
+  atom: WorkspaceAtom;
+}
+
+const handlePatchOperations = async (
   db: Database,
-  atom: Required<WorkspaceAtom>,
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
   indexChecksum: Checksum,
-) => {
-  return await tracer.startActiveSpan("applyWorkspacePatch", async (span) => {
+  patchOperations: PatchOperation[],
+  span: Span,
+): Promise<Common[]> => {
+  const realHammers: MjolnirBulk = [];
+
+  // No-op, just post-process
+  const noops: Common[] = patchOperations
+    .filter((op) => op.kind === "NoOp")
+    .map((op) => ({
+      kind: op.atom.kind,
+      id: op.atom.id,
+      checksum: op.atom.toChecksum,
+    }));
+  const bulkMtmStart = performance.now();
+  bulkInsertAtomMTMs(db, noops, indexChecksum);
+  span.setAttribute(
+    "performance.NoopBulkMtm",
+    performance.now() - bulkMtmStart,
+  );
+
+  const atomsToInsert: AtomWithDocument[] = [];
+  const creates = patchOperations
+    .filter((op) => op.kind === "Create")
+    .map((op) => op.atom);
+  for (const atom of creates) {
     try {
-      span.setAttributes({
-        workspaceId: atom.workspaceId,
-        changeSetId: atom.changeSetId,
-        toIndexChecksum: atom.toIndexChecksum,
-        fromIndexChecksum: atom.fromIndexChecksum,
-        atom: JSON.stringify(atom),
+      // A create means the operation set will be equal to the entire document for the atom
+      const doc = atom.operations
+        ? applyOperations({}, atom.operations).newDocument
+        : {};
+
+      atomsToInsert.push({
+        kind: atom.kind,
+        id: atom.id,
+        checksum: atom.toChecksum,
+        doc,
       });
-      debug(
-        "🔧 Applying patch:",
-        atom.kind,
-        atom.id,
-        `${atom.fromChecksum} -> ${atom.toChecksum}`,
-      );
+    } catch (err) {
+      error("Failed to apply create operations for patch", atom, err);
+    }
+  }
 
-      let needToInsertMTM = false;
-      let bustCache = false;
-      let doc;
-      let removed = false;
-      let patchRequired = true;
+  interface CommonWithOps extends Common {
+    operations?: Operation[];
+  }
 
-      // Check if we actually have the atom data, not just the MTM relationship
-      const upToDateAtomIndexes = workspaceAtomExistsOnIndexes(
+  const patches = patchOperations
+    .filter((op) => op.kind === "Patch")
+    .map((op) => op.atom);
+  const atomsToUpdate: CommonWithOps[] = [];
+  const atomsByKindAndId: { [key: string]: WorkspaceAtom } = {};
+  for (const atom of patches) {
+    if (atom.fromChecksum) {
+      atomsToUpdate.push({
+        kind: atom.kind,
+        id: atom.id,
+        checksum: atom.fromChecksum,
+        operations: atom.operations,
+      });
+
+      atomsByKindAndId[`${atom.id}-${atom.kind}-${atom.fromChecksum}`] = atom;
+    }
+  }
+
+  const startDocs = performance.now();
+  const { existingDocuments, hammers } = atomDocumentsForChecksums(
+    db,
+    atomsToUpdate,
+  );
+  span.setAttribute(
+    "performance.atomDocumentsForChecksums",
+    performance.now() - startDocs,
+  );
+
+  // Apply patches for every atom we could find
+  for (const atomToPatch of existingDocuments) {
+    const atomKey = `${atomToPatch.id}-${atomToPatch.kind}-${atomToPatch.checksum}`;
+    const maybeOperations = atomsByKindAndId[atomKey]?.operations;
+    const toChecksum = atomsByKindAndId[atomKey]?.toChecksum;
+    if (!toChecksum) {
+      error("Patch missing toChecksum, skipping", atomToPatch);
+      continue;
+    }
+
+    const beforeDoc = atomToPatch.doc ?? {};
+
+    try {
+      let afterDoc;
+      if (maybeOperations && beforeDoc) {
+        afterDoc = applyOperations(beforeDoc, maybeOperations).newDocument;
+      }
+
+      atomsToInsert.push({
+        kind: atomToPatch.kind,
+        id: atomToPatch.id,
+        checksum: toChecksum,
+        doc: afterDoc,
+      });
+    } catch (err) {
+      error("Failed to apply patch operations", err);
+    }
+  }
+
+  // Ok we have all the patches we could apply, insert them into the database
+  if (atomsToInsert.length > 0) {
+    const startCreate = performance.now();
+    await bulkCreateAtoms(db, atomsToInsert);
+    span.setAttribute(
+      "performance.bulkCreateAtoms",
+      performance.now() - startCreate,
+    );
+
+    const startMtm = performance.now();
+    bulkInsertAtomMTMs(db, atomsToInsert, indexChecksum);
+    span.setAttribute(
+      "performance.bulkCreateMtms",
+      performance.now() - startMtm,
+    );
+  }
+
+  // Now process removals
+  const removals = patchOperations
+    .filter((op) => op.kind === "Remove" && op.atom.fromChecksum)
+    .map((op) => ({
+      kind: op.atom.kind,
+      id: op.atom.id,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      checksum: op.atom.fromChecksum!,
+    }));
+  for (const atom of removals) {
+    try {
+      const doc = atomDocumentForChecksum(
         db,
         atom.kind,
         atom.id,
-        atom.toChecksum,
+        atom.checksum,
       );
-      if (upToDateAtomIndexes.length > 0) {
-        patchRequired = false;
-        debug(
-          "🔧 No Op Patch!",
-          atom.kind,
-          atom.id,
-          atom.toChecksum,
-          upToDateAtomIndexes,
-        );
-        // get the doc for post processing
-        doc = atomDocumentForChecksum(db, atom.kind, atom.id, atom.toChecksum);
-        span.setAttributes({
-          noop: true,
-          upToDateAtomIndexes: JSON.stringify(upToDateAtomIndexes),
-        });
-        if (!upToDateAtomIndexes.includes(indexChecksum)) {
-          needToInsertMTM = true;
-          bustCache = true;
-        }
-      }
 
-      if (patchRequired) {
-        // do we have an index with the fromChecksum (without we cannot patch)
-        const previousIndexes = workspaceAtomExistsOnIndexes(
-          db,
-          atom.kind,
-          atom.id,
-          atom.fromChecksum,
-        );
-        span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
-        const exists = previousIndexes.length > 0;
-        span.setAttribute("exists", exists);
-        debug(
-          "🔧 Previous indexes exist:",
-          exists,
-          "fromChecksum:",
-          atom.fromChecksum,
-        );
-
-        if (atom.fromChecksum === "0") {
-          if (!exists) {
-            // if i already have it, this is a NOOP
-            debug("🔧 Creating new atom from patch:", atom.kind, atom.id);
-            span.setAttribute("createAtom", true);
-            doc = await createAtomFromPatch(db, atom, span);
-            needToInsertMTM = true;
-            bustCache = true;
-          } else {
-            debug("🔧 New atom already exists (noop):", atom.kind, atom.id);
-          }
-        } else if (atom.toChecksum === "0") {
-          // if i've already removed it, this is a NOOP
-          if (exists) {
-            debug("🔧 Removing atom:", atom.kind, atom.id);
-            span.setAttribute("removeAtom", true);
-            removeAtom(
-              db,
-              indexChecksum,
-              atom.kind,
-              atom.id,
-              atom.fromChecksum,
-            );
-            bustCache = true;
-            removed = true;
-          } else {
-            debug("🔧 Atom already removed (noop):", atom.kind, atom.id);
-          }
-        } else {
-          // patch it if I can
-          if (exists) {
-            debug("🔧 Patching existing atom:", atom.kind, atom.id);
-            span.setAttribute("patchAtom", true);
-            doc = await patchAtom(db, atom);
-            needToInsertMTM = true;
-            bustCache = true;
-          } // otherwise, fire the small hammer to get the full object
-          else {
-            debug(
-              "🔨 MJOLNIR RACE: Missing fromChecksum data, firing hammer:",
-              atom.kind,
-              atom.id,
-              "fromChecksum:",
-              atom.fromChecksum,
-            );
-            span.setAttributes({
-              mjolnir: true,
-              mjolnirAtom: JSON.stringify(atom),
-              mjolnirPreviousIndexes: JSON.stringify(previousIndexes),
-              mjolnirToChecksumIndexes: JSON.stringify([]), // indexes variable was removed
-              mjolnirSource: "applyWorkspacePatch",
-            });
-            debug("applyWorkspacePatch mjolnir", atom.kind, atom.id);
-            mjolnir(
-              db,
-              atom.workspaceId,
-              atom.changeSetId,
-              atom.kind,
-              atom.id,
-              atom.toChecksum,
-            );
-          }
-        }
-      }
-
-      // this insert potentially replaces the MTM row that exists for the current index
-      // based on the table constraint
-      span.setAttributes({
-        needToInsertMTM,
-        bustCache,
-      });
-      if (needToInsertMTM) {
-        debug(
-          "🔧 Inserting MTM for:",
-          atom.kind,
-          atom.id,
-          "indexChecksum:",
-          indexChecksum,
-        );
-        initIndexAndChangeSet(db, atom, span);
-        const inserted = insertAtomMTM(db, atom, indexChecksum);
-        span.setAttribute("insertedMTM", inserted);
-        debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
-      }
-
-      if (
-        COMPUTED_KINDS.includes(atom.kind) ||
-        LISTABLE_ITEMS.includes(atom.kind)
-      ) {
-        debug("🔧 Updating computed for:", atom.kind, atom.id);
-        postProcess(
-          db,
-          atom.workspaceId,
-          atom.changeSetId,
-          atom.kind,
-          doc,
-          atom.id,
-          indexChecksum,
-          removed,
-        );
-      }
-
-      if (bustCache) {
-        debug("🔧 Patch successful, will bust cache for:", atom.kind, atom.id);
-        return atom;
-      }
-      debug("🔧 Patch completed (no cache bust needed):", atom.kind, atom.id);
-      return undefined;
-    } catch (err: unknown) {
-      span.addEvent("error", {
-        error: err instanceof Error ? err.toString() : "unknown",
-      });
-    } finally {
-      // this always runs regardless of return, throw, etc
-      span.end();
+      removeAtom(db, indexChecksum, atom.kind, atom.id, atom.checksum);
+      postProcess(
+        db,
+        workspaceId,
+        changeSetId,
+        atom.kind,
+        doc,
+        atom.id,
+        indexChecksum,
+        true,
+        false,
+        false,
+      );
+    } catch (err) {
+      error("Failed to remove atom", err);
     }
-  });
+  }
+
+  // moving postProcess to after all the patching has been completed
+  const startPost = performance.now();
+  for (const atom of noops) {
+    try {
+      const doc = atomDocumentForChecksum(
+        db,
+        atom.kind,
+        atom.id,
+        atom.checksum,
+      );
+
+      postProcess(
+        db,
+        workspaceId,
+        changeSetId,
+        atom.kind,
+        doc,
+        atom.id,
+        indexChecksum,
+        false,
+      );
+    } catch (err) {
+      error("Failed to apply NoOp patch", err, atom);
+    }
+  }
+
+  for (const atom of atomsToInsert) {
+    try {
+      postProcess(
+        db,
+        workspaceId,
+        changeSetId,
+        atom.kind,
+        atom.doc,
+        atom.id,
+        indexChecksum,
+        false,
+        false,
+        false,
+      );
+    } catch (err) {
+      error("Failed to post process atom", atom, error);
+    }
+  }
+  span.setAttribute("performance.postProcess", performance.now() - startPost);
+
+  // Throw hammers for the ones we couldn't find
+  try {
+    for (const hammer of hammers) {
+      const atomKey = `${hammer.id}-${hammer.kind}-${hammer.checksum}`;
+      const toChecksum = atomsByKindAndId[atomKey]?.toChecksum;
+      if (toChecksum) {
+        realHammers.push({
+          ...hammer,
+          checksum: toChecksum,
+        });
+      }
+    }
+
+    if (realHammers.length > 0) {
+      await mjolnirBulk(
+        db,
+        workspaceId,
+        changeSetId,
+        realHammers,
+        indexChecksum,
+      );
+    }
+  } catch (err) {
+    error("Failed to throw hammers during patch", err);
+  }
+
+  return [...atomsToInsert, ...removals, ...noops, ...realHammers];
 };
 
-const patchAtom = async (db: Database, atom: Required<WorkspaceAtom>) => {
+const preprocessPatch = (
+  atom: Required<WorkspaceAtom>,
+  existingAtoms: { [key: string]: Common },
+): PatchOperation => {
+  const finishedAtomAsCommon: Common = {
+    kind: atom.kind,
+    id: atom.id,
+    checksum: atom.toChecksum,
+  };
+  const finishedKey = atomCacheKey(finishedAtomAsCommon);
+
+  // Does the atom already exist? Then it's a no-op, but process and insert the mtm
+  if (
+    atom.toChecksum &&
+    atom.toChecksum !== "0" &&
+    typeof existingAtoms[finishedKey] !== "undefined"
+  ) {
+    return {
+      kind: "NoOp",
+      atom,
+    };
+  }
+
+  // atom needs to be created, the operations will construct the entire document
+  if (atom.fromChecksum === "0") {
+    return {
+      kind: "Create",
+      atom,
+    };
+  }
+  // Atom is being removed
+  else if (atom.toChecksum === "0") {
+    return {
+      kind: "Remove",
+      atom,
+    };
+  }
+  // Not being removed? it's being patched! We will detect if we need to throw a
+  // hammer for it later
+  else {
+    return {
+      kind: "Patch",
+      atom,
+    };
+  }
+};
+
+const patchAtom = async (
+  db: Database,
+  atom: Required<WorkspaceAtom>,
+  span?: Span,
+) => {
+  const start = performance.now();
   const atomRows = db.exec({
     sql: `SELECT kind, args, checksum, data
       FROM atoms
@@ -1513,6 +1582,8 @@ const patchAtom = async (db: Database, atom: Required<WorkspaceAtom>) => {
     bind: [atom.kind, atom.id, atom.fromChecksum],
     returnValue: "resultRows",
   });
+  const end = performance.now();
+  span?.setAttribute("perf.patchAtom", end - start);
   if (atomRows.length === 0) throw new Error("Cannot find atom");
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const atomRow = atomRows[0]!;
@@ -1531,7 +1602,7 @@ const patchAtom = async (db: Database, atom: Required<WorkspaceAtom>) => {
       (kind, args, checksum, data)
     values
       (?, ?, ?, ?)
-    ON CONFLICT DO NOTHING
+    ON CONFLICT (kind, checksum, args) DO UPDATE SET data=excluded.data
     ;`,
     bind: [
       atom.kind,
@@ -1574,7 +1645,7 @@ const mjolnirBulk = async (
     }
   }
 
-  await bulkCreateAtomsFromBulkMjolnir(db, cachedAtoms);
+  await bulkCreateAtoms(db, cachedAtoms);
   bulkInsertAtomMTMs(db, cachedAtoms, indexChecksum);
 
   const pattern = [
@@ -1667,7 +1738,7 @@ const mjolnirBulk = async (
   );
   await handleHammer(db, msg);
 
-  await bulkCreateAtomsFromBulkMjolnir(db, req.data.successful);
+  await bulkCreateAtoms(db, req.data.successful);
   bulkInsertAtomMTMs(db, req.data.successful, indexChecksum);
 
   for (const obj of req.data.successful) {
@@ -1698,7 +1769,7 @@ const mjolnirBulk = async (
   }
 
   const writeToSqlMs = performance.now() - startWriteToSql;
-  log(`🔨 MJOLNIR BULK DONE! ${writeToSqlMs}ms`);
+  debug(`🔨 MJOLNIR BULK DONE! ${writeToSqlMs}ms`);
   bulkDone({ workspaceId, changeSetId });
 };
 
@@ -1927,19 +1998,21 @@ const pruneAtomsForClosedChangeSet = async (
 
 // 128k atom documents
 const MAX_CACHE_SIZE = 65536 * 2;
-const decodedAtomCache = new QuickLRU({ maxSize: MAX_CACHE_SIZE });
+const decodedAtomCache = new QuickLRU<string, AtomDocument>({
+  maxSize: MAX_CACHE_SIZE,
+});
 
 const atomCacheKey = (atom: Common) =>
   `${atom.id}-${atom.kind}-${atom.checksum}`;
 
 const getCachedDocument = (atom: Common) => {
   const cacheKey = atomCacheKey(atom);
-  return decodedAtomCache.get(cacheKey);
+  return _.cloneDeep(decodedAtomCache.get(cacheKey));
 };
 
 const setCachedDocument = (atom: Common, data: AtomDocument) => {
   const cacheKey = atomCacheKey(atom);
-  decodedAtomCache.set(cacheKey, data);
+  decodedAtomCache.set(cacheKey, _.cloneDeep(data));
 };
 
 const atomDocumentForChecksum = (
@@ -2410,46 +2483,6 @@ const allIncomingMgmt = new DefaultMap<
   ChangeSetId,
   DefaultMap<ComponentId, Record<string, Connection>>
 >(() => new DefaultMap(() => ({})));
-
-// const logDefaultSubscriptionsForChangeSet = (changeSetId: ChangeSetId) => {
-//   const defaultSubsForChangeSet = defaultSubscriptions.get(changeSetId);
-//   log("Default subscriptions for change set:", changeSetId);
-//   log(
-//     "defaultSubscriptions map:",
-//     defaultSubsForChangeSet.defaultSubscriptions.size,
-//     "entries",
-//   );
-//   for (const [
-//     key,
-//     value,
-//   ] of defaultSubsForChangeSet.defaultSubscriptions.entries()) {
-//     log("  defaultSubscription:", key, "->", value);
-//   }
-
-//   log(
-//     "componentsForSubs map:",
-//     defaultSubsForChangeSet.componentsForSubs.size,
-//     "entries",
-//   );
-//   for (const [
-//     key,
-//     componentSet,
-//   ] of defaultSubsForChangeSet.componentsForSubs.entries()) {
-//     log("  componentsForSub:", key, "->", Array.from(componentSet));
-//   }
-
-//   log(
-//     "subsForComponents map:",
-//     defaultSubsForChangeSet.subsForComponents.size,
-//     "entries",
-//   );
-//   for (const [
-//     componentId,
-//     subSet,
-//   ] of defaultSubsForChangeSet.subsForComponents.entries()) {
-//     log("  subsForComponent:", componentId, "->", Array.from(subSet));
-//   }
-// };
 
 // Given a single Av, process all the data related to default subscriptions (is
 // it a default sub, does it have external sources?)
