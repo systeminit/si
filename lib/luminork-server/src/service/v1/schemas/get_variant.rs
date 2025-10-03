@@ -152,6 +152,10 @@ pub async fn get_variant(
                 let display_name_for_log = cached_variant.display_name.clone();
                 let category_for_log = cached_variant.category.clone();
 
+                if cached_variant.variant_id != schema_variant_id {
+                    return Err(SchemaError::SchemaVariantNotFound(schema_variant_id));
+                }
+
                 let response = GetSchemaVariantV1Response {
                     variant_id: cached_variant.variant_id,
                     display_name: cached_variant.display_name,
