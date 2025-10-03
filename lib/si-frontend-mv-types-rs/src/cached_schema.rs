@@ -36,17 +36,12 @@ pub struct CachedSchema {
 }
 
 impl CachedSchema {
-    pub fn new(
-        id: SchemaId,
-        name: String,
-        default_variant_id: SchemaVariantId,
-        variant_ids: Vec<SchemaVariantId>,
-    ) -> Self {
+    pub fn new(id: SchemaId, name: String, default_variant_id: SchemaVariantId) -> Self {
         Self {
             id,
             name,
             default_variant_id,
-            variant_ids,
+            variant_ids: vec![default_variant_id],
         }
     }
 }
