@@ -9,7 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-async-openai = { workspace = true }
 async-trait = { workspace = true }
 audit-database = { path = "../../lib/audit-database" }
 auth-api-client = { path = "../../lib/auth-api-client" }
@@ -82,3 +81,7 @@ url = { workspace = true }
 utoipa = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 y-sync = { workspace = true }
+
+[dev-dependencies]
+color-eyre = { workspace = true }
+pretty_assertions_sorted = { workspace = true }

@@ -196,7 +196,7 @@ export function parseSearchTerms(search: string | undefined) {
  *       op: "and",
  *       conditions: [
  *          { op: "fuzzy", value: "MyComponent" },
- *          { op: "known", key: "schema", value: "AWS::EC2::Subnet" },
+ *          { op: "attr", key: "schema", value: "AWS::EC2::Subnet" },
  *          { op: "attr", key: "vpcId", value: "vpc-123" },
  *          { op: "exact", value: "AWS::EC2::Subnet" },
  *       ]

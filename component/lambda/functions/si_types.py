@@ -3,6 +3,8 @@ from datetime import datetime
 
 Ulid = NewType("Ulid", str)
 OwnerPk = NewType("OwnerPk", Ulid)
+ChangeSetId = NewType("ChangeSetId", Ulid)
+ComponentId = NewType("ComponentId", Ulid)
 WorkspaceId = NewType("WorkspaceId", Ulid)
 # SQL datetime, i.e. 2024-04-03 12:00:00
 SqlDatetime = NewType("SqlDatetime", str)

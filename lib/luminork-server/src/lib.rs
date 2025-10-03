@@ -30,6 +30,7 @@ pub mod middleware;
 mod nats_multiplexer;
 pub mod routes;
 mod runnable;
+mod search;
 mod server;
 pub mod service;
 mod uds;

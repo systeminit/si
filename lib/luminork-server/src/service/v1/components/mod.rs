@@ -152,6 +152,8 @@ pub enum ComponentsError {
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("schema variant upgrade not required")]
     SchemaVariantUpgradeSkipped,
+    #[error("search error: {0}")]
+    Search(#[from] crate::search::Error),
     #[error("secret error: {0}")]
     Secret(#[from] dal::SecretError),
     #[error("secret not found: {0}")]

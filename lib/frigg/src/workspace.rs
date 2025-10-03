@@ -2,6 +2,11 @@ use kv_history::{
     History,
     Keys,
 };
+use serde::{
+    Deserialize,
+    Serialize,
+    de::DeserializeOwned,
+};
 use si_data_nats::{
     Subject,
     async_nats::jetstream::{
@@ -99,6 +104,41 @@ impl FriggStore {
         {
             Some((bytes, _)) => Ok(Some(
                 serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?,
+            )),
+            None => Ok(None),
+        }
+    }
+
+    #[instrument(
+        name = "frigg.get_workspace_object",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.frontend_object.id = %id,
+            si.frontend_object.kind = %kind,
+            si.frontend_object.checksum = %checksum,
+    ))]
+    pub async fn get_workspace_object_data<T: DeserializeOwned>(
+        &self,
+        workspace_id: WorkspacePk,
+        kind: &str,
+        id: &str,
+        checksum: &str,
+    ) -> Result<Option<T>> {
+        match self
+            .get_object_raw_bytes(&Self::workspace_object_key(
+                workspace_id,
+                kind,
+                id,
+                checksum,
+            ))
+            .await?
+        {
+            Some((bytes, _)) => Ok(Some(
+                serde_json::from_slice::<FrontendObjectData<T>>(bytes.as_ref())
+                    .map_err(Error::Deserialize)?
+                    .data,
             )),
             None => Ok(None),
         }
@@ -492,4 +532,12 @@ impl FriggStore {
             Scope::ChangeSet.as_ref()
         ))
     }
+}
+
+// Used for deserializing the data field directly to a type.
+// This is just a subset of FrontendObject with a different type on the data field.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FrontendObjectData<T> {
+    data: T,
 }
