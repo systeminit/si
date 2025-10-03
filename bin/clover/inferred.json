@@ -8578,6 +8578,9 @@
   "The AWS account ID to be invited to join the graph as a member": {
     "enum": null
   },
+  "The AWS account ID.": {
+    "enum": null
+  },
   "The AWS account in which the Amazon DataZone environment is created.": {
     "enum": null
   },
@@ -14347,6 +14350,12 @@
   "The name of the location from which we advertise the IPV6 CIDR block.": {
     "enum": null
   },
+  "The name of the log group for image build logs.": {
+    "enum": null
+  },
+  "The name of the log group for pipeline execution logs.": {
+    "enum": null
+  },
   "The name of the log group where the log stream is created.": {
     "enum": null
   },
@@ -15119,6 +15128,9 @@
     "enum": null
   },
   "The number of compute nodes in the cluster. This parameter is required when the ClusterType parameter is specified as multi-node.": {
+    "enum": null
+  },
+  "The number of consecutive failures after which the pipeline should be automatically disabled.": {
     "enum": null
   },
   "The number of consecutive health check failures required before considering a target unhealthy.": {
