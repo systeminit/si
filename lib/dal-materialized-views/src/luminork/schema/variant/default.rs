@@ -10,6 +10,8 @@ use dal::{
 use si_frontend_mv_types::luminork_default_variant::LuminorkDefaultVariant as LuminorkDefaultVariantMv;
 use telemetry::prelude::*;
 
+use super::build_func_details;
+
 #[instrument(
     name = "dal_materialized_views.luminork.schema.variant.default",
     level = "debug",
@@ -26,6 +28,9 @@ pub async fn assemble(
         .await?
         .into_iter()
         .collect();
+
+    let func_details =
+        build_func_details(&ctx, schema_variant.id(), variant_func_ids.clone()).await?;
 
     let domain_props = {
         let domain =
@@ -54,6 +59,7 @@ pub async fn assemble(
         schema_variant.link(),
         asset_func_id,
         variant_func_ids,
+        func_details,
         domain_props,
     ))
 }

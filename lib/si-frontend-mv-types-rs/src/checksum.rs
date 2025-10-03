@@ -8,6 +8,7 @@ use si_events::{
     ActionKind,
     ActionState,
     ChangeSetStatus,
+    FuncKind,
     Timestamp,
     workspace_snapshot::{
         Checksum,
@@ -329,6 +330,12 @@ impl FrontendChecksum for ActionKind {
 }
 
 impl FrontendChecksum for ActionState {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for FuncKind {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
     }
@@ -810,6 +817,17 @@ impl DefinitionChecksum for ActionState {
         static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
             let mut hasher = ChecksumHasher::new();
             hasher.update(b"ActionState");
+            hasher.finalize()
+        });
+        *CHECKSUM
+    }
+}
+
+impl DefinitionChecksum for FuncKind {
+    fn definition_checksum() -> Checksum {
+        static CHECKSUM: ::std::sync::LazyLock<Checksum> = ::std::sync::LazyLock::new(|| {
+            let mut hasher = ChecksumHasher::new();
+            hasher.update(b"FuncKind");
             hasher.finalize()
         });
         *CHECKSUM

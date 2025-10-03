@@ -830,15 +830,9 @@ pub async fn spawn_build_mv_task_for_change_and_mv_kind(
                 (*maybe_mv_index).clone(),
             );
         }
-
-        // Building the `MvIndex` itself is handled separately as the logic depends
-        // on whether we're doing an incremental build or a full build from scratch.
         ReferenceKind::ChangeSetMvIndex | ReferenceKind::DeploymentMvIndex => {}
-
-        // These `ReferenceKind` do not have associated `MaterializedView`s (yet?),
-        // so we skip them.
         ReferenceKind::ChangeSetList | ReferenceKind::ChangeSetRecord => {}
-
+        ReferenceKind::LuminorkSchemaVariantFunc => {}
         ReferenceKind::CachedSchemas
         | ReferenceKind::CachedSchema
         | ReferenceKind::CachedSchemaVariant
