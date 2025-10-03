@@ -1023,10 +1023,10 @@ export function funcCreateOrEditTool(server: McpServer) {
               changeSetId,
               schemaId,
             });
+            const schemaVariantId = responseUnlockSchema.data.unlockedVariantId;
 
             // prepare the function create parameters
-            const schemaVariantId = responseUnlockSchema.data.unlockedVariantId;
-            const createFuncParams = {
+            const baseParams = {
               workspaceId: WORKSPACE_ID,
               changeSetId,
               schemaId,
@@ -1036,7 +1036,7 @@ export function funcCreateOrEditTool(server: McpServer) {
             // use the correct funciton create endpoint based on the type of function
             if (functionType === "qualification") {
               const responseCreate = await siSchemasApi.createVariantQualification({
-                ...createFuncParams,
+                ...baseParams,
                 createVariantQualificationFuncV1Request: {
                   ...requestBody,
                   code: functionCode ?? DEFAULT_QUALIFICATION_FUNCTION,
@@ -1046,7 +1046,7 @@ export function funcCreateOrEditTool(server: McpServer) {
               touchedFuncId = responseCreate.data.funcId;
             } else if (functionType === "codegen") {
               const responseCreate = await siSchemasApi.createVariantCodegen({
-                ...createFuncParams,
+                ...baseParams,
                 createVariantCodegenFuncV1Request: {
                   ...requestBody,
                   code: functionCode ?? DEFAULT_CODEGEN_FUNCTION,
@@ -1056,7 +1056,7 @@ export function funcCreateOrEditTool(server: McpServer) {
               touchedFuncId = responseCreate.data.funcId;
             } else if (functionType === "management") {
               const responseCreate = await siSchemasApi.createVariantManagement({
-                ...createFuncParams,
+                ...baseParams,
                 createVariantManagementFuncV1Request: {
                   ...requestBody,
                   code: functionCode ?? DEFAULT_MANAGEMENT_FUNCTION,
@@ -1070,16 +1070,28 @@ export function funcCreateOrEditTool(server: McpServer) {
                   message: "Action kind is required for action functions."
                 });
               }
-              // else if (actionKind !== "Manual") {
-              //   TODO: Aaron - preemptively protect the user against duplicated action functions
-              //   Currently if the user attempts to make a duplicated action function, there will be an error.
-              //   To catch this error before it happens, we would need to do the following -
-              //   - Get all the variantFuncIds for the unlocked schema variant
-              //   - Get the function details for each of those funcIds
-              //   - Check if any of those functions are action functions of the same kind as the one being created
-              // }
+              else if (actionKind !== "Manual") {
+                // Before attempting to create this action, check if an action of the same type already exists.
+                const responseGetVariant = await siSchemasApi.getVariant({
+                  ...baseParams,
+                });
+
+                let canMakeAction = true;
+                responseGetVariant.data.variantFuncs.forEach((func) => {
+                  if (func.funcKind.kind === "action" && func.funcKind.actionKind === actionKind) {
+                    canMakeAction = false;
+                  }
+                });
+
+                if (!canMakeAction) {
+                  return errorResponse({
+                    message: "An action of the same kind already exists and only one action of each kind is allowed, except for Manual.",
+                    hints: "Tell the user that they can't make more than one of this kind of action and ask if they want to make an action of a different kind or edit the existing action."
+                  });
+                }
+              }
               const responseCreate = await siSchemasApi.createVariantAction({
-                ...createFuncParams,
+                ...baseParams,
                 createVariantActionFuncV1Request: {
                   ...requestBody,
                   code: functionCode ?? DEFAULT_ACTION_FUNCTION,
@@ -1100,13 +1112,6 @@ export function funcCreateOrEditTool(server: McpServer) {
           };
           return successResponse(data);
         } catch (error) {
-          const anyError = error as any;
-          if (anyError?.response?.data && JSON.stringify(anyError.response.data).includes("action with kind")) {
-            return errorResponse({
-              message: "An action of the same kind already exists and only one action of each kind is allowed, except for Manual.",
-              hints: "Tell the user that they can't make more than one of this kind of action and ask if they want to make an action of a different kind."
-            });
-          }
           return errorResponse(error);
         }
       });
