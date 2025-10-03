@@ -119,6 +119,7 @@ impl ChangeSetProcessorTask {
         task_token: CancellationToken,
         server_tracker: TaskTracker,
         features: Features,
+        snapshot_eviction_grace_period: Duration,
     ) -> Self {
         let connection_metadata = nats.metadata_clone();
 
@@ -136,6 +137,7 @@ impl ChangeSetProcessorTask {
             run_dvu_notify,
             server_tracker,
             features,
+            snapshot_eviction_grace_period,
         );
 
         let captured = QuiescedCaptured {
@@ -724,6 +726,7 @@ mod handlers {
             run_notify,
             server_tracker,
             features,
+            snapshot_eviction_grace_period,
         } = state;
         let span = Span::current();
         span.record("si.workspace.id", workspace_id.to_string());
@@ -751,10 +754,18 @@ mod handlers {
                 _ => HandlerError::pre_commit(err)
             })?;
 
-        let rebase_batch_address_kind_result =
-            match perform_rebase(&mut ctx, &edda, &request, &server_tracker, features).await {
-                Ok(rebase_batch_address_kind) => Ok(rebase_batch_address_kind),
-                Err(rebase_error) => match &rebase_error {
+        let rebase_batch_address_kind_result = match perform_rebase(
+            &mut ctx,
+            &edda,
+            &request,
+            &server_tracker,
+            features,
+            snapshot_eviction_grace_period,
+        )
+        .await
+        {
+            Ok(rebase_batch_address_kind) => Ok(rebase_batch_address_kind),
+            Err(rebase_error) => match &rebase_error {
                     // - Failed to compute correct transforms. Failures here are related to the
                     //   structure of a graph snapshot and so would reliably and reproducibly fail
                     //   on additional retries.
@@ -781,7 +792,7 @@ mod handlers {
                         Err(HandlerError::pre_commit(rebase_error))
                     }
                 },
-            };
+        };
 
         let maybe_post_rebase_activities_result = if rebase_batch_address_kind_result.is_ok() {
             Some(
@@ -965,7 +976,10 @@ mod handlers {
 mod app_state {
     //! Application state for a change set processor.
 
-    use std::sync::Arc;
+    use std::{
+        sync::Arc,
+        time::Duration,
+    };
 
     use dal::DalContextBuilder;
     use edda_client::EddaClient;
@@ -999,6 +1013,8 @@ mod app_state {
         pub(crate) server_tracker: TaskTracker,
         /// Static feature gate on new mv behavior
         pub(crate) features: Features,
+        /// Grace period before a snapshot can be evicted after creation
+        pub(crate) snapshot_eviction_grace_period: Duration,
     }
 
     impl AppState {
@@ -1013,6 +1029,7 @@ mod app_state {
             run_notify: Arc<Notify>,
             server_tracker: TaskTracker,
             features: Features,
+            snapshot_eviction_grace_period: Duration,
         ) -> Self {
             Self {
                 workspace_id,
@@ -1023,6 +1040,7 @@ mod app_state {
                 run_notify,
                 server_tracker,
                 features,
+                snapshot_eviction_grace_period,
             }
         }
     }

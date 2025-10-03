@@ -37,6 +37,10 @@ const DEFAULT_CONCURRENCY_LIMIT: Option<usize> = None;
 const DEFAULT_QUIESCENT_PERIOD_SECS: u64 = 60 * 5;
 const DEFAULT_QUIESCENT_PERIOD: Duration = Duration::from_secs(DEFAULT_QUIESCENT_PERIOD_SECS);
 
+const DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD_SECS: u64 = 60 * 5; // 5 minutes
+const DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD: Duration =
+    Duration::from_secs(DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD_SECS);
+
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -90,6 +94,9 @@ pub struct Config {
 
     #[builder(default = "Features::default()")]
     features: Features,
+
+    #[builder(default = "default_snapshot_eviction_grace_period()")]
+    snapshot_eviction_grace_period: Duration,
 }
 
 impl StandardConfig for Config {
@@ -150,6 +157,11 @@ impl Config {
     pub fn features(&self) -> Features {
         self.features
     }
+
+    /// Gets the grace period before a snapshot can be evicted after creation
+    pub fn snapshot_eviction_grace_period(&self) -> Duration {
+        self.snapshot_eviction_grace_period
+    }
 }
 
 /// Static feature flags for Rebaser.
@@ -187,6 +199,8 @@ pub struct ConfigFile {
     quiescent_period_secs: u64,
     #[serde(default)]
     features: Features,
+    #[serde(default = "default_snapshot_eviction_grace_period_secs")]
+    snapshot_eviction_grace_period_secs: u64,
 }
 
 impl Default for ConfigFile {
@@ -201,6 +215,7 @@ impl Default for ConfigFile {
             instance_id: random_instance_id(),
             quiescent_period_secs: default_quiescent_period_secs(),
             features: Default::default(),
+            snapshot_eviction_grace_period_secs: default_snapshot_eviction_grace_period_secs(),
         }
     }
 }
@@ -225,6 +240,9 @@ impl TryFrom<ConfigFile> for Config {
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
         config.features(value.features);
+        config.snapshot_eviction_grace_period(Duration::from_secs(
+            value.snapshot_eviction_grace_period_secs,
+        ));
         config.build().map_err(Into::into)
     }
 }
@@ -255,6 +273,14 @@ fn default_quiescent_period() -> Duration {
 
 fn default_quiescent_period_secs() -> u64 {
     DEFAULT_QUIESCENT_PERIOD_SECS
+}
+
+fn default_snapshot_eviction_grace_period() -> Duration {
+    DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD
+}
+
+fn default_snapshot_eviction_grace_period_secs() -> u64 {
+    DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD_SECS
 }
 
 /// This function is used to determine the development environment and update the [`ConfigFile`]

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     DalContext,
@@ -100,6 +102,7 @@ pub(crate) async fn perform_rebase(
     request: &EnqueueUpdatesRequest,
     server_tracker: &TaskTracker,
     features: Features,
+    snapshot_eviction_grace_period: Duration,
 ) -> RebaseResult<RebaseBatchAddressKind> {
     let start = Instant::now();
     let workspace = get_workspace(ctx).await?;
@@ -145,9 +148,14 @@ pub(crate) async fn perform_rebase(
 
     {
         let ctx_clone = ctx.clone();
+        let grace_period = snapshot_eviction_grace_period;
         server_tracker.spawn(async move {
-            if let Err(err) =
-                evict_unused_snapshots(&ctx_clone, &to_rebase_workspace_snapshot_address).await
+            if let Err(err) = evict_unused_snapshot(
+                &ctx_clone,
+                &to_rebase_workspace_snapshot_address,
+                grace_period,
+            )
+            .await
             {
                 error!(?err, "eviction error");
             }
@@ -502,17 +510,32 @@ pub(crate) async fn send_updates_to_edda_legacy_snapshot(
     Ok(())
 }
 
-pub(crate) async fn evict_unused_snapshots(
+pub(crate) async fn evict_unused_snapshot(
     ctx: &DalContext,
     workspace_snapshot_address: &WorkspaceSnapshotAddress,
+    grace_period: Duration,
 ) -> RebaseResult<()> {
-    if !ChangeSet::workspace_snapshot_address_in_use(ctx, workspace_snapshot_address).await? {
+    let in_use =
+        ChangeSet::workspace_snapshot_address_in_use(ctx, workspace_snapshot_address).await?;
+    let is_recent =
+        ChangeSet::snapshot_is_recently_created(ctx, workspace_snapshot_address, grace_period)
+            .await?;
+
+    trace!(
+        ?in_use,
+        ?is_recent,
+        %workspace_snapshot_address,
+        ?grace_period,
+        "Checking snapshot for potential eviction",
+    );
+    if !in_use && !is_recent {
         ctx.layer_db().workspace_snapshot().evict(
             workspace_snapshot_address,
             ctx.events_tenancy(),
             ctx.events_actor(),
         )?;
     }
+
     Ok(())
 }
 
