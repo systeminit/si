@@ -64,6 +64,11 @@ class TestGetSchemaVariantV1Response(unittest.TestCase):
                 is_locked = False,
                 link = 'https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html',
                 variant_func_ids = [01H9ZQD35JPMBGHH69BT0Q75AA, 01H9ZQD35JPMBGHH69BT0Q75BB],
+                variant_funcs = [
+                    system_initiative_api_client.models.schema_variant_func.SchemaVariantFunc(
+                        func_kind = null, 
+                        id = '01H9ZQD35JPMBGHH69BT0Q79VZ', )
+                    ],
                 variant_id = '01H9ZQD35JPMBGHH69BT0Q79VZ'
             )
         else:
@@ -75,6 +80,11 @@ class TestGetSchemaVariantV1Response(unittest.TestCase):
                 is_default_variant = True,
                 is_locked = False,
                 variant_func_ids = [01H9ZQD35JPMBGHH69BT0Q75AA, 01H9ZQD35JPMBGHH69BT0Q75BB],
+                variant_funcs = [
+                    system_initiative_api_client.models.schema_variant_func.SchemaVariantFunc(
+                        func_kind = null, 
+                        id = '01H9ZQD35JPMBGHH69BT0Q79VZ', )
+                    ],
                 variant_id = '01H9ZQD35JPMBGHH69BT0Q79VZ',
         )
         """

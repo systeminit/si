@@ -1696,6 +1696,15 @@ Schemas management endpoints
     "01H9ZQD35JPMBGHH69BT0Q75AA",
     "01H9ZQD35JPMBGHH69BT0Q75BB"
   ],
+  "variantFuncs": [
+    {
+      "funcKind": {
+        "actionKind": "Create",
+        "kind": "action"
+      },
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+    }
+  ],
   "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
 }
 ```
@@ -1745,6 +1754,15 @@ Schemas management endpoints
   "variantFuncIds": [
     "01H9ZQD35JPMBGHH69BT0Q75AA",
     "01H9ZQD35JPMBGHH69BT0Q75BB"
+  ],
+  "variantFuncs": [
+    {
+      "funcKind": {
+        "actionKind": "Create",
+        "kind": "action"
+      },
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+    }
   ],
   "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
 }
@@ -1810,6 +1828,15 @@ Schemas management endpoints
   "variantFuncIds": [
     "01H9ZQD35JPMBGHH69BT0Q75AA",
     "01H9ZQD35JPMBGHH69BT0Q75BB"
+  ],
+  "variantFuncs": [
+    {
+      "funcKind": {
+        "actionKind": "Create",
+        "kind": "action"
+      },
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+    }
   ],
   "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
 }
@@ -4605,6 +4632,15 @@ continued
     "01H9ZQD35JPMBGHH69BT0Q75AA",
     "01H9ZQD35JPMBGHH69BT0Q75BB"
   ],
+  "variantFuncs": [
+    {
+      "funcKind": {
+        "actionKind": "Create",
+        "kind": "action"
+      },
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+    }
+  ],
   "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
 }
 
@@ -4641,6 +4677,7 @@ continued
 |isLocked|boolean|true|none|none|
 |link|string,null|false|none|none|
 |variantFuncIds|[string]|true|none|none|
+|variantFuncs|[[SchemaVariantFunc](#schemaschemavariantfunc)]|true|none|none|
 |variantId|string|true|none|none|
 
 ## [HashMap](#tocS_HashMap)
@@ -5328,6 +5365,80 @@ Component details in action response
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |schema_id|string|true|none|none|
+
+## [SchemaVariantFunc](#tocS_SchemaVariantFunc)
+
+<a id="schemaschemavariantfunc"></a>
+<a id="schema_SchemaVariantFunc"></a>
+<a id="tocSschemavariantfunc"></a>
+<a id="tocsschemavariantfunc"></a>
+
+```json
+{
+  "funcKind": {
+    "actionKind": "Create",
+    "kind": "action"
+  },
+  "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+
+```
+
+### [Properties](#schemavariantfunc-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcKind|[SchemaVariantFuncKind](#schemaschemavariantfunckind)|true|none|none|
+|id|string|true|none|none|
+
+## [SchemaVariantFuncKind](#tocS_SchemaVariantFuncKind)
+
+<a id="schemaschemavariantfunckind"></a>
+<a id="schema_SchemaVariantFuncKind"></a>
+<a id="tocSschemavariantfunckind"></a>
+<a id="tocsschemavariantfunckind"></a>
+
+```json
+{
+  "actionKind": "Create",
+  "kind": "action"
+}
+
+```
+
+### [Properties](#schemavariantfunckind-properties)
+
+oneOf
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|object|false|none|Action function; carries the specific `ActionKind`.|
+|» actionKind|string|true|none|Specific action kind|
+|» kind|string|true|none|none|
+
+xor
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|object|false|none|Management function; carries the specific `ManagementFuncKind`.|
+|» kind|string|true|none|none|
+|» managementFuncKind|string|true|none|Specific management function kind|
+
+xor
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|object|false|none|Any other function; exposes the raw `FuncKind` category.|
+|» funcKind|string|true|none|none|
+|» kind|string|true|none|none|
+
+#### [Enumerated Values](#schemavariantfunckind-enumerated-values)
+
+|Property|Value|
+|---|---|
+|kind|action|
+|kind|management|
+|kind|other|
 
 ## [SchemaVariantV1RequestPath](#tocS_SchemaVariantV1RequestPath)
 

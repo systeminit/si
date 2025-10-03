@@ -1693,6 +1693,12 @@ export interface GetSchemaVariantV1Response {
     'variantFuncIds': Array<string>;
     /**
      * 
+     * @type {Array<SchemaVariantFunc>}
+     * @memberof GetSchemaVariantV1Response
+     */
+    'variantFuncs': Array<SchemaVariantFunc>;
+    /**
+     * 
      * @type {string}
      * @memberof GetSchemaVariantV1Response
      */
@@ -2166,6 +2172,115 @@ export interface SchemaV1RequestPath {
      */
     'schema_id': string;
 }
+/**
+ * 
+ * @export
+ * @interface SchemaVariantFunc
+ */
+export interface SchemaVariantFunc {
+    /**
+     * 
+     * @type {SchemaVariantFuncKind}
+     * @memberof SchemaVariantFunc
+     */
+    'funcKind': SchemaVariantFuncKind;
+    /**
+     * 
+     * @type {string}
+     * @memberof SchemaVariantFunc
+     */
+    'id': string;
+}
+/**
+ * @type SchemaVariantFuncKind
+ * @export
+ */
+export type SchemaVariantFuncKind = SchemaVariantFuncKindOneOf | SchemaVariantFuncKindOneOf1 | SchemaVariantFuncKindOneOf2;
+
+/**
+ * Action function; carries the specific `ActionKind`.
+ * @export
+ * @interface SchemaVariantFuncKindOneOf
+ */
+export interface SchemaVariantFuncKindOneOf {
+    /**
+     * Specific action kind
+     * @type {string}
+     * @memberof SchemaVariantFuncKindOneOf
+     */
+    'actionKind': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SchemaVariantFuncKindOneOf
+     */
+    'kind': SchemaVariantFuncKindOneOfKindEnum;
+}
+
+/**
+    * @export
+    * @enum {string}
+    */
+export enum SchemaVariantFuncKindOneOfKindEnum {
+    ACTION = 'action'
+}
+
+/**
+ * Management function; carries the specific `ManagementFuncKind`.
+ * @export
+ * @interface SchemaVariantFuncKindOneOf1
+ */
+export interface SchemaVariantFuncKindOneOf1 {
+    /**
+     * 
+     * @type {string}
+     * @memberof SchemaVariantFuncKindOneOf1
+     */
+    'kind': SchemaVariantFuncKindOneOf1KindEnum;
+    /**
+     * Specific management function kind
+     * @type {string}
+     * @memberof SchemaVariantFuncKindOneOf1
+     */
+    'managementFuncKind': string;
+}
+
+/**
+    * @export
+    * @enum {string}
+    */
+export enum SchemaVariantFuncKindOneOf1KindEnum {
+    MANAGEMENT = 'management'
+}
+
+/**
+ * Any other function; exposes the raw `FuncKind` category.
+ * @export
+ * @interface SchemaVariantFuncKindOneOf2
+ */
+export interface SchemaVariantFuncKindOneOf2 {
+    /**
+     * 
+     * @type {string}
+     * @memberof SchemaVariantFuncKindOneOf2
+     */
+    'funcKind': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SchemaVariantFuncKindOneOf2
+     */
+    'kind': SchemaVariantFuncKindOneOf2KindEnum;
+}
+
+/**
+    * @export
+    * @enum {string}
+    */
+export enum SchemaVariantFuncKindOneOf2KindEnum {
+    OTHER = 'other'
+}
+
 /**
  * 
  * @export
