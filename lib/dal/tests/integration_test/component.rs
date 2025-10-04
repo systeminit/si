@@ -1,29 +1,16 @@
 use dal::{
-    AttributeValue,
-    AttributeValueId,
-    Component,
-    DalContext,
-    Schema,
-    SchemaVariant,
-    Ulid,
+    AttributeValue, AttributeValueId, Component, DalContext, Schema, SchemaVariant, Ulid,
     attribute::value::DependentValueGraph,
-    diagram::{
-        Diagram,
-        view::View,
-    },
-    prop::{
-        Prop,
-        PropPath,
-    },
+    diagram::{Diagram, view::View},
+    prop::{Prop, PropPath},
     property_editor::values::PropertyEditorValues,
     workspace_snapshot::DependentValueRoot,
 };
 use dal_test::{
     Result,
     helpers::{
-        ChangeSetTestHelpers,
-        create_component_for_default_schema_name_in_default_view,
-        create_component_for_schema_variant_on_default_view,
+        ChangeSetTestHelpers, component, create_component_for_default_schema_name_in_default_view,
+        create_component_for_schema_variant_on_default_view, schema::variant,
     },
     test,
 };
@@ -607,5 +594,114 @@ async fn change_component_id(ctx: &mut DalContext) -> Result<()> {
             .is_some()
     );
 
+    Ok(())
+}
+
+#[test]
+async fn default_values_appear_in_views(ctx: &mut DalContext) -> Result<()> {
+    let _subscription_tracker = variant::create(
+        ctx,
+        "default_values",
+        r#"
+            function main() {
+    // Props
+    const labelsProp = new PropBuilder()
+        .setName("labels")
+        .setKind("string")
+        .setHidden(false)
+        .setWidget(new PropWidgetDefinitionBuilder()
+            .setKind("text")
+            .build())
+        .setValidationFormat(Joi.string().required())
+        .setDocumentation("User-defined labels (`key/value` pairs) for the Resource.\nFor more information, see \"[Labels](#labels)\".\n")
+        .build();
+
+    const nameProp = new PropBuilder()
+        .setName("name")
+        .setKind("string")
+        .setHidden(false)
+        .setDefaultValue("default-name")
+        .setWidget(new PropWidgetDefinitionBuilder()
+            .setKind("text")
+            .build())
+        .setValidationFormat(Joi.string().required())
+        .setDocumentation("Name of the Resource. Must be unique per Project.")
+        .build();
+
+    const extraProp = new PropBuilder()
+        .setName("extra")
+        .setKind("object")
+        .setHidden(false)
+        .setWidget(new PropWidgetDefinitionBuilder()
+            .setKind("header")
+            .build())
+        .addChild(
+            new PropBuilder()
+            .setName("endpoint")
+            .setKind("string")
+            .setHidden(false)
+            .setWidget(new PropWidgetDefinitionBuilder()
+                .setKind("text")
+                .build())
+            .setDefaultValue("ssh_keys")
+            .build()
+        )
+        .addChild(
+            new PropBuilder()
+            .setName("PropUsageMap")
+            .setKind("string")
+            .setHidden(true)
+            .setWidget(new PropWidgetDefinitionBuilder()
+                .setKind("text")
+                .build())
+            .setDefaultValue("{\"createOnly\":[\"public_key\"],\"updatable\":[\"labels\",\"name\"]}")
+            .build()
+        )
+        .build();
+
+    return new AssetBuilder()
+        .addProp(labelsProp)
+        .addProp(nameProp)
+        .addProp(extraProp)
+        .build();
+}
+        "#,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    let component_id = component::create(ctx, "default_values", "A").await?;
+    let component = Component::get_by_id(ctx, component_id).await?;
+    let view = component.view(ctx).await?.expect("has a view");
+    assert_eq!(
+        serde_json::json!({
+            "si": { "name": "A", "type": "component","color": "FFFFFF"  },
+            "domain": {
+                "name": "default-name",
+                "extra": {
+                    "endpoint": "ssh_keys",
+                    "PropUsageMap": "{\"createOnly\":[\"public_key\"],\"updatable\":[\"labels\",\"name\"]}"
+                },
+            }
+        }),
+        view
+    );
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    let component = Component::get_by_id(ctx, component_id).await?;
+    let view = component.view(ctx).await?.expect("has a view");
+    // after dvu, the attribute tree is vivified which changes the view
+    assert_eq!(
+        serde_json::json!({
+            "si": { "name": "A", "type": "component","color": "FFFFFF"  },
+            "domain": {
+                "name": "default-name",
+                "extra": {
+                    "endpoint": "ssh_keys",
+                    "PropUsageMap": "{\"createOnly\":[\"public_key\"],\"updatable\":[\"labels\",\"name\"]}"
+                },
+            },
+            "resource_value": serde_json::json!({}),
+        }),
+        view
+    );
     Ok(())
 }
