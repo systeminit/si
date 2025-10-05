@@ -42,3 +42,4 @@ We contributors to System Initiative:
 * Aaron Dernley (@aaron-dernley)
 * systeminitbot (@systeminitbot)
 * Jake Ginnivan (@JakeGinnivan)
+* Hongxu Xu (@xuhongxu96)
