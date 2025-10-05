@@ -3,7 +3,6 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-aws-config",
     deps = [
-        "//lib/si-tls:si-tls",
         "//lib/telemetry-rs:telemetry",
 
         "//third-party/rust:aws-config",

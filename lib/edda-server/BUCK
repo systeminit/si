@@ -4,7 +4,6 @@ rust_library(
     name = "edda-server",
     deps = [
         "//lib/buck2-resources:buck2-resources",
-        "//lib/dal-materialized-views-macros:dal-materialized-views-macros",
         "//lib/dal-materialized-views:dal-materialized-views",
         "//lib/dal:dal",
         "//lib/edda-core:edda-core",

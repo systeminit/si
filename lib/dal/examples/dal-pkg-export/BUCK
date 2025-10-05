@@ -9,12 +9,6 @@ rust_binary(
     crate_root = "main.rs",
     toml_srcs = [],
     deps = [
-        "//lib/buck2-resources:buck2-resources",
-        "//lib/dal:dal",
-        "//lib/si-crypto:si-crypto",
-        "//lib/si-data-nats:si-data-nats",
-        "//lib/si-data-pg:si-data-pg",
-        "//lib/veritech-client:veritech-client",
         "//third-party/rust:tokio",
     ],
     resources = {

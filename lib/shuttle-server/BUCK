@@ -6,7 +6,6 @@ rust_library(
         "//lib/naxum:naxum",
         "//lib/shuttle-core:shuttle-core",
         "//lib/si-data-nats:si-data-nats",
-        "//lib/si-events-rs:si-events",
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:futures",

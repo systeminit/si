@@ -3,7 +3,6 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-pool-noodle",
     deps = [
-        "//lib/buck2-resources:buck2-resources",
         "//lib/cyclone-client:cyclone-client",
         "//lib/cyclone-core:cyclone-core",
         "//lib/si-firecracker:si-firecracker",
@@ -14,7 +13,6 @@ rust_library(
         "//third-party/rust:crossbeam-queue",
         "//third-party/rust:derive_builder",
         "//third-party/rust:futures",
-        "//third-party/rust:indexmap",
         "//third-party/rust:nix",
         "//third-party/rust:opentelemetry",
         "//third-party/rust:rand",

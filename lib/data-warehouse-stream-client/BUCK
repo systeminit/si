@@ -6,7 +6,6 @@ rust_library(
         "//lib/si-aws-config:si-aws-config",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:aws-sdk-firehose",
-        "//third-party/rust:base64",
         "//third-party/rust:remain",
         "//third-party/rust:thiserror",
         "//third-party/rust:tracing",

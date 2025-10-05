@@ -5,9 +5,7 @@ rust_library(
     deps = [
         "//lib/si-events-rs:si-events",
         "//lib/si-id:si-id",
-        "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
-        "//lib/telemetry-utils-rs:telemetry-utils",
 
         "//third-party/rust:async-trait",
         "//third-party/rust:blake3",

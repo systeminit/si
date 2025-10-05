@@ -3,16 +3,12 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-tls",
     deps = [
-        "//lib/si-hash:si-hash",
         "//lib/si-std:si-std",
-        "//lib/telemetry-rs:telemetry",
         "//third-party/rust:base64",
-        "//third-party/rust:ciborium",
         "//third-party/rust:remain",
         "//third-party/rust:reqwest",
         "//third-party/rust:rustls-pemfile",
         "//third-party/rust:serde",
-        "//third-party/rust:sodiumoxide",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-rustls",
