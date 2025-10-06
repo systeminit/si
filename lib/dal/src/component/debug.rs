@@ -4,6 +4,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_id::SchemaId;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -65,6 +66,7 @@ type ComponentDebugViewResult<T> = Result<T, ComponentDebugViewError>;
 #[serde(rename_all = "camelCase")]
 pub struct ComponentDebugView {
     pub name: String,
+    pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub attributes: Vec<AttributeDebugView>,
     pub input_sockets: Vec<SocketDebugView>,
@@ -78,6 +80,7 @@ pub struct ComponentDebugView {
 #[serde(rename_all = "camelCase")]
 pub struct ComponentDebugData {
     pub name: String,
+    pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub attribute_tree: HashMap<AttributeValueId, Vec<AttributeValueId>>,
     pub input_sockets: Vec<ComponentInputSocket>,
@@ -188,6 +191,7 @@ impl ComponentDebugView {
 
         let debug_view = ComponentDebugView {
             name: component_debug_data.name,
+            schema_id: component_debug_data.schema_id,
             schema_variant_id: component_debug_data.schema_variant_id,
             attributes,
             input_sockets,
@@ -203,6 +207,7 @@ impl ComponentDebugData {
     #[instrument(level = "trace", skip_all)]
     pub async fn new(ctx: &DalContext, component: &Component) -> ComponentDebugViewResult<Self> {
         let schema_variant_id = Component::schema_variant_id(ctx, component.id()).await?;
+        let schema_id = Component::schema_id_for_component_id(ctx, component.id()).await?;
         let attribute_tree =
             Self::get_attribute_value_tree_for_component(ctx, component.id()).await?;
         let input_sockets =
@@ -216,6 +221,7 @@ impl ComponentDebugData {
 
         let debug_view = ComponentDebugData {
             name,
+            schema_id,
             schema_variant_id,
             attribute_tree,
             input_sockets,

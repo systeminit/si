@@ -37,21 +37,29 @@
           <h3 class="text-base font-semibold mb-xs" :class="headerClass">
             Component Details
           </h3>
-          <div class="space-y-2xs text-xs">
+          <div
+            :class="
+              clsx(
+                'space-y-2xs text-xs',
+                '[&_div]:flex [&_div]:flex-row [&_div]:gap-xs [&_div]:flex-wrap [&_h3]:font-semibold [&_p]:font-mono [&_p]:text-2xs [&_p]:break-all',
+              )
+            "
+          >
             <div>
-              <span class="font-semibold">Name:</span> {{ componentData.name }}
+              <h3>Name:</h3>
+              <p>{{ componentData.name }}</p>
             </div>
             <div>
-              <span class="font-semibold">Schema ID:</span>
-              <span class="font-mono text-2xs break-all">{{
-                componentData.schemaVariantId
-              }}</span>
+              <h3>Schema ID:</h3>
+              <p>{{ componentData.schemaId }}</p>
+            </div>
+            <div>
+              <h3>Schema Variant ID:</h3>
+              <p>{{ componentData.schemaVariantId }}</p>
             </div>
             <div v-if="componentData.parentId">
-              <span class="font-semibold">Parent ID:</span>
-              <span class="font-mono text-2xs break-all">{{
-                componentData.parentId
-              }}</span>
+              <h3>Parent ID:</h3>
+              <p>{{ componentData.parentId }}</p>
             </div>
           </div>
         </div>
@@ -414,12 +422,14 @@ import { computed, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { SiSearch, themeClasses } from "@si/vue-lib/design-system";
 import { tw } from "@si/vue-lib";
+import clsx from "clsx";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { routes, useApi } from "./api_composables";
 import EmptyState from "./EmptyState.vue";
 
 interface ComponentDebugView {
   name: string;
+  schemaId: string;
   schemaVariantId: string;
   attributes: AttributeDebugView[];
   inputSockets: SocketDebugView[];
