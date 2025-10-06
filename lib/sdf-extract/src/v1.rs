@@ -31,7 +31,10 @@ impl FromRequestParts<AppState> for AccessBuilder {
     ) -> Result<Self, Self::Rejection> {
         // Ensure we get the workspace ID from the token
         let _: TargetWorkspaceIdFromToken = parts.extract_with_state(state).await?;
-        let WorkspaceAuthorization { ctx, .. } = parts.extract_with_state(state).await?;
-        Ok(Self(ctx.access_builder()))
+        let WorkspaceAuthorization {
+            ctx_without_snapshot,
+            ..
+        } = parts.extract_with_state(state).await?;
+        Ok(Self(ctx_without_snapshot.access_builder()))
     }
 }

@@ -80,7 +80,10 @@ impl FromRequestParts<AppState> for AccessBuilder {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         // Ensure the endpoint is authorized
-        let WorkspaceAuthorization { ctx, .. } = parts.extract_with_state(state).await?;
-        Ok(Self(ctx.access_builder()))
+        let WorkspaceAuthorization {
+            ctx_without_snapshot,
+            ..
+        } = parts.extract_with_state(state).await?;
+        Ok(Self(ctx_without_snapshot.access_builder()))
     }
 }

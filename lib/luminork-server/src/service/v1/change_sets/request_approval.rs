@@ -45,12 +45,7 @@ use crate::extract::{
 )]
 pub async fn request_approval(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
-    WorkspaceAuthorization {
-        workspace_id,
-        ctx: _,
-        user: _,
-        authorized_role: _,
-    }: WorkspaceAuthorization,
+    WorkspaceAuthorization { workspace_id, .. }: WorkspaceAuthorization,
     tracker: PosthogEventTracker,
     Host(_host_name): Host,
 ) -> ChangeSetResult<Json<RequestApprovalChangeSetV1Response>> {
