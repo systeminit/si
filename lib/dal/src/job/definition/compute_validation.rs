@@ -9,6 +9,7 @@ use si_id::{
     WorkspacePk,
 };
 use telemetry::prelude::*;
+use tokio::task::JoinSet;
 
 use crate::{
     AttributeValueId,
@@ -26,6 +27,8 @@ use crate::{
         ValidationOutputNode,
     },
 };
+
+const VALIDATION_CONCURRENCY_LIMIT: usize = 20;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ComputeValidationArgs {
@@ -77,6 +80,27 @@ impl DalJob for ComputeValidation {
     }
 }
 
+impl ComputeValidation {
+    async fn perform_validation(
+        ctx: DalContext,
+        attribute_value_id: AttributeValueId,
+        parent_span: Span,
+    ) -> JobConsumerResult<()> {
+        let maybe_validation =
+            ValidationOutput::compute_for_attribute_value(&ctx, attribute_value_id, parent_span)
+                .await?;
+
+        ValidationOutputNode::upsert_or_wipe_for_attribute_value(
+            &ctx,
+            attribute_value_id,
+            maybe_validation.clone(),
+        )
+        .await?;
+
+        Ok(())
+    }
+}
+
 #[async_trait]
 impl JobConsumer for ComputeValidation {
     #[instrument(
@@ -88,6 +112,8 @@ impl JobConsumer for ComputeValidation {
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
+        let span = current_span_for_instrument_at!("info");
+
         let change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
 
         if change_set.status == ChangeSetStatus::Abandoned {
@@ -95,27 +121,46 @@ impl JobConsumer for ComputeValidation {
             return Ok(JobCompletionState::Done);
         }
 
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        for &av_id in &self.attribute_value_ids {
-            // It's possible that one or more of the initial AttributeValueIds provided by the enqueued ComputeValidation
-            // may have been removed from the snapshot between when the CV job was created and when we're processing
-            // things now. This could happen if there are other modifications to the snapshot before the CV job starts
-            // executing, as the job always operates on the current state of the change set's snapshot, not the state at the time
-            // the job was created.
-            if !workspace_snapshot.node_exists(av_id).await {
-                debug!("Attribute Value {av_id} missing, skipping it in ComputeValidations");
-                continue;
+        let mut attribute_value_ids = {
+            let workspace_snapshot = ctx.workspace_snapshot()?;
+
+            let mut ids = Vec::with_capacity(self.attribute_value_ids.len());
+            for av_id in &self.attribute_value_ids {
+                // It's possible that one or more of the initial AttributeValueIds provided by the
+                // enqueued ComputeValidation may have been removed from the snapshot between when
+                // the CV job was created and when we're processing things now. This could happen
+                // if there are other modifications to the snapshot before the CV job starts
+                // executing, as the job always operates on the current state of the change set's
+                // snapshot, not the state at the time the job was created.
+                if !workspace_snapshot.node_exists(av_id).await {
+                    debug!("Attribute Value {av_id} missing, skipping it in ComputeValidations");
+                    continue;
+                }
+
+                ids.push(*av_id);
             }
+            ids
+        }
+        .into_iter();
 
-            let maybe_validation =
-                ValidationOutput::compute_for_attribute_value(ctx, av_id).await?;
+        let mut tasks = JoinSet::new();
 
-            ValidationOutputNode::upsert_or_wipe_for_attribute_value(
-                ctx,
-                av_id,
-                maybe_validation.clone(),
-            )
-            .await?;
+        loop {
+            if tasks.len() <= VALIDATION_CONCURRENCY_LIMIT {
+                if let Some(av_id) = attribute_value_ids.next() {
+                    tasks.spawn(Self::perform_validation(ctx.clone(), av_id, span.clone()));
+                }
+            };
+
+            match tasks.join_next().await {
+                Some(Ok(Ok(()))) => {}
+                // Error from task, early return err
+                Some(Ok(Err(job_consumer_err))) => return Err(job_consumer_err),
+                // Join error from JoinSet, early return err
+                Some(Err(join_err)) => return Err(join_err.into()),
+                // JoinSet is empty, all work is complete
+                None => break,
+            }
         }
 
         ctx.commit().await?;
