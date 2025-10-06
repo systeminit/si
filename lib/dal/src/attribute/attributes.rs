@@ -33,10 +33,12 @@ use crate::{
     Component,
     DalContext,
     Func,
+    Prop,
     PropKind,
     WsEvent,
     component::resource::ResourceData,
     func::intrinsics::IntrinsicFunc,
+    prop::PropError,
     workspace_snapshot::node_weight::{
         NodeWeight,
         reason_node_weight::Reason,
@@ -60,10 +62,16 @@ pub enum AttributesError {
     AttributeValue(#[from] crate::attribute::value::AttributeValueError),
     #[error("attribute value {0} not from component {1}")]
     AttributeValueNotFromComponent(AttributeValueId, ComponentId),
+    #[error(
+        "cannot update create-only property at path '{0}' when component has a resource attached"
+    )]
+    CannotUpdateCreateOnlyProperty(String),
     #[error("component error: {0}")]
     Component(#[from] crate::ComponentError),
     #[error("func error: {0}")]
     Func(#[from] crate::FuncError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("source component not found: {0}")]
@@ -214,6 +222,17 @@ pub async fn update_attributes_without_validation(
     update_attributes_inner(ctx, component_id, updates).await
 }
 
+/// Helper function to check if a prop has the "si_create_only_prop" widget option
+fn is_create_only_prop(prop: &Prop) -> bool {
+    if let Some(widget_options) = &prop.widget_options {
+        widget_options
+            .iter()
+            .any(|option| option.label() == "si_create_only_prop")
+    } else {
+        false
+    }
+}
+
 async fn get_before_prop_value_source(
     ctx: &DalContext,
     av_id: AttributeValueId,
@@ -278,6 +297,20 @@ async fn update_attributes_inner(
                 // Create the attribute at the given pa th if it does not exist
                 let path = av_to_set.path();
                 let target_av_id = av_to_set.clone().vivify(ctx, component_id).await?;
+
+                // Check if this is a create-only property and component has a resource
+                let prop_id = AttributeValue::prop_id(ctx, target_av_id).await?;
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                if is_create_only_prop(&prop)
+                    && Component::resource_by_id(ctx, component_id)
+                        .await?
+                        .is_some()
+                {
+                    return Err(AttributesError::CannotUpdateCreateOnlyProperty(
+                        path.to_string(),
+                    ));
+                }
+
                 let before_value_source = get_before_prop_value_source(ctx, target_av_id).await?;
                 let mut after_value_source: Option<PropValueSource> = None;
 
