@@ -8,7 +8,7 @@ export async function run() {
   const command = new Command()
     .name("si-mcp-server")
     .version("0.1.0")
-    .description("MCP Server for System Initiative")
+    .description("MCP Server for System Initiative5000")
     .globalEnv("SI_API_TOKEN=<string>", "The System Initiative API Token")
     .globalEnv(
       "SI_WORKSPACE_ID=<string>",
