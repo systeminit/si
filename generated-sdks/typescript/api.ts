@@ -370,6 +370,44 @@ export interface ComponentReferenceOneOf1 {
     'componentId': string;
 }
 /**
+ * Component data in search results.
+ * @export
+ * @interface ComponentSearchResult
+ */
+export interface ComponentSearchResult {
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentSearchResult
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentSearchResult
+     */
+    'name': string;
+    /**
+     * 
+     * @type {ComponentSearchResultSchema}
+     * @memberof ComponentSearchResult
+     */
+    'schema': ComponentSearchResultSchema;
+}
+/**
+ * The schema for a component in search results.
+ * @export
+ * @interface ComponentSearchResultSchema
+ */
+export interface ComponentSearchResultSchema {
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentSearchResultSchema
+     */
+    'name': string;
+}
+/**
  * 
  * @export
  * @interface ComponentV1RequestPath
@@ -2311,6 +2349,12 @@ export interface SearchComponentsV1Request {
      * @type {string}
      * @memberof SearchComponentsV1Request
      */
+    'queryString'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SearchComponentsV1Request
+     */
     'schemaCategory'?: string | null;
     /**
      * 
@@ -2363,6 +2407,32 @@ export interface SearchSchemasV1Response {
      * @memberof SearchSchemasV1Response
      */
     'schemas': Array<SchemaResponse>;
+}
+/**
+ * 
+ * @export
+ * @interface SearchV1Request
+ */
+export interface SearchV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof SearchV1Request
+     */
+    'q': string;
+}
+/**
+ * 
+ * @export
+ * @interface SearchV1Response
+ */
+export interface SearchV1Response {
+    /**
+     * 
+     * @type {Array<ComponentSearchResult>}
+     * @memberof SearchV1Response
+     */
+    'components': Array<ComponentSearchResult>;
 }
 /**
  * 
@@ -8573,6 +8643,173 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
      */
     public updateSchemaVariant(requestParameters: SchemasApiUpdateSchemaVariantRequest, options?: RawAxiosRequestConfig) {
         return SchemasApiFp(this.configuration).updateSchemaVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.updateSchemaVariantV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * SearchApi - axios parameter creator
+ * @export
+ */
+export const SearchApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @summary Complex search for components
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} q Query string. See https://docs.systeminit.com/explanation/search-syntax for details.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        search: async (workspaceId: string, changeSetId: string, q: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('search', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('search', 'changeSetId', changeSetId)
+            // verify required parameter 'q' is not null or undefined
+            assertParamExists('search', 'q', q)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/search`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (q !== undefined) {
+                localVarQueryParameter['q'] = q;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * SearchApi - functional programming interface
+ * @export
+ */
+export const SearchApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = SearchApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @summary Complex search for components
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} q Query string. See https://docs.systeminit.com/explanation/search-syntax for details.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async search(workspaceId: string, changeSetId: string, q: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SearchV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.search(workspaceId, changeSetId, q, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SearchApi.search']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * SearchApi - factory interface
+ * @export
+ */
+export const SearchApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = SearchApiFp(configuration)
+    return {
+        /**
+         * 
+         * @summary Complex search for components
+         * @param {SearchApiSearchRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        search(requestParameters: SearchApiSearchRequest, options?: RawAxiosRequestConfig): AxiosPromise<SearchV1Response> {
+            return localVarFp.search(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.q, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * SearchApi - interface
+ * @export
+ * @interface SearchApi
+ */
+export interface SearchApiInterface {
+    /**
+     * 
+     * @summary Complex search for components
+     * @param {SearchApiSearchRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SearchApiInterface
+     */
+    search(requestParameters: SearchApiSearchRequest, options?: RawAxiosRequestConfig): AxiosPromise<SearchV1Response>;
+
+}
+
+/**
+ * Request parameters for search operation in SearchApi.
+ * @export
+ * @interface SearchApiSearchRequest
+ */
+export interface SearchApiSearchRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SearchApiSearch
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SearchApiSearch
+     */
+    readonly changeSetId: string
+
+    /**
+     * Query string. See https://docs.systeminit.com/explanation/search-syntax for details.
+     * @type {string}
+     * @memberof SearchApiSearch
+     */
+    readonly q: string
+}
+
+/**
+ * SearchApi - object-oriented interface
+ * @export
+ * @class SearchApi
+ * @extends {BaseAPI}
+ */
+export class SearchApi extends BaseAPI implements SearchApiInterface {
+    /**
+     * 
+     * @summary Complex search for components
+     * @param {SearchApiSearchRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SearchApi
+     */
+    public search(requestParameters: SearchApiSearchRequest, options?: RawAxiosRequestConfig) {
+        return SearchApiFp(this.configuration).search(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.q, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

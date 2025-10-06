@@ -764,6 +764,7 @@ Components management endpoints
 
 ```json
 {
+  "queryString": "string",
   "schemaCategory": "AWS::EC2",
   "schemaName": "AWS::EC2::Instance",
   "upgradable": true
@@ -2775,6 +2776,46 @@ Management functions endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Management Func Job not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+# [search](#system-initiative-api-search)
+
+## Complex search for components
+
+<a id="opIdsearch"></a>
+
+> Request format
+
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/search`
+
+<h3 id="complex-search-for-components-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|q|query|string|true|Query string. See https://docs.systeminit.com/explanation/search-syntax for details.|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ]
+}
+```
+
+<h3 id="complex-search-for-components-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Components retrieved successfully|[SearchV1Response](#schemasearchv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 # [Schemas](#schemas)
 
 ## [ActionReference](#tocS_ActionReference)
@@ -3136,6 +3177,56 @@ xor
 |---|---|---|---|---|
 |*anonymous*|object|false|none|none|
 |» componentId|string|true|none|none|
+
+## [ComponentSearchResult](#tocS_ComponentSearchResult)
+
+<a id="schemacomponentsearchresult"></a>
+<a id="schema_ComponentSearchResult"></a>
+<a id="tocScomponentsearchresult"></a>
+<a id="tocscomponentsearchresult"></a>
+
+```json
+{
+  "id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+  "name": "MyInstance",
+  "schema": {
+    "name": "AWS::EC2::Instance"
+  }
+}
+
+```
+
+Component data in search results.
+
+### [Properties](#componentsearchresult-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|id|string|true|none|none|
+|name|string|true|none|none|
+|schema|[ComponentSearchResultSchema](#schemacomponentsearchresultschema)|true|none|The schema for a component in search results.|
+
+## [ComponentSearchResultSchema](#tocS_ComponentSearchResultSchema)
+
+<a id="schemacomponentsearchresultschema"></a>
+<a id="schema_ComponentSearchResultSchema"></a>
+<a id="tocScomponentsearchresultschema"></a>
+<a id="tocscomponentsearchresultschema"></a>
+
+```json
+{
+  "name": "AWS::EC2::Instance"
+}
+
+```
+
+The schema for a component in search results.
+
+### [Properties](#componentsearchresultschema-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|name|string|true|none|none|
 
 ## [ComponentV1RequestPath](#tocS_ComponentV1RequestPath)
 
@@ -5471,6 +5562,7 @@ xor
 
 ```json
 {
+  "queryString": "string",
   "schemaCategory": "AWS::EC2",
   "schemaName": "AWS::EC2::Instance",
   "upgradable": true
@@ -5482,6 +5574,7 @@ xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|queryString|string,null|false|none|none|
 |schemaCategory|string,null|false|none|none|
 |schemaName|string,null|false|none|none|
 |upgradable|boolean,null|false|none|none|
@@ -5556,6 +5649,50 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |schemas|[[SchemaResponse](#schemaschemaresponse)]|true|none|none|
+
+## [SearchV1Request](#tocS_SearchV1Request)
+
+<a id="schemasearchv1request"></a>
+<a id="schema_SearchV1Request"></a>
+<a id="tocSsearchv1request"></a>
+<a id="tocssearchv1request"></a>
+
+```json
+{
+  "q": "AWS::EC2::Instance region:us-east-1"
+}
+
+```
+
+### [Properties](#searchv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|q|string|true|none|none|
+
+## [SearchV1Response](#tocS_SearchV1Response)
+
+<a id="schemasearchv1response"></a>
+<a id="schema_SearchV1Response"></a>
+<a id="tocSsearchv1response"></a>
+<a id="tocssearchv1response"></a>
+
+```json
+{
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ]
+}
+
+```
+
+### [Properties](#searchv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|components|[[ComponentSearchResult](#schemacomponentsearchresult)]|true|none|[Component data in search results.]|
 
 ## [SecretDefinitionV1](#tocS_SecretDefinitionV1)
 

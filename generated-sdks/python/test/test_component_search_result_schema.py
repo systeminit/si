@@ -14,10 +14,10 @@
 
 import unittest
 
-from system_initiative_api_client.models.search_components_v1_request import SearchComponentsV1Request
+from system_initiative_api_client.models.component_search_result_schema import ComponentSearchResultSchema
 
-class TestSearchComponentsV1Request(unittest.TestCase):
-    """SearchComponentsV1Request unit test stubs"""
+class TestComponentSearchResultSchema(unittest.TestCase):
+    """ComponentSearchResultSchema unit test stubs"""
 
     def setUp(self):
         pass
@@ -25,28 +25,26 @@ class TestSearchComponentsV1Request(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> SearchComponentsV1Request:
-        """Test SearchComponentsV1Request
+    def make_instance(self, include_optional) -> ComponentSearchResultSchema:
+        """Test ComponentSearchResultSchema
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `SearchComponentsV1Request`
+        # uncomment below to create an instance of `ComponentSearchResultSchema`
         """
-        model = SearchComponentsV1Request()
+        model = ComponentSearchResultSchema()
         if include_optional:
-            return SearchComponentsV1Request(
-                query_string = '',
-                schema_category = 'AWS::EC2',
-                schema_name = 'AWS::EC2::Instance',
-                upgradable = True
+            return ComponentSearchResultSchema(
+                name = 'AWS::EC2::Instance'
             )
         else:
-            return SearchComponentsV1Request(
+            return ComponentSearchResultSchema(
+                name = 'AWS::EC2::Instance',
         )
         """
 
-    def testSearchComponentsV1Request(self):
-        """Test SearchComponentsV1Request"""
+    def testComponentSearchResultSchema(self):
+        """Test ComponentSearchResultSchema"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 

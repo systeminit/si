@@ -25,6 +25,7 @@ __all__ = [
     "ManagementFuncsApi",
     "RootApi",
     "SchemasApi",
+    "SearchApi",
     "SecretsApi",
     "WhoamiApi",
     "ApiResponse",
@@ -54,6 +55,8 @@ __all__ = [
     "ComponentReference",
     "ComponentReferenceOneOf",
     "ComponentReferenceOneOf1",
+    "ComponentSearchResult",
+    "ComponentSearchResultSchema",
     "ComponentV1RequestPath",
     "ComponentViewV1",
     "ConnectionViewV1",
@@ -139,6 +142,8 @@ __all__ = [
     "SearchComponentsV1Response",
     "SearchSchemasV1Request",
     "SearchSchemasV1Response",
+    "SearchV1Request",
+    "SearchV1Response",
     "SecretDefinitionV1",
     "SecretFormDataV1",
     "SecretPropKey",
@@ -166,6 +171,7 @@ from system_initiative_api_client.api.funcs_api import FuncsApi as FuncsApi
 from system_initiative_api_client.api.management_funcs_api import ManagementFuncsApi as ManagementFuncsApi
 from system_initiative_api_client.api.root_api import RootApi as RootApi
 from system_initiative_api_client.api.schemas_api import SchemasApi as SchemasApi
+from system_initiative_api_client.api.search_api import SearchApi as SearchApi
 from system_initiative_api_client.api.secrets_api import SecretsApi as SecretsApi
 from system_initiative_api_client.api.whoami_api import WhoamiApi as WhoamiApi
 
@@ -199,6 +205,8 @@ from system_initiative_api_client.models.component_prop_view_v1 import Component
 from system_initiative_api_client.models.component_reference import ComponentReference as ComponentReference
 from system_initiative_api_client.models.component_reference_one_of import ComponentReferenceOneOf as ComponentReferenceOneOf
 from system_initiative_api_client.models.component_reference_one_of1 import ComponentReferenceOneOf1 as ComponentReferenceOneOf1
+from system_initiative_api_client.models.component_search_result import ComponentSearchResult as ComponentSearchResult
+from system_initiative_api_client.models.component_search_result_schema import ComponentSearchResultSchema as ComponentSearchResultSchema
 from system_initiative_api_client.models.component_v1_request_path import ComponentV1RequestPath as ComponentV1RequestPath
 from system_initiative_api_client.models.component_view_v1 import ComponentViewV1 as ComponentViewV1
 from system_initiative_api_client.models.connection_view_v1 import ConnectionViewV1 as ConnectionViewV1
@@ -284,6 +292,8 @@ from system_initiative_api_client.models.search_components_v1_request import Sea
 from system_initiative_api_client.models.search_components_v1_response import SearchComponentsV1Response as SearchComponentsV1Response
 from system_initiative_api_client.models.search_schemas_v1_request import SearchSchemasV1Request as SearchSchemasV1Request
 from system_initiative_api_client.models.search_schemas_v1_response import SearchSchemasV1Response as SearchSchemasV1Response
+from system_initiative_api_client.models.search_v1_request import SearchV1Request as SearchV1Request
+from system_initiative_api_client.models.search_v1_response import SearchV1Response as SearchV1Response
 from system_initiative_api_client.models.secret_definition_v1 import SecretDefinitionV1 as SecretDefinitionV1
 from system_initiative_api_client.models.secret_form_data_v1 import SecretFormDataV1 as SecretFormDataV1
 from system_initiative_api_client.models.secret_prop_key import SecretPropKey as SecretPropKey
