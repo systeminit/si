@@ -211,6 +211,9 @@ impl From<JsonRejection> for ComponentsError {
 impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
+            ComponentsError::Attribute(
+                dal::attribute::attributes::AttributesError::CannotUpdateCreateOnlyProperty(_),
+            ) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
             ComponentsError::Component(dal::ComponentError::NotFound(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
