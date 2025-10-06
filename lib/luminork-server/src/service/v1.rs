@@ -10,6 +10,7 @@ mod components;
 mod funcs;
 mod management_funcs;
 mod schemas;
+mod search;
 mod secrets;
 mod user;
 mod workspaces;
@@ -159,6 +160,10 @@ pub use schemas::{
     unlock_schema::UnlockedSchemaV1Response,
     update_schema_variant::UpdateSchemaVariantV1Request,
 };
+pub use search::{
+    SearchV1Request,
+    SearchV1Response,
+};
 pub use workspaces::WorkspaceError;
 
 pub use crate::api_types::func_run::v1::{
@@ -228,6 +233,7 @@ pub use crate::api_types::func_run::v1::{
         secrets::delete_secret::delete_secret,
         secrets::update_secret::update_secret,
         secrets::get_secrets::get_secrets,
+        search::search,
     ),
     components(
         schemas(
@@ -314,6 +320,8 @@ pub use crate::api_types::func_run::v1::{
             CreateVariantManagementFuncV1Request,
             CreateVariantManagementFuncV1Response,
             UpdateSchemaVariantV1Request,
+            SearchV1Request,
+            SearchV1Response,
         )
     ),
     tags(

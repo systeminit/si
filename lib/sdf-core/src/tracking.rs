@@ -1,5 +1,9 @@
 use dal::DalContext;
 use hyper::Uri;
+use si_id::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 
 use crate::app_state::PosthogClient;
@@ -20,7 +24,7 @@ pub fn track(
         .map(|workspace_pk| workspace_pk.to_string())
         .unwrap_or_else(|| "unknown".to_string());
     let changeset_id = ctx.change_set_id().to_string();
-    track_no_ctx(
+    _track(
         posthog_client,
         original_uri,
         host_name,
@@ -37,6 +41,57 @@ pub fn track(
 /// (e.g., for admin routes that operate across workspaces)
 #[allow(clippy::too_many_arguments)]
 pub fn track_no_ctx(
+    posthog_client: &PosthogClient,
+    original_uri: &Uri,
+    host_name: &String,
+    distinct_id: String,
+    workspace_id: WorkspacePk,
+    changeset_id: ChangeSetId,
+    event_name: impl AsRef<str>,
+    properties: serde_json::Value,
+) {
+    _track(
+        posthog_client,
+        original_uri,
+        host_name,
+        distinct_id,
+        Some(workspace_id.to_string()),
+        Some(changeset_id.to_string()),
+        event_name,
+        properties,
+    )
+}
+
+/// Send tracking events to PostHog when you either don't have a DalContext
+/// or when the DalContext does not have the correct workspace and change_set id
+/// (e.g., for admin routes that operate across workspaces)
+#[allow(clippy::too_many_arguments)]
+pub fn track_no_ctx_workspace(
+    posthog_client: &PosthogClient,
+    original_uri: &Uri,
+    host_name: &String,
+    distinct_id: String,
+    workspace_id: WorkspacePk,
+    event_name: impl AsRef<str>,
+    properties: serde_json::Value,
+) {
+    _track(
+        posthog_client,
+        original_uri,
+        host_name,
+        distinct_id,
+        Some(workspace_id.to_string()),
+        None,
+        event_name,
+        properties,
+    )
+}
+
+/// Send tracking events to PostHog when you either don't have a DalContext
+/// or when the DalContext does not have the correct workspace and change_set id
+/// (e.g., for admin routes that operate across workspaces)
+#[allow(clippy::too_many_arguments)]
+pub fn _track(
     posthog_client: &PosthogClient,
     original_uri: &Uri,
     host_name: &String,

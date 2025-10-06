@@ -79,6 +79,7 @@ pub(crate) use self::{
     tracking::{
         track,
         track_no_ctx,
+        track_no_ctx_workspace,
     },
 };
 

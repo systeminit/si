@@ -83,8 +83,8 @@ pub async fn get_cas_data(
         &original_uri,
         &host_name,
         ctx.history_actor().distinct_id(),
-        Some(workspace_id.to_string()),
-        Some(change_set_id.to_string()),
+        workspace_id,
+        change_set_id,
         "admin.get_cas_data",
         serde_json::json!({}),
     );

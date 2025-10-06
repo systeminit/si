@@ -20,6 +20,7 @@ use si_id::{
     WorkspacePk,
 };
 use telemetry::prelude::*;
+use utoipa::ToSchema;
 
 use crate::search::{
     Error,
@@ -34,7 +35,7 @@ pub async fn search(
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,
     query: &Arc<SearchQuery>,
-) -> Result<Vec<ComponentId>> {
+) -> Result<Vec<ComponentSearchResult>> {
     // Grab the index first
     let attribute_trees = attribute_tree_mv_index(frigg, workspace_id, change_set_id).await?;
 
@@ -53,6 +54,23 @@ pub async fn search(
     match_tasks.into_iter().flatten_ok().try_collect()
 }
 
+/// Component data in search results.
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
+pub struct ComponentSearchResult {
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79AA")]
+    pub id: ComponentId,
+    #[schema(value_type = String, example = "MyInstance")]
+    pub name: String,
+    pub schema: ComponentSearchResultSchema,
+}
+
+/// The schema for a component in search results.
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
+pub struct ComponentSearchResultSchema {
+    #[schema(value_type = String, example = "AWS::EC2::Instance")]
+    pub name: String,
+}
+
 /// Fetch the AttributeTree MV for a component and match it against the query.
 #[instrument(level = "debug", skip_all, fields(id))]
 async fn match_component(
@@ -60,10 +78,16 @@ async fn match_component(
     workspace_pk: WorkspacePk,
     index_ref: IndexReference,
     query: Arc<SearchQuery>,
-) -> Result<Option<ComponentId>> {
+) -> Result<Option<ComponentSearchResult>> {
     let attribute_tree = attribute_tree_mv(frigg, workspace_pk, index_ref).await?;
     if match_attribute_tree(&attribute_tree, &query) {
-        Ok(Some(attribute_tree.id))
+        Ok(Some(ComponentSearchResult {
+            id: attribute_tree.id,
+            name: attribute_tree.component_name,
+            schema: ComponentSearchResultSchema {
+                name: attribute_tree.schema_name,
+            },
+        }))
     } else {
         Ok(None)
     }
