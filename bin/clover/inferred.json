@@ -8536,6 +8536,9 @@
   "The AWS Region that the API Gateway proxy endpoint was created in. This parameter is required for SPEKE encryption and is not valid for static key encryption.": {
     "enum": null
   },
+  "The AWS Region where the disk snapshot was created.": {
+    "enum": null
+  },
   "The AWS Region where the domain is located in Amazon SageMaker Unified Studio. The default value, if you don't specify a Region, is the Region where the Amazon SageMaker AI domain is located.": {
     "enum": null
   },
@@ -9338,6 +9341,9 @@
     "enum": null
   },
   "The Availability Zone that you want to create the flow in. These options are limited to the Availability Zones within the current AWS.": {
+    "enum": null
+  },
+  "The Availability Zone where the disk snapshot was created.": {
     "enum": null
   },
   "The Availability Zone.": {
@@ -14125,6 +14131,9 @@
   "The name of the device that is writing to the stream.": {
     "enum": null
   },
+  "The name of the disk snapshot (e.g., my-disk-snapshot).": {
+    "enum": null
+  },
   "The name of the distribution configuration.": {
     "enum": null
   },
@@ -14666,6 +14675,9 @@
     "enum": null
   },
   "The name of the snapshot.": {
+    "enum": null
+  },
+  "The name of the source disk from which the snapshot was created.": {
     "enum": null
   },
   "The name of the source email address display name": {
