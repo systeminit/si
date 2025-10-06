@@ -11,15 +11,15 @@ use std::{
 };
 
 use foyer::{
-    DirectFsDeviceOptions,
-    Engine,
+    BlockEngineBuilder,
+    Code,
+    CodeError,
+    DeviceBuilder,
     FifoPicker,
+    FsDeviceBuilder,
     HybridCache,
     HybridCacheBuilder,
-    LargeEngineOptions,
-    RateLimitPicker,
     RecoverMode,
-    TokioRuntimeOptions,
 };
 use mixtrics::registry::opentelemetry_0_26::OpenTelemetryMetricsRegistry;
 use serde::{
@@ -42,6 +42,130 @@ use crate::{
     error::LayerDbResult,
 };
 
+// Implement Code trait for CacheKey
+impl Code for CacheKey {
+    fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), CodeError> {
+        let bytes = self.0.as_bytes();
+        writer
+            .write_all(&(bytes.len() as u64).to_le_bytes())
+            .map_err(|e| CodeError::Io(e))?;
+        writer.write_all(bytes).map_err(|e| CodeError::Io(e))?;
+        Ok(())
+    }
+
+    fn decode(reader: &mut impl std::io::Read) -> Result<Self, CodeError> {
+        let mut len_bytes = [0u8; 8];
+        reader
+            .read_exact(&mut len_bytes)
+            .map_err(|e| CodeError::Io(e))?;
+        let len = u64::from_le_bytes(len_bytes) as usize;
+
+        let mut bytes = vec![0u8; len];
+        reader
+            .read_exact(&mut bytes)
+            .map_err(|e| CodeError::Io(e))?;
+
+        let s = String::from_utf8(bytes)
+            .map_err(|e| CodeError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+        Ok(CacheKey(Arc::from(s)))
+    }
+
+    fn estimated_size(&self) -> usize {
+        8 + self.0.len() // 8 bytes for length + string bytes
+    }
+}
+
+// Implement Code trait for MaybeDeserialized<V>
+impl<V> Code for MaybeDeserialized<V>
+where
+    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+{
+    fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), CodeError> {
+        match self {
+            MaybeDeserialized::RawBytes(bytes) => {
+                writer.write_all(&[0u8]).map_err(|e| CodeError::Io(e))?; // tag for RawBytes
+                writer
+                    .write_all(&(bytes.len() as u64).to_le_bytes())
+                    .map_err(|e| CodeError::Io(e))?;
+                writer.write_all(bytes).map_err(|e| CodeError::Io(e))?;
+            }
+            MaybeDeserialized::DeserializedValue { value, size_hint } => {
+                writer.write_all(&[1u8]).map_err(|e| CodeError::Io(e))?; // tag for DeserializedValue
+                let (value_bytes, _) = serialize::to_vec(value).map_err(|e| {
+                    CodeError::Io(std::io::Error::new(std::io::ErrorKind::Other, e))
+                })?;
+                writer
+                    .write_all(&(value_bytes.len() as u64).to_le_bytes())
+                    .map_err(|e| CodeError::Io(e))?;
+                writer
+                    .write_all(&value_bytes)
+                    .map_err(|e| CodeError::Io(e))?;
+                writer
+                    .write_all(&(*size_hint as u64).to_le_bytes())
+                    .map_err(|e| CodeError::Io(e))?;
+            }
+        }
+        Ok(())
+    }
+
+    fn decode(reader: &mut impl std::io::Read) -> Result<Self, CodeError> {
+        let mut tag = [0u8; 1];
+        reader.read_exact(&mut tag).map_err(|e| CodeError::Io(e))?;
+
+        match tag[0] {
+            0 => {
+                // RawBytes
+                let mut len_bytes = [0u8; 8];
+                reader
+                    .read_exact(&mut len_bytes)
+                    .map_err(|e| CodeError::Io(e))?;
+                let len = u64::from_le_bytes(len_bytes) as usize;
+
+                let mut bytes = vec![0u8; len];
+                reader
+                    .read_exact(&mut bytes)
+                    .map_err(|e| CodeError::Io(e))?;
+                Ok(MaybeDeserialized::RawBytes(bytes))
+            }
+            1 => {
+                // DeserializedValue
+                let mut len_bytes = [0u8; 8];
+                reader
+                    .read_exact(&mut len_bytes)
+                    .map_err(|e| CodeError::Io(e))?;
+                let len = u64::from_le_bytes(len_bytes) as usize;
+
+                let mut bytes = vec![0u8; len];
+                reader
+                    .read_exact(&mut bytes)
+                    .map_err(|e| CodeError::Io(e))?;
+
+                let mut size_hint_bytes = [0u8; 8];
+                reader
+                    .read_exact(&mut size_hint_bytes)
+                    .map_err(|e| CodeError::Io(e))?;
+                let size_hint = u64::from_le_bytes(size_hint_bytes) as usize;
+
+                let value: V = serialize::from_bytes(&bytes).map_err(|e| {
+                    CodeError::Io(std::io::Error::new(std::io::ErrorKind::Other, e))
+                })?;
+                Ok(MaybeDeserialized::DeserializedValue { value, size_hint })
+            }
+            _ => Err(CodeError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid MaybeDeserialized tag",
+            ))),
+        }
+    }
+
+    fn estimated_size(&self) -> usize {
+        match self {
+            MaybeDeserialized::RawBytes(bytes) => 1 + 8 + bytes.len(),
+            MaybeDeserialized::DeserializedValue { size_hint, .. } => 1 + 8 + size_hint + 8,
+        }
+    }
+}
+
 const FOYER_DISK_CACHE_MINUMUM: u64 = 1024 * 1024 * 1024; // 1gb
 const DEFAULT_MEMORY_RESERVED_PERCENT: u8 = 40;
 const DEFAULT_MEMORY_USABLE_MAX_PERCENT: u8 = 100;
@@ -59,6 +183,28 @@ static TOTAL_SYSTEM_MEMORY_BYTES: LazyLock<u64> = LazyLock::new(|| {
     sys.total_memory()
 });
 
+// Newtype wrapper for Arc<str> to implement Code trait
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct CacheKey(Arc<str>);
+
+impl From<Arc<str>> for CacheKey {
+    fn from(s: Arc<str>) -> Self {
+        CacheKey(s)
+    }
+}
+
+impl From<CacheKey> for Arc<str> {
+    fn from(k: CacheKey) -> Self {
+        k.0
+    }
+}
+
+impl AsRef<str> for CacheKey {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 enum MaybeDeserialized<V>
 where
@@ -73,7 +219,7 @@ pub struct Cache<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    cache: HybridCache<Arc<str>, MaybeDeserialized<V>>,
+    cache: HybridCache<CacheKey, MaybeDeserialized<V>>,
 }
 
 impl<V> Cache<V>
@@ -98,38 +244,17 @@ where
 
         let cache_meter_name: &'static str = config.name.clone().leak();
 
-        let builder = HybridCacheBuilder::new()
+        let mut builder = HybridCacheBuilder::new()
             .with_name(config.name.clone())
-            .with_metrics_registry(Box::new(OpenTelemetryMetricsRegistry::new(global::meter(
-                cache_meter_name,
-            ))))
             .memory(memory_cache_capacity_bytes)
             .with_weighter(
-                |_key: &Arc<str>, value: &MaybeDeserialized<V>| match value {
+                |_key: &CacheKey, value: &MaybeDeserialized<V>| match value {
                     MaybeDeserialized::RawBytes(bytes) => bytes.len(),
                     MaybeDeserialized::DeserializedValue { size_hint, .. } => *size_hint,
                 },
-            )
-            .storage(Engine::Large)
-            .with_runtime_options(foyer::RuntimeOptions::Unified(TokioRuntimeOptions {
-                max_blocking_threads: 0,
-                worker_threads: 0,
-            }))
-            .with_admission_picker(Arc::new(RateLimitPicker::new(
-                config.disk_admission_rate_limit,
-            )))
-            .with_large_object_disk_cache_options(
-                LargeEngineOptions::new()
-                    .with_buffer_pool_size(config.disk_buffer_size)
-                    .with_eviction_pickers(vec![Box::<FifoPicker>::default()])
-                    .with_flushers(config.disk_buffer_flushers)
-                    .with_recover_concurrency(config.disk_recover_concurrency)
-                    .with_indexer_shards(config.disk_indexer_shards)
-                    .with_reclaimers(config.disk_reclaimers),
-            )
-            .with_recover_mode(RecoverMode::Quiet);
+            );
 
-        let builder = if config.disk_layer {
+        let cache: HybridCache<CacheKey, MaybeDeserialized<V>> = if config.disk_layer {
             fs::create_dir_all(config.disk_path.as_path()).await?;
 
             // Compute total disk which is in use for `disk_path`
@@ -164,10 +289,27 @@ where
                 "creating cache",
             );
 
-            builder.with_device_options(
-                DirectFsDeviceOptions::new(config.disk_path)
-                    .with_capacity(disk_cache_capacity_bytes),
-            )
+            // Build storage engine with block-based device
+            let device = FsDeviceBuilder::new(config.disk_path)
+                .with_capacity(disk_cache_capacity_bytes)
+                .build()
+                .map_err(|e| LayerDbError::Foyer(e.into()))?;
+
+            let engine = BlockEngineBuilder::new(device)
+                .with_buffer_pool_size(config.disk_buffer_size)
+                .with_eviction_pickers(vec![Box::<FifoPicker>::default()])
+                .with_flushers(config.disk_buffer_flushers)
+                .with_recover_concurrency(config.disk_recover_concurrency)
+                .with_indexer_shards(config.disk_indexer_shards)
+                .with_reclaimers(config.disk_reclaimers);
+
+            builder
+                .storage()
+                .with_engine_config(engine)
+                .with_recover_mode(RecoverMode::Quiet)
+                .build()
+                .await
+                .map_err(|e| LayerDbError::Foyer(e.into()))?
         } else {
             info!(
                 cache.name = &config.name,
@@ -183,25 +325,26 @@ where
             );
 
             builder
+                .storage()
+                .build()
+                .await
+                .map_err(|e| LayerDbError::Foyer(e.into()))?
         };
-
-        let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = builder
-            .build()
-            .await
-            .map_err(|e| LayerDbError::Foyer(e.into()))?;
 
         Ok(Self { cache })
     }
 
     pub async fn get(&self, key: Arc<str>) -> Option<V> {
-        if let Ok(Some(entry)) = self.cache.obtain(key.clone()).await {
+        let cache_key = CacheKey::from(key.clone());
+        if let Ok(Some(entry)) = self.cache.obtain(cache_key.clone()).await {
             return self.maybe_deserialize(key, entry.value().clone()).await;
         }
         None
     }
 
     pub async fn get_from_memory(&self, key: Arc<str>) -> Option<V> {
-        if let Some(entry) = self.cache.memory().get(&key) {
+        let cache_key = CacheKey::from(key.clone());
+        if let Some(entry) = self.cache.memory().get(&cache_key) {
             return self.maybe_deserialize(key, entry.value().clone()).await;
         }
         None
@@ -233,22 +376,22 @@ where
 
     pub fn insert(&self, key: Arc<str>, value: V, size_hint: usize) {
         self.cache.insert(
-            key,
+            CacheKey::from(key),
             MaybeDeserialized::DeserializedValue { value, size_hint },
         );
     }
 
     pub fn insert_raw_bytes(&self, key: Arc<str>, raw_bytes: Vec<u8>) {
         self.cache
-            .insert(key, MaybeDeserialized::RawBytes(raw_bytes));
+            .insert(CacheKey::from(key), MaybeDeserialized::RawBytes(raw_bytes));
     }
 
     pub fn remove(&self, key: &str) {
-        self.cache.remove(key);
+        self.cache.remove(&CacheKey(Arc::from(key)));
     }
 
     pub fn contains(&self, key: &str) -> bool {
-        self.cache.contains(key)
+        self.cache.contains(&CacheKey(Arc::from(key)))
     }
 
     pub async fn close(&self) -> LayerDbResult<()> {

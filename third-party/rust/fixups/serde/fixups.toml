@@ -1,1 +1,5 @@
 buildscript.run = false
+cargo_env = true
+
+[env]
+OUT_DIR = "$(location //third-party/rust/fixups/serde:out_dir)"
