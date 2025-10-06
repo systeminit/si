@@ -37,7 +37,7 @@ const DEFAULT_CONCURRENCY_LIMIT: Option<usize> = None;
 const DEFAULT_QUIESCENT_PERIOD_SECS: u64 = 60 * 5;
 const DEFAULT_QUIESCENT_PERIOD: Duration = Duration::from_secs(DEFAULT_QUIESCENT_PERIOD_SECS);
 
-const DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD_SECS: u64 = 60; // 1 minute
+const DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD_SECS: u64 = 0; // Disabled until eviction handles not to-rebase snapshots better.
 const DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD: Duration =
     Duration::from_secs(DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD_SECS);
 
