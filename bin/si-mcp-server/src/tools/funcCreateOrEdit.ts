@@ -1086,8 +1086,7 @@ export function funcCreateOrEditTool(server: McpServer) {
                 if (!canMakeAction) {
                   return errorResponse({
                     message: "An action of the same kind already exists and only one action of each kind is allowed, except for Manual.",
-                    hints: "Tell the user that they can't make more than one of this kind of action and ask if they want to make an action of a different kind or edit the existing action."
-                  });
+                  }, "Existing actions cannot be edited by this tool. *Do not* offer the option to edit the existing action function. Tell the user that they can't make more than one of this kind of action and ask if they want to make a manual action.");
                 }
               }
               const responseCreate = await siSchemasApi.createVariantAction({
