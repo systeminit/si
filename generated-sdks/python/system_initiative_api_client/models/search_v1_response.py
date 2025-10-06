@@ -17,20 +17,18 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
-from typing import Any, ClassVar, Dict, List, Optional
+from pydantic import BaseModel, ConfigDict
+from typing import Any, ClassVar, Dict, List
+from system_initiative_api_client.models.component_search_result import ComponentSearchResult
 from typing import Optional, Set
 from typing_extensions import Self
 
-class SearchComponentsV1Request(BaseModel):
+class SearchV1Response(BaseModel):
     """
-    SearchComponentsV1Request
+    SearchV1Response
     """ # noqa: E501
-    query_string: Optional[StrictStr] = Field(default=None, alias="queryString")
-    schema_category: Optional[StrictStr] = Field(default=None, alias="schemaCategory")
-    schema_name: Optional[StrictStr] = Field(default=None, alias="schemaName")
-    upgradable: Optional[StrictBool] = None
-    __properties: ClassVar[List[str]] = ["queryString", "schemaCategory", "schemaName", "upgradable"]
+    components: List[ComponentSearchResult]
+    __properties: ClassVar[List[str]] = ["components"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -50,7 +48,7 @@ class SearchComponentsV1Request(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of SearchComponentsV1Request from a JSON string"""
+        """Create an instance of SearchV1Response from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -71,31 +69,18 @@ class SearchComponentsV1Request(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # set to None if query_string (nullable) is None
-        # and model_fields_set contains the field
-        if self.query_string is None and "query_string" in self.model_fields_set:
-            _dict['queryString'] = None
-
-        # set to None if schema_category (nullable) is None
-        # and model_fields_set contains the field
-        if self.schema_category is None and "schema_category" in self.model_fields_set:
-            _dict['schemaCategory'] = None
-
-        # set to None if schema_name (nullable) is None
-        # and model_fields_set contains the field
-        if self.schema_name is None and "schema_name" in self.model_fields_set:
-            _dict['schemaName'] = None
-
-        # set to None if upgradable (nullable) is None
-        # and model_fields_set contains the field
-        if self.upgradable is None and "upgradable" in self.model_fields_set:
-            _dict['upgradable'] = None
-
+        # override the default output from pydantic by calling `to_dict()` of each item in components (list)
+        _items = []
+        if self.components:
+            for _item_components in self.components:
+                if _item_components:
+                    _items.append(_item_components.to_dict())
+            _dict['components'] = _items
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of SearchComponentsV1Request from a dict"""
+        """Create an instance of SearchV1Response from a dict"""
         if obj is None:
             return None
 
@@ -103,10 +88,7 @@ class SearchComponentsV1Request(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "queryString": obj.get("queryString"),
-            "schemaCategory": obj.get("schemaCategory"),
-            "schemaName": obj.get("schemaName"),
-            "upgradable": obj.get("upgradable")
+            "components": [ComponentSearchResult.from_dict(_item) for _item in obj["components"]] if obj.get("components") is not None else None
         })
         return _obj
 
