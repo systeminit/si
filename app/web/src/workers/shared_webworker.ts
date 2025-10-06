@@ -120,6 +120,8 @@ async function withLeader<R>(
   }
 }
 
+const clientInterest: Record<string, number> = {};
+
 const dbInterface: SharedDBInterface = {
   async broadcastMessage(message: BroadcastMessage) {
     Object.keys(remotes).forEach((remoteId) => {
@@ -221,6 +223,18 @@ const dbInterface: SharedDBInterface = {
       await currentLeader?.setBearer(workspaceId, bearerToken);
       currentLeader?.initSocket(workspaceId);
     }
+  },
+
+  async showInterest(workspaceId: string, changeSetId: ChangeSetId) {
+    const key = `${workspaceId}-${changeSetId}`;
+    let priority = clientInterest[key] ?? 0;
+    priority += 1;
+    clientInterest[key] = priority;
+    currentLeader?.receiveInterest(clientInterest);
+    this.broadcastMessage({
+      messageKind: "interest",
+      arguments: clientInterest,
+    });
   },
 
   async initSocket(workspaceId: string): Promise<void> {

@@ -143,6 +143,7 @@ const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
 
 const props = defineProps<{
   changeSetId: string;
+  workspaceId: string;
 }>();
 
 const selectedChangeSetId = ref(props.changeSetId);
@@ -209,10 +210,7 @@ const createChangeSetName = ref("");
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
-const waitForChangeSetExists = (
-  workspaceId: string,
-  changeSetId: string,
-): Promise<void> => {
+const waitForChangeSetExists = (changeSetId: string): Promise<void> => {
   const INTERVAL_MS = 50;
   const MAX_WAIT_IN_SEC = 10;
   const MAX_RETRIES = (MAX_WAIT_IN_SEC * 1000) / INTERVAL_MS;
@@ -225,7 +223,7 @@ const waitForChangeSetExists = (
         reject();
       }
 
-      if (await heimdall.changeSetExists(workspaceId, changeSetId)) {
+      if (await heimdall.changeSetExists(props.workspaceId, changeSetId)) {
         clearInterval(interval);
         resolve();
       }
@@ -248,11 +246,11 @@ async function onSelectChangeSet(newVal: string) {
       route.name?.toString().startsWith("new-hotness") &&
       typeof route.params.workspacePk === "string"
     ) {
-      const workspaceId = route.params.workspacePk;
-      await waitForChangeSetExists(workspaceId, newVal);
+      await waitForChangeSetExists(newVal);
     }
 
     const name = route.name;
+    heimdall.showInterest(props.workspaceId, newVal);
     await router.push({
       name,
       params: {

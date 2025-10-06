@@ -122,6 +122,7 @@ import ToastApplyingChanges from "./nav/ToastApplyingChanges.vue";
 import { useContext } from "./logic_composables/context";
 import { useApi, routes } from "./api_composables";
 import { useStatus } from "./logic_composables/status";
+import * as heimdall from "../store/realtime/heimdall";
 
 const props = defineProps<{
   actions: ActionProposedView[];
@@ -286,6 +287,7 @@ async function applyNotDebounced() {
       },
     );
     const name = route.name;
+    heimdall.showInterest(ctx.workspacePk.value, ctx.headChangeSetId.value);
     router.push({
       name,
       params: {

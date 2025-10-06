@@ -309,7 +309,7 @@ const exec = (
  * A few small utilities
  */
 const textEncoder = new TextEncoder();
-const encodeDocumentForDB = async (doc: object) => {
+const encodeDocumentForDB = (doc: object) => {
   const docJson = JSON.stringify(doc);
   return textEncoder.encode(docJson);
 };
@@ -479,7 +479,7 @@ const createAtom = async (
 ) => {
   debug("createAtom", atom, doc);
 
-  const encodedDoc = await encodeDocumentForDB(doc);
+  const encodedDoc = encodeDocumentForDB(doc);
   try {
     const start = performance.now();
     db.exec({
@@ -778,16 +778,11 @@ const bulkCreateAtoms = async (
           obj.frontEndObject.kind,
           obj.frontEndObject.checksum,
           obj.frontEndObject.id,
-          await encodeDocumentForDB(obj.frontEndObject.data),
+          encodeDocumentForDB(obj.frontEndObject.data),
         );
       } else {
         const obj = atom as AtomWithDocument;
-        bind.push(
-          obj.kind,
-          obj.checksum,
-          obj.id,
-          await encodeDocumentForDB(obj.doc),
-        );
+        bind.push(obj.kind, obj.checksum, obj.id, encodeDocumentForDB(obj.doc));
       }
     }
 
@@ -1603,12 +1598,7 @@ const patchAtom = async (
       (?, ?, ?, ?)
     ON CONFLICT (kind, checksum, args) DO UPDATE SET data=excluded.data
     ;`,
-    bind: [
-      atom.kind,
-      atom.id,
-      atom.toChecksum,
-      await encodeDocumentForDB(afterDoc),
-    ],
+    bind: [atom.kind, atom.id, atom.toChecksum, encodeDocumentForDB(afterDoc)],
   });
   return afterDoc;
 };
@@ -3706,6 +3696,18 @@ const getMany = (
   return results;
 };
 
+const clientInterest: Record<string, number> = {};
+
+const receiveInterest = (interest: Record<string, number>) => {
+  Object.assign(clientInterest, interest);
+};
+
+const assignPriority = (workspaceId: string, changeSetId: string) => {
+  const key = `${workspaceId}-${changeSetId}`;
+  const priority = clientInterest[key] ?? 0;
+  return { priority };
+};
+
 /**
  * INTERFACE DEFINITION
  */
@@ -3733,6 +3735,9 @@ const forceLeaderElectionBroadcastChannel = new BroadcastChannel(
 const assertNever = (_foo: never) => {};
 
 const dbInterface: TabDBInterface = {
+  receiveInterest(interest: Record<string, number>) {
+    receiveInterest(interest);
+  },
   async receiveBroadcast(message: BroadcastMessage) {
     switch (message.messageKind) {
       case "updateConnectionStatus":
@@ -3776,6 +3781,9 @@ const dbInterface: TabDBInterface = {
           message.arguments.removed,
           true,
         );
+        break;
+      case "interest":
+        receiveInterest(message.arguments);
         break;
       case "lobbyExit":
         lobbyExitFn(
@@ -3912,6 +3920,7 @@ const dbInterface: TabDBInterface = {
                   await sqlite!.transaction(
                     async (db) => await handleWorkspacePatchMessage(db, data),
                   ),
+                assignPriority(data.meta.workspaceId, data.meta.changeSetId),
               );
               debug(
                 "📨 WORKSPACE PATCH MESSAGE ADDED:",
@@ -3940,7 +3949,7 @@ const dbInterface: TabDBInterface = {
                 await sqlite!.transaction(async (db) =>
                   handleIndexMvPatch(db, data),
                 );
-              });
+              }, assignPriority(data.meta.workspaceId, data.meta.changeSetId));
             } else if (data.kind === MessageKind.DEPLOYMENT_INDEXUPDATE) {
               // NOOP for now, DEPLOYMENT_PATCH does the work
               debug(
