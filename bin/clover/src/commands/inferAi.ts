@@ -1,7 +1,7 @@
 import { allCfProps, loadCfDatabase } from "../cfDb.ts";
 import type { CfProperty } from "../pipelines/types.ts";
 import type { CfSchema } from "../pipelines/aws/schema.ts";
-import OpenAI from "openai";
+import OpenAI from "npm:openai@^4.104.0";
 import _ from "lodash";
 import { Inferred, loadInferred, saveInferred } from "../spec/inferred.ts";
 

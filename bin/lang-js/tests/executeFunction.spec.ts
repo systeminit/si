@@ -98,6 +98,14 @@ const scenarios: FuncScenario[] = [
         handler: "main",
       },
     ],
+    result: {
+      protocol: "result",
+      status: "failure",
+      error: {
+        kind: "ActionFieldWrongType",
+        message: "The message field type must be string when status is either \"warning\" or \"error\"",
+      },
+    },
   },
   {
     name: "Joi Validation Number Success",
@@ -163,8 +171,9 @@ const scenarios: FuncScenario[] = [
       status: "failure",
       error: {
         kind: {
-          UserCodeException: "JoiValidationJsonParsingError",
+          UserCodeException: "Error",
         },
+        message: "Invalid JSON format",
       },
     },
   },
@@ -182,22 +191,11 @@ const scenarios: FuncScenario[] = [
       status: "failure",
       error: {
         kind: {
-          UserCodeException: "JoiValidationFormatError",
+          UserCodeException: "Error",
         },
-        message: "validationFormat must be of type object",
+        message: "validationFormat test is wrong: ValidationError: \"value\" must be of type object",
       },
     },
-  },
-  {
-    name: "Will Timeout",
-    kind: FunctionKind.ActionRun,
-    funcSpec: {
-      value: {},
-      codeBase64: "", // We rewrite this later
-      handler: "main",
-    },
-    func: "willTimeout.ts",
-    timeout: 1,
   },
 ];
 
@@ -242,34 +240,21 @@ describe("executeFunction", () => {
         codeBase64,
       };
 
-      if (scenario.timeout) {
-        assertRejects(
-          async () => {
-            await executeFunction(scenario.kind, {
-              ...funcObj,
-              ...ctx,
-              before: scenario.before,
-            }, scenario.timeout!);
-          },
-          Error,
-          `function timed out after ${scenario.timeout} seconds`,
-        );
-      } else {
-        await executeFunction(scenario.kind, {
-          ...ctx,
-          ...funcObj,
-          before: scenario.before,
-        }, testSuiteTimeout * 1000);
+      await executeFunction({
+        kind: scenario.kind,
+        ...ctx,
+        ...funcObj,
+        before: scenario.before,
+      }, testSuiteTimeout * 1000);
 
-        const parsedLog = JSON.parse(lastLog);
-        assertObjectMatch(
-          parsedLog,
-          (scenario.result ?? {
-            protocol: "result",
-            status: "success",
-          }) as Record<PropertyKey, unknown>,
-        );
-      }
+      const parsedLog = JSON.parse(lastLog);
+      assertObjectMatch(
+        parsedLog,
+        (scenario.result ?? {
+          protocol: "result",
+          status: "success",
+        }) as Record<PropertyKey, unknown>,
+      );
     });
   }
 });

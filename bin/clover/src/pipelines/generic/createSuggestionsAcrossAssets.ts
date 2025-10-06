@@ -1,7 +1,7 @@
 import _ from "lodash";
 
 import { bfsPropTree } from "../../spec/props.ts";
-import pluralize from "pluralize";
+import pluralize from "npm:pluralize@^8.0.0";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { addPropSuggestSource } from "../../spec/props.ts";
 import _logger from "../../logger.ts";

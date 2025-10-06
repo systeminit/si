@@ -1,9 +1,9 @@
-import { ulid } from "ulid";
+import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
 import _ from "lodash";
-import ImportedJoi from "joi";
+import ImportedJoi from "npm:joi@17.13.3";
 import { Extend } from "../extend.ts";
 const { createHash } = await import("node:crypto");
 import { cfPcreToRegexp } from "../pcre.ts";

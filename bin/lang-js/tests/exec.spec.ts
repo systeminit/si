@@ -13,14 +13,14 @@ Deno.test("exec", async (t) => {
     await t.step("until it succeeds", async () => {
       const e = makeExec("p");
       const getCurrentTime = await e.waitUntilEnd("date", ["+%s"]);
-      const startSeconds = getCurrentTime.all || "3";
+      const startSeconds = parseInt(String(getCurrentTime.all || "3"));
       const waitUntil = startSeconds + 3;
       const r = await e.watch({
         cmd: "date",
         args: ["+%s"],
         retryMs: 2000,
         callback: async (r) => {
-          const elapsed = r.all || "3";
+          const elapsed = parseInt(String(r.all || "3"));
           return elapsed > waitUntil;
         },
       });
@@ -48,7 +48,7 @@ Deno.test("exec", async (t) => {
     await t.step("fail if the deadline is exceeded", async () => {
       const e = makeExec("p");
       const getCurrentTime = await e.waitUntilEnd("date", ["+%s"]);
-      const startSeconds = getCurrentTime.all || "3";
+      const startSeconds = parseInt(String(getCurrentTime.all || "3"));
       const waitUntil = startSeconds + 30000;
       const r = await e.watch({
         cmd: "date",
@@ -56,7 +56,7 @@ Deno.test("exec", async (t) => {
         retryMs: 2000,
         maxRetryCount: 2,
         callback: async (r) => {
-          const elapsed = r.all || "3";
+          const elapsed = parseInt(String(r.all || "3"));
           return elapsed > waitUntil;
         },
       });

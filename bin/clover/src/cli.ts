@@ -1,4 +1,4 @@
-import { Command } from "@cliffy/command";
+import { Command } from "jsr:@cliffy/command@^1.0.0-rc.8";
 import { fetchSchema } from "./commands/fetchSchema.ts";
 import { generateSiSpecs } from "./commands/generateSiSpecs.ts";
 import { generateTarFromSpec } from "./commands/generateTarFromSpec.ts";
