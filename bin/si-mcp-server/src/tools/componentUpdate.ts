@@ -105,6 +105,25 @@ export function componentUpdateTool(server: McpServer) {
 
           return successResponse(result);
         } catch (error) {
+          // Check if this is a read-only property error (status 412)
+          // deno-lint-ignore no-explicit-any
+          const err = error as any;
+          if (
+            err.response?.status === 412 &&
+            err.response?.data?.message?.includes(
+              "cannot update create-only property",
+            )
+          ) {
+            const propertyPath = err.response.data.message.match(
+              /at path '([^']+)'/,
+            )?.[1];
+            const hint = propertyPath
+              ? `The property '${propertyPath}' is read-only and cannot be updated once a resource is attached. Consider duplicating this component with the new value instead.`
+              : "This property is read-only and cannot be updated once a resource is attached. Consider duplicating this component with the new value instead.";
+
+            return errorResponse(error, hint);
+          }
+
           return errorResponse(error);
         }
       });
