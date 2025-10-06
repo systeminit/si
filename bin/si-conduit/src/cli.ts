@@ -46,8 +46,8 @@ export async function run() {
       "Enable verbose logging (optionally specify level: 0 -> only errors and output, 1 -> 0 + info messages or  2 -> 1 + debug messages)",
       (value) => value === true ? 1 : value,
     )
-    .action(() => {
-      command.showHelp();
+    .action(function () {
+      this.showHelp();
       Deno.exit(1);
     })
     .command("whoami", "Get current user information")
