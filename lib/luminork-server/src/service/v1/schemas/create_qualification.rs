@@ -81,6 +81,7 @@ pub async fn create_variant_qualification(
         LeafInputLocation::Domain,
         LeafInputLocation::Code,
         LeafInputLocation::Resource,
+        LeafInputLocation::Secrets,
     ];
 
     let func = FuncAuthoringClient::create_new_leaf_func(
