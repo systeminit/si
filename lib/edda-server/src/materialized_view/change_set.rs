@@ -112,66 +112,6 @@ pub async fn try_reuse_mv_index_for_new_change_set(
     Ok(false)
 }
 
-/// This function first tries to copy and existing [`ChangeSetMvIndex`] if we find a valid one with the same snapshot address
-/// If it cannot copy one, it builds all Materialized Views (MVs) for the change set in the [`DalContext`].
-/// It assumes there is no existing [`ChangeSetMvIndex`] for the change set.
-#[instrument(
-    name = "materialized_view.new_change_set",
-    level = "info",
-    skip_all,
-    fields(
-        si.workspace.id = Empty,
-        si.change_set.id = %ctx.change_set_id(),
-    ),
-)]
-pub async fn reuse_or_rebuild_index_for_new_change_set(
-    ctx: &DalContext,
-    frigg: &FriggStore,
-    edda_updates: &EddaUpdates,
-    parallel_build_limit: usize,
-    to_snapshot_address: WorkspaceSnapshotAddress,
-) -> Result<(), MaterializedViewError> {
-    let span = current_span_for_instrument_at!("info");
-    span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
-    let did_copy_result =
-        self::try_reuse_mv_index_for_new_change_set(ctx, frigg, edda_updates, to_snapshot_address)
-            .await;
-
-    match did_copy_result {
-        // If we returned successfully, evaluate the response,
-        Ok(did_copy) => {
-            if did_copy {
-                return Ok(());
-            } else {
-                // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
-                self::build_all_mv_for_change_set(
-                    ctx,
-                    frigg,
-                    edda_updates,
-                    parallel_build_limit,
-                    None,
-                    "initial build",
-                )
-                .await?
-            }
-        }
-        Err(err) => {
-            error!(si.error.message = ?err, "error copying existing index");
-            // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
-            self::build_all_mv_for_change_set(
-                ctx,
-                frigg,
-                edda_updates,
-                parallel_build_limit,
-                None,
-                "initial build",
-            )
-            .await?
-        }
-    }
-    Ok(())
-}
-
 /// This function builds all Materialized Views (MVs) for the change set in the [`DalContext`].
 /// It assumes there is no existing [`ChangeSetMvIndex`] for the change set.
 /// If we're rebuilding due to a moved snapshot (Edda got behind), then we pass in the [`from_snapshot_address`]
