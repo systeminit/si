@@ -19,4 +19,5 @@
     "which": "https://esm.sh/which@4.0.0",
     "lodash-es": "npm:lodash-es@4.17.21"
   },
+  "nodeModulesDir": "auto"
 }
