@@ -1690,6 +1690,7 @@ Schemas management endpoints
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
   "domainProps": {},
+  "installedFromUpstream": false,
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -1749,6 +1750,7 @@ Schemas management endpoints
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
   "domainProps": {},
+  "installedFromUpstream": false,
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -1823,6 +1825,7 @@ Schemas management endpoints
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
   "domainProps": {},
+  "installedFromUpstream": false,
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -4716,6 +4719,7 @@ continued
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
   "domainProps": {},
+  "installedFromUpstream": false,
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -4764,6 +4768,7 @@ continued
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|installedFromUpstream|boolean|true|none|none|
 |isDefaultVariant|boolean|true|none|none|
 |isLocked|boolean|true|none|none|
 |link|string,null|false|none|none|
