@@ -300,6 +300,7 @@ watch(componentsById, (newComponentsById) => {
       }
     });
     selectedComponents.value = newSelectedComponents;
+    emit("selectedComponents", selectedComponents.value);
   }
 });
 
@@ -1269,6 +1270,7 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
       panToComponent(n.component.id);
     }
   }
+  emit("selectedComponents", selectedComponents.value);
 };
 
 const rightClickedNode = (e: MouseEvent, n: layoutNode) => {
@@ -1280,6 +1282,7 @@ const rightClickedNode = (e: MouseEvent, n: layoutNode) => {
     const newSelectedComponents = new Set(selectedComponents.value);
     newSelectedComponents.add(n.component);
     selectedComponents.value = newSelectedComponents;
+    emit("selectedComponents", selectedComponents.value);
   }
 
   // Show context menu for all selected components
@@ -1321,272 +1324,13 @@ const showContextMenuForSelection = (
 const selectComponent = (component: ComponentInList, componentEl?: Element) => {
   selectedComponents.value = new Set([component]);
   showContextMenuForSelection(component, componentEl);
+  emit("selectedComponents", selectedComponents.value);
 };
 const deselect = () => {
   selectedComponents.value = new Set();
   componentContextMenuRef.value?.close();
+  emit("selectedComponents", selectedComponents.value);
 };
-
-watch(
-  () => [selectedComponents, router.currentRoute.value.query.hideSubscriptions],
-  () => {
-    const currentQuery = router.currentRoute.value.query;
-
-    // NOTE(nick,victor): this watcher is colliding with the "Explore.vue" watcher that handles
-    // "retainSessionState". This isn't an ideal situation, but this ensures that the "Explore.vue"
-    // watchers handle setting things up appropriately before anything else happens.
-    if (currentQuery.retainSessionState) return;
-
-    document
-      .querySelectorAll("#map > svg rect.node[style*='display: none']")
-      .forEach((element) => {
-        (element as HTMLElement).style.display = "";
-      });
-    document
-      .querySelectorAll("#map > svg g[style*='display: none']")
-      .forEach((group) => {
-        (group as SVGGElement).style.display = "";
-      });
-    document
-      .querySelectorAll("#map > svg path.edge[style*='display: none']")
-      .forEach((edge) => {
-        (edge as SVGPathElement).style.display = "";
-      });
-
-    // this handles later changes after the page loads
-    document.querySelectorAll("#map > svg rect.node").forEach((n) => {
-      n.classList.remove("selected");
-      n.classList.remove("greyed-out");
-      n.classList.remove("failed-actions");
-    });
-
-    // Remove greyed-out classes from text elements
-    document
-      .querySelectorAll("#map > svg text")
-      .forEach((n) => n.classList.remove("greyed-out"));
-
-    // Reset opacity for all icons and color bars
-    document.querySelectorAll("#map > svg path").forEach((path) => {
-      if (path.getAttribute("stroke")) {
-        path.setAttribute("stroke-opacity", "1");
-      } else {
-        (path as HTMLElement).style.opacity = "1";
-      }
-    });
-
-    const query: SelectionsInQueryString = { ...currentQuery };
-
-    delete query.c;
-
-    // Store multiple selected component IDs as comma-separated string
-    if (selectedComponents.value.size > 0) {
-      const selectedIds = Array.from(selectedComponents.value).map((c) => c.id);
-      query.c = selectedIds.join(",");
-    }
-
-    // Add selected class to all selected components and ensure they're not greyed out
-    selectedComponents.value.forEach((component) => {
-      const element = document.querySelector(
-        `#map > svg rect.node.id-${component.id}`,
-      );
-      if (element) {
-        element.classList.add("selected");
-        element.classList.remove("greyed-out"); // Explicitly remove greyed-out class
-      }
-    });
-
-    if (selectedComponents.value.size > 0) {
-      // In hideSubscriptions mode, the mapData computed already filters the components
-      // so we don't need to do DOM manipulation here. Just handle styling for normal mode.
-      const shouldHideUnconnected =
-        router.currentRoute.value.query.hideSubscriptions === "1";
-
-      if (!shouldHideUnconnected) {
-        // Normal behavior: just grey out unconnected components (since all are rendered)
-        document.querySelectorAll("#map > svg rect.node").forEach((element) => {
-          const componentId = Array.from(element.classList)
-            .find((cls) => cls.startsWith("id-"))
-            ?.substring(3);
-
-          if (componentId) {
-            const isInConnectedIds =
-              connectedComponentIds.value.has(componentId);
-            const hasSelectedClass = element.classList.contains("selected");
-
-            if (!isInConnectedIds && !hasSelectedClass) {
-              element.classList.add("greyed-out");
-            }
-          }
-        });
-
-        // Grey out unconnected component text and icons
-        document.querySelectorAll("#map > svg g").forEach((group) => {
-          const rect = group.querySelector("rect.node");
-          const componentId = Array.from(rect?.classList || [])
-            .find((cls) => cls.startsWith("id-"))
-            ?.substring(3);
-
-          if (
-            componentId &&
-            !connectedComponentIds.value.has(componentId) &&
-            !rect?.classList.contains("selected")
-          ) {
-            // Grey out text and icons
-            group.querySelectorAll("text").forEach((text) => {
-              text.classList.add("greyed-out");
-            });
-            group.querySelectorAll("path").forEach((path) => {
-              if (path.getAttribute("stroke")) {
-                path.setAttribute("stroke-opacity", "0.3");
-              } else {
-                path.style.opacity = "0.3";
-              }
-            });
-          }
-        });
-      }
-
-      // Handle edge styling for both modes
-      document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
-        const edgeElement = edge as SVGPathElement;
-        const edgeId = edgeElement.getAttribute("data-edge-id");
-
-        if (edgeId) {
-          const [targetId, sourceId] = edgeId.split("-");
-          const isConnectedToSelected = Array.from(
-            selectedComponents.value,
-          ).some(
-            (component) =>
-              targetId === component.id || sourceId === component.id,
-          );
-
-          // Update stroke color - theme aware
-          const isDark = document.body.classList.contains("dark");
-          const connectedColor = isDark ? "#93c5fd" : "#3b82f6"; // action-300 : action-500
-          const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
-
-          edgeElement.style.stroke = isConnectedToSelected
-            ? connectedColor
-            : greyedColor;
-          // Update opacity
-          edgeElement.style.opacity =
-            selectedComponents.value.size === 0 || isConnectedToSelected
-              ? "1"
-              : "0.3";
-          // Update stroke width
-          edgeElement.style.strokeWidth = isConnectedToSelected ? "2" : "1";
-          // Update arrow marker
-          edgeElement.setAttribute(
-            "marker-end",
-            isConnectedToSelected
-              ? "url(#arrowhead-highlighted)"
-              : "url(#arrowhead-greyed)",
-          );
-        }
-      });
-    } else {
-      // Reset edges to default when no component is selected
-      document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
-        const edgeElement = edge as SVGPathElement;
-        // Reset to default - theme aware
-        const isDark = document.body.classList.contains("dark");
-        const defaultColor = isDark ? "#9ca3af" : "#6b7280"; // neutral-400 : neutral-500
-
-        edgeElement.style.stroke = defaultColor;
-        edgeElement.style.opacity = "1";
-        edgeElement.style.strokeWidth = "1";
-        edgeElement.setAttribute("marker-end", "url(#arrowhead)");
-      });
-    }
-
-    if (selectedComponents.value.size > 0) {
-      // Handle selected component styling
-      selectedComponents.value.forEach((component) => {
-        const group = document.querySelector(
-          `#map > svg g:has(rect.node.id-${component.id})`,
-        );
-        if (group) {
-          // If this is a selected component, explicitly remove greyed-out styling
-          group.querySelectorAll("text").forEach((text) => {
-            text.classList.remove("greyed-out");
-          });
-
-          // Reset opacity for icons and color bars
-          group.querySelectorAll("path").forEach((path) => {
-            if (path.getAttribute("stroke")) {
-              path.setAttribute("stroke-opacity", "1");
-            } else {
-              path.style.opacity = "1";
-            }
-          });
-        }
-      });
-    }
-
-    // Add failed-actions class to components with failed actions (including selected ones)
-    document.querySelectorAll("#map > svg rect.node").forEach((element) => {
-      const componentId = Array.from(element.classList)
-        .find((cls) => cls.startsWith("id-"))
-        ?.substring(3);
-
-      if (componentId && props.componentsWithFailedActions.has(componentId)) {
-        element.classList.add("failed-actions");
-      }
-    });
-
-    router.push({ query });
-  },
-  { deep: true },
-);
-
-const connectedComponentIds = computed(() => {
-  const connectedIds = new Set<string>();
-  if (
-    !connections.data.value ||
-    !props.components ||
-    props.components.length === 0
-  ) {
-    return connectedIds;
-  }
-
-  // Always include selected components (even if they have no connections)
-  selectedComponents.value.forEach((component) => {
-    connectedIds.add(component.id);
-  });
-
-  // When hideSubscriptions=1, also include any component from URL parameter
-  const shouldHideUnconnected =
-    router.currentRoute.value.query.hideSubscriptions === "1";
-  if (shouldHideUnconnected && router.currentRoute.value.query.c) {
-    const urlComponentIds = router.currentRoute.value.query.c
-      .toString()
-      .split(",");
-    urlComponentIds.forEach((id) => {
-      if (id.trim()) {
-        connectedIds.add(id.trim());
-      }
-    });
-  }
-
-  // Find ONLY direct (first-level) connections to selected components
-  selectedComponents.value.forEach((selectedComp) => {
-    const selectedId = selectedComp.id;
-
-    connections.data.value?.forEach((component) => {
-      component.connections.forEach((connection) => {
-        // Only add direct connections (not transitive)
-        if (connection.toComponentId === selectedId) {
-          connectedIds.add(connection.fromComponentId);
-        }
-        if (connection.fromComponentId === selectedId) {
-          connectedIds.add(connection.toComponentId);
-        }
-      });
-    });
-  });
-
-  return connectedIds;
-});
 
 // Note: Connection filtering is now handled in the mapData computed,
 // so we no longer need separate DOM manipulation for hiding/showing components
@@ -1634,6 +1378,7 @@ watch(
 
         if (selectedComps.length > 0) {
           selectedComponents.value = new Set(selectedComps);
+          emit("selectedComponents", selectedComponents.value);
           // Set up pending pan for when layout becomes available
           if (selectedComps[0]) {
             pendingPanComponent.value = selectedComps[0].id;
@@ -1903,6 +1648,7 @@ const isLoading = computed(() => connections.isLoading.value);
 
 const emit = defineEmits<{
   (e: "deselect"): void;
+  (e: "selectedComponents", components: Set<ComponentInList>): void;
   (e: "help"): void;
 }>();
 
