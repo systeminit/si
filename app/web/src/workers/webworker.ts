@@ -1435,8 +1435,7 @@ const handlePatchOperations = async (
         atom.id,
         indexChecksum,
         true,
-        false,
-        false,
+        true,
       );
     } catch (err) {
       error("Failed to remove atom", err);
@@ -1463,6 +1462,7 @@ const handlePatchOperations = async (
         atom.id,
         indexChecksum,
         false,
+        true,
       );
     } catch (err) {
       error("Failed to apply NoOp patch", err, atom);
@@ -1480,8 +1480,7 @@ const handlePatchOperations = async (
         atom.id,
         indexChecksum,
         false,
-        false,
-        false,
+        true,
       );
     } catch (err) {
       error("Failed to post process atom", atom, error);
