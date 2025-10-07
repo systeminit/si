@@ -1041,7 +1041,7 @@ export function funcCreateOrEditTool(server: McpServer) {
 
             // issue a warning if the schema this function is being created on is a builtin
             if (responseGetVariant.data.installedFromUpstream) {
-              hints = "Warn the user that because this function was created on a schema created by System Initiative that they will lose their customizations (like this functino) if they upgrade the schema.";
+              hints = "Warn the user that because this function was created on a schema created by System Initiative that they will lose their customizations (like this function) if they upgrade the schema.";
             }
 
             // use the correct funciton create endpoint based on the type of function
