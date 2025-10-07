@@ -29,12 +29,18 @@
     </template>
 
     <template #grid>
-      <GridItemWithLiveHeader class="row-span-3" title="Code" :live="false">
+      <GridItemWithLiveHeader
+        class="row-span-3"
+        title="Code"
+        :live="false"
+        disableCollapse
+      >
         <CodeViewer
           v-if="functionCode"
           :code="functionCode"
           language="javascript"
           allowCopy
+          forceLineNumbers
         />
         <div v-else class="text-neutral-400 italic text-xs p-xs">
           No code available
@@ -45,12 +51,14 @@
         class="row-span-3"
         title="Arguments"
         :live="false"
+        disableCollapse
       >
         <CodeViewer
           v-if="argsJson"
           :code="argsJson"
           language="json"
           allowCopy
+          forceLineNumbers
         />
         <div v-else class="text-neutral-400 italic text-xs p-xs">
           No arguments available

@@ -14,6 +14,7 @@
     "
     :errorMessageRaw="managementFuncJobState?.message"
     :isLive="isLive"
+    :collapsingStyles="collapsingStyles"
   >
     <template #headerList>
       <template v-if="funcRun.functionKind">
@@ -61,36 +62,39 @@
       />
     </template>
     <template #grid>
-      <GridItemWithLiveHeader title="Code" :live="false">
+      <GridItemWithLiveHeader ref="codeRef" title="Code" :live="false">
         <CodeViewer
           v-if="functionCode"
           :code="functionCode"
           language="javascript"
           allowCopy
+          forceLineNumbers
         />
         <div v-else class="text-neutral-400 italic text-xs p-xs">
           No code available
         </div>
       </GridItemWithLiveHeader>
 
-      <GridItemWithLiveHeader title="Arguments" :live="false">
+      <GridItemWithLiveHeader ref="argsRef" title="Arguments" :live="false">
         <CodeViewer
           v-if="argsJson"
           :code="argsJson"
           language="json"
           allowCopy
+          forceLineNumbers
         />
         <div v-else class="text-neutral-400 italic text-xs p-xs">
           No arguments available
         </div>
       </GridItemWithLiveHeader>
 
-      <GridItemWithLiveHeader title="Result" :live="false">
+      <GridItemWithLiveHeader ref="resultRef" title="Result" :live="false">
         <CodeViewer
           v-if="resultJson"
           :code="resultJson"
           language="json"
           allowCopy
+          forceLineNumbers
         />
         <div v-else class="text-neutral-400 italic text-xs p-xs">
           No result available
@@ -370,5 +374,15 @@ onMounted(() => {
 // Ensure cleanup on component unmount
 onBeforeUnmount(() => {
   keyEmitter.off("Escape");
+});
+
+const codeRef = ref<InstanceType<typeof GridItemWithLiveHeader>>();
+const argsRef = ref<InstanceType<typeof GridItemWithLiveHeader>>();
+const resultRef = ref<InstanceType<typeof GridItemWithLiveHeader>>();
+
+// Calculate collapsing styles
+const collapsingStyles = computed(() => {
+  if (!codeRef.value || !argsRef.value || !resultRef.value) return undefined;
+  return `grid-template-rows: ${codeRef.value.collapseStyle} ${argsRef.value.collapseStyle} ${resultRef.value.collapseStyle};`;
 });
 </script>

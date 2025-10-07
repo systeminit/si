@@ -68,18 +68,17 @@
     />
 
     <div
-      :class="
-        clsx(
-          'grid grid-cols-[1fr_1fr] grid-rows-[1fr_1fr_1fr] gap-xs p-xs h-full overflow-hidden',
-          !errorHint && 'pt-xs',
-        )
-      "
+      v-if="noLogs"
+      class="grid grid-cols-[1fr_1fr] grid-rows-[1fr_1fr_1fr] gap-xs p-xs min-h-0"
     >
+      <slot name="grid" />
+    </div>
+    <div v-else class="flex flex-row flex-1 min-h-0 p-xs gap-xs">
       <GridItemWithLiveHeader
-        v-if="!noLogs"
-        class="row-span-3"
+        class="basis-1/2"
         title="Logs"
         :live="!!isLive && funcRun?.state === 'Running'"
+        disableCollapse
       >
         <CodeViewer
           v-if="logText"
@@ -87,12 +86,18 @@
           :code="logText"
           language="log"
           allowCopy
+          forceLineNumbers
         />
         <div v-else class="text-neutral-400 italic text-xs p-xs">
           No logs available
         </div>
       </GridItemWithLiveHeader>
-      <slot name="grid"> </slot>
+      <div
+        class="grid basis-1/2 gap-xs h-full overflow-hidden min-h-0"
+        :style="gridStyles"
+      >
+        <slot name="grid" />
+      </div>
     </div>
   </section>
 </template>
@@ -117,21 +122,15 @@ const props = defineProps<{
   isLive?: boolean;
   errorHint?: string;
   errorMessageRaw?: string;
+  collapsingStyles?: string;
 }>();
 
-const logText = computed(() => {
-  if (props.errorHint && props.errorMessageRaw)
-    return `${props.logText}\n${props.errorHint}\nRaw error message: ${props.errorMessageRaw}`;
-  if (props.errorHint && !props.errorMessageRaw)
-    return `${props.logText}\n${props.errorHint}`;
-  if (!props.errorHint && props.errorMessageRaw)
-    return `${props.logText}\nRaw error message: ${props.errorMessageRaw}`;
-  return props.logText;
-});
+const gridStyles = computed(
+  () => props.collapsingStyles ?? "grid-template-rows: 1fr 1fr 1fr;",
+);
 
 const router = useRouter();
 const route = useRoute();
-const logsContainer = ref<InstanceType<typeof CodeViewer> | null>(null);
 
 // Navigate back to explore_grid view
 const navigateBack = () => {
@@ -144,6 +143,18 @@ const navigateBack = () => {
     query: { retainSessionState: 1 },
   });
 };
+
+const logText = computed(() => {
+  if (props.errorHint && props.errorMessageRaw)
+    return `${props.logText}\n${props.errorHint}\nRaw error message: ${props.errorMessageRaw}`;
+  if (props.errorHint && !props.errorMessageRaw)
+    return `${props.logText}\n${props.errorHint}`;
+  if (!props.errorHint && props.errorMessageRaw)
+    return `${props.logText}\nRaw error message: ${props.errorMessageRaw}`;
+  return props.logText;
+});
+
+const logsContainer = ref<InstanceType<typeof CodeViewer> | null>(null);
 
 // Watch for log updates to scroll to bottom when they're loaded
 watch(
