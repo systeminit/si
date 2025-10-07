@@ -14,13 +14,13 @@ async function main(component: Input): Promise<Output> {
 
   let deleteAttempt = 0;
   const baseDelay = 1000;
-  const maxDelay = 120000;
+  const maxDelay = 90000;
   let progressEvent;
 
   console.log(`Starting delete operation for resourceId: ${resourceId}, region: ${_.get(component, "properties.domain.extra.Region", "")}`);
-  
+
   // Retry initial delete operation if rate limited
-  while (deleteAttempt < 10) {
+  while (deleteAttempt < 20) {
     const child = await siExec.waitUntilEnd("aws", [
       "cloudcontrol",
       "delete-resource",
@@ -33,25 +33,25 @@ async function main(component: Input): Promise<Output> {
     ]);
 
     console.log(`Delete attempt ${deleteAttempt + 1}: AWS CLI exit code: ${child.exitCode}`);
-    
+
     if (child.exitCode !== 0) {
-      const isRateLimited = child.stderr.includes("Throttling") || 
+      const isRateLimited = child.stderr.includes("Throttling") ||
                            child.stderr.includes("TooManyRequests") ||
                            child.stderr.includes("RequestLimitExceeded") ||
                            child.stderr.includes("ThrottlingException");
-      
-      if (isRateLimited && deleteAttempt < 9) {
+
+      if (isRateLimited && deleteAttempt < 19) {
         console.log(`Delete attempt ${deleteAttempt + 1} rate limited, will retry`);
       } else {
         console.error(`Delete attempt ${deleteAttempt + 1} failed:`, child.stderr);
       }
-      
-      if (isRateLimited && deleteAttempt < 9) {
+
+      if (isRateLimited && deleteAttempt < 19) {
         deleteAttempt++;
         const exponentialDelay = Math.min(baseDelay * Math.pow(2, deleteAttempt - 1), maxDelay);
         const jitter = Math.random() * 0.3 * exponentialDelay;
         const finalDelay = exponentialDelay + jitter;
-        
+
         console.log(`[DELETE] Rate limited on attempt ${deleteAttempt}, waiting ${Math.round(finalDelay)}ms before retry`);
         await delay(finalDelay);
         continue;
@@ -96,21 +96,21 @@ async function main(component: Input): Promise<Output> {
     // Check for rate limiting in stderr regardless of exit code
     const hasStderrError = child.stderr && child.stderr.trim().length > 0;
     const isRateLimited = hasStderrError && (
-      child.stderr.includes("Throttling") || 
+      child.stderr.includes("Throttling") ||
       child.stderr.includes("TooManyRequests") ||
       child.stderr.includes("RequestLimitExceeded") ||
       child.stderr.includes("ThrottlingException")
     );
 
     if (child.exitCode !== 0) {
-      if (isRateLimited && attempt < 10) {
+      if (isRateLimited && attempt < 20) {
         console.log(`[DELETE] Status poll ${attempt + 1} rate limited, will retry`);
         shouldRetry = true;
       } else {
         console.error(`[DELETE] Status poll ${attempt + 1} failed:`, child.stderr);
       }
-      
-      if (!isRateLimited || attempt >= 10) {
+
+      if (!isRateLimited || attempt >= 20) {
         return {
           status: "error",
           message:
@@ -121,12 +121,12 @@ async function main(component: Input): Promise<Output> {
       try {
         const currentProgressEvent = JSON.parse(child.stdout);
         console.log(`[DELETE] Status poll ${attempt + 1} response:`, JSON.stringify(currentProgressEvent, null, 2));
-        
+
         // Log stderr warnings but don't fail if we have valid JSON
         if (hasStderrError) {
           console.warn("AWS CLI stderr (non-fatal):", child.stderr);
         }
-        
+
         const operationStatus =
           currentProgressEvent["ProgressEvent"]["OperationStatus"];
         if (operationStatus == "SUCCESS") {
@@ -150,8 +150,8 @@ async function main(component: Input): Promise<Output> {
         console.error("Failed to parse AWS response:", parseError);
         console.error("Raw stdout:", child.stdout);
         console.error("Raw stderr:", child.stderr);
-        
-        if (isRateLimited && attempt < 10) {
+
+        if (isRateLimited && attempt < 20) {
           console.log(`[DELETE] Parse error with rate limiting on attempt ${attempt + 1}, will retry after backoff`);
           shouldRetry = true;
         } else {
@@ -168,14 +168,14 @@ async function main(component: Input): Promise<Output> {
       const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
       const jitter = Math.random() * 0.3 * exponentialDelay;
       const finalDelay = exponentialDelay + jitter;
-      
+
       console.log(`[DELETE] Waiting ${Math.round(finalDelay)}ms before status poll attempt ${attempt + 1}`);
       await delay(finalDelay);
     }
   }
 
   console.log(`[DELETE] Final result: success=${success}`);
-  
+
   if (success) {
     console.log(`[DELETE] Returning success`);
     return {
