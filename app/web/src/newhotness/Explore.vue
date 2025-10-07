@@ -449,6 +449,7 @@
         :components="filteredComponents"
         :componentsWithFailedActions="componentsHaveActionsWithState.failed"
         @deselect="onMapDeselect"
+        @selectedComponents="onMapSelectedComponentsChange"
         @help="openShortcutModal"
       />
     </div>
@@ -1790,24 +1791,40 @@ const resetFilter = () => {
 let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 let lastScrollTime = 0;
 
+const mapSelectedIds = ref<string[]>([]);
+const onMapSelectedComponentsChange = (components: Set<ComponentInList>) => {
+  const ids = [...components.values()].map((c) => c.id);
+  mapSelectedIds.value = ids;
+};
+
 // Update the query of the route (allowing for URL links) when the group by selection change.
-watch(searchString, () => {
-  const query: SelectionsInQueryString = {
-    ...router.currentRoute.value?.query,
-  };
+watch(
+  () => [searchString, mapSelectedIds],
+  () => {
+    const query: SelectionsInQueryString = {
+      ...router.currentRoute.value?.query,
+    };
 
-  if (!searchString.value) {
-    // if search string is empty, remove it from the URL
-    delete query.searchQuery;
-  } else {
-    query.searchQuery = searchString.value;
-  }
+    if (!searchString.value) {
+      // if search string is empty, remove it from the URL
+      delete query.searchQuery;
+    } else {
+      query.searchQuery = searchString.value;
+    }
 
-  storeFilterAndGroup(query);
-  router.replace({
-    query,
-  });
-});
+    if (mapSelectedIds.value.length === 0) {
+      delete query.c;
+    } else {
+      query.c = mapSelectedIds.value.join(",");
+    }
+
+    storeFilterAndGroup(query);
+    router.replace({
+      query,
+    });
+  },
+  { deep: true },
+);
 
 // this is so that when on the map view, if you have a component selected
 // and start searching, we clear the selected component
