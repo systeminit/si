@@ -46,6 +46,7 @@ mod apply;
 mod approval_status;
 mod approve;
 mod cancel_approval_request;
+mod components_on_head;
 mod create;
 mod create_initialize_apply;
 mod force_apply;
@@ -222,6 +223,10 @@ pub async fn post_to_webhook(
 pub fn change_sets_routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list::list_actionable))
+        .route(
+            "/components_on_head",
+            get(components_on_head::components_on_head),
+        )
         .route("/create_change_set", post(create::create_change_set))
         .route(
             "/create_initialize_apply",
