@@ -56,18 +56,21 @@ pub async fn search(
 
 /// Component data in search results.
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ComponentSearchResult {
-    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79AA")]
+    #[schema(example = "01H9ZQD35JPMBGHH69BT0Q79AA", value_type = String)]
     pub id: ComponentId,
-    #[schema(value_type = String, example = "MyInstance")]
+    #[schema(example = "MyInstance")]
     pub name: String,
     pub schema: ComponentSearchResultSchema,
+    pub highlighted_attributes: HashMap<String, serde_json::Value>,
 }
 
 /// The schema for a component in search results.
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ComponentSearchResultSchema {
-    #[schema(value_type = String, example = "AWS::EC2::Instance")]
+    #[schema(example = "AWS::EC2::Instance")]
     pub name: String,
 }
 
@@ -80,13 +83,15 @@ async fn match_component(
     query: Arc<SearchQuery>,
 ) -> Result<Option<ComponentSearchResult>> {
     let attribute_tree = attribute_tree_mv(frigg, workspace_pk, index_ref).await?;
-    if match_attribute_tree(&attribute_tree, &query) {
+    let mut highlighted_attributes = HashMap::new();
+    if match_attribute_tree(&attribute_tree, &query, &mut highlighted_attributes) {
         Ok(Some(ComponentSearchResult {
             id: attribute_tree.id,
             name: attribute_tree.component_name,
             schema: ComponentSearchResultSchema {
                 name: attribute_tree.schema_name,
             },
+            highlighted_attributes,
         }))
     } else {
         Ok(None)
@@ -97,26 +102,38 @@ async fn match_component(
 ///
 /// This is called once for each term in the query, and the results are combined according to
 /// query rules (AND, OR, NOT).
-fn match_attribute_tree(attribute_tree: &AttributeTreeForSearch, query: &SearchQuery) -> bool {
+fn match_attribute_tree(
+    attribute_tree: &AttributeTreeForSearch,
+    query: &SearchQuery,
+    highlighted_attributes: &mut HashMap<String, serde_json::Value>,
+) -> bool {
     match query {
         SearchQuery::MatchValue(term) => {
             term.match_str(&attribute_tree.component_name)
                 || term.match_str(&attribute_tree.schema_name)
                 || term.match_ulid(attribute_tree.id)
         }
-        // TODO support schema:, category:, component: and id:
-        SearchQuery::MatchAttr { name, terms } => attribute_tree
-            .attribute_values
-            .values()
-            .filter(|av| match_attr_path(&av.path, name))
-            .any(|av| match_attr_value(&av.value, terms)),
+
+        SearchQuery::MatchAttr { name, terms } => {
+            // TODO support schema:, category:, component: and id:
+
+            for av in attribute_tree.attribute_values.values() {
+                if match_attr_path(&av.path, name) && match_attr_value(&av.value, terms) {
+                    highlighted_attributes.insert(av.path.clone(), av.value.clone());
+                    return true;
+                }
+            }
+            false
+        }
         SearchQuery::And(queries) => queries
             .iter()
-            .all(|query| match_attribute_tree(attribute_tree, query)),
+            .all(|query| match_attribute_tree(attribute_tree, query, highlighted_attributes)),
         SearchQuery::Or(queries) => queries
             .iter()
-            .any(|query| match_attribute_tree(attribute_tree, query)),
-        SearchQuery::Not(sub_query) => !match_attribute_tree(attribute_tree, sub_query),
+            .any(|query| match_attribute_tree(attribute_tree, query, highlighted_attributes)),
+        SearchQuery::Not(sub_query) => {
+            !match_attribute_tree(attribute_tree, sub_query, highlighted_attributes)
+        }
         SearchQuery::All => true,
     }
 }
