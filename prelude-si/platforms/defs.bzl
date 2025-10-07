@@ -34,7 +34,9 @@ def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
 
     name = ctx.label.raw_target()
 
-    remote_enabled = False if (is_macos) else True
+    # Check if RBE is enabled via buckconfig (set by Nix flake based on SI_RBE_TOKEN)
+    rbe_enabled = read_root_config("rbe", "enabled", "false") == "true"
+    remote_enabled = False if (is_macos) else rbe_enabled
 
     platform = ExecutionPlatformInfo(
         label = name,
