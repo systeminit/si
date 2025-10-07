@@ -329,9 +329,10 @@ impl ValidationOutput {
 
     /// If an attribute value is for a [Prop](Prop) that has a `validation_format`, run a validation
     /// for that format.
-    pub async fn compute_for_attribute_value(
+    pub(crate) async fn compute_for_attribute_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
+        parent_span: Span,
     ) -> ValidationResult<Option<ValidationOutput>> {
         let value = AttributeValue::get_by_id(ctx, attribute_value_id)
             .await?
@@ -343,7 +344,7 @@ impl ValidationOutput {
             Some(validation_format) => Ok(Some(
                 // If we can't deserialize the validation format, run remotely
                 match serde_json::from_str(&validation_format) {
-                    Ok(validator) => run_locally(validator, value),
+                    Ok(validator) => run_locally(validator, value, parent_span),
                     Err(serde_error) => {
                         run_remotely(
                             ctx,
@@ -351,6 +352,7 @@ impl ValidationOutput {
                             value,
                             validation_format,
                             Some(serde_error),
+                            parent_span,
                         )
                         .await?
                     }
@@ -391,10 +393,15 @@ impl ValidationOutput {
 #[instrument(
     name = "validation.run_locally",
     level = "info",
+    parent = parent_span,
     skip_all,
     fields(si.validation.rules = %validator.rule_names().join(", "))
 )]
-fn run_locally(validator: Validator, value: Option<serde_json::Value>) -> ValidationOutput {
+fn run_locally(
+    validator: Validator,
+    value: Option<serde_json::Value>,
+    parent_span: Span,
+) -> ValidationOutput {
     // We treat value as undefined if it's null
     let value = match value {
         Some(serde_json::Value::Null) => None,
@@ -415,6 +422,7 @@ fn run_locally(validator: Validator, value: Option<serde_json::Value>) -> Valida
 #[instrument(
     name = "validation.run_remotely",
     level = "info",
+    parent = parent_span,
     skip_all,
     fields(si.validation.because = because.map(|e| e.to_string()))
 )]
@@ -424,6 +432,7 @@ async fn run_remotely(
     value: Option<serde_json::Value>,
     validation_format: String,
     because: Option<serde_json::Error>,
+    parent_span: Span,
 ) -> ValidationResult<ValidationOutput> {
     let result_channel =
         FuncRunner::run_validation_format(ctx, attribute_value_id, value, validation_format)
