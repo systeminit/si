@@ -286,6 +286,8 @@ pub struct GetSchemaVariantV1Response {
     pub color: String,
     #[schema(value_type = bool, example = false)]
     pub is_locked: bool,
+    #[schema(value_type = bool, example = false)]
+    pub installed_from_upstream: bool,
     #[schema(value_type = Option<String>, example = "Amazon EC2 Instance resource type")]
     pub description: Option<String>,
     #[schema(value_type = Option<String>, example = "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html")]

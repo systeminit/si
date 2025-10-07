@@ -78,12 +78,23 @@ pub async fn get_default_variant(
                     .map(SchemaVariantFunc::from)
                     .collect();
 
+                // We know it is a builtin if we find a CachedSchema for its schema id
+                // The only cached schemas we currently build are builtins - if that changes, this logic will need to change!
+                let installed_from_upstream = (frigg
+                    .get_current_deployment_object(
+                        ReferenceKind::CachedSchema,
+                        &schema_id.to_string(),
+                    )
+                    .await?)
+                    .is_some();
+
                 let response = GetSchemaVariantV1Response {
                     variant_id: luminork_default_variant.variant_id,
                     display_name: luminork_default_variant.display_name,
                     category: luminork_default_variant.category,
                     color: luminork_default_variant.color,
                     is_locked: luminork_default_variant.is_locked,
+                    installed_from_upstream,
                     description: luminork_default_variant.description,
                     link: luminork_default_variant.link,
                     asset_func_id: luminork_default_variant.asset_func_id,
@@ -158,6 +169,7 @@ pub async fn get_default_variant(
                     category: cached_default_variant.category,
                     color: cached_default_variant.color,
                     is_locked: cached_default_variant.is_locked,
+                    installed_from_upstream: true,
                     description: cached_default_variant.description,
                     link: cached_default_variant.link,
                     asset_func_id: cached_default_variant.asset_func_id,
