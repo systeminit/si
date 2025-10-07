@@ -588,6 +588,8 @@ onBeforeMount(async () => {
     { immediate: true },
   );
 
+  heimdall.showInterest(thisWorkspacePk, changeSetId.value);
+
   // NOTE: onBeforeMount doesn't wait on promises
   // the page will load before execution finishes
   await heimdall.muspelheim(thisWorkspacePk, true);

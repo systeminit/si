@@ -9,6 +9,7 @@ import {
 import { changeSetExists, muspelheimStatuses } from "@/store/realtime/heimdall";
 import router from "@/router";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import * as heimdall from "@/store/realtime/heimdall";
 import { assertIsDefined, Context } from "../types";
 import * as rainbow from "../logic_composables/rainbow_counter";
 import { reset } from "../logic_composables/navigation_stack";
@@ -567,6 +568,8 @@ export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
         retry += 1;
       }, INTERVAL);
     });
+    assertIsDefined(ctx);
+    heimdall.showInterest(ctx.workspacePk.value, newChangeSetId);
     await router.push(to);
     reset();
   };

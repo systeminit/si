@@ -220,6 +220,13 @@ export const initCompleted = computed(
   () => ranInit.value && lockAcquired.value,
 );
 
+export const showInterest = async (
+  workspaceId: string,
+  changeSetId: ChangeSetId,
+) => {
+  await db.showInterest(workspaceId, changeSetId);
+};
+
 const bustTanStackCache: BustCacheFn = (
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,

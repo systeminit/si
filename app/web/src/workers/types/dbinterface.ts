@@ -113,6 +113,10 @@ export type BroadcastMessage =
       arguments: { changeSetId: ChangeSetId; label: string };
     }
   | {
+      messageKind: "interest";
+      arguments: Record<string, number>;
+    }
+  | {
       messageKind: "lobbyExit";
       arguments: { workspaceId: string; changeSetId: string };
     };
@@ -228,6 +232,7 @@ export interface SharedDBInterface {
     id: Id,
     checksum?: Checksum,
   ): Promise<void>;
+  showInterest(workspaceId: string, changeSetId: ChangeSetId): Promise<void>;
 
   changeSetExists(
     workspaceId: string,
@@ -261,6 +266,7 @@ export interface TabDBInterface {
   migrate: (testing: boolean) => Database;
   setBearer: (workspaceId: string, token: string) => void;
   initSocket(workspaceId: string): Promise<void>;
+  receiveInterest(interest: Record<string, number>): void;
   receiveBroadcast(message: BroadcastMessage): Promise<void>;
   initBifrost(gotLockPort: MessagePort): Promise<string>;
   bifrostClose(): void;
@@ -363,7 +369,7 @@ export interface TabDBInterface {
   ): void;
   /* these are used for testing purposes, and should not be used outside the web worker in production code */
   oneInOne(rows: SqlValue[][]): SqlValue | typeof NOROW;
-  encodeDocumentForDB(doc: object): Promise<ArrayBuffer>;
+  encodeDocumentForDB(doc: object): Uint8Array;
   decodeDocumentFromDB(doc: ArrayBuffer): AtomDocument;
   handleWorkspacePatchMessage(data: WorkspacePatchBatch): Promise<void>;
   handleIndexMvPatch(data: WorkspaceIndexUpdate): Promise<void>;

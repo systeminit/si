@@ -38,7 +38,11 @@
         class="mt-[14px] flex-none"
       />
 
-      <ChangeSetPanel ref="changeSetPanelRef" :changeSetId="changeSetId" />
+      <ChangeSetPanel
+        ref="changeSetPanelRef"
+        :workspaceId="props.workspaceId"
+        :changeSetId="changeSetId"
+      />
     </template>
 
     <StatusPanel />
