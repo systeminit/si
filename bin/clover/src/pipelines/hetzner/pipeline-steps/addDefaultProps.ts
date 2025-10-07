@@ -100,6 +100,34 @@ export function addDefaultProps(
       extraProp.entries.push(propUsageMapProp);
     }
 
+    // Create ScalarPropertyMap - tracks root-level domain properties that are scalars
+    // Used by discover/import functions to know which properties to normalize from objects to scalars
+    {
+      const scalarPropertyMapProp = createScalarProp(
+        "ScalarPropertyMap",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+
+      const scalarProperties: string[] = [];
+
+      // Only check root-level domain properties
+      for (const prop of domain.entries) {
+        if (
+          prop.kind === "string" || prop.kind === "number"
+        ) {
+          scalarProperties.push(prop.name);
+        }
+      }
+
+      scalarPropertyMapProp.data.defaultValue = JSON.stringify(
+        scalarProperties,
+      );
+      scalarPropertyMapProp.data.hidden = true;
+      extraProp.entries.push(scalarPropertyMapProp);
+    }
+
     {
       const credProp = createScalarProp(
         "Hetzner Api Token",

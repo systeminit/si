@@ -6,8 +6,21 @@ async function main({ thisComponent }: Input): Promise<Output> {
     );
   }
 
-  const endpoint = _.get(thisComponent.properties, ["domain", "extra", "endpoint"], "");
-  const resourceType = _.get(thisComponent.properties, ["domain", "extra", "HetznerResourceType"], "");
+  const endpoint = _.get(thisComponent.properties, [
+    "domain",
+    "extra",
+    "endpoint",
+  ], "");
+  const resourceType = _.get(thisComponent.properties, [
+    "domain",
+    "extra",
+    "HetznerResourceType",
+  ], "");
+  const scalarPropertyMapJson = _.get(thisComponent.properties, [
+    "domain",
+    "extra",
+    "ScalarPropertyMap",
+  ], "[]");
 
   if (!endpoint) {
     throw new Error("Endpoint not found in extra properties");
@@ -15,6 +28,16 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
   if (!resourceType) {
     throw new Error("HetznerResourceType not found in extra properties");
+  }
+
+  // Parse ScalarPropertyMap to know which properties should be normalized to scalars
+  let scalarProperties: Set<string>;
+  try {
+    const scalarPropsArray = JSON.parse(scalarPropertyMapJson);
+    scalarProperties = new Set(scalarPropsArray);
+  } catch (e) {
+    console.warn("Failed to parse ScalarPropertyMap, using empty set:", e);
+    scalarProperties = new Set();
   }
 
   const create: Output["ops"]["create"] = {};
@@ -47,9 +70,7 @@ async function main({ thisComponent }: Input): Promise<Output> {
         resourceId,
         type: resourceType,
       },
-      domain: {
-        ...resource,
-      },
+      domain: normalizeForSchema(resource, scalarProperties),
       resource: resource,
     };
 
@@ -79,4 +100,52 @@ async function main({ thisComponent }: Input): Promise<Output> {
       actions,
     },
   };
+}
+
+// Normalize API response to match schema expectations
+// When API returns objects but schema expects scalars, extract name or id
+// Only applies to root-level properties that Hetzner returns as objects
+// but the schema defines as strings/numbers (determined from ScalarPropertyMap)
+// Recursively processes nested objects and arrays while preserving structure
+function normalizeForSchema(
+  obj: any,
+  scalarProperties: Set<string>,
+  isRootLevel = true,
+): any {
+  if (!obj || typeof obj !== "object") {
+    return obj;
+  }
+
+  // Handle arrays by recursively normalizing each element
+  if (Array.isArray(obj)) {
+    return obj.map((item) => normalizeForSchema(item, scalarProperties, false));
+  }
+
+  const normalized: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const nestedObj = value as any;
+
+      // Only extract name/id for root-level properties that should be scalars
+      if (isRootLevel && scalarProperties.has(key)) {
+        if (nestedObj.name !== undefined) {
+          normalized[key] = nestedObj.name;
+        } else if (nestedObj.id !== undefined) {
+          normalized[key] = nestedObj.id;
+        } else {
+          // Fallback: preserve structure if no name/id
+          normalized[key] = normalizeForSchema(value, scalarProperties, false);
+        }
+      } else {
+        // Preserve nested structure for all other properties
+        normalized[key] = normalizeForSchema(value, scalarProperties, false);
+      }
+    } else if (Array.isArray(value)) {
+      // Recursively normalize arrays
+      normalized[key] = normalizeForSchema(value, scalarProperties, false);
+    } else {
+      normalized[key] = value;
+    }
+  }
+  return normalized;
 }

@@ -78,7 +78,13 @@ function hetznerParseRawSchema(rawSchema: unknown): SuperSchema[] {
   Object.entries((allSchemas.paths as JsonSchema) || {}).forEach(
     ([endpoint, openApiDescription]) => {
       const noun = endpoint.split("/")[1];
+
+      // Skip action endpoints
       if (endpoint.includes("actions")) return;
+
+      // Skip sub-resource endpoints like /servers/{id}/metrics
+      const pathSegments = endpoint.split("/").filter((s) => s);
+      if (pathSegments.length > 2) return;
 
       if (!resourceOperations[noun]) {
         resourceOperations[noun] = [];
