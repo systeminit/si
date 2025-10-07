@@ -1,15 +1,22 @@
 use std::{
-    collections::HashMap,
+    collections::{
+        HashMap,
+        HashSet,
+    },
     sync::Arc,
 };
 
-use futures::future::try_join_all;
-use itertools::Itertools as _;
 use serde::{
     Deserialize,
     Serialize,
+    de::DeserializeOwned,
 };
 use si_frontend_mv_types::{
+    component::{
+        ComponentDiffStatus,
+        ComponentInList,
+        SchemaMembers,
+    },
     index::change_set::ChangeSetMvIndexVersion,
     reference::IndexReference,
 };
@@ -17,9 +24,11 @@ use si_id::{
     AttributeValueId,
     ChangeSetId,
     ComponentId,
+    SchemaVariantId,
     WorkspacePk,
 };
 use telemetry::prelude::*;
+use tokio::task::JoinSet;
 use utoipa::ToSchema;
 
 use crate::search::{
@@ -36,22 +45,70 @@ pub async fn search(
     change_set_id: ChangeSetId,
     query: &Arc<SearchQuery>,
 ) -> Result<Vec<ComponentSearchResult>> {
-    // Grab the index first
-    let attribute_trees = attribute_tree_mv_index(frigg, workspace_id, change_set_id).await?;
+    // Collect the MVs we care about, spawning them so we fetch in parallel
+    let mut components_in_list = JoinSet::new();
+    let mut attribute_trees = HashMap::new();
+    let mut schema_members = JoinSet::new();
+    for IndexReference { kind, id, checksum } in
+        mv_index(frigg, workspace_id, change_set_id).await?
+    {
+        match kind.as_str() {
+            "AttributeTree" => {
+                attribute_trees.insert(
+                    id.parse::<ComponentId>()?,
+                    tokio::spawn(fetch_mv::<AttributeTreeForSearch>(
+                        frigg.clone(),
+                        workspace_id,
+                        kind,
+                        id,
+                        checksum,
+                    )),
+                );
+            }
+            "ComponentInList" => {
+                components_in_list.spawn(fetch_mv::<ComponentInList>(
+                    frigg.clone(),
+                    workspace_id,
+                    kind,
+                    id,
+                    checksum,
+                ));
+            }
+            "SchemaMembers" => {
+                schema_members.spawn(fetch_mv::<SchemaMembers>(
+                    frigg.clone(),
+                    workspace_id,
+                    kind,
+                    id,
+                    checksum,
+                ));
+            }
+            _ => {}
+        }
+    }
 
-    // Spawn parallel fetch+match tasks for each component
-    let match_tasks = try_join_all(attribute_trees.map(|index_ref| {
-        tokio::spawn(match_component(
-            frigg.clone(),
-            workspace_id,
-            index_ref,
+    // Figure out which schema variants are fully upgraded based on schema_members
+    let latest_variant_ids = Arc::new(latest_variant_ids(schema_members).await?);
+
+    // Actually search through each component
+    let mut results = vec![];
+    while let Some(component_in_list) = components_in_list.join_next().await {
+        let component_in_list = component_in_list??;
+        let attribute_tree = match attribute_trees.remove(&component_in_list.id) {
+            Some(attribute_tree) => Some(attribute_tree.await??),
+            None => None,
+        };
+        // Match the component against the query
+        if let Some(result) = match_component(
+            component_in_list,
+            attribute_tree,
+            latest_variant_ids.clone(),
             query.clone(),
-        ))
-    }))
-    .await?;
-
-    // Wait for them all to complete and collect the results
-    match_tasks.into_iter().flatten_ok().try_collect()
+        )? {
+            results.push(result);
+        }
+    }
+    Ok(results)
 }
 
 /// Component data in search results.
@@ -73,19 +130,24 @@ pub struct ComponentSearchResultSchema {
 
 /// Fetch the AttributeTree MV for a component and match it against the query.
 #[instrument(level = "debug", skip_all, fields(id))]
-async fn match_component(
-    frigg: frigg::FriggStore,
-    workspace_pk: WorkspacePk,
-    index_ref: IndexReference,
+fn match_component(
+    component_in_list: ComponentInList,
+    attribute_tree: Option<AttributeTreeForSearch>,
+    latest_variant_ids: Arc<HashSet<SchemaVariantId>>,
     query: Arc<SearchQuery>,
 ) -> Result<Option<ComponentSearchResult>> {
-    let attribute_tree = attribute_tree_mv(frigg, workspace_pk, index_ref).await?;
-    if match_attribute_tree(&attribute_tree, &query) {
+    // TODO decide just how tolerant to be here
+    if match_query(
+        &component_in_list,
+        attribute_tree.as_ref(),
+        &latest_variant_ids,
+        &query,
+    ) {
         Ok(Some(ComponentSearchResult {
-            id: attribute_tree.id,
-            name: attribute_tree.component_name,
+            id: component_in_list.id,
+            name: component_in_list.name,
             schema: ComponentSearchResultSchema {
-                name: attribute_tree.schema_name,
+                name: component_in_list.schema_name,
             },
         }))
     } else {
@@ -97,26 +159,78 @@ async fn match_component(
 ///
 /// This is called once for each term in the query, and the results are combined according to
 /// query rules (AND, OR, NOT).
-fn match_attribute_tree(attribute_tree: &AttributeTreeForSearch, query: &SearchQuery) -> bool {
+fn match_query(
+    component_in_list: &ComponentInList,
+    attribute_tree: Option<&AttributeTreeForSearch>,
+    latest_variant_ids: &HashSet<SchemaVariantId>,
+    query: &SearchQuery,
+) -> bool {
     match query {
         SearchQuery::MatchValue(term) => {
-            term.match_str(&attribute_tree.component_name)
-                || term.match_str(&attribute_tree.schema_name)
-                || term.match_ulid(attribute_tree.id)
+            term.match_str(&component_in_list.name)
+                || term.match_str(&component_in_list.schema_name)
+                || term.match_ulid(component_in_list.id)
+                || term.match_str(&component_in_list.schema_category)
         }
-        // TODO support schema:, category:, component: and id:
-        SearchQuery::MatchAttr { name, terms } => attribute_tree
-            .attribute_values
-            .values()
-            .filter(|av| match_attr_path(&av.path, name))
-            .any(|av| match_attr_value(&av.value, terms)),
+        SearchQuery::MatchAttr { name, terms } => {
+            let special_match = match name.as_str() {
+                "name" => terms.iter().any(|t| t.match_str(&component_in_list.name)),
+                "schema" => terms
+                    .iter()
+                    .any(|t| t.match_str(&component_in_list.schema_name)),
+                "id" => terms.iter().any(|t| t.match_ulid(component_in_list.id)),
+                "category" => terms
+                    .iter()
+                    .any(|t| t.match_str(&component_in_list.schema_category)),
+                // A component is upgradeable if its schema variant ID is not the latest
+                "isupgradeable" | "isupgradable" | "upgradeable" | "upgradable" => {
+                    let is_latest =
+                        latest_variant_ids.contains(&component_in_list.schema_variant_id);
+                    terms.iter().any(|t| match t.as_str() {
+                        "false" => is_latest,
+                        _ => !is_latest,
+                    })
+                }
+                // diff/hasdiff/diffstatus match whether the component has a diff
+                "diff" | "hasdiff" | "diffstatus" => {
+                    terms.iter().any(|t| match t.as_str() {
+                        "true" | "" => component_in_list.diff_status != ComponentDiffStatus::None,
+                        "added" => component_in_list.diff_status == ComponentDiffStatus::Added,
+                        // TODO probably want to distinguish these cases!
+                        "removed" | "deleted" => {
+                            component_in_list.diff_status == ComponentDiffStatus::Removed
+                        }
+                        "modified" | "changed" => {
+                            component_in_list.diff_status == ComponentDiffStatus::Modified
+                        }
+                        _ => component_in_list.diff_status == ComponentDiffStatus::None,
+                    })
+                }
+                _ => false,
+            };
+
+            // Look for any attributes in the actual tree
+            special_match
+                || attribute_tree.is_some_and(|attribute_tree| {
+                    attribute_tree
+                        .attribute_values
+                        .values()
+                        .filter(|av| match_attr_path(&av.path, name))
+                        .any(|av| match_attr_value(&av.value, terms))
+                })
+        }
         SearchQuery::And(queries) => queries
             .iter()
-            .all(|query| match_attribute_tree(attribute_tree, query)),
+            .all(|query| match_query(component_in_list, attribute_tree, latest_variant_ids, query)),
         SearchQuery::Or(queries) => queries
             .iter()
-            .any(|query| match_attribute_tree(attribute_tree, query)),
-        SearchQuery::Not(sub_query) => !match_attribute_tree(attribute_tree, sub_query),
+            .any(|query| match_query(component_in_list, attribute_tree, latest_variant_ids, query)),
+        SearchQuery::Not(sub_query) => !match_query(
+            component_in_list,
+            attribute_tree,
+            latest_variant_ids,
+            sub_query,
+        ),
         SearchQuery::All => true,
     }
 }
@@ -184,11 +298,11 @@ struct AttributeValueForSearch {
     // pub is_default_source: bool,
 }
 
-async fn attribute_tree_mv_index(
+async fn mv_index(
     frigg: &frigg::FriggStore,
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,
-) -> Result<impl Iterator<Item = IndexReference>> {
+) -> Result<Vec<IndexReference>> {
     // Grab the index
     // TODO don't convert to JSON and immediately convert to struct--convert straight to struct
     let Some((index, _)) = frigg
@@ -204,17 +318,33 @@ async fn attribute_tree_mv_index(
         ChangeSetMvIndexVersion::V1(v1_index) => v1_index.mv_list,
         ChangeSetMvIndexVersion::V2(v2_index) => v2_index.mv_list,
     };
-    Ok(all_mvs.into_iter().filter(|mv| mv.kind == "AttributeTree"))
+    Ok(all_mvs)
 }
 
-// Fetch a single AttributeTree MV
-async fn attribute_tree_mv(
+async fn fetch_mv<T: DeserializeOwned>(
     frigg: frigg::FriggStore,
-    workspace_pk: WorkspacePk,
-    IndexReference { kind, id, checksum }: IndexReference,
-) -> Result<AttributeTreeForSearch> {
+    workspace_id: WorkspacePk,
+    kind: String,
+    id: String,
+    checksum: String,
+) -> Result<T> {
     frigg
-        .get_workspace_object_data(workspace_pk, &kind, &id, &checksum)
+        .get_workspace_object_data(workspace_id, &kind, &id, &checksum)
         .await?
-        .ok_or(Error::MvNotFound(kind, id, checksum))
+        .ok_or_else(|| Error::MvNotFound(kind, id, checksum))
+}
+
+/// Figure out which schema variants are fully upgraded based on schema_members
+async fn latest_variant_ids(
+    mut schema_members: JoinSet<Result<SchemaMembers>>,
+) -> Result<HashSet<SchemaVariantId>> {
+    let mut latest_variant_ids = HashSet::new();
+    while let Some(schema_members) = schema_members.join_next().await {
+        let schema_members = schema_members??;
+        let latest_variant_id = schema_members
+            .editing_variant_id
+            .unwrap_or(schema_members.default_variant_id);
+        latest_variant_ids.insert(latest_variant_id);
+    }
+    Ok(latest_variant_ids)
 }

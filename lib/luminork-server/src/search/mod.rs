@@ -38,6 +38,8 @@ pub enum Error {
     },
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("ulid decode error: {0}")]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }

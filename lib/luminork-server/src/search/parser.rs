@@ -145,7 +145,7 @@ impl<'a> SearchQueryParser<'a> {
         // If this is attr:value:str, this will only read "attr" and we'll read "value:str" next.
         let name_or_value = self
             .consume_until([' ', '(', ')', '&', '|', '!', '"', ':'])
-            .to_string();
+            .to_ascii_lowercase();
 
         // Handle attr:value
         if self.consume(':') {
@@ -154,7 +154,9 @@ impl<'a> SearchQueryParser<'a> {
             // instead of treating it like attr:value (attr="AWS", value=":EC2::Instance"
             // doesn't seem right generally).
             if self.consume(':') {
-                let remaining_value = self.consume_until([' ', '(', ')', '&', '|', '!', '"']);
+                let remaining_value = self
+                    .consume_until([' ', '(', ')', '&', '|', '!', '"'])
+                    .to_ascii_lowercase();
                 return Some(SearchQuery::MatchValue(SearchTerm::Match(format!(
                     "{name_or_value}::{remaining_value}"
                 ))));
@@ -180,7 +182,7 @@ impl<'a> SearchQueryParser<'a> {
     /// Returns Exact if there is a closing quote, StartsWith if not.
     fn parse_quoted_term(&mut self) -> SearchTerm {
         // Read until the next quote or end of string
-        let value = self.consume_until(['"']).to_string();
+        let value = self.consume_until(['"']).to_ascii_lowercase();
         // Parse the final quote.
         if self.consume('"') {
             SearchTerm::Exact(value)
@@ -279,7 +281,7 @@ mod tests {
     fn parse_simple() -> Result<()> {
         assert_eq!(
             parse("Instance")?,
-            SearchQuery::MatchValue(SearchTerm::Match("Instance".to_string()))
+            SearchQuery::MatchValue(SearchTerm::Match("instance".to_string()))
         );
         Ok(())
     }
@@ -288,7 +290,7 @@ mod tests {
     fn parse_exact() -> Result<()> {
         assert_eq!(
             parse("\"Instance\"")?,
-            SearchQuery::MatchValue(SearchTerm::Exact("Instance".to_string()))
+            SearchQuery::MatchValue(SearchTerm::Exact("instance".to_string()))
         );
         Ok(())
     }
@@ -297,7 +299,7 @@ mod tests {
     fn parse_starts_with() -> Result<()> {
         assert_eq!(
             parse("\"Instance")?,
-            SearchQuery::MatchValue(SearchTerm::StartsWith("Instance".to_string()))
+            SearchQuery::MatchValue(SearchTerm::StartsWith("instance".to_string()))
         );
         Ok(())
     }
@@ -321,7 +323,7 @@ mod tests {
         assert_eq!(
             parse("Name:me")?,
             SearchQuery::MatchAttr {
-                name: "Name".to_string(),
+                name: "name".to_string(),
                 terms: vec![SearchTerm::Match("me".to_string())]
             }
         );
@@ -333,7 +335,7 @@ mod tests {
         assert_eq!(
             parse("Name:")?,
             SearchQuery::MatchAttr {
-                name: "Name".to_string(),
+                name: "name".to_string(),
                 terms: vec![]
             }
         );
@@ -345,7 +347,7 @@ mod tests {
         assert_eq!(
             parse("Name:a|b")?,
             SearchQuery::MatchAttr {
-                name: "Name".to_string(),
+                name: "name".to_string(),
                 terms: vec![
                     SearchTerm::Match("a".to_string()),
                     SearchTerm::Match("b".to_string())
@@ -360,7 +362,7 @@ mod tests {
         assert_eq!(
             parse("Name:a|\"b|c\"|d|e|\"f|g")?,
             SearchQuery::MatchAttr {
-                name: "Name".to_string(),
+                name: "name".to_string(),
                 terms: vec![
                     SearchTerm::Match("a".to_string()),
                     SearchTerm::Exact("b|c".to_string()),
@@ -378,7 +380,7 @@ mod tests {
         assert_eq!(
             parse("Name:\"a|b\"")?,
             SearchQuery::MatchAttr {
-                name: "Name".to_string(),
+                name: "name".to_string(),
                 terms: vec![SearchTerm::Exact("a|b".to_string())]
             }
         );
@@ -390,7 +392,7 @@ mod tests {
         assert_eq!(
             parse("Name:\"a|b")?,
             SearchQuery::MatchAttr {
-                name: "Name".to_string(),
+                name: "name".to_string(),
                 terms: vec![SearchTerm::StartsWith("a|b".to_string())]
             }
         );
@@ -401,7 +403,7 @@ mod tests {
     fn parse_double_colon() -> Result<()> {
         assert_eq!(
             parse("AWS::EC2::Instance")?,
-            SearchQuery::MatchValue(SearchTerm::Match("AWS::EC2::Instance".to_string()))
+            SearchQuery::MatchValue(SearchTerm::Match("aws::ec2::instance".to_string()))
         );
         Ok(())
     }
@@ -411,9 +413,9 @@ mod tests {
         assert_eq!(
             parse("ABC D  EF")?,
             SearchQuery::And(vec![
-                SearchQuery::MatchValue(SearchTerm::Match("ABC".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("D".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("EF".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("abc".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("d".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("ef".to_string())),
             ])
         );
         Ok(())
@@ -424,13 +426,13 @@ mod tests {
         assert_eq!(
             parse("A&B&&C & D& E F &G")?,
             SearchQuery::And(vec![
-                SearchQuery::MatchValue(SearchTerm::Match("A".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("B".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("C".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("D".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("E".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("F".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("G".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("a".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("b".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("c".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("d".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("e".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("f".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("g".to_string())),
             ])
         );
         Ok(())
@@ -441,11 +443,11 @@ mod tests {
         assert_eq!(
             parse("A | B|C |D| E")?,
             SearchQuery::Or(vec![
-                SearchQuery::MatchValue(SearchTerm::Match("A".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("B".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("C".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("D".to_string())),
-                SearchQuery::MatchValue(SearchTerm::Match("E".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("a".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("b".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("c".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("d".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("e".to_string())),
             ]),
         );
         Ok(())
@@ -479,19 +481,19 @@ mod tests {
             parse("A&B&&C & D& E F &G | H & I | J")?,
             SearchQuery::Or(vec![
                 SearchQuery::And(vec![
-                    SearchQuery::MatchValue(SearchTerm::Match("A".to_string())),
-                    SearchQuery::MatchValue(SearchTerm::Match("B".to_string())),
-                    SearchQuery::MatchValue(SearchTerm::Match("C".to_string())),
-                    SearchQuery::MatchValue(SearchTerm::Match("D".to_string())),
-                    SearchQuery::MatchValue(SearchTerm::Match("E".to_string())),
-                    SearchQuery::MatchValue(SearchTerm::Match("F".to_string())),
-                    SearchQuery::MatchValue(SearchTerm::Match("G".to_string())),
+                    SearchQuery::MatchValue(SearchTerm::Match("a".to_string())),
+                    SearchQuery::MatchValue(SearchTerm::Match("b".to_string())),
+                    SearchQuery::MatchValue(SearchTerm::Match("c".to_string())),
+                    SearchQuery::MatchValue(SearchTerm::Match("d".to_string())),
+                    SearchQuery::MatchValue(SearchTerm::Match("e".to_string())),
+                    SearchQuery::MatchValue(SearchTerm::Match("f".to_string())),
+                    SearchQuery::MatchValue(SearchTerm::Match("g".to_string())),
                 ]),
                 SearchQuery::And(vec![
-                    SearchQuery::MatchValue(SearchTerm::Match("H".to_string())),
-                    SearchQuery::MatchValue(SearchTerm::Match("I".to_string())),
+                    SearchQuery::MatchValue(SearchTerm::Match("h".to_string())),
+                    SearchQuery::MatchValue(SearchTerm::Match("i".to_string())),
                 ]),
-                SearchQuery::MatchValue(SearchTerm::Match("J".to_string())),
+                SearchQuery::MatchValue(SearchTerm::Match("j".to_string())),
             ])
         );
         Ok(())
@@ -505,7 +507,7 @@ mod tests {
                 SearchQuery::MatchValue(SearchTerm::Match("a".to_string())),
                 SearchQuery::MatchValue(SearchTerm::Match("b".to_string())),
                 SearchQuery::MatchAttr {
-                    name: "Name".to_string(),
+                    name: "name".to_string(),
                     terms: vec![
                         SearchTerm::Match("c".to_string()),
                         SearchTerm::Match("d".to_string())
