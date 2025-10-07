@@ -971,6 +971,7 @@ export function funcCreateOrEditTool(server: McpServer) {
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
 
+        let hints;
         let touchedFuncId;
         try {
           if (funcId) {
@@ -1033,6 +1034,16 @@ export function funcCreateOrEditTool(server: McpServer) {
               schemaVariantId,
             };
 
+            // get variant data for the variant we're working on
+            const responseGetVariant = await siSchemasApi.getVariant({
+              ...baseParams,
+            });
+
+            // issue a warning if the schema this function is being created on is a builtin
+            if (responseGetVariant.data.installedFromUpstream) {
+              hints = "Warn the user that because this function was created on a schema created by System Initiative that they will lose their customizations (like this functino) if they upgrade the schema.";
+            }
+
             // use the correct funciton create endpoint based on the type of function
             if (functionType === "qualification") {
               const responseCreate = await siSchemasApi.createVariantQualification({
@@ -1072,10 +1083,6 @@ export function funcCreateOrEditTool(server: McpServer) {
               }
               else if (actionKind !== "Manual") {
                 // Before attempting to create this action, check if an action of the same type already exists.
-                const responseGetVariant = await siSchemasApi.getVariant({
-                  ...baseParams,
-                });
-
                 let canMakeAction = true;
                 responseGetVariant.data.variantFuncs.forEach((func) => {
                   if (func.funcKind.kind === "action" && func.funcKind.actionKind === actionKind) {
@@ -1109,7 +1116,7 @@ export function funcCreateOrEditTool(server: McpServer) {
           const data: FuncCreateOrEditOutputData = {
             funcId: touchedFuncId,
           };
-          return successResponse(data);
+          return successResponse(data, hints);
         } catch (error) {
           return errorResponse(error);
         }
