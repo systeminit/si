@@ -38,6 +38,7 @@ export enum routes {
   ChangeSetReopen = "ChangeSetReopen",
   ChangeSetRequestApproval = "ChangeSetRequestApproval",
   ComponentDebug = "ComponentDebug",
+  ComponentsOnHead = "ComponentsOnHead",
   CreateComponent = "CreateComponent",
   CreateSecret = "CreateSecret",
   CreateTemplate = "CreateTemplate",
@@ -149,6 +150,7 @@ const _routes: Record<routes, string> = {
   ChangeSets: "/change-sets",
   CreateChangeSet: "/change-sets/create_change_set",
   ChangeSetInitializeAndApply: "/change-sets/create_initialize_apply",
+  ComponentsOnHead: "/change-sets/components_on_head",
   WorkspaceListUsers: "/users",
   // Auth Api Endpoints
   Workspaces: "/workspaces",

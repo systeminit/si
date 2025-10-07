@@ -489,11 +489,36 @@ const checkOnboardingCompleteData = async () => {
   onboardingCompleted.value = !data.firstTimeModal;
 };
 
+const componentsOnHeadApi = useApi(ctx.value);
+const componentsOnHeadQuery = useQuery<boolean | undefined>({
+  queryKey: ["componentsOnHead", workspacePk.value],
+  queryFn: async () => {
+    const call = componentsOnHeadApi.endpoint<{ componentsOnHead: boolean }>(
+      routes.ComponentsOnHead,
+    );
+    const response = await call.get();
+
+    // Check if the request was successful (200/201)
+    if (componentsOnHeadApi.ok(response)) {
+      return response.data.componentsOnHead;
+    }
+
+    // Return undefined on error to indicate we tried but failed
+    // (token failure, SDF down/deploying, network issues, etc.)
+    return undefined;
+  },
+  staleTime: 5000,
+  retry: false, // Don't retry on failure - we want to handle the undefined case
+});
+
+const componentsOnHead = computed(() => componentsOnHeadQuery.data.value);
+
 const lobby = computed(
   () =>
     coldStartInProgress.value ||
     // not looking for feature flag values in here (if for any reason, network connectivity, posthog being down, we didn't get feature flags everyone would be stuck in the lobby)
-    loadedOnboardingStateFromApi.value === false, // Don't continue before we got the response from the auth API
+    loadedOnboardingStateFromApi.value === false || // Don't continue before we got the response from the auth API
+    componentsOnHeadQuery.isFetching.value, // Wait for componentsOnHead check to complete
 );
 
 const showOnboarding = computed(() => {
@@ -501,6 +526,12 @@ const showOnboarding = computed(() => {
   if (DEBUG_MODE) return true;
 
   if (!featureFlagsStore.INITIALIZER_ONBOARD) return false;
+
+  // If undefined (endpoint failed), skip onboarding to avoid blocking the user
+  if (componentsOnHead.value === undefined) return false;
+
+  // If true (components exist on HEAD), skip onboarding
+  if (componentsOnHead.value === true) return false;
 
   return !onboardingCompleted.value;
 });
