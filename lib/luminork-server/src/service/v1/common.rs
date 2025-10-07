@@ -11,6 +11,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use telemetry::prelude::*;
 use thiserror::Error;
 use utoipa::ToSchema;
 
@@ -62,7 +63,17 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let status =
             StatusCode::from_u16(self.status_code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+
+        // Store message before moving self
+        let message = self.message.clone();
+
+        if status.is_client_error() {
+            warn!(err=?self, si.error.message = %message );
+        } else if status.is_server_error() {
+            error!(err=?self, si.error.message = %message );
+        }
         let body = axum::Json(self);
+
         (status, body).into_response()
     }
 }
