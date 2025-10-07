@@ -4,7 +4,9 @@ import { z } from "zod";
 import {
   ActionsApi,
   ComponentsApi,
+  FuncsApi,
   ManagementFuncsApi,
+  SchemasApi,
 } from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
@@ -14,6 +16,7 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 import { AttributesSchema } from "../data/components.ts";
+import { validateSchemaPrereqs } from "../data/schemaHints.ts";
 
 const name = "component-discover";
 const title =
@@ -85,27 +88,50 @@ export function componentDiscoverTool(server: McpServer) {
       attributes,
     }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-        if (schemaName.startsWith("AWS")) {
-          let hasCredential = false;
-          let hasRegion = false;
-          for (const path of Object.keys(attributes)) {
-            if (path == "/domain/extra/Region") {
-              hasRegion = true;
-            }
-            if (path == "/secrets/AWS Credential") {
-              hasCredential = true;
-            }
-          }
-          if (!hasCredential || !hasRegion) {
+        const prereqError = validateSchemaPrereqs(schemaName, attributes);
+        if (prereqError) {
+          return prereqError;
+        }
+        
+        const siApi = new ComponentsApi(apiConfig);
+        const siSchemasApi = new SchemasApi(apiConfig);
+        const siFuncsApi = new FuncsApi(apiConfig);
+        try {
+          const findSchemaResponse = await siSchemasApi.findSchema({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            schema: schemaName,
+          });
+          const schemaId = findSchemaResponse.data.schemaId;
+
+          const defaultVariantResponse = await siSchemasApi.getDefaultVariant({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            schemaId,
+          });
+
+          const variantFunctions = defaultVariantResponse.data.variantFuncs;
+
+          const discoverFunc = variantFunctions.find(
+            (func) =>
+              func.funcKind.kind === "management" &&
+              func.funcKind.managementFuncKind === "discover",
+          );
+
+          if (!discoverFunc) {
             return errorResponse({
-              response: { status: "bad prereq", data: {} },
-              message:
-                `This is an AWS resource, and to import it we must have /domain/extra/Region set to a valid value or subscription, and /secrets/AWS Credential set to a subscription.`,
+              message: `The schema ${schemaName} doesn't support discovery`,
             });
           }
-        }
-        const siApi = new ComponentsApi(apiConfig);
-        try {
+
+          const discoverFuncResponse = await siFuncsApi.getFunc({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            funcId: discoverFunc.id,
+          });
+
+          const funcName = discoverFuncResponse.data.name;
+
           const discoverTemplateresponse = await siApi.createComponent({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
@@ -141,7 +167,7 @@ export function componentDiscoverTool(server: McpServer) {
               changeSetId,
               componentId: discoverTemplateResult["componentId"],
               executeManagementFunctionV1Request: {
-                managementFunction: { function: "Discover on AWS" },
+                managementFunction: { function: funcName },
               },
             });
 

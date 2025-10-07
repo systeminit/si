@@ -1,7 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { ComponentsApi, ManagementFuncsApi } from "@systeminit/api-client";
+import {
+  ComponentsApi,
+  FuncsApi,
+  ManagementFuncsApi,
+  SchemasApi,
+} from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
@@ -10,6 +15,7 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 import { AttributesSchema } from "../data/components.ts";
+import { validateSchemaPrereqs } from "../data/schemaHints.ts";
 
 const name = "component-import";
 const title = "Import a component of a given schema and resource id";
@@ -68,27 +74,50 @@ export function componentImportTool(server: McpServer) {
       { changeSetId, schemaName, resourceId, attributes },
     ): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
-        if (schemaName.startsWith("AWS")) {
-          let hasCredential = false;
-          let hasRegion = false;
-          for (const path of Object.keys(attributes)) {
-            if (path == "/domain/extra/Region") {
-              hasRegion = true;
-            }
-            if (path == "/secrets/AWS Credential") {
-              hasCredential = true;
-            }
-          }
-          if (!hasCredential || !hasRegion) {
+        const prereqError = validateSchemaPrereqs(schemaName, attributes);
+        if (prereqError) {
+          return prereqError;
+        }
+
+        const siApi = new ComponentsApi(apiConfig);
+        const siSchemasApi = new SchemasApi(apiConfig);
+        const siFuncsApi = new FuncsApi(apiConfig);
+        try {
+          const findSchemaResponse = await siSchemasApi.findSchema({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            schema: schemaName,
+          });
+          const schemaId = findSchemaResponse.data.schemaId;
+
+          const defaultVariantResponse = await siSchemasApi.getDefaultVariant({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            schemaId,
+          });
+
+          const variantFunctions = defaultVariantResponse.data.variantFuncs;
+
+          const importFunc = variantFunctions.find(
+            (func) =>
+              func.funcKind.kind === "management" &&
+              func.funcKind.managementFuncKind === "import",
+          );
+
+          if (!importFunc) {
             return errorResponse({
-              response: { status: "bad prereq", data: {} },
-              message:
-                `This is an AWS resource, and to import it we must have /domain/extra/Region set to a valid value or subscription, and /secrets/AWS Credential set to a subscription.`,
+              message: `The schema ${schemaName} doesn't support import`,
             });
           }
-        }
-        const siApi = new ComponentsApi(apiConfig);
-        try {
+
+          const importFuncResponse = await siFuncsApi.getFunc({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            funcId: importFunc.id,
+          });
+
+          const funcName = importFuncResponse.data.name;
+
           const response = await siApi.createComponent({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
@@ -110,7 +139,7 @@ export function componentImportTool(server: McpServer) {
               changeSetId,
               componentId: result["componentId"],
               executeManagementFunctionV1Request: {
-                managementFunction: { function: "Import from AWS" },
+                managementFunction: { function: funcName },
               },
             });
 
