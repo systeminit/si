@@ -1,16 +1,31 @@
 use dal::{
-    AttributeValue, AttributeValueId, Component, DalContext, Schema, SchemaVariant, Ulid,
+    AttributeValue,
+    AttributeValueId,
+    Component,
+    DalContext,
+    Schema,
+    SchemaVariant,
+    Ulid,
     attribute::value::DependentValueGraph,
-    diagram::{Diagram, view::View},
-    prop::{Prop, PropPath},
+    diagram::{
+        Diagram,
+        view::View,
+    },
+    prop::{
+        Prop,
+        PropPath,
+    },
     property_editor::values::PropertyEditorValues,
     workspace_snapshot::DependentValueRoot,
 };
 use dal_test::{
     Result,
     helpers::{
-        ChangeSetTestHelpers, component, create_component_for_default_schema_name_in_default_view,
-        create_component_for_schema_variant_on_default_view, schema::variant,
+        ChangeSetTestHelpers,
+        component,
+        create_component_for_default_schema_name_in_default_view,
+        create_component_for_schema_variant_on_default_view,
+        schema::variant,
     },
     test,
 };

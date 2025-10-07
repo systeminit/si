@@ -9,6 +9,7 @@ use dal::{
     slow_rt,
 };
 use sdf_extract::{
+    FriggStore,
     PosthogEventTracker,
     change_set::ChangeSetDalContext,
 };
@@ -18,6 +19,7 @@ use serde::{
 };
 use serde_json::json;
 use si_events::audit_log::AuditLogKind;
+use si_frontend_mv_types::reference::ReferenceKind;
 use utoipa::{
     self,
     ToSchema,
@@ -54,6 +56,7 @@ use super::{
 #[allow(deprecated)]
 pub async fn update_schema_variant(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    FriggStore(frigg): FriggStore,
     tracker: PosthogEventTracker,
     Path(SchemaVariantV1RequestPath {
         schema_id,
@@ -136,12 +139,20 @@ pub async fn update_schema_variant(
         .map(SchemaVariantFunc::from)
         .collect();
 
+    // We know it is a builtin if we find a CachedSchema for its schema id
+    // The only cached schemas we currently build are builtins - if that changes, this logic will need to change!
+    let installed_from_upstream = (frigg
+        .get_current_deployment_object(ReferenceKind::CachedSchema, &schema_id.to_string())
+        .await?)
+        .is_some();
+
     let response = GetSchemaVariantV1Response {
         variant_id: luminork_variant.variant_id,
         display_name: luminork_variant.display_name,
         category: luminork_variant.category,
         color: luminork_variant.color,
         is_locked: luminork_variant.is_locked,
+        installed_from_upstream,
         description: luminork_variant.description,
         link: luminork_variant.link,
         asset_func_id: luminork_variant.asset_func_id,
