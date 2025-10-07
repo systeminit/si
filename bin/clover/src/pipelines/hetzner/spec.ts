@@ -143,6 +143,12 @@ export function mergePropertyDefinitions(
 ): JsonSchema {
   if (!existing) return newProp;
 
+  // If there's a type conflict between GET and write operations,
+  // prefer the write operation since it will be used for input
+  if (existing.type !== newProp.type && newProp.type) {
+    return { ...newProp };
+  }
+
   const merged = { ...existing };
 
   // Merge enum values if both exist
