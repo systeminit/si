@@ -110,6 +110,7 @@ export async function exportAssets(context: CliContext, assetsPath: string, skip
   let importedSchemas = 0;
   try {
     const siSchemasApi = new SchemasApi(apiConfiguration);
+    // console.log("SchemasApi methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(siSchemasApi)));
 
     for (let schema of schemas) {
       const {code, name, category, description} = schema;
@@ -182,11 +183,21 @@ export async function exportAssets(context: CliContext, assetsPath: string, skip
       }
       importedSchemas += 1;
 
+      // Create qualifications
+      const qualifications = await parseQualifications(`${assetsPath}/${name}/qualifications`, name, log);
+
+      for (let qualification of qualifications) {
+        await siSchemasApi.createVariantQualification({
+          workspaceId,
+          changeSetId,
+          schemaId,
+          schemaVariantId: variantId,
+          createVariantQualificationFuncV1Request: qualification,
+        })
+      }
+
       // Create action funcs from actions folder
       const actions = await parseActions(`${assetsPath}/${name}/actions`, name, log);
-
-
-      siSchemasApi.getVariantAction({})
 
       for (const action of actions) {
         // TODO check if the actions already exist
@@ -200,8 +211,6 @@ export async function exportAssets(context: CliContext, assetsPath: string, skip
         });
       }
     }
-
-
 
     const changeSetUrl = `${workspaceUrlPrefix}/w/${workspaceId}/${changeSetId}/l/a`;
     console.log(`${importedSchemas} schemas imported. To see them, go to: ${changeSetUrl}`);
@@ -295,7 +304,7 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
 
       // Build action object
       const actionObject = {
-        name: actionMetadata.name,
+        name,
         displayName: actionMetadata.displayName,
         description: actionMetadata.description,
         kind,
@@ -311,3 +320,74 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
   return actions;
 }
 
+async function parseQualifications(qualificationsPath: string, assetName: string, log: Log) {
+  const qualificationFiles = [];
+
+  // Read the file list from the actions folder
+  try {
+    const qualificationEntries = Deno.readDirSync(qualificationsPath);
+
+    for (const qualificationEntry of qualificationEntries) {
+      if (!qualificationEntry.isFile || !qualificationEntry.name.endsWith(".ts")) {
+        continue;
+      }
+
+      const actionFileName = qualificationEntry.name;
+      const strippedFileName = actionFileName.replace(/\.ts$/, "");
+
+      qualificationFiles.push({
+        strippedFileName,
+      })
+    }
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw new Error(`Error reading actions directory for asset "${assetName}": ${unknownValueToErrorMessage(error)}`);
+    }
+    // If actions folder doesn't exist, that's ok - just continue
+    return [];
+  }
+
+  const qualifications = [];
+
+  // For each listed file, get the contents and the optional metadata file ({kind}.json)
+  for (const { strippedFileName } of qualificationFiles) {
+    const qualificationTsPath = `${qualificationsPath}/${strippedFileName}.ts`;
+    const qualificationJsonPath = `${qualificationsPath}/${strippedFileName}.json`;
+
+    try {
+      // Read the TypeScript file
+      const code = await Deno.readTextFile(qualificationTsPath);
+
+      if (!code || code.trim() === "") {
+        log.error(`Empty code in qualification file "${qualificationTsPath}" for asset "${assetName}", skipping...`);
+        continue;
+      }
+
+      // Read the matching JSON file
+      let qualificationMetadata = {};
+      try {
+        const qualificationJsonContent = await Deno.readTextFile(qualificationJsonPath);
+        qualificationMetadata = JSON.parse(qualificationJsonContent)
+      } catch (error) {
+        // Not finding the metadata file is ok - just continue
+        if (!(error instanceof Deno.errors.NotFound)) throw error;
+      }
+
+      let name = qualificationMetadata.name ?? strippedFileName;
+
+      // Build action object
+      const qualificationObject = {
+        name,
+        displayName: qualificationMetadata.displayName ?? null,
+        description: qualificationMetadata.description ?? null,
+        code: code,
+      };
+
+      qualifications.push(qualificationObject);
+    } catch (error) {
+      log.error(`Error processing qualification "${strippedFileName}" for asset "${assetName}": ${unknownValueToErrorMessage(error)}, skipping...`);
+    }
+  }
+
+  return qualifications;
+}

@@ -1,0 +1,5 @@
+{
+  "name": "si:awsRegionCanUse",
+  "displayName": "Region Available for Use?",
+  "description": "Check if the region is available for use for the provided credential"
+}

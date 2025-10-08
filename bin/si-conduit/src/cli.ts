@@ -2,6 +2,7 @@ import { Command } from "@cliffy/command";
 import { Configuration, WhoamiApi } from "@systeminit/api-client";
 import { extractConfig } from "./config.ts";
 import { exportAssets } from "./cli/export-assets.ts";
+import { scaffoldAsset } from "./cli/scaffold-asset.ts";
 import { Log } from "./log.ts";
 import { AuthApiClient, WorkspaceDetails } from "./auth-api-client.ts";
 import { unknownValueToErrorMessage } from "./helpers.ts";
@@ -64,7 +65,15 @@ export async function run() {
       const workspace = await getWorkspaceDetails(apiToken, workspaceId);
       const context: CliContext = { apiConfiguration, workspace, log };
       return exportAssets(context, assetsPath, skipConfirmation);
-    }).parse(Deno.args);
+    })
+    .command("scaffold <asset-name:string>", "Scaffold a new asset")
+    .option("-f, --folder <folder:string>", "Asset folder path", { default: "." })
+    .action(({ verbose, folder }, assetName) => {
+      const log = new Log(verbose);
+      const context: CliContext = { apiConfiguration, workspace: {} as WorkspaceDetails, log };
+      return scaffoldAsset(context, assetName, folder);
+    })
+    .parse(Deno.args);
 }
 
 async function getWorkspaceDetails(apiToken: string, workspaceId: string) {

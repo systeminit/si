@@ -1,4 +1,5 @@
 {
+  "name": "Region",
   "category": "AWS",
   "description": "The geography for an AWS Region is the specific physical location of its infrastructure. This can help you meet your regulatory, compliance, and operational requirements.\n\nWhen you are preparing to deploy a workload, consider which Region or Regions best meet your needs. For example, select a Region that has the AWS services and features that you need. Also, you can lower network latency when you select a Region that is close to the majority of your users.\n\nYour AWS account determines the Regions that are available to you."
 }

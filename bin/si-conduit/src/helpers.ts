@@ -6,3 +6,7 @@ export function unknownValueToErrorMessage(value: unknown): string {
 
     return `Unknown Error: ${value}`;
 }
+
+export function makeStringSafeForFilename(str: string): string {
+    return str.replace(/[\\/:*?"<>|]/g, '_');
+}
