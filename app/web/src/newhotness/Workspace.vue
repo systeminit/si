@@ -489,9 +489,11 @@ const checkOnboardingCompleteData = async () => {
   onboardingCompleted.value = !data.firstTimeModal;
 };
 
+const cohEnabled = ref(true);
 const componentsOnHeadApi = useApi(ctx.value);
 const componentsOnHeadQuery = useQuery<boolean | undefined>({
   queryKey: ["componentsOnHead", workspacePk.value],
+  enabled: cohEnabled,
   queryFn: async () => {
     const call = componentsOnHeadApi.endpoint<{ componentsOnHead: boolean }>(
       routes.ComponentsOnHead,
@@ -500,6 +502,7 @@ const componentsOnHeadQuery = useQuery<boolean | undefined>({
 
     // Check if the request was successful (200/201)
     if (componentsOnHeadApi.ok(response)) {
+      cohEnabled.value = false;
       return response.data.componentsOnHead;
     }
 
