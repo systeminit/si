@@ -1710,6 +1710,12 @@ export interface GetSchemaVariantV1Response {
      * @type {boolean}
      * @memberof GetSchemaVariantV1Response
      */
+    'installedFromUpstream': boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof GetSchemaVariantV1Response
+     */
     'isDefaultVariant': boolean;
     /**
      * 

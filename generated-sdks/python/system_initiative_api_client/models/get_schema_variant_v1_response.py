@@ -34,13 +34,14 @@ class GetSchemaVariantV1Response(BaseModel):
     description: Optional[StrictStr] = None
     display_name: StrictStr = Field(alias="displayName")
     domain_props: Optional[PropSchemaV1] = Field(default=None, alias="domainProps")
+    installed_from_upstream: StrictBool = Field(alias="installedFromUpstream")
     is_default_variant: StrictBool = Field(alias="isDefaultVariant")
     is_locked: StrictBool = Field(alias="isLocked")
     link: Optional[StrictStr] = None
     variant_func_ids: List[StrictStr] = Field(alias="variantFuncIds")
     variant_funcs: List[SchemaVariantFunc] = Field(alias="variantFuncs")
     variant_id: StrictStr = Field(alias="variantId")
-    __properties: ClassVar[List[str]] = ["assetFuncId", "category", "color", "description", "displayName", "domainProps", "isDefaultVariant", "isLocked", "link", "variantFuncIds", "variantFuncs", "variantId"]
+    __properties: ClassVar[List[str]] = ["assetFuncId", "category", "color", "description", "displayName", "domainProps", "installedFromUpstream", "isDefaultVariant", "isLocked", "link", "variantFuncIds", "variantFuncs", "variantId"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -124,6 +125,7 @@ class GetSchemaVariantV1Response(BaseModel):
             "description": obj.get("description"),
             "displayName": obj.get("displayName"),
             "domainProps": PropSchemaV1.from_dict(obj["domainProps"]) if obj.get("domainProps") is not None else None,
+            "installedFromUpstream": obj.get("installedFromUpstream"),
             "isDefaultVariant": obj.get("isDefaultVariant"),
             "isLocked": obj.get("isLocked"),
             "link": obj.get("link"),
