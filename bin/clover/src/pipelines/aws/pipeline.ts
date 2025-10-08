@@ -12,7 +12,7 @@ import { loadInferred } from "../../spec/inferred.ts";
 import { addInferredEnums } from "./pipeline-steps/addInferredEnums.ts";
 import { pruneCfAssets } from "./pipeline-steps/pruneCfAssets.ts";
 import { removeUnneededAssets } from "./pipeline-steps/removeUnneededAssets.ts";
-import { assetSpecificOverrides } from "./pipeline-steps/assetSpecificOverrides.ts";
+import { applyAssetOverrides } from "../generic/applyAssetOverrides.ts";
 import { removeBadDocLinks } from "./pipeline-steps/removeBadDocLinks.ts";
 import { reorderProps } from "../generic/reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
@@ -63,8 +63,8 @@ export async function generateAwsSpecs(options: {
   specs = createRegionSuggestion(specs);
   specs = createCredentialSuggestion(specs);
 
-  // Our overrides right now only run after the prop tree and the sockets are generated
-  specs = assetSpecificOverrides(specs);
+  // Apply provider-specific overrides
+  specs = applyAssetOverrides(specs, awsProviderConfig);
 
   // prune assets that cannot be created by cloud control and must be create
   // using cf

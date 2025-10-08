@@ -5,7 +5,7 @@ import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
 import { FuncSpecInfo } from "../spec/funcs.ts";
 import type { CfSchema } from "./aws/schema.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import { ExpandedPropSpecFor, OnlyProperties } from "../spec/props.ts";
+import { ExpandedPropSpec, ExpandedPropSpecFor, OnlyProperties } from "../spec/props.ts";
 
 const CF_PROPERTY_TYPES = [
   "boolean",
@@ -200,6 +200,16 @@ export interface PropertyNormalizationContext {
 }
 
 /**
+ * Function type for property-level overrides
+ */
+export type PropOverrideFn = (prop: ExpandedPropSpec, spec: ExpandedPkgSpec) => void;
+
+/**
+ * Function type for schema-level overrides
+ */
+export type SchemaOverrideFn = (spec: ExpandedPkgSpec) => void;
+
+/**
  * Configuration object for a provider that groups all provider-specific
  * functionality and metadata. This serves as the single source of truth
  * for how a provider transforms its schemas into the unified spec format.
@@ -303,6 +313,15 @@ export interface ProviderConfig {
   classifyProperties: (
     schema: SuperSchema,
   ) => OnlyProperties;
+
+  /**
+   * Required provider-specific asset and property overrides
+   * Applied during the pipeline after basic spec generation
+   */
+  overrides: {
+    propOverrides: Record<string, Record<string, PropOverrideFn | PropOverrideFn[]>>;
+    schemaOverrides: Map<string, SchemaOverrideFn>;
+  };
 }
 
 /**
