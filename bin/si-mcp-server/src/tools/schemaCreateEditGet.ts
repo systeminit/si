@@ -9,14 +9,14 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 
-const name = "schema-create-or-edit";
-const title = "Create or edit a schema";
+const toolName = "schema-create-edit-get";
+const title = "Create, edit, or get information about a schema";
 const description = `
 <description>
-Create a new schema or edit an existing schema.
+Create a new schema, edit an existing schema, or get information about an existing schema.
 </description>
 <usage>
-If the user does not specify a change set, ask the user which change set to use or if a new one should be created. If the user gives a schema name to edit, use the schema-find tool to find the corresponding schemaId. If the user is trying to add code to an existing asset function for a schema, get the current code for that schema and add to it. Before writing any asset function code, reference the documentation to get the syntax right. Always put each prop within an asset function in a const before adding it to the asset. Do not mention schema variants or locking/unlocking to the user.
+If the user does not specify a change set, ask the user which change set to use or if a new one should be created. If the user gives a schema name to edit or get information about, use the schema-find tool to find the corresponding schemaId. If the user is trying to add code to an existing asset function for a schema, get the current code for that schema and add to it. Before writing any asset function code, reference the documentation to get the syntax right. Always put each prop within an asset function in a const before adding it to the asset. Do not mention schema variants or locking/unlocking to the user. This tool cannot be used on the HEAD change set.
 </usage>
 `;
 
@@ -25,15 +25,15 @@ const DEFAULT_SCHEMA_DEFINITION_FUNCTION = `function main() {
     return asset.build();
 }`;
 
-const schemaCreateOrEditInputSchemaRaw = {
+const schemaCreateEditGetInputSchemaRaw = {
   changeSetId: z
     .string()
     .describe(
-      "The change set to create or edit a schema in; schemas cannot be created or edited on HEAD.",
+      "The change set to create, edit, or get a schema in; schemas cannot be manipulated on HEAD.",
     ),
   name: z.string().min(1).optional().describe("The name of the schema. A name is required for creating a new schema."),
   description: z.string().optional().describe("The description of the schema."),
-  schemaId: z.string().optional().describe("The id of the schema you want to edit. If none is given, create a new schema."),
+  schemaId: z.string().optional().describe("The id of the schema you want to edit. If none is given, create a new schema. If only a change set id and schema id are given, just get information about the schema."),
   link: z
     .string()
     .optional()
@@ -114,7 +114,7 @@ const schemaCreateOrEditInputSchemaRaw = {
     ),
 };
 
-const schemaCreateOrEditOutputSchemaRaw = {
+const schemaCreateEditGetOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
   errorMessage: z
     .string()
@@ -124,34 +124,36 @@ const schemaCreateOrEditOutputSchemaRaw = {
     ),
   data: z.object({
     schemaId: z.string().describe("the schema id"),
+    name: z.string().describe("the schema name"),
+    definitionFunction: z.string().describe("the schema definition function"),
   }),
 };
-const schemaCreateOrEditOutputSchema = z.object(schemaCreateOrEditOutputSchemaRaw);
-type SchemaCreateOrEditOutputData = z.infer<typeof schemaCreateOrEditOutputSchema>["data"];
+const schemaCreateEditGetOutputSchema = z.object(schemaCreateEditGetOutputSchemaRaw);
+type SchemaCreateEditGetOutputData = z.infer<typeof schemaCreateEditGetOutputSchema>["data"];
 
-export function schemaCreateOrEditTool(server: McpServer) {
+export function schemaCreateEditGetTool(server: McpServer) {
   server.registerTool(
-    name,
+    toolName,
     {
       title,
       description: generateDescription(
         description,
-        "schemaCreateOrEdit",
-        schemaCreateOrEditOutputSchema,
+        "schemaCreateEditGet",
+        schemaCreateEditGetOutputSchema,
       ),
-      inputSchema: schemaCreateOrEditInputSchemaRaw,
-      outputSchema: schemaCreateOrEditOutputSchemaRaw,
+      inputSchema: schemaCreateEditGetInputSchemaRaw,
+      outputSchema: schemaCreateEditGetOutputSchemaRaw,
     },
     async ({ changeSetId, definitionFunction, schemaId, ...createOrEditSchemaV1Request }) => {
-      return await withAnalytics(name, async () => {
+      return await withAnalytics(toolName, async () => {
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
 
-        let touchedSchemaId;
+        let touchedSchemaId, touchedDefinitionFunction, touchedName: string;
 
         try {
           if (schemaId) {
-            // edit an existing schema
+            // edit an existing schema or get information about it
 
             // first we need to make sure we have an unlocked schema variant
             const responseUnlock = await siSchemasApi.unlockSchema({
@@ -179,39 +181,44 @@ export function schemaCreateOrEditTool(server: McpServer) {
               funcId: assetFuncId,
             });
 
-            // so that we can build the final request with the current data as the default
-            const updateSchemaVariantV1Request = {
-              name: responseGetVariant.data.displayName,
-              description: responseGetVariant.data.description,
-              category: responseGetVariant.data.category,
-              color: responseGetVariant.data.color,
-              link: responseGetVariant.data.link,
-              code: responseGetFunc.data.code,
-              // then injecting our new data to overwrite any field we put a value for
-              ...createOrEditSchemaV1Request,
-            };
-
-            // then if we gave new asset function code, overwrite the old code here
-            if (definitionFunction) {
-              updateSchemaVariantV1Request.code = definitionFunction;
-            }
-
-            // and finally we actually call the endpoint to edit the unlocked schema variant!
-            await siSchemasApi.updateSchemaVariant({
-              workspaceId: WORKSPACE_ID,
-              changeSetId,
-              schemaId,
-              schemaVariantId,
-              updateSchemaVariantV1Request,
-            });
-
+            // populate data to return from the tool
             touchedSchemaId = schemaId;
+            touchedDefinitionFunction = responseGetFunc.data.code;
+            touchedName = responseGetVariant.data.displayName;
+
+            // information gathering complete, now only move onto updating if we have new data
+            if (definitionFunction || Object.values(createOrEditSchemaV1Request).some(value => value != undefined)) {
+              // so that we can build the final request with the current data as the default
+              const updateSchemaVariantV1Request = {
+                name: responseGetVariant.data.displayName,
+                description: responseGetVariant.data.description,
+                category: responseGetVariant.data.category,
+                color: responseGetVariant.data.color,
+                link: responseGetVariant.data.link,
+                code: responseGetFunc.data.code,
+                // then injecting our new data to overwrite any field we put a value for
+                ...createOrEditSchemaV1Request,
+              };
+
+              // then if we gave new asset function code, overwrite the old code here
+              if (definitionFunction) {
+                updateSchemaVariantV1Request.code = definitionFunction;
+              }
+
+              // and finally we actually call the endpoint to edit the unlocked schema variant!
+              await siSchemasApi.updateSchemaVariant({
+                workspaceId: WORKSPACE_ID,
+                changeSetId,
+                schemaId,
+                schemaVariantId,
+                updateSchemaVariantV1Request,
+              });
+            }
           } else {
             // create a new schema
 
-            const name = createOrEditSchemaV1Request.name;
-
             // a new schema must have a name
+            const name = createOrEditSchemaV1Request.name;
             if (!name) {
               return errorResponse({
                 message: "A name is required to make a new schema.",
@@ -219,20 +226,27 @@ export function schemaCreateOrEditTool(server: McpServer) {
               });
             }
 
-            // finally we call the endpoint to create a new schema
+            const code = definitionFunction ?? DEFAULT_SCHEMA_DEFINITION_FUNCTION;
+
+            // next we call the endpoint to create a new schema
             const responseCreate = await siSchemasApi.createSchema({
               workspaceId: WORKSPACE_ID,
               changeSetId: changeSetId,
               createSchemaV1Request: {
                 ...createOrEditSchemaV1Request,
                 name,
-                code: definitionFunction ?? DEFAULT_SCHEMA_DEFINITION_FUNCTION,
+                code,
               },
             });
+            // populate data to return from the tool
             touchedSchemaId = responseCreate.data.schemaId;
+            touchedDefinitionFunction = code;
+            touchedName = createOrEditSchemaV1Request.name as string;
           }
-          const data: SchemaCreateOrEditOutputData = {
+          const data: SchemaCreateEditGetOutputData = {
             schemaId: touchedSchemaId,
+            definitionFunction: touchedDefinitionFunction,
+            name: touchedName,
           };
           return successResponse(data);
         } catch (error) {
