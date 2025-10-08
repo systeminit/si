@@ -10,11 +10,11 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 
-const toolName = "func-create-or-edit";
-const title = "Create or update a function for an existing schema.";
+const toolName = "func-create-edit-get";
+const title = "Create, update, or get information about a function for an existing schema.";
 const description = `
 <description>
-Create or update a function for an existing schema following the usage workflow.
+Create, update, or get information about an existing function for an existing schema following the usage workflow.
 </description>
 <usage-workflow>
   *ALWAYS* follow this workflow:
@@ -35,6 +35,7 @@ Create or update a function for an existing schema following the usage workflow.
      - Only after validation passes, call this tool
      - Do not mention schemaVariantId to the user
      - Do not mention locking/unlocking schemas to the user
+     - This tool cannot be used on the HEAD change set
   CRITICAL: Step 1 is mandatory when functionCode is provided.
   <validation-checklist>
     Before calling this tool, confirm:
@@ -913,14 +914,14 @@ const functionCodeDescribe = [
   </action-manual-example>`
 ];
 
-const funcCreateOrEditInputSchemaRaw = {
+const funcCreateEditGetInputSchemaRaw = {
   changeSetId: z
     .string()
     .describe(
-      "The change set to create or update a function in; functions cannot be created on HEAD",
+      "The change set to create, update, get information about a function in; functions cannot be manipulated on HEAD",
     ),
-  schemaId: z.string().optional().describe("The schema id the function is for. Required for creating a new function, not needed for updating one."),
-  funcId: z.string().optional().describe("The id of the function to edit. If none is given, create a new function"),
+  schemaId: z.string().optional().describe("The schema id the function is for. Required for creating a new function, not needed for updating or getting information about one."),
+  funcId: z.string().optional().describe("The id of the function to edit or get information about. If none is given, create a new function."),
   name: z.string().min(1).optional().describe("The name of the function. Required for creating a new function."),
   description: z.string().optional().describe("A description for the function"),
   functionType: z.enum(["qualification", "codegen", "management", "action"]).optional().describe("The type of the function. Required for creating a new function."),
@@ -931,7 +932,7 @@ const funcCreateOrEditInputSchemaRaw = {
   actionKind: z.enum(["Create", "Destroy", "Refresh", "Update", "Manual"]).optional().describe("The kind of action function. Only required for new functions of the action type."),
 };
 
-const funcCreateOrEditOutputSchemaRaw = {
+const funcCreateEditGetOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
   errorMessage: z
     .string()
@@ -941,23 +942,25 @@ const funcCreateOrEditOutputSchemaRaw = {
     ),
   data: z.object({
     funcId: z.string().describe("the function id"),
+    name: z.string().describe("the function name"),
+    functionCode: z.string().describe("the function code"),
   }),
 };
-const funcCreateOrEditOutputSchema = z.object(funcCreateOrEditOutputSchemaRaw);
-type FuncCreateOrEditOutputData = z.infer<typeof funcCreateOrEditOutputSchema>["data"];
+const funcCreateEditGetOutputSchema = z.object(funcCreateEditGetOutputSchemaRaw);
+type FuncCreateEditGetOutputData = z.infer<typeof funcCreateEditGetOutputSchema>["data"];
 
-export function funcCreateOrEditTool(server: McpServer) {
+export function funcCreateEditGetTool(server: McpServer) {
   server.registerTool(
     toolName,
     {
       title,
       description: generateDescription(
         description,
-        "funcCreateOrEdit",
-        funcCreateOrEditOutputSchema,
+        "funcCreateEditGet",
+        funcCreateEditGetOutputSchema,
       ),
-      inputSchema: funcCreateOrEditInputSchemaRaw,
-      outputSchema: funcCreateOrEditOutputSchemaRaw,
+      inputSchema: funcCreateEditGetInputSchemaRaw,
+      outputSchema: funcCreateEditGetOutputSchemaRaw,
     },
     async ({ changeSetId, schemaId, funcId, functionCode, functionType, actionKind, name, description}) => {
       return await withAnalytics(toolName, async () => {
@@ -978,10 +981,10 @@ export function funcCreateOrEditTool(server: McpServer) {
         const siFuncsApi = new FuncsApi(apiConfig);
 
         let hints;
-        let touchedFuncId;
+        let touchedFuncId, touchedFuncCode, touchedName: string;
         try {
           if (funcId) {
-            // update an existing function
+            // update an existing function or get information about it
 
             // first fetch existing data about the function
             const responseGetFunc = await siFuncsApi.getFunc({
@@ -997,15 +1000,21 @@ export function funcCreateOrEditTool(server: McpServer) {
               displayName: name ?? responseGetFunc.data.displayName,
             }
 
-            // finally hit the luminork API endpoint with the update
-            await siFuncsApi.updateFunc({
-              workspaceId: WORKSPACE_ID,
-              changeSetId,
-              funcId,
-              updateFuncV1Request,
-            });
-
+            // populate data to return from the tool
             touchedFuncId = funcId;
+            touchedFuncCode = updateFuncV1Request.code;
+            touchedName = updateFuncV1Request.displayName as string;
+
+            // information gathering complete, now only move onto updating if we have new data
+            if (functionCode !== undefined || description !== undefined || name !== undefined) {
+              // finally hit the luminork API endpoint with the update
+              await siFuncsApi.updateFunc({
+                workspaceId: WORKSPACE_ID,
+                changeSetId,
+                funcId,
+                updateFuncV1Request,
+              });
+            }
           } else {
             // create a new function
 
@@ -1053,39 +1062,37 @@ export function funcCreateOrEditTool(server: McpServer) {
             }
 
             // use the correct funciton create endpoint based on the type of function
+            let responseCreate, code;
             if (functionType === "qualification") {
-              const responseCreate = await siSchemasApi.createVariantQualification({
+              code = functionCode ?? DEFAULT_QUALIFICATION_FUNCTION;
+              responseCreate = await siSchemasApi.createVariantQualification({
                 ...baseParams,
                 createVariantQualificationFuncV1Request: {
                   name,
                   description,
-                  code: functionCode ?? DEFAULT_QUALIFICATION_FUNCTION,
+                  code,
                 },
               });
-
-              touchedFuncId = responseCreate.data.funcId;
             } else if (functionType === "codegen") {
-              const responseCreate = await siSchemasApi.createVariantCodegen({
+              code = functionCode ?? DEFAULT_CODEGEN_FUNCTION;
+              responseCreate = await siSchemasApi.createVariantCodegen({
                 ...baseParams,
                 createVariantCodegenFuncV1Request: {
                   name,
                   description,
-                  code: functionCode ?? DEFAULT_CODEGEN_FUNCTION,
+                  code,
                 },
               });
-
-              touchedFuncId = responseCreate.data.funcId;
             } else if (functionType === "management") {
-              const responseCreate = await siSchemasApi.createVariantManagement({
+              code = functionCode ?? DEFAULT_MANAGEMENT_FUNCTION;
+              responseCreate = await siSchemasApi.createVariantManagement({
                 ...baseParams,
                 createVariantManagementFuncV1Request: {
                   name,
                   description,
-                  code: functionCode ?? DEFAULT_MANAGEMENT_FUNCTION,
+                  code,
                 },
               });
-
-              touchedFuncId = responseCreate.data.funcId;
             } else if (functionType === "action") {
               if (!actionKind) {
                 return errorResponse({
@@ -1095,7 +1102,7 @@ export function funcCreateOrEditTool(server: McpServer) {
               else if (actionKind !== "Manual") {
                 // Before attempting to create this action, check if an action of the same type already exists.
                 let canMakeAction = true;
-                responseGetVariant.data.variantFuncs.forEach((func) => {
+                responseGetVariant.data.variantFuncs.forEach((func: any) => {
                   if (func.funcKind.kind === "action" && func.funcKind.actionKind === actionKind) {
                     canMakeAction = false;
                   }
@@ -1107,26 +1114,31 @@ export function funcCreateOrEditTool(server: McpServer) {
                   }, "Existing actions cannot be edited by this tool. *Do not* offer the option to edit the existing action function. Tell the user that they can't make more than one of this kind of action and ask if they want to make a manual action.");
                 }
               }
-              const responseCreate = await siSchemasApi.createVariantAction({
+              code = functionCode ?? DEFAULT_ACTION_FUNCTION;
+              responseCreate = await siSchemasApi.createVariantAction({
                 ...baseParams,
                 createVariantActionFuncV1Request: {
                   name,
                   description,
-                  code: functionCode ?? DEFAULT_ACTION_FUNCTION,
+                  code,
                   kind: actionKind,
                 },
               });
-
-              touchedFuncId = responseCreate.data.funcId;
             } else {
               return errorResponse({
                 message: "Currently the agent can only create qualification, codegen, management, and action functions."
               });
             }
+            // populate data to return from the tool
+            touchedFuncId = responseCreate.data.funcId;
+            touchedFuncCode = code;
+            touchedName = name;
           }
 
-          const data: FuncCreateOrEditOutputData = {
+          const data: FuncCreateEditGetOutputData = {
             funcId: touchedFuncId,
+            name: touchedName,
+            functionCode: touchedFuncCode,
           };
           return successResponse(data, hints);
         } catch (error) {
