@@ -10,7 +10,7 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 
-const name = "func-create-or-edit";
+const toolName = "func-create-or-edit";
 const title = "Create or update a function for an existing schema.";
 const description = `
 <description>
@@ -948,7 +948,7 @@ type FuncCreateOrEditOutputData = z.infer<typeof funcCreateOrEditOutputSchema>["
 
 export function funcCreateOrEditTool(server: McpServer) {
   server.registerTool(
-    name,
+    toolName,
     {
       title,
       description: generateDescription(
@@ -959,15 +959,21 @@ export function funcCreateOrEditTool(server: McpServer) {
       inputSchema: funcCreateOrEditInputSchemaRaw,
       outputSchema: funcCreateOrEditOutputSchemaRaw,
     },
-    async ({ changeSetId, schemaId, funcId, functionCode, functionType, actionKind, ...requestBody }) => {
-      return await withAnalytics(name, async () => {
-        const validationIssues = validateFunctionCode(functionType, functionCode, actionKind);
-                if (validationIssues.length > 0) {
-                  return errorResponse({
-                    message: "Function code failed validation. Upsert aborted.",
-                    hints: validationIssues.map(i => `• ${i.message}`).join("\n"),
-                  });
-                }
+    async ({ changeSetId, schemaId, funcId, functionCode, functionType, actionKind, name, description}) => {
+      return await withAnalytics(toolName, async () => {
+        if (functionType) {
+          const validationIssues = validateFunctionCode(functionType, functionCode, actionKind);
+          if (validationIssues.length > 0) {
+            return errorResponse({
+              message: "Function code failed validation. Upsert aborted.",
+              hints: validationIssues.map(i => `• ${i.message}`).join("\n"),
+            });
+          }
+        } else if (!funcId) {
+          return errorResponse({
+            message: "Function type is required when creating a new function.",
+          }, "Provide a function type in the request body.");
+        }
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
 
@@ -987,8 +993,8 @@ export function funcCreateOrEditTool(server: McpServer) {
             // fill the update request body with our new data or existing data if it didn't change
             const updateFuncV1Request = {
               code: functionCode ?? responseGetFunc.data.code,
-              description: requestBody.description ?? responseGetFunc.data.description,
-              displayName: requestBody.name ?? responseGetFunc.data.displayName,
+              description: description ?? responseGetFunc.data.description,
+              displayName: name ?? responseGetFunc.data.displayName,
             }
 
             // finally hit the luminork API endpoint with the update
@@ -1008,11 +1014,13 @@ export function funcCreateOrEditTool(server: McpServer) {
               return errorResponse({
                 message: "You cannot create a function without specifying the schemaId of the schema you want the function created on."
               });
-            } else if (!requestBody.name) {
+            }
+            if (!name) {
               return errorResponse({
                 message: "You cannot create a function without giving it a name."
               });
-            } else if (!functionType) {
+            }
+            if (!functionType) {
               return errorResponse({
                 message: "You cannot create a function without specifying which type of function you want to create. This tool can create qualification, codegen, management, and action functions."
               });
@@ -1049,7 +1057,8 @@ export function funcCreateOrEditTool(server: McpServer) {
               const responseCreate = await siSchemasApi.createVariantQualification({
                 ...baseParams,
                 createVariantQualificationFuncV1Request: {
-                  ...requestBody,
+                  name,
+                  description,
                   code: functionCode ?? DEFAULT_QUALIFICATION_FUNCTION,
                 },
               });
@@ -1059,7 +1068,8 @@ export function funcCreateOrEditTool(server: McpServer) {
               const responseCreate = await siSchemasApi.createVariantCodegen({
                 ...baseParams,
                 createVariantCodegenFuncV1Request: {
-                  ...requestBody,
+                  name,
+                  description,
                   code: functionCode ?? DEFAULT_CODEGEN_FUNCTION,
                 },
               });
@@ -1069,7 +1079,8 @@ export function funcCreateOrEditTool(server: McpServer) {
               const responseCreate = await siSchemasApi.createVariantManagement({
                 ...baseParams,
                 createVariantManagementFuncV1Request: {
-                  ...requestBody,
+                  name,
+                  description,
                   code: functionCode ?? DEFAULT_MANAGEMENT_FUNCTION,
                 },
               });
@@ -1099,7 +1110,8 @@ export function funcCreateOrEditTool(server: McpServer) {
               const responseCreate = await siSchemasApi.createVariantAction({
                 ...baseParams,
                 createVariantActionFuncV1Request: {
-                  ...requestBody,
+                  name,
+                  description,
                   code: functionCode ?? DEFAULT_ACTION_FUNCTION,
                   kind: actionKind,
                 },
