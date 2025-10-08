@@ -68301,6 +68301,9 @@ describe('webworkertest', () => {
     cy.intercept('POST', `http://localhost:8080/api/v2/workspaces/${workspaceId}/change-sets/${changeSetId}/index/multi_mjolnir`,
       {
         statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: hammerBody,
       })
 
@@ -68314,6 +68317,56 @@ describe('webworkertest', () => {
       {
         statusCode: 500,  // this shouldn't actually get called!
         body: hammerBody,
+      })
+
+    const globalIndex = `
+{
+  "workspaceSnapshotAddress": "0001M9MKQK4DPQK3TQ5WP8CJ0Z",
+  "indexChecksum": "d556d181be774b20d83d5deb7eb61448",
+  "frontEndObject": {
+    "kind": "DeploymentMvIndex",
+    "id": "0001M9MKQK4DPQK3TQ5WP8CJ0Z",
+    "checksum": "d556d181be774b20d83d5deb7eb61448",
+    "data": {
+      "mvList": [
+        {
+          "kind": "CachedDefaultVariant",
+          "id": "01J1QXEJC12EEBZ00H4T15YHNQ",
+          "checksum": "5283e232a15993fdd4b03499a8b3058d"
+        }
+      ]
+    }
+  }
+}
+    `
+    cy.intercept('GET', `http://localhost:8080/api/v2/workspaces/${workspaceId}/deployment_index`,
+      {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: globalIndex,
+      })
+
+    const globalHammer = `
+{"successful":[{"kind":"CachedDefaultVariant","id":"01J1QXEJC12EEBZ00H4T15YHNQ","checksum":"5283e232a15993fdd4b03499a8b3058d","data":
+{"id":"01J1QXEJC12EEBZ00H4T15YHNQ","variantId":"01K3S6J6JQVFD2QKNVD91HCEBJ","displayName":"Docker Image","category":"Docker","color":"#4695E7","isLocked":true,
+"description":"","link":null,"assetFuncId":"01K3S6J5X6H4ZMF4V0633SBAHZ","variantFuncIds":
+["01K3S6J6K4KZ3ABK3E5RBA9X04","01K3S6J6K5KS5F7JNC4VN08YTN"],"domainProps":
+{"propId":"01K37FBCPP0004SAZTWFH7WRP0","name":"domain","propType":"object","description":null,"children":
+[{"propId":"01K37FBCPP000FCTNPBD8Q68FV","name":"image","propType":"string","description":null,"children":null,"validationFormat":null,"defaultValue":null,"hidden":false,
+"docLink":null},{"propId":"01K37FBCPP00052Z502FEXPEER","name":"ExposedPorts","propType":"array","description":null,"children":
+[{"propId":"01K37FBCPP000C3BQ7CZ25YSDH","name":"ExposedPort","propType":"string","description":null,"children":null,
+"validationFormat":null,"defaultValue":null,"hidden":false,"docLink":null}],"validationFormat":null,"defaultValue":null,"hidden":false,"docLink":null},{"propId":"01K37FBCPP0004WJK2TY7VPABC","name":"name","propType":"string","description":null,"children":null,"validationFormat":null,"defaultValue":null,"hidden":true,"docLink":null}],"validationFormat":null,"defaultValue":null,"hidden":false,"docLink":null}}},{"kind":"CachedDefaultVariant","id":"01J1QYBC8NPMTBSME649G5S45Q","checksum":"ce7c727674f1be1f10ccde31d388ce4c","data":{"id":"01J1QYBC8NPMTBSME649G5S45Q","variantId":"01J0PCHKVN4ZWTT1XF47N8B2PZ","displayName":"Hub Credential","category":"Docker","color":"#4695e7","isLocked":true,"description":null,"link":null,"assetFuncId":"01J0PCHKVMPDHP3FZCYRKADNYA","variantFuncIds":["01J0PCHKVX048JKRRNC7TNYTRK","01J0PCHKVX048JKRRNC7TNYTRQ"],"domainProps":{"propId":"01K37FBCPP000EV22MCWHYT0T1","name":"domain","propType":"object","description":null,"children":null,"validationFormat":null,"defaultValue":null,"hidden":false,"docLink":null}}}],
+"failed":[]}
+    `
+    cy.intercept('POST', `http://localhost:8080/api/v2/workspaces/${workspaceId}/multi_mjolnir`,
+      {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: globalHammer,
       })
 
     cy.visit('http://localhost:8080/webworkertest.html');

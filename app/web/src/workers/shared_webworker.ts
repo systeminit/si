@@ -9,7 +9,7 @@ import {
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
-import { EntityKind } from "./types/entity_kind_types";
+import { EntityKind, GlobalEntity } from "./types/entity_kind_types";
 import {
   SharedDBInterface,
   TabDBInterface,
@@ -294,6 +294,16 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
+  async getGlobal(
+    workspaceId: string,
+    kind: GlobalEntity,
+    id: string,
+  ): Promise<typeof NOROW | AtomDocument> {
+    return await withLeader(
+      async (remote) => await remote.getGlobal(workspaceId, kind, id),
+    );
+  },
+
   async get(
     workspaceId: string,
     changeSetId: string,
@@ -413,6 +423,12 @@ const dbInterface: SharedDBInterface = {
   async niflheim(workspaceId: string, changeSetId: string): Promise<boolean> {
     return await withLeader(
       async (remote) => await remote.niflheim(workspaceId, changeSetId),
+    );
+  },
+
+  async vanaheim(workspaceId: string): Promise<boolean> {
+    return await withLeader(
+      async (remote) => await remote.vanaheim(workspaceId),
     );
   },
 

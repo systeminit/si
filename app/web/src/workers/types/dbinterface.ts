@@ -18,6 +18,7 @@ import {
   Connection,
   DefaultSubscriptions,
   EntityKind,
+  GlobalEntity,
   PossibleConnection,
 } from "./entity_kind_types";
 
@@ -194,6 +195,11 @@ export interface SharedDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Promise<DefaultSubscriptions>;
+  getGlobal(
+    workspaceId: string,
+    kind: GlobalEntity,
+    id: Id,
+  ): Promise<typeof NOROW | AtomDocument>;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -239,6 +245,7 @@ export interface SharedDBInterface {
     changeSetId: ChangeSetId,
   ): Promise<boolean>;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
+  vanaheim(workspaceId: string): Promise<boolean>;
   exec(
     opts: ExecBaseOptions &
       ExecRowModeArrayOptions &
@@ -309,6 +316,11 @@ export interface TabDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): DefaultSubscriptions;
+  getGlobal(
+    workspaceId: string,
+    kind: GlobalEntity,
+    id: Id,
+  ): typeof NOROW | AtomDocument;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -363,6 +375,7 @@ export interface TabDBInterface {
   addConnStatusFn(fn: ConnStatusFn): void;
   changeSetExists(workspaceId: string, changeSetId: ChangeSetId): boolean;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
+  vanaheim(workspaceId: string): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,
@@ -371,6 +384,7 @@ export interface TabDBInterface {
   oneInOne(rows: SqlValue[][]): SqlValue | typeof NOROW;
   encodeDocumentForDB(doc: object): Uint8Array;
   decodeDocumentFromDB(doc: ArrayBuffer): AtomDocument;
+  handleDeploymentPatchMessage(data: DeploymentPatchBatch): Promise<void>;
   handleWorkspacePatchMessage(data: WorkspacePatchBatch): Promise<void>;
   handleIndexMvPatch(data: WorkspaceIndexUpdate): Promise<void>;
   handleHammer(msg: WorkspaceAtomMessage): Promise<void>;
@@ -531,6 +545,10 @@ export interface IndexObjectMeta {
   workspaceSnapshotAddress: string;
   frontEndObject: IndexObject;
   indexChecksum: string;
+}
+
+export interface AtomWithData extends Common {
+  data: object;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

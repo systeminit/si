@@ -9,6 +9,7 @@ import {
   AtomDocument,
   OutgoingConnections,
   WorkspaceIndexUpdate,
+  MessageKind,
 } from "@/workers/types/dbinterface";
 import { WorkspacePk } from "@/newhotness/types";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
@@ -5408,6 +5409,58 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   assert(indexListAtom !== -1, `MvIndex Atom doesn't exist when it should`);
 
   log("index update patched");
+
+  await db.vanaheim(workspaceId);
+
+  const numGlobal = await db.exec({
+    sql: "select count(*) from global_atoms",
+    returnValue: "resultRows",
+  });
+  const num = parseInt(oneInOne(numGlobal) as string);
+  assert(num > 0, "no global MVs after vanaheim");
+
+  const variantId = "01J1QXEJC12EEBZ00H4T15YHNQ";
+  const variant = await db.getGlobal(
+    workspaceId,
+    EntityKind.CachedDefaultVariant,
+    variantId,
+  );
+  assert(variant.id === variantId, "global variant id does not match");
+
+  const updatedName = "Updated Docker Image";
+  await db.handleDeploymentPatchMessage({
+    meta: {
+      fromIndexChecksum: "d556d181be774b20d83d5deb7eb61448",
+      toIndexChecksum: "doesntmatter",
+    },
+    kind: MessageKind.DEPLOYMENT_PATCH,
+    patches: [
+      {
+        patch: [{ op: "replace", path: "/displayName", value: updatedName }],
+        id: variantId,
+        kind: EntityKind.CachedDefaultVariant,
+        fromChecksum: "5283e232a15993fdd4b03499a8b3058d",
+        toChecksum: "doesntmatter",
+      },
+    ],
+  });
+
+  const variantAfter = await db.getGlobal(
+    workspaceId,
+    EntityKind.CachedDefaultVariant,
+    variantId,
+  );
+  assert(
+    variantAfter.id === variantId,
+    "after global variant id does not match",
+  );
+
+  assert(
+    variantAfter.displayName === updatedName,
+    "variant name did not update",
+  );
+
+  log("deployment MV done");
 };
 
 /**
