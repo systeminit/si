@@ -1375,6 +1375,10 @@ impl WorkspaceSnapshot {
             .matching_avs(component_id, attr_name)
     }
 
+    pub fn graph(&self) -> &Arc<WorkspaceSnapshotGraph> {
+        &self.read_only_graph
+    }
+
     pub async fn matching_avs_with_async(
         &self,
         component_id: ComponentId,

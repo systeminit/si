@@ -5004,6 +5004,7 @@ dependencies = [
  "once_cell",
  "pathdiff",
  "permissions",
+ "petgraph",
  "rand 0.8.5",
  "rebaser-client",
  "regex",

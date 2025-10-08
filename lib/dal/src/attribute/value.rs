@@ -70,6 +70,7 @@ use crate::{
     Secret,
     SecretError,
     TransactionsError,
+    WorkspaceSnapshotGraph,
     attribute::prototype::{
         AttributePrototypeError,
         AttributePrototypeSource,
@@ -108,12 +109,16 @@ use crate::{
             EdgeWeightKind,
             EdgeWeightKindDiscriminants,
         },
-        graph::WorkspaceSnapshotGraphError,
+        graph::{
+            WorkspaceSnapshotGraphError,
+            WorkspaceSnapshotGraphResult,
+        },
         node_weight::{
             AttributeValueNodeWeight,
             NodeWeight,
             NodeWeightDiscriminants,
             NodeWeightError,
+            PropNodeWeight,
             reason_node_weight::Reason,
         },
         serde_value_to_string_type,
@@ -2772,5 +2777,66 @@ impl AttributeValue {
                 )
             }
         })
+    }
+}
+
+#[derive(Clone)]
+pub struct PetgraphAsync(pub Arc<WorkspaceSnapshotGraph>);
+
+impl PetgraphAsync {
+    pub fn graph(&self) -> &WorkspaceSnapshotGraph {
+        &self.0
+    }
+
+    pub async fn root(self, component_id: ComponentId) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let component = self.graph().get_node_index_by_id(component_id)?;
+        self.graph().target(component, EdgeWeightKind::Root)
+    }
+
+    pub async fn children(self, av: NodeIndex) -> Vec<NodeIndex> {
+        self.graph()
+            .targets(av, EdgeWeightKindDiscriminants::Contain)
+            .collect()
+    }
+
+    pub async fn av_prop_name(self, av: NodeIndex) -> WorkspaceSnapshotGraphResult<String> {
+        let prop = self.clone().av_prop(av).await?;
+        self.prop_name(prop).await
+    }
+    pub async fn av_prop(self, av: NodeIndex) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        self.graph().target(av, EdgeWeightKind::Prop)
+    }
+    pub async fn prop_name(self, prop: NodeIndex) -> WorkspaceSnapshotGraphResult<String> {
+        Ok(self.prop_node_weight(prop).await?.name)
+    }
+    pub async fn prop_node_weight(
+        self,
+        prop: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<PropNodeWeight> {
+        Ok(self.graph().get_node_weight(prop)?.get_prop_node_weight()?)
+    }
+
+    pub async fn av_node_weight(
+        self,
+        av: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<AttributeValueNodeWeight> {
+        Ok(self
+            .graph()
+            .get_node_weight(av)?
+            .get_attribute_value_node_weight()?)
+    }
+
+    pub async fn av_value(
+        self,
+        av: NodeIndex,
+        ctx: Arc<DalContext>,
+    ) -> WorkspaceSnapshotGraphResult<Option<String>> {
+        let av_node_weight = self.av_node_weight(av).await?;
+        let value = AttributeValue::fetch_value_from_store(&ctx, av_node_weight.value).await?;
+        if let Some(serde_json::Value::String(value)) = value {
+            Ok(Some(value))
+        } else {
+            Ok(None)
+        }
     }
 }

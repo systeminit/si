@@ -39,6 +39,7 @@ nix = { workspace = true }
 once_cell = { workspace = true }
 pathdiff = { workspace = true }
 permissions = { path = "../../lib/permissions" }
+petgraph = { workspace = true }
 rand = { workspace = true }
 rebaser-client = { path = "../../lib/rebaser-client" }
 regex = { workspace = true }

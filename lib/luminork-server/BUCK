@@ -55,6 +55,7 @@ rust_library(
         "//third-party/rust:nix",
         "//third-party/rust:once_cell",
         "//third-party/rust:pathdiff",
+        "//third-party/rust:petgraph",
         "//third-party/rust:rand",
         "//third-party/rust:remain",
         "//third-party/rust:reqwest",

@@ -11,9 +11,19 @@ use dal::{
     AttributeValue,
     Component,
     DalContext,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    workspace_snapshot::{
+        graph::WorkspaceSnapshotGraphResult,
+        node_weight::{
+            AttributeValueNodeWeight,
+            PropNodeWeight,
+        },
+    },
 };
 use futures::future::try_join_all;
 use itertools::Itertools as _;
+use petgraph::prelude::*;
 use sdf_extract::PosthogEventTracker;
 use serde::{
     Deserialize,
@@ -113,6 +123,12 @@ pub async fn search_components_spike(
         Some(SearchMethod::PetgraphSpawn) => match_components_petgraph_spawn(ctx, &query).await?,
         Some(SearchMethod::PetgraphWithAsync) => {
             match_components_petgraph_with_async(ctx, &query).await?
+        }
+        Some(SearchMethod::PetgraphWithAsyncDal) => {
+            match_components_petgraph_with_async_dal(ctx, &query).await?
+        }
+        Some(SearchMethod::PetgraphWithAsyncSpawn) => {
+            match_components_petgraph_with_async_spawn(ctx, &query).await?
         }
     };
 
@@ -505,6 +521,40 @@ async fn match_components_petgraph_with_async(
     Ok(results)
 }
 
+async fn match_components_petgraph_with_async_dal(
+    ctx: &DalContext,
+    query: &Arc<SearchComponentsSpikeV1Request>,
+) -> ComponentsResult<Vec<ComponentId>> {
+    let ctx = Arc::new(ctx.clone());
+    let mut results = vec![];
+    for component_id in Component::list_ids(&ctx).await? {
+        if let Some(component_id) =
+            match_component_petgraph_with_async_dal(ctx.clone(), component_id, query.clone())
+                .await?
+        {
+            results.push(component_id);
+        }
+    }
+    Ok(results)
+}
+
+async fn match_components_petgraph_with_async_spawn(
+    ctx: &DalContext,
+    query: &Arc<SearchComponentsSpikeV1Request>,
+) -> ComponentsResult<Vec<ComponentId>> {
+    let ctx = Arc::new(ctx.clone());
+    let mut results = vec![];
+    for component_id in Component::list_ids(&ctx).await? {
+        if let Some(component_id) =
+            match_component_petgraph_with_async_spawn(ctx.clone(), component_id, query.clone())
+                .await?
+        {
+            results.push(component_id);
+        }
+    }
+    Ok(results)
+}
+
 // 1. Try petgraph dfs
 // 2. Try going through props first
 async fn match_component_graph(
@@ -598,25 +648,136 @@ async fn match_component_petgraph(
     Ok(None)
 }
 
+#[derive(Clone)]
+pub struct PetgraphAsync(Arc<dal::WorkspaceSnapshotGraph>);
+
+impl PetgraphAsync {
+    fn graph(&self) -> &dal::WorkspaceSnapshotGraph {
+        &self.0
+    }
+
+    pub async fn root(self, component_id: ComponentId) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let component = self.graph().get_node_index_by_id(component_id)?;
+        self.graph().target(component, EdgeWeightKind::Root)
+    }
+
+    pub async fn children(self, av: NodeIndex) -> Vec<NodeIndex> {
+        self.graph()
+            .targets(av, EdgeWeightKindDiscriminants::Contain)
+            .collect()
+    }
+
+    pub async fn av_prop_name(self, av: NodeIndex) -> WorkspaceSnapshotGraphResult<String> {
+        let prop = self.clone().av_prop(av).await?;
+        self.prop_name(prop).await
+    }
+    pub async fn av_prop(self, av: NodeIndex) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        self.graph().target(av, EdgeWeightKind::Prop)
+    }
+    pub async fn prop_name(self, prop: NodeIndex) -> WorkspaceSnapshotGraphResult<String> {
+        Ok(self.prop_node_weight(prop).await?.name)
+    }
+    pub async fn prop_node_weight(
+        self,
+        prop: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<PropNodeWeight> {
+        Ok(self.graph().get_node_weight(prop)?.get_prop_node_weight()?)
+    }
+
+    pub async fn av_node_weight(
+        self,
+        av: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<AttributeValueNodeWeight> {
+        Ok(self
+            .graph()
+            .get_node_weight(av)?
+            .get_attribute_value_node_weight()?)
+    }
+
+    pub async fn av_value(
+        self,
+        av: NodeIndex,
+        ctx: Arc<DalContext>,
+    ) -> WorkspaceSnapshotGraphResult<Option<String>> {
+        let av_node_weight = self.av_node_weight(av).await?;
+        let value = AttributeValue::fetch_value_from_store(&ctx, av_node_weight.value).await?;
+        if let Some(serde_json::Value::String(value)) = value {
+            Ok(Some(value))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
 async fn match_component_petgraph_with_async(
     ctx: Arc<DalContext>,
     component_id: ComponentId,
     query: Arc<SearchComponentsSpikeV1Request>,
 ) -> ComponentsResult<Option<ComponentId>> {
-    for av in ctx
-        .workspace_snapshot()?
-        .matching_avs_with_async(component_id, &query.attr_name)
-        .await?
-    {
-        info!("Matching AV in {}", component_id);
-        let value = AttributeValue::fetch_value_from_store(&ctx, av.value).await?;
-        info!("Got content {}", component_id);
-        if let Some(serde_json::Value::String(value)) = value {
-            if value == query.attr_value {
-                return Ok(Some(component_id));
+    let graph = PetgraphAsync(ctx.workspace_snapshot()?.graph().clone());
+
+    let root = graph.clone().root(component_id).await?;
+    let mut work_queue = VecDeque::from(graph.clone().children(root).await);
+    while let Some(av) = work_queue.pop_front() {
+        let prop_name = graph.clone().av_prop_name(av).await?;
+        if prop_name == query.attr_name {
+            if let Some(value) = graph.clone().av_value(av, ctx.clone()).await? {
+                if value == query.attr_value {
+                    return Ok(Some(component_id));
+                }
             }
         }
+        work_queue.extend(graph.clone().children(av).await);
     }
+
+    Ok(None)
+}
+
+async fn match_component_petgraph_with_async_dal(
+    ctx: Arc<DalContext>,
+    component_id: ComponentId,
+    query: Arc<SearchComponentsSpikeV1Request>,
+) -> ComponentsResult<Option<ComponentId>> {
+    let graph = dal::attribute::value::PetgraphAsync(ctx.workspace_snapshot()?.graph().clone());
+
+    let root = graph.clone().root(component_id).await?;
+    let mut work_queue = VecDeque::from(graph.clone().children(root).await);
+    while let Some(av) = work_queue.pop_front() {
+        let prop_name = graph.clone().av_prop_name(av).await?;
+        if prop_name == query.attr_name {
+            if let Some(value) = graph.clone().av_value(av, ctx.clone()).await? {
+                if value == query.attr_value {
+                    return Ok(Some(component_id));
+                }
+            }
+        }
+        work_queue.extend(graph.clone().children(av).await);
+    }
+
+    Ok(None)
+}
+
+async fn match_component_petgraph_with_async_spawn(
+    ctx: Arc<DalContext>,
+    component_id: ComponentId,
+    query: Arc<SearchComponentsSpikeV1Request>,
+) -> ComponentsResult<Option<ComponentId>> {
+    let graph = PetgraphAsync(ctx.workspace_snapshot()?.graph().clone());
+
+    let root = tokio::spawn(graph.clone().root(component_id)).await??;
+    let mut work_queue = VecDeque::from(tokio::spawn(graph.clone().children(root)).await?);
+    while let Some(av) = work_queue.pop_front() {
+        let prop_name = tokio::spawn(graph.clone().av_prop_name(av)).await??;
+        if prop_name == query.attr_name {
+            if let Some(value) = tokio::spawn(graph.clone().av_value(av, ctx.clone())).await?? {
+                if value == query.attr_value {
+                    return Ok(Some(component_id));
+                }
+            }
+        }
+        work_queue.extend(tokio::spawn(graph.clone().children(av)).await?);
+    }
+
     Ok(None)
 }
 
@@ -665,6 +826,8 @@ pub enum SearchMethod {
     Petgraph,
     PetgraphSpawn,
     PetgraphWithAsync,
+    PetgraphWithAsyncDal,
+    PetgraphWithAsyncSpawn,
     Graph,
     GraphSpawn,
     GraphSpawn2,

@@ -183,6 +183,8 @@ pub enum ComponentsError {
     ViewNotFound(String),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
+    #[error("workspace snapshot graph error: {0}")]
+    WorkspaceSnapshotGraph(#[from] dal::workspace_snapshot::graph::WorkspaceSnapshotGraphError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] dal::WsEventError),
 }

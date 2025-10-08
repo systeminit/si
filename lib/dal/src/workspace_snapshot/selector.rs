@@ -622,6 +622,13 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
+    pub fn graph(&self) -> &Arc<crate::WorkspaceSnapshotGraph> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.graph(),
+            Self::SplitSnapshot(_) => panic!("ohno"),
+        }
+    }
+
     pub async fn matching_avs_with_async(
         &self,
         component_id: ComponentId,
