@@ -9,6 +9,7 @@ import {
   generateDefaultFuncsFromConfig,
   generateSpecsFromRawSchema,
 } from "../generic/index.ts";
+import { applyAssetOverrides } from "../generic/applyAssetOverrides.ts";
 import { dummyProviderConfig } from "./provider.ts";
 
 export async function generateDummySpecs(options: {
@@ -31,6 +32,9 @@ export async function generateDummySpecs(options: {
   specs = createSuggestionsForPrimaryIdentifiers(specs);
 
   specs = generateDefaultFuncsFromConfig(specs, dummyProviderConfig);
+
+  // Apply provider-specific overrides
+  specs = applyAssetOverrides(specs, dummyProviderConfig);
 
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
