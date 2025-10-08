@@ -2142,6 +2142,9 @@ export const CHANGE_SET_INDEX_URL = (
     "index",
   ] as URLPattern;
 
+export const DEPLOYMENT_INDEX_URL = (workspaceId: string) =>
+  ["v2", "workspaces", { workspaceId }, "deployment_index"] as URLPattern;
+
 export const STATUS_INDEX_IN_PROGRESS = 202;
 
 const getSdfClientForWorkspace = (workspaceId: string, span?: Span) => {
@@ -2177,6 +2180,45 @@ const retry = async <T>(
     await sleep(Math.min(ms, ONE_MIN));
     return retry(fn, retryNum);
   } else return r;
+};
+
+const vanaheim = async (
+  db: Database,
+  workspaceId: string,
+): Promise<boolean> => {
+  return await tracer.startActiveSpan("vanaheim", async (span: Span) => {
+    span.setAttributes({ workspaceId });
+    const sdf = getSdfClientForWorkspace(workspaceId, span);
+    if (!sdf) {
+      span.end();
+      return false;
+    }
+
+    const pattern = DEPLOYMENT_INDEX_URL(workspaceId);
+    const [url, desc] = describePattern(pattern);
+    const frigg = tracer.startSpan(`GET ${desc}`);
+    frigg.setAttributes({ workspaceId });
+    const req = await retry<IndexObjectMeta>(async () => {
+      const req = await sdf<IndexObjectMeta>({
+        method: "get",
+        url,
+      });
+      return req;
+    });
+
+    // Check for 202 status - user needs to go to lobby
+    frigg.setAttribute("status", req.status);
+    if (req.status === STATUS_INDEX_IN_PROGRESS) {
+      debug("‼️ DEPLOYMENT INDEX NOT READY");
+      frigg.end();
+      span.end();
+      return false;
+    }
+
+    console.log("VANAHEIM", req.data);
+
+    return false;
+  });
 };
 
 const niflheim = async (
@@ -4196,6 +4238,14 @@ const dbInterface: TabDBInterface = {
     }
     return sqlite.transaction((db) =>
       pruneAtomsForClosedChangeSet(db, workspaceId, changeSetId),
+    );
+  },
+  async vanaheim(workspaceId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return await sqlite.transaction(
+      async (db) => await vanaheim(db, workspaceId),
     );
   },
   async niflheim(workspaceId, changeSetId) {

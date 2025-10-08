@@ -764,6 +764,9 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
 
   await niflheim(workspaceId, baseChangeSetId, force);
 
+  niflheimQueue.add(async () => {
+    await vanaheim(workspaceId);
+  });
   for (const changeSet of openChangeSets) {
     if (changeSet.id === baseChangeSetId) {
       continue;
@@ -829,6 +832,17 @@ export const niflheim = async (
   }
 
   return true;
+};
+
+export const vanaheim = async (workspaceId: WorkspacePk): Promise<boolean> => {
+  await waitForInitCompletion();
+  const start = performance.now();
+  // eslint-disable-next-line no-console
+  console.log("😎️ VANAHEIM 😎️");
+  const success = await db.vanaheim(workspaceId);
+  // eslint-disable-next-line no-console
+  console.log("😎️ DONE 😎❄️", performance.now() - start);
+  return success;
 };
 
 export const prune = async (

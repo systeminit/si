@@ -416,6 +416,12 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
+  async vanaheim(workspaceId: string): Promise<boolean> {
+    return await withLeader(
+      async (remote) => await remote.vanaheim(workspaceId),
+    );
+  },
+
   async pruneAtomsForClosedChangeSet(workspaceId: string, changeSetId: string) {
     return await withLeader(
       async (remote) =>
