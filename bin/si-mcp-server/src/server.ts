@@ -6,9 +6,11 @@ import { changeSetUpdateTool } from "./tools/changeSetUpdateStatus.ts";
 import { schemaFindTool } from "./tools/schemaFind.ts";
 import { schemaAttributesListTool } from "./tools/schemaAttributesList.ts";
 import { schemaAttributesDocumentationTool } from "./tools/schemaAttributesDocumentation.ts";
+import { schemaCreateOrEditTool } from "./tools/schemaCreateOrEdit.ts";
 import { actionListTool } from "./tools/actionList.ts";
 import { actionUpdateTool } from "./tools/actionUpdateStatus.ts";
 import { funcRunGetTool } from "./tools/funcRunGet.ts";
+import { funcCreateOrEditTool } from "./tools/funcCreateOrEdit.ts";
 import { componentListTool } from "./tools/componentList.ts";
 import { componentGetTool } from "./tools/componentGet.ts";
 import { componentCreateTool } from "./tools/componentCreate.ts";
@@ -29,8 +31,6 @@ import { templateListTool } from "./tools/templateList.ts";
 import { changeSetAbandonTool } from "./tools/changeSetAbandon.ts";
 import { changeSetForceApplyTool } from "./tools/changeSetForceApply.ts";
 
-// import { schemaCreateOrEditTool } from "./tools/schemaCreateOrEdit.ts"; // uncomment for local development
-// import { funcCreateOrEditTool } from "./tools/funcCreateOrEdit.ts"; // uncomment for local development
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -46,9 +46,11 @@ export function createServer(): McpServer {
   schemaFindTool(server);
   schemaAttributesListTool(server);
   schemaAttributesDocumentationTool(server);
+  schemaCreateOrEditTool(server);
   actionListTool(server);
   actionUpdateTool(server);
   funcRunGetTool(server);
+  funcCreateOrEditTool(server);
   componentListTool(server);
   componentGetTool(server);
   componentCreateTool(server);
@@ -66,9 +68,6 @@ export function createServer(): McpServer {
   upgradeComponentsTool(server);
   importPrompt(server);
   discoverPrompt(server);
-
-  // schemaCreateOrEditTool(server); // uncomment for local development
-  // funcCreateOrEditTool(server); // uncomment for local development
 
   return server;
 }

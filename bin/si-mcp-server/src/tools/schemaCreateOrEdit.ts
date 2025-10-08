@@ -55,21 +55,21 @@ const schemaCreateOrEditInputSchemaRaw = {
           .setDocumentation("Documentation text explaining this prop goes here.")
           .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
           .build();
-        
+
         const integerProp = new PropBuilder()
           .setName("IntegerProp")
           .setKind("integer")
           .setDocumentation("Documentation text explaining this prop goes here.")
           .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
           .build();
-        
+
         const booleanProp = new PropBuilder()
           .setName("BooleanProp")
           .setKind("boolean")
           .setDocumentation("Documentation text explaining this prop goes here.")
           .setWidget(new PropWidgetDefinitionBuilder().setKind("checkbox").build())
           .build();
-        
+
         const codeEditorProp = new PropBuilder()
           .setName("CodeEditorProp")
           .setKind("string")
@@ -89,7 +89,7 @@ const schemaCreateOrEditInputSchemaRaw = {
           .setKind("object")
           .addChild(booleanProp)
           .build();
-        
+
         const arrayProp = new PropBuilder()
           .setName("ArrayProp")
           .setKind("array")
@@ -209,8 +209,10 @@ export function schemaCreateOrEditTool(server: McpServer) {
           } else {
             // create a new schema
 
+            const name = createOrEditSchemaV1Request.name;
+
             // a new schema must have a name
-            if (!createOrEditSchemaV1Request.name) {
+            if (!name) {
               return errorResponse({
                 message: "A name is required to make a new schema.",
                 hints: "Ask the user to give this new schema a name."
@@ -223,6 +225,7 @@ export function schemaCreateOrEditTool(server: McpServer) {
               changeSetId: changeSetId,
               createSchemaV1Request: {
                 ...createOrEditSchemaV1Request,
+                name,
                 code: definitionFunction ?? DEFAULT_SCHEMA_DEFINITION_FUNCTION,
               },
             });

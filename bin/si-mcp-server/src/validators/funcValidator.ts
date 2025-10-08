@@ -3,7 +3,7 @@ export type ValidationIssue = { message: string };
 
 export function validateFunctionCode(
   functionType: "qualification" | "codegen" | "management" | "action",
-  code: string | undefined,
+  code?: string,
   actionKind?: "Create" | "Destroy" | "Refresh" | "Update" | "Manual",
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
