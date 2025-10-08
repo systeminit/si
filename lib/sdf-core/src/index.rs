@@ -1,18 +1,9 @@
 use std::time::Duration;
 
-use axum::response::{
-    IntoResponse,
-    Response,
-};
-use dal::{
-    ChangeSetId,
-    WorkspacePk,
-};
+use axum::response::{IntoResponse, Response};
+use dal::{ChangeSetId, WorkspacePk};
 use hyper::StatusCode;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use si_frontend_mv_types::object::FrontendObject;
 use si_frontend_types::FrontEndObjectRequest;
 use thiserror::Error;
@@ -35,6 +26,8 @@ pub enum IndexError {
     Acquire(#[from] tokio::sync::AcquireError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
+    #[error("index not found after fresh rebuild (v1);")]
+    DeploymentIndexNotFoundAfterFreshBuild(),
     #[error("deserializing mv index data error: {0}")]
     DeserializingMvIndexData(#[source] serde_json::Error),
     #[error("edda client error: {0}")]

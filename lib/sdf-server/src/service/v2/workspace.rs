@@ -10,11 +10,17 @@ use axum::{
         post,
     },
 };
-use sdf_core::api_error::ApiError;
+use sdf_core::{
+    api_error::ApiError,
+    index::IndexResult,
+};
+use telemetry::prelude::*;
 use thiserror::Error;
 
+use super::AccessBuilder;
 use crate::app_state::AppState;
 
+mod get_deployment_index;
 mod install_workspace;
 mod list_workspace_users;
 
@@ -58,4 +64,8 @@ pub fn v2_routes() -> Router<AppState> {
     Router::new()
         .route("/install", post(install_workspace::install_workspace))
         .route("/users", get(list_workspace_users::list_workspace_users))
+        .route(
+            "/deployment_index",
+            get(get_deployment_index::get_deployment_index),
+        )
 }
