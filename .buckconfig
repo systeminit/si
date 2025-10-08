@@ -34,6 +34,10 @@ ignore = \
 [buck2]
 digest_algorithms = SHA256
 restarter = true
+materializations = deferred
+sqlite_materializer_state = true
+defer_write_actions = true
+hash_all_commands = true
 
 [buck2_re_client]
 action_cache_address = bb.systeminit.com:8980
