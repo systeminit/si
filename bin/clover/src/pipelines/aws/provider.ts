@@ -11,6 +11,7 @@ import {
   ProviderFunctions,
   SuperSchema,
 } from "../types.ts";
+import { AWS_PROP_OVERRIDES, AWS_SCHEMA_OVERRIDES } from "./overrides.ts";
 import {
   ACTION_FUNC_SPECS,
   CODE_GENERATION_FUNC_SPECS,
@@ -125,6 +126,10 @@ export const awsProviderConfig: ProviderConfig = {
   },
   normalizeProperty: awsNormalizeProperty,
   isChildRequired: awsIsChildRequired,
+  overrides: {
+    propOverrides: AWS_PROP_OVERRIDES,
+    schemaOverrides: AWS_SCHEMA_OVERRIDES,
+  },
 };
 
 PROVIDER_REGISTRY[awsProviderConfig.name] = awsProviderConfig;

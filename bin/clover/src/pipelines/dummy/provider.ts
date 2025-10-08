@@ -18,6 +18,7 @@ import {
 import { databaseSchema, serverSchema } from "./schema.ts";
 import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import { generateDummySpecs } from "./pipeline.ts";
+import { DUMMY_PROP_OVERRIDES, DUMMY_SCHEMA_OVERRIDES } from "./overrides.ts";
 
 function createDocLink(
   _schema: SuperSchema,
@@ -97,6 +98,10 @@ export const dummyProviderConfig: ProviderConfig = {
   },
   normalizeProperty: dummyNormalizeProperty,
   isChildRequired: dummyIsChildRequired,
+  overrides: {
+    propOverrides: DUMMY_PROP_OVERRIDES,
+    schemaOverrides: DUMMY_SCHEMA_OVERRIDES,
+  },
 };
 
 PROVIDER_REGISTRY[dummyProviderConfig.name] = dummyProviderConfig;

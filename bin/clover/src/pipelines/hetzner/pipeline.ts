@@ -10,6 +10,7 @@ import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForEx
 import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
 import { generateDefaultFuncsFromConfig, generateSpecsFromRawSchema } from "../generic/index.ts";
 import { addDefaultProps } from "./pipeline-steps/addDefaultProps.ts";
+import { applyAssetOverrides } from "../generic/applyAssetOverrides.ts";
 import { hetznerProviderConfig } from "./provider.ts";
 
 export async function generateHetznerSpecs(options: {
@@ -30,6 +31,9 @@ export async function generateHetznerSpecs(options: {
   specs = generateDefaultFuncsFromConfig(specs, hetznerProviderConfig);
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
+
+  // Apply provider-specific overrides
+  specs = applyAssetOverrides(specs, hetznerProviderConfig);
 
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);

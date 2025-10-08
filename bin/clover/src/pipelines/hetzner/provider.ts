@@ -9,6 +9,7 @@ import {
   ProviderFunctions,
   SuperSchema,
 } from "../types.ts";
+import { HETZNER_PROP_OVERRIDES, HETZNER_SCHEMA_OVERRIDES } from "./overrides.ts";
 import { normalizeOnlyProperties } from "../generic/index.ts";
 import {
   ACTION_FUNC_SPECS,
@@ -170,6 +171,10 @@ export const hetznerProviderConfig: ProviderConfig = {
   },
   normalizeProperty: hetznerNormalizeProperty,
   isChildRequired: hetznerIsChildRequired,
+  overrides: {
+    propOverrides: HETZNER_PROP_OVERRIDES,
+    schemaOverrides: HETZNER_SCHEMA_OVERRIDES,
+  },
 };
 
 // Register this provider
