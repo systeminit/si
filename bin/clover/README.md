@@ -23,7 +23,7 @@ $ deno task run generate-specs [...SCHEMA]
 - `generate-specs` with no arguments to regenerate all specs
 - `generate-specs EC2 S3 SecurityGroup` to regenerate all EC2 and S3 schemas,
   plus the SecurityGroup schema
-- `SI_MODULE_INDEX_URL=https://module-index/systeminit.com` to point at
+- `SI_MODULE_INDEX_URL=https://module-index.systeminit.com` to point at
   production
 - `SI_MODULE_INDEX_URL=http://127.0.0.1:5157` to point at your local module
   index. (**If you do this, do NOT upload the resulting specs to

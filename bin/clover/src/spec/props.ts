@@ -65,10 +65,14 @@ export interface PropSuggestion {
 
 // Type guard to check if a JsonValue is a PropSuggestion array
 function isPropSuggestionArray(value: unknown): value is PropSuggestion[] {
-  return Array.isArray(value) &&
+  return (
+    Array.isArray(value) &&
     (value.length === 0 ||
-      (typeof value[0] === "object" && value[0] !== null &&
-        "schema" in value[0] && "prop" in value[0]));
+      (typeof value[0] === "object" &&
+        value[0] !== null &&
+        "schema" in value[0] &&
+        "prop" in value[0]))
+  );
 }
 
 interface PropSpecOverrides {
@@ -91,9 +95,9 @@ interface PropSpecOverrides {
   joiValidation?: string;
   cfProp:
     | (CfProperty & {
-      // The name of the definition this property lives under
-      defName?: string;
-    })
+        // The name of the definition this property lives under
+        defName?: string;
+      })
     | undefined;
 }
 
@@ -230,9 +234,10 @@ export function createPropFromCf(
     widgetKind: null,
     widgetOptions: [],
     hidden: false,
-    docLink: parentProp?.kind === "object"
-      ? docFn(superSchema, cfProp.defName, name)
-      : null,
+    docLink:
+      parentProp?.kind === "object"
+        ? docFn(superSchema, cfProp.defName, name)
+        : null,
     documentation: cfProp.description ?? null,
     uiOptionals: null,
   };
@@ -385,11 +390,9 @@ export function createPropFromCf(
           break;
         // This is a special case (and seems likely wrong), but may as well support it
         case "(^arn:[a-z\\d-]+:rekognition:[a-z\\d-]+:\\d{12}:collection\\/([a-zA-Z0-9_.\\-]+){1,255})":
-          validation += `.pattern(new RegExp(${
-            JSON.stringify(
-              normalizedCfProp.format,
-            )
-          }))`;
+          validation += `.pattern(new RegExp(${JSON.stringify(
+            normalizedCfProp.format,
+          )}))`;
           break;
         case undefined:
           break;
@@ -405,11 +408,9 @@ export function createPropFromCf(
       if (normalizedCfProp.pattern !== undefined) {
         const toRegexp = cfPcreToRegexp(normalizedCfProp.pattern);
         if (toRegexp) {
-          validation += `.pattern(new RegExp(${
-            JSON.stringify(
-              toRegexp.pattern,
-            )
-          }${toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""}))`;
+          validation += `.pattern(new RegExp(${JSON.stringify(
+            toRegexp.pattern,
+          )}${toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""}))`;
         }
       }
       if (required) validation += ".required()";
@@ -495,11 +496,9 @@ export function createPropFromCf(
       prop.kind = "object";
       prop.data.widgetKind = "Header";
       prop.entries = [];
-      for (
-        const [name, childCfProp] of Object.entries(
-          normalizedCfProp.properties,
-        )
-      ) {
+      for (const [name, childCfProp] of Object.entries(
+        normalizedCfProp.properties,
+      )) {
         queue.push({
           cfProp: childCfProp,
           propPath: [...propPath, name],
@@ -790,4 +789,8 @@ export function propSuggestionFor(
     // stripping /root out
     prop: "/" + prop.metadata.propPath.slice(1).join("/"),
   };
+}
+
+export function propPathStr(prop: ExpandedPropSpec): string {
+  return "/" + prop.metadata.propPath.slice(1).join("/");
 }

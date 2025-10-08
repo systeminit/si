@@ -4,6 +4,7 @@ import {
   ExpandedPropSpec,
   ExpandedPropSpecFor,
   findPropByName,
+  propPathStr,
 } from "../../spec/props.ts";
 import { PropUsageMap } from "../aws/pipeline-steps/addDefaultPropsAndSockets.ts";
 import { ActionFuncSpecKind } from "../../bindings/ActionFuncSpecKind.ts";
@@ -16,6 +17,8 @@ import {
   createLeafFuncSpec,
   strippedBase64,
 } from "../../spec/funcs.ts";
+import { PropSpecWidgetKind } from "../../bindings/PropSpecWidgetKind.ts";
+import { PropOverrideFn } from "../types.ts";
 
 /**
  * Shared utility functions for asset overrides across all providers
@@ -229,9 +232,53 @@ export function suggest(suggestSchema: string, suggestProp: string) {
   if (!suggestProp.startsWith("/")) {
     suggestProp = `/resource_value/${suggestProp}`;
   }
-  return (addToProp: ExpandedPropSpec) =>
-    addPropSuggestSource(addToProp, {
-      schema: suggestSchema,
-      prop: suggestProp,
-    });
+  return (addToProp: ExpandedPropSpec, spec: ExpandedPkgSpec) => {
+    // Don't add self-suggestions
+    if (
+      !(spec.name === suggestSchema && propPathStr(addToProp) === suggestProp)
+    ) {
+      addPropSuggestSource(addToProp, {
+        schema: suggestSchema,
+        prop: suggestProp,
+      });
+    }
+  };
+}
+
+// ComboBox override with fixed set of options. Options can be specified any of these ways:
+//
+// - widget("TextArea")
+// - widget("ComboBox", ["a", "b", ...])
+// - comboBox({ "a": "label A", ... })
+// - comboBox([ { label: "label A", value: "a" }, ... ])
+//
+export function widget(
+  kind: Exclude<PropSpecWidgetKind, "ComboBox">,
+): PropOverrideFn;
+export function widget(
+  kind: "ComboBox",
+  options?:
+    | (string | { label: string; value: string })[]
+    | Record<string, string>,
+): PropOverrideFn;
+export function widget(
+  kind: PropSpecWidgetKind,
+  options?:
+    | (string | { label: string; value: string })[]
+    | Record<string, string>,
+) {
+  if (options && !Array.isArray(options)) {
+    options = Object.entries(options).map(([value, label]) => ({
+      label,
+      value,
+    }));
+  }
+  return (prop: ExpandedPropSpec) => {
+    prop.data.widgetKind = kind;
+    if (options) {
+      prop.data.widgetOptions = options.map((o) =>
+        typeof o === "string" ? { label: o, value: o } : o,
+      );
+    }
+  };
 }
