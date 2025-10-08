@@ -7,18 +7,35 @@
         themeClasses('bg-neutral-200', 'bg-neutral-800'),
       )
     "
-    @click="emit('clickCollapse', row.title, !row.collapsed)"
   >
-    <Icon :name="row.collapsed ? 'chevron--right' : 'chevron--down'" />
+    <Icon
+      :name="row.collapsed ? 'chevron--right' : 'chevron--down'"
+      @click="emit('clickCollapse', row.title, !row.collapsed)"
+    />
     <Icon
       v-if="titleIcon"
       :name="titleIcon.iconName"
       :tone="titleIcon.iconTone"
     />
-    <span class="select-none">
+    <span
+      class="select-none"
+      @click="emit('clickCollapse', row.title, !row.collapsed)"
+    >
       {{ row.title }}
     </span>
     <PillCounter :count="row.count" class="text-xs" />
+    <NewButton
+      v-if="!row.collapsed"
+      class="ml-auto"
+      size="xs"
+      :label="row.allSelected ? 'Deselect All' : 'Select All'"
+      :disabled="row.count === 0"
+      @click.stop.prevent="
+        row.allSelected
+          ? emit('deselectAllInSection', row.title)
+          : emit('selectAllInSection', row.title)
+      "
+    />
   </div>
   <div
     v-else-if="row.type === 'defaultSubHeader'"
@@ -28,9 +45,11 @@
         themeClasses('bg-neutral-200', 'bg-neutral-800'),
       )
     "
-    @click="emit('clickCollapse', row.subKey, !row.collapsed)"
   >
-    <Icon :name="row.collapsed ? 'chevron--right' : 'chevron--down'" />
+    <Icon
+      :name="row.collapsed ? 'chevron--right' : 'chevron--down'"
+      @click="emit('clickCollapse', row.subKey, !row.collapsed)"
+    />
     <Icon :name="getAssetIcon(row.schemaCategory)" size="md" />
     <div
       class="cursor-pointer select-none flex flex-row items-center gap-xs"
@@ -78,6 +97,18 @@
       </span>
     </div>
     <PillCounter :count="row.count" class="text-xs" />
+    <NewButton
+      v-if="!row.collapsed"
+      class="ml-auto"
+      size="xs"
+      :label="row.allSelected ? 'Deselect All' : 'Select All'"
+      :disabled="row.count === 0"
+      @click.stop.prevent="
+        row.allSelected
+          ? emit('deselectAllInSection', row.subKey)
+          : emit('selectAllInSection', row.subKey)
+      "
+    />
   </div>
   <div
     v-else-if="row.type === 'contentHeader'"
@@ -216,7 +247,13 @@
   </div>
   <div
     v-else-if="row.type === 'emptyRow'"
-    class="flex items-center justify-center pb-xs px-xs"
+    :class="
+      clsx(
+        'flex items-center justify-center pb-xs',
+        row.insideSection && 'px-xs',
+        row.insideSection && themeClasses('bg-neutral-200', 'bg-neutral-800'),
+      )
+    "
   >
     <div
       :class="
@@ -294,6 +331,7 @@ import {
   IconNames,
   Tones,
   TruncateWithTooltip,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import { tw } from "@si/vue-lib";
 import { useQuery } from "@tanstack/vue-query";
@@ -523,6 +561,8 @@ const emit = defineEmits<{
   (e: "childDeselect", componentIdx: number): void;
   (e: "componentNavigate", componentId: ComponentId): void;
   (e: "resetFilter"): void;
+  (e: "selectAllInSection", sectionKey: string): void;
+  (e: "deselectAllInSection", sectionKey: string): void;
 }>();
 </script>
 
@@ -544,6 +584,7 @@ export type ExploreGridRowData =
       title: string;
       count: number;
       collapsed: boolean;
+      allSelected: boolean;
     }
   | {
       type: "footer";
@@ -551,6 +592,7 @@ export type ExploreGridRowData =
   | {
       type: "emptyRow";
       groupName: string;
+      insideSection: boolean;
     }
   | {
       type: "filteredCounterRow";
@@ -571,6 +613,7 @@ export type ExploreGridRowData =
       collapsed: boolean;
       count: number;
       subKey: string; // Needed for collapse handling
+      allSelected: boolean;
     };
 </script>
 
