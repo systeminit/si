@@ -19,13 +19,13 @@ async function main(component: Input): Promise<Output> {
 
   let refreshAttempt = 0;
   const baseDelay = 1000;
-  const maxDelay = 120000;
+  const maxDelay = 90000;
   let resourceResponse;
 
   console.log(`Starting refresh operation for resourceId: ${name}, region: ${_.get(component, "properties.domain.extra.Region", "")}`);
 
   // Retry refresh operation if rate limited
-  while (refreshAttempt < 10) {
+  while (refreshAttempt < 20) {
     const child = await siExec.waitUntilEnd("aws", [
       "cloudcontrol",
       "get-resource",
@@ -40,15 +40,15 @@ async function main(component: Input): Promise<Output> {
     console.log(`Refresh attempt ${refreshAttempt + 1}: AWS CLI exit code: ${child.exitCode}`);
 
     if (child.exitCode !== 0) {
-      const isRateLimited = child.stderr.includes("Throttling") || 
+      const isRateLimited = child.stderr.includes("Throttling") ||
                            child.stderr.includes("TooManyRequests") ||
                            child.stderr.includes("RequestLimitExceeded") ||
                            child.stderr.includes("ThrottlingException");
-      
+
       // Check if this is a ResourceNotFoundException (valid case for deleted resources)
       const isResourceNotFound = child.stderr.includes("ResourceNotFoundException");
-      
-      if (isRateLimited && refreshAttempt < 9) {
+
+      if (isRateLimited && refreshAttempt < 19) {
         console.log(`Refresh attempt ${refreshAttempt + 1} rate limited, will retry`);
       } else if (isResourceNotFound) {
         console.log("Resource not found upstream, will handle as deletion");
@@ -57,13 +57,13 @@ async function main(component: Input): Promise<Output> {
         console.log(child.stdout);
         console.error(`Refresh attempt ${refreshAttempt + 1} failed:`, child.stderr);
       }
-      
-      if (isRateLimited && refreshAttempt < 9) {
+
+      if (isRateLimited && refreshAttempt < 19) {
         refreshAttempt++;
         const exponentialDelay = Math.min(baseDelay * Math.pow(2, refreshAttempt - 1), maxDelay);
         const jitter = Math.random() * 0.3 * exponentialDelay;
         const finalDelay = exponentialDelay + jitter;
-        
+
         console.log(`[REFRESH] Rate limited on attempt ${refreshAttempt}, waiting ${Math.round(finalDelay)}ms before retry`);
         await delay(finalDelay);
         continue;

@@ -37,13 +37,13 @@ async function main(component: Input): Promise<Output> {
 
   let createAttempt = 0;
   const baseDelay = 1000;
-  const maxDelay = 120000;
+  const maxDelay = 90000;
   let progressEvent;
 
   console.log(`Starting create operation for resource type: ${code["TypeName"]}, region: ${domain?.extra?.Region}`);
-  
+
   // Retry initial create operation if rate limited
-  while (createAttempt < 10) {
+  while (createAttempt < 20) {
     const child = await siExec.waitUntilEnd("aws", [
       "cloudcontrol",
       "create-resource",
@@ -54,25 +54,25 @@ async function main(component: Input): Promise<Output> {
     ]);
 
     console.log(`Create attempt ${createAttempt + 1}: AWS CLI exit code: ${child.exitCode}`);
-    
+
     if (child.exitCode !== 0) {
-      const isRateLimited = child.stderr.includes("Throttling") || 
+      const isRateLimited = child.stderr.includes("Throttling") ||
                            child.stderr.includes("TooManyRequests") ||
                            child.stderr.includes("RequestLimitExceeded") ||
                            child.stderr.includes("ThrottlingException");
-      
-      if (isRateLimited && createAttempt < 9) {
+
+      if (isRateLimited && createAttempt < 19) {
         console.log(`Create attempt ${createAttempt + 1} rate limited, will retry`);
       } else {
         console.error(`Create attempt ${createAttempt + 1} failed:`, child.stderr);
       }
-      
-      if (isRateLimited && createAttempt < 9) {
+
+      if (isRateLimited && createAttempt < 19) {
         createAttempt++;
         const exponentialDelay = Math.min(baseDelay * Math.pow(2, createAttempt - 1), maxDelay);
         const jitter = Math.random() * 0.3 * exponentialDelay;
         const finalDelay = exponentialDelay + jitter;
-        
+
         console.log(`[CREATE] Rate limited on attempt ${createAttempt}, waiting ${Math.round(finalDelay)}ms before retry`);
         await delay(finalDelay);
         continue;
@@ -117,21 +117,21 @@ async function main(component: Input): Promise<Output> {
     // Check for rate limiting in stderr regardless of exit code
     const hasStderrError = child.stderr && child.stderr.trim().length > 0;
     const isRateLimited = hasStderrError && (
-      child.stderr.includes("Throttling") || 
+      child.stderr.includes("Throttling") ||
       child.stderr.includes("TooManyRequests") ||
       child.stderr.includes("RequestLimitExceeded") ||
       child.stderr.includes("ThrottlingException")
     );
 
     if (child.exitCode !== 0) {
-      if (isRateLimited && attempt < 10) {
+      if (isRateLimited && attempt < 20) {
         console.log(`[CREATE] Status poll ${attempt + 1} rate limited, will retry`);
         shouldRetry = true;
       } else {
         console.error(`[CREATE] Status poll ${attempt + 1} failed:`, child.stderr);
       }
-      
-      if (!isRateLimited || attempt >= 10) {
+
+      if (!isRateLimited || attempt >= 20) {
         return {
           status: "error",
           message:
@@ -142,12 +142,12 @@ async function main(component: Input): Promise<Output> {
       try {
         const currentProgressEvent = JSON.parse(child.stdout);
         console.log(`[CREATE] Status poll ${attempt + 1} response:`, JSON.stringify(currentProgressEvent, null, 2));
-        
+
         // Log stderr warnings but don't fail if we have valid JSON
         if (hasStderrError) {
           console.warn("AWS CLI stderr (non-fatal):", child.stderr);
         }
-        
+
         const operationStatus =
           currentProgressEvent["ProgressEvent"]["OperationStatus"];
         if (operationStatus == "SUCCESS") {
@@ -171,8 +171,8 @@ async function main(component: Input): Promise<Output> {
         console.error("Failed to parse AWS response:", parseError);
         console.error("Raw stdout:", child.stdout);
         console.error("Raw stderr:", child.stderr);
-        
-        if (isRateLimited && attempt < 10) {
+
+        if (isRateLimited && attempt < 20) {
           console.log(`[CREATE] Parse error with rate limiting on attempt ${attempt + 1}, will retry after backoff`);
           shouldRetry = true;
         } else {
@@ -189,14 +189,14 @@ async function main(component: Input): Promise<Output> {
       const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
       const jitter = Math.random() * 0.3 * exponentialDelay;
       const finalDelay = exponentialDelay + jitter;
-      
+
       console.log(`[CREATE] Waiting ${Math.round(finalDelay)}ms before status poll attempt ${attempt + 1}`);
       await delay(finalDelay);
     }
   }
 
   console.log(`[CREATE] Final result: success=${success}, identifier=${identifier}`);
-  
+
   if (success) {
     console.log(`[CREATE] Returning success with resourceId: ${identifier}`);
     return {

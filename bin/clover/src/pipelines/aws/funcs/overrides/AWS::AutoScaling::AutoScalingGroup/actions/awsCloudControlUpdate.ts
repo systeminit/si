@@ -16,14 +16,14 @@ async function main(component: Input): Promise<Output> {
   };
 
   const baseDelay = 1000;
-  const maxDelay = 120000;
+  const maxDelay = 90000;
   let refreshAttempt = 0;
   let resourceResponse;
 
   console.log(`Starting AutoScaling Group update operation - initial refresh for resourceId: ${resourceId}, region: ${_.get(component, "properties.domain.extra.Region", "")}`);
 
   // Retry initial refresh operation if rate limited
-  while (refreshAttempt < 10) {
+  while (refreshAttempt < 20) {
     const refreshChild = await siExec.waitUntilEnd("aws", [
       "cloudcontrol",
       "get-resource",
@@ -38,25 +38,25 @@ async function main(component: Input): Promise<Output> {
     console.log(`Initial refresh attempt ${refreshAttempt + 1}: AWS CLI exit code: ${refreshChild.exitCode}`);
 
     if (refreshChild.exitCode !== 0) {
-      const isRateLimited = refreshChild.stderr.includes("Throttling") || 
+      const isRateLimited = refreshChild.stderr.includes("Throttling") ||
                            refreshChild.stderr.includes("TooManyRequests") ||
                            refreshChild.stderr.includes("RequestLimitExceeded") ||
                            refreshChild.stderr.includes("ThrottlingException");
-      
-      if (isRateLimited && refreshAttempt < 9) {
+
+      if (isRateLimited && refreshAttempt < 19) {
         console.log(`Initial refresh attempt ${refreshAttempt + 1} rate limited, will retry`);
       } else {
         console.log("Failed to refresh cloud control resource");
         console.log(refreshChild.stdout);
         console.error(`Initial refresh attempt ${refreshAttempt + 1} failed:`, refreshChild.stderr);
       }
-      
-      if (isRateLimited && refreshAttempt < 9) {
+
+      if (isRateLimited && refreshAttempt < 19) {
         refreshAttempt++;
         const exponentialDelay = Math.min(baseDelay * Math.pow(2, refreshAttempt - 1), maxDelay);
         const jitter = Math.random() * 0.3 * exponentialDelay;
         const finalDelay = exponentialDelay + jitter;
-        
+
         console.log(`[ASG-UPDATE] Initial refresh rate limited on attempt ${refreshAttempt}, waiting ${Math.round(finalDelay)}ms before retry`);
         await delay(finalDelay);
         continue;
@@ -133,7 +133,7 @@ async function main(component: Input): Promise<Output> {
   console.log(`Starting AutoScaling Group update operation for resourceId: ${resourceId}`);
 
   // Retry update operation if rate limited
-  while (updateAttempt < 10) {
+  while (updateAttempt < 20) {
     const child = await siExec.waitUntilEnd("aws", [
       "cloudcontrol",
       "update-resource",
@@ -150,23 +150,23 @@ async function main(component: Input): Promise<Output> {
     console.log(`Update attempt ${updateAttempt + 1}: AWS CLI exit code: ${child.exitCode}`);
 
     if (child.exitCode !== 0) {
-      const isRateLimited = child.stderr.includes("Throttling") || 
+      const isRateLimited = child.stderr.includes("Throttling") ||
                            child.stderr.includes("TooManyRequests") ||
                            child.stderr.includes("RequestLimitExceeded") ||
                            child.stderr.includes("ThrottlingException");
-      
-      if (isRateLimited && updateAttempt < 9) {
+
+      if (isRateLimited && updateAttempt < 19) {
         console.log(`Update attempt ${updateAttempt + 1} rate limited, will retry`);
       } else {
         console.error(`Update attempt ${updateAttempt + 1} failed:`, child.stderr);
       }
-      
-      if (isRateLimited && updateAttempt < 9) {
+
+      if (isRateLimited && updateAttempt < 19) {
         updateAttempt++;
         const exponentialDelay = Math.min(baseDelay * Math.pow(2, updateAttempt - 1), maxDelay);
         const jitter = Math.random() * 0.3 * exponentialDelay;
         const finalDelay = exponentialDelay + jitter;
-        
+
         console.log(`[ASG-UPDATE] Update rate limited on attempt ${updateAttempt}, waiting ${Math.round(finalDelay)}ms before retry`);
         await delay(finalDelay);
         continue;
@@ -211,21 +211,21 @@ async function main(component: Input): Promise<Output> {
     // Check for rate limiting in stderr regardless of exit code
     const hasStderrError = child.stderr && child.stderr.trim().length > 0;
     const isRateLimited = hasStderrError && (
-      child.stderr.includes("Throttling") || 
+      child.stderr.includes("Throttling") ||
       child.stderr.includes("TooManyRequests") ||
       child.stderr.includes("RequestLimitExceeded") ||
       child.stderr.includes("ThrottlingException")
     );
 
     if (child.exitCode !== 0) {
-      if (isRateLimited && attempt < 10) {
+      if (isRateLimited && attempt < 20) {
         console.log(`[ASG-UPDATE] Status poll ${attempt + 1} rate limited, will retry`);
         shouldRetry = true;
       } else {
         console.error(`[ASG-UPDATE] Status poll ${attempt + 1} failed:`, child.stderr);
       }
-      
-      if (!isRateLimited || attempt >= 10) {
+
+      if (!isRateLimited || attempt >= 20) {
         return {
           status: "error",
           message:
@@ -236,12 +236,12 @@ async function main(component: Input): Promise<Output> {
       try {
         const currentProgressEvent = JSON.parse(child.stdout);
         console.log(`[ASG-UPDATE] Status poll ${attempt + 1} response:`, JSON.stringify(currentProgressEvent, null, 2));
-        
+
         // Log stderr warnings but don't fail if we have valid JSON
         if (hasStderrError) {
           console.warn("AWS CLI stderr (non-fatal):", child.stderr);
         }
-        
+
         const operationStatus =
           currentProgressEvent["ProgressEvent"]["OperationStatus"];
         if (operationStatus == "SUCCESS") {
@@ -265,8 +265,8 @@ async function main(component: Input): Promise<Output> {
         console.error("Failed to parse AWS response:", parseError);
         console.error("Raw stdout:", child.stdout);
         console.error("Raw stderr:", child.stderr);
-        
-        if (isRateLimited && attempt < 10) {
+
+        if (isRateLimited && attempt < 20) {
           console.log(`[ASG-UPDATE] Parse error with rate limiting on attempt ${attempt + 1}, will retry after backoff`);
           shouldRetry = true;
         } else {
@@ -283,21 +283,21 @@ async function main(component: Input): Promise<Output> {
       const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
       const jitter = Math.random() * 0.3 * exponentialDelay;
       const finalDelay = exponentialDelay + jitter;
-      
+
       console.log(`[ASG-UPDATE] Waiting ${Math.round(finalDelay)}ms before status poll attempt ${attempt + 1}`);
       await delay(finalDelay);
     }
   }
 
   console.log(`[ASG-UPDATE] Final result: success=${success}, identifier=${identifier}`);
-  
+
   if (success) {
     console.log(`[ASG-UPDATE] Starting final refresh for updated AutoScaling Group`);
     let finalRefreshAttempt = 0;
     let finalResourceResponse;
 
     // Retry final refresh operation if rate limited
-    while (finalRefreshAttempt < 10) {
+    while (finalRefreshAttempt < 20) {
       const child = await siExec.waitUntilEnd("aws", [
         "cloudcontrol",
         "get-resource",
@@ -312,25 +312,25 @@ async function main(component: Input): Promise<Output> {
       console.log(`Final refresh attempt ${finalRefreshAttempt + 1}: AWS CLI exit code: ${child.exitCode}`);
 
       if (child.exitCode !== 0) {
-        const isRateLimited = child.stderr.includes("Throttling") || 
+        const isRateLimited = child.stderr.includes("Throttling") ||
                              child.stderr.includes("TooManyRequests") ||
                              child.stderr.includes("RequestLimitExceeded") ||
                              child.stderr.includes("ThrottlingException");
-        
-        if (isRateLimited && finalRefreshAttempt < 9) {
+
+        if (isRateLimited && finalRefreshAttempt < 19) {
           console.log(`Final refresh attempt ${finalRefreshAttempt + 1} rate limited, will retry`);
         } else {
           console.log("Failed to refresh cloud control resource");
           console.log(child.stdout);
           console.error(`Final refresh attempt ${finalRefreshAttempt + 1} failed:`, child.stderr);
         }
-        
-        if (isRateLimited && finalRefreshAttempt < 9) {
+
+        if (isRateLimited && finalRefreshAttempt < 19) {
           finalRefreshAttempt++;
           const exponentialDelay = Math.min(baseDelay * Math.pow(2, finalRefreshAttempt - 1), maxDelay);
           const jitter = Math.random() * 0.3 * exponentialDelay;
           const finalDelay = exponentialDelay + jitter;
-          
+
           console.log(`[ASG-UPDATE] Final refresh rate limited on attempt ${finalRefreshAttempt}, waiting ${Math.round(finalDelay)}ms before retry`);
           await delay(finalDelay);
           continue;
