@@ -396,6 +396,8 @@
               @childUnhover="() => (hoveredComponentId = undefined)"
               @unpin="() => (gridMode = { mode: 'default', label: '' })"
               @collapse="collapse"
+              @selectAllInSection="selectAllInSection"
+              @deselectAllInSection="deselectAllInSection"
             />
           </div>
           <footer
@@ -1559,6 +1561,21 @@ const hasMultipleSections = computed(
 );
 
 const collapseTracker = ref<Record<string, boolean>>({});
+
+// Helper function to check if all components in a section are selected
+const areAllComponentsInSectionSelected = (
+  components: ComponentInList[],
+  startIndex: number,
+): boolean => {
+  if (components.length === 0) return false;
+  for (let i = 0; i < components.length; i++) {
+    if (!selectedComponentIndexes.has(startIndex + i)) {
+      return false;
+    }
+  }
+  return true;
+};
+
 const gridRows = computed(() => {
   const rows: ExploreGridRowData[] = [];
   let dataIndex = 0;
@@ -1596,6 +1613,12 @@ const gridRows = computed(() => {
       collapsed = count === 0 || groupName === "Unconnected";
     }
 
+    // Check if all components in this section are selected
+    const allSelected = areAllComponentsInSectionSelected(
+      components,
+      dataIndex,
+    );
+
     if (
       hasMultipleSections.value &&
       gridMode.value.mode !== "defaultSubscriptions"
@@ -1605,6 +1628,7 @@ const gridRows = computed(() => {
         title: groupName,
         count,
         collapsed,
+        allSelected,
       });
     } else if (gridMode.value.mode === "defaultSubscriptions") {
       const defaultSub: DefaultSubscription =
@@ -1633,6 +1657,7 @@ const gridRows = computed(() => {
         collapsed,
         subKey: groupName,
         count,
+        allSelected,
       });
     }
 
@@ -1660,6 +1685,9 @@ const gridRows = computed(() => {
         rows.push({
           type: "emptyRow",
           groupName,
+          insideSection:
+            hasMultipleSections.value ||
+            gridMode.value.mode === "defaultSubscriptions",
         });
       }
     }
@@ -2009,6 +2037,70 @@ const toggleComponentSelection = (componentIdx: number) => {
 };
 const isComponentSelected = (componentIdx: number) =>
   selectedComponentIndexes.has(componentIdx);
+
+const selectAllInSection = (sectionKey: string) => {
+  // Find all components in the section by looking at gridRows
+  const componentsToSelect: number[] = [];
+
+  for (const row of gridRows.value) {
+    if (row.type === "contentRow") {
+      // Check if this contentRow belongs to the section we're looking for
+      // We need to track which section we're in by looking at headers
+      const currentSectionKey = findSectionKeyForDataIndex(row.chunkInitialId);
+
+      if (currentSectionKey === sectionKey) {
+        // Add all component indexes in this row
+        for (let i = 0; i < row.components.length; i++) {
+          componentsToSelect.push(row.chunkInitialId + i);
+        }
+      }
+    }
+  }
+
+  // Select all components in the section without focusing
+  // This allows the context menu to only appear on right-click
+  componentsToSelect.forEach((idx) => selectComponent(idx));
+};
+
+const deselectAllInSection = (sectionKey: string) => {
+  // Find all components in the section by looking at gridRows
+  const componentsToDeselect: number[] = [];
+
+  for (const row of gridRows.value) {
+    if (row.type === "contentRow") {
+      // Check if this contentRow belongs to the section we're looking for
+      const currentSectionKey = findSectionKeyForDataIndex(row.chunkInitialId);
+
+      if (currentSectionKey === sectionKey) {
+        // Add all component indexes in this row
+        for (let i = 0; i < row.components.length; i++) {
+          componentsToDeselect.push(row.chunkInitialId + i);
+        }
+      }
+    }
+  }
+
+  // Deselect all components in the section
+  componentsToDeselect.forEach((idx) => deselectComponent(idx));
+};
+
+const findSectionKeyForDataIndex = (dataIndex: number): string | undefined => {
+  let currentSection: string | undefined;
+
+  for (const row of gridRows.value) {
+    if (row.type === "header") {
+      currentSection = row.title;
+    } else if (row.type === "defaultSubHeader") {
+      currentSection = row.subKey;
+    } else if (row.type === "contentRow") {
+      if (row.chunkInitialId === dataIndex) {
+        return currentSection;
+      }
+    }
+  }
+
+  return currentSection;
+};
 
 // ================================================================================================
 // CLICKING AND NAVIGATION

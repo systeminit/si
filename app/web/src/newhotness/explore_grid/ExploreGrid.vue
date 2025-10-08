@@ -35,6 +35,12 @@
       "
       @unpin="(componentId) => $emit('unpin', componentId)"
       @resetFilter="$emit('resetFilter')"
+      @selectAllInSection="
+        (sectionKey) => $emit('selectAllInSection', sectionKey)
+      "
+      @deselectAllInSection="
+        (sectionKey) => $emit('deselectAllInSection', sectionKey)
+      "
     />
   </div>
 </template>
@@ -206,6 +212,8 @@ const emit = defineEmits<{
   (e: "collapse", title: string, collapsed: boolean): void;
   (e: "componentNavigate", componentId: ComponentId): void;
   (e: "resetFilter"): void;
+  (e: "selectAllInSection", sectionKey: string): void;
+  (e: "deselectAllInSection", sectionKey: string): void;
   (
     e: "childClicked",
     event: MouseEvent,
