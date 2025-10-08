@@ -11637,6 +11637,67 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "objc2-core-foundation-0.3.2.crate",
+    sha256 = "2a180dd8642fa45cdb7dd721cd4c11b1cadd4929ce112ebd8b9f5803cc79d536",
+    strip_prefix = "objc2-core-foundation-0.3.2",
+    urls = ["https://static.crates.io/crates/objc2-core-foundation/0.3.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "objc2-core-foundation-0.3.2",
+    srcs = [":objc2-core-foundation-0.3.2.crate"],
+    crate = "objc2_core_foundation",
+    crate_root = "objc2-core-foundation-0.3.2.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "CFArray",
+        "CFBase",
+        "CFData",
+        "CFDictionary",
+        "CFError",
+        "CFNumber",
+        "CFPlugInCOM",
+        "CFRunLoop",
+        "CFString",
+        "CFURL",
+        "CFUUID",
+        "alloc",
+        "bitflags",
+        "std",
+    ],
+    visibility = [],
+    deps = [":bitflags-2.9.1"],
+)
+
+http_archive(
+    name = "objc2-io-kit-0.3.2.crate",
+    sha256 = "33fafba39597d6dc1fb709123dfa8289d39406734be322956a69f0931c73bb15",
+    strip_prefix = "objc2-io-kit-0.3.2",
+    urls = ["https://static.crates.io/crates/objc2-io-kit/0.3.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "objc2-io-kit-0.3.2",
+    srcs = [":objc2-io-kit-0.3.2.crate"],
+    crate = "objc2_io_kit",
+    crate_root = "objc2-io-kit-0.3.2.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "alloc",
+        "hidsystem",
+        "libc",
+        "std",
+    ],
+    visibility = [],
+    deps = [
+        ":libc-0.2.174",
+        ":objc2-core-foundation-0.3.2",
+    ],
+)
+
+http_archive(
     name = "object-0.36.7.crate",
     sha256 = "62948e14d923ea95ea2c7c86c71013138b66525b86bdc08d2dcc262bdb497b87",
     strip_prefix = "object-0.36.7",
@@ -11889,6 +11950,56 @@ cargo.rust_library(
     ],
 )
 
+http_archive(
+    name = "opentelemetry-0.29.1.crate",
+    sha256 = "9e87237e2775f74896f9ad219d26a2081751187eb7c9f5c58dde20a23b95d16c",
+    strip_prefix = "opentelemetry-0.29.1",
+    urls = ["https://static.crates.io/crates/opentelemetry/0.29.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "opentelemetry-0.29.1",
+    srcs = [":opentelemetry-0.29.1.crate"],
+    crate = "opentelemetry",
+    crate_root = "opentelemetry-0.29.1.crate/src/lib.rs",
+    edition = "2021",
+    env = {
+        "CARGO_CRATE_NAME": "opentelemetry",
+        "CARGO_MANIFEST_DIR": "opentelemetry-0.29.1.crate",
+        "CARGO_PKG_AUTHORS": "",
+        "CARGO_PKG_DESCRIPTION": "OpenTelemetry API for Rust",
+        "CARGO_PKG_NAME": "opentelemetry",
+        "CARGO_PKG_REPOSITORY": "https://github.com/open-telemetry/opentelemetry-rust/tree/main/opentelemetry",
+        "CARGO_PKG_VERSION": "0.29.1",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "29",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
+    features = [
+        "default",
+        "futures",
+        "futures-core",
+        "futures-sink",
+        "internal-logs",
+        "logs",
+        "metrics",
+        "pin-project-lite",
+        "thiserror",
+        "trace",
+        "tracing",
+    ],
+    visibility = [],
+    deps = [
+        ":futures-core-0.3.31",
+        ":futures-sink-0.3.31",
+        ":pin-project-lite-0.2.16",
+        ":thiserror-2.0.12",
+        ":tracing-0.1.41",
+    ],
+)
+
 alias(
     name = "opentelemetry-otlp",
     actual = ":opentelemetry-otlp-0.26.0",
@@ -12001,6 +12112,37 @@ cargo.rust_library(
     crate_root = "opentelemetry-semantic-conventions-0.14.0.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
+)
+
+alias(
+    name = "opentelemetry-system-metrics",
+    actual = ":opentelemetry-system-metrics-0.4.2",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "opentelemetry-system-metrics-0.4.2.crate",
+    sha256 = "3ff095ac36df870a11380877fb7e9b1e7529abfe994fd06a6d6d17ca1c77d30b",
+    strip_prefix = "opentelemetry-system-metrics-0.4.2",
+    urls = ["https://static.crates.io/crates/opentelemetry-system-metrics/0.4.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "opentelemetry-system-metrics-0.4.2",
+    srcs = [":opentelemetry-system-metrics-0.4.2.crate"],
+    crate = "opentelemetry_system_metrics",
+    crate_root = "opentelemetry-system-metrics-0.4.2.crate/src/lib.rs",
+    edition = "2021",
+    features = ["default"],
+    visibility = [],
+    deps = [
+        ":eyre-0.6.12",
+        ":opentelemetry-0.29.1",
+        ":sysinfo-0.34.2",
+        ":tokio-1.46.1",
+        ":tracing-0.1.41",
+    ],
 )
 
 alias(
@@ -13983,102 +14125,6 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [":getrandom-0.3.3"],
-)
-
-http_archive(
-    name = "rayon-1.10.0.crate",
-    sha256 = "b418a60154510ca1a002a752ca9714984e21e4241e804d32555251faf8b78ffa",
-    strip_prefix = "rayon-1.10.0",
-    urls = ["https://static.crates.io/crates/rayon/1.10.0/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "rayon-1.10.0",
-    srcs = [":rayon-1.10.0.crate"],
-    crate = "rayon",
-    crate_root = "rayon-1.10.0.crate/src/lib.rs",
-    edition = "2021",
-    visibility = [],
-    deps = [
-        ":either-1.15.0",
-        ":rayon-core-1.12.1",
-    ],
-)
-
-http_archive(
-    name = "rayon-core-1.12.1.crate",
-    sha256 = "1465873a3dfdaa8ae7cb14b4383657caab0b3e8a0aa9ae8e04b044854c8dfce2",
-    strip_prefix = "rayon-core-1.12.1",
-    urls = ["https://static.crates.io/crates/rayon-core/1.12.1/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "rayon-core-1.12.1",
-    srcs = [":rayon-core-1.12.1.crate"],
-    crate = "rayon_core",
-    crate_root = "rayon-core-1.12.1.crate/src/lib.rs",
-    edition = "2021",
-    env = {
-        "CARGO_CRATE_NAME": "rayon_core",
-        "CARGO_MANIFEST_DIR": "rayon-core-1.12.1.crate",
-        "CARGO_PKG_AUTHORS": "Niko Matsakis <niko@alum.mit.edu>:Josh Stone <cuviper@gmail.com>",
-        "CARGO_PKG_DESCRIPTION": "Core APIs for Rayon",
-        "CARGO_PKG_NAME": "rayon-core",
-        "CARGO_PKG_REPOSITORY": "https://github.com/rayon-rs/rayon",
-        "CARGO_PKG_VERSION": "1.12.1",
-        "CARGO_PKG_VERSION_MAJOR": "1",
-        "CARGO_PKG_VERSION_MINOR": "12",
-        "CARGO_PKG_VERSION_PATCH": "1",
-        "CARGO_PKG_VERSION_PRE": "",
-        "OUT_DIR": "$(location :rayon-core-1.12.1-build-script-run[out_dir])",
-    },
-    rustc_flags = ["@$(location :rayon-core-1.12.1-build-script-run[rustc_flags])"],
-    visibility = [],
-    deps = [
-        ":crossbeam-deque-0.8.6",
-        ":crossbeam-utils-0.8.21",
-    ],
-)
-
-cargo.rust_binary(
-    name = "rayon-core-1.12.1-build-script-build",
-    srcs = [":rayon-core-1.12.1.crate"],
-    crate = "build_script_build",
-    crate_root = "rayon-core-1.12.1.crate/build.rs",
-    edition = "2021",
-    env = {
-        "CARGO_CRATE_NAME": "build_script_build",
-        "CARGO_MANIFEST_DIR": "rayon-core-1.12.1.crate",
-        "CARGO_PKG_AUTHORS": "Niko Matsakis <niko@alum.mit.edu>:Josh Stone <cuviper@gmail.com>",
-        "CARGO_PKG_DESCRIPTION": "Core APIs for Rayon",
-        "CARGO_PKG_NAME": "rayon-core",
-        "CARGO_PKG_REPOSITORY": "https://github.com/rayon-rs/rayon",
-        "CARGO_PKG_VERSION": "1.12.1",
-        "CARGO_PKG_VERSION_MAJOR": "1",
-        "CARGO_PKG_VERSION_MINOR": "12",
-        "CARGO_PKG_VERSION_PATCH": "1",
-        "CARGO_PKG_VERSION_PRE": "",
-    },
-    visibility = [],
-)
-
-buildscript_run(
-    name = "rayon-core-1.12.1-build-script-run",
-    package_name = "rayon-core",
-    buildscript_rule = ":rayon-core-1.12.1-build-script-build",
-    env = {
-        "CARGO_MANIFEST_LINKS": "rayon-core",
-        "CARGO_PKG_AUTHORS": "Niko Matsakis <niko@alum.mit.edu>:Josh Stone <cuviper@gmail.com>",
-        "CARGO_PKG_DESCRIPTION": "Core APIs for Rayon",
-        "CARGO_PKG_REPOSITORY": "https://github.com/rayon-rs/rayon",
-        "CARGO_PKG_VERSION_MAJOR": "1",
-        "CARGO_PKG_VERSION_MINOR": "12",
-        "CARGO_PKG_VERSION_PATCH": "1",
-        "CARGO_PKG_VERSION_PRE": "",
-    },
-    version = "1.12.1",
 )
 
 alias(
@@ -18140,41 +18186,36 @@ cargo.rust_library(
     ],
 )
 
-alias(
-    name = "sysinfo",
-    actual = ":sysinfo-0.33.1",
-    visibility = ["PUBLIC"],
-)
-
 http_archive(
-    name = "sysinfo-0.33.1.crate",
-    sha256 = "4fc858248ea01b66f19d8e8a6d55f41deaf91e9d495246fd01368d99935c6c01",
-    strip_prefix = "sysinfo-0.33.1",
-    urls = ["https://static.crates.io/crates/sysinfo/0.33.1/download"],
+    name = "sysinfo-0.34.2.crate",
+    sha256 = "a4b93974b3d3aeaa036504b8eefd4c039dced109171c1ae973f1dc63b2c7e4b2",
+    strip_prefix = "sysinfo-0.34.2",
+    urls = ["https://static.crates.io/crates/sysinfo/0.34.2/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "sysinfo-0.33.1",
-    srcs = [":sysinfo-0.33.1.crate"],
+    name = "sysinfo-0.34.2",
+    srcs = [":sysinfo-0.34.2.crate"],
     crate = "sysinfo",
-    crate_root = "sysinfo-0.33.1.crate/src/lib.rs",
+    crate_root = "sysinfo-0.34.2.crate/src/lib.rs",
     edition = "2021",
     features = [
         "component",
         "default",
         "disk",
-        "multithread",
         "network",
         "system",
         "user",
     ],
     platform = {
         "macos-arm64": dict(
-            deps = [":core-foundation-sys-0.8.7"],
+            features = ["objc2-core-foundation"],
+            deps = [":objc2-core-foundation-0.3.2"],
         ),
         "macos-x86_64": dict(
-            deps = [":core-foundation-sys-0.8.7"],
+            features = ["objc2-core-foundation"],
+            deps = [":objc2-core-foundation-0.3.2"],
         ),
         "windows-gnu": dict(
             features = ["windows"],
@@ -18195,7 +18236,72 @@ cargo.rust_library(
     deps = [
         ":libc-0.2.174",
         ":memchr-2.7.5",
-        ":rayon-1.10.0",
+    ],
+)
+
+alias(
+    name = "sysinfo",
+    actual = ":sysinfo-0.37.2",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "sysinfo-0.37.2.crate",
+    sha256 = "16607d5caffd1c07ce073528f9ed972d88db15dd44023fa57142963be3feb11f",
+    strip_prefix = "sysinfo-0.37.2",
+    urls = ["https://static.crates.io/crates/sysinfo/0.37.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "sysinfo-0.37.2",
+    srcs = [":sysinfo-0.37.2.crate"],
+    crate = "sysinfo",
+    crate_root = "sysinfo-0.37.2.crate/src/lib.rs",
+    edition = "2024",
+    features = [
+        "component",
+        "default",
+        "disk",
+        "network",
+        "objc2-io-kit",
+        "system",
+        "user",
+    ],
+    platform = {
+        "macos-arm64": dict(
+            features = ["objc2-core-foundation"],
+            deps = [
+                ":objc2-core-foundation-0.3.2",
+                ":objc2-io-kit-0.3.2",
+            ],
+        ),
+        "macos-x86_64": dict(
+            features = ["objc2-core-foundation"],
+            deps = [
+                ":objc2-core-foundation-0.3.2",
+                ":objc2-io-kit-0.3.2",
+            ],
+        ),
+        "windows-gnu": dict(
+            features = ["windows"],
+            deps = [
+                ":ntapi-0.4.1",
+                ":windows-0.61.3",
+            ],
+        ),
+        "windows-msvc": dict(
+            features = ["windows"],
+            deps = [
+                ":ntapi-0.4.1",
+                ":windows-0.61.3",
+            ],
+        ),
+    },
+    visibility = [],
+    deps = [
+        ":libc-0.2.174",
+        ":memchr-2.7.5",
     ],
 )
 
@@ -21111,6 +21217,7 @@ cargo.rust_library(
         "Win32_System_Com",
         "Win32_System_Diagnostics",
         "Win32_System_Diagnostics_Debug",
+        "Win32_System_Diagnostics_ToolHelp",
         "Win32_System_IO",
         "Win32_System_Ioctl",
         "Win32_System_Kernel",
@@ -21137,6 +21244,95 @@ cargo.rust_library(
         ":windows-core-0.57.0",
         ":windows-targets-0.52.6",
     ],
+)
+
+http_archive(
+    name = "windows-0.61.3.crate",
+    sha256 = "9babd3a767a4c1aef6900409f85f5d53ce2544ccdfaa86dad48c91782c6d6893",
+    strip_prefix = "windows-0.61.3",
+    urls = ["https://static.crates.io/crates/windows/0.61.3/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-0.61.3",
+    srcs = [":windows-0.61.3.crate"],
+    crate = "windows",
+    crate_root = "windows-0.61.3.crate/src/lib.rs",
+    edition = "2021",
+    features = [
+        "Wdk",
+        "Wdk_System",
+        "Wdk_System_SystemInformation",
+        "Wdk_System_SystemServices",
+        "Wdk_System_Threading",
+        "Win32",
+        "Win32_Foundation",
+        "Win32_NetworkManagement",
+        "Win32_NetworkManagement_IpHelper",
+        "Win32_NetworkManagement_Ndis",
+        "Win32_NetworkManagement_NetManagement",
+        "Win32_Networking",
+        "Win32_Networking_WinSock",
+        "Win32_Security",
+        "Win32_Security_Authentication",
+        "Win32_Security_Authentication_Identity",
+        "Win32_Security_Authorization",
+        "Win32_Storage",
+        "Win32_Storage_FileSystem",
+        "Win32_System",
+        "Win32_System_Com",
+        "Win32_System_Diagnostics",
+        "Win32_System_Diagnostics_Debug",
+        "Win32_System_Diagnostics_ToolHelp",
+        "Win32_System_IO",
+        "Win32_System_Ioctl",
+        "Win32_System_Kernel",
+        "Win32_System_Memory",
+        "Win32_System_Ole",
+        "Win32_System_Performance",
+        "Win32_System_Power",
+        "Win32_System_ProcessStatus",
+        "Win32_System_Registry",
+        "Win32_System_RemoteDesktop",
+        "Win32_System_Rpc",
+        "Win32_System_SystemInformation",
+        "Win32_System_SystemServices",
+        "Win32_System_Threading",
+        "Win32_System_Variant",
+        "Win32_System_WindowsProgramming",
+        "Win32_System_Wmi",
+        "Win32_UI",
+        "Win32_UI_Shell",
+        "default",
+        "std",
+    ],
+    visibility = [],
+    deps = [
+        ":windows-collections-0.2.0",
+        ":windows-core-0.61.2",
+        ":windows-future-0.2.1",
+        ":windows-link-0.1.3",
+        ":windows-numerics-0.2.0",
+    ],
+)
+
+http_archive(
+    name = "windows-collections-0.2.0.crate",
+    sha256 = "3beeceb5e5cfd9eb1d76b381630e82c4241ccd0d27f1a39ed41b2760b255c5e8",
+    strip_prefix = "windows-collections-0.2.0",
+    urls = ["https://static.crates.io/crates/windows-collections/0.2.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-collections-0.2.0",
+    srcs = [":windows-collections-0.2.0.crate"],
+    crate = "windows_collections",
+    crate_root = "windows-collections-0.2.0.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+    deps = [":windows-core-0.61.2"],
 )
 
 http_archive(
@@ -21167,6 +21363,53 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "windows-core-0.61.2.crate",
+    sha256 = "c0fdd3ddb90610c7638aa2b3a3ab2904fb9e5cdbecc643ddb3647212781c4ae3",
+    strip_prefix = "windows-core-0.61.2",
+    urls = ["https://static.crates.io/crates/windows-core/0.61.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-core-0.61.2",
+    srcs = [":windows-core-0.61.2.crate"],
+    crate = "windows_core",
+    crate_root = "windows-core-0.61.2.crate/src/lib.rs",
+    edition = "2021",
+    features = ["std"],
+    visibility = [],
+    deps = [
+        ":windows-implement-0.60.0",
+        ":windows-interface-0.59.1",
+        ":windows-link-0.1.3",
+        ":windows-result-0.3.4",
+        ":windows-strings-0.4.2",
+    ],
+)
+
+http_archive(
+    name = "windows-future-0.2.1.crate",
+    sha256 = "fc6a41e98427b19fe4b73c550f060b59fa592d7d686537eebf9385621bfbad8e",
+    strip_prefix = "windows-future-0.2.1",
+    urls = ["https://static.crates.io/crates/windows-future/0.2.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-future-0.2.1",
+    srcs = [":windows-future-0.2.1.crate"],
+    crate = "windows_future",
+    crate_root = "windows-future-0.2.1.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+    deps = [
+        ":windows-core-0.61.2",
+        ":windows-link-0.1.3",
+        ":windows-threading-0.1.0",
+    ],
+)
+
+http_archive(
     name = "windows-implement-0.57.0.crate",
     sha256 = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7",
     strip_prefix = "windows-implement-0.57.0",
@@ -21179,6 +21422,29 @@ cargo.rust_library(
     srcs = [":windows-implement-0.57.0.crate"],
     crate = "windows_implement",
     crate_root = "windows-implement-0.57.0.crate/src/lib.rs",
+    edition = "2021",
+    proc_macro = True,
+    visibility = [],
+    deps = [
+        ":proc-macro2-1.0.95",
+        ":quote-1.0.40",
+        ":syn-2.0.104",
+    ],
+)
+
+http_archive(
+    name = "windows-implement-0.60.0.crate",
+    sha256 = "a47fddd13af08290e67f4acabf4b459f647552718f683a7b415d290ac744a836",
+    strip_prefix = "windows-implement-0.60.0",
+    urls = ["https://static.crates.io/crates/windows-implement/0.60.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-implement-0.60.0",
+    srcs = [":windows-implement-0.60.0.crate"],
+    crate = "windows_implement",
+    crate_root = "windows-implement-0.60.0.crate/src/lib.rs",
     edition = "2021",
     proc_macro = True,
     visibility = [],
@@ -21213,6 +21479,29 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "windows-interface-0.59.1.crate",
+    sha256 = "bd9211b69f8dcdfa817bfd14bf1c97c9188afa36f4750130fcdf3f400eca9fa8",
+    strip_prefix = "windows-interface-0.59.1",
+    urls = ["https://static.crates.io/crates/windows-interface/0.59.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-interface-0.59.1",
+    srcs = [":windows-interface-0.59.1.crate"],
+    crate = "windows_interface",
+    crate_root = "windows-interface-0.59.1.crate/src/lib.rs",
+    edition = "2021",
+    proc_macro = True,
+    visibility = [],
+    deps = [
+        ":proc-macro2-1.0.95",
+        ":quote-1.0.40",
+        ":syn-2.0.104",
+    ],
+)
+
+http_archive(
     name = "windows-link-0.1.3.crate",
     sha256 = "5e6ad25900d524eaabdbbb96d20b4311e1e7ae1699af4fb28c17ae66c80d798a",
     strip_prefix = "windows-link-0.1.3",
@@ -21227,6 +21516,27 @@ cargo.rust_library(
     crate_root = "windows-link-0.1.3.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
+)
+
+http_archive(
+    name = "windows-numerics-0.2.0.crate",
+    sha256 = "9150af68066c4c5c07ddc0ce30421554771e528bde427614c61038bc2c92c2b1",
+    strip_prefix = "windows-numerics-0.2.0",
+    urls = ["https://static.crates.io/crates/windows-numerics/0.2.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-numerics-0.2.0",
+    srcs = [":windows-numerics-0.2.0.crate"],
+    crate = "windows_numerics",
+    crate_root = "windows-numerics-0.2.0.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+    deps = [
+        ":windows-core-0.61.2",
+        ":windows-link-0.1.3",
+    ],
 )
 
 http_archive(
@@ -21249,6 +21559,44 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [":windows-targets-0.52.6"],
+)
+
+http_archive(
+    name = "windows-result-0.3.4.crate",
+    sha256 = "56f42bd332cc6c8eac5af113fc0c1fd6a8fd2aa08a0119358686e5160d0586c6",
+    strip_prefix = "windows-result-0.3.4",
+    urls = ["https://static.crates.io/crates/windows-result/0.3.4/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-result-0.3.4",
+    srcs = [":windows-result-0.3.4.crate"],
+    crate = "windows_result",
+    crate_root = "windows-result-0.3.4.crate/src/lib.rs",
+    edition = "2021",
+    features = ["std"],
+    visibility = [],
+    deps = [":windows-link-0.1.3"],
+)
+
+http_archive(
+    name = "windows-strings-0.4.2.crate",
+    sha256 = "56e6c93f3a0c3b36176cb1327a4958a0353d5d166c2a35cb268ace15e91d3b57",
+    strip_prefix = "windows-strings-0.4.2",
+    urls = ["https://static.crates.io/crates/windows-strings/0.4.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-strings-0.4.2",
+    srcs = [":windows-strings-0.4.2.crate"],
+    crate = "windows_strings",
+    crate_root = "windows-strings-0.4.2.crate/src/lib.rs",
+    edition = "2021",
+    features = ["std"],
+    visibility = [],
+    deps = [":windows-link-0.1.3"],
 )
 
 http_archive(
@@ -21467,6 +21815,24 @@ cargo.rust_library(
         ),
     },
     visibility = [],
+)
+
+http_archive(
+    name = "windows-threading-0.1.0.crate",
+    sha256 = "b66463ad2e0ea3bbf808b7f1d371311c80e115c0b71d60efc142cafbcfb057a6",
+    strip_prefix = "windows-threading-0.1.0",
+    urls = ["https://static.crates.io/crates/windows-threading/0.1.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "windows-threading-0.1.0",
+    srcs = [":windows-threading-0.1.0.crate"],
+    crate = "windows_threading",
+    crate_root = "windows-threading-0.1.0.crate/src/lib.rs",
+    edition = "2021",
+    visibility = [],
+    deps = [":windows-link-0.1.3"],
 )
 
 http_archive(
