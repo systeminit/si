@@ -274,6 +274,7 @@ export class APICall<Response, Args> {
         _routes.CreateChangeSet,
         _routes.ChangeSetInitializeAndApply,
         _routes.WorkspaceListUsers,
+        _routes.ComponentsOnHead,
       ].includes(this.path)
     ) {
       return `v2/workspaces/${this.workspaceId}${this.pathWithArgs()}`;
