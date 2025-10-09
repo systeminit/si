@@ -1,7 +1,7 @@
 {
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-write --env-file=.env.local main.ts",
-    "build": "deno compile --allow-net --allow-env --allow-read main.ts"
+    "build": "deno compile --allow-net --allow-env --allow-read --allow-write main.ts"
   },
   "imports": {
     "@systeminit/api-client": "jsr:@systeminit/api-client@^1.2.0"

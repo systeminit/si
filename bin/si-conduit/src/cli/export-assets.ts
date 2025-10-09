@@ -62,8 +62,7 @@ export async function exportAssets(context: CliContext, assetsPath: string, skip
       }
     }
   } catch (error) {
-    log.error(`Error reading assets directory: ${unknownValueToErrorMessage(error)}`);
-    Deno.exit(1);
+    throw new Error(`Error reading assets directory: ${unknownValueToErrorMessage(error)}`);
   }
 
   // Confirmation prompt
@@ -86,7 +85,7 @@ export async function exportAssets(context: CliContext, assetsPath: string, skip
       } else if (input === 'y') {
         confirmed = true;
       } else {
-        Deno.exit(0);
+        return;
       }
     }
   }
@@ -343,7 +342,7 @@ async function parseQualifications(qualificationsPath: string, assetName: string
     if (!(error instanceof Deno.errors.NotFound)) {
       throw new Error(`Error reading actions directory for asset "${assetName}": ${unknownValueToErrorMessage(error)}`);
     }
-    // If actions folder doesn't exist, that's ok - just continue
+    // If actions folder doesn't exist, skip qualifications for the asset by returning early
     return [];
   }
 
@@ -364,7 +363,7 @@ async function parseQualifications(qualificationsPath: string, assetName: string
       }
 
       // Read the matching JSON file
-      let qualificationMetadata = {};
+      let qualificationMetadata = {} as Record<string, string>;
       try {
         const qualificationJsonContent = await Deno.readTextFile(qualificationJsonPath);
         qualificationMetadata = JSON.parse(qualificationJsonContent)

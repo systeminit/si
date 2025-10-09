@@ -1,11 +1,10 @@
 import { CliContext } from "../cli.ts";
-import { makeStringSafeForFilename } from "../helpers.ts";
+import { makeStringSafeForFilename, unknownValueToErrorMessage } from "../helpers.ts";
 import { Log } from "../log.ts";
 import { ensureDir } from "jsr:@std/fs/ensure-dir";
+import { SCHEMA_FILE_FORMAT_VERSION } from "../config.ts";
 
-export async function scaffoldAsset(context: CliContext, assetName: string, assetFolder: string) {
-  const { log } = context;
-
+export async function scaffoldAsset(log: Log, assetName: string, assetFolder: string) {
   const assetDirName = makeStringSafeForFilename(assetName);
 
   const assetPath = `${assetFolder}/${assetDirName}`;
@@ -14,8 +13,7 @@ export async function scaffoldAsset(context: CliContext, assetName: string, asse
   // The only way this function does not end here is if stat throws AND the error is `NotFound`
   try {
     await Deno.stat(assetPath);
-    log.error(`Asset "${assetName}" already exists at ${assetPath}`);
-    Deno.exit(1);
+    throw new Error(`Asset "${assetName}" already exists at ${assetPath}`);
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) {
       throw error;
@@ -45,6 +43,10 @@ export async function scaffoldAsset(context: CliContext, assetName: string, asse
     await Deno.writeTextFile(`${assetPath}/index.ts`, indexContent);
     log.debug(`Created index.ts`);
 
+    // Create the version file
+    await Deno.writeTextFile(`${assetPath}/.format-version`, SCHEMA_FILE_FORMAT_VERSION);
+    log.debug(`Created .format-version`);
+
     await createQualificationScaffold(assetPath, log);
     await createActionScaffold(assetPath, "create", log);
     await createActionScaffold(assetPath, "destroy", log);
@@ -55,8 +57,7 @@ export async function scaffoldAsset(context: CliContext, assetName: string, asse
 
     log.info(`Asset "${assetName}" created successfully at ${assetPath}`);
   } catch (error) {
-    log.error(`Error creating asset: ${error.message}`);
-    Deno.exit(1);
+    throw new Error(`Error creating asset: ${unknownValueToErrorMessage(error)}`);
   }
 }
 
@@ -82,8 +83,12 @@ async function createFunctionScaffold(
 }
 
 async function createQualificationScaffold(assetPath: string, log: Log) {
-  // FIXME qualification code
-  const code = `function main() {\n  return new AssetBuilder().build();\n}\n`;
+  const code = `function main(input: Input) {
+  return {
+    result: "failure",
+    message: "Region not-opted-in for use"
+  }
+}`
 
   await createFunctionScaffold(
     log,
@@ -109,8 +114,13 @@ async function createQualificationScaffold(assetPath: string, log: Log) {
 // Create one of each kind of action (create, destroy, refresh, update)
 type funcKind = "create" | "destroy" | "refresh" | "update";
 async function createActionScaffold(assetPath: string, kindOrName: funcKind | string,  log: Log) {
-  // FIXME action function code
-  const code = `function main() {\n  return new AssetBuilder().build();\n}\n`;
+  const code = `function main(input: Input) {
+  return {
+    status: "error",
+    message: "${kindOrName} Action not implemented"
+  }
+}`
+
 
   await createFunctionScaffold(
       log,
@@ -161,16 +171,30 @@ async function createCodegenScaffold(assetPath: string, log: Log) {
 }
 
 async function createMgmtScaffold(assetPath: string, log: Log) {
-  // FIXME management function code
-  const code = `function main() {\n  return new AssetBuilder().build();\n}\n`;
+  const code =  `function main() {
+  const ops = {
+    update: {},
+    actions: {
+      self: {
+        remove: [] as string[],
+        add: [] as string[],
+      },
+    },
+  };
+  
+  return {
+    status: "ok",
+    message: "Imported Resource",
+    ops,
+  };
+}`
 
-  // FIXME make sample mgmt func name
   await createFunctionScaffold(
       log,
       `${assetPath}/management`,
       "sample",
       {
-        name: "Does asset comply with criteria?",
+        name: "Import Empty Resource",
         displayName: "optional",
         description: "optional",
       },

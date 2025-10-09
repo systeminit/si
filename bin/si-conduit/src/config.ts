@@ -1,5 +1,7 @@
 import { unknownValueToErrorMessage } from "./helpers.ts";
 
+export const SCHEMA_FILE_FORMAT_VERSION = 0;
+
 export interface Config {
   apiUrl: string;
   apiToken: string;
@@ -26,23 +28,16 @@ export function extractConfig(): Config {
   const apiToken = Deno.env.get("SI_API_TOKEN");
 
   if (!apiToken) {
-    console.error("Error: SI_API_TOKEN environment variable is required.");
-    Deno.exit(1);
+    throw new Error("Error: SI_API_TOKEN environment variable is required.");
   }
 
   // Extract workspaceId from JWT if not provided
   let workspaceId = Deno.env.get("SI_WORKSPACE_ID");
   if (!workspaceId) {
-    try {
-      const payload = decodeJWT(apiToken);
-      workspaceId = payload.workspaceId as string;
-      if (!workspaceId) {
-        console.error("Error: workspaceId not found in JWT payload");
-        Deno.exit(1);
-      }
-    } catch (error) {
-      console.error(`Error: ${unknownValueToErrorMessage(error)}`);
-      Deno.exit(1);
+    const payload = decodeJWT(apiToken);
+    workspaceId = payload.workspaceId as string;
+    if (!workspaceId) {
+      throw new Error("workspaceId not found in JWT payload");
     }
   }
 

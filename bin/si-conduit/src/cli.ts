@@ -12,20 +12,9 @@ export type CliContext = {
   log: Log;
   workspace: WorkspaceDetails;
 };
-async function whoami(context: CliContext) {
-  const { apiConfiguration, log } = context;
-  const whoamiApi = new WhoamiApi(apiConfiguration);
 
-  try {
-    const result = await whoamiApi.whoami();
-    console.log(JSON.stringify(result.data, null, 2));
-  } catch (error) {
-    log.error(unknownValueToErrorMessage(error));
-    Deno.exit(1);
-  }
-}
-
-export async function run() {
+/// From the environment variables, extract the configuration needed to run auth commands
+async function initializeCliContextWithAuth(log: Log) {
   const { apiUrl, apiToken, workspaceId } = extractConfig();
 
   const apiConfiguration = new Configuration({
@@ -38,7 +27,21 @@ export async function run() {
     },
   });
 
-  await new Command()
+  const workspace = await getWorkspaceDetails(apiToken, workspaceId);
+
+  return { apiConfiguration, workspace, log };
+}
+
+async function whoami(context: CliContext) {
+  const { apiConfiguration, log } = context;
+  const whoamiApi = new WhoamiApi(apiConfiguration);
+
+  const result = await whoamiApi.whoami();
+  console.log(JSON.stringify(result.data, null, 2));
+}
+
+export async function run() {
+  const cmd = new Command()
     .name("si-conduit")
     .version("0.1.0")
     .description("The System Initiative Asset Management CLI Tool")
@@ -54,38 +57,44 @@ export async function run() {
     .command("whoami", "Get current user information")
     .action(async ({ verbose }) => {
       const log = new Log(verbose);
-      const workspace = await getWorkspaceDetails(apiToken, workspaceId);
-      const context: CliContext = { apiConfiguration, workspace, log };
-      return whoami(context);
+
+      const ctx = await initializeCliContextWithAuth(log);
+
+      return whoami(ctx);
     })
     .command("export-assets <assets-path:string>", "Export all assets from the assets folder")
       .option("-s, --skip-confirmation", "Skip confirmation prompt")
     .action(async ({ verbose, skipConfirmation }, assetsPath) => {
       const log = new Log(verbose);
-      const workspace = await getWorkspaceDetails(apiToken, workspaceId);
-      const context: CliContext = { apiConfiguration, workspace, log };
-      return exportAssets(context, assetsPath, skipConfirmation);
+
+      const ctx = await initializeCliContextWithAuth(log);
+
+      return exportAssets(ctx, assetsPath, skipConfirmation);
     })
     .command("scaffold <asset-name:string>", "Scaffold a new asset")
     .option("-f, --folder <folder:string>", "Asset folder path", { default: "." })
     .action(({ verbose, folder }, assetName) => {
       const log = new Log(verbose);
-      const context: CliContext = { apiConfiguration, workspace: {} as WorkspaceDetails, log };
-      return scaffoldAsset(context, assetName, folder);
-    })
-    .parse(Deno.args);
+      return scaffoldAsset(log, assetName, folder);
+    });
+
+    try {
+      await cmd.parse(Deno.args);
+    } catch (error) {
+      console.error(unknownValueToErrorMessage(error));
+      Deno.exit(1);
+    }
 }
 
-async function getWorkspaceDetails(apiToken: string, workspaceId: string) {
+async function getWorkspaceDetails(apiToken: string, workspaceId?: string) {
+  if (!workspaceId) {
+    throw new Error("Workspace ID is required");
+  }
+
   const authApi = new AuthApiClient(apiToken, workspaceId);
 
   let workspace: WorkspaceDetails;
-  try {
-    workspace = await authApi.getWorkspaceDetails();
-  } catch (error) {
-    console.error(unknownValueToErrorMessage(error));
-    Deno.exit(1);
-  }
+  workspace = await authApi.getWorkspaceDetails();
 
   return workspace;
 }
