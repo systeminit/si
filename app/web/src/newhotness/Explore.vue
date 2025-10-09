@@ -277,20 +277,6 @@
                     action.
                   </div>
 
-                  <div
-                    v-if="
-                      featureFlagsStore.INITIALIZER_ONBOARD &&
-                      (ctx.onHead.value || !hasUsedAiAgent)
-                    "
-                    class="flex flex-row"
-                  >
-                    <NewButton
-                      aria-label="Go to Onboarding"
-                      label="Get started"
-                      tone="action"
-                      @click="ctx.reopenOnboarding"
-                    />
-                  </div>
                   <div class="flex flex-row gap-sm">
                     <NewButton
                       label="How-to guide"
@@ -302,15 +288,6 @@
                       label="API guidelines"
                       href="https://docs.systeminit.com/reference/public-api"
                       target="_blank"
-                    />
-                    <NewButton
-                      v-if="
-                        featureFlagsStore.INITIALIZER_ONBOARD &&
-                        ctx.onHead.value
-                      "
-                      label="Initialize your Workspace"
-                      tone="action"
-                      @click="ctx.reopenOnboarding"
                     />
                   </div>
                 </template>
