@@ -1,6 +1,6 @@
 import _ from "lodash";
 
-import { bfsPropTree } from "../../spec/props.ts";
+import { bfsPropTree, propPathStr } from "../../spec/props.ts";
 import pluralize from "npm:pluralize@^8.0.0";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { addPropSuggestSource } from "../../spec/props.ts";
@@ -19,7 +19,8 @@ export function createSuggestionsForPrimaryIdentifiers(
     const [schemaVariant] = schema.variants;
     const resource = schemaVariant.resourceValue;
     const specName = spec.name;
-    const categoryStr = typeof schema.data?.category === "string" ? schema.data.category : "";
+    const categoryStr =
+      typeof schema.data?.category === "string" ? schema.data.category : "";
     const category = categoryStr.split("::")[1];
     const variantName = specName.split("::")[2];
 
@@ -68,8 +69,7 @@ export function createSuggestionsForPrimaryIdentifiers(
           nameVariants.add(`${pluralSpaced}Item`);
         }
 
-        // stripping /root out
-        const propPath = "/" + prop.metadata.propPath.slice(1).join("/");
+        const propPath = propPathStr(prop);
         schemasToPrimaryIdents.set(specName, [propPath, nameVariants]);
       },
       { skipTypeProps: true },
@@ -85,12 +85,10 @@ export function createSuggestionsForPrimaryIdentifiers(
     bfsPropTree(
       domain,
       (prop) => {
-        for (
-          const [
-            specName,
-            [propName, possibleNames],
-          ] of schemasToPrimaryIdents.entries()
-        ) {
+        for (const [
+          specName,
+          [propName, possibleNames],
+        ] of schemasToPrimaryIdents.entries()) {
           if (spec.name != specName && possibleNames.has(prop.name)) {
             logger.debug(
               `suggest {schema:${specName}, prop:${propName}} for prop ${prop.name} on ${spec.name}`,

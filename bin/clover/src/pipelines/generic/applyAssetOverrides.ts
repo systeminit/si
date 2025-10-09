@@ -1,6 +1,6 @@
 import _logger from "../../logger.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
-import { bfsPropTree } from "../../spec/props.ts";
+import { bfsPropTree, propPathStr } from "../../spec/props.ts";
 import { ProviderConfig } from "../types.ts";
 
 const logger = _logger.ns("assetOverrides").seal();
@@ -20,7 +20,9 @@ export function applyAssetOverrides(
     const variant = spec.schemas[0].variants[0];
 
     // If there's a schema-level override for this spec, run it
-    const schemaOverrideFn = providerConfig.overrides.schemaOverrides.get(spec.name);
+    const schemaOverrideFn = providerConfig.overrides.schemaOverrides.get(
+      spec.name,
+    );
     if (schemaOverrideFn) {
       logger.debug(`Running schema override for ${spec.name}`);
       schemaOverrideFn(spec);
@@ -28,10 +30,12 @@ export function applyAssetOverrides(
 
     // If there are prop-level overrides for this schema+spec, run them
     bfsPropTree([variant.domain, variant.resourceValue], (prop) => {
-      const propPath = "/" + prop.metadata.propPath.slice(1).join("/");
+      const propPath = propPathStr(prop);
 
       // Check for overrides that match the schema
-      for (const [matchSchema, overrides] of Object.entries(providerConfig.overrides.propOverrides)) {
+      for (const [matchSchema, overrides] of Object.entries(
+        providerConfig.overrides.propOverrides,
+      )) {
         if (!spec.name.match(new RegExp(`^${matchSchema}$`))) continue;
 
         // Check for overrides that match the prop
