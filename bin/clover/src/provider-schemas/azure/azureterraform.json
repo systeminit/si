@@ -1,0 +1,1012 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Azure azureterraform",
+    "version": "2025-09-01-preview-preview",
+    "description": "Azure azureterraform service specifications"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/providers/Microsoft.AzureTerraform/operations": {
+      "get": {
+        "operationId": "Operations_List",
+        "tags": [
+          "Operations"
+        ],
+        "description": "List the operations for the provider",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "List of operations supported by the resource provider",
+                  "items": {
+                    "type": "object",
+                    "title": "REST API Operation",
+                    "description": "Details of a REST API operation, returned from the Resource Provider Operations API",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the operation, as per Resource-Based Access Control (RBAC). Examples: \"Microsoft.Compute/virtualMachines/write\", \"Microsoft.Compute/virtualMachines/capture/action\"",
+                        "readOnly": true
+                      },
+                      "isDataAction": {
+                        "type": "boolean",
+                        "description": "Whether the operation applies to data-plane. This is \"true\" for data-plane operations and \"false\" for ARM/control-plane operations.",
+                        "readOnly": true
+                      },
+                      "display": {
+                        "type": "object",
+                        "description": "Localized display information for this particular operation.",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "description": "The localized friendly form of the resource provider name, e.g. \"Microsoft Monitoring Insights\" or \"Microsoft Compute\".",
+                            "readOnly": true
+                          },
+                          "resource": {
+                            "type": "string",
+                            "description": "The localized friendly name of the resource type related to this operation. E.g. \"Virtual Machines\" or \"Job Schedule Collections\".",
+                            "readOnly": true
+                          },
+                          "operation": {
+                            "type": "string",
+                            "description": "The concise, localized friendly name for the operation; suitable for dropdowns. E.g. \"Create or Update Virtual Machine\", \"Restart Virtual Machine\".",
+                            "readOnly": true
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "The short, localized friendly description of the operation; suitable for tool tips and detailed views.",
+                            "readOnly": true
+                          }
+                        }
+                      },
+                      "origin": {
+                        "type": "string",
+                        "description": "The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default value is \"user,system\"",
+                        "enum": [
+                          "user",
+                          "system",
+                          "user,system"
+                        ],
+                        "x-ms-enum": {
+                          "name": "Origin",
+                          "modelAsString": true
+                        },
+                        "readOnly": true
+                      },
+                      "actionType": {
+                        "type": "string",
+                        "description": "Enum. Indicates the action type. \"Internal\" refers to actions that are for internal only APIs.",
+                        "enum": [
+                          "Internal"
+                        ],
+                        "x-ms-enum": {
+                          "name": "ActionType",
+                          "modelAsString": true
+                        },
+                        "readOnly": true
+                      }
+                    }
+                  },
+                  "readOnly": true,
+                  "x-ms-identifiers": [
+                    "name"
+                  ]
+                },
+                "nextLink": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URL to get the next set of operation list results (if there are any).",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Microsoft.AzureTerraform/exportTerraform": {
+      "post": {
+        "operationId": "Terraform_ExportTerraform",
+        "tags": [
+          "Terraform",
+          "ExportTerraform"
+        ],
+        "description": "Exports the Terraform configuration of the specified resource(s).",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription. The value must be an UUID.",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The request body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "description": "The base export parameter",
+              "properties": {
+                "type": {
+                  "description": "The parameter type",
+                  "type": "string",
+                  "enum": [
+                    "ExportResource",
+                    "ExportResourceGroup",
+                    "ExportQuery"
+                  ],
+                  "x-ms-enum": {
+                    "name": "Type",
+                    "modelAsString": true,
+                    "values": [
+                      {
+                        "name": "ExportResource",
+                        "value": "ExportResource"
+                      },
+                      {
+                        "name": "ExportResourceGroup",
+                        "value": "ExportResourceGroup"
+                      },
+                      {
+                        "name": "ExportQuery",
+                        "value": "ExportQuery"
+                      }
+                    ]
+                  }
+                },
+                "targetProvider": {
+                  "type": "string",
+                  "description": "The target Azure Terraform provider. Defaults to `azurerm`.",
+                  "default": "azurerm",
+                  "enum": [
+                    "azurerm",
+                    "azapi"
+                  ],
+                  "x-ms-enum": {
+                    "name": "targetProvider",
+                    "modelAsString": true,
+                    "values": [
+                      {
+                        "name": "azurerm",
+                        "value": "azurerm",
+                        "description": "https://registry.terraform.io/providers/hashicorp/azurerm/latest"
+                      },
+                      {
+                        "name": "azapi",
+                        "value": "azapi",
+                        "description": "https://registry.terraform.io/providers/Azure/azapi/latest"
+                      }
+                    ]
+                  }
+                },
+                "fullProperties": {
+                  "type": "boolean",
+                  "description": "Whether to output all non-computed properties in the generated Terraform configuration. If set to `false` empty-valued properties will be omitted from the configuration. Defaults to `true`.",
+                  "default": true
+                },
+                "maskSensitive": {
+                  "type": "boolean",
+                  "description": "Mask sensitive attributes in the Terraform configuration. Defaults to `true`.",
+                  "default": true
+                },
+                "includeRoleAssignment": {
+                  "type": "boolean",
+                  "description": "Whether to include RBAC role assignments assigned to the resources exported. Only resource-scoped role assignments are supported. Defaults to `false`.",
+                  "default": false
+                },
+                "includeManagedResource": {
+                  "type": "boolean",
+                  "description": "Whether to include internal resources managed by Azure in the exported configuration. Defaults to `false`.",
+                  "default": false
+                },
+                "excludeAzureResource": {
+                  "type": "array",
+                  "description": "Excludes specified Azure Resource Ids. Case-insensitive Azure Resource ID regular expression. Example: `[\"/subscriptions/[0-9a-f-]+/resourceGroups/my-rg.*\"]`.",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "excludeTerraformResource": {
+                  "type": "array",
+                  "description": "Excludes specified Terraform resource types. Example: `[\"azurerm_virtual_network\"]`.",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "discriminator": "type",
+              "required": [
+                "type"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/TerraformOperationStatus"
+            }
+          },
+          "202": {
+            "description": "Resource operation accepted.",
+            "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "format": "uri",
+                "description": "A link to the status monitor"
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Azure.ResourceManager.ResourceProvisioningState": {
+      "type": "string",
+      "description": "The provisioning state of a resource type.",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled"
+      ],
+      "x-ms-enum": {
+        "name": "ResourceProvisioningState",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "Resource has been created."
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "Resource creation failed."
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "Resource creation was canceled."
+          }
+        ]
+      },
+      "readOnly": true
+    },
+    "BaseExportModel": {
+      "type": "object",
+      "description": "The base export parameter",
+      "properties": {
+        "type": {
+          "description": "The parameter type",
+          "type": "string",
+          "enum": [
+            "ExportResource",
+            "ExportResourceGroup",
+            "ExportQuery"
+          ],
+          "x-ms-enum": {
+            "name": "Type",
+            "modelAsString": true,
+            "values": [
+              {
+                "name": "ExportResource",
+                "value": "ExportResource"
+              },
+              {
+                "name": "ExportResourceGroup",
+                "value": "ExportResourceGroup"
+              },
+              {
+                "name": "ExportQuery",
+                "value": "ExportQuery"
+              }
+            ]
+          }
+        },
+        "targetProvider": {
+          "type": "string",
+          "description": "The target Azure Terraform provider. Defaults to `azurerm`.",
+          "default": "azurerm",
+          "enum": [
+            "azurerm",
+            "azapi"
+          ],
+          "x-ms-enum": {
+            "name": "targetProvider",
+            "modelAsString": true,
+            "values": [
+              {
+                "name": "azurerm",
+                "value": "azurerm",
+                "description": "https://registry.terraform.io/providers/hashicorp/azurerm/latest"
+              },
+              {
+                "name": "azapi",
+                "value": "azapi",
+                "description": "https://registry.terraform.io/providers/Azure/azapi/latest"
+              }
+            ]
+          }
+        },
+        "fullProperties": {
+          "type": "boolean",
+          "description": "Whether to output all non-computed properties in the generated Terraform configuration. If set to `false` empty-valued properties will be omitted from the configuration. Defaults to `true`.",
+          "default": true
+        },
+        "maskSensitive": {
+          "type": "boolean",
+          "description": "Mask sensitive attributes in the Terraform configuration. Defaults to `true`.",
+          "default": true
+        },
+        "includeRoleAssignment": {
+          "type": "boolean",
+          "description": "Whether to include RBAC role assignments assigned to the resources exported. Only resource-scoped role assignments are supported. Defaults to `false`.",
+          "default": false
+        },
+        "includeManagedResource": {
+          "type": "boolean",
+          "description": "Whether to include internal resources managed by Azure in the exported configuration. Defaults to `false`.",
+          "default": false
+        },
+        "excludeAzureResource": {
+          "type": "array",
+          "description": "Excludes specified Azure Resource Ids. Case-insensitive Azure Resource ID regular expression. Example: `[\"/subscriptions/[0-9a-f-]+/resourceGroups/my-rg.*\"]`.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludeTerraformResource": {
+          "type": "array",
+          "description": "Excludes specified Terraform resource types. Example: `[\"azurerm_virtual_network\"]`.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "discriminator": "type",
+      "required": [
+        "type"
+      ]
+    },
+    "ExportQuery": {
+      "type": "object",
+      "description": "Uses ARG (Azure Resource Graph) query to choose resources to be exported.",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "The ARG where predicate. Multiple predicates can be combined using `and` operator. Example: `resourceGroup =~ \"my-rg\" and type =~ \"microsoft.network/virtualnetworks\"`. The default ARG table is `Resources`, use 'table' property to query a different table."
+        },
+        "namePattern": {
+          "type": "string",
+          "description": "The id prefix for the exported Terraform resources. Defaults to `res-`.",
+          "default": "res-"
+        },
+        "recursive": {
+          "type": "boolean",
+          "description": "Recursively includes child resources. Defaults to `false`.",
+          "default": false
+        },
+        "includeResourceGroup": {
+          "type": "boolean",
+          "description": "Includes the resource group in the exported Terraform resources. Defaults to `false`.",
+          "default": false
+        },
+        "table": {
+          "type": "string",
+          "description": "The ARG table name. Defaults to 'Resources'.",
+          "default": "Resources"
+        },
+        "authorizationScopeFilter": {
+          "description": "The ARG Scope Filter parameter.",
+          "type": "string",
+          "enum": [
+            "AtScopeAndBelow",
+            "AtScopeAndAbove",
+            "AtScopeAboveAndBelow",
+            "AtScopeExact"
+          ],
+          "x-ms-enum": {
+            "name": "authorizationScopeFilter",
+            "modelAsString": true,
+            "values": [
+              {
+                "name": "AtScopeAndBelow",
+                "value": "AtScopeAndBelow",
+                "description": "Returns assignments for the given scope and all child scopes."
+              },
+              {
+                "name": "AtScopeAndAbove",
+                "value": "AtScopeAndAbove",
+                "description": "Returns assignments for the given scope and all parent scopes, but not child scopes."
+              },
+              {
+                "name": "AtScopeAboveAndBelow",
+                "value": "AtScopeAboveAndBelow",
+                "description": "Returns assignments for the given scope, all parent scopes, and all child scopes."
+              },
+              {
+                "name": "AtScopeExact",
+                "value": "AtScopeExact",
+                "description": "Returns assignments only for the given scope; no parent or child scopes are included."
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "allOf": [
+        {
+          "type": "object",
+          "description": "The base export parameter",
+          "properties": {
+            "type": {
+              "description": "The parameter type",
+              "type": "string",
+              "enum": [
+                "ExportResource",
+                "ExportResourceGroup",
+                "ExportQuery"
+              ],
+              "x-ms-enum": {
+                "name": "Type",
+                "modelAsString": true,
+                "values": [
+                  {
+                    "name": "ExportResource",
+                    "value": "ExportResource"
+                  },
+                  {
+                    "name": "ExportResourceGroup",
+                    "value": "ExportResourceGroup"
+                  },
+                  {
+                    "name": "ExportQuery",
+                    "value": "ExportQuery"
+                  }
+                ]
+              }
+            },
+            "targetProvider": {
+              "type": "string",
+              "description": "The target Azure Terraform provider. Defaults to `azurerm`.",
+              "default": "azurerm",
+              "enum": [
+                "azurerm",
+                "azapi"
+              ],
+              "x-ms-enum": {
+                "name": "targetProvider",
+                "modelAsString": true,
+                "values": [
+                  {
+                    "name": "azurerm",
+                    "value": "azurerm",
+                    "description": "https://registry.terraform.io/providers/hashicorp/azurerm/latest"
+                  },
+                  {
+                    "name": "azapi",
+                    "value": "azapi",
+                    "description": "https://registry.terraform.io/providers/Azure/azapi/latest"
+                  }
+                ]
+              }
+            },
+            "fullProperties": {
+              "type": "boolean",
+              "description": "Whether to output all non-computed properties in the generated Terraform configuration. If set to `false` empty-valued properties will be omitted from the configuration. Defaults to `true`.",
+              "default": true
+            },
+            "maskSensitive": {
+              "type": "boolean",
+              "description": "Mask sensitive attributes in the Terraform configuration. Defaults to `true`.",
+              "default": true
+            },
+            "includeRoleAssignment": {
+              "type": "boolean",
+              "description": "Whether to include RBAC role assignments assigned to the resources exported. Only resource-scoped role assignments are supported. Defaults to `false`.",
+              "default": false
+            },
+            "includeManagedResource": {
+              "type": "boolean",
+              "description": "Whether to include internal resources managed by Azure in the exported configuration. Defaults to `false`.",
+              "default": false
+            },
+            "excludeAzureResource": {
+              "type": "array",
+              "description": "Excludes specified Azure Resource Ids. Case-insensitive Azure Resource ID regular expression. Example: `[\"/subscriptions/[0-9a-f-]+/resourceGroups/my-rg.*\"]`.",
+              "items": {
+                "type": "string"
+              }
+            },
+            "excludeTerraformResource": {
+              "type": "array",
+              "description": "Excludes specified Terraform resource types. Example: `[\"azurerm_virtual_network\"]`.",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "discriminator": "type",
+          "required": [
+            "type"
+          ]
+        }
+      ],
+      "x-ms-discriminator-value": "ExportQuery"
+    },
+    "ExportResource": {
+      "type": "object",
+      "description": "Specified resources to be exported by their ids.",
+      "properties": {
+        "resourceIds": {
+          "type": "array",
+          "description": "The id(s) of the resource to be exported. Example: `[\"/subscriptions/12345678-1234-1234-1234-1234567890ab/resourceGroups/my-rg\"].",
+          "items": {
+            "type": "string",
+            "format": "arm-id",
+            "description": "A type definition that refers the id to an Azure Resource Manager resource."
+          }
+        },
+        "resourceName": {
+          "type": "string",
+          "description": "The Terraform id of the exported resource. Only effective when `resourceIds` contains only one item. Defaults to `res-0`.",
+          "default": "res-0"
+        },
+        "resourceType": {
+          "type": "string",
+          "description": "The Terraform resource type to map to. Only effective when `resourceIds` has one item. Example: `azurerm_virtual_network`. Automatic type mapping will be performed if not provided."
+        },
+        "namePattern": {
+          "type": "string",
+          "description": "The id prefix for the exported Terraform resources. Defaults to `res-`.",
+          "default": "res-"
+        },
+        "recursive": {
+          "type": "boolean",
+          "description": "Recursively includes child resources. Defaults to `false`.",
+          "default": false
+        },
+        "includeResourceGroup": {
+          "type": "boolean",
+          "description": "Includes the resource group in the exported Terraform resources. Defaults to `false`.",
+          "default": false
+        }
+      },
+      "required": [
+        "resourceIds"
+      ],
+      "allOf": [
+        {
+          "type": "object",
+          "description": "The base export parameter",
+          "properties": {
+            "type": {
+              "description": "The parameter type",
+              "type": "string",
+              "enum": [
+                "ExportResource",
+                "ExportResourceGroup",
+                "ExportQuery"
+              ],
+              "x-ms-enum": {
+                "name": "Type",
+                "modelAsString": true,
+                "values": [
+                  {
+                    "name": "ExportResource",
+                    "value": "ExportResource"
+                  },
+                  {
+                    "name": "ExportResourceGroup",
+                    "value": "ExportResourceGroup"
+                  },
+                  {
+                    "name": "ExportQuery",
+                    "value": "ExportQuery"
+                  }
+                ]
+              }
+            },
+            "targetProvider": {
+              "type": "string",
+              "description": "The target Azure Terraform provider. Defaults to `azurerm`.",
+              "default": "azurerm",
+              "enum": [
+                "azurerm",
+                "azapi"
+              ],
+              "x-ms-enum": {
+                "name": "targetProvider",
+                "modelAsString": true,
+                "values": [
+                  {
+                    "name": "azurerm",
+                    "value": "azurerm",
+                    "description": "https://registry.terraform.io/providers/hashicorp/azurerm/latest"
+                  },
+                  {
+                    "name": "azapi",
+                    "value": "azapi",
+                    "description": "https://registry.terraform.io/providers/Azure/azapi/latest"
+                  }
+                ]
+              }
+            },
+            "fullProperties": {
+              "type": "boolean",
+              "description": "Whether to output all non-computed properties in the generated Terraform configuration. If set to `false` empty-valued properties will be omitted from the configuration. Defaults to `true`.",
+              "default": true
+            },
+            "maskSensitive": {
+              "type": "boolean",
+              "description": "Mask sensitive attributes in the Terraform configuration. Defaults to `true`.",
+              "default": true
+            },
+            "includeRoleAssignment": {
+              "type": "boolean",
+              "description": "Whether to include RBAC role assignments assigned to the resources exported. Only resource-scoped role assignments are supported. Defaults to `false`.",
+              "default": false
+            },
+            "includeManagedResource": {
+              "type": "boolean",
+              "description": "Whether to include internal resources managed by Azure in the exported configuration. Defaults to `false`.",
+              "default": false
+            },
+            "excludeAzureResource": {
+              "type": "array",
+              "description": "Excludes specified Azure Resource Ids. Case-insensitive Azure Resource ID regular expression. Example: `[\"/subscriptions/[0-9a-f-]+/resourceGroups/my-rg.*\"]`.",
+              "items": {
+                "type": "string"
+              }
+            },
+            "excludeTerraformResource": {
+              "type": "array",
+              "description": "Excludes specified Terraform resource types. Example: `[\"azurerm_virtual_network\"]`.",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "discriminator": "type",
+          "required": [
+            "type"
+          ]
+        }
+      ],
+      "x-ms-discriminator-value": "ExportResource"
+    },
+    "ExportResourceGroup": {
+      "type": "object",
+      "description": "Export parameter for a resource group",
+      "properties": {
+        "resourceGroupName": {
+          "type": "string",
+          "description": "The name of the resource group to be exported."
+        },
+        "namePattern": {
+          "type": "string",
+          "description": "The id prefix for the exported Terraform resources. Defaults to `res-`.",
+          "default": "res-"
+        }
+      },
+      "required": [
+        "resourceGroupName"
+      ],
+      "allOf": [
+        {
+          "type": "object",
+          "description": "The base export parameter",
+          "properties": {
+            "type": {
+              "description": "The parameter type",
+              "type": "string",
+              "enum": [
+                "ExportResource",
+                "ExportResourceGroup",
+                "ExportQuery"
+              ],
+              "x-ms-enum": {
+                "name": "Type",
+                "modelAsString": true,
+                "values": [
+                  {
+                    "name": "ExportResource",
+                    "value": "ExportResource"
+                  },
+                  {
+                    "name": "ExportResourceGroup",
+                    "value": "ExportResourceGroup"
+                  },
+                  {
+                    "name": "ExportQuery",
+                    "value": "ExportQuery"
+                  }
+                ]
+              }
+            },
+            "targetProvider": {
+              "type": "string",
+              "description": "The target Azure Terraform provider. Defaults to `azurerm`.",
+              "default": "azurerm",
+              "enum": [
+                "azurerm",
+                "azapi"
+              ],
+              "x-ms-enum": {
+                "name": "targetProvider",
+                "modelAsString": true,
+                "values": [
+                  {
+                    "name": "azurerm",
+                    "value": "azurerm",
+                    "description": "https://registry.terraform.io/providers/hashicorp/azurerm/latest"
+                  },
+                  {
+                    "name": "azapi",
+                    "value": "azapi",
+                    "description": "https://registry.terraform.io/providers/Azure/azapi/latest"
+                  }
+                ]
+              }
+            },
+            "fullProperties": {
+              "type": "boolean",
+              "description": "Whether to output all non-computed properties in the generated Terraform configuration. If set to `false` empty-valued properties will be omitted from the configuration. Defaults to `true`.",
+              "default": true
+            },
+            "maskSensitive": {
+              "type": "boolean",
+              "description": "Mask sensitive attributes in the Terraform configuration. Defaults to `true`.",
+              "default": true
+            },
+            "includeRoleAssignment": {
+              "type": "boolean",
+              "description": "Whether to include RBAC role assignments assigned to the resources exported. Only resource-scoped role assignments are supported. Defaults to `false`.",
+              "default": false
+            },
+            "includeManagedResource": {
+              "type": "boolean",
+              "description": "Whether to include internal resources managed by Azure in the exported configuration. Defaults to `false`.",
+              "default": false
+            },
+            "excludeAzureResource": {
+              "type": "array",
+              "description": "Excludes specified Azure Resource Ids. Case-insensitive Azure Resource ID regular expression. Example: `[\"/subscriptions/[0-9a-f-]+/resourceGroups/my-rg.*\"]`.",
+              "items": {
+                "type": "string"
+              }
+            },
+            "excludeTerraformResource": {
+              "type": "array",
+              "description": "Excludes specified Terraform resource types. Example: `[\"azurerm_virtual_network\"]`.",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "discriminator": "type",
+          "required": [
+            "type"
+          ]
+        }
+      ],
+      "x-ms-discriminator-value": "ExportResourceGroup"
+    },
+    "ExportResult": {
+      "type": "object",
+      "description": "The Terraform export result",
+      "properties": {
+        "configuration": {
+          "type": "string",
+          "description": "The exported Terraform HCL configuration."
+        },
+        "import": {
+          "type": "string",
+          "description": "The Terraform import blocks for the configuration, necessary for managing existing Azure resources in Terraform."
+        },
+        "skippedResources": {
+          "type": "array",
+          "description": "A list of Azure resources which could not be exported to Terraform. The most common cause is lack of Terraform provider support. Change the provider type to `azapi` for bigger set of supported resources.",
+          "items": {
+            "type": "string",
+            "format": "arm-id",
+            "description": "A type definition that refers the id to an Azure Resource Manager resource."
+          }
+        },
+        "errors": {
+          "type": "array",
+          "description": "A list of errors encountered during export operation.",
+          "items": {
+            "$ref": "../../../../../common-types/resource-management/v5/types.json#/definitions/ErrorDetail"
+          },
+          "x-ms-identifiers": []
+        }
+      }
+    },
+    "TerraformOperationStatus": {
+      "type": "object",
+      "description": "The status of the LRO (Long Running Operation) and the export result.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ExportResult",
+          "description": "RP-specific properties for the operationStatus resource, only appears when operation ended with Succeeded status",
+          "readOnly": true
+        },
+        "status": {
+          "description": "The operation status",
+          "type": "string",
+          "enum": [
+            "Succeeded",
+            "Failed",
+            "Canceled"
+          ],
+          "x-ms-enum": {
+            "name": "ResourceProvisioningState",
+            "modelAsString": true,
+            "values": [
+              {
+                "name": "Succeeded",
+                "value": "Succeeded",
+                "description": "Resource has been created."
+              },
+              {
+                "name": "Failed",
+                "value": "Failed",
+                "description": "Resource creation failed."
+              },
+              {
+                "name": "Canceled",
+                "value": "Canceled",
+                "description": "Resource creation was canceled."
+              }
+            ]
+          },
+          "readOnly": true
+        },
+        "id": {
+          "type": "string",
+          "description": "The unique identifier for the operationStatus resource"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the  operationStatus resource",
+          "readOnly": true
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Operation start time",
+          "readOnly": true
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Operation complete time",
+          "readOnly": true
+        },
+        "percentComplete": {
+          "type": "number",
+          "format": "double",
+          "description": "The progress made toward completing the operation",
+          "readOnly": true
+        },
+        "error": {
+          "$ref": "../../../../../common-types/resource-management/v5/types.json#/definitions/ErrorDetail",
+          "description": "Errors that occurred if the operation ended with Canceled or Failed status",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "status",
+        "id"
+      ]
+    },
+    "Type": {
+      "type": "string",
+      "description": "The parameter type",
+      "enum": [
+        "ExportResource",
+        "ExportResourceGroup",
+        "ExportQuery"
+      ],
+      "x-ms-enum": {
+        "name": "Type",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "ExportResource",
+            "value": "ExportResource"
+          },
+          {
+            "name": "ExportResourceGroup",
+            "value": "ExportResourceGroup"
+          },
+          {
+            "name": "ExportQuery",
+            "value": "ExportQuery"
+          }
+        ]
+      }
+    },
+    "authorizationScopeFilter": {
+      "type": "string",
+      "description": "The Azure Resource Graph Authorization Scope Filter parameter",
+      "enum": [
+        "AtScopeAndBelow",
+        "AtScopeAndAbove",
+        "AtScopeAboveAndBelow",
+        "AtScopeExact"
+      ],
+      "x-ms-enum": {
+        "name": "authorizationScopeFilter",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "AtScopeAndBelow",
+            "value": "AtScopeAndBelow",
+            "description": "Returns assignments for the given scope and all child scopes."
+          },
+          {
+            "name": "AtScopeAndAbove",
+            "value": "AtScopeAndAbove",
+            "description": "Returns assignments for the given scope and all parent scopes, but not child scopes."
+          },
+          {
+            "name": "AtScopeAboveAndBelow",
+            "value": "AtScopeAboveAndBelow",
+            "description": "Returns assignments for the given scope, all parent scopes, and all child scopes."
+          },
+          {
+            "name": "AtScopeExact",
+            "value": "AtScopeExact",
+            "description": "Returns assignments only for the given scope; no parent or child scopes are included."
+          }
+        ]
+      }
+    }
+  },
+  "parameters": {}
+}

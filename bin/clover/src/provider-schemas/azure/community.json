@@ -1,0 +1,4571 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Azure community",
+    "version": "2023-11-01",
+    "description": "Azure community service specifications"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/providers/Microsoft.Community/operations": {
+      "get": {
+        "operationId": "Operations_List",
+        "tags": [
+          "Operations"
+        ],
+        "description": "List the operations for the provider",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "List of operations supported by the resource provider",
+                  "items": {
+                    "type": "object",
+                    "title": "REST API Operation",
+                    "description": "Details of a REST API operation, returned from the Resource Provider Operations API",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the operation, as per Resource-Based Access Control (RBAC). Examples: \"Microsoft.Compute/virtualMachines/write\", \"Microsoft.Compute/virtualMachines/capture/action\"",
+                        "readOnly": true
+                      },
+                      "isDataAction": {
+                        "type": "boolean",
+                        "description": "Whether the operation applies to data-plane. This is \"true\" for data-plane operations and \"false\" for ARM/control-plane operations.",
+                        "readOnly": true
+                      },
+                      "display": {
+                        "type": "object",
+                        "description": "Localized display information for this particular operation.",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "description": "The localized friendly form of the resource provider name, e.g. \"Microsoft Monitoring Insights\" or \"Microsoft Compute\".",
+                            "readOnly": true
+                          },
+                          "resource": {
+                            "type": "string",
+                            "description": "The localized friendly name of the resource type related to this operation. E.g. \"Virtual Machines\" or \"Job Schedule Collections\".",
+                            "readOnly": true
+                          },
+                          "operation": {
+                            "type": "string",
+                            "description": "The concise, localized friendly name for the operation; suitable for dropdowns. E.g. \"Create or Update Virtual Machine\", \"Restart Virtual Machine\".",
+                            "readOnly": true
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "The short, localized friendly description of the operation; suitable for tool tips and detailed views.",
+                            "readOnly": true
+                          }
+                        }
+                      },
+                      "origin": {
+                        "type": "string",
+                        "description": "The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default value is \"user,system\"",
+                        "enum": [
+                          "user",
+                          "system",
+                          "user,system"
+                        ],
+                        "x-ms-enum": {
+                          "name": "Origin",
+                          "modelAsString": true
+                        },
+                        "readOnly": true
+                      },
+                      "actionType": {
+                        "type": "string",
+                        "description": "Enum. Indicates the action type. \"Internal\" refers to actions that are for internal only APIs.",
+                        "enum": [
+                          "Internal"
+                        ],
+                        "x-ms-enum": {
+                          "name": "ActionType",
+                          "modelAsString": true
+                        },
+                        "readOnly": true
+                      }
+                    }
+                  },
+                  "readOnly": true,
+                  "x-ms-identifiers": [
+                    "name"
+                  ]
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "URL to get the next set of operation list results (if there are any).",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Microsoft.Community/communityTrainings": {
+      "get": {
+        "operationId": "CommunityTrainings_ListBySubscription",
+        "tags": [
+          "CommunityTrainings"
+        ],
+        "description": "List CommunityTraining resources by subscription ID",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "The response of a CommunityTraining list operation.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The CommunityTraining items on this page",
+                  "items": {
+                    "type": "object",
+                    "description": "A CommunityProviderHub resource",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "description": "The resource-specific properties for this resource.",
+                        "x-ms-client-flatten": true,
+                        "type": "object",
+                        "properties": {
+                          "portalName": {
+                            "type": "string",
+                            "description": "The portal name (website name) of the Community Training instance",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "portalAdminEmailAddress": {
+                            "type": "string",
+                            "description": "The email address of the portal admin",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "portalOwnerOrganizationName": {
+                            "type": "string",
+                            "description": "The organization name of the portal owner",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "portalOwnerEmailAddress": {
+                            "type": "string",
+                            "description": "The email address of the portal owner. Will be used as the primary contact",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "identityConfiguration": {
+                            "description": "The identity configuration of the Community Training resource",
+                            "x-ms-mutability": [
+                              "read",
+                              "update",
+                              "create"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "identityType": {
+                                "type": "string",
+                                "description": "The identity type of the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "teamsEnabled": {
+                                "type": "boolean",
+                                "description": "To indicate whether the Community Training Resource has Teams enabled",
+                                "default": false,
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "tenantId": {
+                                "type": "string",
+                                "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "domainName": {
+                                "type": "string",
+                                "description": "The domain name of the selected identity provider for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "clientId": {
+                                "type": "string",
+                                "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "clientSecret": {
+                                "type": "string",
+                                "format": "password",
+                                "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ],
+                                "x-ms-secret": true
+                              },
+                              "b2cAuthenticationPolicy": {
+                                "type": "string",
+                                "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "b2cPasswordResetPolicy": {
+                                "type": "string",
+                                "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "customLoginParameters": {
+                                "type": "string",
+                                "description": "The custom login parameters for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "identityType",
+                              "tenantId",
+                              "domainName",
+                              "clientId",
+                              "clientSecret"
+                            ]
+                          },
+                          "zoneRedundancyEnabled": {
+                            "type": "boolean",
+                            "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "disasterRecoveryEnabled": {
+                            "type": "boolean",
+                            "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "provisioningState": {
+                            "description": "The status of the last operation.",
+                            "readOnly": true,
+                            "type": "string",
+                            "enum": [
+                              "Succeeded",
+                              "Failed",
+                              "Canceled",
+                              "Provisioning",
+                              "Updating",
+                              "Deleting",
+                              "Accepted"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true,
+                              "values": [
+                                {
+                                  "name": "Succeeded",
+                                  "value": "Succeeded",
+                                  "description": "Resource has been created."
+                                },
+                                {
+                                  "name": "Failed",
+                                  "value": "Failed",
+                                  "description": "Resource creation failed."
+                                },
+                                {
+                                  "name": "Canceled",
+                                  "value": "Canceled",
+                                  "description": "Resource creation was canceled."
+                                },
+                                {
+                                  "name": "Provisioning",
+                                  "value": "Provisioning",
+                                  "description": "Initial provisioning in progress"
+                                },
+                                {
+                                  "name": "Updating",
+                                  "value": "Updating",
+                                  "description": "Update in progress"
+                                },
+                                {
+                                  "name": "Deleting",
+                                  "value": "Deleting",
+                                  "description": "Deletion in progress"
+                                },
+                                {
+                                  "name": "Accepted",
+                                  "value": "Accepted",
+                                  "description": "Change accepted for processing"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "portalName",
+                          "portalAdminEmailAddress",
+                          "portalOwnerOrganizationName",
+                          "portalOwnerEmailAddress",
+                          "identityConfiguration",
+                          "zoneRedundancyEnabled",
+                          "disasterRecoveryEnabled"
+                        ]
+                      },
+                      "sku": {
+                        "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+                          },
+                          "tier": {
+                            "type": "string",
+                            "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+                            "enum": [
+                              "Free",
+                              "Basic",
+                              "Standard",
+                              "Premium"
+                            ],
+                            "x-ms-enum": {
+                              "name": "SkuTier",
+                              "modelAsString": false
+                            }
+                          },
+                          "size": {
+                            "type": "string",
+                            "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+                          },
+                          "family": {
+                            "type": "string",
+                            "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+                          },
+                          "capacity": {
+                            "type": "integer",
+                            "format": "int32",
+                            "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "The link to the next page of items"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Community/communityTrainings": {
+      "get": {
+        "operationId": "CommunityTrainings_ListByResourceGroup",
+        "tags": [
+          "CommunityTrainings"
+        ],
+        "description": "List CommunityTraining resources by resource group",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "The response of a CommunityTraining list operation.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The CommunityTraining items on this page",
+                  "items": {
+                    "type": "object",
+                    "description": "A CommunityProviderHub resource",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "description": "The resource-specific properties for this resource.",
+                        "x-ms-client-flatten": true,
+                        "type": "object",
+                        "properties": {
+                          "portalName": {
+                            "type": "string",
+                            "description": "The portal name (website name) of the Community Training instance",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "portalAdminEmailAddress": {
+                            "type": "string",
+                            "description": "The email address of the portal admin",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "portalOwnerOrganizationName": {
+                            "type": "string",
+                            "description": "The organization name of the portal owner",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "portalOwnerEmailAddress": {
+                            "type": "string",
+                            "description": "The email address of the portal owner. Will be used as the primary contact",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "identityConfiguration": {
+                            "description": "The identity configuration of the Community Training resource",
+                            "x-ms-mutability": [
+                              "read",
+                              "update",
+                              "create"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "identityType": {
+                                "type": "string",
+                                "description": "The identity type of the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "teamsEnabled": {
+                                "type": "boolean",
+                                "description": "To indicate whether the Community Training Resource has Teams enabled",
+                                "default": false,
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "tenantId": {
+                                "type": "string",
+                                "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "domainName": {
+                                "type": "string",
+                                "description": "The domain name of the selected identity provider for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "clientId": {
+                                "type": "string",
+                                "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "clientSecret": {
+                                "type": "string",
+                                "format": "password",
+                                "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ],
+                                "x-ms-secret": true
+                              },
+                              "b2cAuthenticationPolicy": {
+                                "type": "string",
+                                "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "b2cPasswordResetPolicy": {
+                                "type": "string",
+                                "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              },
+                              "customLoginParameters": {
+                                "type": "string",
+                                "description": "The custom login parameters for the Community Training Resource",
+                                "x-ms-mutability": [
+                                  "read",
+                                  "update",
+                                  "create"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "identityType",
+                              "tenantId",
+                              "domainName",
+                              "clientId",
+                              "clientSecret"
+                            ]
+                          },
+                          "zoneRedundancyEnabled": {
+                            "type": "boolean",
+                            "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "disasterRecoveryEnabled": {
+                            "type": "boolean",
+                            "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+                            "x-ms-mutability": [
+                              "read",
+                              "create"
+                            ]
+                          },
+                          "provisioningState": {
+                            "description": "The status of the last operation.",
+                            "readOnly": true,
+                            "type": "string",
+                            "enum": [
+                              "Succeeded",
+                              "Failed",
+                              "Canceled",
+                              "Provisioning",
+                              "Updating",
+                              "Deleting",
+                              "Accepted"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true,
+                              "values": [
+                                {
+                                  "name": "Succeeded",
+                                  "value": "Succeeded",
+                                  "description": "Resource has been created."
+                                },
+                                {
+                                  "name": "Failed",
+                                  "value": "Failed",
+                                  "description": "Resource creation failed."
+                                },
+                                {
+                                  "name": "Canceled",
+                                  "value": "Canceled",
+                                  "description": "Resource creation was canceled."
+                                },
+                                {
+                                  "name": "Provisioning",
+                                  "value": "Provisioning",
+                                  "description": "Initial provisioning in progress"
+                                },
+                                {
+                                  "name": "Updating",
+                                  "value": "Updating",
+                                  "description": "Update in progress"
+                                },
+                                {
+                                  "name": "Deleting",
+                                  "value": "Deleting",
+                                  "description": "Deletion in progress"
+                                },
+                                {
+                                  "name": "Accepted",
+                                  "value": "Accepted",
+                                  "description": "Change accepted for processing"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "portalName",
+                          "portalAdminEmailAddress",
+                          "portalOwnerOrganizationName",
+                          "portalOwnerEmailAddress",
+                          "identityConfiguration",
+                          "zoneRedundancyEnabled",
+                          "disasterRecoveryEnabled"
+                        ]
+                      },
+                      "sku": {
+                        "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+                          },
+                          "tier": {
+                            "type": "string",
+                            "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+                            "enum": [
+                              "Free",
+                              "Basic",
+                              "Standard",
+                              "Premium"
+                            ],
+                            "x-ms-enum": {
+                              "name": "SkuTier",
+                              "modelAsString": false
+                            }
+                          },
+                          "size": {
+                            "type": "string",
+                            "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+                          },
+                          "family": {
+                            "type": "string",
+                            "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+                          },
+                          "capacity": {
+                            "type": "integer",
+                            "format": "int32",
+                            "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "The link to the next page of items"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Community/communityTrainings/{communityTrainingName}": {
+      "get": {
+        "operationId": "CommunityTrainings_Get",
+        "tags": [
+          "CommunityTrainings"
+        ],
+        "description": "Get a CommunityTraining",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "communityTrainingName",
+            "in": "path",
+            "description": "The name of the Community Training Resource",
+            "required": true,
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{3,24}$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A CommunityProviderHub resource",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "x-ms-client-flatten": true,
+                  "type": "object",
+                  "properties": {
+                    "portalName": {
+                      "type": "string",
+                      "description": "The portal name (website name) of the Community Training instance",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalAdminEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal admin",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerOrganizationName": {
+                      "type": "string",
+                      "description": "The organization name of the portal owner",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal owner. Will be used as the primary contact",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "identityConfiguration": {
+                      "description": "The identity configuration of the Community Training resource",
+                      "x-ms-mutability": [
+                        "read",
+                        "update",
+                        "create"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "identityType": {
+                          "type": "string",
+                          "description": "The identity type of the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "teamsEnabled": {
+                          "type": "boolean",
+                          "description": "To indicate whether the Community Training Resource has Teams enabled",
+                          "default": false,
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "domainName": {
+                          "type": "string",
+                          "description": "The domain name of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientId": {
+                          "type": "string",
+                          "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientSecret": {
+                          "type": "string",
+                          "format": "password",
+                          "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ],
+                          "x-ms-secret": true
+                        },
+                        "b2cAuthenticationPolicy": {
+                          "type": "string",
+                          "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "b2cPasswordResetPolicy": {
+                          "type": "string",
+                          "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "customLoginParameters": {
+                          "type": "string",
+                          "description": "The custom login parameters for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "identityType",
+                        "tenantId",
+                        "domainName",
+                        "clientId",
+                        "clientSecret"
+                      ]
+                    },
+                    "zoneRedundancyEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "disasterRecoveryEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "provisioningState": {
+                      "description": "The status of the last operation.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled",
+                        "Provisioning",
+                        "Updating",
+                        "Deleting",
+                        "Accepted"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true,
+                        "values": [
+                          {
+                            "name": "Succeeded",
+                            "value": "Succeeded",
+                            "description": "Resource has been created."
+                          },
+                          {
+                            "name": "Failed",
+                            "value": "Failed",
+                            "description": "Resource creation failed."
+                          },
+                          {
+                            "name": "Canceled",
+                            "value": "Canceled",
+                            "description": "Resource creation was canceled."
+                          },
+                          {
+                            "name": "Provisioning",
+                            "value": "Provisioning",
+                            "description": "Initial provisioning in progress"
+                          },
+                          {
+                            "name": "Updating",
+                            "value": "Updating",
+                            "description": "Update in progress"
+                          },
+                          {
+                            "name": "Deleting",
+                            "value": "Deleting",
+                            "description": "Deletion in progress"
+                          },
+                          {
+                            "name": "Accepted",
+                            "value": "Accepted",
+                            "description": "Change accepted for processing"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "portalName",
+                    "portalAdminEmailAddress",
+                    "portalOwnerOrganizationName",
+                    "portalOwnerEmailAddress",
+                    "identityConfiguration",
+                    "zoneRedundancyEnabled",
+                    "disasterRecoveryEnabled"
+                  ]
+                },
+                "sku": {
+                  "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+                    },
+                    "tier": {
+                      "type": "string",
+                      "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+                      "enum": [
+                        "Free",
+                        "Basic",
+                        "Standard",
+                        "Premium"
+                      ],
+                      "x-ms-enum": {
+                        "name": "SkuTier",
+                        "modelAsString": false
+                      }
+                    },
+                    "size": {
+                      "type": "string",
+                      "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+                    },
+                    "family": {
+                      "type": "string",
+                      "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+                    },
+                    "capacity": {
+                      "type": "integer",
+                      "format": "int32",
+                      "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "CommunityTrainings_Create",
+        "tags": [
+          "CommunityTrainings"
+        ],
+        "description": "Create a CommunityTraining",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "communityTrainingName",
+            "in": "path",
+            "description": "The name of the Community Training Resource",
+            "required": true,
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{3,24}$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "description": "A CommunityProviderHub resource",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "x-ms-client-flatten": true,
+                  "type": "object",
+                  "properties": {
+                    "portalName": {
+                      "type": "string",
+                      "description": "The portal name (website name) of the Community Training instance",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalAdminEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal admin",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerOrganizationName": {
+                      "type": "string",
+                      "description": "The organization name of the portal owner",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal owner. Will be used as the primary contact",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "identityConfiguration": {
+                      "description": "The identity configuration of the Community Training resource",
+                      "x-ms-mutability": [
+                        "read",
+                        "update",
+                        "create"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "identityType": {
+                          "type": "string",
+                          "description": "The identity type of the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "teamsEnabled": {
+                          "type": "boolean",
+                          "description": "To indicate whether the Community Training Resource has Teams enabled",
+                          "default": false,
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "domainName": {
+                          "type": "string",
+                          "description": "The domain name of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientId": {
+                          "type": "string",
+                          "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientSecret": {
+                          "type": "string",
+                          "format": "password",
+                          "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ],
+                          "x-ms-secret": true
+                        },
+                        "b2cAuthenticationPolicy": {
+                          "type": "string",
+                          "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "b2cPasswordResetPolicy": {
+                          "type": "string",
+                          "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "customLoginParameters": {
+                          "type": "string",
+                          "description": "The custom login parameters for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "identityType",
+                        "tenantId",
+                        "domainName",
+                        "clientId",
+                        "clientSecret"
+                      ]
+                    },
+                    "zoneRedundancyEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "disasterRecoveryEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "provisioningState": {
+                      "description": "The status of the last operation.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled",
+                        "Provisioning",
+                        "Updating",
+                        "Deleting",
+                        "Accepted"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true,
+                        "values": [
+                          {
+                            "name": "Succeeded",
+                            "value": "Succeeded",
+                            "description": "Resource has been created."
+                          },
+                          {
+                            "name": "Failed",
+                            "value": "Failed",
+                            "description": "Resource creation failed."
+                          },
+                          {
+                            "name": "Canceled",
+                            "value": "Canceled",
+                            "description": "Resource creation was canceled."
+                          },
+                          {
+                            "name": "Provisioning",
+                            "value": "Provisioning",
+                            "description": "Initial provisioning in progress"
+                          },
+                          {
+                            "name": "Updating",
+                            "value": "Updating",
+                            "description": "Update in progress"
+                          },
+                          {
+                            "name": "Deleting",
+                            "value": "Deleting",
+                            "description": "Deletion in progress"
+                          },
+                          {
+                            "name": "Accepted",
+                            "value": "Accepted",
+                            "description": "Change accepted for processing"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "portalName",
+                    "portalAdminEmailAddress",
+                    "portalOwnerOrganizationName",
+                    "portalOwnerEmailAddress",
+                    "identityConfiguration",
+                    "zoneRedundancyEnabled",
+                    "disasterRecoveryEnabled"
+                  ]
+                },
+                "sku": {
+                  "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+                    },
+                    "tier": {
+                      "type": "string",
+                      "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+                      "enum": [
+                        "Free",
+                        "Basic",
+                        "Standard",
+                        "Premium"
+                      ],
+                      "x-ms-enum": {
+                        "name": "SkuTier",
+                        "modelAsString": false
+                      }
+                    },
+                    "size": {
+                      "type": "string",
+                      "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+                    },
+                    "family": {
+                      "type": "string",
+                      "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+                    },
+                    "capacity": {
+                      "type": "integer",
+                      "format": "int32",
+                      "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'CommunityTraining' update operation succeeded",
+            "schema": {
+              "type": "object",
+              "description": "A CommunityProviderHub resource",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "x-ms-client-flatten": true,
+                  "type": "object",
+                  "properties": {
+                    "portalName": {
+                      "type": "string",
+                      "description": "The portal name (website name) of the Community Training instance",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalAdminEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal admin",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerOrganizationName": {
+                      "type": "string",
+                      "description": "The organization name of the portal owner",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal owner. Will be used as the primary contact",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "identityConfiguration": {
+                      "description": "The identity configuration of the Community Training resource",
+                      "x-ms-mutability": [
+                        "read",
+                        "update",
+                        "create"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "identityType": {
+                          "type": "string",
+                          "description": "The identity type of the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "teamsEnabled": {
+                          "type": "boolean",
+                          "description": "To indicate whether the Community Training Resource has Teams enabled",
+                          "default": false,
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "domainName": {
+                          "type": "string",
+                          "description": "The domain name of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientId": {
+                          "type": "string",
+                          "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientSecret": {
+                          "type": "string",
+                          "format": "password",
+                          "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ],
+                          "x-ms-secret": true
+                        },
+                        "b2cAuthenticationPolicy": {
+                          "type": "string",
+                          "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "b2cPasswordResetPolicy": {
+                          "type": "string",
+                          "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "customLoginParameters": {
+                          "type": "string",
+                          "description": "The custom login parameters for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "identityType",
+                        "tenantId",
+                        "domainName",
+                        "clientId",
+                        "clientSecret"
+                      ]
+                    },
+                    "zoneRedundancyEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "disasterRecoveryEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "provisioningState": {
+                      "description": "The status of the last operation.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled",
+                        "Provisioning",
+                        "Updating",
+                        "Deleting",
+                        "Accepted"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true,
+                        "values": [
+                          {
+                            "name": "Succeeded",
+                            "value": "Succeeded",
+                            "description": "Resource has been created."
+                          },
+                          {
+                            "name": "Failed",
+                            "value": "Failed",
+                            "description": "Resource creation failed."
+                          },
+                          {
+                            "name": "Canceled",
+                            "value": "Canceled",
+                            "description": "Resource creation was canceled."
+                          },
+                          {
+                            "name": "Provisioning",
+                            "value": "Provisioning",
+                            "description": "Initial provisioning in progress"
+                          },
+                          {
+                            "name": "Updating",
+                            "value": "Updating",
+                            "description": "Update in progress"
+                          },
+                          {
+                            "name": "Deleting",
+                            "value": "Deleting",
+                            "description": "Deletion in progress"
+                          },
+                          {
+                            "name": "Accepted",
+                            "value": "Accepted",
+                            "description": "Change accepted for processing"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "portalName",
+                    "portalAdminEmailAddress",
+                    "portalOwnerOrganizationName",
+                    "portalOwnerEmailAddress",
+                    "identityConfiguration",
+                    "zoneRedundancyEnabled",
+                    "disasterRecoveryEnabled"
+                  ]
+                },
+                "sku": {
+                  "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+                    },
+                    "tier": {
+                      "type": "string",
+                      "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+                      "enum": [
+                        "Free",
+                        "Basic",
+                        "Standard",
+                        "Premium"
+                      ],
+                      "x-ms-enum": {
+                        "name": "SkuTier",
+                        "modelAsString": false
+                      }
+                    },
+                    "size": {
+                      "type": "string",
+                      "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+                    },
+                    "family": {
+                      "type": "string",
+                      "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+                    },
+                    "capacity": {
+                      "type": "integer",
+                      "format": "int32",
+                      "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Resource 'CommunityTraining' create operation succeeded",
+            "schema": {
+              "type": "object",
+              "description": "A CommunityProviderHub resource",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "x-ms-client-flatten": true,
+                  "type": "object",
+                  "properties": {
+                    "portalName": {
+                      "type": "string",
+                      "description": "The portal name (website name) of the Community Training instance",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalAdminEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal admin",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerOrganizationName": {
+                      "type": "string",
+                      "description": "The organization name of the portal owner",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal owner. Will be used as the primary contact",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "identityConfiguration": {
+                      "description": "The identity configuration of the Community Training resource",
+                      "x-ms-mutability": [
+                        "read",
+                        "update",
+                        "create"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "identityType": {
+                          "type": "string",
+                          "description": "The identity type of the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "teamsEnabled": {
+                          "type": "boolean",
+                          "description": "To indicate whether the Community Training Resource has Teams enabled",
+                          "default": false,
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "domainName": {
+                          "type": "string",
+                          "description": "The domain name of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientId": {
+                          "type": "string",
+                          "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientSecret": {
+                          "type": "string",
+                          "format": "password",
+                          "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ],
+                          "x-ms-secret": true
+                        },
+                        "b2cAuthenticationPolicy": {
+                          "type": "string",
+                          "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "b2cPasswordResetPolicy": {
+                          "type": "string",
+                          "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "customLoginParameters": {
+                          "type": "string",
+                          "description": "The custom login parameters for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "identityType",
+                        "tenantId",
+                        "domainName",
+                        "clientId",
+                        "clientSecret"
+                      ]
+                    },
+                    "zoneRedundancyEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "disasterRecoveryEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "provisioningState": {
+                      "description": "The status of the last operation.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled",
+                        "Provisioning",
+                        "Updating",
+                        "Deleting",
+                        "Accepted"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true,
+                        "values": [
+                          {
+                            "name": "Succeeded",
+                            "value": "Succeeded",
+                            "description": "Resource has been created."
+                          },
+                          {
+                            "name": "Failed",
+                            "value": "Failed",
+                            "description": "Resource creation failed."
+                          },
+                          {
+                            "name": "Canceled",
+                            "value": "Canceled",
+                            "description": "Resource creation was canceled."
+                          },
+                          {
+                            "name": "Provisioning",
+                            "value": "Provisioning",
+                            "description": "Initial provisioning in progress"
+                          },
+                          {
+                            "name": "Updating",
+                            "value": "Updating",
+                            "description": "Update in progress"
+                          },
+                          {
+                            "name": "Deleting",
+                            "value": "Deleting",
+                            "description": "Deletion in progress"
+                          },
+                          {
+                            "name": "Accepted",
+                            "value": "Accepted",
+                            "description": "Change accepted for processing"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "portalName",
+                    "portalAdminEmailAddress",
+                    "portalOwnerOrganizationName",
+                    "portalOwnerEmailAddress",
+                    "identityConfiguration",
+                    "zoneRedundancyEnabled",
+                    "disasterRecoveryEnabled"
+                  ]
+                },
+                "sku": {
+                  "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+                    },
+                    "tier": {
+                      "type": "string",
+                      "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+                      "enum": [
+                        "Free",
+                        "Basic",
+                        "Standard",
+                        "Premium"
+                      ],
+                      "x-ms-enum": {
+                        "name": "SkuTier",
+                        "modelAsString": false
+                      }
+                    },
+                    "size": {
+                      "type": "string",
+                      "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+                    },
+                    "family": {
+                      "type": "string",
+                      "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+                    },
+                    "capacity": {
+                      "type": "integer",
+                      "format": "int32",
+                      "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "CommunityTrainings_Update",
+        "tags": [
+          "CommunityTrainings"
+        ],
+        "description": "Update a CommunityTraining",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "communityTrainingName",
+            "in": "path",
+            "description": "The name of the Community Training Resource",
+            "required": true,
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{3,24}$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "description": "The type used for update operations of the CommunityTraining.",
+              "properties": {
+                "sku": {
+                  "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+                    },
+                    "tier": {
+                      "type": "string",
+                      "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+                      "enum": [
+                        "Free",
+                        "Basic",
+                        "Standard",
+                        "Premium"
+                      ],
+                      "x-ms-enum": {
+                        "name": "SkuTier",
+                        "modelAsString": false
+                      }
+                    },
+                    "size": {
+                      "type": "string",
+                      "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+                    },
+                    "family": {
+                      "type": "string",
+                      "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+                    },
+                    "capacity": {
+                      "type": "integer",
+                      "format": "int32",
+                      "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ]
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "x-ms-client-flatten": true,
+                  "type": "object",
+                  "properties": {
+                    "identityConfiguration": {
+                      "description": "The identity configuration of the Community Training resource",
+                      "x-ms-mutability": [
+                        "read",
+                        "update",
+                        "create"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "identityType": {
+                          "type": "string",
+                          "description": "The identity type of the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "teamsEnabled": {
+                          "type": "boolean",
+                          "description": "To indicate whether the Community Training Resource has Teams enabled",
+                          "default": false,
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "domainName": {
+                          "type": "string",
+                          "description": "The domain name of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientId": {
+                          "type": "string",
+                          "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientSecret": {
+                          "type": "string",
+                          "format": "password",
+                          "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ],
+                          "x-ms-secret": true
+                        },
+                        "b2cAuthenticationPolicy": {
+                          "type": "string",
+                          "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "b2cPasswordResetPolicy": {
+                          "type": "string",
+                          "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "customLoginParameters": {
+                          "type": "string",
+                          "description": "The custom login parameters for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A CommunityProviderHub resource",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "x-ms-client-flatten": true,
+                  "type": "object",
+                  "properties": {
+                    "portalName": {
+                      "type": "string",
+                      "description": "The portal name (website name) of the Community Training instance",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalAdminEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal admin",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerOrganizationName": {
+                      "type": "string",
+                      "description": "The organization name of the portal owner",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "portalOwnerEmailAddress": {
+                      "type": "string",
+                      "description": "The email address of the portal owner. Will be used as the primary contact",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "identityConfiguration": {
+                      "description": "The identity configuration of the Community Training resource",
+                      "x-ms-mutability": [
+                        "read",
+                        "update",
+                        "create"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "identityType": {
+                          "type": "string",
+                          "description": "The identity type of the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "teamsEnabled": {
+                          "type": "boolean",
+                          "description": "To indicate whether the Community Training Resource has Teams enabled",
+                          "default": false,
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "domainName": {
+                          "type": "string",
+                          "description": "The domain name of the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientId": {
+                          "type": "string",
+                          "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "clientSecret": {
+                          "type": "string",
+                          "format": "password",
+                          "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ],
+                          "x-ms-secret": true
+                        },
+                        "b2cAuthenticationPolicy": {
+                          "type": "string",
+                          "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "b2cPasswordResetPolicy": {
+                          "type": "string",
+                          "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        },
+                        "customLoginParameters": {
+                          "type": "string",
+                          "description": "The custom login parameters for the Community Training Resource",
+                          "x-ms-mutability": [
+                            "read",
+                            "update",
+                            "create"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "identityType",
+                        "tenantId",
+                        "domainName",
+                        "clientId",
+                        "clientSecret"
+                      ]
+                    },
+                    "zoneRedundancyEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "disasterRecoveryEnabled": {
+                      "type": "boolean",
+                      "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+                      "x-ms-mutability": [
+                        "read",
+                        "create"
+                      ]
+                    },
+                    "provisioningState": {
+                      "description": "The status of the last operation.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled",
+                        "Provisioning",
+                        "Updating",
+                        "Deleting",
+                        "Accepted"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true,
+                        "values": [
+                          {
+                            "name": "Succeeded",
+                            "value": "Succeeded",
+                            "description": "Resource has been created."
+                          },
+                          {
+                            "name": "Failed",
+                            "value": "Failed",
+                            "description": "Resource creation failed."
+                          },
+                          {
+                            "name": "Canceled",
+                            "value": "Canceled",
+                            "description": "Resource creation was canceled."
+                          },
+                          {
+                            "name": "Provisioning",
+                            "value": "Provisioning",
+                            "description": "Initial provisioning in progress"
+                          },
+                          {
+                            "name": "Updating",
+                            "value": "Updating",
+                            "description": "Update in progress"
+                          },
+                          {
+                            "name": "Deleting",
+                            "value": "Deleting",
+                            "description": "Deletion in progress"
+                          },
+                          {
+                            "name": "Accepted",
+                            "value": "Accepted",
+                            "description": "Change accepted for processing"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "portalName",
+                    "portalAdminEmailAddress",
+                    "portalOwnerOrganizationName",
+                    "portalOwnerEmailAddress",
+                    "identityConfiguration",
+                    "zoneRedundancyEnabled",
+                    "disasterRecoveryEnabled"
+                  ]
+                },
+                "sku": {
+                  "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+                    },
+                    "tier": {
+                      "type": "string",
+                      "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+                      "enum": [
+                        "Free",
+                        "Basic",
+                        "Standard",
+                        "Premium"
+                      ],
+                      "x-ms-enum": {
+                        "name": "SkuTier",
+                        "modelAsString": false
+                      }
+                    },
+                    "size": {
+                      "type": "string",
+                      "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+                    },
+                    "family": {
+                      "type": "string",
+                      "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+                    },
+                    "capacity": {
+                      "type": "integer",
+                      "format": "int32",
+                      "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "CommunityTrainings_Delete",
+        "tags": [
+          "CommunityTrainings"
+        ],
+        "description": "Delete a CommunityTraining",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "communityTrainingName",
+            "in": "path",
+            "description": "The name of the Community Training Resource",
+            "required": true,
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{3,24}$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource does not exist."
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "CommunityTraining": {
+      "type": "object",
+      "description": "A CommunityProviderHub resource",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the resource",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+          "readOnly": true
+        },
+        "systemData": {
+          "type": "object",
+          "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+          "readOnly": true,
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ]
+        },
+        "location": {
+          "type": "string",
+          "description": "The geo-location where the resource lives",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "properties": {
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "type": "object",
+          "properties": {
+            "portalName": {
+              "type": "string",
+              "description": "The portal name (website name) of the Community Training instance",
+              "x-ms-mutability": [
+                "read",
+                "create"
+              ]
+            },
+            "portalAdminEmailAddress": {
+              "type": "string",
+              "description": "The email address of the portal admin",
+              "x-ms-mutability": [
+                "read",
+                "create"
+              ]
+            },
+            "portalOwnerOrganizationName": {
+              "type": "string",
+              "description": "The organization name of the portal owner",
+              "x-ms-mutability": [
+                "read",
+                "create"
+              ]
+            },
+            "portalOwnerEmailAddress": {
+              "type": "string",
+              "description": "The email address of the portal owner. Will be used as the primary contact",
+              "x-ms-mutability": [
+                "read",
+                "create"
+              ]
+            },
+            "identityConfiguration": {
+              "description": "The identity configuration of the Community Training resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ],
+              "type": "object",
+              "properties": {
+                "identityType": {
+                  "type": "string",
+                  "description": "The identity type of the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "teamsEnabled": {
+                  "type": "boolean",
+                  "description": "To indicate whether the Community Training Resource has Teams enabled",
+                  "default": false,
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "tenantId": {
+                  "type": "string",
+                  "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "domainName": {
+                  "type": "string",
+                  "description": "The domain name of the selected identity provider for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "clientId": {
+                  "type": "string",
+                  "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "clientSecret": {
+                  "type": "string",
+                  "format": "password",
+                  "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ],
+                  "x-ms-secret": true
+                },
+                "b2cAuthenticationPolicy": {
+                  "type": "string",
+                  "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "b2cPasswordResetPolicy": {
+                  "type": "string",
+                  "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "customLoginParameters": {
+                  "type": "string",
+                  "description": "The custom login parameters for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                }
+              },
+              "required": [
+                "identityType",
+                "tenantId",
+                "domainName",
+                "clientId",
+                "clientSecret"
+              ]
+            },
+            "zoneRedundancyEnabled": {
+              "type": "boolean",
+              "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+              "x-ms-mutability": [
+                "read",
+                "create"
+              ]
+            },
+            "disasterRecoveryEnabled": {
+              "type": "boolean",
+              "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+              "x-ms-mutability": [
+                "read",
+                "create"
+              ]
+            },
+            "provisioningState": {
+              "description": "The status of the last operation.",
+              "readOnly": true,
+              "type": "string",
+              "enum": [
+                "Succeeded",
+                "Failed",
+                "Canceled",
+                "Provisioning",
+                "Updating",
+                "Deleting",
+                "Accepted"
+              ],
+              "x-ms-enum": {
+                "name": "ProvisioningState",
+                "modelAsString": true,
+                "values": [
+                  {
+                    "name": "Succeeded",
+                    "value": "Succeeded",
+                    "description": "Resource has been created."
+                  },
+                  {
+                    "name": "Failed",
+                    "value": "Failed",
+                    "description": "Resource creation failed."
+                  },
+                  {
+                    "name": "Canceled",
+                    "value": "Canceled",
+                    "description": "Resource creation was canceled."
+                  },
+                  {
+                    "name": "Provisioning",
+                    "value": "Provisioning",
+                    "description": "Initial provisioning in progress"
+                  },
+                  {
+                    "name": "Updating",
+                    "value": "Updating",
+                    "description": "Update in progress"
+                  },
+                  {
+                    "name": "Deleting",
+                    "value": "Deleting",
+                    "description": "Deletion in progress"
+                  },
+                  {
+                    "name": "Accepted",
+                    "value": "Accepted",
+                    "description": "Change accepted for processing"
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "portalName",
+            "portalAdminEmailAddress",
+            "portalOwnerOrganizationName",
+            "portalOwnerEmailAddress",
+            "identityConfiguration",
+            "zoneRedundancyEnabled",
+            "disasterRecoveryEnabled"
+          ]
+        },
+        "sku": {
+          "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+            },
+            "tier": {
+              "type": "string",
+              "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+              "enum": [
+                "Free",
+                "Basic",
+                "Standard",
+                "Premium"
+              ],
+              "x-ms-enum": {
+                "name": "SkuTier",
+                "modelAsString": false
+              }
+            },
+            "size": {
+              "type": "string",
+              "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+            },
+            "family": {
+              "type": "string",
+              "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+            },
+            "capacity": {
+              "type": "integer",
+              "format": "int32",
+              "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+            }
+          },
+          "required": [
+            "name"
+          ]
+        }
+      }
+    },
+    "CommunityTrainingListResult": {
+      "type": "object",
+      "description": "The response of a CommunityTraining list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The CommunityTraining items on this page",
+          "items": {
+            "type": "object",
+            "description": "A CommunityProviderHub resource",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                "readOnly": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the resource",
+                "readOnly": true
+              },
+              "type": {
+                "type": "string",
+                "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                "readOnly": true
+              },
+              "systemData": {
+                "type": "object",
+                "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                "readOnly": true,
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              },
+              "tags": {
+                "type": "object",
+                "description": "Resource tags.",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "x-ms-mutability": [
+                  "read",
+                  "create",
+                  "update"
+                ]
+              },
+              "location": {
+                "type": "string",
+                "description": "The geo-location where the resource lives",
+                "x-ms-mutability": [
+                  "read",
+                  "create"
+                ]
+              },
+              "properties": {
+                "description": "The resource-specific properties for this resource.",
+                "x-ms-client-flatten": true,
+                "type": "object",
+                "properties": {
+                  "portalName": {
+                    "type": "string",
+                    "description": "The portal name (website name) of the Community Training instance",
+                    "x-ms-mutability": [
+                      "read",
+                      "create"
+                    ]
+                  },
+                  "portalAdminEmailAddress": {
+                    "type": "string",
+                    "description": "The email address of the portal admin",
+                    "x-ms-mutability": [
+                      "read",
+                      "create"
+                    ]
+                  },
+                  "portalOwnerOrganizationName": {
+                    "type": "string",
+                    "description": "The organization name of the portal owner",
+                    "x-ms-mutability": [
+                      "read",
+                      "create"
+                    ]
+                  },
+                  "portalOwnerEmailAddress": {
+                    "type": "string",
+                    "description": "The email address of the portal owner. Will be used as the primary contact",
+                    "x-ms-mutability": [
+                      "read",
+                      "create"
+                    ]
+                  },
+                  "identityConfiguration": {
+                    "description": "The identity configuration of the Community Training resource",
+                    "x-ms-mutability": [
+                      "read",
+                      "update",
+                      "create"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "identityType": {
+                        "type": "string",
+                        "description": "The identity type of the Community Training Resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "update",
+                          "create"
+                        ]
+                      },
+                      "teamsEnabled": {
+                        "type": "boolean",
+                        "description": "To indicate whether the Community Training Resource has Teams enabled",
+                        "default": false,
+                        "x-ms-mutability": [
+                          "read",
+                          "update",
+                          "create"
+                        ]
+                      },
+                      "tenantId": {
+                        "type": "string",
+                        "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "update",
+                          "create"
+                        ]
+                      },
+                      "domainName": {
+                        "type": "string",
+                        "description": "The domain name of the selected identity provider for the Community Training Resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "update",
+                          "create"
+                        ]
+                      },
+                      "clientId": {
+                        "type": "string",
+                        "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "update",
+                          "create"
+                        ]
+                      },
+                      "clientSecret": {
+                        "type": "string",
+                        "format": "password",
+                        "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "update",
+                          "create"
+                        ],
+                        "x-ms-secret": true
+                      },
+                      "b2cAuthenticationPolicy": {
+                        "type": "string",
+                        "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "update",
+                          "create"
+                        ]
+                      },
+                      "b2cPasswordResetPolicy": {
+                        "type": "string",
+                        "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "update",
+                          "create"
+                        ]
+                      },
+                      "customLoginParameters": {
+                        "type": "string",
+                        "description": "The custom login parameters for the Community Training Resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "update",
+                          "create"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "identityType",
+                      "tenantId",
+                      "domainName",
+                      "clientId",
+                      "clientSecret"
+                    ]
+                  },
+                  "zoneRedundancyEnabled": {
+                    "type": "boolean",
+                    "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+                    "x-ms-mutability": [
+                      "read",
+                      "create"
+                    ]
+                  },
+                  "disasterRecoveryEnabled": {
+                    "type": "boolean",
+                    "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+                    "x-ms-mutability": [
+                      "read",
+                      "create"
+                    ]
+                  },
+                  "provisioningState": {
+                    "description": "The status of the last operation.",
+                    "readOnly": true,
+                    "type": "string",
+                    "enum": [
+                      "Succeeded",
+                      "Failed",
+                      "Canceled",
+                      "Provisioning",
+                      "Updating",
+                      "Deleting",
+                      "Accepted"
+                    ],
+                    "x-ms-enum": {
+                      "name": "ProvisioningState",
+                      "modelAsString": true,
+                      "values": [
+                        {
+                          "name": "Succeeded",
+                          "value": "Succeeded",
+                          "description": "Resource has been created."
+                        },
+                        {
+                          "name": "Failed",
+                          "value": "Failed",
+                          "description": "Resource creation failed."
+                        },
+                        {
+                          "name": "Canceled",
+                          "value": "Canceled",
+                          "description": "Resource creation was canceled."
+                        },
+                        {
+                          "name": "Provisioning",
+                          "value": "Provisioning",
+                          "description": "Initial provisioning in progress"
+                        },
+                        {
+                          "name": "Updating",
+                          "value": "Updating",
+                          "description": "Update in progress"
+                        },
+                        {
+                          "name": "Deleting",
+                          "value": "Deleting",
+                          "description": "Deletion in progress"
+                        },
+                        {
+                          "name": "Accepted",
+                          "value": "Accepted",
+                          "description": "Change accepted for processing"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "portalName",
+                  "portalAdminEmailAddress",
+                  "portalOwnerOrganizationName",
+                  "portalOwnerEmailAddress",
+                  "identityConfiguration",
+                  "zoneRedundancyEnabled",
+                  "disasterRecoveryEnabled"
+                ]
+              },
+              "sku": {
+                "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+                  },
+                  "tier": {
+                    "type": "string",
+                    "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+                    "enum": [
+                      "Free",
+                      "Basic",
+                      "Standard",
+                      "Premium"
+                    ],
+                    "x-ms-enum": {
+                      "name": "SkuTier",
+                      "modelAsString": false
+                    }
+                  },
+                  "size": {
+                    "type": "string",
+                    "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+                  },
+                  "family": {
+                    "type": "string",
+                    "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+                  },
+                  "capacity": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "CommunityTrainingProperties": {
+      "type": "object",
+      "description": "Details of the Community CommunityTraining.",
+      "properties": {
+        "portalName": {
+          "type": "string",
+          "description": "The portal name (website name) of the Community Training instance",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "portalAdminEmailAddress": {
+          "type": "string",
+          "description": "The email address of the portal admin",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "portalOwnerOrganizationName": {
+          "type": "string",
+          "description": "The organization name of the portal owner",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "portalOwnerEmailAddress": {
+          "type": "string",
+          "description": "The email address of the portal owner. Will be used as the primary contact",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "identityConfiguration": {
+          "description": "The identity configuration of the Community Training resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ],
+          "type": "object",
+          "properties": {
+            "identityType": {
+              "type": "string",
+              "description": "The identity type of the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "teamsEnabled": {
+              "type": "boolean",
+              "description": "To indicate whether the Community Training Resource has Teams enabled",
+              "default": false,
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "tenantId": {
+              "type": "string",
+              "description": "The tenantId of the selected identity provider for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "domainName": {
+              "type": "string",
+              "description": "The domain name of the selected identity provider for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "clientId": {
+              "type": "string",
+              "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "clientSecret": {
+              "type": "string",
+              "format": "password",
+              "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ],
+              "x-ms-secret": true
+            },
+            "b2cAuthenticationPolicy": {
+              "type": "string",
+              "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "b2cPasswordResetPolicy": {
+              "type": "string",
+              "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "customLoginParameters": {
+              "type": "string",
+              "description": "The custom login parameters for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            }
+          },
+          "required": [
+            "identityType",
+            "tenantId",
+            "domainName",
+            "clientId",
+            "clientSecret"
+          ]
+        },
+        "zoneRedundancyEnabled": {
+          "type": "boolean",
+          "description": "To indicate whether the Community Training instance has Zone Redundancy enabled",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "disasterRecoveryEnabled": {
+          "type": "boolean",
+          "description": "To indicate whether the Community Training instance has Disaster Recovery enabled",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "provisioningState": {
+          "description": "The status of the last operation.",
+          "readOnly": true,
+          "type": "string",
+          "enum": [
+            "Succeeded",
+            "Failed",
+            "Canceled",
+            "Provisioning",
+            "Updating",
+            "Deleting",
+            "Accepted"
+          ],
+          "x-ms-enum": {
+            "name": "ProvisioningState",
+            "modelAsString": true,
+            "values": [
+              {
+                "name": "Succeeded",
+                "value": "Succeeded",
+                "description": "Resource has been created."
+              },
+              {
+                "name": "Failed",
+                "value": "Failed",
+                "description": "Resource creation failed."
+              },
+              {
+                "name": "Canceled",
+                "value": "Canceled",
+                "description": "Resource creation was canceled."
+              },
+              {
+                "name": "Provisioning",
+                "value": "Provisioning",
+                "description": "Initial provisioning in progress"
+              },
+              {
+                "name": "Updating",
+                "value": "Updating",
+                "description": "Update in progress"
+              },
+              {
+                "name": "Deleting",
+                "value": "Deleting",
+                "description": "Deletion in progress"
+              },
+              {
+                "name": "Accepted",
+                "value": "Accepted",
+                "description": "Change accepted for processing"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "portalName",
+        "portalAdminEmailAddress",
+        "portalOwnerOrganizationName",
+        "portalOwnerEmailAddress",
+        "identityConfiguration",
+        "zoneRedundancyEnabled",
+        "disasterRecoveryEnabled"
+      ]
+    },
+    "CommunityTrainingUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the CommunityTraining.",
+      "properties": {
+        "sku": {
+          "description": "The SKU (Stock Keeping Unit) assigned to this resource.",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The name of the SKU. Ex - P3. It is typically a letter+number code"
+            },
+            "tier": {
+              "type": "string",
+              "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+              "enum": [
+                "Free",
+                "Basic",
+                "Standard",
+                "Premium"
+              ],
+              "x-ms-enum": {
+                "name": "SkuTier",
+                "modelAsString": false
+              }
+            },
+            "size": {
+              "type": "string",
+              "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. "
+            },
+            "family": {
+              "type": "string",
+              "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here."
+            },
+            "capacity": {
+              "type": "integer",
+              "format": "int32",
+              "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "type": "object",
+          "properties": {
+            "identityConfiguration": {
+              "description": "The identity configuration of the Community Training resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ],
+              "type": "object",
+              "properties": {
+                "identityType": {
+                  "type": "string",
+                  "description": "The identity type of the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "teamsEnabled": {
+                  "type": "boolean",
+                  "description": "To indicate whether the Community Training Resource has Teams enabled",
+                  "default": false,
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "tenantId": {
+                  "type": "string",
+                  "description": "The tenantId of the selected identity provider for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "domainName": {
+                  "type": "string",
+                  "description": "The domain name of the selected identity provider for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "clientId": {
+                  "type": "string",
+                  "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "clientSecret": {
+                  "type": "string",
+                  "format": "password",
+                  "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ],
+                  "x-ms-secret": true
+                },
+                "b2cAuthenticationPolicy": {
+                  "type": "string",
+                  "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "b2cPasswordResetPolicy": {
+                  "type": "string",
+                  "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                },
+                "customLoginParameters": {
+                  "type": "string",
+                  "description": "The custom login parameters for the Community Training Resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "update",
+                    "create"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "CommunityTrainingUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the CommunityTraining.",
+      "properties": {
+        "identityConfiguration": {
+          "description": "The identity configuration of the Community Training resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ],
+          "type": "object",
+          "properties": {
+            "identityType": {
+              "type": "string",
+              "description": "The identity type of the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "teamsEnabled": {
+              "type": "boolean",
+              "description": "To indicate whether the Community Training Resource has Teams enabled",
+              "default": false,
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "tenantId": {
+              "type": "string",
+              "description": "The tenantId of the selected identity provider for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "domainName": {
+              "type": "string",
+              "description": "The domain name of the selected identity provider for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "clientId": {
+              "type": "string",
+              "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "clientSecret": {
+              "type": "string",
+              "format": "password",
+              "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ],
+              "x-ms-secret": true
+            },
+            "b2cAuthenticationPolicy": {
+              "type": "string",
+              "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "b2cPasswordResetPolicy": {
+              "type": "string",
+              "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            },
+            "customLoginParameters": {
+              "type": "string",
+              "description": "The custom login parameters for the Community Training Resource",
+              "x-ms-mutability": [
+                "read",
+                "update",
+                "create"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "IdentityConfigurationProperties": {
+      "type": "object",
+      "description": "Details of the Community CommunityTraining Identity Configuration",
+      "properties": {
+        "identityType": {
+          "type": "string",
+          "description": "The identity type of the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "teamsEnabled": {
+          "type": "boolean",
+          "description": "To indicate whether the Community Training Resource has Teams enabled",
+          "default": false,
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "The tenantId of the selected identity provider for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "domainName": {
+          "type": "string",
+          "description": "The domain name of the selected identity provider for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "clientId": {
+          "type": "string",
+          "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "clientSecret": {
+          "type": "string",
+          "format": "password",
+          "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ],
+          "x-ms-secret": true
+        },
+        "b2cAuthenticationPolicy": {
+          "type": "string",
+          "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "b2cPasswordResetPolicy": {
+          "type": "string",
+          "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "customLoginParameters": {
+          "type": "string",
+          "description": "The custom login parameters for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "identityType",
+        "tenantId",
+        "domainName",
+        "clientId",
+        "clientSecret"
+      ]
+    },
+    "IdentityConfigurationPropertiesUpdate": {
+      "type": "object",
+      "description": "Details of the Community CommunityTraining Identity Configuration",
+      "properties": {
+        "identityType": {
+          "type": "string",
+          "description": "The identity type of the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "teamsEnabled": {
+          "type": "boolean",
+          "description": "To indicate whether the Community Training Resource has Teams enabled",
+          "default": false,
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "The tenantId of the selected identity provider for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "domainName": {
+          "type": "string",
+          "description": "The domain name of the selected identity provider for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "clientId": {
+          "type": "string",
+          "description": "The clientId of the application registered in the selected identity provider for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "clientSecret": {
+          "type": "string",
+          "format": "password",
+          "description": "The client secret of the application registered in the selected identity provider for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ],
+          "x-ms-secret": true
+        },
+        "b2cAuthenticationPolicy": {
+          "type": "string",
+          "description": "The name of the authentication policy registered in ADB2C for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "b2cPasswordResetPolicy": {
+          "type": "string",
+          "description": "The name of the password reset policy registered in ADB2C for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        },
+        "customLoginParameters": {
+          "type": "string",
+          "description": "The custom login parameters for the Community Training Resource",
+          "x-ms-mutability": [
+            "read",
+            "update",
+            "create"
+          ]
+        }
+      }
+    },
+    "ProvisioningState": {
+      "type": "string",
+      "description": "The status of the current operation.",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled",
+        "Provisioning",
+        "Updating",
+        "Deleting",
+        "Accepted"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "Resource has been created."
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "Resource creation failed."
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "Resource creation was canceled."
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "Initial provisioning in progress"
+          },
+          {
+            "name": "Updating",
+            "value": "Updating",
+            "description": "Update in progress"
+          },
+          {
+            "name": "Deleting",
+            "value": "Deleting",
+            "description": "Deletion in progress"
+          },
+          {
+            "name": "Accepted",
+            "value": "Accepted",
+            "description": "Change accepted for processing"
+          }
+        ]
+      }
+    }
+  },
+  "parameters": {}
+}

@@ -1,0 +1,4067 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Azure fluidrelay",
+    "version": "2022-06-01",
+    "description": "Azure fluidrelay service specifications"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/providers/Microsoft.FluidRelay/operations": {
+      "get": {
+        "tags": [
+          "FluidRelayOperations"
+        ],
+        "summary": "List all operations provided by Microsoft.FluidRelay.",
+        "operationId": "FluidRelayOperations_List",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation completed synchronously.",
+            "schema": {
+              "description": "Result of GET request to list FluidRelay operations.",
+              "type": "object",
+              "properties": {
+                "value": {
+                  "description": "List of FluidRelay operations supported by the Microsoft.FluidRelay provider.",
+                  "type": "array",
+                  "items": {
+                    "description": "A FluidRelay REST API operation.",
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "description": "Operation name: {provider}/{resource}/{operation}",
+                        "type": "string"
+                      },
+                      "display": {
+                        "description": "The object that represents the operation.",
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "description": "Service provider: Microsoft.FluidRelay",
+                            "type": "string"
+                          },
+                          "resource": {
+                            "description": "Type on which the operation is performed, e.g., 'servers'.",
+                            "type": "string"
+                          },
+                          "operation": {
+                            "description": "Operation type, e.g., read, write, delete, etc.",
+                            "type": "string"
+                          },
+                          "description": {
+                            "description": "Description of the operation, e.g., 'Write confluent'.",
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "isDataAction": {
+                        "description": "Indicates whether the operation is a data action",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                },
+                "nextLink": {
+                  "description": "URL to get the next set of operation list results if there are any.",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.FluidRelay/fluidRelayServers/{fluidRelayServerName}": {
+      "get": {
+        "operationId": "FluidRelayServers_Get",
+        "tags": [
+          "FluidRelayServers"
+        ],
+        "summary": "Get a Fluid Relay server.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayServerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay server resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+                },
+                "name": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The name of the resource"
+                },
+                "type": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ],
+                  "description": "Resource tags."
+                },
+                "location": {
+                  "type": "string",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ],
+                  "description": "The geo-location where the resource lives"
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "readOnly": false,
+                  "x-ms-client-flatten": true,
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "frsTenantId": {
+                      "type": "string",
+                      "description": "The Fluid tenantId for this server",
+                      "readOnly": true
+                    },
+                    "fluidRelayEndpoints": {
+                      "description": "The Fluid Relay Service endpoints for this server.",
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "ordererEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay Orderer endpoints.",
+                          "readOnly": true
+                        },
+                        "storageEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay storage endpoints.",
+                          "readOnly": true
+                        },
+                        "serviceEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay service endpoints.",
+                          "readOnly": true
+                        }
+                      }
+                    },
+                    "provisioningState": {
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "description": "Provision states for FluidRelay RP",
+                      "title": "ProvisioningState",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "encryption": {
+                      "description": "All encryption configuration for a resource.",
+                      "type": "object",
+                      "properties": {
+                        "customerManagedKeyEncryption": {
+                          "description": "All Customer-managed key encryption properties for the resource.",
+                          "type": "object",
+                          "properties": {
+                            "keyEncryptionKeyIdentity": {
+                              "type": "object",
+                              "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                              "properties": {
+                                "identityType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "SystemAssigned",
+                                    "UserAssigned"
+                                  ],
+                                  "x-ms-enum": {
+                                    "name": "CmkIdentityType",
+                                    "modelAsString": false
+                                  },
+                                  "description": "Values can be SystemAssigned or UserAssigned"
+                                },
+                                "userAssignedIdentityResourceId": {
+                                  "type": "string",
+                                  "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                                }
+                              }
+                            },
+                            "keyEncryptionKeyUrl": {
+                              "type": "string",
+                              "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "storagesku": {
+                      "type": "string",
+                      "enum": [
+                        "standard",
+                        "basic"
+                      ],
+                      "description": "Sku of the storage associated with the resource",
+                      "title": "StorageSKU",
+                      "x-ms-enum": {
+                        "name": "StorageSKU",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "description": "System meta data for this resource, including creation and modification information.",
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "identity": {
+                  "description": "The type of identity used for the resource.",
+                  "type": "object",
+                  "properties": {
+                    "principalId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The principal ID of resource identity."
+                    },
+                    "tenantId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The tenant ID of resource."
+                    },
+                    "type": {
+                      "enum": [
+                        "SystemAssigned",
+                        "UserAssigned",
+                        "SystemAssigned, UserAssigned",
+                        "None"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResourceIdentityType",
+                        "modelAsString": false
+                      },
+                      "type": "string",
+                      "description": "The identity type."
+                    },
+                    "userAssignedIdentities": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "x-ms-client-name": "userAssignedIdentitiesValue",
+                        "properties": {
+                          "principalId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The principal id of user assigned identity."
+                          },
+                          "clientId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The client id of user assigned identity."
+                          }
+                        }
+                      },
+                      "description": "The list of user identities associated with the resource."
+                    }
+                  }
+                }
+              },
+              "description": "A FluidRelay Server."
+            },
+            "description": "Request completed synchronously."
+          }
+        }
+      },
+      "put": {
+        "operationId": "FluidRelayServers_CreateOrUpdate",
+        "tags": [
+          "FluidRelayServers"
+        ],
+        "summary": "Create or Update a Fluid Relay server.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayServerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay server resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+                },
+                "name": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The name of the resource"
+                },
+                "type": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ],
+                  "description": "Resource tags."
+                },
+                "location": {
+                  "type": "string",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ],
+                  "description": "The geo-location where the resource lives"
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "readOnly": false,
+                  "x-ms-client-flatten": true,
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "frsTenantId": {
+                      "type": "string",
+                      "description": "The Fluid tenantId for this server",
+                      "readOnly": true
+                    },
+                    "fluidRelayEndpoints": {
+                      "description": "The Fluid Relay Service endpoints for this server.",
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "ordererEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay Orderer endpoints.",
+                          "readOnly": true
+                        },
+                        "storageEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay storage endpoints.",
+                          "readOnly": true
+                        },
+                        "serviceEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay service endpoints.",
+                          "readOnly": true
+                        }
+                      }
+                    },
+                    "provisioningState": {
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "description": "Provision states for FluidRelay RP",
+                      "title": "ProvisioningState",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "encryption": {
+                      "description": "All encryption configuration for a resource.",
+                      "type": "object",
+                      "properties": {
+                        "customerManagedKeyEncryption": {
+                          "description": "All Customer-managed key encryption properties for the resource.",
+                          "type": "object",
+                          "properties": {
+                            "keyEncryptionKeyIdentity": {
+                              "type": "object",
+                              "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                              "properties": {
+                                "identityType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "SystemAssigned",
+                                    "UserAssigned"
+                                  ],
+                                  "x-ms-enum": {
+                                    "name": "CmkIdentityType",
+                                    "modelAsString": false
+                                  },
+                                  "description": "Values can be SystemAssigned or UserAssigned"
+                                },
+                                "userAssignedIdentityResourceId": {
+                                  "type": "string",
+                                  "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                                }
+                              }
+                            },
+                            "keyEncryptionKeyUrl": {
+                              "type": "string",
+                              "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "storagesku": {
+                      "type": "string",
+                      "enum": [
+                        "standard",
+                        "basic"
+                      ],
+                      "description": "Sku of the storage associated with the resource",
+                      "title": "StorageSKU",
+                      "x-ms-enum": {
+                        "name": "StorageSKU",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "description": "System meta data for this resource, including creation and modification information.",
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "identity": {
+                  "description": "The type of identity used for the resource.",
+                  "type": "object",
+                  "properties": {
+                    "principalId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The principal ID of resource identity."
+                    },
+                    "tenantId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The tenant ID of resource."
+                    },
+                    "type": {
+                      "enum": [
+                        "SystemAssigned",
+                        "UserAssigned",
+                        "SystemAssigned, UserAssigned",
+                        "None"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResourceIdentityType",
+                        "modelAsString": false
+                      },
+                      "type": "string",
+                      "description": "The identity type."
+                    },
+                    "userAssignedIdentities": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "x-ms-client-name": "userAssignedIdentitiesValue",
+                        "properties": {
+                          "principalId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The principal id of user assigned identity."
+                          },
+                          "clientId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The client id of user assigned identity."
+                          }
+                        }
+                      },
+                      "description": "The list of user identities associated with the resource."
+                    }
+                  }
+                }
+              },
+              "description": "A FluidRelay Server."
+            },
+            "description": "The details of the Fluid Relay server resource."
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+                },
+                "name": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The name of the resource"
+                },
+                "type": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ],
+                  "description": "Resource tags."
+                },
+                "location": {
+                  "type": "string",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ],
+                  "description": "The geo-location where the resource lives"
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "readOnly": false,
+                  "x-ms-client-flatten": true,
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "frsTenantId": {
+                      "type": "string",
+                      "description": "The Fluid tenantId for this server",
+                      "readOnly": true
+                    },
+                    "fluidRelayEndpoints": {
+                      "description": "The Fluid Relay Service endpoints for this server.",
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "ordererEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay Orderer endpoints.",
+                          "readOnly": true
+                        },
+                        "storageEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay storage endpoints.",
+                          "readOnly": true
+                        },
+                        "serviceEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay service endpoints.",
+                          "readOnly": true
+                        }
+                      }
+                    },
+                    "provisioningState": {
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "description": "Provision states for FluidRelay RP",
+                      "title": "ProvisioningState",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "encryption": {
+                      "description": "All encryption configuration for a resource.",
+                      "type": "object",
+                      "properties": {
+                        "customerManagedKeyEncryption": {
+                          "description": "All Customer-managed key encryption properties for the resource.",
+                          "type": "object",
+                          "properties": {
+                            "keyEncryptionKeyIdentity": {
+                              "type": "object",
+                              "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                              "properties": {
+                                "identityType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "SystemAssigned",
+                                    "UserAssigned"
+                                  ],
+                                  "x-ms-enum": {
+                                    "name": "CmkIdentityType",
+                                    "modelAsString": false
+                                  },
+                                  "description": "Values can be SystemAssigned or UserAssigned"
+                                },
+                                "userAssignedIdentityResourceId": {
+                                  "type": "string",
+                                  "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                                }
+                              }
+                            },
+                            "keyEncryptionKeyUrl": {
+                              "type": "string",
+                              "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "storagesku": {
+                      "type": "string",
+                      "enum": [
+                        "standard",
+                        "basic"
+                      ],
+                      "description": "Sku of the storage associated with the resource",
+                      "title": "StorageSKU",
+                      "x-ms-enum": {
+                        "name": "StorageSKU",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "description": "System meta data for this resource, including creation and modification information.",
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "identity": {
+                  "description": "The type of identity used for the resource.",
+                  "type": "object",
+                  "properties": {
+                    "principalId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The principal ID of resource identity."
+                    },
+                    "tenantId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The tenant ID of resource."
+                    },
+                    "type": {
+                      "enum": [
+                        "SystemAssigned",
+                        "UserAssigned",
+                        "SystemAssigned, UserAssigned",
+                        "None"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResourceIdentityType",
+                        "modelAsString": false
+                      },
+                      "type": "string",
+                      "description": "The identity type."
+                    },
+                    "userAssignedIdentities": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "x-ms-client-name": "userAssignedIdentitiesValue",
+                        "properties": {
+                          "principalId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The principal id of user assigned identity."
+                          },
+                          "clientId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The client id of user assigned identity."
+                          }
+                        }
+                      },
+                      "description": "The list of user identities associated with the resource."
+                    }
+                  }
+                }
+              },
+              "description": "A FluidRelay Server."
+            },
+            "description": "Request completed synchronously."
+          }
+        }
+      },
+      "patch": {
+        "operationId": "FluidRelayServers_Update",
+        "tags": [
+          "FluidRelayServers"
+        ],
+        "summary": "Update a Fluid Relay server.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayServerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay server resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "properties": {
+                  "description": "The resource-specific properties that can be updated for this resource.",
+                  "readOnly": false,
+                  "x-ms-client-flatten": true,
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "encryption": {
+                      "description": "All encryption configuration for a resource.",
+                      "type": "object",
+                      "properties": {
+                        "customerManagedKeyEncryption": {
+                          "description": "All Customer-managed key encryption properties for the resource.",
+                          "type": "object",
+                          "properties": {
+                            "keyEncryptionKeyIdentity": {
+                              "type": "object",
+                              "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                              "properties": {
+                                "identityType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "SystemAssigned",
+                                    "UserAssigned"
+                                  ],
+                                  "x-ms-enum": {
+                                    "name": "CmkIdentityType",
+                                    "modelAsString": false
+                                  },
+                                  "description": "Values can be SystemAssigned or UserAssigned"
+                                },
+                                "userAssignedIdentityResourceId": {
+                                  "type": "string",
+                                  "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                                }
+                              }
+                            },
+                            "keyEncryptionKeyUrl": {
+                              "type": "string",
+                              "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "readOnly": false,
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ],
+                  "description": "Resource tags."
+                },
+                "identity": {
+                  "description": "The type of identity used for the resource.",
+                  "type": "object",
+                  "properties": {
+                    "principalId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The principal ID of resource identity."
+                    },
+                    "tenantId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The tenant ID of resource."
+                    },
+                    "type": {
+                      "enum": [
+                        "SystemAssigned",
+                        "UserAssigned",
+                        "SystemAssigned, UserAssigned",
+                        "None"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResourceIdentityType",
+                        "modelAsString": false
+                      },
+                      "type": "string",
+                      "description": "The identity type."
+                    },
+                    "userAssignedIdentities": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "x-ms-client-name": "userAssignedIdentitiesValue",
+                        "properties": {
+                          "principalId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The principal id of user assigned identity."
+                          },
+                          "clientId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The client id of user assigned identity."
+                          }
+                        }
+                      },
+                      "description": "The list of user identities associated with the resource."
+                    }
+                  }
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives"
+                }
+              },
+              "description": "The updatable properties of a Fluid Relay server"
+            },
+            "description": "The details of the Fluid Relay server resource included in update calls."
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+                },
+                "name": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The name of the resource"
+                },
+                "type": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ],
+                  "description": "Resource tags."
+                },
+                "location": {
+                  "type": "string",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ],
+                  "description": "The geo-location where the resource lives"
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "readOnly": false,
+                  "x-ms-client-flatten": true,
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "frsTenantId": {
+                      "type": "string",
+                      "description": "The Fluid tenantId for this server",
+                      "readOnly": true
+                    },
+                    "fluidRelayEndpoints": {
+                      "description": "The Fluid Relay Service endpoints for this server.",
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "ordererEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay Orderer endpoints.",
+                          "readOnly": true
+                        },
+                        "storageEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay storage endpoints.",
+                          "readOnly": true
+                        },
+                        "serviceEndpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "The Fluid Relay service endpoints.",
+                          "readOnly": true
+                        }
+                      }
+                    },
+                    "provisioningState": {
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "description": "Provision states for FluidRelay RP",
+                      "title": "ProvisioningState",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "encryption": {
+                      "description": "All encryption configuration for a resource.",
+                      "type": "object",
+                      "properties": {
+                        "customerManagedKeyEncryption": {
+                          "description": "All Customer-managed key encryption properties for the resource.",
+                          "type": "object",
+                          "properties": {
+                            "keyEncryptionKeyIdentity": {
+                              "type": "object",
+                              "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                              "properties": {
+                                "identityType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "SystemAssigned",
+                                    "UserAssigned"
+                                  ],
+                                  "x-ms-enum": {
+                                    "name": "CmkIdentityType",
+                                    "modelAsString": false
+                                  },
+                                  "description": "Values can be SystemAssigned or UserAssigned"
+                                },
+                                "userAssignedIdentityResourceId": {
+                                  "type": "string",
+                                  "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                                }
+                              }
+                            },
+                            "keyEncryptionKeyUrl": {
+                              "type": "string",
+                              "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "storagesku": {
+                      "type": "string",
+                      "enum": [
+                        "standard",
+                        "basic"
+                      ],
+                      "description": "Sku of the storage associated with the resource",
+                      "title": "StorageSKU",
+                      "x-ms-enum": {
+                        "name": "StorageSKU",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "description": "System meta data for this resource, including creation and modification information.",
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "identity": {
+                  "description": "The type of identity used for the resource.",
+                  "type": "object",
+                  "properties": {
+                    "principalId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The principal ID of resource identity."
+                    },
+                    "tenantId": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The tenant ID of resource."
+                    },
+                    "type": {
+                      "enum": [
+                        "SystemAssigned",
+                        "UserAssigned",
+                        "SystemAssigned, UserAssigned",
+                        "None"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResourceIdentityType",
+                        "modelAsString": false
+                      },
+                      "type": "string",
+                      "description": "The identity type."
+                    },
+                    "userAssignedIdentities": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "x-ms-client-name": "userAssignedIdentitiesValue",
+                        "properties": {
+                          "principalId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The principal id of user assigned identity."
+                          },
+                          "clientId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The client id of user assigned identity."
+                          }
+                        }
+                      },
+                      "description": "The list of user identities associated with the resource."
+                    }
+                  }
+                }
+              },
+              "description": "A FluidRelay Server."
+            },
+            "description": "Request Completed Synchronously."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "FluidRelayServers_Delete",
+        "tags": [
+          "FluidRelayServers"
+        ],
+        "summary": "Delete a Fluid Relay server.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayServerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay server resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request completed Synchronously."
+          },
+          "204": {
+            "description": "Request completed Synchronously."
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.FluidRelay/fluidRelayServers/{fluidRelayServerName}/regenerateKey": {
+      "post": {
+        "operationId": "FluidRelayServers_RegenerateKey",
+        "summary": "Regenerate the primary or secondary key for this server.",
+        "tags": [
+          "FluidRelayServers"
+        ],
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayServerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay server resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "keyName": {
+                  "type": "string",
+                  "enum": [
+                    "key1",
+                    "key2"
+                  ],
+                  "x-ms-enum": {
+                    "modelAsString": false,
+                    "name": "KeyName"
+                  },
+                  "x-adl-name": "key1 | key2",
+                  "description": "The key to regenerate."
+                }
+              },
+              "description": "Specifies which key should be generated.",
+              "required": [
+                "keyName"
+              ]
+            },
+            "description": "The details of which keys to generate."
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "key1": {
+                  "type": "string",
+                  "format": "password",
+                  "description": "The primary key for this server",
+                  "readOnly": true
+                },
+                "key2": {
+                  "type": "string",
+                  "format": "password",
+                  "description": "The secondary key for this server",
+                  "readOnly": true
+                }
+              },
+              "description": "The set of available keys for this server."
+            },
+            "description": "Request Completed Synchronously."
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.FluidRelay/fluidRelayServers/{fluidRelayServerName}/listKeys": {
+      "post": {
+        "operationId": "FluidRelayServers_ListKeys",
+        "summary": "Get primary and secondary key for this server.",
+        "tags": [
+          "FluidRelayServers"
+        ],
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayServerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay server resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "key1": {
+                  "type": "string",
+                  "format": "password",
+                  "description": "The primary key for this server",
+                  "readOnly": true
+                },
+                "key2": {
+                  "type": "string",
+                  "format": "password",
+                  "description": "The secondary key for this server",
+                  "readOnly": true
+                }
+              },
+              "description": "The set of available keys for this server."
+            },
+            "description": "Request Completed Synchronously."
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Microsoft.FluidRelay/fluidRelayServers": {
+      "get": {
+        "operationId": "FluidRelayServers_ListBySubscription",
+        "summary": "List all Fluid Relay servers in a subscription.",
+        "tags": [
+          "FluidRelayServers"
+        ],
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "readOnly": true,
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+                      },
+                      "name": {
+                        "readOnly": true,
+                        "type": "string",
+                        "description": "The name of the resource"
+                      },
+                      "type": {
+                        "readOnly": true,
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+                      },
+                      "tags": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ],
+                        "description": "Resource tags."
+                      },
+                      "location": {
+                        "type": "string",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ],
+                        "description": "The geo-location where the resource lives"
+                      },
+                      "properties": {
+                        "description": "The resource-specific properties for this resource.",
+                        "readOnly": false,
+                        "x-ms-client-flatten": true,
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ],
+                        "type": "object",
+                        "properties": {
+                          "frsTenantId": {
+                            "type": "string",
+                            "description": "The Fluid tenantId for this server",
+                            "readOnly": true
+                          },
+                          "fluidRelayEndpoints": {
+                            "description": "The Fluid Relay Service endpoints for this server.",
+                            "readOnly": true,
+                            "type": "object",
+                            "properties": {
+                              "ordererEndpoints": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "The Fluid Relay Orderer endpoints.",
+                                "readOnly": true
+                              },
+                              "storageEndpoints": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "The Fluid Relay storage endpoints.",
+                                "readOnly": true
+                              },
+                              "serviceEndpoints": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "The Fluid Relay service endpoints.",
+                                "readOnly": true
+                              }
+                            }
+                          },
+                          "provisioningState": {
+                            "enum": [
+                              "Succeeded",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "type": "string",
+                            "description": "Provision states for FluidRelay RP",
+                            "title": "ProvisioningState",
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          },
+                          "encryption": {
+                            "description": "All encryption configuration for a resource.",
+                            "type": "object",
+                            "properties": {
+                              "customerManagedKeyEncryption": {
+                                "description": "All Customer-managed key encryption properties for the resource.",
+                                "type": "object",
+                                "properties": {
+                                  "keyEncryptionKeyIdentity": {
+                                    "type": "object",
+                                    "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                                    "properties": {
+                                      "identityType": {
+                                        "type": "string",
+                                        "enum": [
+                                          "SystemAssigned",
+                                          "UserAssigned"
+                                        ],
+                                        "x-ms-enum": {
+                                          "name": "CmkIdentityType",
+                                          "modelAsString": false
+                                        },
+                                        "description": "Values can be SystemAssigned or UserAssigned"
+                                      },
+                                      "userAssignedIdentityResourceId": {
+                                        "type": "string",
+                                        "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                                      }
+                                    }
+                                  },
+                                  "keyEncryptionKeyUrl": {
+                                    "type": "string",
+                                    "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "storagesku": {
+                            "type": "string",
+                            "enum": [
+                              "standard",
+                              "basic"
+                            ],
+                            "description": "Sku of the storage associated with the resource",
+                            "title": "StorageSKU",
+                            "x-ms-enum": {
+                              "name": "StorageSKU",
+                              "modelAsString": true
+                            }
+                          }
+                        }
+                      },
+                      "systemData": {
+                        "description": "System meta data for this resource, including creation and modification information.",
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "identity": {
+                        "description": "The type of identity used for the resource.",
+                        "type": "object",
+                        "properties": {
+                          "principalId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The principal ID of resource identity."
+                          },
+                          "tenantId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The tenant ID of resource."
+                          },
+                          "type": {
+                            "enum": [
+                              "SystemAssigned",
+                              "UserAssigned",
+                              "SystemAssigned, UserAssigned",
+                              "None"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ResourceIdentityType",
+                              "modelAsString": false
+                            },
+                            "type": "string",
+                            "description": "The identity type."
+                          },
+                          "userAssignedIdentities": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "object",
+                              "x-ms-client-name": "userAssignedIdentitiesValue",
+                              "properties": {
+                                "principalId": {
+                                  "readOnly": true,
+                                  "type": "string",
+                                  "description": "The principal id of user assigned identity."
+                                },
+                                "clientId": {
+                                  "readOnly": true,
+                                  "type": "string",
+                                  "description": "The client id of user assigned identity."
+                                }
+                              }
+                            },
+                            "description": "The list of user identities associated with the resource."
+                          }
+                        }
+                      }
+                    },
+                    "description": "A FluidRelay Server."
+                  },
+                  "description": "A sequence of FluidRelay servers.",
+                  "x-adl-name": "FluidRelayServer[]"
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "A link to the next page of results, if any."
+                }
+              },
+              "description": "Paged response",
+              "required": [
+                "value"
+              ],
+              "x-adl-name": "Page<FluidRelayServer>"
+            },
+            "description": "Paged response"
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.FluidRelay/fluidRelayServers": {
+      "get": {
+        "operationId": "FluidRelayServers_ListByResourceGroup",
+        "tags": [
+          "FluidRelayServers"
+        ],
+        "summary": "List all Fluid Relay servers in a resource group.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "readOnly": true,
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+                      },
+                      "name": {
+                        "readOnly": true,
+                        "type": "string",
+                        "description": "The name of the resource"
+                      },
+                      "type": {
+                        "readOnly": true,
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+                      },
+                      "tags": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ],
+                        "description": "Resource tags."
+                      },
+                      "location": {
+                        "type": "string",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ],
+                        "description": "The geo-location where the resource lives"
+                      },
+                      "properties": {
+                        "description": "The resource-specific properties for this resource.",
+                        "readOnly": false,
+                        "x-ms-client-flatten": true,
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ],
+                        "type": "object",
+                        "properties": {
+                          "frsTenantId": {
+                            "type": "string",
+                            "description": "The Fluid tenantId for this server",
+                            "readOnly": true
+                          },
+                          "fluidRelayEndpoints": {
+                            "description": "The Fluid Relay Service endpoints for this server.",
+                            "readOnly": true,
+                            "type": "object",
+                            "properties": {
+                              "ordererEndpoints": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "The Fluid Relay Orderer endpoints.",
+                                "readOnly": true
+                              },
+                              "storageEndpoints": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "The Fluid Relay storage endpoints.",
+                                "readOnly": true
+                              },
+                              "serviceEndpoints": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "The Fluid Relay service endpoints.",
+                                "readOnly": true
+                              }
+                            }
+                          },
+                          "provisioningState": {
+                            "enum": [
+                              "Succeeded",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "type": "string",
+                            "description": "Provision states for FluidRelay RP",
+                            "title": "ProvisioningState",
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          },
+                          "encryption": {
+                            "description": "All encryption configuration for a resource.",
+                            "type": "object",
+                            "properties": {
+                              "customerManagedKeyEncryption": {
+                                "description": "All Customer-managed key encryption properties for the resource.",
+                                "type": "object",
+                                "properties": {
+                                  "keyEncryptionKeyIdentity": {
+                                    "type": "object",
+                                    "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                                    "properties": {
+                                      "identityType": {
+                                        "type": "string",
+                                        "enum": [
+                                          "SystemAssigned",
+                                          "UserAssigned"
+                                        ],
+                                        "x-ms-enum": {
+                                          "name": "CmkIdentityType",
+                                          "modelAsString": false
+                                        },
+                                        "description": "Values can be SystemAssigned or UserAssigned"
+                                      },
+                                      "userAssignedIdentityResourceId": {
+                                        "type": "string",
+                                        "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                                      }
+                                    }
+                                  },
+                                  "keyEncryptionKeyUrl": {
+                                    "type": "string",
+                                    "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "storagesku": {
+                            "type": "string",
+                            "enum": [
+                              "standard",
+                              "basic"
+                            ],
+                            "description": "Sku of the storage associated with the resource",
+                            "title": "StorageSKU",
+                            "x-ms-enum": {
+                              "name": "StorageSKU",
+                              "modelAsString": true
+                            }
+                          }
+                        }
+                      },
+                      "systemData": {
+                        "description": "System meta data for this resource, including creation and modification information.",
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "identity": {
+                        "description": "The type of identity used for the resource.",
+                        "type": "object",
+                        "properties": {
+                          "principalId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The principal ID of resource identity."
+                          },
+                          "tenantId": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The tenant ID of resource."
+                          },
+                          "type": {
+                            "enum": [
+                              "SystemAssigned",
+                              "UserAssigned",
+                              "SystemAssigned, UserAssigned",
+                              "None"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ResourceIdentityType",
+                              "modelAsString": false
+                            },
+                            "type": "string",
+                            "description": "The identity type."
+                          },
+                          "userAssignedIdentities": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "object",
+                              "x-ms-client-name": "userAssignedIdentitiesValue",
+                              "properties": {
+                                "principalId": {
+                                  "readOnly": true,
+                                  "type": "string",
+                                  "description": "The principal id of user assigned identity."
+                                },
+                                "clientId": {
+                                  "readOnly": true,
+                                  "type": "string",
+                                  "description": "The client id of user assigned identity."
+                                }
+                              }
+                            },
+                            "description": "The list of user identities associated with the resource."
+                          }
+                        }
+                      }
+                    },
+                    "description": "A FluidRelay Server."
+                  },
+                  "description": "A sequence of FluidRelay servers.",
+                  "x-adl-name": "FluidRelayServer[]"
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "A link to the next page of results, if any."
+                }
+              },
+              "description": "Paged response",
+              "required": [
+                "value"
+              ],
+              "x-adl-name": "Page<FluidRelayServer>"
+            },
+            "description": "Paged response"
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.FluidRelay/fluidRelayServers/{fluidRelayServerName}/fluidRelayContainers/{fluidRelayContainerName}": {
+      "get": {
+        "operationId": "FluidRelayContainers_Get",
+        "tags": [
+          "FluidRelayContainers"
+        ],
+        "summary": "Get a Fluid Relay container.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayServerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay server resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayContainerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay container resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+                },
+                "name": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The name of the resource"
+                },
+                "type": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "readOnly": true,
+                  "x-ms-client-flatten": true,
+                  "type": "object",
+                  "properties": {
+                    "frsTenantId": {
+                      "type": "string",
+                      "description": "The Fluid tenantId for this container",
+                      "readOnly": true
+                    },
+                    "frsContainerId": {
+                      "type": "string",
+                      "description": "The frsContainerId for this container",
+                      "readOnly": true
+                    },
+                    "provisioningState": {
+                      "readOnly": true,
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "description": "Provision states for FluidRelay RP",
+                      "title": "ProvisioningState",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "creationTime": {
+                      "type": "string",
+                      "format": "date-time",
+                      "readOnly": true,
+                      "description": "The creation time of this resource"
+                    },
+                    "lastAccessTime": {
+                      "type": "string",
+                      "format": "date-time",
+                      "readOnly": true,
+                      "description": "Last time when user access this resource"
+                    }
+                  }
+                },
+                "systemData": {
+                  "description": "System meta data for this resource, including creation and modification information.",
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              },
+              "description": "A FluidRelay Container."
+            },
+            "description": "Request completed synchronously."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "FluidRelayContainers_Delete",
+        "tags": [
+          "FluidRelayContainers"
+        ],
+        "summary": "Delete a Fluid Relay container.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayServerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay server resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayContainerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay container resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request completed Synchronously."
+          },
+          "204": {
+            "description": "Request completed Synchronously."
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.FluidRelay/fluidRelayServers/{fluidRelayServerName}/fluidRelayContainers": {
+      "get": {
+        "operationId": "FluidRelayContainers_ListByFluidRelayServers",
+        "tags": [
+          "FluidRelayContainers"
+        ],
+        "summary": "List all Fluid Relay containers which are children of a given Fluid Relay server.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The subscription id (GUID) for this resource."
+          },
+          {
+            "name": "resourceGroup",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The resource group containing the resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "fluidRelayServerName",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "description": "The Fluid Relay server resource name.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "readOnly": true,
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+                      },
+                      "name": {
+                        "readOnly": true,
+                        "type": "string",
+                        "description": "The name of the resource"
+                      },
+                      "type": {
+                        "readOnly": true,
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+                      },
+                      "properties": {
+                        "description": "The resource-specific properties for this resource.",
+                        "readOnly": true,
+                        "x-ms-client-flatten": true,
+                        "type": "object",
+                        "properties": {
+                          "frsTenantId": {
+                            "type": "string",
+                            "description": "The Fluid tenantId for this container",
+                            "readOnly": true
+                          },
+                          "frsContainerId": {
+                            "type": "string",
+                            "description": "The frsContainerId for this container",
+                            "readOnly": true
+                          },
+                          "provisioningState": {
+                            "readOnly": true,
+                            "enum": [
+                              "Succeeded",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "type": "string",
+                            "description": "Provision states for FluidRelay RP",
+                            "title": "ProvisioningState",
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          },
+                          "creationTime": {
+                            "type": "string",
+                            "format": "date-time",
+                            "readOnly": true,
+                            "description": "The creation time of this resource"
+                          },
+                          "lastAccessTime": {
+                            "type": "string",
+                            "format": "date-time",
+                            "readOnly": true,
+                            "description": "Last time when user access this resource"
+                          }
+                        }
+                      },
+                      "systemData": {
+                        "description": "System meta data for this resource, including creation and modification information.",
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      }
+                    },
+                    "description": "A FluidRelay Container."
+                  },
+                  "description": "A sequence of FluidRelay containers.",
+                  "x-adl-name": "FluidRelayContainer[]"
+                },
+                "nextLink": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "A link to the next page of results, if any."
+                }
+              },
+              "description": "Paged response"
+            },
+            "description": "Paged response"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "OperationDisplay": {
+      "description": "The object that represents the operation.",
+      "type": "object",
+      "properties": {
+        "provider": {
+          "description": "Service provider: Microsoft.FluidRelay",
+          "type": "string"
+        },
+        "resource": {
+          "description": "Type on which the operation is performed, e.g., 'servers'.",
+          "type": "string"
+        },
+        "operation": {
+          "description": "Operation type, e.g., read, write, delete, etc.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the operation, e.g., 'Write confluent'.",
+          "type": "string"
+        }
+      }
+    },
+    "OperationResult": {
+      "description": "A FluidRelay REST API operation.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Operation name: {provider}/{resource}/{operation}",
+          "type": "string"
+        },
+        "display": {
+          "description": "The object that represents the operation.",
+          "type": "object",
+          "properties": {
+            "provider": {
+              "description": "Service provider: Microsoft.FluidRelay",
+              "type": "string"
+            },
+            "resource": {
+              "description": "Type on which the operation is performed, e.g., 'servers'.",
+              "type": "string"
+            },
+            "operation": {
+              "description": "Operation type, e.g., read, write, delete, etc.",
+              "type": "string"
+            },
+            "description": {
+              "description": "Description of the operation, e.g., 'Write confluent'.",
+              "type": "string"
+            }
+          }
+        },
+        "isDataAction": {
+          "description": "Indicates whether the operation is a data action",
+          "type": "boolean"
+        }
+      }
+    },
+    "OperationListResult": {
+      "description": "Result of GET request to list FluidRelay operations.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "List of FluidRelay operations supported by the Microsoft.FluidRelay provider.",
+          "type": "array",
+          "items": {
+            "description": "A FluidRelay REST API operation.",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Operation name: {provider}/{resource}/{operation}",
+                "type": "string"
+              },
+              "display": {
+                "description": "The object that represents the operation.",
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "description": "Service provider: Microsoft.FluidRelay",
+                    "type": "string"
+                  },
+                  "resource": {
+                    "description": "Type on which the operation is performed, e.g., 'servers'.",
+                    "type": "string"
+                  },
+                  "operation": {
+                    "description": "Operation type, e.g., read, write, delete, etc.",
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Description of the operation, e.g., 'Write confluent'.",
+                    "type": "string"
+                  }
+                }
+              },
+              "isDataAction": {
+                "description": "Indicates whether the operation is a data action",
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "nextLink": {
+          "description": "URL to get the next set of operation list results if there are any.",
+          "type": "string"
+        }
+      }
+    },
+    "FluidRelayServerUpdate": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "description": "The resource-specific properties that can be updated for this resource.",
+          "readOnly": false,
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ],
+          "type": "object",
+          "properties": {
+            "encryption": {
+              "description": "All encryption configuration for a resource.",
+              "type": "object",
+              "properties": {
+                "customerManagedKeyEncryption": {
+                  "description": "All Customer-managed key encryption properties for the resource.",
+                  "type": "object",
+                  "properties": {
+                    "keyEncryptionKeyIdentity": {
+                      "type": "object",
+                      "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                      "properties": {
+                        "identityType": {
+                          "type": "string",
+                          "enum": [
+                            "SystemAssigned",
+                            "UserAssigned"
+                          ],
+                          "x-ms-enum": {
+                            "name": "CmkIdentityType",
+                            "modelAsString": false
+                          },
+                          "description": "Values can be SystemAssigned or UserAssigned"
+                        },
+                        "userAssignedIdentityResourceId": {
+                          "type": "string",
+                          "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                        }
+                      }
+                    },
+                    "keyEncryptionKeyUrl": {
+                      "type": "string",
+                      "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "readOnly": false,
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ],
+          "description": "Resource tags."
+        },
+        "identity": {
+          "description": "The type of identity used for the resource.",
+          "type": "object",
+          "properties": {
+            "principalId": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The principal ID of resource identity."
+            },
+            "tenantId": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The tenant ID of resource."
+            },
+            "type": {
+              "enum": [
+                "SystemAssigned",
+                "UserAssigned",
+                "SystemAssigned, UserAssigned",
+                "None"
+              ],
+              "x-ms-enum": {
+                "name": "ResourceIdentityType",
+                "modelAsString": false
+              },
+              "type": "string",
+              "description": "The identity type."
+            },
+            "userAssignedIdentities": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "x-ms-client-name": "userAssignedIdentitiesValue",
+                "properties": {
+                  "principalId": {
+                    "readOnly": true,
+                    "type": "string",
+                    "description": "The principal id of user assigned identity."
+                  },
+                  "clientId": {
+                    "readOnly": true,
+                    "type": "string",
+                    "description": "The client id of user assigned identity."
+                  }
+                }
+              },
+              "description": "The list of user identities associated with the resource."
+            }
+          }
+        },
+        "location": {
+          "type": "string",
+          "description": "The geo-location where the resource lives"
+        }
+      },
+      "description": "The updatable properties of a Fluid Relay server"
+    },
+    "FluidRelayServerList": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "readOnly": true,
+                "type": "string",
+                "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+              },
+              "name": {
+                "readOnly": true,
+                "type": "string",
+                "description": "The name of the resource"
+              },
+              "type": {
+                "readOnly": true,
+                "type": "string",
+                "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+              },
+              "tags": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "x-ms-mutability": [
+                  "read",
+                  "create",
+                  "update"
+                ],
+                "description": "Resource tags."
+              },
+              "location": {
+                "type": "string",
+                "x-ms-mutability": [
+                  "read",
+                  "create"
+                ],
+                "description": "The geo-location where the resource lives"
+              },
+              "properties": {
+                "description": "The resource-specific properties for this resource.",
+                "readOnly": false,
+                "x-ms-client-flatten": true,
+                "x-ms-mutability": [
+                  "read",
+                  "create"
+                ],
+                "type": "object",
+                "properties": {
+                  "frsTenantId": {
+                    "type": "string",
+                    "description": "The Fluid tenantId for this server",
+                    "readOnly": true
+                  },
+                  "fluidRelayEndpoints": {
+                    "description": "The Fluid Relay Service endpoints for this server.",
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "ordererEndpoints": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "The Fluid Relay Orderer endpoints.",
+                        "readOnly": true
+                      },
+                      "storageEndpoints": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "The Fluid Relay storage endpoints.",
+                        "readOnly": true
+                      },
+                      "serviceEndpoints": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "The Fluid Relay service endpoints.",
+                        "readOnly": true
+                      }
+                    }
+                  },
+                  "provisioningState": {
+                    "enum": [
+                      "Succeeded",
+                      "Failed",
+                      "Canceled"
+                    ],
+                    "type": "string",
+                    "description": "Provision states for FluidRelay RP",
+                    "title": "ProvisioningState",
+                    "x-ms-enum": {
+                      "name": "ProvisioningState",
+                      "modelAsString": true
+                    }
+                  },
+                  "encryption": {
+                    "description": "All encryption configuration for a resource.",
+                    "type": "object",
+                    "properties": {
+                      "customerManagedKeyEncryption": {
+                        "description": "All Customer-managed key encryption properties for the resource.",
+                        "type": "object",
+                        "properties": {
+                          "keyEncryptionKeyIdentity": {
+                            "type": "object",
+                            "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                            "properties": {
+                              "identityType": {
+                                "type": "string",
+                                "enum": [
+                                  "SystemAssigned",
+                                  "UserAssigned"
+                                ],
+                                "x-ms-enum": {
+                                  "name": "CmkIdentityType",
+                                  "modelAsString": false
+                                },
+                                "description": "Values can be SystemAssigned or UserAssigned"
+                              },
+                              "userAssignedIdentityResourceId": {
+                                "type": "string",
+                                "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                              }
+                            }
+                          },
+                          "keyEncryptionKeyUrl": {
+                            "type": "string",
+                            "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "storagesku": {
+                    "type": "string",
+                    "enum": [
+                      "standard",
+                      "basic"
+                    ],
+                    "description": "Sku of the storage associated with the resource",
+                    "title": "StorageSKU",
+                    "x-ms-enum": {
+                      "name": "StorageSKU",
+                      "modelAsString": true
+                    }
+                  }
+                }
+              },
+              "systemData": {
+                "description": "System meta data for this resource, including creation and modification information.",
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              },
+              "identity": {
+                "description": "The type of identity used for the resource.",
+                "type": "object",
+                "properties": {
+                  "principalId": {
+                    "readOnly": true,
+                    "type": "string",
+                    "description": "The principal ID of resource identity."
+                  },
+                  "tenantId": {
+                    "readOnly": true,
+                    "type": "string",
+                    "description": "The tenant ID of resource."
+                  },
+                  "type": {
+                    "enum": [
+                      "SystemAssigned",
+                      "UserAssigned",
+                      "SystemAssigned, UserAssigned",
+                      "None"
+                    ],
+                    "x-ms-enum": {
+                      "name": "ResourceIdentityType",
+                      "modelAsString": false
+                    },
+                    "type": "string",
+                    "description": "The identity type."
+                  },
+                  "userAssignedIdentities": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "x-ms-client-name": "userAssignedIdentitiesValue",
+                      "properties": {
+                        "principalId": {
+                          "readOnly": true,
+                          "type": "string",
+                          "description": "The principal id of user assigned identity."
+                        },
+                        "clientId": {
+                          "readOnly": true,
+                          "type": "string",
+                          "description": "The client id of user assigned identity."
+                        }
+                      }
+                    },
+                    "description": "The list of user identities associated with the resource."
+                  }
+                }
+              }
+            },
+            "description": "A FluidRelay Server."
+          },
+          "description": "A sequence of FluidRelay servers.",
+          "x-adl-name": "FluidRelayServer[]"
+        },
+        "nextLink": {
+          "type": "string",
+          "description": "A link to the next page of results, if any."
+        }
+      },
+      "description": "Paged response",
+      "required": [
+        "value"
+      ],
+      "x-adl-name": "Page<FluidRelayServer>"
+    },
+    "FluidRelayContainerList": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "readOnly": true,
+                "type": "string",
+                "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+              },
+              "name": {
+                "readOnly": true,
+                "type": "string",
+                "description": "The name of the resource"
+              },
+              "type": {
+                "readOnly": true,
+                "type": "string",
+                "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+              },
+              "properties": {
+                "description": "The resource-specific properties for this resource.",
+                "readOnly": true,
+                "x-ms-client-flatten": true,
+                "type": "object",
+                "properties": {
+                  "frsTenantId": {
+                    "type": "string",
+                    "description": "The Fluid tenantId for this container",
+                    "readOnly": true
+                  },
+                  "frsContainerId": {
+                    "type": "string",
+                    "description": "The frsContainerId for this container",
+                    "readOnly": true
+                  },
+                  "provisioningState": {
+                    "readOnly": true,
+                    "enum": [
+                      "Succeeded",
+                      "Failed",
+                      "Canceled"
+                    ],
+                    "type": "string",
+                    "description": "Provision states for FluidRelay RP",
+                    "title": "ProvisioningState",
+                    "x-ms-enum": {
+                      "name": "ProvisioningState",
+                      "modelAsString": true
+                    }
+                  },
+                  "creationTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "readOnly": true,
+                    "description": "The creation time of this resource"
+                  },
+                  "lastAccessTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "readOnly": true,
+                    "description": "Last time when user access this resource"
+                  }
+                }
+              },
+              "systemData": {
+                "description": "System meta data for this resource, including creation and modification information.",
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              }
+            },
+            "description": "A FluidRelay Container."
+          },
+          "description": "A sequence of FluidRelay containers.",
+          "x-adl-name": "FluidRelayContainer[]"
+        },
+        "nextLink": {
+          "readOnly": true,
+          "type": "string",
+          "description": "A link to the next page of results, if any."
+        }
+      },
+      "description": "Paged response"
+    },
+    "FluidRelayServer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "readOnly": true,
+          "type": "string",
+          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+        },
+        "name": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The name of the resource"
+        },
+        "type": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ],
+          "description": "Resource tags."
+        },
+        "location": {
+          "type": "string",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ],
+          "description": "The geo-location where the resource lives"
+        },
+        "properties": {
+          "description": "The resource-specific properties for this resource.",
+          "readOnly": false,
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ],
+          "type": "object",
+          "properties": {
+            "frsTenantId": {
+              "type": "string",
+              "description": "The Fluid tenantId for this server",
+              "readOnly": true
+            },
+            "fluidRelayEndpoints": {
+              "description": "The Fluid Relay Service endpoints for this server.",
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "ordererEndpoints": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The Fluid Relay Orderer endpoints.",
+                  "readOnly": true
+                },
+                "storageEndpoints": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The Fluid Relay storage endpoints.",
+                  "readOnly": true
+                },
+                "serviceEndpoints": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The Fluid Relay service endpoints.",
+                  "readOnly": true
+                }
+              }
+            },
+            "provisioningState": {
+              "enum": [
+                "Succeeded",
+                "Failed",
+                "Canceled"
+              ],
+              "type": "string",
+              "description": "Provision states for FluidRelay RP",
+              "title": "ProvisioningState",
+              "x-ms-enum": {
+                "name": "ProvisioningState",
+                "modelAsString": true
+              }
+            },
+            "encryption": {
+              "description": "All encryption configuration for a resource.",
+              "type": "object",
+              "properties": {
+                "customerManagedKeyEncryption": {
+                  "description": "All Customer-managed key encryption properties for the resource.",
+                  "type": "object",
+                  "properties": {
+                    "keyEncryptionKeyIdentity": {
+                      "type": "object",
+                      "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                      "properties": {
+                        "identityType": {
+                          "type": "string",
+                          "enum": [
+                            "SystemAssigned",
+                            "UserAssigned"
+                          ],
+                          "x-ms-enum": {
+                            "name": "CmkIdentityType",
+                            "modelAsString": false
+                          },
+                          "description": "Values can be SystemAssigned or UserAssigned"
+                        },
+                        "userAssignedIdentityResourceId": {
+                          "type": "string",
+                          "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                        }
+                      }
+                    },
+                    "keyEncryptionKeyUrl": {
+                      "type": "string",
+                      "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                    }
+                  }
+                }
+              }
+            },
+            "storagesku": {
+              "type": "string",
+              "enum": [
+                "standard",
+                "basic"
+              ],
+              "description": "Sku of the storage associated with the resource",
+              "title": "StorageSKU",
+              "x-ms-enum": {
+                "name": "StorageSKU",
+                "modelAsString": true
+              }
+            }
+          }
+        },
+        "systemData": {
+          "description": "System meta data for this resource, including creation and modification information.",
+          "readOnly": true,
+          "type": "object",
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        },
+        "identity": {
+          "description": "The type of identity used for the resource.",
+          "type": "object",
+          "properties": {
+            "principalId": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The principal ID of resource identity."
+            },
+            "tenantId": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The tenant ID of resource."
+            },
+            "type": {
+              "enum": [
+                "SystemAssigned",
+                "UserAssigned",
+                "SystemAssigned, UserAssigned",
+                "None"
+              ],
+              "x-ms-enum": {
+                "name": "ResourceIdentityType",
+                "modelAsString": false
+              },
+              "type": "string",
+              "description": "The identity type."
+            },
+            "userAssignedIdentities": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "x-ms-client-name": "userAssignedIdentitiesValue",
+                "properties": {
+                  "principalId": {
+                    "readOnly": true,
+                    "type": "string",
+                    "description": "The principal id of user assigned identity."
+                  },
+                  "clientId": {
+                    "readOnly": true,
+                    "type": "string",
+                    "description": "The client id of user assigned identity."
+                  }
+                }
+              },
+              "description": "The list of user identities associated with the resource."
+            }
+          }
+        }
+      },
+      "description": "A FluidRelay Server."
+    },
+    "FluidRelayContainer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "readOnly": true,
+          "type": "string",
+          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+        },
+        "name": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The name of the resource"
+        },
+        "type": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\""
+        },
+        "properties": {
+          "description": "The resource-specific properties for this resource.",
+          "readOnly": true,
+          "x-ms-client-flatten": true,
+          "type": "object",
+          "properties": {
+            "frsTenantId": {
+              "type": "string",
+              "description": "The Fluid tenantId for this container",
+              "readOnly": true
+            },
+            "frsContainerId": {
+              "type": "string",
+              "description": "The frsContainerId for this container",
+              "readOnly": true
+            },
+            "provisioningState": {
+              "readOnly": true,
+              "enum": [
+                "Succeeded",
+                "Failed",
+                "Canceled"
+              ],
+              "type": "string",
+              "description": "Provision states for FluidRelay RP",
+              "title": "ProvisioningState",
+              "x-ms-enum": {
+                "name": "ProvisioningState",
+                "modelAsString": true
+              }
+            },
+            "creationTime": {
+              "type": "string",
+              "format": "date-time",
+              "readOnly": true,
+              "description": "The creation time of this resource"
+            },
+            "lastAccessTime": {
+              "type": "string",
+              "format": "date-time",
+              "readOnly": true,
+              "description": "Last time when user access this resource"
+            }
+          }
+        },
+        "systemData": {
+          "description": "System meta data for this resource, including creation and modification information.",
+          "readOnly": true,
+          "type": "object",
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        }
+      },
+      "description": "A FluidRelay Container."
+    },
+    "FluidRelayServerKeys": {
+      "type": "object",
+      "properties": {
+        "key1": {
+          "type": "string",
+          "format": "password",
+          "description": "The primary key for this server",
+          "readOnly": true
+        },
+        "key2": {
+          "type": "string",
+          "format": "password",
+          "description": "The secondary key for this server",
+          "readOnly": true
+        }
+      },
+      "description": "The set of available keys for this server."
+    },
+    "RegenerateKeyRequest": {
+      "type": "object",
+      "properties": {
+        "keyName": {
+          "type": "string",
+          "enum": [
+            "key1",
+            "key2"
+          ],
+          "x-ms-enum": {
+            "modelAsString": false,
+            "name": "KeyName"
+          },
+          "x-adl-name": "key1 | key2",
+          "description": "The key to regenerate."
+        }
+      },
+      "description": "Specifies which key should be generated.",
+      "required": [
+        "keyName"
+      ]
+    },
+    "Identity": {
+      "description": "Identity for the resource.",
+      "type": "object",
+      "properties": {
+        "principalId": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The principal ID of resource identity."
+        },
+        "tenantId": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The tenant ID of resource."
+        },
+        "type": {
+          "enum": [
+            "SystemAssigned",
+            "UserAssigned",
+            "SystemAssigned, UserAssigned",
+            "None"
+          ],
+          "x-ms-enum": {
+            "name": "ResourceIdentityType",
+            "modelAsString": false
+          },
+          "type": "string",
+          "description": "The identity type."
+        },
+        "userAssignedIdentities": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "x-ms-client-name": "userAssignedIdentitiesValue",
+            "properties": {
+              "principalId": {
+                "readOnly": true,
+                "type": "string",
+                "description": "The principal id of user assigned identity."
+              },
+              "clientId": {
+                "readOnly": true,
+                "type": "string",
+                "description": "The client id of user assigned identity."
+              }
+            }
+          },
+          "description": "The list of user identities associated with the resource."
+        }
+      }
+    },
+    "EncryptionProperties": {
+      "type": "object",
+      "description": "All encryption configuration for a resource.",
+      "properties": {
+        "customerManagedKeyEncryption": {
+          "description": "All Customer-managed key encryption properties for the resource.",
+          "type": "object",
+          "properties": {
+            "keyEncryptionKeyIdentity": {
+              "type": "object",
+              "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+              "properties": {
+                "identityType": {
+                  "type": "string",
+                  "enum": [
+                    "SystemAssigned",
+                    "UserAssigned"
+                  ],
+                  "x-ms-enum": {
+                    "name": "CmkIdentityType",
+                    "modelAsString": false
+                  },
+                  "description": "Values can be SystemAssigned or UserAssigned"
+                },
+                "userAssignedIdentityResourceId": {
+                  "type": "string",
+                  "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                }
+              }
+            },
+            "keyEncryptionKeyUrl": {
+              "type": "string",
+              "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+            }
+          }
+        }
+      }
+    },
+    "CustomerManagedKeyEncryptionProperties": {
+      "type": "object",
+      "description": "All Customer-managed key encryption properties for the resource.",
+      "properties": {
+        "keyEncryptionKeyIdentity": {
+          "type": "object",
+          "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+          "properties": {
+            "identityType": {
+              "type": "string",
+              "enum": [
+                "SystemAssigned",
+                "UserAssigned"
+              ],
+              "x-ms-enum": {
+                "name": "CmkIdentityType",
+                "modelAsString": false
+              },
+              "description": "Values can be SystemAssigned or UserAssigned"
+            },
+            "userAssignedIdentityResourceId": {
+              "type": "string",
+              "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+            }
+          }
+        },
+        "keyEncryptionKeyUrl": {
+          "type": "string",
+          "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+        }
+      }
+    },
+    "FluidRelayServerUpdateProperties": {
+      "type": "object",
+      "properties": {
+        "encryption": {
+          "description": "All encryption configuration for a resource.",
+          "type": "object",
+          "properties": {
+            "customerManagedKeyEncryption": {
+              "description": "All Customer-managed key encryption properties for the resource.",
+              "type": "object",
+              "properties": {
+                "keyEncryptionKeyIdentity": {
+                  "type": "object",
+                  "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                  "properties": {
+                    "identityType": {
+                      "type": "string",
+                      "enum": [
+                        "SystemAssigned",
+                        "UserAssigned"
+                      ],
+                      "x-ms-enum": {
+                        "name": "CmkIdentityType",
+                        "modelAsString": false
+                      },
+                      "description": "Values can be SystemAssigned or UserAssigned"
+                    },
+                    "userAssignedIdentityResourceId": {
+                      "type": "string",
+                      "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                    }
+                  }
+                },
+                "keyEncryptionKeyUrl": {
+                  "type": "string",
+                  "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                }
+              }
+            }
+          }
+        }
+      },
+      "description": "The properties that can be provided when updating FluidRelayServer resource"
+    },
+    "FluidRelayServerProperties": {
+      "type": "object",
+      "properties": {
+        "frsTenantId": {
+          "type": "string",
+          "description": "The Fluid tenantId for this server",
+          "readOnly": true
+        },
+        "fluidRelayEndpoints": {
+          "description": "The Fluid Relay Service endpoints for this server.",
+          "readOnly": true,
+          "type": "object",
+          "properties": {
+            "ordererEndpoints": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The Fluid Relay Orderer endpoints.",
+              "readOnly": true
+            },
+            "storageEndpoints": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The Fluid Relay storage endpoints.",
+              "readOnly": true
+            },
+            "serviceEndpoints": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The Fluid Relay service endpoints.",
+              "readOnly": true
+            }
+          }
+        },
+        "provisioningState": {
+          "enum": [
+            "Succeeded",
+            "Failed",
+            "Canceled"
+          ],
+          "type": "string",
+          "description": "Provision states for FluidRelay RP",
+          "title": "ProvisioningState",
+          "x-ms-enum": {
+            "name": "ProvisioningState",
+            "modelAsString": true
+          }
+        },
+        "encryption": {
+          "description": "All encryption configuration for a resource.",
+          "type": "object",
+          "properties": {
+            "customerManagedKeyEncryption": {
+              "description": "All Customer-managed key encryption properties for the resource.",
+              "type": "object",
+              "properties": {
+                "keyEncryptionKeyIdentity": {
+                  "type": "object",
+                  "description": "All identity configuration for Customer-managed key settings defining which identity should be used to auth to Key Vault.",
+                  "properties": {
+                    "identityType": {
+                      "type": "string",
+                      "enum": [
+                        "SystemAssigned",
+                        "UserAssigned"
+                      ],
+                      "x-ms-enum": {
+                        "name": "CmkIdentityType",
+                        "modelAsString": false
+                      },
+                      "description": "Values can be SystemAssigned or UserAssigned"
+                    },
+                    "userAssignedIdentityResourceId": {
+                      "type": "string",
+                      "description": "user assigned identity to use for accessing key encryption key Url. Ex: /subscriptions/fa5fc227-a624-475e-b696-cdd604c735bc/resourceGroups/<resource group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myId. Mutually exclusive with identityType systemAssignedIdentity."
+                    }
+                  }
+                },
+                "keyEncryptionKeyUrl": {
+                  "type": "string",
+                  "description": "key encryption key Url, with or without a version. Ex: https://contosovault.vault.azure.net/keys/contosokek/562a4bb76b524a1493a6afe8e536ee78 or https://contosovault.vault.azure.net/keys/contosokek. Key auto rotation is enabled by providing a key uri without version. Otherwise, customer is responsible for rotating the key. The keyEncryptionKeyIdentity(either SystemAssigned or UserAssigned) should have permission to access this key url."
+                }
+              }
+            }
+          }
+        },
+        "storagesku": {
+          "type": "string",
+          "enum": [
+            "standard",
+            "basic"
+          ],
+          "description": "Sku of the storage associated with the resource",
+          "title": "StorageSKU",
+          "x-ms-enum": {
+            "name": "StorageSKU",
+            "modelAsString": true
+          }
+        }
+      },
+      "description": "The properties of a Fluid Relay Service resource."
+    },
+    "FluidRelayContainerProperties": {
+      "type": "object",
+      "properties": {
+        "frsTenantId": {
+          "type": "string",
+          "description": "The Fluid tenantId for this container",
+          "readOnly": true
+        },
+        "frsContainerId": {
+          "type": "string",
+          "description": "The frsContainerId for this container",
+          "readOnly": true
+        },
+        "provisioningState": {
+          "readOnly": true,
+          "enum": [
+            "Succeeded",
+            "Failed",
+            "Canceled"
+          ],
+          "type": "string",
+          "description": "Provision states for FluidRelay RP",
+          "title": "ProvisioningState",
+          "x-ms-enum": {
+            "name": "ProvisioningState",
+            "modelAsString": true
+          }
+        },
+        "creationTime": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "description": "The creation time of this resource"
+        },
+        "lastAccessTime": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true,
+          "description": "Last time when user access this resource"
+        }
+      },
+      "description": "The properties of a Fluid Relay Container resource."
+    },
+    "FluidRelayEndpoints": {
+      "type": "object",
+      "properties": {
+        "ordererEndpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The Fluid Relay Orderer endpoints.",
+          "readOnly": true
+        },
+        "storageEndpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The Fluid Relay storage endpoints.",
+          "readOnly": true
+        },
+        "serviceEndpoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The Fluid Relay service endpoints.",
+          "readOnly": true
+        }
+      },
+      "description": "The Fluid Relay endpoints for this server"
+    }
+  },
+  "parameters": {
+    "SubscriptionId": {
+      "name": "subscriptionId",
+      "in": "path",
+      "type": "string",
+      "required": true,
+      "description": "The subscription id (GUID) for this resource."
+    },
+    "ResourceGroup": {
+      "name": "resourceGroup",
+      "in": "path",
+      "type": "string",
+      "required": true,
+      "description": "The resource group containing the resource.",
+      "x-ms-parameter-location": "method"
+    },
+    "FluidRelayServerName": {
+      "name": "fluidRelayServerName",
+      "in": "path",
+      "type": "string",
+      "required": true,
+      "description": "The Fluid Relay server resource name.",
+      "x-ms-parameter-location": "method"
+    },
+    "FluidRelayContainerName": {
+      "name": "fluidRelayContainerName",
+      "in": "path",
+      "type": "string",
+      "required": true,
+      "description": "The Fluid Relay container resource name.",
+      "x-ms-parameter-location": "method"
+    }
+  }
+}

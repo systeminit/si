@@ -9,7 +9,10 @@ import {
   ProviderFunctions,
   SuperSchema,
 } from "../types.ts";
-import { HETZNER_PROP_OVERRIDES, HETZNER_SCHEMA_OVERRIDES } from "./overrides.ts";
+import {
+  HETZNER_PROP_OVERRIDES,
+  HETZNER_SCHEMA_OVERRIDES,
+} from "./overrides.ts";
 import { normalizeOnlyProperties } from "../generic/index.ts";
 import {
   ACTION_FUNC_SPECS,

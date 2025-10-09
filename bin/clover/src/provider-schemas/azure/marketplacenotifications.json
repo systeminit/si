@@ -1,0 +1,867 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Azure marketplacenotifications",
+    "version": "2021-03-03",
+    "description": "Azure marketplacenotifications service specifications"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/subscriptions/{subscription}/providers/Microsoft.MarketplaceNotifications/reviewsNotifications": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "operationId": "Notifications_List",
+        "parameters": [
+          {
+            "description": "user's subscription id",
+            "type": "string",
+            "name": "subscription",
+            "in": "path",
+            "required": true,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "description": "user's principal id",
+            "type": "string",
+            "name": "principalId",
+            "in": "query",
+            "required": true,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for the request.",
+            "x-ms-parameter-location": "method"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK. The request has succeeded.",
+            "schema": {
+              "description": "Notifications List",
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "description": "Review notification",
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "description": "The resource ID.",
+                        "type": "string",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "description": "The name of the resource.",
+                        "type": "string",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "description": "The type of the resource.",
+                        "type": "string",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "readOnly": true,
+                        "description": "Metadata pertaining to creation and last modification of the resource.",
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "properties": {
+                        "description": "The offer data structure.",
+                        "x-ms-client-flatten": true,
+                        "type": "object",
+                        "properties": {
+                          "offerId": {
+                            "description": "legacy offer id of the notification (publisher.offer)",
+                            "type": "string",
+                            "readOnly": true
+                          },
+                          "createdDate": {
+                            "description": "date for creating the notification",
+                            "format": "date-time",
+                            "type": "string",
+                            "readOnly": true
+                          },
+                          "offerDisplayName": {
+                            "description": "offer display name",
+                            "type": "string",
+                            "readOnly": true
+                          },
+                          "principalId": {
+                            "description": "user's principal id",
+                            "type": "string",
+                            "readOnly": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "nextLink": {
+                  "description": "URL client should use to fetch the next page (per server side paging).\r\nIt's null for now, added for future use.",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscription}/providers/Microsoft.MarketplaceNotifications/reviewsNotification/{notification}": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "operationId": "Notification_Get",
+        "parameters": [
+          {
+            "description": "user's subscription id",
+            "type": "string",
+            "name": "subscription",
+            "in": "path",
+            "required": true,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "description": "the notification id",
+            "type": "string",
+            "name": "notification",
+            "in": "path",
+            "required": true,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "description": "user's principal id",
+            "type": "string",
+            "name": "principalId",
+            "in": "query",
+            "required": true,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for the request.",
+            "x-ms-parameter-location": "method"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK. The request has succeeded.",
+            "schema": {
+              "description": "Review notification",
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "The resource ID.",
+                  "type": "string",
+                  "readOnly": true
+                },
+                "name": {
+                  "description": "The name of the resource.",
+                  "type": "string",
+                  "readOnly": true
+                },
+                "type": {
+                  "description": "The type of the resource.",
+                  "type": "string",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "Metadata pertaining to creation and last modification of the resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "properties": {
+                  "description": "The offer data structure.",
+                  "x-ms-client-flatten": true,
+                  "type": "object",
+                  "properties": {
+                    "offerId": {
+                      "description": "legacy offer id of the notification (publisher.offer)",
+                      "type": "string",
+                      "readOnly": true
+                    },
+                    "createdDate": {
+                      "description": "date for creating the notification",
+                      "format": "date-time",
+                      "type": "string",
+                      "readOnly": true
+                    },
+                    "offerDisplayName": {
+                      "description": "offer display name",
+                      "type": "string",
+                      "readOnly": true
+                    },
+                    "principalId": {
+                      "description": "user's principal id",
+                      "type": "string",
+                      "readOnly": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/providers/Microsoft.MarketplaceNotifications/operations": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "Notification_GetOperations",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for the request.",
+            "x-ms-parameter-location": "method"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK. The request has succeeded.",
+            "schema": {
+              "description": "Available operations of the service",
+              "type": "object",
+              "properties": {
+                "value": {
+                  "description": "Collection of available operation details",
+                  "uniqueItems": false,
+                  "type": "array",
+                  "items": {
+                    "description": "Operation detail payload",
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "description": "Name of the operation",
+                        "type": "string"
+                      },
+                      "isDataAction": {
+                        "description": "Indicates whether the operation is a data action",
+                        "type": "boolean"
+                      },
+                      "display": {
+                        "description": "Display of the operation",
+                        "type": "object",
+                        "properties": {
+                          "resource": {
+                            "description": "Resource of the operation",
+                            "type": "string"
+                          },
+                          "provider": {
+                            "description": "Name of the provider for display purposes",
+                            "type": "string"
+                          },
+                          "operation": {
+                            "description": "Name of the operation for display purposes",
+                            "type": "string"
+                          },
+                          "description": {
+                            "description": "Localized friendly description for the operation",
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "origin": {
+                        "description": "operation origin",
+                        "type": "string"
+                      },
+                      "properties": {
+                        "description": "operation properties",
+                        "type": "object"
+                      }
+                    }
+                  },
+                  "x-ms-identifiers": [
+                    "name"
+                  ]
+                },
+                "nextLink": {
+                  "description": "URL client should use to fetch the next page (per server side paging).\r\nIt's null for now, added for future use.",
+                  "type": "string",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "NotificationList": {
+      "description": "Notifications List",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "description": "Review notification",
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "The resource ID.",
+                "type": "string",
+                "readOnly": true
+              },
+              "name": {
+                "description": "The name of the resource.",
+                "type": "string",
+                "readOnly": true
+              },
+              "type": {
+                "description": "The type of the resource.",
+                "type": "string",
+                "readOnly": true
+              },
+              "systemData": {
+                "readOnly": true,
+                "description": "Metadata pertaining to creation and last modification of the resource.",
+                "type": "object",
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              },
+              "properties": {
+                "description": "The offer data structure.",
+                "x-ms-client-flatten": true,
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "description": "legacy offer id of the notification (publisher.offer)",
+                    "type": "string",
+                    "readOnly": true
+                  },
+                  "createdDate": {
+                    "description": "date for creating the notification",
+                    "format": "date-time",
+                    "type": "string",
+                    "readOnly": true
+                  },
+                  "offerDisplayName": {
+                    "description": "offer display name",
+                    "type": "string",
+                    "readOnly": true
+                  },
+                  "principalId": {
+                    "description": "user's principal id",
+                    "type": "string",
+                    "readOnly": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nextLink": {
+          "description": "URL client should use to fetch the next page (per server side paging).\r\nIt's null for now, added for future use.",
+          "type": "string"
+        }
+      }
+    },
+    "Notification": {
+      "description": "Review notification",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The resource ID.",
+          "type": "string",
+          "readOnly": true
+        },
+        "name": {
+          "description": "The name of the resource.",
+          "type": "string",
+          "readOnly": true
+        },
+        "type": {
+          "description": "The type of the resource.",
+          "type": "string",
+          "readOnly": true
+        },
+        "systemData": {
+          "readOnly": true,
+          "description": "Metadata pertaining to creation and last modification of the resource.",
+          "type": "object",
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        },
+        "properties": {
+          "description": "The offer data structure.",
+          "x-ms-client-flatten": true,
+          "type": "object",
+          "properties": {
+            "offerId": {
+              "description": "legacy offer id of the notification (publisher.offer)",
+              "type": "string",
+              "readOnly": true
+            },
+            "createdDate": {
+              "description": "date for creating the notification",
+              "format": "date-time",
+              "type": "string",
+              "readOnly": true
+            },
+            "offerDisplayName": {
+              "description": "offer display name",
+              "type": "string",
+              "readOnly": true
+            },
+            "principalId": {
+              "description": "user's principal id",
+              "type": "string",
+              "readOnly": true
+            }
+          }
+        }
+      }
+    },
+    "DiagnosticsInfoDto": {
+      "description": "Diagnostics Info",
+      "type": "object",
+      "properties": {
+        "ms-cv": {
+          "description": "MS CV",
+          "type": "string"
+        },
+        "buildNumber": {
+          "description": "build number",
+          "type": "string"
+        }
+      }
+    },
+    "ErrorResponse": {
+      "description": "Error response indicates Microsoft.MarketplaceNotifications service is not able to process the incoming request. The reason is provided in the error message.",
+      "type": "object",
+      "properties": {
+        "error": {
+          "description": "The details of the error.",
+          "properties": {
+            "code": {
+              "description": "Error code.",
+              "type": "string",
+              "readOnly": true
+            },
+            "message": {
+              "description": "Error message indicating why the operation failed.",
+              "type": "string",
+              "readOnly": true
+            }
+          }
+        }
+      }
+    },
+    "AvailableOperations": {
+      "description": "Available operations of the service",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "Collection of available operation details",
+          "uniqueItems": false,
+          "type": "array",
+          "items": {
+            "description": "Operation detail payload",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the operation",
+                "type": "string"
+              },
+              "isDataAction": {
+                "description": "Indicates whether the operation is a data action",
+                "type": "boolean"
+              },
+              "display": {
+                "description": "Display of the operation",
+                "type": "object",
+                "properties": {
+                  "resource": {
+                    "description": "Resource of the operation",
+                    "type": "string"
+                  },
+                  "provider": {
+                    "description": "Name of the provider for display purposes",
+                    "type": "string"
+                  },
+                  "operation": {
+                    "description": "Name of the operation for display purposes",
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Localized friendly description for the operation",
+                    "type": "string"
+                  }
+                }
+              },
+              "origin": {
+                "description": "operation origin",
+                "type": "string"
+              },
+              "properties": {
+                "description": "operation properties",
+                "type": "object"
+              }
+            }
+          },
+          "x-ms-identifiers": [
+            "name"
+          ]
+        },
+        "nextLink": {
+          "description": "URL client should use to fetch the next page (per server side paging).\r\nIt's null for now, added for future use.",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "OperationDetail": {
+      "description": "Operation detail payload",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the operation",
+          "type": "string"
+        },
+        "isDataAction": {
+          "description": "Indicates whether the operation is a data action",
+          "type": "boolean"
+        },
+        "display": {
+          "description": "Display of the operation",
+          "type": "object",
+          "properties": {
+            "resource": {
+              "description": "Resource of the operation",
+              "type": "string"
+            },
+            "provider": {
+              "description": "Name of the provider for display purposes",
+              "type": "string"
+            },
+            "operation": {
+              "description": "Name of the operation for display purposes",
+              "type": "string"
+            },
+            "description": {
+              "description": "Localized friendly description for the operation",
+              "type": "string"
+            }
+          }
+        },
+        "origin": {
+          "description": "operation origin",
+          "type": "string"
+        },
+        "properties": {
+          "description": "operation properties",
+          "type": "object"
+        }
+      }
+    },
+    "OperationDisplay": {
+      "description": "Operation display payload",
+      "type": "object",
+      "properties": {
+        "resource": {
+          "description": "Resource of the operation",
+          "type": "string"
+        },
+        "provider": {
+          "description": "Name of the provider for display purposes",
+          "type": "string"
+        },
+        "operation": {
+          "description": "Name of the operation for display purposes",
+          "type": "string"
+        },
+        "description": {
+          "description": "Localized friendly description for the operation",
+          "type": "string"
+        }
+      }
+    },
+    "Resource": {
+      "description": "An Azure resource.",
+      "properties": {
+        "id": {
+          "description": "The resource ID.",
+          "type": "string",
+          "readOnly": true
+        },
+        "name": {
+          "description": "The name of the resource.",
+          "type": "string",
+          "readOnly": true
+        },
+        "type": {
+          "description": "The type of the resource.",
+          "type": "string",
+          "readOnly": true
+        }
+      },
+      "x-ms-azure-resource": true
+    },
+    "OfferProperties": {
+      "type": "object",
+      "properties": {
+        "offerId": {
+          "description": "legacy offer id of the notification (publisher.offer)",
+          "type": "string",
+          "readOnly": true
+        },
+        "createdDate": {
+          "description": "date for creating the notification",
+          "format": "date-time",
+          "type": "string",
+          "readOnly": true
+        },
+        "offerDisplayName": {
+          "description": "offer display name",
+          "type": "string",
+          "readOnly": true
+        },
+        "principalId": {
+          "description": "user's principal id",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    }
+  },
+  "parameters": {
+    "NotificationId": {
+      "description": "the notification id",
+      "type": "string",
+      "name": "notification",
+      "in": "path",
+      "required": true,
+      "x-ms-parameter-location": "method"
+    },
+    "SubscriptionId": {
+      "description": "user's subscription id",
+      "type": "string",
+      "name": "subscription",
+      "in": "path",
+      "required": true,
+      "x-ms-parameter-location": "method"
+    },
+    "PrincipalId": {
+      "description": "user's principal id",
+      "type": "string",
+      "name": "principalId",
+      "in": "query",
+      "required": true,
+      "x-ms-parameter-location": "method"
+    },
+    "ApiVersion": {
+      "name": "api-version",
+      "in": "query",
+      "required": true,
+      "type": "string",
+      "description": "The API version to use for the request.",
+      "x-ms-parameter-location": "method"
+    }
+  }
+}

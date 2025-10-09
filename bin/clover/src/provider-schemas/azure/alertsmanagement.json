@@ -1,0 +1,2665 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Azure alertsmanagement",
+    "version": "2023-03-01",
+    "description": "Azure alertsmanagement service specifications"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/subscriptions/{subscriptionId}/providers/Microsoft.AlertsManagement/prometheusRuleGroups": {
+      "get": {
+        "tags": [
+          "PrometheusRuleGroups"
+        ],
+        "description": "Retrieve Prometheus all rule group definitions in a subscription.",
+        "operationId": "PrometheusRuleGroups_ListBySubscription",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful request for a list of Prometheus rule groups",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "properties"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": true,
+                        "description": "The Prometheus rule group properties of the resource.",
+                        "type": "object",
+                        "required": [
+                          "scopes",
+                          "rules"
+                        ],
+                        "properties": {
+                          "description": {
+                            "type": "string",
+                            "description": "Rule group description."
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Enable/disable rule group."
+                          },
+                          "clusterName": {
+                            "type": "string",
+                            "description": "Apply rule to data from a specific cluster."
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+                          },
+                          "interval": {
+                            "type": "string",
+                            "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+                            "format": "duration"
+                          },
+                          "rules": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "description": "An Azure Prometheus alerting or recording rule.",
+                              "required": [
+                                "expression"
+                              ],
+                              "properties": {
+                                "record": {
+                                  "description": "Recorded metrics name.",
+                                  "type": "string"
+                                },
+                                "alert": {
+                                  "description": "Alert rule name.",
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean",
+                                  "description": "Enable/disable rule."
+                                },
+                                "expression": {
+                                  "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                                  "type": "string"
+                                },
+                                "labels": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "Labels to add or overwrite before storing the result."
+                                },
+                                "severity": {
+                                  "type": "integer",
+                                  "format": "int32",
+                                  "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+                                },
+                                "for": {
+                                  "type": "string",
+                                  "description": "The amount of time alert must be active before firing.",
+                                  "format": "duration"
+                                },
+                                "annotations": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+                                },
+                                "actions": {
+                                  "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "description": "An alert action. Only relevant for alerts.",
+                                    "properties": {
+                                      "actionGroupId": {
+                                        "type": "string",
+                                        "description": "The resource id of the action group to use."
+                                      },
+                                      "actionProperties": {
+                                        "type": "object",
+                                        "additionalProperties": {
+                                          "type": "string"
+                                        },
+                                        "description": "The properties of an action group object."
+                                      }
+                                    }
+                                  },
+                                  "x-ms-identifiers": []
+                                },
+                                "resolveConfiguration": {
+                                  "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                                  "type": "object",
+                                  "properties": {
+                                    "autoResolved": {
+                                      "type": "boolean",
+                                      "description": "Enable alert auto-resolution."
+                                    },
+                                    "timeToResolve": {
+                                      "type": "string",
+                                      "description": "Alert auto-resolution timeout.",
+                                      "format": "duration"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "description": "Defines the rules in the Prometheus rule group.",
+                            "x-ms-identifiers": []
+                          }
+                        }
+                      }
+                    },
+                    "description": "The Prometheus rule group resource."
+                  },
+                  "description": "the values for the alert rule resources."
+                }
+              },
+              "description": "Represents a collection of alert rule resources."
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.AlertsManagement/prometheusRuleGroups": {
+      "get": {
+        "tags": [
+          "PrometheusRuleGroups"
+        ],
+        "description": "Retrieve Prometheus rule group definitions in a resource group.",
+        "operationId": "PrometheusRuleGroups_ListByResourceGroup",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful request for a list of Prometheus rule groups",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "properties"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": true,
+                        "description": "The Prometheus rule group properties of the resource.",
+                        "type": "object",
+                        "required": [
+                          "scopes",
+                          "rules"
+                        ],
+                        "properties": {
+                          "description": {
+                            "type": "string",
+                            "description": "Rule group description."
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Enable/disable rule group."
+                          },
+                          "clusterName": {
+                            "type": "string",
+                            "description": "Apply rule to data from a specific cluster."
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+                          },
+                          "interval": {
+                            "type": "string",
+                            "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+                            "format": "duration"
+                          },
+                          "rules": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "description": "An Azure Prometheus alerting or recording rule.",
+                              "required": [
+                                "expression"
+                              ],
+                              "properties": {
+                                "record": {
+                                  "description": "Recorded metrics name.",
+                                  "type": "string"
+                                },
+                                "alert": {
+                                  "description": "Alert rule name.",
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean",
+                                  "description": "Enable/disable rule."
+                                },
+                                "expression": {
+                                  "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                                  "type": "string"
+                                },
+                                "labels": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "Labels to add or overwrite before storing the result."
+                                },
+                                "severity": {
+                                  "type": "integer",
+                                  "format": "int32",
+                                  "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+                                },
+                                "for": {
+                                  "type": "string",
+                                  "description": "The amount of time alert must be active before firing.",
+                                  "format": "duration"
+                                },
+                                "annotations": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+                                },
+                                "actions": {
+                                  "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "description": "An alert action. Only relevant for alerts.",
+                                    "properties": {
+                                      "actionGroupId": {
+                                        "type": "string",
+                                        "description": "The resource id of the action group to use."
+                                      },
+                                      "actionProperties": {
+                                        "type": "object",
+                                        "additionalProperties": {
+                                          "type": "string"
+                                        },
+                                        "description": "The properties of an action group object."
+                                      }
+                                    }
+                                  },
+                                  "x-ms-identifiers": []
+                                },
+                                "resolveConfiguration": {
+                                  "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                                  "type": "object",
+                                  "properties": {
+                                    "autoResolved": {
+                                      "type": "boolean",
+                                      "description": "Enable alert auto-resolution."
+                                    },
+                                    "timeToResolve": {
+                                      "type": "string",
+                                      "description": "Alert auto-resolution timeout.",
+                                      "format": "duration"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "description": "Defines the rules in the Prometheus rule group.",
+                            "x-ms-identifiers": []
+                          }
+                        }
+                      }
+                    },
+                    "description": "The Prometheus rule group resource."
+                  },
+                  "description": "the values for the alert rule resources."
+                }
+              },
+              "description": "Represents a collection of alert rule resources."
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.AlertsManagement/prometheusRuleGroups/{ruleGroupName}": {
+      "get": {
+        "tags": [
+          "PrometheusRuleGroups"
+        ],
+        "description": "Retrieve a Prometheus rule group definition.",
+        "operationId": "PrometheusRuleGroups_Get",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "ruleGroupName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the rule group.",
+            "x-ms-parameter-location": "method",
+            "pattern": "^[^:@/#{}%&+*<>?]+$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful request for a list of Prometheus rule groups",
+            "schema": {
+              "type": "object",
+              "required": [
+                "properties"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "The Prometheus rule group properties of the resource.",
+                  "type": "object",
+                  "required": [
+                    "scopes",
+                    "rules"
+                  ],
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "description": "Rule group description."
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable/disable rule group."
+                    },
+                    "clusterName": {
+                      "type": "string",
+                      "description": "Apply rule to data from a specific cluster."
+                    },
+                    "scopes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+                    },
+                    "interval": {
+                      "type": "string",
+                      "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+                      "format": "duration"
+                    },
+                    "rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "An Azure Prometheus alerting or recording rule.",
+                        "required": [
+                          "expression"
+                        ],
+                        "properties": {
+                          "record": {
+                            "description": "Recorded metrics name.",
+                            "type": "string"
+                          },
+                          "alert": {
+                            "description": "Alert rule name.",
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Enable/disable rule."
+                          },
+                          "expression": {
+                            "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                            "type": "string"
+                          },
+                          "labels": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "Labels to add or overwrite before storing the result."
+                          },
+                          "severity": {
+                            "type": "integer",
+                            "format": "int32",
+                            "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+                          },
+                          "for": {
+                            "type": "string",
+                            "description": "The amount of time alert must be active before firing.",
+                            "format": "duration"
+                          },
+                          "annotations": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+                          },
+                          "actions": {
+                            "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "description": "An alert action. Only relevant for alerts.",
+                              "properties": {
+                                "actionGroupId": {
+                                  "type": "string",
+                                  "description": "The resource id of the action group to use."
+                                },
+                                "actionProperties": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "The properties of an action group object."
+                                }
+                              }
+                            },
+                            "x-ms-identifiers": []
+                          },
+                          "resolveConfiguration": {
+                            "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                            "type": "object",
+                            "properties": {
+                              "autoResolved": {
+                                "type": "boolean",
+                                "description": "Enable alert auto-resolution."
+                              },
+                              "timeToResolve": {
+                                "type": "string",
+                                "description": "Alert auto-resolution timeout.",
+                                "format": "duration"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "description": "Defines the rules in the Prometheus rule group.",
+                      "x-ms-identifiers": []
+                    }
+                  }
+                }
+              },
+              "description": "The Prometheus rule group resource."
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "PrometheusRuleGroups"
+        ],
+        "description": "Create or update a Prometheus rule group definition.",
+        "operationId": "PrometheusRuleGroups_CreateOrUpdate",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "ruleGroupName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the rule group.",
+            "x-ms-parameter-location": "method",
+            "pattern": "^[^:@/#{}%&+*<>?]+$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "properties"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "The Prometheus rule group properties of the resource.",
+                  "type": "object",
+                  "required": [
+                    "scopes",
+                    "rules"
+                  ],
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "description": "Rule group description."
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable/disable rule group."
+                    },
+                    "clusterName": {
+                      "type": "string",
+                      "description": "Apply rule to data from a specific cluster."
+                    },
+                    "scopes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+                    },
+                    "interval": {
+                      "type": "string",
+                      "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+                      "format": "duration"
+                    },
+                    "rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "An Azure Prometheus alerting or recording rule.",
+                        "required": [
+                          "expression"
+                        ],
+                        "properties": {
+                          "record": {
+                            "description": "Recorded metrics name.",
+                            "type": "string"
+                          },
+                          "alert": {
+                            "description": "Alert rule name.",
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Enable/disable rule."
+                          },
+                          "expression": {
+                            "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                            "type": "string"
+                          },
+                          "labels": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "Labels to add or overwrite before storing the result."
+                          },
+                          "severity": {
+                            "type": "integer",
+                            "format": "int32",
+                            "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+                          },
+                          "for": {
+                            "type": "string",
+                            "description": "The amount of time alert must be active before firing.",
+                            "format": "duration"
+                          },
+                          "annotations": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+                          },
+                          "actions": {
+                            "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "description": "An alert action. Only relevant for alerts.",
+                              "properties": {
+                                "actionGroupId": {
+                                  "type": "string",
+                                  "description": "The resource id of the action group to use."
+                                },
+                                "actionProperties": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "The properties of an action group object."
+                                }
+                              }
+                            },
+                            "x-ms-identifiers": []
+                          },
+                          "resolveConfiguration": {
+                            "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                            "type": "object",
+                            "properties": {
+                              "autoResolved": {
+                                "type": "boolean",
+                                "description": "Enable alert auto-resolution."
+                              },
+                              "timeToResolve": {
+                                "type": "string",
+                                "description": "Alert auto-resolution timeout.",
+                                "format": "duration"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "description": "Defines the rules in the Prometheus rule group.",
+                      "x-ms-identifiers": []
+                    }
+                  }
+                }
+              },
+              "description": "The Prometheus rule group resource."
+            },
+            "description": "The parameters of the rule group to create or update."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK (Updated).",
+            "schema": {
+              "type": "object",
+              "required": [
+                "properties"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "The Prometheus rule group properties of the resource.",
+                  "type": "object",
+                  "required": [
+                    "scopes",
+                    "rules"
+                  ],
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "description": "Rule group description."
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable/disable rule group."
+                    },
+                    "clusterName": {
+                      "type": "string",
+                      "description": "Apply rule to data from a specific cluster."
+                    },
+                    "scopes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+                    },
+                    "interval": {
+                      "type": "string",
+                      "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+                      "format": "duration"
+                    },
+                    "rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "An Azure Prometheus alerting or recording rule.",
+                        "required": [
+                          "expression"
+                        ],
+                        "properties": {
+                          "record": {
+                            "description": "Recorded metrics name.",
+                            "type": "string"
+                          },
+                          "alert": {
+                            "description": "Alert rule name.",
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Enable/disable rule."
+                          },
+                          "expression": {
+                            "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                            "type": "string"
+                          },
+                          "labels": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "Labels to add or overwrite before storing the result."
+                          },
+                          "severity": {
+                            "type": "integer",
+                            "format": "int32",
+                            "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+                          },
+                          "for": {
+                            "type": "string",
+                            "description": "The amount of time alert must be active before firing.",
+                            "format": "duration"
+                          },
+                          "annotations": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+                          },
+                          "actions": {
+                            "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "description": "An alert action. Only relevant for alerts.",
+                              "properties": {
+                                "actionGroupId": {
+                                  "type": "string",
+                                  "description": "The resource id of the action group to use."
+                                },
+                                "actionProperties": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "The properties of an action group object."
+                                }
+                              }
+                            },
+                            "x-ms-identifiers": []
+                          },
+                          "resolveConfiguration": {
+                            "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                            "type": "object",
+                            "properties": {
+                              "autoResolved": {
+                                "type": "boolean",
+                                "description": "Enable alert auto-resolution."
+                              },
+                              "timeToResolve": {
+                                "type": "string",
+                                "description": "Alert auto-resolution timeout.",
+                                "format": "duration"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "description": "Defines the rules in the Prometheus rule group.",
+                      "x-ms-identifiers": []
+                    }
+                  }
+                }
+              },
+              "description": "The Prometheus rule group resource."
+            }
+          },
+          "201": {
+            "description": "Created (New Alert rule was created).",
+            "schema": {
+              "type": "object",
+              "required": [
+                "properties"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "The Prometheus rule group properties of the resource.",
+                  "type": "object",
+                  "required": [
+                    "scopes",
+                    "rules"
+                  ],
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "description": "Rule group description."
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable/disable rule group."
+                    },
+                    "clusterName": {
+                      "type": "string",
+                      "description": "Apply rule to data from a specific cluster."
+                    },
+                    "scopes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+                    },
+                    "interval": {
+                      "type": "string",
+                      "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+                      "format": "duration"
+                    },
+                    "rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "An Azure Prometheus alerting or recording rule.",
+                        "required": [
+                          "expression"
+                        ],
+                        "properties": {
+                          "record": {
+                            "description": "Recorded metrics name.",
+                            "type": "string"
+                          },
+                          "alert": {
+                            "description": "Alert rule name.",
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Enable/disable rule."
+                          },
+                          "expression": {
+                            "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                            "type": "string"
+                          },
+                          "labels": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "Labels to add or overwrite before storing the result."
+                          },
+                          "severity": {
+                            "type": "integer",
+                            "format": "int32",
+                            "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+                          },
+                          "for": {
+                            "type": "string",
+                            "description": "The amount of time alert must be active before firing.",
+                            "format": "duration"
+                          },
+                          "annotations": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+                          },
+                          "actions": {
+                            "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "description": "An alert action. Only relevant for alerts.",
+                              "properties": {
+                                "actionGroupId": {
+                                  "type": "string",
+                                  "description": "The resource id of the action group to use."
+                                },
+                                "actionProperties": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "The properties of an action group object."
+                                }
+                              }
+                            },
+                            "x-ms-identifiers": []
+                          },
+                          "resolveConfiguration": {
+                            "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                            "type": "object",
+                            "properties": {
+                              "autoResolved": {
+                                "type": "boolean",
+                                "description": "Enable alert auto-resolution."
+                              },
+                              "timeToResolve": {
+                                "type": "string",
+                                "description": "Alert auto-resolution timeout.",
+                                "format": "duration"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "description": "Defines the rules in the Prometheus rule group.",
+                      "x-ms-identifiers": []
+                    }
+                  }
+                }
+              },
+              "description": "The Prometheus rule group resource."
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "PrometheusRuleGroups"
+        ],
+        "description": "Update an Prometheus rule group definition.",
+        "operationId": "PrometheusRuleGroups_Update",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "ruleGroupName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the rule group.",
+            "x-ms-parameter-location": "method",
+            "pattern": "^[^:@/#{}%&+*<>?]+$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Resource tags"
+                },
+                "properties": {
+                  "type": "object",
+                  "x-ms-client-flatten": true,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "the flag that indicates whether the Prometheus rule group is enabled."
+                    }
+                  }
+                }
+              },
+              "description": "The Prometheus rule group resource for patch operations."
+            },
+            "description": "The parameters of the rule group to update."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "required": [
+                "properties"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "The Prometheus rule group properties of the resource.",
+                  "type": "object",
+                  "required": [
+                    "scopes",
+                    "rules"
+                  ],
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "description": "Rule group description."
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable/disable rule group."
+                    },
+                    "clusterName": {
+                      "type": "string",
+                      "description": "Apply rule to data from a specific cluster."
+                    },
+                    "scopes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+                    },
+                    "interval": {
+                      "type": "string",
+                      "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+                      "format": "duration"
+                    },
+                    "rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "An Azure Prometheus alerting or recording rule.",
+                        "required": [
+                          "expression"
+                        ],
+                        "properties": {
+                          "record": {
+                            "description": "Recorded metrics name.",
+                            "type": "string"
+                          },
+                          "alert": {
+                            "description": "Alert rule name.",
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Enable/disable rule."
+                          },
+                          "expression": {
+                            "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                            "type": "string"
+                          },
+                          "labels": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "Labels to add or overwrite before storing the result."
+                          },
+                          "severity": {
+                            "type": "integer",
+                            "format": "int32",
+                            "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+                          },
+                          "for": {
+                            "type": "string",
+                            "description": "The amount of time alert must be active before firing.",
+                            "format": "duration"
+                          },
+                          "annotations": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+                          },
+                          "actions": {
+                            "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "description": "An alert action. Only relevant for alerts.",
+                              "properties": {
+                                "actionGroupId": {
+                                  "type": "string",
+                                  "description": "The resource id of the action group to use."
+                                },
+                                "actionProperties": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "The properties of an action group object."
+                                }
+                              }
+                            },
+                            "x-ms-identifiers": []
+                          },
+                          "resolveConfiguration": {
+                            "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                            "type": "object",
+                            "properties": {
+                              "autoResolved": {
+                                "type": "boolean",
+                                "description": "Enable alert auto-resolution."
+                              },
+                              "timeToResolve": {
+                                "type": "string",
+                                "description": "Alert auto-resolution timeout.",
+                                "format": "duration"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "description": "Defines the rules in the Prometheus rule group.",
+                      "x-ms-identifiers": []
+                    }
+                  }
+                }
+              },
+              "description": "The Prometheus rule group resource."
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "PrometheusRuleGroups"
+        ],
+        "description": "Delete a Prometheus rule group definition.",
+        "operationId": "PrometheusRuleGroups_Delete",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "ruleGroupName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the rule group.",
+            "x-ms-parameter-location": "method",
+            "pattern": "^[^:@/#{}%&+*<>?]+$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful request to delete a Prometheus rule group"
+          },
+          "204": {
+            "description": "No content: the request was successful, but the response is empty"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "PrometheusRuleGroupResource": {
+      "type": "object",
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the resource",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+          "readOnly": true
+        },
+        "systemData": {
+          "type": "object",
+          "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+          "readOnly": true,
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ]
+        },
+        "location": {
+          "type": "string",
+          "description": "The geo-location where the resource lives",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "description": "The Prometheus rule group properties of the resource.",
+          "type": "object",
+          "required": [
+            "scopes",
+            "rules"
+          ],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Rule group description."
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable/disable rule group."
+            },
+            "clusterName": {
+              "type": "string",
+              "description": "Apply rule to data from a specific cluster."
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+            },
+            "interval": {
+              "type": "string",
+              "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+              "format": "duration"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "An Azure Prometheus alerting or recording rule.",
+                "required": [
+                  "expression"
+                ],
+                "properties": {
+                  "record": {
+                    "description": "Recorded metrics name.",
+                    "type": "string"
+                  },
+                  "alert": {
+                    "description": "Alert rule name.",
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable/disable rule."
+                  },
+                  "expression": {
+                    "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                    "type": "string"
+                  },
+                  "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "Labels to add or overwrite before storing the result."
+                  },
+                  "severity": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+                  },
+                  "for": {
+                    "type": "string",
+                    "description": "The amount of time alert must be active before firing.",
+                    "format": "duration"
+                  },
+                  "annotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+                  },
+                  "actions": {
+                    "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "description": "An alert action. Only relevant for alerts.",
+                      "properties": {
+                        "actionGroupId": {
+                          "type": "string",
+                          "description": "The resource id of the action group to use."
+                        },
+                        "actionProperties": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "description": "The properties of an action group object."
+                        }
+                      }
+                    },
+                    "x-ms-identifiers": []
+                  },
+                  "resolveConfiguration": {
+                    "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                    "type": "object",
+                    "properties": {
+                      "autoResolved": {
+                        "type": "boolean",
+                        "description": "Enable alert auto-resolution."
+                      },
+                      "timeToResolve": {
+                        "type": "string",
+                        "description": "Alert auto-resolution timeout.",
+                        "format": "duration"
+                      }
+                    }
+                  }
+                }
+              },
+              "description": "Defines the rules in the Prometheus rule group.",
+              "x-ms-identifiers": []
+            }
+          }
+        }
+      },
+      "description": "The Prometheus rule group resource."
+    },
+    "PrometheusRuleGroupResourcePatchParameters": {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Resource tags"
+        },
+        "properties": {
+          "type": "object",
+          "x-ms-client-flatten": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "the flag that indicates whether the Prometheus rule group is enabled."
+            }
+          }
+        }
+      },
+      "description": "The Prometheus rule group resource for patch operations."
+    },
+    "PrometheusRuleGroupResourceCollection": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "properties"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                "readOnly": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the resource",
+                "readOnly": true
+              },
+              "type": {
+                "type": "string",
+                "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                "readOnly": true
+              },
+              "systemData": {
+                "type": "object",
+                "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                "readOnly": true,
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              },
+              "tags": {
+                "type": "object",
+                "description": "Resource tags.",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "x-ms-mutability": [
+                  "read",
+                  "create",
+                  "update"
+                ]
+              },
+              "location": {
+                "type": "string",
+                "description": "The geo-location where the resource lives",
+                "x-ms-mutability": [
+                  "read",
+                  "create"
+                ]
+              },
+              "properties": {
+                "x-ms-client-flatten": true,
+                "description": "The Prometheus rule group properties of the resource.",
+                "type": "object",
+                "required": [
+                  "scopes",
+                  "rules"
+                ],
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "Rule group description."
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable/disable rule group."
+                  },
+                  "clusterName": {
+                    "type": "string",
+                    "description": "Apply rule to data from a specific cluster."
+                  },
+                  "scopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+                  },
+                  "interval": {
+                    "type": "string",
+                    "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+                    "format": "duration"
+                  },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "description": "An Azure Prometheus alerting or recording rule.",
+                      "required": [
+                        "expression"
+                      ],
+                      "properties": {
+                        "record": {
+                          "description": "Recorded metrics name.",
+                          "type": "string"
+                        },
+                        "alert": {
+                          "description": "Alert rule name.",
+                          "type": "string"
+                        },
+                        "enabled": {
+                          "type": "boolean",
+                          "description": "Enable/disable rule."
+                        },
+                        "expression": {
+                          "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                          "type": "string"
+                        },
+                        "labels": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "description": "Labels to add or overwrite before storing the result."
+                        },
+                        "severity": {
+                          "type": "integer",
+                          "format": "int32",
+                          "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+                        },
+                        "for": {
+                          "type": "string",
+                          "description": "The amount of time alert must be active before firing.",
+                          "format": "duration"
+                        },
+                        "annotations": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+                        },
+                        "actions": {
+                          "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "description": "An alert action. Only relevant for alerts.",
+                            "properties": {
+                              "actionGroupId": {
+                                "type": "string",
+                                "description": "The resource id of the action group to use."
+                              },
+                              "actionProperties": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                },
+                                "description": "The properties of an action group object."
+                              }
+                            }
+                          },
+                          "x-ms-identifiers": []
+                        },
+                        "resolveConfiguration": {
+                          "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                          "type": "object",
+                          "properties": {
+                            "autoResolved": {
+                              "type": "boolean",
+                              "description": "Enable alert auto-resolution."
+                            },
+                            "timeToResolve": {
+                              "type": "string",
+                              "description": "Alert auto-resolution timeout.",
+                              "format": "duration"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "description": "Defines the rules in the Prometheus rule group.",
+                    "x-ms-identifiers": []
+                  }
+                }
+              }
+            },
+            "description": "The Prometheus rule group resource."
+          },
+          "description": "the values for the alert rule resources."
+        }
+      },
+      "description": "Represents a collection of alert rule resources."
+    },
+    "PrometheusRuleGroupProperties": {
+      "description": "An Azure Prometheus rule group.",
+      "type": "object",
+      "required": [
+        "scopes",
+        "rules"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Rule group description."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable/disable rule group."
+        },
+        "clusterName": {
+          "type": "string",
+          "description": "Apply rule to data from a specific cluster."
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Target Azure Monitor workspaces resource ids. This api-version is currently limited to creating with one scope. This may change in future."
+        },
+        "interval": {
+          "type": "string",
+          "description": "The interval in which to run the Prometheus rule group represented in ISO 8601 duration format. Should be between 1 and 15 minutes",
+          "format": "duration"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "An Azure Prometheus alerting or recording rule.",
+            "required": [
+              "expression"
+            ],
+            "properties": {
+              "record": {
+                "description": "Recorded metrics name.",
+                "type": "string"
+              },
+              "alert": {
+                "description": "Alert rule name.",
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean",
+                "description": "Enable/disable rule."
+              },
+              "expression": {
+                "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+                "type": "string"
+              },
+              "labels": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Labels to add or overwrite before storing the result."
+              },
+              "severity": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+              },
+              "for": {
+                "type": "string",
+                "description": "The amount of time alert must be active before firing.",
+                "format": "duration"
+              },
+              "annotations": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+              },
+              "actions": {
+                "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "description": "An alert action. Only relevant for alerts.",
+                  "properties": {
+                    "actionGroupId": {
+                      "type": "string",
+                      "description": "The resource id of the action group to use."
+                    },
+                    "actionProperties": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "The properties of an action group object."
+                    }
+                  }
+                },
+                "x-ms-identifiers": []
+              },
+              "resolveConfiguration": {
+                "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+                "type": "object",
+                "properties": {
+                  "autoResolved": {
+                    "type": "boolean",
+                    "description": "Enable alert auto-resolution."
+                  },
+                  "timeToResolve": {
+                    "type": "string",
+                    "description": "Alert auto-resolution timeout.",
+                    "format": "duration"
+                  }
+                }
+              }
+            }
+          },
+          "description": "Defines the rules in the Prometheus rule group.",
+          "x-ms-identifiers": []
+        }
+      }
+    },
+    "PrometheusRule": {
+      "type": "object",
+      "description": "An Azure Prometheus alerting or recording rule.",
+      "required": [
+        "expression"
+      ],
+      "properties": {
+        "record": {
+          "description": "Recorded metrics name.",
+          "type": "string"
+        },
+        "alert": {
+          "description": "Alert rule name.",
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable/disable rule."
+        },
+        "expression": {
+          "description": "The PromQL expression to evaluate. https://prometheus.io/docs/prometheus/latest/querying/basics/. Evaluated periodically as given by 'interval', and the result recorded as a new set of time series with the metric name as given by 'record'.",
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Labels to add or overwrite before storing the result."
+        },
+        "severity": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The severity of the alerts fired by the rule. Must be between 0 and 4."
+        },
+        "for": {
+          "type": "string",
+          "description": "The amount of time alert must be active before firing.",
+          "format": "duration"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated."
+        },
+        "actions": {
+          "description": "Actions that are performed when the alert rule becomes active, and when an alert condition is resolved.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "An alert action. Only relevant for alerts.",
+            "properties": {
+              "actionGroupId": {
+                "type": "string",
+                "description": "The resource id of the action group to use."
+              },
+              "actionProperties": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "The properties of an action group object."
+              }
+            }
+          },
+          "x-ms-identifiers": []
+        },
+        "resolveConfiguration": {
+          "description": "Defines the configuration for resolving fired alerts. Only relevant for alerts.",
+          "type": "object",
+          "properties": {
+            "autoResolved": {
+              "type": "boolean",
+              "description": "Enable alert auto-resolution."
+            },
+            "timeToResolve": {
+              "type": "string",
+              "description": "Alert auto-resolution timeout.",
+              "format": "duration"
+            }
+          }
+        }
+      }
+    },
+    "PrometheusRuleGroupActions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "An alert action. Only relevant for alerts.",
+        "properties": {
+          "actionGroupId": {
+            "type": "string",
+            "description": "The resource id of the action group to use."
+          },
+          "actionProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The properties of an action group object."
+          }
+        }
+      },
+      "x-ms-identifiers": [],
+      "description": "The array of actions that are performed when the alert rule becomes active, and when an alert condition is resolved. Only relevant for alerts."
+    },
+    "PrometheusRuleGroupAction": {
+      "type": "object",
+      "description": "An alert action. Only relevant for alerts.",
+      "properties": {
+        "actionGroupId": {
+          "type": "string",
+          "description": "The resource id of the action group to use."
+        },
+        "actionProperties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The properties of an action group object."
+        }
+      }
+    },
+    "PrometheusRuleResolveConfiguration": {
+      "type": "object",
+      "description": "Specifies the Prometheus alert rule configuration.",
+      "properties": {
+        "autoResolved": {
+          "type": "boolean",
+          "description": "Enable alert auto-resolution."
+        },
+        "timeToResolve": {
+          "type": "string",
+          "description": "Alert auto-resolution timeout.",
+          "format": "duration"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "RuleGroupNameParameter": {
+      "name": "ruleGroupName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of the rule group.",
+      "x-ms-parameter-location": "method",
+      "pattern": "^[^:@/#{}%&+*<>?]+$"
+    }
+  }
+}

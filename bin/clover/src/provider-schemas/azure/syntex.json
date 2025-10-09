@@ -1,0 +1,1699 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Azure syntex",
+    "version": "2022-09-15-preview-preview",
+    "description": "Azure syntex service specifications"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/subscriptions/{subscriptionId}/providers/Microsoft.Syntex/documentProcessors": {
+      "get": {
+        "description": "Returns document processors in the subscription.",
+        "operationId": "DocumentProcessor_List",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document processor details.",
+            "schema": {
+              "type": "object",
+              "description": "Document processor list",
+              "properties": {
+                "value": {
+                  "description": "Array of document processors.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Document processor details",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": false,
+                        "description": "Document processor properties.",
+                        "type": "object",
+                        "properties": {
+                          "provisioningState": {
+                            "readOnly": true,
+                            "description": "The managed resource provisioning state.",
+                            "enum": [
+                              "Succeeded",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "type": "string",
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          },
+                          "spoTenantUrl": {
+                            "type": "string",
+                            "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                          },
+                          "spoTenantId": {
+                            "type": "string",
+                            "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                          }
+                        },
+                        "required": [
+                          "spoTenantUrl",
+                          "spoTenantId"
+                        ]
+                      }
+                    }
+                  },
+                  "readOnly": true
+                },
+                "nextLink": {
+                  "description": "Link to retrieve next page of results.",
+                  "type": "string",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Syntex/documentProcessors": {
+      "get": {
+        "description": "Returns document processors in a resource group.",
+        "operationId": "DocumentProcessor_ListByResourceGroup",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document processor details.",
+            "schema": {
+              "type": "object",
+              "description": "Document processor list",
+              "properties": {
+                "value": {
+                  "description": "Array of document processors.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Document processor details",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": false,
+                        "description": "Document processor properties.",
+                        "type": "object",
+                        "properties": {
+                          "provisioningState": {
+                            "readOnly": true,
+                            "description": "The managed resource provisioning state.",
+                            "enum": [
+                              "Succeeded",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "type": "string",
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          },
+                          "spoTenantUrl": {
+                            "type": "string",
+                            "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                          },
+                          "spoTenantId": {
+                            "type": "string",
+                            "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                          }
+                        },
+                        "required": [
+                          "spoTenantUrl",
+                          "spoTenantId"
+                        ]
+                      }
+                    }
+                  },
+                  "readOnly": true
+                },
+                "nextLink": {
+                  "description": "Link to retrieve next page of results.",
+                  "type": "string",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Syntex/documentProcessors/{processorName}": {
+      "get": {
+        "description": "Returns a document processor for a given name.",
+        "operationId": "DocumentProcessor_Get",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "processorName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of document processor resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document processor details.",
+            "schema": {
+              "type": "object",
+              "description": "Document processor details",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": false,
+                  "description": "Document processor properties.",
+                  "type": "object",
+                  "properties": {
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The managed resource provisioning state.",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "spoTenantUrl": {
+                      "type": "string",
+                      "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    },
+                    "spoTenantId": {
+                      "type": "string",
+                      "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    }
+                  },
+                  "required": [
+                    "spoTenantUrl",
+                    "spoTenantId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deletes document processor resource for a given name.",
+        "operationId": "DocumentProcessor_Delete",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "processorName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of document processor resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletes the document processor details."
+          },
+          "204": {
+            "description": "The document processor details are not present."
+          }
+        }
+      },
+      "put": {
+        "description": "Creates a document processor resource for a given name.",
+        "operationId": "DocumentProcessor_Create",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "processorName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of document processor resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "body",
+            "description": "Document processor details.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "description": "Document processor details",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": false,
+                  "description": "Document processor properties.",
+                  "type": "object",
+                  "properties": {
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The managed resource provisioning state.",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "spoTenantUrl": {
+                      "type": "string",
+                      "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    },
+                    "spoTenantId": {
+                      "type": "string",
+                      "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    }
+                  },
+                  "required": [
+                    "spoTenantUrl",
+                    "spoTenantId"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "description": "Document processor details",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": false,
+                  "description": "Document processor properties.",
+                  "type": "object",
+                  "properties": {
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The managed resource provisioning state.",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "spoTenantUrl": {
+                      "type": "string",
+                      "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    },
+                    "spoTenantId": {
+                      "type": "string",
+                      "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    }
+                  },
+                  "required": [
+                    "spoTenantUrl",
+                    "spoTenantId"
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "description": "Document processor details",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": false,
+                  "description": "Document processor properties.",
+                  "type": "object",
+                  "properties": {
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The managed resource provisioning state.",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "spoTenantUrl": {
+                      "type": "string",
+                      "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    },
+                    "spoTenantId": {
+                      "type": "string",
+                      "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    }
+                  },
+                  "required": [
+                    "spoTenantUrl",
+                    "spoTenantId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "description": "Updates a document processor resource for a given name.",
+        "operationId": "DocumentProcessor_Update",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "processorName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of document processor resource.",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "body",
+            "description": "Document processor details.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "description": "Document processor properties that can be updated",
+              "properties": {
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "properties": {
+                  "type": "object",
+                  "x-ms-client-flatten": true,
+                  "description": "Syntex properties for PATCH.",
+                  "properties": {
+                    "spoTenantUrl": {
+                      "type": "string",
+                      "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    },
+                    "spoTenantId": {
+                      "type": "string",
+                      "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "description": "Document processor details",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": false,
+                  "description": "Document processor properties.",
+                  "type": "object",
+                  "properties": {
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The managed resource provisioning state.",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "type": "string",
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "spoTenantUrl": {
+                      "type": "string",
+                      "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    },
+                    "spoTenantId": {
+                      "type": "string",
+                      "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                    }
+                  },
+                  "required": [
+                    "spoTenantUrl",
+                    "spoTenantId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/providers/Microsoft.Syntex/operations": {
+      "get": {
+        "operationId": "Operations_List",
+        "description": "List of all REST operations supported by the Microsoft.Syntex provider.",
+        "tags": [
+          "Operations"
+        ],
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Describes the result of a successful operation.",
+            "schema": {
+              "type": "object",
+              "description": "A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "List of operations supported by the resource provider",
+                  "items": {
+                    "type": "object",
+                    "title": "REST API Operation",
+                    "description": "Details of a REST API operation, returned from the Resource Provider Operations API",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the operation, as per Resource-Based Access Control (RBAC). Examples: \"Microsoft.Compute/virtualMachines/write\", \"Microsoft.Compute/virtualMachines/capture/action\"",
+                        "readOnly": true
+                      },
+                      "isDataAction": {
+                        "type": "boolean",
+                        "description": "Whether the operation applies to data-plane. This is \"true\" for data-plane operations and \"false\" for ARM/control-plane operations.",
+                        "readOnly": true
+                      },
+                      "display": {
+                        "type": "object",
+                        "description": "Localized display information for this particular operation.",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "description": "The localized friendly form of the resource provider name, e.g. \"Microsoft Monitoring Insights\" or \"Microsoft Compute\".",
+                            "readOnly": true
+                          },
+                          "resource": {
+                            "type": "string",
+                            "description": "The localized friendly name of the resource type related to this operation. E.g. \"Virtual Machines\" or \"Job Schedule Collections\".",
+                            "readOnly": true
+                          },
+                          "operation": {
+                            "type": "string",
+                            "description": "The concise, localized friendly name for the operation; suitable for dropdowns. E.g. \"Create or Update Virtual Machine\", \"Restart Virtual Machine\".",
+                            "readOnly": true
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "The short, localized friendly description of the operation; suitable for tool tips and detailed views.",
+                            "readOnly": true
+                          }
+                        }
+                      },
+                      "origin": {
+                        "type": "string",
+                        "description": "The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default value is \"user,system\"",
+                        "enum": [
+                          "user",
+                          "system",
+                          "user,system"
+                        ],
+                        "x-ms-enum": {
+                          "name": "Origin",
+                          "modelAsString": true
+                        },
+                        "readOnly": true
+                      },
+                      "actionType": {
+                        "type": "string",
+                        "description": "Enum. Indicates the action type. \"Internal\" refers to actions that are for internal only APIs.",
+                        "enum": [
+                          "Internal"
+                        ],
+                        "x-ms-enum": {
+                          "name": "ActionType",
+                          "modelAsString": true
+                        },
+                        "readOnly": true
+                      }
+                    }
+                  },
+                  "readOnly": true,
+                  "x-ms-identifiers": [
+                    "name"
+                  ]
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "URL to get the next set of operation list results (if there are any).",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "DocumentProcessorResource": {
+      "type": "object",
+      "description": "Document processor details",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the resource",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+          "readOnly": true
+        },
+        "systemData": {
+          "type": "object",
+          "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+          "readOnly": true,
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ]
+        },
+        "location": {
+          "type": "string",
+          "description": "The geo-location where the resource lives",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "properties": {
+          "x-ms-client-flatten": false,
+          "description": "Document processor properties.",
+          "type": "object",
+          "properties": {
+            "provisioningState": {
+              "readOnly": true,
+              "description": "The managed resource provisioning state.",
+              "enum": [
+                "Succeeded",
+                "Failed",
+                "Canceled"
+              ],
+              "type": "string",
+              "x-ms-enum": {
+                "name": "ProvisioningState",
+                "modelAsString": true
+              }
+            },
+            "spoTenantUrl": {
+              "type": "string",
+              "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+            },
+            "spoTenantId": {
+              "type": "string",
+              "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+            }
+          },
+          "required": [
+            "spoTenantUrl",
+            "spoTenantId"
+          ]
+        }
+      }
+    },
+    "DocumentProcessorPatchableProperties": {
+      "type": "object",
+      "description": "Document processor properties that can be updated",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "type": "object",
+          "x-ms-client-flatten": true,
+          "description": "Syntex properties for PATCH.",
+          "properties": {
+            "spoTenantUrl": {
+              "type": "string",
+              "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+            },
+            "spoTenantId": {
+              "type": "string",
+              "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+            }
+          }
+        }
+      }
+    },
+    "DocumentProcessorProperties": {
+      "type": "object",
+      "description": "Document processor properties",
+      "properties": {
+        "provisioningState": {
+          "readOnly": true,
+          "description": "The managed resource provisioning state.",
+          "enum": [
+            "Succeeded",
+            "Failed",
+            "Canceled"
+          ],
+          "type": "string",
+          "x-ms-enum": {
+            "name": "ProvisioningState",
+            "modelAsString": true
+          }
+        },
+        "spoTenantUrl": {
+          "type": "string",
+          "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+        },
+        "spoTenantId": {
+          "type": "string",
+          "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+        }
+      },
+      "required": [
+        "spoTenantUrl",
+        "spoTenantId"
+      ]
+    },
+    "ProvisioningState": {
+      "description": "Provisioning status of the managed resource.",
+      "readOnly": true,
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled"
+      ],
+      "type": "string",
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true
+      }
+    },
+    "DocumentProcessorList": {
+      "type": "object",
+      "description": "Document processor list",
+      "properties": {
+        "value": {
+          "description": "Array of document processors.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Document processor details",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                "readOnly": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the resource",
+                "readOnly": true
+              },
+              "type": {
+                "type": "string",
+                "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                "readOnly": true
+              },
+              "systemData": {
+                "type": "object",
+                "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                "readOnly": true,
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              },
+              "tags": {
+                "type": "object",
+                "description": "Resource tags.",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "x-ms-mutability": [
+                  "read",
+                  "create",
+                  "update"
+                ]
+              },
+              "location": {
+                "type": "string",
+                "description": "The geo-location where the resource lives",
+                "x-ms-mutability": [
+                  "read",
+                  "create"
+                ]
+              },
+              "properties": {
+                "x-ms-client-flatten": false,
+                "description": "Document processor properties.",
+                "type": "object",
+                "properties": {
+                  "provisioningState": {
+                    "readOnly": true,
+                    "description": "The managed resource provisioning state.",
+                    "enum": [
+                      "Succeeded",
+                      "Failed",
+                      "Canceled"
+                    ],
+                    "type": "string",
+                    "x-ms-enum": {
+                      "name": "ProvisioningState",
+                      "modelAsString": true
+                    }
+                  },
+                  "spoTenantUrl": {
+                    "type": "string",
+                    "description": "The URL of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                  },
+                  "spoTenantId": {
+                    "type": "string",
+                    "description": "The ID (GUID) of an SharePoint Online (SPO) tenant associated with this document processor resource"
+                  }
+                },
+                "required": [
+                  "spoTenantUrl",
+                  "spoTenantId"
+                ]
+              }
+            }
+          },
+          "readOnly": true
+        },
+        "nextLink": {
+          "description": "Link to retrieve next page of results.",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    }
+  },
+  "parameters": {
+    "ProcessorNameParameter": {
+      "name": "processorName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of document processor resource.",
+      "x-ms-parameter-location": "method"
+    }
+  }
+}
