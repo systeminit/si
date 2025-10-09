@@ -1,0 +1,4106 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Azure hybridcloud",
+    "version": "2023-01-01-preview-preview",
+    "description": "Azure hybridcloud service specifications"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/providers/Microsoft.HybridCloud/operations": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "description": "Lists all of the available HybridCloud Rest API operations.",
+        "operationId": "HybridCloud_ListOperations",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK. The request has succeeded.",
+            "schema": {
+              "type": "object",
+              "description": "A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "List of operations supported by the resource provider",
+                  "items": {
+                    "type": "object",
+                    "title": "REST API Operation",
+                    "description": "Details of a REST API operation, returned from the Resource Provider Operations API",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the operation, as per Resource-Based Access Control (RBAC). Examples: \"Microsoft.Compute/virtualMachines/write\", \"Microsoft.Compute/virtualMachines/capture/action\"",
+                        "readOnly": true
+                      },
+                      "isDataAction": {
+                        "type": "boolean",
+                        "description": "Whether the operation applies to data-plane. This is \"true\" for data-plane operations and \"false\" for ARM/control-plane operations.",
+                        "readOnly": true
+                      },
+                      "display": {
+                        "type": "object",
+                        "description": "Localized display information for this particular operation.",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "description": "The localized friendly form of the resource provider name, e.g. \"Microsoft Monitoring Insights\" or \"Microsoft Compute\".",
+                            "readOnly": true
+                          },
+                          "resource": {
+                            "type": "string",
+                            "description": "The localized friendly name of the resource type related to this operation. E.g. \"Virtual Machines\" or \"Job Schedule Collections\".",
+                            "readOnly": true
+                          },
+                          "operation": {
+                            "type": "string",
+                            "description": "The concise, localized friendly name for the operation; suitable for dropdowns. E.g. \"Create or Update Virtual Machine\", \"Restart Virtual Machine\".",
+                            "readOnly": true
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "The short, localized friendly description of the operation; suitable for tool tips and detailed views.",
+                            "readOnly": true
+                          }
+                        }
+                      },
+                      "origin": {
+                        "type": "string",
+                        "description": "The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default value is \"user,system\"",
+                        "enum": [
+                          "user",
+                          "system",
+                          "user,system"
+                        ],
+                        "x-ms-enum": {
+                          "name": "Origin",
+                          "modelAsString": true
+                        },
+                        "readOnly": true
+                      },
+                      "actionType": {
+                        "type": "string",
+                        "description": "Enum. Indicates the action type. \"Internal\" refers to actions that are for internal only APIs.",
+                        "enum": [
+                          "Internal"
+                        ],
+                        "x-ms-enum": {
+                          "name": "ActionType",
+                          "modelAsString": true
+                        },
+                        "readOnly": true
+                      }
+                    }
+                  },
+                  "readOnly": true,
+                  "x-ms-identifiers": [
+                    "name"
+                  ]
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "URL to get the next set of operation list results (if there are any).",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Microsoft.HybridCloud/cloudConnectors": {
+      "get": {
+        "tags": [
+          "CloudConnectors"
+        ],
+        "description": "Return list of cloud connectors in a subscription.",
+        "operationId": "CloudConnectors_ListBySubscription",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successful. The operation returns a list of cloud connector resources.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "x-ms-azure-resource": true,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": true,
+                        "description": "Properties of the cloud connector.",
+                        "type": "object",
+                        "properties": {
+                          "accountId": {
+                            "type": "string",
+                            "description": "Account identifier of the remote cloud."
+                          },
+                          "cloudType": {
+                            "type": "string",
+                            "description": "The cloud connector type.",
+                            "enum": [
+                              "AWS"
+                            ],
+                            "x-ms-enum": {
+                              "name": "cloudType",
+                              "modelAsString": true
+                            }
+                          },
+                          "provisioningState": {
+                            "readOnly": true,
+                            "description": "The provisioning state of the cloud connector resource.",
+                            "type": "string",
+                            "enum": [
+                              "Succeeded",
+                              "Updating",
+                              "Deleting",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          }
+                        }
+                      },
+                      "etag": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "A unique read-only string that changes whenever the resource is updated."
+                      }
+                    },
+                    "description": "Cloud Connector resource."
+                  },
+                  "x-ms-identifiers": [
+                    "id"
+                  ],
+                  "description": "A list of cloud connector resources."
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "Link to hold the next page of results"
+                }
+              },
+              "description": "Response for the ListCloudConnectors API service call"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.HybridCloud/cloudConnectors": {
+      "get": {
+        "tags": [
+          "CloudConnectors"
+        ],
+        "description": "Return list of cloud connectors in a resource group.",
+        "operationId": "CloudConnectors_ListByResourceGroup",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successful. The operation returns a list of cloud connectors resources.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "x-ms-azure-resource": true,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": true,
+                        "description": "Properties of the cloud connector.",
+                        "type": "object",
+                        "properties": {
+                          "accountId": {
+                            "type": "string",
+                            "description": "Account identifier of the remote cloud."
+                          },
+                          "cloudType": {
+                            "type": "string",
+                            "description": "The cloud connector type.",
+                            "enum": [
+                              "AWS"
+                            ],
+                            "x-ms-enum": {
+                              "name": "cloudType",
+                              "modelAsString": true
+                            }
+                          },
+                          "provisioningState": {
+                            "readOnly": true,
+                            "description": "The provisioning state of the cloud connector resource.",
+                            "type": "string",
+                            "enum": [
+                              "Succeeded",
+                              "Updating",
+                              "Deleting",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          }
+                        }
+                      },
+                      "etag": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "A unique read-only string that changes whenever the resource is updated."
+                      }
+                    },
+                    "description": "Cloud Connector resource."
+                  },
+                  "x-ms-identifiers": [
+                    "id"
+                  ],
+                  "description": "A list of cloud connector resources."
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "Link to hold the next page of results"
+                }
+              },
+              "description": "Response for the ListCloudConnectors API service call"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.HybridCloud/cloudConnectors/{cloudConnectorName}": {
+      "get": {
+        "tags": [
+          "CloudConnectors"
+        ],
+        "operationId": "CloudConnectors_Get",
+        "description": "Gets the specified cloud connector in a specified resource group.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "cloudConnectorName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the cloud connector resource",
+            "pattern": "^[A-Za-z0-9]*$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successful. The operation returns the resulting cloud connector resource.",
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connector.",
+                  "type": "object",
+                  "properties": {
+                    "accountId": {
+                      "type": "string",
+                      "description": "Account identifier of the remote cloud."
+                    },
+                    "cloudType": {
+                      "type": "string",
+                      "description": "The cloud connector type.",
+                      "enum": [
+                        "AWS"
+                      ],
+                      "x-ms-enum": {
+                        "name": "cloudType",
+                        "modelAsString": true
+                      }
+                    },
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The provisioning state of the cloud connector resource.",
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              },
+              "description": "Cloud Connector resource."
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CloudConnectors"
+        ],
+        "description": "Creates or updates a cloud connector resource.",
+        "operationId": "CloudConnectors_CreateOrUpdate",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "cloudConnectorName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the cloud connector resource",
+            "pattern": "^[A-Za-z0-9]*$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "x-ms-client-flatten": true,
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connector.",
+                  "type": "object",
+                  "properties": {
+                    "accountId": {
+                      "type": "string",
+                      "description": "Account identifier of the remote cloud."
+                    },
+                    "cloudType": {
+                      "type": "string",
+                      "description": "The cloud connector type.",
+                      "enum": [
+                        "AWS"
+                      ],
+                      "x-ms-enum": {
+                        "name": "cloudType",
+                        "modelAsString": true
+                      }
+                    },
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The provisioning state of the cloud connector resource.",
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              },
+              "description": "Cloud Connector resource."
+            },
+            "description": "The parameters to provide for the created cloud connector resource."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Update successful. The operation returns the resulting cloud connector resource.",
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connector.",
+                  "type": "object",
+                  "properties": {
+                    "accountId": {
+                      "type": "string",
+                      "description": "Account identifier of the remote cloud."
+                    },
+                    "cloudType": {
+                      "type": "string",
+                      "description": "The cloud connector type.",
+                      "enum": [
+                        "AWS"
+                      ],
+                      "x-ms-enum": {
+                        "name": "cloudType",
+                        "modelAsString": true
+                      }
+                    },
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The provisioning state of the cloud connector resource.",
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              },
+              "description": "Cloud Connector resource."
+            }
+          },
+          "201": {
+            "description": "Create successful. The operation returns the resulting cloud connector resource.",
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connector.",
+                  "type": "object",
+                  "properties": {
+                    "accountId": {
+                      "type": "string",
+                      "description": "Account identifier of the remote cloud."
+                    },
+                    "cloudType": {
+                      "type": "string",
+                      "description": "The cloud connector type.",
+                      "enum": [
+                        "AWS"
+                      ],
+                      "x-ms-enum": {
+                        "name": "cloudType",
+                        "modelAsString": true
+                      }
+                    },
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The provisioning state of the cloud connector resource.",
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              },
+              "description": "Cloud Connector resource."
+            },
+            "headers": {
+              "Azure-AsyncOperation": {
+                "description": "URI to poll for the operation status.",
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CloudConnectors"
+        ],
+        "operationId": "CloudConnectors_Delete",
+        "description": "Deletes a specified cloud connector resource.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "cloudConnectorName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the cloud connector resource",
+            "pattern": "^[A-Za-z0-9]*$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delete successful."
+          },
+          "202": {
+            "description": "Accepted and the operation will complete asynchronously.",
+            "headers": {
+              "Location": {
+                "type": "string"
+              }
+            }
+          },
+          "204": {
+            "description": "Request successful. Resource does not exist."
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "CloudConnectors"
+        ],
+        "operationId": "CloudConnectors_UpdateTags",
+        "description": "Updates the specified cloud connector tags.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "cloudConnectorName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the cloud connector resource",
+            "pattern": "^[A-Za-z0-9]*$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Resource tags."
+                }
+              },
+              "description": "Tags object for patch operations."
+            },
+            "description": "Parameters supplied to update cloud connector tags."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Update successful. The operation returns the resulting cloud connector resource.",
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connector.",
+                  "type": "object",
+                  "properties": {
+                    "accountId": {
+                      "type": "string",
+                      "description": "Account identifier of the remote cloud."
+                    },
+                    "cloudType": {
+                      "type": "string",
+                      "description": "The cloud connector type.",
+                      "enum": [
+                        "AWS"
+                      ],
+                      "x-ms-enum": {
+                        "name": "cloudType",
+                        "modelAsString": true
+                      }
+                    },
+                    "provisioningState": {
+                      "readOnly": true,
+                      "description": "The provisioning state of the cloud connector resource.",
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              },
+              "description": "Cloud Connector resource."
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.HybridCloud/cloudConnectors/{cloudConnectorName}/discoverResources": {
+      "post": {
+        "tags": [
+          "CloudConnectors"
+        ],
+        "operationId": "CloudConnectors_DiscoverResources",
+        "description": "Returns a list of discovered remote cloud resources via this cloud connector resource.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "cloudConnectorName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the cloud connector resource",
+            "pattern": "^[A-Za-z0-9]*$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get successful. The operation returns a list of discovered remote cloud resources via this cloud connector resource.",
+            "schema": {
+              "type": "object",
+              "description": "API to discover resources in remote cloud referred by the connector.",
+              "properties": {
+                "resourceFilter": {
+                  "x-ms-client-flatten": true,
+                  "description": "Remote cloud resource filter.",
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Remote Resource name to filter on."
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Remote Resource type to filter on."
+                    },
+                    "region": {
+                      "type": "string",
+                      "description": "Remote Resource location/region to filter on."
+                    },
+                    "tag": {
+                      "type": "string",
+                      "description": "Remote Resource tags to filter on in key:value format."
+                    }
+                  }
+                },
+                "discoveredResources": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Remote cloud resource identifier",
+                        "readOnly": true
+                      },
+                      "bodyContentType": {
+                        "type": "string",
+                        "description": "Content type of the cloud resource body.",
+                        "readOnly": true,
+                        "enum": [
+                          "Xml",
+                          "Json"
+                        ],
+                        "x-ms-enum": {
+                          "name": "bodyContentType",
+                          "modelAsString": true
+                        }
+                      },
+                      "body": {
+                        "type": "string",
+                        "description": "Properties of the remote cloud resource.",
+                        "readOnly": true
+                      }
+                    },
+                    "description": "Discovered Resource properties."
+                  },
+                  "x-ms-identifiers": [
+                    "id"
+                  ],
+                  "description": "List of discovered remote cloud resources."
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted and the operation discover will complete asynchronously.",
+            "headers": {
+              "Location": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Microsoft.HybridCloud/cloudConnections": {
+      "get": {
+        "tags": [
+          "CloudConnections"
+        ],
+        "description": "Return list of cloud connections in a subscription.",
+        "operationId": "CloudConnections_ListBySubscription",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successful. The operation returns a list of cloud connection resources.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "x-ms-azure-resource": true,
+                    "description": "Resource which represents the managed network connection between Azure Gateways and remote cloud gateways.",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": true,
+                        "description": "Properties of the cloud connection.",
+                        "type": "object",
+                        "properties": {
+                          "cloudConnector": {
+                            "description": "The cloud connector which discovered the remote resource.",
+                            "x-ms-mutability": [
+                              "create",
+                              "read"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Resource ID."
+                              }
+                            }
+                          },
+                          "remoteResourceId": {
+                            "type": "string",
+                            "description": "Identifier for the remote cloud resource",
+                            "x-ms-mutability": [
+                              "create",
+                              "read"
+                            ]
+                          },
+                          "virtualHub": {
+                            "description": "The virtualHub to which the cloud connection belongs.",
+                            "x-ms-mutability": [
+                              "create",
+                              "read"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Resource ID."
+                              }
+                            }
+                          },
+                          "sharedKey": {
+                            "type": "string",
+                            "description": "Shared key of the cloud connection.",
+                            "x-ms-secret": true
+                          },
+                          "provisioningState": {
+                            "description": "The provisioning state of the cloud collection resource.",
+                            "readOnly": true,
+                            "type": "string",
+                            "enum": [
+                              "Succeeded",
+                              "Updating",
+                              "Deleting",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          }
+                        }
+                      },
+                      "etag": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "A unique read-only string that changes whenever the resource is updated."
+                      }
+                    }
+                  },
+                  "description": "A list of cloud connection resources."
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "Link to hold the next page of results"
+                }
+              },
+              "description": "Response for the ListCloudConnections API service call"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.HybridCloud/cloudConnections": {
+      "get": {
+        "tags": [
+          "CloudConnections"
+        ],
+        "description": "Return list of cloud connections in a resource group.",
+        "operationId": "CloudConnections_ListByResourceGroup",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successful. The operation returns a list of cloud connections resources.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "x-ms-azure-resource": true,
+                    "description": "Resource which represents the managed network connection between Azure Gateways and remote cloud gateways.",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "type": "object",
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "tags": {
+                        "type": "object",
+                        "description": "Resource tags.",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "x-ms-mutability": [
+                          "read",
+                          "create",
+                          "update"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "The geo-location where the resource lives",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": true,
+                        "description": "Properties of the cloud connection.",
+                        "type": "object",
+                        "properties": {
+                          "cloudConnector": {
+                            "description": "The cloud connector which discovered the remote resource.",
+                            "x-ms-mutability": [
+                              "create",
+                              "read"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Resource ID."
+                              }
+                            }
+                          },
+                          "remoteResourceId": {
+                            "type": "string",
+                            "description": "Identifier for the remote cloud resource",
+                            "x-ms-mutability": [
+                              "create",
+                              "read"
+                            ]
+                          },
+                          "virtualHub": {
+                            "description": "The virtualHub to which the cloud connection belongs.",
+                            "x-ms-mutability": [
+                              "create",
+                              "read"
+                            ],
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Resource ID."
+                              }
+                            }
+                          },
+                          "sharedKey": {
+                            "type": "string",
+                            "description": "Shared key of the cloud connection.",
+                            "x-ms-secret": true
+                          },
+                          "provisioningState": {
+                            "description": "The provisioning state of the cloud collection resource.",
+                            "readOnly": true,
+                            "type": "string",
+                            "enum": [
+                              "Succeeded",
+                              "Updating",
+                              "Deleting",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          }
+                        }
+                      },
+                      "etag": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "A unique read-only string that changes whenever the resource is updated."
+                      }
+                    }
+                  },
+                  "description": "A list of cloud connection resources."
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "Link to hold the next page of results"
+                }
+              },
+              "description": "Response for the ListCloudConnections API service call"
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.HybridCloud/cloudConnections/{cloudConnectionName}": {
+      "get": {
+        "tags": [
+          "CloudConnections"
+        ],
+        "operationId": "CloudConnections_Get",
+        "description": "Gets the specified cloud connection in a specified resource group.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "cloudConnectionName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the cloud connection resource",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successful. The operation returns the resulting cloud connection resource.",
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "description": "Resource which represents the managed network connection between Azure Gateways and remote cloud gateways.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connection.",
+                  "type": "object",
+                  "properties": {
+                    "cloudConnector": {
+                      "description": "The cloud connector which discovered the remote resource.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "remoteResourceId": {
+                      "type": "string",
+                      "description": "Identifier for the remote cloud resource",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ]
+                    },
+                    "virtualHub": {
+                      "description": "The virtualHub to which the cloud connection belongs.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "sharedKey": {
+                      "type": "string",
+                      "description": "Shared key of the cloud connection.",
+                      "x-ms-secret": true
+                    },
+                    "provisioningState": {
+                      "description": "The provisioning state of the cloud collection resource.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CloudConnections"
+        ],
+        "description": "Creates or updates a cloud connection resource",
+        "operationId": "CloudConnections_CreateOrUpdate",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "cloudConnectionName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the cloud connection resource",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "x-ms-client-flatten": true,
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "description": "Resource which represents the managed network connection between Azure Gateways and remote cloud gateways.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connection.",
+                  "type": "object",
+                  "properties": {
+                    "cloudConnector": {
+                      "description": "The cloud connector which discovered the remote resource.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "remoteResourceId": {
+                      "type": "string",
+                      "description": "Identifier for the remote cloud resource",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ]
+                    },
+                    "virtualHub": {
+                      "description": "The virtualHub to which the cloud connection belongs.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "sharedKey": {
+                      "type": "string",
+                      "description": "Shared key of the cloud connection.",
+                      "x-ms-secret": true
+                    },
+                    "provisioningState": {
+                      "description": "The provisioning state of the cloud collection resource.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              }
+            },
+            "description": "The parameters to provide for the created cloud connection."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Update successful. The operation returns the resulting cloud connection resource.",
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "description": "Resource which represents the managed network connection between Azure Gateways and remote cloud gateways.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connection.",
+                  "type": "object",
+                  "properties": {
+                    "cloudConnector": {
+                      "description": "The cloud connector which discovered the remote resource.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "remoteResourceId": {
+                      "type": "string",
+                      "description": "Identifier for the remote cloud resource",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ]
+                    },
+                    "virtualHub": {
+                      "description": "The virtualHub to which the cloud connection belongs.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "sharedKey": {
+                      "type": "string",
+                      "description": "Shared key of the cloud connection.",
+                      "x-ms-secret": true
+                    },
+                    "provisioningState": {
+                      "description": "The provisioning state of the cloud collection resource.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Create successful. The operation returns the resulting cloud connection resource.",
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "description": "Resource which represents the managed network connection between Azure Gateways and remote cloud gateways.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connection.",
+                  "type": "object",
+                  "properties": {
+                    "cloudConnector": {
+                      "description": "The cloud connector which discovered the remote resource.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "remoteResourceId": {
+                      "type": "string",
+                      "description": "Identifier for the remote cloud resource",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ]
+                    },
+                    "virtualHub": {
+                      "description": "The virtualHub to which the cloud connection belongs.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "sharedKey": {
+                      "type": "string",
+                      "description": "Shared key of the cloud connection.",
+                      "x-ms-secret": true
+                    },
+                    "provisioningState": {
+                      "description": "The provisioning state of the cloud collection resource.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              }
+            },
+            "headers": {
+              "Azure-AsyncOperation": {
+                "description": "URI to poll for the operation status",
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CloudConnections"
+        ],
+        "operationId": "CloudConnections_Delete",
+        "description": "Deletes a specified cloud connection resource.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "cloudConnectionName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the cloud connection resource",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delete successful."
+          },
+          "202": {
+            "description": "Accepted and the operation will complete asynchronously.",
+            "headers": {
+              "Location": {
+                "type": "string"
+              }
+            }
+          },
+          "204": {
+            "description": "Request successful. Resource does not exist."
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "CloudConnections"
+        ],
+        "operationId": "CloudConnections_UpdateTags",
+        "description": "Updates the specified cloud connection tags.",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "cloudConnectionName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the cloud connection resource",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to use for this operation.",
+            "minLength": 1,
+            "enum": [
+              "2023-01-01-preview"
+            ],
+            "default": "2023-01-01-preview",
+            "x-ms-enum": {
+              "name": "apiVersionParameter",
+              "modelAsString": true
+            },
+            "x-ms-parameter-location": "client"
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Resource tags."
+                }
+              },
+              "description": "Tags object for patch operations."
+            },
+            "description": "Parameters supplied to update cloud connection tags."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Update successful. The operation returns the resulting cloud connection resource.",
+            "schema": {
+              "type": "object",
+              "x-ms-azure-resource": true,
+              "description": "Resource which represents the managed network connection between Azure Gateways and remote cloud gateways.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "type": "object",
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "object",
+                  "description": "Resource tags.",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "x-ms-mutability": [
+                    "read",
+                    "create",
+                    "update"
+                  ]
+                },
+                "location": {
+                  "type": "string",
+                  "description": "The geo-location where the resource lives",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Properties of the cloud connection.",
+                  "type": "object",
+                  "properties": {
+                    "cloudConnector": {
+                      "description": "The cloud connector which discovered the remote resource.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "remoteResourceId": {
+                      "type": "string",
+                      "description": "Identifier for the remote cloud resource",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ]
+                    },
+                    "virtualHub": {
+                      "description": "The virtualHub to which the cloud connection belongs.",
+                      "x-ms-mutability": [
+                        "create",
+                        "read"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Resource ID."
+                        }
+                      }
+                    },
+                    "sharedKey": {
+                      "type": "string",
+                      "description": "Shared key of the cloud connection.",
+                      "x-ms-secret": true
+                    },
+                    "provisioningState": {
+                      "description": "The provisioning state of the cloud collection resource.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Updating",
+                        "Deleting",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "etag": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "A unique read-only string that changes whenever the resource is updated."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "TagsObject": {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Resource tags."
+        }
+      },
+      "description": "Tags object for patch operations."
+    },
+    "CloudConnectorListResult": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-ms-azure-resource": true,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                "readOnly": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the resource",
+                "readOnly": true
+              },
+              "type": {
+                "type": "string",
+                "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                "readOnly": true
+              },
+              "systemData": {
+                "type": "object",
+                "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                "readOnly": true,
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              },
+              "tags": {
+                "type": "object",
+                "description": "Resource tags.",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "x-ms-mutability": [
+                  "read",
+                  "create",
+                  "update"
+                ]
+              },
+              "location": {
+                "type": "string",
+                "description": "The geo-location where the resource lives",
+                "x-ms-mutability": [
+                  "read",
+                  "create"
+                ]
+              },
+              "properties": {
+                "x-ms-client-flatten": true,
+                "description": "Properties of the cloud connector.",
+                "type": "object",
+                "properties": {
+                  "accountId": {
+                    "type": "string",
+                    "description": "Account identifier of the remote cloud."
+                  },
+                  "cloudType": {
+                    "type": "string",
+                    "description": "The cloud connector type.",
+                    "enum": [
+                      "AWS"
+                    ],
+                    "x-ms-enum": {
+                      "name": "cloudType",
+                      "modelAsString": true
+                    }
+                  },
+                  "provisioningState": {
+                    "readOnly": true,
+                    "description": "The provisioning state of the cloud connector resource.",
+                    "type": "string",
+                    "enum": [
+                      "Succeeded",
+                      "Updating",
+                      "Deleting",
+                      "Failed",
+                      "Canceled"
+                    ],
+                    "x-ms-enum": {
+                      "name": "ProvisioningState",
+                      "modelAsString": true
+                    }
+                  }
+                }
+              },
+              "etag": {
+                "type": "string",
+                "readOnly": true,
+                "description": "A unique read-only string that changes whenever the resource is updated."
+              }
+            },
+            "description": "Cloud Connector resource."
+          },
+          "x-ms-identifiers": [
+            "id"
+          ],
+          "description": "A list of cloud connector resources."
+        },
+        "nextLink": {
+          "type": "string",
+          "description": "Link to hold the next page of results"
+        }
+      },
+      "description": "Response for the ListCloudConnectors API service call"
+    },
+    "CloudConnectorProperties": {
+      "type": "object",
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "description": "Account identifier of the remote cloud."
+        },
+        "cloudType": {
+          "type": "string",
+          "description": "The cloud connector type.",
+          "enum": [
+            "AWS"
+          ],
+          "x-ms-enum": {
+            "name": "cloudType",
+            "modelAsString": true
+          }
+        },
+        "provisioningState": {
+          "readOnly": true,
+          "description": "The provisioning state of the cloud connector resource.",
+          "type": "string",
+          "enum": [
+            "Succeeded",
+            "Updating",
+            "Deleting",
+            "Failed",
+            "Canceled"
+          ],
+          "x-ms-enum": {
+            "name": "ProvisioningState",
+            "modelAsString": true
+          }
+        }
+      },
+      "description": "Cloud connector resource properties."
+    },
+    "CloudConnector": {
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the resource",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+          "readOnly": true
+        },
+        "systemData": {
+          "type": "object",
+          "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+          "readOnly": true,
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ]
+        },
+        "location": {
+          "type": "string",
+          "description": "The geo-location where the resource lives",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "description": "Properties of the cloud connector.",
+          "type": "object",
+          "properties": {
+            "accountId": {
+              "type": "string",
+              "description": "Account identifier of the remote cloud."
+            },
+            "cloudType": {
+              "type": "string",
+              "description": "The cloud connector type.",
+              "enum": [
+                "AWS"
+              ],
+              "x-ms-enum": {
+                "name": "cloudType",
+                "modelAsString": true
+              }
+            },
+            "provisioningState": {
+              "readOnly": true,
+              "description": "The provisioning state of the cloud connector resource.",
+              "type": "string",
+              "enum": [
+                "Succeeded",
+                "Updating",
+                "Deleting",
+                "Failed",
+                "Canceled"
+              ],
+              "x-ms-enum": {
+                "name": "ProvisioningState",
+                "modelAsString": true
+              }
+            }
+          }
+        },
+        "etag": {
+          "type": "string",
+          "readOnly": true,
+          "description": "A unique read-only string that changes whenever the resource is updated."
+        }
+      },
+      "description": "Cloud Connector resource."
+    },
+    "CloudConnectionListResult": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-ms-azure-resource": true,
+            "description": "Resource which represents the managed network connection between Azure Gateways and remote cloud gateways.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                "readOnly": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the resource",
+                "readOnly": true
+              },
+              "type": {
+                "type": "string",
+                "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                "readOnly": true
+              },
+              "systemData": {
+                "type": "object",
+                "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                "readOnly": true,
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              },
+              "tags": {
+                "type": "object",
+                "description": "Resource tags.",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "x-ms-mutability": [
+                  "read",
+                  "create",
+                  "update"
+                ]
+              },
+              "location": {
+                "type": "string",
+                "description": "The geo-location where the resource lives",
+                "x-ms-mutability": [
+                  "read",
+                  "create"
+                ]
+              },
+              "properties": {
+                "x-ms-client-flatten": true,
+                "description": "Properties of the cloud connection.",
+                "type": "object",
+                "properties": {
+                  "cloudConnector": {
+                    "description": "The cloud connector which discovered the remote resource.",
+                    "x-ms-mutability": [
+                      "create",
+                      "read"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Resource ID."
+                      }
+                    }
+                  },
+                  "remoteResourceId": {
+                    "type": "string",
+                    "description": "Identifier for the remote cloud resource",
+                    "x-ms-mutability": [
+                      "create",
+                      "read"
+                    ]
+                  },
+                  "virtualHub": {
+                    "description": "The virtualHub to which the cloud connection belongs.",
+                    "x-ms-mutability": [
+                      "create",
+                      "read"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Resource ID."
+                      }
+                    }
+                  },
+                  "sharedKey": {
+                    "type": "string",
+                    "description": "Shared key of the cloud connection.",
+                    "x-ms-secret": true
+                  },
+                  "provisioningState": {
+                    "description": "The provisioning state of the cloud collection resource.",
+                    "readOnly": true,
+                    "type": "string",
+                    "enum": [
+                      "Succeeded",
+                      "Updating",
+                      "Deleting",
+                      "Failed",
+                      "Canceled"
+                    ],
+                    "x-ms-enum": {
+                      "name": "ProvisioningState",
+                      "modelAsString": true
+                    }
+                  }
+                }
+              },
+              "etag": {
+                "type": "string",
+                "readOnly": true,
+                "description": "A unique read-only string that changes whenever the resource is updated."
+              }
+            }
+          },
+          "description": "A list of cloud connection resources."
+        },
+        "nextLink": {
+          "type": "string",
+          "description": "Link to hold the next page of results"
+        }
+      },
+      "description": "Response for the ListCloudConnections API service call"
+    },
+    "CloudConnectionProperties": {
+      "type": "object",
+      "properties": {
+        "cloudConnector": {
+          "description": "The cloud connector which discovered the remote resource.",
+          "x-ms-mutability": [
+            "create",
+            "read"
+          ],
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Resource ID."
+            }
+          }
+        },
+        "remoteResourceId": {
+          "type": "string",
+          "description": "Identifier for the remote cloud resource",
+          "x-ms-mutability": [
+            "create",
+            "read"
+          ]
+        },
+        "virtualHub": {
+          "description": "The virtualHub to which the cloud connection belongs.",
+          "x-ms-mutability": [
+            "create",
+            "read"
+          ],
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Resource ID."
+            }
+          }
+        },
+        "sharedKey": {
+          "type": "string",
+          "description": "Shared key of the cloud connection.",
+          "x-ms-secret": true
+        },
+        "provisioningState": {
+          "description": "The provisioning state of the cloud collection resource.",
+          "readOnly": true,
+          "type": "string",
+          "enum": [
+            "Succeeded",
+            "Updating",
+            "Deleting",
+            "Failed",
+            "Canceled"
+          ],
+          "x-ms-enum": {
+            "name": "ProvisioningState",
+            "modelAsString": true
+          }
+        }
+      },
+      "description": "Cloud connection resource properties."
+    },
+    "CloudConnection": {
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "description": "Resource which represents the managed network connection between Azure Gateways and remote cloud gateways.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the resource",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+          "readOnly": true
+        },
+        "systemData": {
+          "type": "object",
+          "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+          "readOnly": true,
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ]
+        },
+        "location": {
+          "type": "string",
+          "description": "The geo-location where the resource lives",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "description": "Properties of the cloud connection.",
+          "type": "object",
+          "properties": {
+            "cloudConnector": {
+              "description": "The cloud connector which discovered the remote resource.",
+              "x-ms-mutability": [
+                "create",
+                "read"
+              ],
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Resource ID."
+                }
+              }
+            },
+            "remoteResourceId": {
+              "type": "string",
+              "description": "Identifier for the remote cloud resource",
+              "x-ms-mutability": [
+                "create",
+                "read"
+              ]
+            },
+            "virtualHub": {
+              "description": "The virtualHub to which the cloud connection belongs.",
+              "x-ms-mutability": [
+                "create",
+                "read"
+              ],
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Resource ID."
+                }
+              }
+            },
+            "sharedKey": {
+              "type": "string",
+              "description": "Shared key of the cloud connection.",
+              "x-ms-secret": true
+            },
+            "provisioningState": {
+              "description": "The provisioning state of the cloud collection resource.",
+              "readOnly": true,
+              "type": "string",
+              "enum": [
+                "Succeeded",
+                "Updating",
+                "Deleting",
+                "Failed",
+                "Canceled"
+              ],
+              "x-ms-enum": {
+                "name": "ProvisioningState",
+                "modelAsString": true
+              }
+            }
+          }
+        },
+        "etag": {
+          "type": "string",
+          "readOnly": true,
+          "description": "A unique read-only string that changes whenever the resource is updated."
+        }
+      }
+    },
+    "ResourceFilter": {
+      "type": "object",
+      "description": "Remote Cloud Resource filter.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Remote Resource name to filter on."
+        },
+        "type": {
+          "type": "string",
+          "description": "Remote Resource type to filter on."
+        },
+        "region": {
+          "type": "string",
+          "description": "Remote Resource location/region to filter on."
+        },
+        "tag": {
+          "type": "string",
+          "description": "Remote Resource tags to filter on in key:value format."
+        }
+      }
+    },
+    "DiscoveredResources": {
+      "type": "object",
+      "description": "API to discover resources in remote cloud referred by the connector.",
+      "properties": {
+        "resourceFilter": {
+          "x-ms-client-flatten": true,
+          "description": "Remote cloud resource filter.",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Remote Resource name to filter on."
+            },
+            "type": {
+              "type": "string",
+              "description": "Remote Resource type to filter on."
+            },
+            "region": {
+              "type": "string",
+              "description": "Remote Resource location/region to filter on."
+            },
+            "tag": {
+              "type": "string",
+              "description": "Remote Resource tags to filter on in key:value format."
+            }
+          }
+        },
+        "discoveredResources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Remote cloud resource identifier",
+                "readOnly": true
+              },
+              "bodyContentType": {
+                "type": "string",
+                "description": "Content type of the cloud resource body.",
+                "readOnly": true,
+                "enum": [
+                  "Xml",
+                  "Json"
+                ],
+                "x-ms-enum": {
+                  "name": "bodyContentType",
+                  "modelAsString": true
+                }
+              },
+              "body": {
+                "type": "string",
+                "description": "Properties of the remote cloud resource.",
+                "readOnly": true
+              }
+            },
+            "description": "Discovered Resource properties."
+          },
+          "x-ms-identifiers": [
+            "id"
+          ],
+          "description": "List of discovered remote cloud resources."
+        }
+      }
+    },
+    "DiscoveredResource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Remote cloud resource identifier",
+          "readOnly": true
+        },
+        "bodyContentType": {
+          "type": "string",
+          "description": "Content type of the cloud resource body.",
+          "readOnly": true,
+          "enum": [
+            "Xml",
+            "Json"
+          ],
+          "x-ms-enum": {
+            "name": "bodyContentType",
+            "modelAsString": true
+          }
+        },
+        "body": {
+          "type": "string",
+          "description": "Properties of the remote cloud resource.",
+          "readOnly": true
+        }
+      },
+      "description": "Discovered Resource properties."
+    },
+    "ResourceReference": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Resource ID."
+        }
+      },
+      "description": "Resource reference properties."
+    },
+    "ProvisioningState": {
+      "type": "string",
+      "readOnly": true,
+      "description": "The current provisioning state.",
+      "enum": [
+        "Succeeded",
+        "Updating",
+        "Deleting",
+        "Failed",
+        "Canceled"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true
+      }
+    }
+  },
+  "parameters": {
+    "apiVersionParameter": {
+      "name": "api-version",
+      "in": "query",
+      "required": true,
+      "type": "string",
+      "description": "The API version to use for this operation.",
+      "minLength": 1,
+      "enum": [
+        "2023-01-01-preview"
+      ],
+      "default": "2023-01-01-preview",
+      "x-ms-enum": {
+        "name": "apiVersionParameter",
+        "modelAsString": true
+      },
+      "x-ms-parameter-location": "client"
+    },
+    "cloudConnectorNameParameter": {
+      "name": "cloudConnectorName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of the cloud connector resource",
+      "pattern": "^[A-Za-z0-9]*$"
+    },
+    "cloudConnectionNameParameter": {
+      "name": "cloudConnectionName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of the cloud connection resource",
+      "pattern": "^[a-z][A-Za-z0-9]*$"
+    }
+  }
+}

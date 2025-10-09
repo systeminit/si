@@ -1,0 +1,3189 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Azure subscription",
+    "version": "2021-10-01",
+    "description": "Azure subscription service specifications"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/subscriptions/{subscriptionId}/providers/Microsoft.Subscription/cancel": {
+      "post": {
+        "operationId": "Subscription_Cancel",
+        "description": "The operation to cancel a subscription",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "x-ms-parameter-location": "method",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Subscription Id."
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK. The request has succeeded.",
+            "schema": {
+              "description": "The ID of the canceled subscription",
+              "type": "object",
+              "properties": {
+                "subscriptionId": {
+                  "description": "The ID of the canceled subscription",
+                  "type": "string",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Microsoft.Subscription/rename": {
+      "post": {
+        "operationId": "Subscription_Rename",
+        "description": "The operation to rename a subscription",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "x-ms-parameter-location": "method",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Subscription Id."
+          },
+          {
+            "name": "body",
+            "x-ms-parameter-location": "method",
+            "in": "body",
+            "required": true,
+            "description": "Subscription Name",
+            "schema": {
+              "type": "object",
+              "description": "The new name of the subscription.",
+              "properties": {
+                "subscriptionName": {
+                  "type": "string",
+                  "description": "New subscription name"
+                }
+              }
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK. The request has succeeded.",
+            "schema": {
+              "description": "The ID of the subscriptions that is being renamed",
+              "type": "object",
+              "properties": {
+                "subscriptionId": {
+                  "description": "The ID of the subscriptions that is being renamed",
+                  "type": "string",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Microsoft.Subscription/enable": {
+      "post": {
+        "operationId": "Subscription_Enable",
+        "description": "The operation to enable a subscription",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "x-ms-parameter-location": "method",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Subscription Id."
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK. The request has succeeded.",
+            "schema": {
+              "description": "The ID of the subscriptions that is being enabled",
+              "type": "object",
+              "properties": {
+                "subscriptionId": {
+                  "description": "The ID of the subscriptions that is being enabled",
+                  "type": "string",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/providers/Microsoft.Subscription/subscriptionOperations/{operationId}": {
+      "get": {
+        "description": "Get the status of the pending Microsoft.Subscription API operations.",
+        "operationId": "SubscriptionOperation_Get",
+        "responses": {
+          "200": {
+            "description": "Successful completion of the asynchronous operation",
+            "schema": {
+              "description": "The created subscription object.",
+              "type": "object",
+              "properties": {
+                "subscriptionLink": {
+                  "description": "The link to the new subscription. Use this link to check the status of subscription creation operation.",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted. Subscription update is in progress.",
+            "headers": {
+              "Location": {
+                "description": "The URL where the status of the asynchronous operation can be checked.",
+                "type": "string"
+              },
+              "Retry-After": {
+                "description": "The amount of delay to use while the status of the operation is checked. The value is expressed in seconds.",
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "operationId",
+            "in": "path",
+            "description": "The operation ID, which can be found from the Location field in the generate recommendation response header.",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      }
+    },
+    "/providers/Microsoft.Subscription/operations": {
+      "get": {
+        "description": "Lists all of the available Microsoft.Subscription API operations.",
+        "operationId": "Operations_List",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK. The request has succeeded.",
+            "schema": {
+              "description": "Result of the request to list operations. It contains a list of operations and a URL link to get the next set of results.",
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "description": "REST API operation",
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "description": "Operation name: {provider}/{resource}/{operation}",
+                        "type": "string"
+                      },
+                      "isDataAction": {
+                        "description": "Indicates whether the operation is a data action",
+                        "type": "boolean"
+                      },
+                      "display": {
+                        "description": "The object that represents the operation.",
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "description": "Service provider: Microsoft.Subscription",
+                            "type": "string"
+                          },
+                          "resource": {
+                            "description": "Resource on which the operation is performed: Profile, endpoint, etc.",
+                            "type": "string"
+                          },
+                          "operation": {
+                            "description": "Operation type: Read, write, delete, etc.",
+                            "type": "string"
+                          },
+                          "description": {
+                            "description": "Localized friendly description for the operation",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "description": "List of operations."
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "URL to get the next set of operation list results if there are any."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/providers/Microsoft.Subscription/aliases/{aliasName}": {
+      "put": {
+        "description": "Create Alias Subscription.",
+        "operationId": "Alias_Create",
+        "responses": {
+          "200": {
+            "description": "Normal response for a successful query.",
+            "schema": {
+              "description": "Subscription Information with the alias.",
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Fully qualified ID for the alias resource.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Alias ID.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Resource type, Microsoft.Subscription/aliases.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "properties": {
+                  "description": "Subscription Alias response properties.",
+                  "type": "object",
+                  "properties": {
+                    "subscriptionId": {
+                      "description": "Newly created subscription Id.",
+                      "readOnly": true,
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "description": "The display name of the subscription.",
+                      "type": "string"
+                    },
+                    "provisioningState": {
+                      "type": "string",
+                      "description": "The provisioning state of the resource.",
+                      "enum": [
+                        "Accepted",
+                        "Succeeded",
+                        "Failed"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "acceptOwnershipUrl": {
+                      "description": "Url to accept ownership of the subscription.",
+                      "type": "string",
+                      "readOnly": true
+                    },
+                    "acceptOwnershipState": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The accept ownership state of the resource.",
+                      "enum": [
+                        "Pending",
+                        "Completed",
+                        "Expired"
+                      ],
+                      "x-ms-enum": {
+                        "name": "AcceptOwnership",
+                        "modelAsString": true
+                      }
+                    },
+                    "billingScope": {
+                      "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+                      "type": "string"
+                    },
+                    "workload": {
+                      "description": "The workload type of the subscription. It can be either Production or DevTest.",
+                      "type": "string",
+                      "x-ms-enum": {
+                        "name": "workload",
+                        "modelAsString": true
+                      },
+                      "enum": [
+                        "Production",
+                        "DevTest"
+                      ]
+                    },
+                    "resellerId": {
+                      "description": "Reseller Id",
+                      "type": "string"
+                    },
+                    "subscriptionOwnerId": {
+                      "description": "Owner Id of the subscription",
+                      "type": "string"
+                    },
+                    "managementGroupId": {
+                      "description": "The Management Group Id.",
+                      "type": "string"
+                    },
+                    "createdTime": {
+                      "description": "Created Time",
+                      "type": "string"
+                    },
+                    "tags": {
+                      "description": "Tags for the subscription",
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "Metadata pertaining to creation and last modification of the resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              },
+              "x-ms-azure-resource": true
+            }
+          },
+          "201": {
+            "description": "Accepted. Subscription creation is in progress.",
+            "schema": {
+              "description": "Subscription Information with the alias.",
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Fully qualified ID for the alias resource.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Alias ID.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Resource type, Microsoft.Subscription/aliases.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "properties": {
+                  "description": "Subscription Alias response properties.",
+                  "type": "object",
+                  "properties": {
+                    "subscriptionId": {
+                      "description": "Newly created subscription Id.",
+                      "readOnly": true,
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "description": "The display name of the subscription.",
+                      "type": "string"
+                    },
+                    "provisioningState": {
+                      "type": "string",
+                      "description": "The provisioning state of the resource.",
+                      "enum": [
+                        "Accepted",
+                        "Succeeded",
+                        "Failed"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "acceptOwnershipUrl": {
+                      "description": "Url to accept ownership of the subscription.",
+                      "type": "string",
+                      "readOnly": true
+                    },
+                    "acceptOwnershipState": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The accept ownership state of the resource.",
+                      "enum": [
+                        "Pending",
+                        "Completed",
+                        "Expired"
+                      ],
+                      "x-ms-enum": {
+                        "name": "AcceptOwnership",
+                        "modelAsString": true
+                      }
+                    },
+                    "billingScope": {
+                      "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+                      "type": "string"
+                    },
+                    "workload": {
+                      "description": "The workload type of the subscription. It can be either Production or DevTest.",
+                      "type": "string",
+                      "x-ms-enum": {
+                        "name": "workload",
+                        "modelAsString": true
+                      },
+                      "enum": [
+                        "Production",
+                        "DevTest"
+                      ]
+                    },
+                    "resellerId": {
+                      "description": "Reseller Id",
+                      "type": "string"
+                    },
+                    "subscriptionOwnerId": {
+                      "description": "Owner Id of the subscription",
+                      "type": "string"
+                    },
+                    "managementGroupId": {
+                      "description": "The Management Group Id.",
+                      "type": "string"
+                    },
+                    "createdTime": {
+                      "description": "Created Time",
+                      "type": "string"
+                    },
+                    "tags": {
+                      "description": "Tags for the subscription",
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "Metadata pertaining to creation and last modification of the resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              },
+              "x-ms-azure-resource": true
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "aliasName",
+            "x-ms-parameter-location": "method",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "AliasName is the name for the subscription creation request. Note that this is not the same as subscription name and this doesn’t have any other lifecycle need beyond the request for subscription creation."
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "description": "The parameters required to create a new subscription.",
+              "type": "object",
+              "properties": {
+                "properties": {
+                  "description": "Put alias request properties.",
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "description": "The friendly name of the subscription.",
+                      "type": "string"
+                    },
+                    "workload": {
+                      "description": "The workload type of the subscription. It can be either Production or DevTest.",
+                      "type": "string",
+                      "x-ms-enum": {
+                        "name": "workload",
+                        "modelAsString": true
+                      },
+                      "enum": [
+                        "Production",
+                        "DevTest"
+                      ]
+                    },
+                    "billingScope": {
+                      "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+                      "type": "string"
+                    },
+                    "subscriptionId": {
+                      "description": "This parameter can be used to create alias for existing subscription Id",
+                      "type": "string"
+                    },
+                    "resellerId": {
+                      "description": "Reseller Id",
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "description": "Put alias request additional properties.",
+                      "type": "object",
+                      "properties": {
+                        "managementGroupId": {
+                          "description": "Management group Id for the subscription.",
+                          "type": "string"
+                        },
+                        "subscriptionTenantId": {
+                          "description": "Tenant Id of the subscription",
+                          "type": "string"
+                        },
+                        "subscriptionOwnerId": {
+                          "description": "Owner Id of the subscription",
+                          "type": "string"
+                        },
+                        "tags": {
+                          "description": "Tags for the subscription",
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      },
+      "get": {
+        "description": "Get Alias Subscription.",
+        "operationId": "Alias_Get",
+        "responses": {
+          "200": {
+            "description": "Subscription details.",
+            "schema": {
+              "description": "Subscription Information with the alias.",
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Fully qualified ID for the alias resource.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Alias ID.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Resource type, Microsoft.Subscription/aliases.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "properties": {
+                  "description": "Subscription Alias response properties.",
+                  "type": "object",
+                  "properties": {
+                    "subscriptionId": {
+                      "description": "Newly created subscription Id.",
+                      "readOnly": true,
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "description": "The display name of the subscription.",
+                      "type": "string"
+                    },
+                    "provisioningState": {
+                      "type": "string",
+                      "description": "The provisioning state of the resource.",
+                      "enum": [
+                        "Accepted",
+                        "Succeeded",
+                        "Failed"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ProvisioningState",
+                        "modelAsString": true
+                      }
+                    },
+                    "acceptOwnershipUrl": {
+                      "description": "Url to accept ownership of the subscription.",
+                      "type": "string",
+                      "readOnly": true
+                    },
+                    "acceptOwnershipState": {
+                      "readOnly": true,
+                      "type": "string",
+                      "description": "The accept ownership state of the resource.",
+                      "enum": [
+                        "Pending",
+                        "Completed",
+                        "Expired"
+                      ],
+                      "x-ms-enum": {
+                        "name": "AcceptOwnership",
+                        "modelAsString": true
+                      }
+                    },
+                    "billingScope": {
+                      "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+                      "type": "string"
+                    },
+                    "workload": {
+                      "description": "The workload type of the subscription. It can be either Production or DevTest.",
+                      "type": "string",
+                      "x-ms-enum": {
+                        "name": "workload",
+                        "modelAsString": true
+                      },
+                      "enum": [
+                        "Production",
+                        "DevTest"
+                      ]
+                    },
+                    "resellerId": {
+                      "description": "Reseller Id",
+                      "type": "string"
+                    },
+                    "subscriptionOwnerId": {
+                      "description": "Owner Id of the subscription",
+                      "type": "string"
+                    },
+                    "managementGroupId": {
+                      "description": "The Management Group Id.",
+                      "type": "string"
+                    },
+                    "createdTime": {
+                      "description": "Created Time",
+                      "type": "string"
+                    },
+                    "tags": {
+                      "description": "Tags for the subscription",
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "Metadata pertaining to creation and last modification of the resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              },
+              "x-ms-azure-resource": true
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "aliasName",
+            "x-ms-parameter-location": "method",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "AliasName is the name for the subscription creation request. Note that this is not the same as subscription name and this doesn’t have any other lifecycle need beyond the request for subscription creation."
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      },
+      "delete": {
+        "description": "Delete Alias.",
+        "operationId": "Alias_Delete",
+        "responses": {
+          "200": {
+            "description": "Deleted the alias"
+          },
+          "204": {
+            "description": "Alias does not exist"
+          }
+        },
+        "parameters": [
+          {
+            "name": "aliasName",
+            "x-ms-parameter-location": "method",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "AliasName is the name for the subscription creation request. Note that this is not the same as subscription name and this doesn’t have any other lifecycle need beyond the request for subscription creation."
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      }
+    },
+    "/providers/Microsoft.Subscription/aliases": {
+      "get": {
+        "description": "List Alias Subscription.",
+        "operationId": "Alias_List",
+        "responses": {
+          "200": {
+            "description": "Subscription details.",
+            "schema": {
+              "description": "The list of aliases.",
+              "type": "object",
+              "properties": {
+                "value": {
+                  "description": "The list of alias.",
+                  "type": "array",
+                  "readOnly": true,
+                  "items": {
+                    "description": "Subscription Information with the alias.",
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "description": "Fully qualified ID for the alias resource.",
+                        "readOnly": true,
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "Alias ID.",
+                        "readOnly": true,
+                        "type": "string"
+                      },
+                      "type": {
+                        "description": "Resource type, Microsoft.Subscription/aliases.",
+                        "readOnly": true,
+                        "type": "string"
+                      },
+                      "properties": {
+                        "description": "Subscription Alias response properties.",
+                        "type": "object",
+                        "properties": {
+                          "subscriptionId": {
+                            "description": "Newly created subscription Id.",
+                            "readOnly": true,
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "description": "The display name of the subscription.",
+                            "type": "string"
+                          },
+                          "provisioningState": {
+                            "type": "string",
+                            "description": "The provisioning state of the resource.",
+                            "enum": [
+                              "Accepted",
+                              "Succeeded",
+                              "Failed"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ProvisioningState",
+                              "modelAsString": true
+                            }
+                          },
+                          "acceptOwnershipUrl": {
+                            "description": "Url to accept ownership of the subscription.",
+                            "type": "string",
+                            "readOnly": true
+                          },
+                          "acceptOwnershipState": {
+                            "readOnly": true,
+                            "type": "string",
+                            "description": "The accept ownership state of the resource.",
+                            "enum": [
+                              "Pending",
+                              "Completed",
+                              "Expired"
+                            ],
+                            "x-ms-enum": {
+                              "name": "AcceptOwnership",
+                              "modelAsString": true
+                            }
+                          },
+                          "billingScope": {
+                            "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+                            "type": "string"
+                          },
+                          "workload": {
+                            "description": "The workload type of the subscription. It can be either Production or DevTest.",
+                            "type": "string",
+                            "x-ms-enum": {
+                              "name": "workload",
+                              "modelAsString": true
+                            },
+                            "enum": [
+                              "Production",
+                              "DevTest"
+                            ]
+                          },
+                          "resellerId": {
+                            "description": "Reseller Id",
+                            "type": "string"
+                          },
+                          "subscriptionOwnerId": {
+                            "description": "Owner Id of the subscription",
+                            "type": "string"
+                          },
+                          "managementGroupId": {
+                            "description": "The Management Group Id.",
+                            "type": "string"
+                          },
+                          "createdTime": {
+                            "description": "Created Time",
+                            "type": "string"
+                          },
+                          "tags": {
+                            "description": "Tags for the subscription",
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "systemData": {
+                        "readOnly": true,
+                        "description": "Metadata pertaining to creation and last modification of the resource.",
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      }
+                    },
+                    "x-ms-azure-resource": true
+                  }
+                },
+                "nextLink": {
+                  "description": "The link (url) to the next page of results.",
+                  "type": "string",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      }
+    },
+    "/providers/Microsoft.Subscription/subscriptions/{subscriptionId}/acceptOwnership": {
+      "post": {
+        "description": "Accept subscription ownership.",
+        "operationId": "Subscription_AcceptOwnership",
+        "responses": {
+          "202": {
+            "description": "Accept Subscription ownership is in progress",
+            "headers": {
+              "Location": {
+                "description": "GET this URL to retrieve the status of the asynchronous operation.",
+                "type": "string"
+              },
+              "Retry-After": {
+                "description": "The amount of delay to use while the status of the operation is checked. The value is expressed in seconds.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "x-ms-parameter-location": "method",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Subscription Id."
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "description": "The parameters required to accept subscription ownership.",
+              "type": "object",
+              "properties": {
+                "properties": {
+                  "description": "Accept subscription ownership request properties.",
+                  "type": "object",
+                  "required": [
+                    "displayName"
+                  ],
+                  "properties": {
+                    "displayName": {
+                      "description": "The friendly name of the subscription.",
+                      "type": "string"
+                    },
+                    "managementGroupId": {
+                      "description": "Management group Id for the subscription.",
+                      "type": "string"
+                    },
+                    "tags": {
+                      "description": "Tags for the subscription",
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      }
+    },
+    "/providers/Microsoft.Subscription/subscriptions/{subscriptionId}/acceptOwnershipStatus": {
+      "get": {
+        "description": "Accept subscription ownership status.",
+        "operationId": "Subscription_AcceptOwnershipStatus",
+        "responses": {
+          "200": {
+            "description": "Subscription details.",
+            "schema": {
+              "description": "Subscription Accept Ownership Response",
+              "type": "object",
+              "properties": {
+                "subscriptionId": {
+                  "description": "Newly created subscription Id.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "acceptOwnershipState": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The accept ownership state of the resource.",
+                  "enum": [
+                    "Pending",
+                    "Completed",
+                    "Expired"
+                  ],
+                  "x-ms-enum": {
+                    "name": "AcceptOwnership",
+                    "modelAsString": true
+                  }
+                },
+                "provisioningState": {
+                  "readOnly": true,
+                  "type": "string",
+                  "description": "The provisioning state of the resource.",
+                  "enum": [
+                    "Pending",
+                    "Accepted",
+                    "Succeeded"
+                  ],
+                  "x-ms-enum": {
+                    "name": "Provisioning",
+                    "modelAsString": true
+                  }
+                },
+                "billingOwner": {
+                  "description": "UPN of the billing owner",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "subscriptionTenantId": {
+                  "description": "Tenant Id of the subscription",
+                  "type": "string"
+                },
+                "displayName": {
+                  "description": "The display name of the subscription.",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "Tags for the subscription",
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "x-ms-parameter-location": "method",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Subscription Id."
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      }
+    },
+    "/providers/Microsoft.Subscription/policies/default": {
+      "put": {
+        "description": "Create or Update Subscription tenant policy for user's tenant.",
+        "operationId": "SubscriptionPolicy_AddUpdatePolicyForTenant",
+        "responses": {
+          "200": {
+            "description": "Subscription tenant policy has been successfully created/updated.",
+            "schema": {
+              "description": "Tenant policy Information.",
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Policy Id.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Policy name.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Resource type.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "properties": {
+                  "description": "Tenant policy properties.",
+                  "type": "object",
+                  "properties": {
+                    "policyId": {
+                      "description": "Policy Id.",
+                      "type": "string",
+                      "readOnly": true
+                    },
+                    "blockSubscriptionsLeavingTenant": {
+                      "description": "Blocks the leaving of subscriptions from user's tenant.",
+                      "type": "boolean"
+                    },
+                    "blockSubscriptionsIntoTenant": {
+                      "description": "Blocks the entering of subscriptions into user's tenant.",
+                      "type": "boolean"
+                    },
+                    "exemptedPrincipals": {
+                      "description": "List of user objectIds that are exempted from the set subscription tenant policies for the user's tenant.",
+                      "type": "array",
+                      "items": {
+                        "format": "uuid",
+                        "type": "string",
+                        "example": "00000000-0000-0000-0000-000000000000"
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "Metadata pertaining to creation and last modification of the resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              },
+              "x-ms-azure-resource": true
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "description": "Put tenant policy request properties.",
+              "type": "object",
+              "properties": {
+                "blockSubscriptionsLeavingTenant": {
+                  "description": "Blocks the leaving of subscriptions from user's tenant.",
+                  "type": "boolean"
+                },
+                "blockSubscriptionsIntoTenant": {
+                  "description": "Blocks the entering of subscriptions into user's tenant.",
+                  "type": "boolean"
+                },
+                "exemptedPrincipals": {
+                  "description": "List of user objectIds that are exempted from the set subscription tenant policies for the user's tenant.",
+                  "type": "array",
+                  "items": {
+                    "format": "uuid",
+                    "type": "string",
+                    "example": "00000000-0000-0000-0000-000000000000"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      },
+      "get": {
+        "description": "Get the subscription tenant policy for the user's tenant.",
+        "operationId": "SubscriptionPolicy_GetPolicyForTenant",
+        "responses": {
+          "200": {
+            "description": "Subscription tenant policy details for user's tenant.",
+            "schema": {
+              "description": "Tenant policy Information.",
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Policy Id.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Policy name.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Resource type.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "properties": {
+                  "description": "Tenant policy properties.",
+                  "type": "object",
+                  "properties": {
+                    "policyId": {
+                      "description": "Policy Id.",
+                      "type": "string",
+                      "readOnly": true
+                    },
+                    "blockSubscriptionsLeavingTenant": {
+                      "description": "Blocks the leaving of subscriptions from user's tenant.",
+                      "type": "boolean"
+                    },
+                    "blockSubscriptionsIntoTenant": {
+                      "description": "Blocks the entering of subscriptions into user's tenant.",
+                      "type": "boolean"
+                    },
+                    "exemptedPrincipals": {
+                      "description": "List of user objectIds that are exempted from the set subscription tenant policies for the user's tenant.",
+                      "type": "array",
+                      "items": {
+                        "format": "uuid",
+                        "type": "string",
+                        "example": "00000000-0000-0000-0000-000000000000"
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "Metadata pertaining to creation and last modification of the resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              },
+              "x-ms-azure-resource": true
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      }
+    },
+    "/providers/Microsoft.Subscription/policies": {
+      "get": {
+        "description": "Get the subscription tenant policy for the user's tenant.",
+        "operationId": "SubscriptionPolicy_ListPolicyForTenant",
+        "responses": {
+          "200": {
+            "description": "Subscription tenant policy details for user's tenant.",
+            "schema": {
+              "description": "Tenant policy information list.",
+              "type": "object",
+              "properties": {
+                "value": {
+                  "description": "The list of tenant policies.",
+                  "type": "array",
+                  "readOnly": true,
+                  "items": {
+                    "description": "Tenant policy Information.",
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "description": "Policy Id.",
+                        "readOnly": true,
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "Policy name.",
+                        "readOnly": true,
+                        "type": "string"
+                      },
+                      "type": {
+                        "description": "Resource type.",
+                        "readOnly": true,
+                        "type": "string"
+                      },
+                      "properties": {
+                        "description": "Tenant policy properties.",
+                        "type": "object",
+                        "properties": {
+                          "policyId": {
+                            "description": "Policy Id.",
+                            "type": "string",
+                            "readOnly": true
+                          },
+                          "blockSubscriptionsLeavingTenant": {
+                            "description": "Blocks the leaving of subscriptions from user's tenant.",
+                            "type": "boolean"
+                          },
+                          "blockSubscriptionsIntoTenant": {
+                            "description": "Blocks the entering of subscriptions into user's tenant.",
+                            "type": "boolean"
+                          },
+                          "exemptedPrincipals": {
+                            "description": "List of user objectIds that are exempted from the set subscription tenant policies for the user's tenant.",
+                            "type": "array",
+                            "items": {
+                              "format": "uuid",
+                              "type": "string",
+                              "example": "00000000-0000-0000-0000-000000000000"
+                            }
+                          }
+                        }
+                      },
+                      "systemData": {
+                        "readOnly": true,
+                        "description": "Metadata pertaining to creation and last modification of the resource.",
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      }
+                    },
+                    "x-ms-azure-resource": true
+                  }
+                },
+                "nextLink": {
+                  "description": "The link (url) to the next page of results.",
+                  "type": "string",
+                  "readOnly": true
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      }
+    },
+    "/providers/Microsoft.Billing/billingAccounts/{billingAccountId}/providers/Microsoft.Subscription/policies/default": {
+      "get": {
+        "description": "Get Billing Account Policy.",
+        "operationId": "BillingAccount_GetPolicy",
+        "responses": {
+          "200": {
+            "description": "Normal response for a successful query.",
+            "schema": {
+              "description": "Billing account policies information.",
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Fully qualified ID for the policy.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Policy name.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Resource type.",
+                  "readOnly": true,
+                  "type": "string"
+                },
+                "properties": {
+                  "description": "Billing account policies response properties.",
+                  "type": "object",
+                  "properties": {
+                    "serviceTenants": {
+                      "description": "Service tenant for the billing account.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "Billing account service tenant.",
+                        "properties": {
+                          "tenantId": {
+                            "description": "Service tenant id.",
+                            "type": "string"
+                          },
+                          "tenantName": {
+                            "description": "Service tenant name.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "allowTransfers": {
+                      "description": "Determine if the transfers are allowed for the billing account",
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "Metadata pertaining to creation and last modification of the resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              },
+              "x-ms-azure-resource": true
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "billingAccountId",
+            "x-ms-parameter-location": "method",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Billing Account Id."
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "ErrorResponse": {
+      "description": "Describes the format of Error response.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "Error code",
+          "type": "string"
+        },
+        "message": {
+          "description": "Error message indicating why the operation failed.",
+          "type": "string"
+        }
+      }
+    },
+    "ErrorResponseBody": {
+      "description": "Error response indicates that the service is not able to process the incoming request. The reason is provided in the error message.",
+      "type": "object",
+      "properties": {
+        "error": {
+          "description": "The details of the error.",
+          "type": "object",
+          "properties": {
+            "code": {
+              "description": "Error code",
+              "type": "string"
+            },
+            "message": {
+              "description": "Error message indicating why the operation failed.",
+              "type": "string"
+            }
+          }
+        },
+        "code": {
+          "description": "Error code",
+          "type": "string"
+        },
+        "message": {
+          "description": "Error message indicating why the operation failed.",
+          "type": "string"
+        }
+      }
+    },
+    "CanceledSubscriptionId": {
+      "description": "The ID of the canceled subscription",
+      "type": "object",
+      "properties": {
+        "subscriptionId": {
+          "description": "The ID of the canceled subscription",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "RenamedSubscriptionId": {
+      "description": "The ID of the subscriptions that is being renamed",
+      "type": "object",
+      "properties": {
+        "subscriptionId": {
+          "description": "The ID of the subscriptions that is being renamed",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "EnabledSubscriptionId": {
+      "description": "The ID of the subscriptions that is being enabled",
+      "type": "object",
+      "properties": {
+        "subscriptionId": {
+          "description": "The ID of the subscriptions that is being enabled",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "SubscriptionCreationResult": {
+      "description": "The created subscription object.",
+      "type": "object",
+      "properties": {
+        "subscriptionLink": {
+          "description": "The link to the new subscription. Use this link to check the status of subscription creation operation.",
+          "type": "string"
+        }
+      }
+    },
+    "SubscriptionName": {
+      "type": "object",
+      "description": "The new name of the subscription.",
+      "properties": {
+        "subscriptionName": {
+          "type": "string",
+          "description": "New subscription name"
+        }
+      }
+    },
+    "OperationListResult": {
+      "description": "Result of the request to list operations. It contains a list of operations and a URL link to get the next set of results.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "description": "REST API operation",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Operation name: {provider}/{resource}/{operation}",
+                "type": "string"
+              },
+              "isDataAction": {
+                "description": "Indicates whether the operation is a data action",
+                "type": "boolean"
+              },
+              "display": {
+                "description": "The object that represents the operation.",
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "description": "Service provider: Microsoft.Subscription",
+                    "type": "string"
+                  },
+                  "resource": {
+                    "description": "Resource on which the operation is performed: Profile, endpoint, etc.",
+                    "type": "string"
+                  },
+                  "operation": {
+                    "description": "Operation type: Read, write, delete, etc.",
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Localized friendly description for the operation",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "description": "List of operations."
+        },
+        "nextLink": {
+          "type": "string",
+          "description": "URL to get the next set of operation list results if there are any."
+        }
+      }
+    },
+    "Operation": {
+      "description": "REST API operation",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Operation name: {provider}/{resource}/{operation}",
+          "type": "string"
+        },
+        "isDataAction": {
+          "description": "Indicates whether the operation is a data action",
+          "type": "boolean"
+        },
+        "display": {
+          "description": "The object that represents the operation.",
+          "type": "object",
+          "properties": {
+            "provider": {
+              "description": "Service provider: Microsoft.Subscription",
+              "type": "string"
+            },
+            "resource": {
+              "description": "Resource on which the operation is performed: Profile, endpoint, etc.",
+              "type": "string"
+            },
+            "operation": {
+              "description": "Operation type: Read, write, delete, etc.",
+              "type": "string"
+            },
+            "description": {
+              "description": "Localized friendly description for the operation",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "PutAliasRequest": {
+      "description": "The parameters required to create a new subscription.",
+      "type": "object",
+      "properties": {
+        "properties": {
+          "description": "Put alias request properties.",
+          "type": "object",
+          "properties": {
+            "displayName": {
+              "description": "The friendly name of the subscription.",
+              "type": "string"
+            },
+            "workload": {
+              "description": "The workload type of the subscription. It can be either Production or DevTest.",
+              "type": "string",
+              "x-ms-enum": {
+                "name": "workload",
+                "modelAsString": true
+              },
+              "enum": [
+                "Production",
+                "DevTest"
+              ]
+            },
+            "billingScope": {
+              "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+              "type": "string"
+            },
+            "subscriptionId": {
+              "description": "This parameter can be used to create alias for existing subscription Id",
+              "type": "string"
+            },
+            "resellerId": {
+              "description": "Reseller Id",
+              "type": "string"
+            },
+            "additionalProperties": {
+              "description": "Put alias request additional properties.",
+              "type": "object",
+              "properties": {
+                "managementGroupId": {
+                  "description": "Management group Id for the subscription.",
+                  "type": "string"
+                },
+                "subscriptionTenantId": {
+                  "description": "Tenant Id of the subscription",
+                  "type": "string"
+                },
+                "subscriptionOwnerId": {
+                  "description": "Owner Id of the subscription",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "Tags for the subscription",
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "PutAliasRequestProperties": {
+      "description": "Put subscription properties.",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "description": "The friendly name of the subscription.",
+          "type": "string"
+        },
+        "workload": {
+          "description": "The workload type of the subscription. It can be either Production or DevTest.",
+          "type": "string",
+          "x-ms-enum": {
+            "name": "workload",
+            "modelAsString": true
+          },
+          "enum": [
+            "Production",
+            "DevTest"
+          ]
+        },
+        "billingScope": {
+          "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+          "type": "string"
+        },
+        "subscriptionId": {
+          "description": "This parameter can be used to create alias for existing subscription Id",
+          "type": "string"
+        },
+        "resellerId": {
+          "description": "Reseller Id",
+          "type": "string"
+        },
+        "additionalProperties": {
+          "description": "Put alias request additional properties.",
+          "type": "object",
+          "properties": {
+            "managementGroupId": {
+              "description": "Management group Id for the subscription.",
+              "type": "string"
+            },
+            "subscriptionTenantId": {
+              "description": "Tenant Id of the subscription",
+              "type": "string"
+            },
+            "subscriptionOwnerId": {
+              "description": "Owner Id of the subscription",
+              "type": "string"
+            },
+            "tags": {
+              "description": "Tags for the subscription",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "PutAliasRequestAdditionalProperties": {
+      "description": "Put subscription additional properties.",
+      "type": "object",
+      "properties": {
+        "managementGroupId": {
+          "description": "Management group Id for the subscription.",
+          "type": "string"
+        },
+        "subscriptionTenantId": {
+          "description": "Tenant Id of the subscription",
+          "type": "string"
+        },
+        "subscriptionOwnerId": {
+          "description": "Owner Id of the subscription",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Tags for the subscription",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "SubscriptionAliasResponse": {
+      "description": "Subscription Information with the alias.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Fully qualified ID for the alias resource.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "name": {
+          "description": "Alias ID.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "type": {
+          "description": "Resource type, Microsoft.Subscription/aliases.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "properties": {
+          "description": "Subscription Alias response properties.",
+          "type": "object",
+          "properties": {
+            "subscriptionId": {
+              "description": "Newly created subscription Id.",
+              "readOnly": true,
+              "type": "string"
+            },
+            "displayName": {
+              "description": "The display name of the subscription.",
+              "type": "string"
+            },
+            "provisioningState": {
+              "type": "string",
+              "description": "The provisioning state of the resource.",
+              "enum": [
+                "Accepted",
+                "Succeeded",
+                "Failed"
+              ],
+              "x-ms-enum": {
+                "name": "ProvisioningState",
+                "modelAsString": true
+              }
+            },
+            "acceptOwnershipUrl": {
+              "description": "Url to accept ownership of the subscription.",
+              "type": "string",
+              "readOnly": true
+            },
+            "acceptOwnershipState": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The accept ownership state of the resource.",
+              "enum": [
+                "Pending",
+                "Completed",
+                "Expired"
+              ],
+              "x-ms-enum": {
+                "name": "AcceptOwnership",
+                "modelAsString": true
+              }
+            },
+            "billingScope": {
+              "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+              "type": "string"
+            },
+            "workload": {
+              "description": "The workload type of the subscription. It can be either Production or DevTest.",
+              "type": "string",
+              "x-ms-enum": {
+                "name": "workload",
+                "modelAsString": true
+              },
+              "enum": [
+                "Production",
+                "DevTest"
+              ]
+            },
+            "resellerId": {
+              "description": "Reseller Id",
+              "type": "string"
+            },
+            "subscriptionOwnerId": {
+              "description": "Owner Id of the subscription",
+              "type": "string"
+            },
+            "managementGroupId": {
+              "description": "The Management Group Id.",
+              "type": "string"
+            },
+            "createdTime": {
+              "description": "Created Time",
+              "type": "string"
+            },
+            "tags": {
+              "description": "Tags for the subscription",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "systemData": {
+          "readOnly": true,
+          "description": "Metadata pertaining to creation and last modification of the resource.",
+          "type": "object",
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        }
+      },
+      "x-ms-azure-resource": true
+    },
+    "SubscriptionAliasResponseProperties": {
+      "description": "Put subscription creation result properties.",
+      "type": "object",
+      "properties": {
+        "subscriptionId": {
+          "description": "Newly created subscription Id.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "displayName": {
+          "description": "The display name of the subscription.",
+          "type": "string"
+        },
+        "provisioningState": {
+          "type": "string",
+          "description": "The provisioning state of the resource.",
+          "enum": [
+            "Accepted",
+            "Succeeded",
+            "Failed"
+          ],
+          "x-ms-enum": {
+            "name": "ProvisioningState",
+            "modelAsString": true
+          }
+        },
+        "acceptOwnershipUrl": {
+          "description": "Url to accept ownership of the subscription.",
+          "type": "string",
+          "readOnly": true
+        },
+        "acceptOwnershipState": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The accept ownership state of the resource.",
+          "enum": [
+            "Pending",
+            "Completed",
+            "Expired"
+          ],
+          "x-ms-enum": {
+            "name": "AcceptOwnership",
+            "modelAsString": true
+          }
+        },
+        "billingScope": {
+          "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+          "type": "string"
+        },
+        "workload": {
+          "description": "The workload type of the subscription. It can be either Production or DevTest.",
+          "type": "string",
+          "x-ms-enum": {
+            "name": "workload",
+            "modelAsString": true
+          },
+          "enum": [
+            "Production",
+            "DevTest"
+          ]
+        },
+        "resellerId": {
+          "description": "Reseller Id",
+          "type": "string"
+        },
+        "subscriptionOwnerId": {
+          "description": "Owner Id of the subscription",
+          "type": "string"
+        },
+        "managementGroupId": {
+          "description": "The Management Group Id.",
+          "type": "string"
+        },
+        "createdTime": {
+          "description": "Created Time",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Tags for the subscription",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "SubscriptionAliasListResult": {
+      "description": "The list of aliases.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "The list of alias.",
+          "type": "array",
+          "readOnly": true,
+          "items": {
+            "description": "Subscription Information with the alias.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Fully qualified ID for the alias resource.",
+                "readOnly": true,
+                "type": "string"
+              },
+              "name": {
+                "description": "Alias ID.",
+                "readOnly": true,
+                "type": "string"
+              },
+              "type": {
+                "description": "Resource type, Microsoft.Subscription/aliases.",
+                "readOnly": true,
+                "type": "string"
+              },
+              "properties": {
+                "description": "Subscription Alias response properties.",
+                "type": "object",
+                "properties": {
+                  "subscriptionId": {
+                    "description": "Newly created subscription Id.",
+                    "readOnly": true,
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "description": "The display name of the subscription.",
+                    "type": "string"
+                  },
+                  "provisioningState": {
+                    "type": "string",
+                    "description": "The provisioning state of the resource.",
+                    "enum": [
+                      "Accepted",
+                      "Succeeded",
+                      "Failed"
+                    ],
+                    "x-ms-enum": {
+                      "name": "ProvisioningState",
+                      "modelAsString": true
+                    }
+                  },
+                  "acceptOwnershipUrl": {
+                    "description": "Url to accept ownership of the subscription.",
+                    "type": "string",
+                    "readOnly": true
+                  },
+                  "acceptOwnershipState": {
+                    "readOnly": true,
+                    "type": "string",
+                    "description": "The accept ownership state of the resource.",
+                    "enum": [
+                      "Pending",
+                      "Completed",
+                      "Expired"
+                    ],
+                    "x-ms-enum": {
+                      "name": "AcceptOwnership",
+                      "modelAsString": true
+                    }
+                  },
+                  "billingScope": {
+                    "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+                    "type": "string"
+                  },
+                  "workload": {
+                    "description": "The workload type of the subscription. It can be either Production or DevTest.",
+                    "type": "string",
+                    "x-ms-enum": {
+                      "name": "workload",
+                      "modelAsString": true
+                    },
+                    "enum": [
+                      "Production",
+                      "DevTest"
+                    ]
+                  },
+                  "resellerId": {
+                    "description": "Reseller Id",
+                    "type": "string"
+                  },
+                  "subscriptionOwnerId": {
+                    "description": "Owner Id of the subscription",
+                    "type": "string"
+                  },
+                  "managementGroupId": {
+                    "description": "The Management Group Id.",
+                    "type": "string"
+                  },
+                  "createdTime": {
+                    "description": "Created Time",
+                    "type": "string"
+                  },
+                  "tags": {
+                    "description": "Tags for the subscription",
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "systemData": {
+                "readOnly": true,
+                "description": "Metadata pertaining to creation and last modification of the resource.",
+                "type": "object",
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              }
+            },
+            "x-ms-azure-resource": true
+          }
+        },
+        "nextLink": {
+          "description": "The link (url) to the next page of results.",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "AcceptOwnershipRequest": {
+      "description": "The parameters required to accept subscription ownership.",
+      "type": "object",
+      "properties": {
+        "properties": {
+          "description": "Accept subscription ownership request properties.",
+          "type": "object",
+          "required": [
+            "displayName"
+          ],
+          "properties": {
+            "displayName": {
+              "description": "The friendly name of the subscription.",
+              "type": "string"
+            },
+            "managementGroupId": {
+              "description": "Management group Id for the subscription.",
+              "type": "string"
+            },
+            "tags": {
+              "description": "Tags for the subscription",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "AcceptOwnershipRequestProperties": {
+      "description": "Accept subscription ownership request properties.",
+      "type": "object",
+      "required": [
+        "displayName"
+      ],
+      "properties": {
+        "displayName": {
+          "description": "The friendly name of the subscription.",
+          "type": "string"
+        },
+        "managementGroupId": {
+          "description": "Management group Id for the subscription.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Tags for the subscription",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "AcceptOwnershipStatusResponse": {
+      "description": "Subscription Accept Ownership Response",
+      "type": "object",
+      "properties": {
+        "subscriptionId": {
+          "description": "Newly created subscription Id.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "acceptOwnershipState": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The accept ownership state of the resource.",
+          "enum": [
+            "Pending",
+            "Completed",
+            "Expired"
+          ],
+          "x-ms-enum": {
+            "name": "AcceptOwnership",
+            "modelAsString": true
+          }
+        },
+        "provisioningState": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The provisioning state of the resource.",
+          "enum": [
+            "Pending",
+            "Accepted",
+            "Succeeded"
+          ],
+          "x-ms-enum": {
+            "name": "Provisioning",
+            "modelAsString": true
+          }
+        },
+        "billingOwner": {
+          "description": "UPN of the billing owner",
+          "readOnly": true,
+          "type": "string"
+        },
+        "subscriptionTenantId": {
+          "description": "Tenant Id of the subscription",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "The display name of the subscription.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Tags for the subscription",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PutTenantPolicyRequestProperties": {
+      "description": "Put tenant policy request properties.",
+      "type": "object",
+      "properties": {
+        "blockSubscriptionsLeavingTenant": {
+          "description": "Blocks the leaving of subscriptions from user's tenant.",
+          "type": "boolean"
+        },
+        "blockSubscriptionsIntoTenant": {
+          "description": "Blocks the entering of subscriptions into user's tenant.",
+          "type": "boolean"
+        },
+        "exemptedPrincipals": {
+          "description": "List of user objectIds that are exempted from the set subscription tenant policies for the user's tenant.",
+          "type": "array",
+          "items": {
+            "format": "uuid",
+            "type": "string",
+            "example": "00000000-0000-0000-0000-000000000000"
+          }
+        }
+      }
+    },
+    "GetTenantPolicyResponse": {
+      "description": "Tenant policy Information.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Policy Id.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "name": {
+          "description": "Policy name.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "type": {
+          "description": "Resource type.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "properties": {
+          "description": "Tenant policy properties.",
+          "type": "object",
+          "properties": {
+            "policyId": {
+              "description": "Policy Id.",
+              "type": "string",
+              "readOnly": true
+            },
+            "blockSubscriptionsLeavingTenant": {
+              "description": "Blocks the leaving of subscriptions from user's tenant.",
+              "type": "boolean"
+            },
+            "blockSubscriptionsIntoTenant": {
+              "description": "Blocks the entering of subscriptions into user's tenant.",
+              "type": "boolean"
+            },
+            "exemptedPrincipals": {
+              "description": "List of user objectIds that are exempted from the set subscription tenant policies for the user's tenant.",
+              "type": "array",
+              "items": {
+                "format": "uuid",
+                "type": "string",
+                "example": "00000000-0000-0000-0000-000000000000"
+              }
+            }
+          }
+        },
+        "systemData": {
+          "readOnly": true,
+          "description": "Metadata pertaining to creation and last modification of the resource.",
+          "type": "object",
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        }
+      },
+      "x-ms-azure-resource": true
+    },
+    "GetTenantPolicyListResponse": {
+      "description": "Tenant policy information list.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "The list of tenant policies.",
+          "type": "array",
+          "readOnly": true,
+          "items": {
+            "description": "Tenant policy Information.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Policy Id.",
+                "readOnly": true,
+                "type": "string"
+              },
+              "name": {
+                "description": "Policy name.",
+                "readOnly": true,
+                "type": "string"
+              },
+              "type": {
+                "description": "Resource type.",
+                "readOnly": true,
+                "type": "string"
+              },
+              "properties": {
+                "description": "Tenant policy properties.",
+                "type": "object",
+                "properties": {
+                  "policyId": {
+                    "description": "Policy Id.",
+                    "type": "string",
+                    "readOnly": true
+                  },
+                  "blockSubscriptionsLeavingTenant": {
+                    "description": "Blocks the leaving of subscriptions from user's tenant.",
+                    "type": "boolean"
+                  },
+                  "blockSubscriptionsIntoTenant": {
+                    "description": "Blocks the entering of subscriptions into user's tenant.",
+                    "type": "boolean"
+                  },
+                  "exemptedPrincipals": {
+                    "description": "List of user objectIds that are exempted from the set subscription tenant policies for the user's tenant.",
+                    "type": "array",
+                    "items": {
+                      "format": "uuid",
+                      "type": "string",
+                      "example": "00000000-0000-0000-0000-000000000000"
+                    }
+                  }
+                }
+              },
+              "systemData": {
+                "readOnly": true,
+                "description": "Metadata pertaining to creation and last modification of the resource.",
+                "type": "object",
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              }
+            },
+            "x-ms-azure-resource": true
+          }
+        },
+        "nextLink": {
+          "description": "The link (url) to the next page of results.",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "BillingAccountPoliciesResponse": {
+      "description": "Billing account policies information.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Fully qualified ID for the policy.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "name": {
+          "description": "Policy name.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "type": {
+          "description": "Resource type.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "properties": {
+          "description": "Billing account policies response properties.",
+          "type": "object",
+          "properties": {
+            "serviceTenants": {
+              "description": "Service tenant for the billing account.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "Billing account service tenant.",
+                "properties": {
+                  "tenantId": {
+                    "description": "Service tenant id.",
+                    "type": "string"
+                  },
+                  "tenantName": {
+                    "description": "Service tenant name.",
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "allowTransfers": {
+              "description": "Determine if the transfers are allowed for the billing account",
+              "type": "boolean"
+            }
+          }
+        },
+        "systemData": {
+          "readOnly": true,
+          "description": "Metadata pertaining to creation and last modification of the resource.",
+          "type": "object",
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        }
+      },
+      "x-ms-azure-resource": true
+    },
+    "BillingAccountPoliciesResponseProperties": {
+      "description": "Put billing account policies response properties.",
+      "type": "object",
+      "properties": {
+        "serviceTenants": {
+          "description": "Service tenant for the billing account.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Billing account service tenant.",
+            "properties": {
+              "tenantId": {
+                "description": "Service tenant id.",
+                "type": "string"
+              },
+              "tenantName": {
+                "description": "Service tenant name.",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "allowTransfers": {
+          "description": "Determine if the transfers are allowed for the billing account",
+          "type": "boolean"
+        }
+      }
+    },
+    "TenantPolicy": {
+      "description": "Tenant policy.",
+      "type": "object",
+      "properties": {
+        "policyId": {
+          "description": "Policy Id.",
+          "type": "string",
+          "readOnly": true
+        },
+        "blockSubscriptionsLeavingTenant": {
+          "description": "Blocks the leaving of subscriptions from user's tenant.",
+          "type": "boolean"
+        },
+        "blockSubscriptionsIntoTenant": {
+          "description": "Blocks the entering of subscriptions into user's tenant.",
+          "type": "boolean"
+        },
+        "exemptedPrincipals": {
+          "description": "List of user objectIds that are exempted from the set subscription tenant policies for the user's tenant.",
+          "type": "array",
+          "items": {
+            "format": "uuid",
+            "type": "string",
+            "example": "00000000-0000-0000-0000-000000000000"
+          }
+        }
+      }
+    },
+    "Workload": {
+      "description": "The workload type of the subscription. It can be either Production or DevTest.",
+      "type": "string",
+      "x-ms-enum": {
+        "name": "workload",
+        "modelAsString": true
+      },
+      "enum": [
+        "Production",
+        "DevTest"
+      ]
+    },
+    "BillingScope": {
+      "description": "Billing scope of the subscription.\nFor CustomerLed and FieldLed - /billingAccounts/{billingAccountName}/billingProfiles/{billingProfileName}/invoiceSections/{invoiceSectionName}\nFor PartnerLed - /billingAccounts/{billingAccountName}/customers/{customerName}\nFor Legacy EA - /billingAccounts/{billingAccountName}/enrollmentAccounts/{enrollmentAccountName}",
+      "type": "string"
+    },
+    "AcceptOwnershipState": {
+      "readOnly": true,
+      "type": "string",
+      "description": "The accept ownership state of the resource.",
+      "enum": [
+        "Pending",
+        "Completed",
+        "Expired"
+      ],
+      "x-ms-enum": {
+        "name": "AcceptOwnership",
+        "modelAsString": true
+      }
+    },
+    "ProvisioningState": {
+      "readOnly": true,
+      "type": "string",
+      "description": "The provisioning state of the resource.",
+      "enum": [
+        "Pending",
+        "Accepted",
+        "Succeeded"
+      ],
+      "x-ms-enum": {
+        "name": "Provisioning",
+        "modelAsString": true
+      }
+    },
+    "ServiceTenantResponse": {
+      "description": "Billing account service tenant.",
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "description": "Service tenant id.",
+          "type": "string"
+        },
+        "tenantName": {
+          "description": "Service tenant name.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "apiVersionParameter": {
+      "name": "api-version",
+      "in": "query",
+      "required": true,
+      "type": "string",
+      "description": "Version of the API to be used with the client request. Current version is 2021-10-01"
+    },
+    "subscriptionIdParameter": {
+      "name": "subscriptionId",
+      "x-ms-parameter-location": "method",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "Subscription Id."
+    },
+    "subscriptionNameParameter": {
+      "name": "body",
+      "x-ms-parameter-location": "method",
+      "in": "body",
+      "required": true,
+      "description": "Subscription Name",
+      "schema": {
+        "type": "object",
+        "description": "The new name of the subscription.",
+        "properties": {
+          "subscriptionName": {
+            "type": "string",
+            "description": "New subscription name"
+          }
+        }
+      }
+    },
+    "aliasNameParameter": {
+      "name": "aliasName",
+      "x-ms-parameter-location": "method",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "AliasName is the name for the subscription creation request. Note that this is not the same as subscription name and this doesn’t have any other lifecycle need beyond the request for subscription creation."
+    },
+    "billingAccountIdParameter": {
+      "name": "billingAccountId",
+      "x-ms-parameter-location": "method",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "Billing Account Id."
+    }
+  }
+}

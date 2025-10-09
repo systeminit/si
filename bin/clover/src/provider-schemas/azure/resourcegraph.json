@@ -1,0 +1,2806 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Azure resourcegraph",
+    "version": "2024-04-01",
+    "description": "Azure resourcegraph service specifications"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/subscriptions/{subscriptionId}/providers/Microsoft.ResourceGraph/queries": {
+      "get": {
+        "tags": [
+          "GraphQuery"
+        ],
+        "description": "Get all graph queries defined within a specified subscription.",
+        "operationId": "GraphQuery_ListBySubscription",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription. The value must be an UUID.",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list containing 0 or more graph queries.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "nextLink": {
+                  "description": "URL to fetch the next set of queries.",
+                  "type": "string"
+                },
+                "value": {
+                  "type": "array",
+                  "readOnly": true,
+                  "items": {
+                    "type": "object",
+                    "description": "Graph Query entity definition.",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Azure resource Id"
+                      },
+                      "name": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+                      },
+                      "location": {
+                        "type": "string",
+                        "readOnly": false,
+                        "description": "The location of the resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "type": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Azure resource type"
+                      },
+                      "etag": {
+                        "type": "string",
+                        "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+                      },
+                      "tags": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "Resource tags"
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": true,
+                        "description": "Metadata describing a graph query for an Azure resource.",
+                        "type": "object",
+                        "required": [
+                          "query"
+                        ],
+                        "properties": {
+                          "timeModified": {
+                            "type": "string",
+                            "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+                            "format": "date-time",
+                            "readOnly": true
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "The description of a graph query."
+                          },
+                          "query": {
+                            "type": "string",
+                            "description": "KQL query that will be graph."
+                          },
+                          "resultKind": {
+                            "description": "Enum indicating a type of graph query.",
+                            "readOnly": true,
+                            "type": "string",
+                            "enum": [
+                              "basic"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ResultKind",
+                              "modelAsString": true
+                            }
+                          }
+                        }
+                      },
+                      "systemData": {
+                        "readOnly": true,
+                        "description": "The system metadata relating to this resource.",
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "description": "An array of graph queries."
+                }
+              },
+              "description": "Graph query list result."
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ResourceGraph/queries": {
+      "get": {
+        "tags": [
+          "GraphQuery"
+        ],
+        "description": "Get all graph queries defined within a specified subscription and resource group.",
+        "operationId": "GraphQuery_List",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription. The value must be an UUID.",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list containing 0 or more graph queries.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "nextLink": {
+                  "description": "URL to fetch the next set of queries.",
+                  "type": "string"
+                },
+                "value": {
+                  "type": "array",
+                  "readOnly": true,
+                  "items": {
+                    "type": "object",
+                    "description": "Graph Query entity definition.",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Azure resource Id"
+                      },
+                      "name": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+                      },
+                      "location": {
+                        "type": "string",
+                        "readOnly": false,
+                        "description": "The location of the resource",
+                        "x-ms-mutability": [
+                          "read",
+                          "create"
+                        ]
+                      },
+                      "type": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Azure resource type"
+                      },
+                      "etag": {
+                        "type": "string",
+                        "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+                      },
+                      "tags": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "Resource tags"
+                      },
+                      "properties": {
+                        "x-ms-client-flatten": true,
+                        "description": "Metadata describing a graph query for an Azure resource.",
+                        "type": "object",
+                        "required": [
+                          "query"
+                        ],
+                        "properties": {
+                          "timeModified": {
+                            "type": "string",
+                            "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+                            "format": "date-time",
+                            "readOnly": true
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "The description of a graph query."
+                          },
+                          "query": {
+                            "type": "string",
+                            "description": "KQL query that will be graph."
+                          },
+                          "resultKind": {
+                            "description": "Enum indicating a type of graph query.",
+                            "readOnly": true,
+                            "type": "string",
+                            "enum": [
+                              "basic"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ResultKind",
+                              "modelAsString": true
+                            }
+                          }
+                        }
+                      },
+                      "systemData": {
+                        "readOnly": true,
+                        "description": "The system metadata relating to this resource.",
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "description": "An array of graph queries."
+                }
+              },
+              "description": "Graph query list result."
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ResourceGraph/queries/{resourceName}": {
+      "get": {
+        "tags": [
+          "GraphQuery"
+        ],
+        "description": "Get a single graph query by its resourceName.",
+        "operationId": "GraphQuery_Get",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription. The value must be an UUID.",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "resourceName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the Graph Query resource.",
+            "pattern": "^[^<>&:\\?]*$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A graph query definition.",
+            "schema": {
+              "type": "object",
+              "description": "Graph Query entity definition.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource Id"
+                },
+                "name": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+                },
+                "location": {
+                  "type": "string",
+                  "readOnly": false,
+                  "description": "The location of the resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource type"
+                },
+                "etag": {
+                  "type": "string",
+                  "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Resource tags"
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Metadata describing a graph query for an Azure resource.",
+                  "type": "object",
+                  "required": [
+                    "query"
+                  ],
+                  "properties": {
+                    "timeModified": {
+                      "type": "string",
+                      "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+                      "format": "date-time",
+                      "readOnly": true
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "The description of a graph query."
+                    },
+                    "query": {
+                      "type": "string",
+                      "description": "KQL query that will be graph."
+                    },
+                    "resultKind": {
+                      "description": "Enum indicating a type of graph query.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "basic"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResultKind",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "The system metadata relating to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "GraphQuery"
+        ],
+        "description": "Delete a graph query.",
+        "operationId": "GraphQuery_Delete",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription. The value must be an UUID.",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "resourceName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the Graph Query resource.",
+            "pattern": "^[^<>&:\\?]*$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The graph query has been successfully deleted."
+          },
+          "204": {
+            "description": "The resource doesn't exist."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "GraphQuery"
+        ],
+        "description": "Create a new graph query.",
+        "operationId": "GraphQuery_CreateOrUpdate",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription. The value must be an UUID.",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "resourceName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the Graph Query resource.",
+            "pattern": "^[^<>&:\\?]*$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "properties",
+            "description": "Properties that need to be specified to create a new graph query.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "description": "Graph Query entity definition.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource Id"
+                },
+                "name": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+                },
+                "location": {
+                  "type": "string",
+                  "readOnly": false,
+                  "description": "The location of the resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource type"
+                },
+                "etag": {
+                  "type": "string",
+                  "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Resource tags"
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Metadata describing a graph query for an Azure resource.",
+                  "type": "object",
+                  "required": [
+                    "query"
+                  ],
+                  "properties": {
+                    "timeModified": {
+                      "type": "string",
+                      "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+                      "format": "date-time",
+                      "readOnly": true
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "The description of a graph query."
+                    },
+                    "query": {
+                      "type": "string",
+                      "description": "KQL query that will be graph."
+                    },
+                    "resultKind": {
+                      "description": "Enum indicating a type of graph query.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "basic"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResultKind",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "The system metadata relating to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The newly created graph query.",
+            "schema": {
+              "type": "object",
+              "description": "Graph Query entity definition.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource Id"
+                },
+                "name": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+                },
+                "location": {
+                  "type": "string",
+                  "readOnly": false,
+                  "description": "The location of the resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource type"
+                },
+                "etag": {
+                  "type": "string",
+                  "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Resource tags"
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Metadata describing a graph query for an Azure resource.",
+                  "type": "object",
+                  "required": [
+                    "query"
+                  ],
+                  "properties": {
+                    "timeModified": {
+                      "type": "string",
+                      "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+                      "format": "date-time",
+                      "readOnly": true
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "The description of a graph query."
+                    },
+                    "query": {
+                      "type": "string",
+                      "description": "KQL query that will be graph."
+                    },
+                    "resultKind": {
+                      "description": "Enum indicating a type of graph query.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "basic"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResultKind",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "The system metadata relating to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The newly created graph query.",
+            "schema": {
+              "type": "object",
+              "description": "Graph Query entity definition.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource Id"
+                },
+                "name": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+                },
+                "location": {
+                  "type": "string",
+                  "readOnly": false,
+                  "description": "The location of the resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource type"
+                },
+                "etag": {
+                  "type": "string",
+                  "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Resource tags"
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Metadata describing a graph query for an Azure resource.",
+                  "type": "object",
+                  "required": [
+                    "query"
+                  ],
+                  "properties": {
+                    "timeModified": {
+                      "type": "string",
+                      "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+                      "format": "date-time",
+                      "readOnly": true
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "The description of a graph query."
+                    },
+                    "query": {
+                      "type": "string",
+                      "description": "KQL query that will be graph."
+                    },
+                    "resultKind": {
+                      "description": "Enum indicating a type of graph query.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "basic"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResultKind",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "The system metadata relating to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "description": "Updates a graph query that has already been added.",
+        "operationId": "GraphQuery_Update",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription. The value must be an UUID.",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group. The name is case insensitive.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90,
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "resourceName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the Graph Query resource.",
+            "pattern": "^[^<>&:\\?]*$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "body",
+            "description": "Properties that need to be specified to create a new graph query.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Resource tags"
+                },
+                "etag": {
+                  "type": "string",
+                  "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Metadata describing a graph query for an Azure resource.",
+                  "type": "object",
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "description": "The description of a graph query."
+                    },
+                    "query": {
+                      "type": "string",
+                      "description": "KQL query that will be graph."
+                    }
+                  }
+                }
+              },
+              "description": "The parameters that can be provided when updating workbook properties properties."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The graph query definition updated.",
+            "schema": {
+              "type": "object",
+              "description": "Graph Query entity definition.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource Id"
+                },
+                "name": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+                },
+                "location": {
+                  "type": "string",
+                  "readOnly": false,
+                  "description": "The location of the resource",
+                  "x-ms-mutability": [
+                    "read",
+                    "create"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "Azure resource type"
+                },
+                "etag": {
+                  "type": "string",
+                  "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+                },
+                "tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Resource tags"
+                },
+                "properties": {
+                  "x-ms-client-flatten": true,
+                  "description": "Metadata describing a graph query for an Azure resource.",
+                  "type": "object",
+                  "required": [
+                    "query"
+                  ],
+                  "properties": {
+                    "timeModified": {
+                      "type": "string",
+                      "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+                      "format": "date-time",
+                      "readOnly": true
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "The description of a graph query."
+                    },
+                    "query": {
+                      "type": "string",
+                      "description": "KQL query that will be graph."
+                    },
+                    "resultKind": {
+                      "description": "Enum indicating a type of graph query.",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "basic"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResultKind",
+                        "modelAsString": true
+                      }
+                    }
+                  }
+                },
+                "systemData": {
+                  "readOnly": true,
+                  "description": "The system metadata relating to this resource.",
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/providers/Microsoft.ResourceGraph/resources": {
+      "post": {
+        "tags": [
+          "Resources"
+        ],
+        "operationId": "Resources",
+        "description": "Queries the resources managed by Azure Resource Manager for scopes specified in the request.",
+        "externalDocs": {
+          "description": "Learn more about the query syntax here",
+          "url": "https://aka.ms/resource-graph/learntoquery"
+        },
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "query",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "description": "Describes a query to be executed.",
+              "type": "object",
+              "properties": {
+                "subscriptions": {
+                  "description": "Azure subscriptions against which to execute the query.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "description": "Subscription Id."
+                  }
+                },
+                "managementGroups": {
+                  "description": "Azure management groups against which to execute the query. Example: [ 'mg1', 'mg2' ]",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "description": "The name of Management group."
+                  }
+                },
+                "query": {
+                  "description": "The resources query.",
+                  "type": "string"
+                },
+                "options": {
+                  "description": "The query evaluation options",
+                  "properties": {
+                    "$skipToken": {
+                      "description": "Continuation token for pagination, capturing the next page size and offset, as well as the context of the query.",
+                      "type": "string"
+                    },
+                    "$top": {
+                      "description": "The maximum number of rows that the query should return. Overrides the page size when ```$skipToken``` property is present.",
+                      "type": "integer",
+                      "format": "int32",
+                      "minimum": 1,
+                      "maximum": 1000
+                    },
+                    "$skip": {
+                      "description": "The number of rows to skip from the beginning of the results. Overrides the next page offset when ```$skipToken``` property is present.",
+                      "type": "integer",
+                      "format": "int32",
+                      "minimum": 0
+                    },
+                    "resultFormat": {
+                      "description": "Defines in which format query result returned.",
+                      "type": "string",
+                      "enum": [
+                        "table",
+                        "objectArray"
+                      ],
+                      "default": "objectArray",
+                      "x-ms-enum": {
+                        "name": "ResultFormat",
+                        "modelAsString": false
+                      }
+                    },
+                    "allowPartialScopes": {
+                      "description": "Only applicable for tenant and management group level queries to decide whether to allow partial scopes for result in case the number of subscriptions exceed allowed limits.",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "authorizationScopeFilter": {
+                      "description": "Defines what level of authorization resources should be returned based on the which subscriptions and management groups are passed as scopes.",
+                      "type": "string",
+                      "enum": [
+                        "AtScopeAndBelow",
+                        "AtScopeAndAbove",
+                        "AtScopeExact",
+                        "AtScopeAboveAndBelow"
+                      ],
+                      "default": "AtScopeAndBelow",
+                      "x-ms-enum": {
+                        "name": "AuthorizationScopeFilter",
+                        "modelAsString": false
+                      }
+                    }
+                  }
+                },
+                "facets": {
+                  "description": "An array of facet requests to be computed against the query result.",
+                  "type": "array",
+                  "items": {
+                    "description": "A request to compute additional statistics (facets) over the query results.",
+                    "type": "object",
+                    "properties": {
+                      "expression": {
+                        "description": "The column or list of columns to summarize by",
+                        "type": "string"
+                      },
+                      "options": {
+                        "description": "The options for facet evaluation",
+                        "properties": {
+                          "sortBy": {
+                            "description": "The column name or query expression to sort on. Defaults to count if not present.",
+                            "type": "string"
+                          },
+                          "sortOrder": {
+                            "description": "The sorting order by the selected column (count by default).",
+                            "type": "string",
+                            "default": "desc",
+                            "enum": [
+                              "asc",
+                              "desc"
+                            ],
+                            "x-ms-enum": {
+                              "name": "FacetSortOrder",
+                              "modelAsString": false
+                            }
+                          },
+                          "filter": {
+                            "description": "Specifies the filter condition for the 'where' clause which will be run on main query's result, just before the actual faceting.",
+                            "type": "string"
+                          },
+                          "$top": {
+                            "description": "The maximum number of facet rows that should be returned.",
+                            "type": "integer",
+                            "format": "int32",
+                            "minimum": 1,
+                            "maximum": 1000
+                          }
+                        }
+                      }
+                    },
+                    "required": [
+                      "expression"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "description": "Request specifying query and its options."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Result of the query operation",
+            "schema": {
+              "description": "Query result.",
+              "type": "object",
+              "properties": {
+                "totalRecords": {
+                  "description": "Number of total records matching the query.",
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "count": {
+                  "description": "Number of records returned in the current response. In the case of paging, this is the number of records in the current page.",
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "resultTruncated": {
+                  "description": "Indicates whether the query results are truncated.",
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ],
+                  "x-ms-enum": {
+                    "name": "ResultTruncated",
+                    "modelAsString": false
+                  }
+                },
+                "$skipToken": {
+                  "description": "When present, the value can be passed to a subsequent query call (together with the same query and scopes used in the current request) to retrieve the next page of data.",
+                  "type": "string"
+                },
+                "data": {
+                  "description": "Query output in JObject array or Table format.",
+                  "type": "object"
+                },
+                "facets": {
+                  "description": "Query facets.",
+                  "type": "array",
+                  "items": {
+                    "description": "A facet containing additional statistics on the response of a query. Can be either FacetResult or FacetError.",
+                    "type": "object",
+                    "properties": {
+                      "expression": {
+                        "description": "Facet expression, same as in the corresponding facet request.",
+                        "type": "string"
+                      },
+                      "resultType": {
+                        "description": "Result type",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "expression",
+                      "resultType"
+                    ],
+                    "discriminator": "resultType"
+                  }
+                }
+              },
+              "required": [
+                "totalRecords",
+                "count",
+                "resultTruncated",
+                "data"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "/providers/Microsoft.ResourceGraph/operations": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "description": "Lists all of the available REST API operations.",
+        "operationId": "Operations_List",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK. The request has succeeded.",
+            "schema": {
+              "description": "Result of the request to list Resource Graph operations. It contains a list of operations and a URL link to get the next set of results.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "items": {
+                    "description": "Resource Graph REST API operation definition.",
+                    "properties": {
+                      "name": {
+                        "description": "Operation name: {provider}/{resource}/{operation}",
+                        "type": "string"
+                      },
+                      "display": {
+                        "description": "Display metadata associated with the operation.",
+                        "properties": {
+                          "provider": {
+                            "description": "Service provider: Microsoft Resource Graph.",
+                            "type": "string"
+                          },
+                          "resource": {
+                            "description": "Resource on which the operation is performed etc.",
+                            "type": "string"
+                          },
+                          "operation": {
+                            "description": "Type of operation: get, read, delete, etc.",
+                            "type": "string"
+                          },
+                          "description": {
+                            "description": "Description for the operation.",
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "origin": {
+                        "type": "string",
+                        "description": "The origin of operations."
+                      }
+                    }
+                  },
+                  "description": "List of Resource Graph operations supported by the Resource Graph resource provider."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Resource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "readOnly": true,
+          "description": "Azure resource Id"
+        },
+        "name": {
+          "type": "string",
+          "readOnly": true,
+          "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+        },
+        "location": {
+          "type": "string",
+          "readOnly": false,
+          "description": "The location of the resource",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "readOnly": true,
+          "description": "Azure resource type"
+        },
+        "etag": {
+          "type": "string",
+          "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Resource tags"
+        }
+      },
+      "x-ms-azure-resource": true,
+      "description": "An azure resource object"
+    },
+    "GraphQueryListResult": {
+      "type": "object",
+      "properties": {
+        "nextLink": {
+          "description": "URL to fetch the next set of queries.",
+          "type": "string"
+        },
+        "value": {
+          "type": "array",
+          "readOnly": true,
+          "items": {
+            "type": "object",
+            "description": "Graph Query entity definition.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "readOnly": true,
+                "description": "Azure resource Id"
+              },
+              "name": {
+                "type": "string",
+                "readOnly": true,
+                "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+              },
+              "location": {
+                "type": "string",
+                "readOnly": false,
+                "description": "The location of the resource",
+                "x-ms-mutability": [
+                  "read",
+                  "create"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "readOnly": true,
+                "description": "Azure resource type"
+              },
+              "etag": {
+                "type": "string",
+                "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+              },
+              "tags": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Resource tags"
+              },
+              "properties": {
+                "x-ms-client-flatten": true,
+                "description": "Metadata describing a graph query for an Azure resource.",
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "timeModified": {
+                    "type": "string",
+                    "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+                    "format": "date-time",
+                    "readOnly": true
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "The description of a graph query."
+                  },
+                  "query": {
+                    "type": "string",
+                    "description": "KQL query that will be graph."
+                  },
+                  "resultKind": {
+                    "description": "Enum indicating a type of graph query.",
+                    "readOnly": true,
+                    "type": "string",
+                    "enum": [
+                      "basic"
+                    ],
+                    "x-ms-enum": {
+                      "name": "ResultKind",
+                      "modelAsString": true
+                    }
+                  }
+                }
+              },
+              "systemData": {
+                "readOnly": true,
+                "description": "The system metadata relating to this resource.",
+                "type": "object",
+                "properties": {
+                  "createdBy": {
+                    "type": "string",
+                    "description": "The identity that created the resource."
+                  },
+                  "createdByType": {
+                    "type": "string",
+                    "description": "The type of identity that created the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource creation (UTC)."
+                  },
+                  "lastModifiedBy": {
+                    "type": "string",
+                    "description": "The identity that last modified the resource."
+                  },
+                  "lastModifiedByType": {
+                    "type": "string",
+                    "description": "The type of identity that last modified the resource.",
+                    "enum": [
+                      "User",
+                      "Application",
+                      "ManagedIdentity",
+                      "Key"
+                    ],
+                    "x-ms-enum": {
+                      "name": "createdByType",
+                      "modelAsString": true
+                    }
+                  },
+                  "lastModifiedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The timestamp of resource last modification (UTC)"
+                  }
+                }
+              }
+            }
+          },
+          "description": "An array of graph queries."
+        }
+      },
+      "description": "Graph query list result."
+    },
+    "GraphQueryResource": {
+      "type": "object",
+      "description": "Graph Query entity definition.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "readOnly": true,
+          "description": "Azure resource Id"
+        },
+        "name": {
+          "type": "string",
+          "readOnly": true,
+          "description": "Azure resource name. This is GUID value. The display name should be assigned within properties field."
+        },
+        "location": {
+          "type": "string",
+          "readOnly": false,
+          "description": "The location of the resource",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "readOnly": true,
+          "description": "Azure resource type"
+        },
+        "etag": {
+          "type": "string",
+          "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Resource tags"
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "description": "Metadata describing a graph query for an Azure resource.",
+          "type": "object",
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "timeModified": {
+              "type": "string",
+              "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+              "format": "date-time",
+              "readOnly": true
+            },
+            "description": {
+              "type": "string",
+              "description": "The description of a graph query."
+            },
+            "query": {
+              "type": "string",
+              "description": "KQL query that will be graph."
+            },
+            "resultKind": {
+              "description": "Enum indicating a type of graph query.",
+              "readOnly": true,
+              "type": "string",
+              "enum": [
+                "basic"
+              ],
+              "x-ms-enum": {
+                "name": "ResultKind",
+                "modelAsString": true
+              }
+            }
+          }
+        },
+        "systemData": {
+          "readOnly": true,
+          "description": "The system metadata relating to this resource.",
+          "type": "object",
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "The identity that created the resource."
+            },
+            "createdByType": {
+              "type": "string",
+              "description": "The type of identity that created the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource creation (UTC)."
+            },
+            "lastModifiedBy": {
+              "type": "string",
+              "description": "The identity that last modified the resource."
+            },
+            "lastModifiedByType": {
+              "type": "string",
+              "description": "The type of identity that last modified the resource.",
+              "enum": [
+                "User",
+                "Application",
+                "ManagedIdentity",
+                "Key"
+              ],
+              "x-ms-enum": {
+                "name": "createdByType",
+                "modelAsString": true
+              }
+            },
+            "lastModifiedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The timestamp of resource last modification (UTC)"
+            }
+          }
+        }
+      }
+    },
+    "GraphQueryProperties": {
+      "type": "object",
+      "description": "Properties that contain a graph query.",
+      "required": [
+        "query"
+      ],
+      "properties": {
+        "timeModified": {
+          "type": "string",
+          "description": "Date and time in UTC of the last modification that was made to this graph query definition.",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of a graph query."
+        },
+        "query": {
+          "type": "string",
+          "description": "KQL query that will be graph."
+        },
+        "resultKind": {
+          "description": "Enum indicating a type of graph query.",
+          "readOnly": true,
+          "type": "string",
+          "enum": [
+            "basic"
+          ],
+          "x-ms-enum": {
+            "name": "ResultKind",
+            "modelAsString": true
+          }
+        }
+      }
+    },
+    "GraphQueryUpdateParameters": {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Resource tags"
+        },
+        "etag": {
+          "type": "string",
+          "description": "This will be used to handle Optimistic Concurrency. If not present, it will always overwrite the existing resource without checking conflict."
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "description": "Metadata describing a graph query for an Azure resource.",
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "The description of a graph query."
+            },
+            "query": {
+              "type": "string",
+              "description": "KQL query that will be graph."
+            }
+          }
+        }
+      },
+      "description": "The parameters that can be provided when updating workbook properties properties."
+    },
+    "GraphQueryPropertiesUpdateParameters": {
+      "type": "object",
+      "description": "Properties that contain a workbook for PATCH operation.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "The description of a graph query."
+        },
+        "query": {
+          "type": "string",
+          "description": "KQL query that will be graph."
+        }
+      }
+    },
+    "ErrorFieldContract": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Property level error code."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable representation of property-level error."
+        },
+        "target": {
+          "type": "string",
+          "description": "Property name."
+        }
+      },
+      "description": "Error Field contract."
+    },
+    "GraphQueryError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "object",
+          "description": "The error object.",
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "Service-defined error code. This code serves as a sub-status for the HTTP error code specified in the response."
+            },
+            "message": {
+              "type": "string",
+              "description": "Human-readable representation of the error."
+            },
+            "details": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "Property level error code."
+                  },
+                  "message": {
+                    "type": "string",
+                    "description": "Human-readable representation of property-level error."
+                  },
+                  "target": {
+                    "type": "string",
+                    "description": "Property name."
+                  }
+                },
+                "description": "Error Field contract."
+              },
+              "x-ms-identifiers": [],
+              "description": "The list of invalid fields send in request, in case of validation error."
+            }
+          }
+        }
+      },
+      "description": "Error message body that will indicate why the operation failed."
+    },
+    "QueryRequest": {
+      "description": "Describes a query to be executed.",
+      "type": "object",
+      "properties": {
+        "subscriptions": {
+          "description": "Azure subscriptions against which to execute the query.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Subscription Id."
+          }
+        },
+        "managementGroups": {
+          "description": "Azure management groups against which to execute the query. Example: [ 'mg1', 'mg2' ]",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "The name of Management group."
+          }
+        },
+        "query": {
+          "description": "The resources query.",
+          "type": "string"
+        },
+        "options": {
+          "description": "The query evaluation options",
+          "properties": {
+            "$skipToken": {
+              "description": "Continuation token for pagination, capturing the next page size and offset, as well as the context of the query.",
+              "type": "string"
+            },
+            "$top": {
+              "description": "The maximum number of rows that the query should return. Overrides the page size when ```$skipToken``` property is present.",
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "$skip": {
+              "description": "The number of rows to skip from the beginning of the results. Overrides the next page offset when ```$skipToken``` property is present.",
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "resultFormat": {
+              "description": "Defines in which format query result returned.",
+              "type": "string",
+              "enum": [
+                "table",
+                "objectArray"
+              ],
+              "default": "objectArray",
+              "x-ms-enum": {
+                "name": "ResultFormat",
+                "modelAsString": false
+              }
+            },
+            "allowPartialScopes": {
+              "description": "Only applicable for tenant and management group level queries to decide whether to allow partial scopes for result in case the number of subscriptions exceed allowed limits.",
+              "type": "boolean",
+              "default": false
+            },
+            "authorizationScopeFilter": {
+              "description": "Defines what level of authorization resources should be returned based on the which subscriptions and management groups are passed as scopes.",
+              "type": "string",
+              "enum": [
+                "AtScopeAndBelow",
+                "AtScopeAndAbove",
+                "AtScopeExact",
+                "AtScopeAboveAndBelow"
+              ],
+              "default": "AtScopeAndBelow",
+              "x-ms-enum": {
+                "name": "AuthorizationScopeFilter",
+                "modelAsString": false
+              }
+            }
+          }
+        },
+        "facets": {
+          "description": "An array of facet requests to be computed against the query result.",
+          "type": "array",
+          "items": {
+            "description": "A request to compute additional statistics (facets) over the query results.",
+            "type": "object",
+            "properties": {
+              "expression": {
+                "description": "The column or list of columns to summarize by",
+                "type": "string"
+              },
+              "options": {
+                "description": "The options for facet evaluation",
+                "properties": {
+                  "sortBy": {
+                    "description": "The column name or query expression to sort on. Defaults to count if not present.",
+                    "type": "string"
+                  },
+                  "sortOrder": {
+                    "description": "The sorting order by the selected column (count by default).",
+                    "type": "string",
+                    "default": "desc",
+                    "enum": [
+                      "asc",
+                      "desc"
+                    ],
+                    "x-ms-enum": {
+                      "name": "FacetSortOrder",
+                      "modelAsString": false
+                    }
+                  },
+                  "filter": {
+                    "description": "Specifies the filter condition for the 'where' clause which will be run on main query's result, just before the actual faceting.",
+                    "type": "string"
+                  },
+                  "$top": {
+                    "description": "The maximum number of facet rows that should be returned.",
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 1,
+                    "maximum": 1000
+                  }
+                }
+              }
+            },
+            "required": [
+              "expression"
+            ]
+          }
+        }
+      },
+      "required": [
+        "query"
+      ]
+    },
+    "QueryRequestOptions": {
+      "description": "The options for query evaluation",
+      "properties": {
+        "$skipToken": {
+          "description": "Continuation token for pagination, capturing the next page size and offset, as well as the context of the query.",
+          "type": "string"
+        },
+        "$top": {
+          "description": "The maximum number of rows that the query should return. Overrides the page size when ```$skipToken``` property is present.",
+          "type": "integer",
+          "format": "int32",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "$skip": {
+          "description": "The number of rows to skip from the beginning of the results. Overrides the next page offset when ```$skipToken``` property is present.",
+          "type": "integer",
+          "format": "int32",
+          "minimum": 0
+        },
+        "resultFormat": {
+          "description": "Defines in which format query result returned.",
+          "type": "string",
+          "enum": [
+            "table",
+            "objectArray"
+          ],
+          "default": "objectArray",
+          "x-ms-enum": {
+            "name": "ResultFormat",
+            "modelAsString": false
+          }
+        },
+        "allowPartialScopes": {
+          "description": "Only applicable for tenant and management group level queries to decide whether to allow partial scopes for result in case the number of subscriptions exceed allowed limits.",
+          "type": "boolean",
+          "default": false
+        },
+        "authorizationScopeFilter": {
+          "description": "Defines what level of authorization resources should be returned based on the which subscriptions and management groups are passed as scopes.",
+          "type": "string",
+          "enum": [
+            "AtScopeAndBelow",
+            "AtScopeAndAbove",
+            "AtScopeExact",
+            "AtScopeAboveAndBelow"
+          ],
+          "default": "AtScopeAndBelow",
+          "x-ms-enum": {
+            "name": "AuthorizationScopeFilter",
+            "modelAsString": false
+          }
+        }
+      }
+    },
+    "FacetRequest": {
+      "description": "A request to compute additional statistics (facets) over the query results.",
+      "type": "object",
+      "properties": {
+        "expression": {
+          "description": "The column or list of columns to summarize by",
+          "type": "string"
+        },
+        "options": {
+          "description": "The options for facet evaluation",
+          "properties": {
+            "sortBy": {
+              "description": "The column name or query expression to sort on. Defaults to count if not present.",
+              "type": "string"
+            },
+            "sortOrder": {
+              "description": "The sorting order by the selected column (count by default).",
+              "type": "string",
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "x-ms-enum": {
+                "name": "FacetSortOrder",
+                "modelAsString": false
+              }
+            },
+            "filter": {
+              "description": "Specifies the filter condition for the 'where' clause which will be run on main query's result, just before the actual faceting.",
+              "type": "string"
+            },
+            "$top": {
+              "description": "The maximum number of facet rows that should be returned.",
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          }
+        }
+      },
+      "required": [
+        "expression"
+      ]
+    },
+    "FacetRequestOptions": {
+      "description": "The options for facet evaluation",
+      "properties": {
+        "sortBy": {
+          "description": "The column name or query expression to sort on. Defaults to count if not present.",
+          "type": "string"
+        },
+        "sortOrder": {
+          "description": "The sorting order by the selected column (count by default).",
+          "type": "string",
+          "default": "desc",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "x-ms-enum": {
+            "name": "FacetSortOrder",
+            "modelAsString": false
+          }
+        },
+        "filter": {
+          "description": "Specifies the filter condition for the 'where' clause which will be run on main query's result, just before the actual faceting.",
+          "type": "string"
+        },
+        "$top": {
+          "description": "The maximum number of facet rows that should be returned.",
+          "type": "integer",
+          "format": "int32",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      }
+    },
+    "QueryResponse": {
+      "description": "Query result.",
+      "type": "object",
+      "properties": {
+        "totalRecords": {
+          "description": "Number of total records matching the query.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "count": {
+          "description": "Number of records returned in the current response. In the case of paging, this is the number of records in the current page.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "resultTruncated": {
+          "description": "Indicates whether the query results are truncated.",
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "x-ms-enum": {
+            "name": "ResultTruncated",
+            "modelAsString": false
+          }
+        },
+        "$skipToken": {
+          "description": "When present, the value can be passed to a subsequent query call (together with the same query and scopes used in the current request) to retrieve the next page of data.",
+          "type": "string"
+        },
+        "data": {
+          "description": "Query output in JObject array or Table format.",
+          "type": "object"
+        },
+        "facets": {
+          "description": "Query facets.",
+          "type": "array",
+          "items": {
+            "description": "A facet containing additional statistics on the response of a query. Can be either FacetResult or FacetError.",
+            "type": "object",
+            "properties": {
+              "expression": {
+                "description": "Facet expression, same as in the corresponding facet request.",
+                "type": "string"
+              },
+              "resultType": {
+                "description": "Result type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "expression",
+              "resultType"
+            ],
+            "discriminator": "resultType"
+          }
+        }
+      },
+      "required": [
+        "totalRecords",
+        "count",
+        "resultTruncated",
+        "data"
+      ]
+    },
+    "Table": {
+      "description": "Query output in tabular format.",
+      "type": "object",
+      "properties": {
+        "columns": {
+          "description": "Query result column descriptors.",
+          "type": "array",
+          "items": {
+            "description": "Column descriptor.",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Column name.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Column data type.",
+                "type": "string",
+                "enum": [
+                  "string",
+                  "integer",
+                  "number",
+                  "boolean",
+                  "object",
+                  "datetime"
+                ],
+                "x-ms-enum": {
+                  "name": "ColumnDataType",
+                  "modelAsString": false
+                }
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ]
+          }
+        },
+        "rows": {
+          "description": "Query result rows.",
+          "type": "array",
+          "items": {
+            "description": "Query result row.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Cell value."
+            }
+          }
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ]
+    },
+    "Column": {
+      "description": "Query result column descriptor.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Column name.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Column data type.",
+          "type": "string",
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "object",
+            "datetime"
+          ],
+          "x-ms-enum": {
+            "name": "ColumnDataType",
+            "modelAsString": false
+          }
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ]
+    },
+    "ColumnDataType": {
+      "description": "Data type of a column in a table.",
+      "type": "string",
+      "enum": [
+        "string",
+        "integer",
+        "number",
+        "boolean",
+        "object",
+        "datetime"
+      ],
+      "x-ms-enum": {
+        "name": "ColumnDataType",
+        "modelAsString": false
+      }
+    },
+    "Row": {
+      "description": "Query result row.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "Cell value."
+      }
+    },
+    "Facet": {
+      "description": "A facet containing additional statistics on the response of a query. Can be either FacetResult or FacetError.",
+      "type": "object",
+      "properties": {
+        "expression": {
+          "description": "Facet expression, same as in the corresponding facet request.",
+          "type": "string"
+        },
+        "resultType": {
+          "description": "Result type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expression",
+        "resultType"
+      ],
+      "discriminator": "resultType"
+    },
+    "FacetResult": {
+      "x-ms-discriminator-value": "FacetResult",
+      "description": "Successfully executed facet containing additional statistics on the response of a query.",
+      "type": "object",
+      "properties": {
+        "totalRecords": {
+          "description": "Number of total records in the facet results.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "count": {
+          "description": "Number of records returned in the facet response.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "data": {
+          "description": "A JObject array or Table containing the desired facets. Only present if the facet is valid.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "totalRecords",
+        "count",
+        "data"
+      ],
+      "allOf": [
+        {
+          "description": "A facet containing additional statistics on the response of a query. Can be either FacetResult or FacetError.",
+          "type": "object",
+          "properties": {
+            "expression": {
+              "description": "Facet expression, same as in the corresponding facet request.",
+              "type": "string"
+            },
+            "resultType": {
+              "description": "Result type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "expression",
+            "resultType"
+          ],
+          "discriminator": "resultType"
+        }
+      ]
+    },
+    "FacetError": {
+      "x-ms-discriminator-value": "FacetError",
+      "description": "A facet whose execution resulted in an error.",
+      "type": "object",
+      "properties": {
+        "errors": {
+          "description": "An array containing detected facet errors with details.",
+          "type": "array",
+          "items": {
+            "title": "Error details.",
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Error code identifying the specific error."
+              },
+              "message": {
+                "type": "string",
+                "description": "A human readable error message."
+              }
+            },
+            "additionalProperties": {
+              "type": "object"
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        }
+      },
+      "required": [
+        "errors"
+      ],
+      "allOf": [
+        {
+          "description": "A facet containing additional statistics on the response of a query. Can be either FacetResult or FacetError.",
+          "type": "object",
+          "properties": {
+            "expression": {
+              "description": "Facet expression, same as in the corresponding facet request.",
+              "type": "string"
+            },
+            "resultType": {
+              "description": "Result type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "expression",
+            "resultType"
+          ],
+          "discriminator": "resultType"
+        }
+      ]
+    },
+    "ErrorResponse": {
+      "title": "Error response.",
+      "type": "object",
+      "description": "An error response from the API.",
+      "properties": {
+        "error": {
+          "description": "Error information.",
+          "title": "Error info.",
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "Error code identifying the specific error."
+            },
+            "message": {
+              "type": "string",
+              "description": "A human readable error message."
+            },
+            "details": {
+              "type": "array",
+              "description": "Error details",
+              "items": {
+                "title": "Error details.",
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "Error code identifying the specific error."
+                  },
+                  "message": {
+                    "type": "string",
+                    "description": "A human readable error message."
+                  }
+                },
+                "additionalProperties": {
+                  "type": "object"
+                },
+                "required": [
+                  "code",
+                  "message"
+                ]
+              }
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ]
+        }
+      },
+      "required": [
+        "error"
+      ]
+    },
+    "Error": {
+      "title": "Error info.",
+      "type": "object",
+      "description": "Error details.",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code identifying the specific error."
+        },
+        "message": {
+          "type": "string",
+          "description": "A human readable error message."
+        },
+        "details": {
+          "type": "array",
+          "description": "Error details",
+          "items": {
+            "title": "Error details.",
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Error code identifying the specific error."
+              },
+              "message": {
+                "type": "string",
+                "description": "A human readable error message."
+              }
+            },
+            "additionalProperties": {
+              "type": "object"
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ]
+    },
+    "ErrorDetails": {
+      "title": "Error details.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code identifying the specific error."
+        },
+        "message": {
+          "type": "string",
+          "description": "A human readable error message."
+        }
+      },
+      "additionalProperties": {
+        "type": "object"
+      },
+      "required": [
+        "code",
+        "message"
+      ]
+    },
+    "OperationListResult": {
+      "description": "Result of the request to list Resource Graph operations. It contains a list of operations and a URL link to get the next set of results.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "description": "Resource Graph REST API operation definition.",
+            "properties": {
+              "name": {
+                "description": "Operation name: {provider}/{resource}/{operation}",
+                "type": "string"
+              },
+              "display": {
+                "description": "Display metadata associated with the operation.",
+                "properties": {
+                  "provider": {
+                    "description": "Service provider: Microsoft Resource Graph.",
+                    "type": "string"
+                  },
+                  "resource": {
+                    "description": "Resource on which the operation is performed etc.",
+                    "type": "string"
+                  },
+                  "operation": {
+                    "description": "Type of operation: get, read, delete, etc.",
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Description for the operation.",
+                    "type": "string"
+                  }
+                }
+              },
+              "origin": {
+                "type": "string",
+                "description": "The origin of operations."
+              }
+            }
+          },
+          "description": "List of Resource Graph operations supported by the Resource Graph resource provider."
+        }
+      }
+    },
+    "Operation": {
+      "description": "Resource Graph REST API operation definition.",
+      "properties": {
+        "name": {
+          "description": "Operation name: {provider}/{resource}/{operation}",
+          "type": "string"
+        },
+        "display": {
+          "description": "Display metadata associated with the operation.",
+          "properties": {
+            "provider": {
+              "description": "Service provider: Microsoft Resource Graph.",
+              "type": "string"
+            },
+            "resource": {
+              "description": "Resource on which the operation is performed etc.",
+              "type": "string"
+            },
+            "operation": {
+              "description": "Type of operation: get, read, delete, etc.",
+              "type": "string"
+            },
+            "description": {
+              "description": "Description for the operation.",
+              "type": "string"
+            }
+          }
+        },
+        "origin": {
+          "type": "string",
+          "description": "The origin of operations."
+        }
+      }
+    }
+  },
+  "parameters": {
+    "GraphQueryResourceNameParameter": {
+      "name": "resourceName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of the Graph Query resource.",
+      "pattern": "^[^<>&:\\?]*$",
+      "x-ms-parameter-location": "method"
+    }
+  }
+}
