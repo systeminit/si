@@ -510,7 +510,7 @@ impl ExpectComponent {
         ExpectComponentOutputSocket(self.0, output_socket_id)
     }
 
-    pub async fn execute_management_func(self, ctx: &DalContext, func: ExpectFunc) {
+    pub async fn execute_management_func(self, ctx: &mut DalContext, func: ExpectFunc) {
         component::execute_management_func(ctx, self.0, func.id())
             .await
             .expect("execute management func")
