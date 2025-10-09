@@ -127,6 +127,23 @@ impl PosthogEventTracker {
             properties,
         )
     }
+
+    pub fn track_no_ctx_workspace(
+        &self,
+        workspace_id: WorkspacePk,
+        event_name: impl AsRef<str>,
+        properties: serde_json::Value,
+    ) {
+        sdf_core::tracking::track_no_ctx_workspace(
+            &self.posthog_client,
+            &self.original_uri,
+            &self.host,
+            "anonymous".to_string(),
+            workspace_id,
+            event_name,
+            properties,
+        )
+    }
 }
 
 #[async_trait]

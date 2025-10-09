@@ -40,10 +40,11 @@ use super::{
 };
 
 ///
-/// Gets a DalContext pointed at the TargetChangeSet.
+/// Gets a DalContext pointed at HEAD for the current workspace.
 ///
-/// This ensures the user is authorized to access the workspace, has the correct role, and
-/// that the change set is in fact a part of the workspace.
+/// - Authenticates the user via token (via WorkspaceAuthorization)
+/// - Authorizes the user to the endpoint (role) and workspace (via WorkspaceAuthorization)
+/// - Loads the snapshot
 ///
 #[derive(Clone, derive_more::Deref, derive_more::Into)]
 pub struct WorkspaceDalContext(pub DalContext);
@@ -57,8 +58,17 @@ impl FromRequestParts<AppState> for WorkspaceDalContext {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         // Get the workspace we are accessing (and authorized for)
-        let WorkspaceAuthorization { ctx, .. } = parts.extract_with_state(state).await?;
-        Ok(Self(ctx))
+        let WorkspaceAuthorization {
+            mut ctx_without_snapshot,
+            ..
+        } = parts.extract_with_state(state).await?;
+
+        ctx_without_snapshot
+            .update_snapshot_to_visibility()
+            .await
+            .map_err(internal_error)?;
+
+        Ok(Self(ctx_without_snapshot))
     }
 }
 
@@ -66,16 +76,17 @@ impl FromRequestParts<AppState> for WorkspaceDalContext {
 /// Handles the whole endpoint authorization (checking if the user has access to the target
 /// workspace with the desired role, *and* that the user is a member of the workspace).
 ///
-/// Unless you have already used the `TokenParamAccessToken` extractor to get the token from
-/// query parameters, this will retrieve the token from the Authorization header.
+/// - Authenticates the user via token (via AuthorizedForRole)
+/// - Authorizes the user to the endpoint (role) and workspace (via AuthorizedForRole)
+/// - Checks if the user is a member of the workspace
 ///
-/// Unless you have already used the `AuthorizeForAutomationRole` extractor to check that the
-/// token has the automation role, this will check for maximal permissions (the web role).
+/// This extractor is cached and may be called multiple times without redoing the work.
 ///
-#[derive(Clone, derive_more::Deref)]
+#[derive(Clone)]
 pub struct WorkspaceAuthorization {
-    #[deref]
-    pub ctx: DalContext,
+    // TODO(jkeiser) don't expose a DalContext at all here! It only needs pg, we shouldn't
+    // build anything else. Requires refactoring though.
+    pub ctx_without_snapshot: DalContext,
     pub user: User,
     pub workspace_id: WorkspacePk,
     pub authorized_role: SiJwtClaimRole,
@@ -109,24 +120,24 @@ impl FromRequestParts<AppState> for WorkspaceAuthorization {
             request_ulid,
             authentication_method,
         );
-        // TODO consider that this is loading the WorkspaceSnapshot, which may not be used by
-        // the caller
-        let ctx = builder
-            .build_head(access_builder)
+
+        let ctx_without_snapshot = builder
+            .build_head_without_snapshot(access_builder)
             .await
             .map_err(internal_error)?;
 
         // Check if the user is a member of the workspace (and get the record if so)
-        let workspace_members = User::list_members_for_workspace(&ctx, workspace_id.to_string())
-            .await
-            .map_err(internal_error)?;
+        let workspace_members =
+            User::list_members_for_workspace(&ctx_without_snapshot, workspace_id.to_string())
+                .await
+                .map_err(internal_error)?;
         let user = workspace_members
             .into_iter()
             .find(|m| m.pk() == user_id)
             .ok_or_else(|| unauthorized_error("User not a member of the workspace"))?;
 
         Ok(Self {
-            ctx,
+            ctx_without_snapshot,
             user,
             workspace_id,
             authorized_role,
@@ -135,13 +146,15 @@ impl FromRequestParts<AppState> for WorkspaceAuthorization {
 }
 
 ///
-/// Confirms that the user has been authorized for the desired role for the target workspace.
+/// Confirms that the user has been authorized for the endpoint's desired role.
 ///
-/// Does *not* confirm that the user is a member of the workspace (use WorkspaceMember for that).
+/// - Authenticates the user (via ValidatedToken)
+/// - Validates that the token's workspace_id matches the workspace_id in the URL
+/// - Validates that the token has the desired role
 ///
-/// Stores the role that was authorized.
-///
-/// To authorize for something other than web role, use the `AuthorizeForAutomationRole` extractor.
+/// The desired role may be specified by calling the AuthorizedForWebRole or AuthorizedForAutomationRole
+/// extractors. If you do not specify a role, AuthorizedForWebRole is used by default (which
+/// requires maximal permissions to access the endpoint)
 ///
 #[derive(Clone, Copy, Debug)]
 struct AuthorizedForRole {

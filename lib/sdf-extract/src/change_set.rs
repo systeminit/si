@@ -33,10 +33,11 @@ use super::{
 };
 
 ///
-/// Gets a DalContext pointed at the TargetChangeSet.
+/// Gets a DalContext pointed at the TargetChangeSet, with the snapshot preloaded.
 ///
-/// This ensures the user is authorized to access the workspace, has the correct role, and
-/// that the change set is in fact a part of the workspace.
+/// - Authenticates the user via token (via ChangeSetAuthorization)
+/// - Authorizes the user to the endpoint (role), workspace, and change set (via ChangeSetAuthorization)
+/// - Loads the snapshot
 ///
 #[derive(Clone, derive_more::Deref, derive_more::Into)]
 pub struct ChangeSetDalContext(pub DalContext);
@@ -50,23 +51,36 @@ impl FromRequestParts<AppState> for ChangeSetDalContext {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         // Get the workspace we are accessing (and authorized for)
-        let ChangeSetAuthorization { ctx, .. } = parts.extract_with_state(state).await?;
+        let ChangeSetAuthorization {
+            mut ctx_without_snapshot,
+            ..
+        } = parts.extract_with_state(state).await?;
 
-        Ok(Self(ctx))
+        ctx_without_snapshot
+            .update_snapshot_to_visibility()
+            .await
+            .map_err(internal_error)?;
+
+        Ok(Self(ctx_without_snapshot))
     }
 }
 
 ///
 /// Handles the whole endpoint authorization (checking if the user has access to the target
 /// workspace with the desired role, *and* that the user is a member of the workspace), and
-/// checks that the TargetChangeSetId is within the given workspace.
+/// checks that the TargetChangeSetIdent is within the given workspace.
 ///
-/// This uses WorkspaceAuthorization to do the checking; see docs for that.
+/// - Authenticates the user via token (via WorkspaceAuthorization)
+/// - Authorizes the user to the endpoint (role) and workspace (via WorkspaceAuthorization)
+/// - Validates that the change set is in the workspace
 ///
-#[derive(Clone, derive_more::Deref)]
+/// This extractor is cached and may be called multiple times without redoing the work.
+///
+#[derive(Clone)]
 pub struct ChangeSetAuthorization {
-    #[deref]
-    pub ctx: DalContext,
+    /// The DalContext used to talk to the DB. This has the correct workspace and changeset,
+    /// but does NOT have the snapshot loaded. ChangeSetDalContext gives you that.
+    pub ctx_without_snapshot: DalContext,
     pub user: User,
     pub workspace_id: WorkspacePk,
     pub change_set_id: ChangeSetId,
@@ -87,7 +101,7 @@ impl FromRequestParts<AppState> for ChangeSetAuthorization {
 
         // Get the workspace we are accessing (and authorized for)
         let WorkspaceAuthorization {
-            mut ctx,
+            mut ctx_without_snapshot,
             user,
             workspace_id,
             authorized_role,
@@ -95,25 +109,21 @@ impl FromRequestParts<AppState> for ChangeSetAuthorization {
 
         // Validate the change set id is within that workspace
         let TargetChangeSetIdent(change_set_ident) = parts.extract().await?;
-        let change_set_id = change_set_ident.resolve(&ctx).await?;
-        let change_set = ChangeSet::find(&ctx, change_set_id)
+        let change_set_id = change_set_ident.resolve(&ctx_without_snapshot).await?;
+        let change_set = ChangeSet::find(&ctx_without_snapshot, change_set_id)
             .await
             .map_err(internal_error)?;
         if change_set.is_none_or(|change_set| change_set.workspace_id != Some(workspace_id)) {
             return Err(internal_error("Change set not found for given workspace"));
         }
 
-        // Update the DalContext to the given changeset.
-        // TODO(jkeiser) don't expose a DalContext at all here! It only needs pg, we shouldn't
-        // build anything else. Requires refactoring though.
-        // As long as we *do* expose a DalContext, though, we should make sure it has the right
-        // visibility
-        ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
-            .await
-            .map_err(internal_error)?;
+        // Update the DalContext to the given changeset, but do not load the snapshot.
+        // As long as we *do* expose a DalContext, we should make sure it has the right visibility,
+        // because callers look at it.
+        ctx_without_snapshot.update_visibility_deprecated(change_set_id.into());
 
         Ok(Self {
-            ctx,
+            ctx_without_snapshot,
             user,
             workspace_id,
             change_set_id,

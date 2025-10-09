@@ -1544,7 +1544,7 @@ impl DalContextBuilder {
     }
 
     /// Constructs and returns a new [`DalContext`] using an [`AccessBuilder`].
-    pub async fn build_head(
+    pub async fn build_head_without_snapshot(
         &self,
         access_builder: AccessBuilder,
     ) -> TransactionsResult<DalContext> {
@@ -1566,14 +1566,20 @@ impl DalContextBuilder {
             cache: Default::default(),
         };
 
-        // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
-        // workspace's default change set id, but we are going to use a dummy visibility to do so.
-        // We should probably just use the pg connection directly or derive the default change set
-        // id through other means.
+        // Update changeset so it's correct, but don't pull the snapshot yet
         let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
-        ctx.update_visibility_and_snapshot_to_visibility(default_change_set_id)
-            .await?;
+        ctx.update_visibility_deprecated(default_change_set_id.into());
 
+        Ok(ctx)
+    }
+
+    /// Constructs and returns a new [`DalContext`] using an [`AccessBuilder`].
+    pub async fn build_head(
+        &self,
+        access_builder: AccessBuilder,
+    ) -> TransactionsResult<DalContext> {
+        let mut ctx = self.build_head_without_snapshot(access_builder).await?;
+        ctx.update_snapshot_to_visibility().await?;
         Ok(ctx)
     }
 

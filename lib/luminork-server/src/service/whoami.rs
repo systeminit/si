@@ -65,14 +65,11 @@ pub async fn whoami(
     ValidatedToken(token): ValidatedToken,
     tracker: PosthogEventTracker,
     WorkspaceAuthorization {
-        ctx,
-        workspace_id,
-        user,
-        ..
+        workspace_id, user, ..
     }: WorkspaceAuthorization,
 ) -> impl IntoResponse {
-    tracker.track(
-        &ctx,
+    tracker.track_no_ctx_workspace(
+        workspace_id,
         "api_whoami",
         json!({
             "user_id": user.pk(),
