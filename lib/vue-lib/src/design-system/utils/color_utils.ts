@@ -17,6 +17,7 @@ export const BRAND_COLOR_FILTER_HEX_CODES = {
   Fastly: "#FE272D",
   GitHub: "#9467EC",
   Helpers: "#E1A7FE",
+  Hetzner: "#D50C2D",
   Netlify: "#05BDBA",
   Posthog: "#F54E00",
   Tailscale: "#A7DAC2",

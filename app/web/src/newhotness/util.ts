@@ -31,6 +31,7 @@ export const getAssetIcon = (name: string) => {
     CoreOS: "logo-coreos",
     Docker: "logo-docker",
     Kubernetes: "logo-k8s",
+    Hetzner: "logo-hetzner",
   } as Record<string, string>;
 
   let icon = icons[name];
