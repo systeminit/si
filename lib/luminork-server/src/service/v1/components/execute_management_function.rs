@@ -213,7 +213,7 @@ async fn resolve_management_function_reference(
         ManagementFunctionReference::ByName { function } => {
             let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
             let prototypes =
-                ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await?;
+                ManagementPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id).await?;
 
             let mut matching_prototypes: Vec<_> = vec![];
             for prototype in prototypes {

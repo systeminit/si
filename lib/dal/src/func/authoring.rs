@@ -95,6 +95,7 @@ use crate::{
             FuncArgumentKind,
         },
     },
+    management::prototype::ManagementPrototypeParent,
     prop::PropError,
     schema::variant::{
         authoring::{
@@ -361,15 +362,19 @@ impl FuncAuthoringClient {
     #[instrument(
         name = "func.authoring.create_new_management_func",
         level = "info",
-        skip(ctx)
+        skip(ctx, parent)
     )]
     pub async fn create_new_management_func(
         ctx: &DalContext,
         name: Option<String>,
-        schema_variant_id: SchemaVariantId,
+        parent: impl Into<ManagementPrototypeParent>,
     ) -> FuncAuthoringResult<Func> {
-        SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
-        let func = create::create_management_func(ctx, name, schema_variant_id).await?;
+        let parent = parent.into();
+        if let ManagementPrototypeParent::SchemaVariant(schema_variant_id) = parent {
+            SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
+        }
+
+        let func = create::create_management_func(ctx, name, parent).await?;
         Ok(func)
     }
 

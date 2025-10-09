@@ -19,6 +19,7 @@ use si_events::{
     SchemaVariantId,
     Timestamp,
 };
+use si_id::SchemaId;
 use strum::{
     AsRefStr,
     Display,
@@ -140,7 +141,7 @@ pub enum FuncBinding {
     },
     #[serde(rename_all = "camelCase")]
     Management {
-        // unique ids
+        schema_ids: Option<Vec<SchemaId>>,
         schema_variant_id: Option<SchemaVariantId>,
         management_prototype_id: Option<ManagementPrototypeId>,
         func_id: Option<FuncId>,

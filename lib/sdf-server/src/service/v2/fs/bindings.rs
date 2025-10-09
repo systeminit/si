@@ -592,6 +592,7 @@ async fn parse_binding_for_create(
             inputs,
         },
         Binding::Management => FuncBinding::Management {
+            schema_ids: None,
             schema_variant_id: Some(schema_variant_id),
             management_prototype_id: None,
             func_id: Some(func_id),
@@ -726,7 +727,8 @@ async fn create_management_binding(
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
 ) -> FsResult<()> {
-    ManagementBinding::create_management_binding(ctx, func_id, schema_variant_id).await?;
+    ManagementBinding::create_management_binding(ctx, func_id, None, Some(schema_variant_id))
+        .await?;
 
     let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
     let func = Func::get_by_id(ctx, func_id).await?;

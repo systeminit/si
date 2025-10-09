@@ -84,7 +84,7 @@ pub async fn build_func_details(
 ) -> crate::Result<Vec<LuminorkSchemaVariantFunc>> {
     let action_prototypes = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
     let management_prototypes =
-        ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await?;
+        ManagementPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id).await?;
 
     let mut index: HashMap<FuncId, FuncKindVariant> = HashMap::new();
 

@@ -1,7 +1,9 @@
 use dal::{
     DalContext,
+    FuncId,
     Schema,
     SchemaId,
+    func::authoring::FuncAuthoringClient,
 };
 
 use crate::{
@@ -46,4 +48,18 @@ impl SchemaKey for &str {
     async fn id(ctx: &DalContext, key: Self) -> Result<SchemaId> {
         Ok(Schema::get_by_name(ctx, key).await?.id())
     }
+}
+
+/// Create a management func overaly for the given schema
+pub async fn create_overlay_management_func(
+    ctx: &DalContext,
+    schema: impl SchemaKey,
+    name: impl Into<String>,
+    code: impl Into<String>,
+) -> Result<FuncId> {
+    let schema_id = SchemaKey::id(ctx, schema).await?;
+    let func =
+        FuncAuthoringClient::create_new_management_func(ctx, Some(name.into()), schema_id).await?;
+    FuncAuthoringClient::save_code(ctx, func.id, code.into()).await?;
+    Ok(func.id)
 }

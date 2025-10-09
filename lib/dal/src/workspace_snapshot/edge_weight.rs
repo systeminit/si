@@ -67,7 +67,7 @@ pub enum EdgeWeightKind {
     },
     /// Edge from attribute value to validation result node
     ValidationOutput,
-    /// Edge from [`SchemaVariant`](crate::SchemaVariant) to [`ManagementPrototype`](crate::ManagementPrototype).
+    /// Edge from [`Schema`](crate::Schema) or a [`SchemaVariant`](crate::SchemaVariant) to [`ManagementPrototype`](crate::ManagementPrototype).
     ManagementPrototype,
     /// From a Geometry node to the node it represents on a view.
     Represents,

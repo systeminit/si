@@ -14,6 +14,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_id::ManagementPrototypeId;
 use si_split_graph::SplitGraphError;
 use strum::{
     Display,
@@ -133,6 +134,8 @@ pub enum FuncBindingError {
     MalformedInput(AttributeBindingMalformedInput),
     #[error("management prototype error: {0}")]
     ManagementPrototype(#[from] Box<ManagementPrototypeError>),
+    #[error("management prototype has no parent: {0}")]
+    ManagementPrototypeNoParent(ManagementPrototypeId),
     #[error("no input location given for attribute prototype id ({0}) and func argument id ({1})")]
     NoInputLocationGiven(AttributePrototypeId, FuncArgumentId),
     #[error("no output location given for func: {0}")]
@@ -339,7 +342,8 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
                 func_id: Some(auth.func_id),
             },
             FuncBinding::Management(mgmt) => si_frontend_types::FuncBinding::Management {
-                schema_variant_id: Some(mgmt.schema_variant_id),
+                schema_ids: mgmt.schema_ids,
+                schema_variant_id: mgmt.schema_variant_id,
                 management_prototype_id: Some(mgmt.management_prototype_id),
                 func_id: Some(mgmt.func_id),
             },
@@ -479,7 +483,7 @@ impl FuncBinding {
                     None
                 }
             }
-            FuncBinding::Management(mgmt) => Some(mgmt.schema_variant_id),
+            FuncBinding::Management(mgmt) => mgmt.schema_variant_id,
         }
     }
 
