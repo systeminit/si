@@ -150,6 +150,8 @@ __all__ = [
     "SecretV1",
     "SourceViewV1",
     "SystemStatusResponse",
+    "UnlockFuncV1Request",
+    "UnlockFuncV1Response",
     "UnlockedSchemaV1Response",
     "UpdateComponentV1Request",
     "UpdateComponentV1Response",
@@ -300,6 +302,8 @@ from system_initiative_api_client.models.secret_prop_key import SecretPropKey as
 from system_initiative_api_client.models.secret_v1 import SecretV1 as SecretV1
 from system_initiative_api_client.models.source_view_v1 import SourceViewV1 as SourceViewV1
 from system_initiative_api_client.models.system_status_response import SystemStatusResponse as SystemStatusResponse
+from system_initiative_api_client.models.unlock_func_v1_request import UnlockFuncV1Request as UnlockFuncV1Request
+from system_initiative_api_client.models.unlock_func_v1_response import UnlockFuncV1Response as UnlockFuncV1Response
 from system_initiative_api_client.models.unlocked_schema_v1_response import UnlockedSchemaV1Response as UnlockedSchemaV1Response
 from system_initiative_api_client.models.update_component_v1_request import UpdateComponentV1Request as UpdateComponentV1Request
 from system_initiative_api_client.models.update_component_v1_response import UpdateComponentV1Response as UpdateComponentV1Response

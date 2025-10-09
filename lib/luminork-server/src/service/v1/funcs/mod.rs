@@ -5,11 +5,13 @@ use axum::{
     response::IntoResponse,
     routing::{
         get,
+        post,
         put,
     },
 };
 use dal::{
     FuncId,
+    SchemaVariantError,
     func::authoring::FuncAuthoringError,
 };
 use serde::Deserialize;
@@ -22,6 +24,7 @@ use crate::AppState;
 
 pub mod get_func;
 pub mod get_func_run;
+pub mod unlock_func;
 pub mod update_func;
 
 #[remain::sorted]
@@ -41,6 +44,10 @@ pub enum FuncsError {
     LockedFunc(FuncId),
     #[error("changes not permitted on HEAD change set")]
     NotPermittedOnHead,
+    #[error("layer db error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("funcs can only be unlocked for unlocked schema variants")]
+    SchemaVariantMustBeUnlocked,
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("validation error: {0}")]
@@ -91,6 +98,9 @@ impl crate::service::v1::common::ErrorIntoResponse for FuncsError {
             FuncsError::FuncRunNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             FuncsError::FuncNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             FuncsError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
+            FuncsError::SchemaVariantMustBeUnlocked => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }
@@ -102,6 +112,7 @@ pub fn routes() -> Router<AppState> {
             "/:func_id",
             Router::new()
                 .route("/", get(get_func::get_func))
+                .route("/unlock", post(unlock_func::unlock_func))
                 .route("/", put(update_func::update_func)),
         )
         .nest(

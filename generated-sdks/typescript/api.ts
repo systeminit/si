@@ -2550,6 +2550,32 @@ export interface SystemStatusResponse {
 /**
  * 
  * @export
+ * @interface UnlockFuncV1Request
+ */
+export interface UnlockFuncV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof UnlockFuncV1Request
+     */
+    'schemaVariantId': string;
+}
+/**
+ * 
+ * @export
+ * @interface UnlockFuncV1Response
+ */
+export interface UnlockFuncV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof UnlockFuncV1Response
+     */
+    'unlockedFuncId': string;
+}
+/**
+ * 
+ * @export
  * @interface UnlockedSchemaV1Response
  */
 export interface UnlockedSchemaV1Response {
@@ -6172,6 +6198,54 @@ export const FuncsApiAxiosParamCreator = function (configuration?: Configuration
         },
         /**
          * 
+         * @summary Unlocks a func - if there\'s already an unlocked function, then we return that
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} funcId Func identifier
+         * @param {UnlockFuncV1Request} unlockFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        unlockFunc: async (workspaceId: string, changeSetId: string, funcId: string, unlockFuncV1Request: UnlockFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('unlockFunc', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('unlockFunc', 'changeSetId', changeSetId)
+            // verify required parameter 'funcId' is not null or undefined
+            assertParamExists('unlockFunc', 'funcId', funcId)
+            // verify required parameter 'unlockFuncV1Request' is not null or undefined
+            assertParamExists('unlockFunc', 'unlockFuncV1Request', unlockFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id}/unlock`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"func_id"}}`, encodeURIComponent(String(funcId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(unlockFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Update a func
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -6260,6 +6334,22 @@ export const FuncsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Unlocks a func - if there\'s already an unlocked function, then we return that
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} funcId Func identifier
+         * @param {UnlockFuncV1Request} unlockFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async unlockFunc(workspaceId: string, changeSetId: string, funcId: string, unlockFuncV1Request: UnlockFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnlockFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.unlockFunc(workspaceId, changeSetId, funcId, unlockFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['FuncsApi.unlockFunc']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Update a func
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -6306,6 +6396,16 @@ export const FuncsApiFactory = function (configuration?: Configuration, basePath
         },
         /**
          * 
+         * @summary Unlocks a func - if there\'s already an unlocked function, then we return that
+         * @param {FuncsApiUnlockFuncRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        unlockFunc(requestParameters: FuncsApiUnlockFuncRequest, options?: RawAxiosRequestConfig): AxiosPromise<UnlockFuncV1Response> {
+            return localVarFp.unlockFunc(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.funcId, requestParameters.unlockFuncV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Update a func
          * @param {FuncsApiUpdateFuncRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -6342,6 +6442,16 @@ export interface FuncsApiInterface {
      * @memberof FuncsApiInterface
      */
     getFuncRun(requestParameters: FuncsApiGetFuncRunRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetFuncRunV1Response>;
+
+    /**
+     * 
+     * @summary Unlocks a func - if there\'s already an unlocked function, then we return that
+     * @param {FuncsApiUnlockFuncRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FuncsApiInterface
+     */
+    unlockFunc(requestParameters: FuncsApiUnlockFuncRequest, options?: RawAxiosRequestConfig): AxiosPromise<UnlockFuncV1Response>;
 
     /**
      * 
@@ -6412,6 +6522,41 @@ export interface FuncsApiGetFuncRunRequest {
 }
 
 /**
+ * Request parameters for unlockFunc operation in FuncsApi.
+ * @export
+ * @interface FuncsApiUnlockFuncRequest
+ */
+export interface FuncsApiUnlockFuncRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof FuncsApiUnlockFunc
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof FuncsApiUnlockFunc
+     */
+    readonly changeSetId: string
+
+    /**
+     * Func identifier
+     * @type {string}
+     * @memberof FuncsApiUnlockFunc
+     */
+    readonly funcId: string
+
+    /**
+     * 
+     * @type {UnlockFuncV1Request}
+     * @memberof FuncsApiUnlockFunc
+     */
+    readonly unlockFuncV1Request: UnlockFuncV1Request
+}
+
+/**
  * Request parameters for updateFunc operation in FuncsApi.
  * @export
  * @interface FuncsApiUpdateFuncRequest
@@ -6475,6 +6620,18 @@ export class FuncsApi extends BaseAPI implements FuncsApiInterface {
      */
     public getFuncRun(requestParameters: FuncsApiGetFuncRunRequest, options?: RawAxiosRequestConfig) {
         return FuncsApiFp(this.configuration).getFuncRun(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.funcRunId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Unlocks a func - if there\'s already an unlocked function, then we return that
+     * @param {FuncsApiUnlockFuncRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FuncsApi
+     */
+    public unlockFunc(requestParameters: FuncsApiUnlockFuncRequest, options?: RawAxiosRequestConfig) {
+        return FuncsApiFp(this.configuration).unlockFunc(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.funcId, requestParameters.unlockFuncV1Request, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
