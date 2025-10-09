@@ -4,16 +4,22 @@
     :class="
       clsx(
         'component tile',
-        'cursor-pointer rounded-sm overflow-hidden relative select-none',
-        hasRunningActions ? 'spinning-border' : 'border',
+        'cursor-pointer rounded-sm overflow-hidden relative select-none border',
+        hasRunningActions && 'spinning-border',
         !hasRunningActions && [
           selected || focused
-            ? themeClasses('border-action-500', 'border-action-300')
+            ? [
+                themeClasses('border-neutral-600', 'border-neutral-400'),
+                themeClasses(
+                  'outline outline-1 outline-neutral-600',
+                  'outline outline-1 outline-neutral-400',
+                ),
+              ]
             : hasFailedActions
             ? themeClasses('border-destructive-500', 'border-destructive-400')
             : [
-                hovered
-                  ? themeClasses('border-black', 'border-white')
+                isHovering
+                  ? themeClasses('border-action-700', 'border-action-600')
                   : themeClasses('border-neutral-400', 'border-neutral-600'),
               ],
         ],
@@ -21,13 +27,18 @@
         component.toDelete && 'opacity-70',
       )
     "
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
   >
     <header
       :class="
         clsx(
           'p-xs pr-sm',
-          !component.toDelete &&
-            themeClasses('bg-neutral-200', 'bg-neutral-800'),
+          !component.toDelete && [
+            isHovering
+              ? themeClasses('bg-neutral-300', 'bg-neutral-600')
+              : themeClasses('bg-neutral-200', 'bg-neutral-800'),
+          ],
         )
       "
     >
@@ -165,10 +176,16 @@
           'absolute top-2xs right-2xs border w-sm h-sm',
           selected
             ? themeClasses('border-action-500', 'border-action-300')
-            : themeClasses(
-                'border-neutral-400 hover:border-black',
-                'border-neutral-600 hover:border-white',
-              ),
+            : [
+                isHovering
+                  ? themeClasses('border-black', 'border-white')
+                  : themeClasses('border-neutral-400', 'border-neutral-600'),
+              ],
+          selected
+            ? themeClasses('bg-black', 'bg-neutral-600')
+            : isHovering
+            ? themeClasses('bg-neutral-300', 'bg-neutral-600')
+            : themeClasses('bg-neutral-200', 'bg-neutral-800'),
         )
       "
       @click.stop.prevent.left="toggleSelection($event)"
@@ -178,12 +195,7 @@
         v-if="selected"
         name="check"
         size="xs"
-        :class="
-          clsx(
-            'absolute top-[-1px] left-[-1px]',
-            themeClasses('text-black', 'text-white'),
-          )
-        "
+        class="absolute top-[-1px] left-[-1px] text-white"
       />
     </div>
   </div>
@@ -212,11 +224,25 @@ const props = defineProps<{
   focused?: boolean;
   hovered?: boolean;
   hideConnections?: boolean;
-  showSelectionCheckbox?: boolean;
   hasFailedActions?: boolean;
   hasRunningActions?: boolean;
   pendingActionCounts?: Record<string, { count: number; hasFailed: boolean }>;
 }>();
+
+const isHovering = ref(false);
+const showSelectionCheckbox = computed(
+  () => isHovering.value || props.selected,
+);
+
+const handleMouseEnter = (event: MouseEvent) => {
+  isHovering.value = true;
+  emit("mouseenter", event);
+};
+
+const handleMouseLeave = (event: MouseEvent) => {
+  isHovering.value = false;
+  emit("mouseleave", event);
+};
 
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
@@ -292,6 +318,8 @@ watch(
 const emit = defineEmits<{
   (e: "select", event: MouseEvent): void;
   (e: "deselect", event: MouseEvent): void;
+  (e: "mouseenter", event: MouseEvent): void;
+  (e: "mouseleave", event: MouseEvent): void;
 }>();
 </script>
 
@@ -325,5 +353,7 @@ export const GRID_TILE_HEIGHT = 269;
     1;
   animation: borderRotate 3000ms linear infinite forwards;
   mask-image: radial-gradient(#000 0, #000 0);
+  outline: 1px solid #06b6d4;
+  outline-offset: 0px;
 }
 </style>
