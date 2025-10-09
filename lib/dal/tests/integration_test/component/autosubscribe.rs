@@ -1,5 +1,6 @@
 use dal::{
     Component,
+    ComponentId,
     DalContext,
     SchemaVariantId,
 };
@@ -1065,9 +1066,9 @@ async fn autosubscribe_between_two_components(ctx: &mut DalContext) -> Result<()
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     // Should also handle gracefully
     assert_eq!(
-        result_b.success_count(),
+        result_b.error_count(),
         1,
-        "Should handle circular suggestions gracefully"
+        "Circular suggestions are no longer supported with auto subscribe"
     );
 
     // Verify that we don't have infinite loops or crashes - the fact that we got here means success
@@ -1143,6 +1144,232 @@ async fn autosubscribe_existing_subscription_skip(ctx: &mut DalContext) -> Resul
         "Existing subscription should still work after autosubscribe"
     );
 
+    Ok(())
+}
+
+#[test]
+async fn autosubscribe_cycle_detection_prevents_cycles(ctx: &mut DalContext) -> Result<()> {
+    // Test that cycle detection prevents circular subscription chains between components
+    // with self-referencing suggestions. At most 1 subscription should be created to
+    // prevent A->B->A cycles, and the system should remain stable.
+
+    // Create a schema with a prop that suggests itself as a source
+    let schema_definition = r#"
+        function main() {
+            return {
+                props: [
+                    {
+                        name: "SelfReferencingProp",
+                        kind: "string",
+                        suggestSources: [
+                            { schema: "SelfReferencingSchema", prop: "/domain/SelfReferencingProp" }
+                        ]
+                    }
+                ]
+            };
+        }
+    "#;
+    variant::create(ctx, "SelfReferencingSchema", schema_definition).await?;
+
+    // Create 2 components with the same schema
+    let mut components = Vec::new();
+    let component_id = component::create(ctx, "SelfReferencingSchema", "component 1").await?;
+    components.push(component_id);
+    let component_id = component::create(ctx, "SelfReferencingSchema", "component 2").await?;
+    components.push(component_id);
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Set matching values on both components to trigger potential subscriptions
+    let test_value = "cycle_test_value";
+    for component_id in &components {
+        value::set(
+            ctx,
+            (*component_id, "/domain/SelfReferencingProp"),
+            test_value,
+        )
+        .await?;
+    }
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let result_1 = Component::autosubscribe(ctx, components[0]).await?;
+    let result_2 = Component::autosubscribe(ctx, components[1]).await?;
+
+    // First autosubscribe should succeed, second should be prevented by cycle detection
+    assert_eq!(
+        1,
+        result_1.success_count(),
+        "First component should create exactly 1 subscription"
+    );
+    assert_eq!(
+        0,
+        result_1.error_count(),
+        "First component should not have errors"
+    );
+
+    assert_eq!(
+        0,
+        result_2.success_count(),
+        "Second component should not create any subscriptions due to cycle detection"
+    );
+    assert!(
+        result_2.error_count() > 0,
+        "Second component should have errors from cycle detection"
+    );
+
+    // Test that the subscription does work
+    let new_value = "cycle_test_updated_value";
+    value::set(
+        ctx,
+        (components[1], "/domain/SelfReferencingProp"),
+        new_value,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let final_value_0 = value::get(ctx, (components[0], "/domain/SelfReferencingProp")).await?;
+    let final_value_1 = value::get(ctx, (components[1], "/domain/SelfReferencingProp")).await?;
+
+    assert!(value::has_subscription(ctx, (components[0], "/domain/SelfReferencingProp")).await?);
+    assert!(!value::has_subscription(ctx, (components[1], "/domain/SelfReferencingProp")).await?);
+
+    // Since component 1 should be subscribed to component 0, component 1 should reflect the change
+    assert_eq!(
+        json!(new_value),
+        final_value_0,
+        "Component 1 should have the new value it was set to"
+    );
+    assert_eq!(
+        json!(new_value),
+        final_value_1,
+        "Component 0 should follow component 1 via subscription"
+    );
+
+    // Test the same behavior with management function created components
+    // Create management function that creates 2 components with same values
+    let func_code = r##"
+        async function main({ thisComponent }: Input): Promise<Output> {
+            return {
+                status: "ok",
+                ops: {
+                    create: {
+                        mgmt_comp_1: {
+                            kind: "SelfReferencingSchema",
+                            attributes: {
+                                "/domain/SelfReferencingProp": "management_cycle_value"
+                            }
+                        },
+                        mgmt_comp_2: {
+                            kind: "SelfReferencingSchema",
+                            attributes: {
+                                "/domain/SelfReferencingProp": "management_cycle_value"
+                            }
+                        }
+                    }
+                }
+            };
+        }
+    "##;
+
+    variant::create_management_func(
+        ctx,
+        "SelfReferencingSchema",
+        "Discover on Autosubscribe Test",
+        func_code,
+    )
+    .await?;
+    let manager_component =
+        component::create(ctx, "SelfReferencingSchema", "cycle_manager").await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let components_before = Component::list_ids(ctx).await?;
+    component::execute_management_func(ctx, manager_component, "Discover on Autosubscribe Test")
+        .await?;
+
+    let components_after = Component::list_ids(ctx).await?;
+    let new_components: Vec<ComponentId> = components_after
+        .into_iter()
+        .filter(|id| !components_before.contains(id) && *id != manager_component)
+        .collect();
+
+    assert_eq!(
+        2,
+        new_components.len(),
+        "Management function should create exactly 2 components"
+    );
+
+    // Verify both components have the expected values
+    for &new_component_id in &new_components {
+        let current_value =
+            value::get(ctx, (new_component_id, "/domain/SelfReferencingProp")).await?;
+        assert_eq!(
+            json!("management_cycle_value"),
+            current_value,
+            "Management-created component should have the expected value"
+        );
+    }
+
+    // Check which components have subscriptions (management operator automatically calls autosubscribe)
+    let mut component_with_subscription = None;
+    let mut component_without_subscription = None;
+
+    for &component_id in &new_components {
+        if value::has_subscription(ctx, (component_id, "/domain/SelfReferencingProp")).await? {
+            // Ensure the value is set before checking subscriptions
+            if component_with_subscription.is_some() {
+                // If we already found one with a subscription, this is a bug!
+                panic!("Only one component should have a subscription to prevent cycles");
+            }
+            component_with_subscription = Some(component_id);
+        } else {
+            // Ensure the value is set before checking subscriptions
+            if component_without_subscription.is_some() {
+                // If we already found one without a subscription, this is a bug!
+                panic!("Only one component should have a subscription to prevent cycles");
+            }
+            component_without_subscription = Some(component_id);
+        }
+    }
+
+    assert!(
+        component_with_subscription.is_some(),
+        "Should have one component with a subscription"
+    );
+    assert!(
+        component_without_subscription.is_some(),
+        "Should have one component without a subscription"
+    );
+
+    // Test that the subscription works and there are no cycles
+    let mgmt_test_value = "management_updated_value";
+    let source_component =
+        component_without_subscription.expect("Expected a component without subscription");
+    let subscribed_component =
+        component_with_subscription.expect("Expected a component with subscription");
+
+    value::set(
+        ctx,
+        (source_component, "/domain/SelfReferencingProp"),
+        mgmt_test_value,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Verify the subscription works
+    let source_value = value::get(ctx, (source_component, "/domain/SelfReferencingProp")).await?;
+    let subscribed_value =
+        value::get(ctx, (subscribed_component, "/domain/SelfReferencingProp")).await?;
+
+    assert_eq!(
+        json!(mgmt_test_value),
+        source_value,
+        "Source component should have the new value"
+    );
+    assert_eq!(
+        json!(mgmt_test_value),
+        subscribed_value,
+        "Subscribed component should follow the source component"
+    );
     Ok(())
 }
 

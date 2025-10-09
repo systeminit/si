@@ -501,6 +501,9 @@ impl AutosubscribeContext {
                 // Make sure the subscribed-to path is valid
                 match subscription.validate(ctx).await {
                     Ok(_) => {
+                        // Prevent autosubscribe from creating cycles and
+                        let guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
+
                         // Create the subscription
                         match AttributeValue::set_to_subscription(
                             ctx,
@@ -524,6 +527,20 @@ impl AutosubscribeContext {
                                 });
                             }
                             Err(err) => {
+                                // If we found an error while attempting to create the subscription, we should roll
+                                // back to a manually set value. This is because there are multiple steps in creating
+                                // a subscription, and there's a chance the graph ends up in a half-state
+                                // even if the subscription isn't ultimately created
+
+                                // For example, if attempting to create this subscription causes a graph cycle,
+                                // we create a new AttributePrototypeArgument before creating the subscription edge,
+                                // and as the edge would cause a cycle, it's never created but the newly created
+                                // AttributePrototypeArgument still exists and becomes orphaned causing various shenanigans,
+                                // most noticeably, failing to build the AttributeTreeMV for this component
+
+                                error!(si.error.message = ?err, si.attribute_value.id = ?dest_av_id, si.attribute_value.path=?target_path, "Error autosubscribing, rolling back to manually set value");
+
+                                AttributeValue::update(ctx, dest_av_id, Some(stored_value)).await?;
                                 result.errors.push(SubscriptionError {
                                     target_path,
                                     error: format!("Failed to create subscription: {err}"),
@@ -534,6 +551,7 @@ impl AutosubscribeContext {
                                 });
                             }
                         }
+                        drop(guard);
                     }
                     Err(err) => {
                         result.errors.push(SubscriptionError {

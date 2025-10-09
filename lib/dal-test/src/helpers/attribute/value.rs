@@ -100,6 +100,20 @@ pub async fn is_set(ctx: &DalContext, av: impl AttributeValueKey) -> Result<bool
     }
 }
 
+/// Check whether the value has any subscriptions
+pub async fn has_subscription(ctx: &DalContext, av: impl AttributeValueKey) -> Result<bool> {
+    match AttributeValueKey::resolve(ctx, av).await? {
+        Some(av_id) => {
+            let subscriptions = AttributeValue::subscriptions(ctx, av_id).await?;
+            match subscriptions {
+                Some(subs) => Ok(!subs.is_empty()),
+                None => Ok(false),
+            }
+        }
+        None => Ok(false),
+    }
+}
+
 /// Unset a value (creates it if it doesn't exist)
 pub async fn unset(ctx: &DalContext, av: impl AttributeValueKey) -> Result<()> {
     let av_id = vivify(ctx, av).await?;

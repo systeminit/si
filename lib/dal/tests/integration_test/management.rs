@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use dal::{
     AttributeValue,
-    ChangeSet,
     Component,
     ComponentId,
     DalContext,
@@ -156,27 +155,9 @@ async fn set_resource(ctx: &mut DalContext) -> Result<()> {
 
     // Create a component for the new schema variant
     let test_component = component::create(ctx, "test::resource", "test-component").await?;
-
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    // Find and enqueue the management job
-    let management_prototype =
-        find_management_prototype(ctx, test_component, "Set Resource").await?;
-
-    ChangeSetTestHelpers::enqueue_management_func_job(
-        ctx,
-        management_prototype.id(),
-        test_component,
-        None,
-    )
-    .await?;
-
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-
-    ChangeSetTestHelpers::wait_for_mgmt_job_to_run(ctx, management_prototype.id(), test_component)
-        .await?;
-    ChangeSet::wait_for_dvu(ctx, false).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    component::execute_management_func(ctx, test_component, "Set Resource").await?;
 
     // Ensure that resource_value gets propagated
     // Check domain values were set
