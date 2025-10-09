@@ -2732,6 +2732,12 @@
       "BLOCK"
     ]
   },
+  "ALLOWED or NOT_ALLOWED, to permit or prevent changes to the tags on provisioned instances of the specified portfolio / product combination": {
+    "enum": [
+      "ALLOWED",
+      "NOT_ALLOWED"
+    ]
+  },
   "Control whether origination of video is allowed for this OriginEndpoint. If set to ALLOW, the OriginEndpoint may by requested, pursuant to any other form of access control. If set to DENY, the OriginEndpoint may not be requested. This can be helpful for Live to VOD harvesting, or for temporarily disabling origination": {
     "enum": [
       "ALLOW",
@@ -11650,6 +11656,9 @@
   "The description of the connection.": {
     "enum": null
   },
+  "The description of the constraint": {
+    "enum": null
+  },
   "The description of the constraint.": {
     "enum": null
   },
@@ -12734,6 +12743,9 @@
     "enum": null
   },
   "The label of the connector. The label is unique for each ConnectorRegistration in your AWS account. Only needed if calling for CUSTOMCONNECTOR connector type/.": {
+    "enum": null
+  },
+  "The language code": {
     "enum": null
   },
   "The language code.": {
@@ -15679,6 +15691,9 @@
   "The port to use when content is distributed to this output.": {
     "enum": null
   },
+  "The portfolio identifier": {
+    "enum": null
+  },
   "The portfolio identifier.": {
     "enum": null
   },
@@ -15773,6 +15788,9 @@
     "enum": null
   },
   "The private key verification certificate.": {
+    "enum": null
+  },
+  "The product identifier": {
     "enum": null
   },
   "The product identifier.": {
