@@ -1,9 +1,5 @@
 <template>
-  <AttributePanelBulk
-    v-if="bulkEditing"
-    @close="() => $emit('bulkDone')"
-    @deselect="(idx) => $emit('childDeselect', idx)"
-  />
+  <AttributePanelBulk v-if="bulkEditing" @close="() => $emit('bulkDone')" />
   <div
     v-else
     data-testid="explore-grid"
@@ -25,8 +21,8 @@
       }"
       :row="gridRows[row.index]!"
       @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
-      @childSelect="(idx) => $emit('childSelect', idx)"
-      @childDeselect="(idx) => $emit('childDeselect', idx)"
+      @childSelect="(idx, event) => $emit('childSelect', idx, event)"
+      @childDeselect="(idx, event) => $emit('childDeselect', idx, event)"
       @childHover="(componentId) => $emit('childHover', componentId)"
       @childUnhover="(componentId) => $emit('childUnhover', componentId)"
       @clickCollapse="clickCollapse"
@@ -205,8 +201,8 @@ watch([exploreContext.focusedComponentIdx], scrollCurrentTileIntoView);
 const emit = defineEmits<{
   (e: "bulkDone"): void;
   (e: "unpin", componentId: ComponentId): void;
-  (e: "childSelect", componentIdx: number): void;
-  (e: "childDeselect", componentIdx: number): void;
+  (e: "childSelect", componentIdx: number, event?: MouseEvent): void;
+  (e: "childDeselect", componentIdx: number, event?: MouseEvent): void;
   (e: "childHover", componentId: ComponentId): void;
   (e: "childUnhover", componentId: ComponentId): void;
   (e: "collapse", title: string, collapsed: boolean): void;
