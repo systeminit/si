@@ -89,6 +89,8 @@ import {
   DefaultSubscriptions,
   DefaultSubscription,
   AttributeValue,
+  GLOBAL_ENTITIES,
+  GlobalEntity,
 } from "./types/entity_kind_types";
 import {
   bulkDone,
@@ -199,6 +201,7 @@ const dropTables = () => {
   const sql = `
   DROP TABLE IF EXISTS index_mtm_atoms;
   DROP TABLE IF EXISTS atoms;
+  DROP TABLE IF EXISTS global_atoms;
   DROP TABLE IF EXISTS indexes;
   DROP TABLE IF EXISTS changesets;
   DROP TABLE IF EXISTS weak_references;
@@ -236,6 +239,15 @@ const ensureTables = (testing: boolean) => {
     checksum TEXT NOT NULL,
     data BLOB,
     PRIMARY KEY (kind, args, checksum)
+  ) WITHOUT ROWID;
+
+  CREATE TABLE IF NOT EXISTS global_atoms (
+    kind TEXT NOT NULL,
+    args TEXT NOT NULL,
+    checksum TEXT NOT NULL,
+    data BLOB,
+    PRIMARY KEY (kind, args)
+    CONSTRAINT uniqueness UNIQUE (kind, args) ON CONFLICT REPLACE
   ) WITHOUT ROWID;
 
   CREATE TABLE IF NOT EXISTS index_mtm_atoms (
@@ -1762,6 +1774,9 @@ const mjolnirBulk = async (
   bulkDone({ workspaceId, changeSetId });
 };
 
+// TODO
+const deploymentMjolnir = (db: Database, kind: GlobalEntity, id: Id) => {};
+
 const mjolnir = (
   db: Database,
   workspaceId: string,
@@ -2206,7 +2221,6 @@ const vanaheim = async (
       return req;
     });
 
-    // Check for 202 status - user needs to go to lobby
     frigg.setAttribute("status", req.status);
     if (req.status === STATUS_INDEX_IN_PROGRESS) {
       debug("‼️ DEPLOYMENT INDEX NOT READY");
@@ -2215,9 +2229,139 @@ const vanaheim = async (
       return false;
     }
 
-    console.log("VANAHEIM", req.data);
+    const atoms = req.data.frontEndObject.data.mvList;
+    const existingAtoms = new Map<string, Common>();
+    const uncachedAtoms = new Map<string, Common>();
 
-    return false;
+    const placeholders = [];
+    const bind: string[] = [];
+
+    for (const atom of atoms) {
+      placeholders.push("(?, ?, ?)");
+      bind.push(atom.kind, atom.id, atom.checksum);
+    }
+
+    const sql = `
+      select atoms.kind, atoms.args, atoms.checksum
+      from global_atoms
+      where (atoms.kind, atoms.args, atoms.checksum) in (${placeholders.join(
+        ",",
+      )})
+    `;
+
+    const rows = db.exec({
+      sql,
+      bind,
+      returnValue: "resultRows",
+    });
+
+    for (const row of rows) {
+      const [kind, id, checksum] = row;
+      const atom = {
+        kind: kind as EntityKind,
+        id: id as string,
+        checksum: checksum as string,
+      };
+      const key = atomCacheKey(atom);
+      existingAtoms.set(key, { ...atom });
+    }
+
+    for (const atom of atoms) {
+      const key = atomCacheKey(atom);
+      if (!existingAtoms.has(key)) {
+        uncachedAtoms.set(key, atom);
+      }
+    }
+
+    const hammerObjs = [...uncachedAtoms.values()];
+    if (hammerObjs.length === 0) {
+      span.setAttribute("up_to_date", true);
+      return true;
+    }
+    span.setAttribute("up_to_date", false);
+
+    const bulkPattern = [
+      "v2",
+      "workspaces",
+      { workspaceId },
+      "deployment",
+      "multi_mjolnir",
+    ] as URLPattern;
+    const [bulkUrl, bulkDesc] = describePattern(bulkPattern);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let bulkReq: undefined | AxiosResponse<BulkResponse, any>;
+    await tracer.startActiveSpan(`GET ${bulkDesc}`, async (span) => {
+      const sdf = getSdfClientForWorkspace(workspaceId, span);
+      if (!sdf) {
+        span.end();
+        return;
+      }
+
+      span.setAttributes({
+        workspaceId,
+        numHammers: hammerObjs.length,
+      });
+      const startBulkMjolnirReq = performance.now();
+      bulkReq = await sdf<BulkResponse>({
+        method: "post",
+        url: bulkUrl,
+        data: { requests: hammerObjs },
+      });
+      if (bulkReq.status !== 200) {
+        span.setAttribute("http.status", bulkReq.status);
+        debug("🔨 DEPLOYMENT MJOLNIR HTTP:", bulkReq.status);
+        error("MJOLNIR", bulkReq.status, url, hammerObjs);
+      } else {
+        debug(
+          "🔨 DEPLOYMENT MJOLNIR BULK HTTP SUCCESS:",
+          `${performance.now() - startBulkMjolnirReq}ms`,
+        );
+        span.setAttributes({
+          successful: bulkReq.data.successful.length,
+          failed: bulkReq.data.failed.length,
+        });
+      }
+      if (bulkReq?.status) span.setAttribute("http.status", bulkReq.status);
+      span.end();
+    });
+
+    if (!bulkReq || bulkReq.status !== 200) {
+      debug("🔨 DEPLOYMENT MJOLNIR BULK FAILED:", "no response");
+      return false;
+    }
+
+    {
+      const startWriteToSql = performance.now();
+      const bind: Array<string | Uint8Array> = [];
+      const placeholders: string[] = [];
+      bulkReq.data.successful.forEach((atom) => {
+        bind.push(
+          atom.frontEndObject.kind,
+          atom.frontEndObject.checksum,
+          atom.frontEndObject.id,
+          encodeDocumentForDB(atom.frontEndObject.data),
+        );
+        placeholders.push("(?, ?, ?, ?)");
+      });
+
+      const sql = `insert into atoms
+        (kind, checksum, args, data)
+          VALUES
+        ${placeholders.join(",")}
+        ON CONFLICT (kind, args)
+        DO UPDATE SET checksum=excluded.checksum, data=excluded.data;
+      `;
+
+      db.exec({ sql, bind });
+
+      const writeToSqlMs = performance.now() - startWriteToSql;
+      span.setAttributes({
+        "performance.deploymentBulkSqlWrite": writeToSqlMs,
+      });
+      debug(`🔨 DEPLOYMENT MJOLNIR BULK DONE! ${writeToSqlMs}ms`);
+    }
+
+    return true;
   });
 };
 
@@ -3476,6 +3620,40 @@ const queryAttributes = (
   return components.map((c) => c[0] as ComponentId);
 };
 
+const get_global = (db: Database, kind: GlobalEntity, id: Id): -1 | object => {
+  const sql = `
+    select
+      data
+    from
+      global_atoms
+    where
+      atoms.kind = ? AND
+      atoms.args = ?
+    ;`;
+  const bind = [kind, id];
+  const start = performance.now();
+  const atomData = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = performance.now();
+  const data = oneInOne(atomData);
+  debug(
+    "❓ sql get",
+    `[${end - start}ms]`,
+    bind,
+    " returns ?",
+    !(data === NOROW),
+  );
+  if (data === NOROW) {
+    deploymentMjolnir(db, kind, id);
+    return -1;
+  }
+  const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
+  return atomDoc;
+};
+
 const get = (
   db: Database,
   workspaceId: string,
@@ -3487,6 +3665,8 @@ const get = (
   followComputed = true,
   followReferences = true,
 ): -1 | object => {
+  if (kind in GLOBAL_ENTITIES) throw new Error(`Use "get_global" for ${kind}`);
+
   const sql = `
     select
       data

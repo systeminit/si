@@ -58,7 +58,16 @@ export enum EntityKind {
   // IGNORING THESE
   LuminorkDefaultVariant = "LuminorkDefaultVariant",
   LuminorkSchemaVariant = "LuminorkSchemaVariant",
+  // DEPLOYMENT aka GLOBAL
+  CachedSchema = "CachedSchema",
+  CachedDefaultVariant = "CachedDefaultVariant",
 }
+
+export const GLOBAL_ENTITIES = [
+  EntityKind.CachedSchema,
+  EntityKind.CachedDefaultVariant,
+] as const;
+export type GlobalEntity = (typeof GLOBAL_ENTITIES)[number];
 
 /**
  * NOTE, if you want to narrow the type of a variable
