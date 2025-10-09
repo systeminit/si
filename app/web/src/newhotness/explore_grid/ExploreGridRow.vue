@@ -214,8 +214,8 @@
       :pendingActionCounts="
         exploreContext.componentsPendingActionNames.value.get(component.id)
       "
-      @select="emit('childSelect', dataIndexForTileInRow(row, columnIndex))"
-      @deselect="emit('childDeselect', dataIndexForTileInRow(row, columnIndex))"
+      @select="(e: MouseEvent) => emit('childSelect', dataIndexForTileInRow(row, columnIndex), e)"
+      @deselect="(e: MouseEvent) => emit('childDeselect', dataIndexForTileInRow(row, columnIndex), e)"
       @mouseenter="hover(component.id, true)"
       @mouseleave="hover(component.id, false)"
       @click.stop.left="
@@ -557,8 +557,8 @@ const emit = defineEmits<{
     componentIdx: number,
   ): void;
   (e: "clickCollapse", title: string, collapsed: boolean): void;
-  (e: "childSelect", componentIdx: number): void;
-  (e: "childDeselect", componentIdx: number): void;
+  (e: "childSelect", componentIdx: number, event?: MouseEvent): void;
+  (e: "childDeselect", componentIdx: number, event?: MouseEvent): void;
   (e: "componentNavigate", componentId: ComponentId): void;
   (e: "resetFilter"): void;
   (e: "selectAllInSection", sectionKey: string): void;

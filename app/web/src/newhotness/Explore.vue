@@ -361,8 +361,8 @@
               @resetFilter="resetFilter"
               @bulkDone="bulkDone"
               @childClicked="componentClicked"
-              @childSelect="(idx) => selectComponent(idx)"
-              @childDeselect="(idx) => deselectComponent(idx)"
+              @childSelect="(idx: number, event?: MouseEvent) => selectComponent(idx, event)"
+              @childDeselect="(idx: number) => deselectComponent(idx)"
               @childHover="
                 (componentId) => {
                   if (componentsHaveActionsWithState.failed.has(componentId)) {
@@ -1977,8 +1977,21 @@ const clearSelection = () => {
   }
 };
 
-const selectComponent = (componentIdx: number) => {
-  selectedComponentIndexes.add(componentIdx);
+const selectComponent = (componentIdx: number, event?: MouseEvent) => {
+  // Range selection with shift key
+  if (event?.shiftKey && selectedComponentIndexes.size > 0) {
+    const selectedIndexes = Array.from(selectedComponentIndexes);
+    const lastSelectedIdx = Math.max(...selectedIndexes);
+    const start = Math.min(lastSelectedIdx, componentIdx);
+    const end = Math.max(lastSelectedIdx, componentIdx);
+
+    // Select all components in the range
+    for (let i = start; i <= end; i++) {
+      selectedComponentIndexes.add(i);
+    }
+  } else {
+    selectedComponentIndexes.add(componentIdx);
+  }
   // Checkbox selections don't change focus - this prevents automatic context menu
 };
 const deselectComponent = (componentIdx: number | string) => {
@@ -2004,14 +2017,7 @@ const deselectComponent = (componentIdx: number | string) => {
     clearSelection();
   }
 };
-const toggleComponentSelection = (componentIdx: number) => {
-  if (isComponentSelected(componentIdx)) {
-    deselectComponent(componentIdx);
-  } else {
-    selectComponent(componentIdx);
-    setFocusedComponentIdx(componentIdx); // Set focus for shift-click
-  }
-};
+
 const isComponentSelected = (componentIdx: number) =>
   selectedComponentIndexes.has(componentIdx);
 
@@ -2088,8 +2094,8 @@ const componentClicked = (
 ) => {
   e.preventDefault();
   if (e.shiftKey) {
-    // multi select time!
-    toggleComponentSelection(componentIdx);
+    // Range selection with shift key
+    selectComponent(componentIdx, e);
     return;
   }
 

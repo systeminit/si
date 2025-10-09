@@ -171,8 +171,8 @@
               ),
         )
       "
-      @click.stop.prevent.left="toggleSelection"
-      @click.stop.prevent.right="toggleSelection"
+      @click.stop.prevent.left="toggleSelection($event)"
+      @click.stop.prevent.right="toggleSelection($event)"
     >
       <Icon
         v-if="selected"
@@ -267,11 +267,11 @@ const dynamicRows = computed(() => {
 
   return rows;
 });
-const toggleSelection = () => {
+const toggleSelection = (event: MouseEvent) => {
   if (props.selected) {
-    emit("deselect");
+    emit("deselect", event);
   } else {
-    emit("select");
+    emit("select", event);
   }
 };
 
@@ -290,8 +290,8 @@ watch(
 );
 
 const emit = defineEmits<{
-  (e: "select"): void;
-  (e: "deselect"): void;
+  (e: "select", event: MouseEvent): void;
+  (e: "deselect", event: MouseEvent): void;
 }>();
 </script>
 
