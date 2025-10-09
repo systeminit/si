@@ -6,7 +6,7 @@ use crate::AppState;
 mod actions;
 mod change_sets;
 pub mod common;
-mod components;
+pub mod components;
 mod funcs;
 mod management_funcs;
 mod schemas;

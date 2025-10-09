@@ -742,8 +742,12 @@ impl NodeWeight {
     }
 
     pub fn get_attribute_value_node_weight(&self) -> NodeWeightResult<AttributeValueNodeWeight> {
+        Ok(self.as_attribute_value_node_weight()?.clone())
+    }
+
+    pub fn as_attribute_value_node_weight(&self) -> NodeWeightResult<&AttributeValueNodeWeight> {
         match self {
-            NodeWeight::AttributeValue(inner) => Ok(inner.to_owned()),
+            NodeWeight::AttributeValue(inner) => Ok(inner),
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::AttributeValue,
                 other.into(),

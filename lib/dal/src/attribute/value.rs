@@ -2793,10 +2793,11 @@ impl PetgraphAsync {
         self.graph().target(component, EdgeWeightKind::Root)
     }
 
-    pub async fn children(self, av: NodeIndex) -> Vec<NodeIndex> {
-        self.graph()
+    pub async fn children(self, av: NodeIndex) -> WorkspaceSnapshotGraphResult<Vec<NodeIndex>> {
+        Ok(self
+            .graph()
             .targets(av, EdgeWeightKindDiscriminants::Contain)
-            .collect()
+            .collect())
     }
 
     pub async fn av_prop_name(self, av: NodeIndex) -> WorkspaceSnapshotGraphResult<String> {

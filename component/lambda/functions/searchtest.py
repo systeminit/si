@@ -6,10 +6,11 @@ import os
 import sys
 
 if len(sys.argv) < 4:
-    raise Exception("Usage: searchtest.py <attr_name> <attr_value> <search_method>")
+    raise Exception("Usage: searchtest.py <attr_name> <attr_value> <search_method> ...")
 attr_name = sys.argv[1]
 attr_value = sys.argv[2]
-search_method = sys.argv[3]
+# Get the remaining args
+search_methods = sys.argv[3:]
 
 SI_API_URL = os.getenv("SI_API_URL", "http://localhost:5380")
 SI_API_TOKEN = os.getenv("SI_API_TOKEN")
@@ -30,16 +31,23 @@ api = SiLuminorkApi(SI_API_URL, SI_API_TOKEN, SI_WORKSPACE_ID, SI_CHANGE_SET_ID)
 #     component_id = api.create_component("AWS::EC2::Instance", component_name)
 
 # print(api.get_component(cast(ComponentId, "01K6BWP9X9B1Q0HSZAYVMYF3C1")))
-best_elapsed = 10000000
-for i in range(30):
-    start_time = time.perf_counter()
-    component_ids = api.search_spike(attr_name, attr_value, search_method)
-    # Truncate to integer
-    elapsed = int((time.perf_counter() - start_time) * 1000)
-    if len(component_ids) == 0:
-        raise Exception("No components found")
-    if elapsed < best_elapsed:
-        best_elapsed = elapsed
-    print(f"attempt #{i}: {elapsed} milliseconds")
-print(f"{best_elapsed} milliseconds")
+best_elapsed = dict[str, int]()
+for search_method in search_methods:
+    best_elapsed[search_method] = 10000000
+    for i in range(100):
+        start_time = time.perf_counter()
+        component_ids = api.search_spike(attr_name, attr_value, search_method)
+        # Truncate to integer
+        elapsed = int((time.perf_counter() - start_time) * 1000)
+        if len(component_ids) == 0:
+            raise Exception("No components found")
+        if elapsed < best_elapsed[search_method]:
+            best_elapsed[search_method] = elapsed
+        print(f"[{search_method}] attempt #{i}: {elapsed} milliseconds")
+    print(f"[{search_method}] {best_elapsed[search_method]} milliseconds")
 # print(f"Results: {component_ids}")
+
+print("")
+print("TOTALS")
+for search_method, elapsed in best_elapsed.items():
+    print(f"[{search_method}]: {elapsed} milliseconds")
