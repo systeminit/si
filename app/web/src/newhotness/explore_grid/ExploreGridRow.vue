@@ -197,7 +197,6 @@
       :data-index="dataIndexForTileInRow(row, columnIndex)"
       :component="component"
       class="flex-1"
-      showSelectionCheckbox
       :selected="isSelected(row, columnIndex)"
       :focused="exploreContext.focusedComponent.value?.id === component.id"
       :hovered="hoveredId === component.id"
