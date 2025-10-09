@@ -495,7 +495,7 @@ const componentsOnHeadQuery = useQuery<boolean | null>({
   queryKey: ["componentsOnHead", workspacePk.value],
   enabled: cohEnabled,
   queryFn: async () => {
-    const call = componentsOnHeadApi.endpoint<{ componentsOnHead: boolean }>(
+    const call = componentsOnHeadApi.endpoint<{ componentsFound: boolean }>(
       routes.ComponentsOnHead,
     );
     const response = await call.get();
@@ -503,7 +503,7 @@ const componentsOnHeadQuery = useQuery<boolean | null>({
     // Check if the request was successful (200/201)
     if (componentsOnHeadApi.ok(response)) {
       cohEnabled.value = false;
-      return response.data.componentsOnHead ?? null;
+      return response.data.componentsFound ?? null;
     }
 
     // Return null on error to indicate we tried but failed
