@@ -225,19 +225,6 @@ impl ManagementFuncJob {
         ctx: &DalContext,
         execution_state_id: ManagementFuncJobStateId,
     ) -> ManagementFuncJobResult<JobCompletionState> {
-        if !ManagementPrototype::is_valid_prototype_for_component(
-            ctx,
-            self.prototype_id,
-            self.component_id,
-        )
-        .await?
-        {
-            return Err(ManagementFuncJobError::InvalidPrototypeForComponent(
-                self.prototype_id,
-                self.component_id,
-            ));
-        }
-
         let mut ctx_clone = ctx.clone();
         // Loop for 5_000 * 50 ms (= 250 seconds max) and then mark job as failed if not ready
         self.spin_until_ready(&mut ctx_clone, MAX_WAITS).await?;
