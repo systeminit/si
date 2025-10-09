@@ -491,7 +491,7 @@ const checkOnboardingCompleteData = async () => {
 
 const cohEnabled = ref(true);
 const componentsOnHeadApi = useApi(ctx.value);
-const componentsOnHeadQuery = useQuery<boolean | undefined>({
+const componentsOnHeadQuery = useQuery<boolean | null>({
   queryKey: ["componentsOnHead", workspacePk.value],
   enabled: cohEnabled,
   queryFn: async () => {
@@ -503,15 +503,15 @@ const componentsOnHeadQuery = useQuery<boolean | undefined>({
     // Check if the request was successful (200/201)
     if (componentsOnHeadApi.ok(response)) {
       cohEnabled.value = false;
-      return response.data.componentsOnHead;
+      return response.data.componentsOnHead ?? null;
     }
 
-    // Return undefined on error to indicate we tried but failed
+    // Return null on error to indicate we tried but failed
     // (token failure, SDF down/deploying, network issues, etc.)
-    return undefined;
+    return null;
   },
   staleTime: 5000,
-  retry: false, // Don't retry on failure - we want to handle the undefined case
+  retry: false, // Don't retry on failure - we want to handle the null case
 });
 
 const componentsOnHead = computed(() => componentsOnHeadQuery.data.value);
@@ -530,8 +530,8 @@ const showOnboarding = computed(() => {
 
   if (!featureFlagsStore.INITIALIZER_ONBOARD) return false;
 
-  // If undefined (endpoint failed), skip onboarding to avoid blocking the user
-  if (componentsOnHead.value === undefined) return false;
+  // If null (endpoint failed), skip onboarding to avoid blocking the user
+  if (componentsOnHead.value === null) return false;
 
   // If true (components exist on HEAD), skip onboarding
   if (componentsOnHead.value === true) return false;
