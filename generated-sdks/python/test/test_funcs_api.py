@@ -40,6 +40,13 @@ class TestFuncsApi(unittest.TestCase):
         """
         pass
 
+    def test_unlock_func(self) -> None:
+        """Test case for unlock_func
+
+        Unlocks a func - if there's already an unlocked function, then we return that
+        """
+        pass
+
     def test_update_func(self) -> None:
         """Test case for update_func
 

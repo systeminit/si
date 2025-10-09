@@ -105,6 +105,10 @@ pub use funcs::{
     FuncsResult,
     get_func::GetFuncV1Response,
     get_func_run::GetFuncRunV1Response,
+    unlock_func::{
+        UnlockFuncV1Request,
+        UnlockFuncV1Response,
+    },
     update_func::{
         UpdateFuncV1Request,
         UpdateFuncV1Response,
@@ -127,10 +131,6 @@ pub use schemas::{
         CreateVariantActionFuncV1Request,
         CreateVariantActionFuncV1Response,
     },
-    // create_attribute::{
-    //     CreateVariantAttributeFuncV1Request,
-    //     CreateVariantAttributeFuncV1Response,
-    // },
     create_authentication::{
         CreateVariantAuthenticationFuncV1Request,
         CreateVariantAuthenticationFuncV1Response,
@@ -224,6 +224,7 @@ pub use crate::api_types::func_run::v1::{
         funcs::get_func_run::get_func_run,
         funcs::get_func::get_func,
         funcs::update_func::update_func,
+        funcs::unlock_func::unlock_func,
         management_funcs::get_management_func_run_state::get_management_func_run_state,
         actions::cancel_action::cancel_action,
         actions::retry_action::retry_action,
@@ -295,6 +296,8 @@ pub use crate::api_types::func_run::v1::{
             GetFuncRunV1Response,
             UpdateFuncV1Request,
             UpdateFuncV1Response,
+            UnlockFuncV1Request,
+            UnlockFuncV1Response,
             PropSchemaV1,
             CancelActionV1Response,
             RetryActionV1Response,
