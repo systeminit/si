@@ -52,6 +52,7 @@ import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { ViewId } from "@/api/sdf/dal/views";
 import CreatingTemplate from "@/components/toasts/CreatingTemplate.vue";
+import { getAssetIcon } from "@/newhotness/util";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useAssetStore } from "./asset.store";
@@ -375,28 +376,6 @@ export const generateSocketPaths = (
 export const DEFAULT_COLLAPSED_SIZE = { height: 100, width: 300 };
 export const COLLAPSED_HALFWIDTH = DEFAULT_COLLAPSED_SIZE.width / 2;
 export const COLLAPSED_HALFHEIGHT = DEFAULT_COLLAPSED_SIZE.height / 2;
-
-export const getAssetIcon = (name: string) => {
-  const icons = {
-    AWS: "logo-aws",
-    "AWS EC2": "logo-aws",
-    CoreOS: "logo-coreos",
-    Docker: "logo-docker",
-    Kubernetes: "logo-k8s",
-  } as Record<string, string>;
-
-  let icon = icons[name];
-
-  if (!icon) {
-    for (const k in icons) {
-      if (name.includes(k)) {
-        icon = icons[k];
-      }
-    }
-  }
-
-  return (icon || "logo-si") as IconNames; // fallback to SI logo
-};
 
 export function generateEdgeId(edge: RawEdge): EdgeId {
   if (isRawSocketEdge(edge)) {

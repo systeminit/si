@@ -743,6 +743,7 @@ const pickIcon = (name: string): IconNames => {
   else if (name.toLowerCase().includes("coreos")) return "logo-coreos";
   else if (name.toLowerCase().includes("docker")) return "logo-docker";
   else if (name.toLowerCase().includes("fastly")) return "logo-fastly";
+  else if (name.toLowerCase().includes("hetzner")) return "logo-hetzner";
   // TODO(Wendy) - we need to fill out the rest of these icon lookups for the various categories/filters!
   else return "logo-si";
 };
@@ -792,6 +793,12 @@ const componentFilters = computed((): AssetFilter[] => {
       icon: pickIcon("aws"),
       count: getCategoriesAndCountForFilterString("aws").count,
       color: BRAND_COLOR_FILTER_HEX_CODES.AWS,
+    },
+    {
+      name: "Hetzner",
+      icon: pickIcon("hetzner"),
+      count: getCategoriesAndCountForFilterString("hetzner").count,
+      color: BRAND_COLOR_FILTER_HEX_CODES.Hetzner,
     },
     {
       name: "Fastly",

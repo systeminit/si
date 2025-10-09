@@ -155,6 +155,7 @@ import DiscordLogo from "~icons/carbon/logo-discord";
 import GitHubLogo from "~icons/carbon/logo-github";
 import VimLogo from "~icons/raphael/vim";
 import FastlyLogo from "~icons/simple-icons/fastly";
+import HetznerLogo from "./custom-icons/hetzner.svg?raw";
 
 // carbon
 import Create from "~icons/carbon/intent-request-create";
@@ -451,6 +452,7 @@ export const LOGO_ICONS = Object.freeze({
   "logo-k8s": KubernetesLogo,
   "logo-si": SiLogo,
   "logo-fastly": FastlyLogo,
+  "logo-hetzner": HetznerLogo,
   // others - not used in providers currently
   "logo-discord": DiscordLogo,
   "logo-github": GitHubLogo,

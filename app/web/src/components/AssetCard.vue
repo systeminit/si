@@ -149,9 +149,9 @@ import {
 import { format as dateFormat } from "date-fns";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
-import { getAssetIcon } from "@/store/components.store";
 import { useModuleStore } from "@/store/module.store";
 import { ModuleContributeRequest } from "@/api/sdf/dal/module";
+import { getAssetIcon } from "@/newhotness/util";
 import EditingPill from "./EditingPill.vue";
 import AssetContributeModal from "./AssetContributeModal.vue";
 
