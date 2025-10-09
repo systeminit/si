@@ -1,20 +1,27 @@
 import { Command } from "@cliffy/command";
 import { Configuration, WhoamiApi } from "@systeminit/api-client";
-import { extractConfig } from "./config.ts";
+import { extractConfig, tryGetUserDataFromToken } from "./config.ts";
 import { exportAssets } from "./cli/export-assets.ts";
 import { scaffoldAsset } from "./cli/scaffold-asset.ts";
 import { Log } from "./log.ts";
 import { AuthApiClient, WorkspaceDetails } from "./auth-api-client.ts";
 import { unknownValueToErrorMessage } from "./helpers.ts";
+import { Analytics } from "./analytics.ts";
 
-export type CliContext = {
-  apiConfiguration: Configuration;
+
+export type BaseCliContext = {
   log: Log;
+  analytics: Analytics;
+};
+
+export type AuthenticatedCliContext = BaseCliContext & {
+  apiConfiguration: Configuration;
   workspace: WorkspaceDetails;
 };
 
 /// From the environment variables, extract the configuration needed to run auth commands
-async function initializeCliContextWithAuth(log: Log) {
+async function initializeCliContextWithAuth(baseCtx: BaseCliContext): Promise<AuthenticatedCliContext> {
+  const { log, analytics } = baseCtx;
   const { apiUrl, apiToken, workspaceId } = extractConfig();
 
   const apiConfiguration = new Configuration({
@@ -29,10 +36,10 @@ async function initializeCliContextWithAuth(log: Log) {
 
   const workspace = await getWorkspaceDetails(apiToken, workspaceId);
 
-  return { apiConfiguration, workspace, log };
+  return { apiConfiguration, workspace, log, analytics };
 }
 
-async function whoami(context: CliContext) {
+async function whoami(context: AuthenticatedCliContext) {
   const { apiConfiguration, log } = context;
   const whoamiApi = new WhoamiApi(apiConfiguration);
 
@@ -41,6 +48,8 @@ async function whoami(context: CliContext) {
 }
 
 export async function run() {
+  const analytics = new Analytics(tryGetUserDataFromToken());
+
   const cmd = new Command()
     .name("si-conduit")
     .version("0.1.0")
@@ -52,13 +61,13 @@ export async function run() {
     )
     .action(function () {
       this.showHelp();
-      Deno.exit(1);
+      Deno.exit(0);
     })
     .command("whoami", "Get current user information")
     .action(async ({ verbose }) => {
       const log = new Log(verbose);
 
-      const ctx = await initializeCliContextWithAuth(log);
+      const ctx = await initializeCliContextWithAuth({ log, analytics });
 
       return whoami(ctx);
     })
@@ -67,7 +76,7 @@ export async function run() {
     .action(async ({ verbose, skipConfirmation }, assetsPath) => {
       const log = new Log(verbose);
 
-      const ctx = await initializeCliContextWithAuth(log);
+      const ctx = await initializeCliContextWithAuth({ log, analytics });
 
       return exportAssets(ctx, assetsPath, skipConfirmation);
     })
@@ -75,15 +84,32 @@ export async function run() {
     .option("-f, --folder <folder:string>", "Asset folder path", { default: "." })
     .action(({ verbose, folder }, assetName) => {
       const log = new Log(verbose);
-      return scaffoldAsset(log, assetName, folder);
+
+      return scaffoldAsset({ analytics, log }, assetName, folder);
     });
 
+    let exitCode = 0;
     try {
       await cmd.parse(Deno.args);
     } catch (error) {
-      console.error(unknownValueToErrorMessage(error));
-      Deno.exit(1);
+      const errorMsg = unknownValueToErrorMessage(error);
+
+      const [command, ...args] = Deno.args;
+
+      analytics.trackEvent("cli_error",
+      {
+        error: errorMsg,
+        command,
+        args,
+      });
+
+      exitCode = 1
     }
+
+    // Idle for a bit to allow the analytics event to be sent
+    await analytics.shutdown();
+
+    Deno.exit(exitCode);
 }
 
 async function getWorkspaceDetails(apiToken: string, workspaceId?: string) {

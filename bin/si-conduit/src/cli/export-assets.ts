@@ -1,10 +1,10 @@
 import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
-import { CliContext } from "../cli.ts";
+import { AuthenticatedCliContext } from "../cli.ts";
 import { AxiosError } from "npm:axios@1.11.0";
 import { Log } from "../log.ts";
 import { unknownValueToErrorMessage } from "../helpers.ts";
 
-export async function exportAssets(context: CliContext, assetsPath: string, skipConfirmation?: boolean) {
+export async function exportAssets(context: AuthenticatedCliContext, assetsPath: string, skipConfirmation?: boolean) {
   const { apiConfiguration, log, workspace } = context;
 
   const {

@@ -22,6 +22,24 @@ function decodeJWT(token: string): Record<string, unknown> {
   }
 }
 
+export function tryGetUserDataFromToken(apiToken?: string): { workspaceId: string, userId: string } | undefined {
+  apiToken = apiToken ?? Deno.env.get("SI_API_TOKEN");
+
+  if (!apiToken) {
+    return;
+  }
+
+  const payload = decodeJWT(apiToken);
+  const workspaceId = payload.workspaceId as string;
+  const userId = payload.userId as string;
+
+  if (!workspaceId || !userId) {
+    return;
+  }
+
+  return { workspaceId, userId };
+}
+
 export function extractConfig(): Config {
   // Get configuration from environment variables
   const apiUrl = Deno.env.get("SI_API_URL") || "https://api.systeminit.com";
@@ -31,14 +49,9 @@ export function extractConfig(): Config {
     throw new Error("Error: SI_API_TOKEN environment variable is required.");
   }
 
-  // Extract workspaceId from JWT if not provided
-  let workspaceId = Deno.env.get("SI_WORKSPACE_ID");
+  const workspaceId = tryGetUserDataFromToken(apiToken)?.workspaceId;
   if (!workspaceId) {
-    const payload = decodeJWT(apiToken);
-    workspaceId = payload.workspaceId as string;
-    if (!workspaceId) {
-      throw new Error("workspaceId not found in JWT payload");
-    }
+    throw new Error("workspaceId not found in JWT payload");
   }
 
   return {

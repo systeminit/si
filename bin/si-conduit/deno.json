@@ -4,6 +4,7 @@
     "build": "deno compile --allow-net --allow-env --allow-read --allow-write main.ts"
   },
   "imports": {
-    "@systeminit/api-client": "jsr:@systeminit/api-client@^1.2.0"
+    "@systeminit/api-client": "jsr:@systeminit/api-client@^1.2.0",
+    "posthog-node": "npm:posthog-node@^4.2.1",
   }
 }

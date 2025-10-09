@@ -1,10 +1,12 @@
-import { CliContext } from "../cli.ts";
+import { BaseCliContext } from "../cli.ts";
 import { makeStringSafeForFilename, unknownValueToErrorMessage } from "../helpers.ts";
 import { Log } from "../log.ts";
 import { ensureDir } from "jsr:@std/fs/ensure-dir";
 import { SCHEMA_FILE_FORMAT_VERSION } from "../config.ts";
 
-export async function scaffoldAsset(log: Log, assetName: string, assetFolder: string) {
+export async function scaffoldAsset(ctx: BaseCliContext, assetName: string, assetFolder: string) {
+  const { log, analytics } = ctx;
+
   const assetDirName = makeStringSafeForFilename(assetName);
 
   const assetPath = `${assetFolder}/${assetDirName}`;
@@ -44,7 +46,7 @@ export async function scaffoldAsset(log: Log, assetName: string, assetFolder: st
     log.debug(`Created index.ts`);
 
     // Create the version file
-    await Deno.writeTextFile(`${assetPath}/.format-version`, SCHEMA_FILE_FORMAT_VERSION);
+    await Deno.writeTextFile(`${assetPath}/.format-version`, SCHEMA_FILE_FORMAT_VERSION.toString());
     log.debug(`Created .format-version`);
 
     await createQualificationScaffold(assetPath, log);
@@ -56,6 +58,8 @@ export async function scaffoldAsset(log: Log, assetName: string, assetFolder: st
     await createMgmtScaffold(assetPath, log);
 
     log.info(`Asset "${assetName}" created successfully at ${assetPath}`);
+
+    analytics.trackEvent("scaffold_asset", { assetName });
   } catch (error) {
     throw new Error(`Error creating asset: ${unknownValueToErrorMessage(error)}`);
   }
@@ -181,7 +185,7 @@ async function createMgmtScaffold(assetPath: string, log: Log) {
       },
     },
   };
-  
+
   return {
     status: "ok",
     message: "Imported Resource",
