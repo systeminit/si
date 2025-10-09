@@ -2,8 +2,8 @@ name: Set maintenance mode
 
 # Required for IDP JWT and actions/checkout
 permissions:
-      id-token: write
-      contents: read
+  id-token: write
+  contents: read
 
 on:
   workflow_call:
@@ -29,6 +29,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Toggle maintenance
+      - name: Toggle SDF maintenance
         run: |
           component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s sdf -m y -a y
+      - name: Toggle Luminork maintenance
+        run: |
+          component/toolbox/awsi.sh toggle-maintenance -p pull-from-env -r us-east-1 -s luminork -m y -a y
