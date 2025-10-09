@@ -2739,6 +2739,50 @@ Functions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Function not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Unlocks a func - if there's already an unlocked function, then we return that
+
+<a id="opIdunlock_func"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id}/unlock`
+
+> Body parameter
+
+```json
+{
+  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q75XY"
+}
+```
+
+<h3 id="unlocks-a-func---if-there's-already-an-unlocked-function,-then-we-return-that-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|func_id|path|string|true|Func identifier|
+|body|body|[UnlockFuncV1Request](#schemaunlockfuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "unlockedFuncId": "01H9ZQD35JPMBGHH69BT0Q75XY"
+}
+```
+
+<h3 id="unlocks-a-func---if-there's-already-an-unlocked-function,-then-we-return-that-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Function unlocked successfully|[UnlockFuncV1Response](#schemaunlockfuncv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 # [management_funcs](#system-initiative-api-management_funcs)
 
 Management functions endpoints
@@ -5863,6 +5907,46 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |API Documentation|string|true|none|none|
+
+## [UnlockFuncV1Request](#tocS_UnlockFuncV1Request)
+
+<a id="schemaunlockfuncv1request"></a>
+<a id="schema_UnlockFuncV1Request"></a>
+<a id="tocSunlockfuncv1request"></a>
+<a id="tocsunlockfuncv1request"></a>
+
+```json
+{
+  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q75XY"
+}
+
+```
+
+### [Properties](#unlockfuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|schemaVariantId|string|true|none|none|
+
+## [UnlockFuncV1Response](#tocS_UnlockFuncV1Response)
+
+<a id="schemaunlockfuncv1response"></a>
+<a id="schema_UnlockFuncV1Response"></a>
+<a id="tocSunlockfuncv1response"></a>
+<a id="tocsunlockfuncv1response"></a>
+
+```json
+{
+  "unlockedFuncId": "01H9ZQD35JPMBGHH69BT0Q75XY"
+}
+
+```
+
+### [Properties](#unlockfuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|unlockedFuncId|string|true|none|none|
 
 ## [UnlockedSchemaV1Response](#tocS_UnlockedSchemaV1Response)
 
