@@ -920,7 +920,7 @@ const funcCreateEditGetInputSchemaRaw = {
     .describe(
       "The change set to create, update, get information about a function in; functions cannot be manipulated on HEAD",
     ),
-  schemaId: z.string().optional().describe("The schema id the function is for. Required for creating a new function, not needed for updating or getting information about one."),
+  schemaId: z.string().describe("The schema id the function is for."),
   funcId: z.string().optional().describe("The id of the function to edit or get information about. If none is given, create a new function."),
   name: z.string().min(1).optional().describe("The name of the function. Required for creating a new function."),
   description: z.string().optional().describe("A description for the function"),
@@ -993,6 +993,23 @@ export function funcCreateEditGetTool(server: McpServer) {
               funcId,
             });
 
+            // ensure that the schema is unlocked
+            const responseUnlockSchema = await siSchemasApi.unlockSchema({
+              workspaceId: WORKSPACE_ID,
+              changeSetId,
+              schemaId,
+            });
+
+            // next make sure that the function is unlocked
+            const responseUnlockFunc = await siFuncsApi.unlockFunc({
+              workspaceId: WORKSPACE_ID,
+              changeSetId,
+              funcId,
+              unlockFuncV1Request: {
+                schemaVariantId: responseUnlockSchema.data.unlockedVariantId,
+              }
+            });
+
             // fill the update request body with our new data or existing data if it didn't change
             const updateFuncV1Request = {
               code: functionCode ?? responseGetFunc.data.code,
@@ -1001,7 +1018,7 @@ export function funcCreateEditGetTool(server: McpServer) {
             }
 
             // populate data to return from the tool
-            touchedFuncId = funcId;
+            touchedFuncId = responseUnlockFunc.data.unlockedFuncId;
             touchedFuncCode = updateFuncV1Request.code;
             touchedName = updateFuncV1Request.displayName as string;
 
@@ -1011,7 +1028,7 @@ export function funcCreateEditGetTool(server: McpServer) {
               await siFuncsApi.updateFunc({
                 workspaceId: WORKSPACE_ID,
                 changeSetId,
-                funcId,
+                funcId: touchedFuncId,
                 updateFuncV1Request,
               });
             }

@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { SchemasApi, FuncsApi } from "@systeminit/api-client";
+import { SchemasApi, FuncsApi, SchemaVariantFunc } from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
@@ -126,6 +126,23 @@ const schemaCreateEditGetOutputSchemaRaw = {
     schemaId: z.string().describe("the schema id"),
     name: z.string().describe("the schema name"),
     definitionFunction: z.string().describe("the schema definition function"),
+    functions: z.array(z.object({
+      id: z.string().describe("the function id"),
+      funcKind: z.union([
+        z.object({
+          actionKind: z.string().describe("the action kind"),
+          kind: z.literal("action").describe("the function kind"),
+        }),
+        z.object({
+          managementFuncKind: z.string().describe("the management function kind"),
+          kind: z.literal("management").describe("the function kind"),
+        }),
+        z.object({
+          funcKind: z.string().describe("the function kind"),
+          kind: z.literal("other"),
+        }),
+      ]),
+    })).describe("the functions attached to the schema"),
   }),
 };
 const schemaCreateEditGetOutputSchema = z.object(schemaCreateEditGetOutputSchemaRaw);
@@ -149,7 +166,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
 
-        let touchedSchemaId, touchedDefinitionFunction, touchedName: string;
+        let touchedSchemaId, touchedDefinitionFunction, touchedName: string, touchedFunctions;
 
         try {
           if (schemaId) {
@@ -185,6 +202,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
             touchedSchemaId = schemaId;
             touchedDefinitionFunction = responseGetFunc.data.code;
             touchedName = responseGetVariant.data.displayName;
+            touchedFunctions = responseGetVariant.data.variantFuncs;
 
             // information gathering complete, now only move onto updating if we have new data
             if (definitionFunction || Object.values(createOrEditSchemaV1Request).some(value => value != undefined)) {
@@ -242,11 +260,13 @@ export function schemaCreateEditGetTool(server: McpServer) {
             touchedSchemaId = responseCreate.data.schemaId;
             touchedDefinitionFunction = code;
             touchedName = createOrEditSchemaV1Request.name as string;
+            touchedFunctions = [] as SchemaVariantFunc[];
           }
           const data: SchemaCreateEditGetOutputData = {
             schemaId: touchedSchemaId,
             definitionFunction: touchedDefinitionFunction,
             name: touchedName,
+            functions: touchedFunctions,
           };
           return successResponse(data);
         } catch (error) {
