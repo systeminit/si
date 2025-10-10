@@ -5,10 +5,7 @@ import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggest
 import { reorderProps } from "../generic/reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
 import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
-import {
-  generateDefaultFuncsFromConfig,
-  generateSpecsFromRawSchema,
-} from "../generic/index.ts";
+import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { applyAssetOverrides } from "../generic/applyAssetOverrides.ts";
 import { dummyProviderConfig } from "./provider.ts";
 
@@ -23,19 +20,12 @@ export async function generateDummySpecs(options: {
 
   const existing_specs = await getExistingSpecs(options);
 
-  // Generate base specs from dummy schemas using the new generic helper
-  // Pass null as rawSchema since dummy uses parseRawSchema to return hardcoded schemas
-  specs = generateSpecsFromRawSchema(null, dummyProviderConfig);
+  specs = dummyProviderConfig.parseRawSchema({});
 
-  // Run through standard pipeline steps
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
-
   specs = generateDefaultFuncsFromConfig(specs, dummyProviderConfig);
-
-  // Apply provider-specific overrides
   specs = applyAssetOverrides(specs, dummyProviderConfig);
-
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);

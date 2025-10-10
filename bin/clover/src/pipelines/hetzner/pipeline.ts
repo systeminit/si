@@ -8,7 +8,7 @@ import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggest
 import { reorderProps } from "../generic/reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
 import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
-import { generateDefaultFuncsFromConfig, generateSpecsFromRawSchema } from "../generic/index.ts";
+import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { addDefaultProps } from "./pipeline-steps/addDefaultProps.ts";
 import { applyAssetOverrides } from "../generic/applyAssetOverrides.ts";
 import { hetznerProviderConfig } from "./provider.ts";
@@ -24,8 +24,8 @@ export async function generateHetznerSpecs(options: {
 
   const existing_specs = await getExistingSpecs(options);
 
-  // Generate base specs from Hetzner schema using the new generic helper
-  specs = generateSpecsFromRawSchema(rawSchema, hetznerProviderConfig);
+  specs = hetznerProviderConfig.parseRawSchema(rawSchema);
+
   specs = addDefaultProps(specs);
 
   specs = generateDefaultFuncsFromConfig(specs, hetznerProviderConfig);

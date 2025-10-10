@@ -21,6 +21,11 @@ async function main({ thisComponent }: Input): Promise<Output> {
     "extra",
     "ScalarPropertyMap",
   ], "[]");
+  const propUsageMapJson = _.get(thisComponent.properties, [
+    "domain",
+    "extra",
+    "PropUsageMap",
+  ], "{}");
 
   if (!endpoint) {
     throw new Error("Endpoint not found in extra properties");
@@ -38,6 +43,19 @@ async function main({ thisComponent }: Input): Promise<Output> {
   } catch (e) {
     console.warn("Failed to parse ScalarPropertyMap, using empty set:", e);
     scalarProperties = new Set();
+  }
+
+  // Parse PropUsageMap to know which properties are writable
+  let writableProperties: Set<string>;
+  try {
+    const propUsageMap = JSON.parse(propUsageMapJson);
+    writableProperties = new Set([
+      ...(propUsageMap.createOnly || []),
+      ...(propUsageMap.updatable || []),
+    ]);
+  } catch (e) {
+    console.warn("Failed to parse PropUsageMap, using empty set:", e);
+    writableProperties = new Set();
   }
 
   const create: Output["ops"]["create"] = {};
@@ -65,12 +83,23 @@ async function main({ thisComponent }: Input): Promise<Output> {
     const resourceId = resource.id?.toString() || resource.name;
     console.log(`Importing ${endpoint} ${resourceId}`);
 
+    // Filter domain properties to only include writable properties (createOnly + updatable)
+    // Also skip null values since they may not match the schema's type expectations
+    const normalizedResource = normalizeForSchema(resource, scalarProperties);
+    const domainProperties: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(normalizedResource)) {
+      if (writableProperties.has(key) && value != null) {
+        domainProperties[key] = value;
+      }
+    }
+
     const properties = {
       si: {
         resourceId,
         type: resourceType,
       },
-      domain: normalizeForSchema(resource, scalarProperties),
+      domain: domainProperties,
       resource: resource,
     };
 
@@ -103,10 +132,8 @@ async function main({ thisComponent }: Input): Promise<Output> {
 }
 
 // Normalize API response to match schema expectations
-// When API returns objects but schema expects scalars, extract name or id
-// Only applies to root-level properties that Hetzner returns as objects
-// but the schema defines as strings/numbers (determined from ScalarPropertyMap)
-// Recursively processes nested objects and arrays while preserving structure
+// Extracts IDs from nested objects that should be scalars
+// Recursively processes nested objects and arrays
 function normalizeForSchema(
   obj: any,
   scalarProperties: Set<string>,
@@ -116,7 +143,6 @@ function normalizeForSchema(
     return obj;
   }
 
-  // Handle arrays by recursively normalizing each element
   if (Array.isArray(obj)) {
     return obj.map((item) => normalizeForSchema(item, scalarProperties, false));
   }
@@ -126,23 +152,50 @@ function normalizeForSchema(
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const nestedObj = value as any;
 
-      // Only extract name/id for root-level properties that should be scalars
+      // Root-level properties: extract name/id if in ScalarPropertyMap
       if (isRootLevel && scalarProperties.has(key)) {
         if (nestedObj.name !== undefined) {
           normalized[key] = nestedObj.name;
         } else if (nestedObj.id !== undefined) {
           normalized[key] = nestedObj.id;
         } else {
-          // Fallback: preserve structure if no name/id
           normalized[key] = normalizeForSchema(value, scalarProperties, false);
         }
       } else {
-        // Preserve nested structure for all other properties
-        normalized[key] = normalizeForSchema(value, scalarProperties, false);
+        // Nested properties: recursively normalize but extract IDs from objects
+        // that have an 'id' field (common pattern for Hetzner API)
+        normalized[key] = normalizeNestedObject(value);
       }
     } else if (Array.isArray(value)) {
-      // Recursively normalize arrays
       normalized[key] = normalizeForSchema(value, scalarProperties, false);
+    } else {
+      normalized[key] = value;
+    }
+  }
+  return normalized;
+}
+
+// Recursively normalize nested objects, extracting IDs where appropriate
+function normalizeNestedObject(obj: any): any {
+  if (!obj || typeof obj !== "object") {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => normalizeNestedObject(item));
+  }
+
+  // If object has only 'id' or both 'id' and simple metadata, extract just the id
+  // This handles cases like ipv4: {id: 123, ip: "1.2.3.4", ...} -> 123
+  if (obj.id !== undefined && typeof obj.id === "number") {
+    return obj.id;
+  }
+
+  // Otherwise, recursively normalize the object's properties
+  const normalized: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value && typeof value === "object") {
+      normalized[key] = normalizeNestedObject(value);
     } else {
       normalized[key] = value;
     }

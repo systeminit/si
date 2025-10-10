@@ -28,13 +28,11 @@ export function buildHandlersFromOperations(
   getOperation: JsonSchema | null;
   postOperation: JsonSchema | null;
   putOperation: JsonSchema | null;
-  deleteOperation: JsonSchema | null;
 } {
   const handlers = {} as Record<CfHandlerKind, CfHandler>;
   let getOperation: JsonSchema | null = null;
   let postOperation: JsonSchema | null = null;
   let putOperation: JsonSchema | null = null;
-  let deleteOperation: JsonSchema | null = null;
 
   operations.forEach(({ openApiDescription }) => {
     const defaultHandler = { permissions: [], timeoutInMinutes: 60 };
@@ -59,7 +57,6 @@ export function buildHandlersFromOperations(
           break;
         }
         case "delete": {
-          deleteOperation = op;
           handlers["delete"] = defaultHandler;
           break;
         }
@@ -72,7 +69,6 @@ export function buildHandlersFromOperations(
     getOperation,
     postOperation,
     putOperation,
-    deleteOperation,
   };
 }
 
@@ -167,24 +163,21 @@ export function mergeResourceOperations(
   noun: string,
   operations: OperationData[],
   allSchemas: JsonSchema,
-): { schema: HetznerSchema; onlyProperties: OnlyProperties } | null {
-  // Extract handlers and operations using the dedicated function
+): {
+  schema: HetznerSchema;
+  onlyProperties: OnlyProperties;
+  domainProperties: Record<string, CfProperty>;
+  resourceValueProperties: Record<string, CfProperty>;
+} | null {
   const {
     handlers,
     getOperation,
     postOperation,
     putOperation,
-    deleteOperation,
   } = buildHandlersFromOperations(operations);
 
-  // Must have a get operation to proceed
-  if (!getOperation) {
-    console.error(`No GET operation found for ${noun}`);
-    return null;
-  }
-
   // Get description from the tag
-  const tags = getOperation.tags as string[] | undefined;
+  const tags = getOperation?.tags as string[] | undefined;
   const tagName = tags?.[0];
   let description = `Hetzner Cloud ${noun} resource`;
 
@@ -197,98 +190,59 @@ export function mergeResourceOperations(
     }
   }
 
-  // Extract properties from GET response
-  const getContent = (getOperation.responses as any)?.["200"]?.content
+  // Extract properties from CREATE (POST) request
+  if (!postOperation) return null;
+  const createContent = (postOperation.requestBody as any)?.content
     ?.["application/json"];
-  if (!getContent) {
-    console.error(`No JSON response content for GET ${noun}`);
+  if (!createContent) {
+    console.error(`No JSON response content for Create ${noun}`);
     return null;
   }
 
-  const objShape = Object.values(
-    getContent.schema.properties,
-  ).pop() as JsonSchema | undefined;
-  if (!objShape) {
-    console.error("SHAPE EXPECTED", getContent);
-    return null;
-  }
-
-  const mergedProperties = {
-    ...(objShape.properties as JsonSchema),
+  // Start with POST properties for domain (writable properties)
+  const domainProperties = {
+    ...(createContent.schema?.properties as JsonSchema),
   };
-  const requiredProperties = new Set((objShape.required as string[]) || []);
+  const requiredProperties = new Set(
+    (createContent.schema?.required as string[]) || [],
+  );
 
   // Properties that appear in different operations - for onlyProperties classification
-  const getProperties: PropertySet = new Set(
-    Object.keys(objShape.properties as JsonSchema),
+  const createProperties: PropertySet = new Set(
+    Object.keys(createContent.schema?.properties as JsonSchema),
   );
-  const createProperties: PropertySet = new Set();
+
+  const getContent = (getOperation?.responses as any)?.["200"]?.content
+    ?.["application/json"];
+  const getObjShape = getContent?.schema?.properties
+    ? Object.values(getContent.schema.properties).pop() as
+      | JsonSchema
+      | undefined
+    : undefined;
+  const getProperties: PropertySet = new Set(
+    Object.keys((getObjShape?.properties as JsonSchema) || {}),
+  );
+
   const updateProperties: PropertySet = new Set();
-  const deleteProperties: PropertySet = new Set();
 
-  // Process the other ops
-  [
-    { operation: postOperation, propertySet: createProperties, name: "create" },
-    { operation: putOperation, propertySet: updateProperties, name: "update" },
-    {
-      operation: deleteOperation,
-      propertySet: deleteProperties,
-      name: "delete",
-    },
-  ].forEach(({ operation, propertySet }) => {
+  // Merge PUT into domain (POST + PUT = writable properties)
+  {
     const { properties: operationProps, required: operationRequired } =
-      extractPropertiesFromRequestBody(operation);
-
-    Object.keys(operationProps).forEach((prop) => propertySet.add(prop));
-
-    // Merge properties into the main schema
+      extractPropertiesFromRequestBody(putOperation);
+    Object.keys(operationProps).forEach((prop) => updateProperties.add(prop));
     Object.entries(operationProps).forEach(([key, prop]) => {
-      mergedProperties[key] = mergePropertyDefinitions(
-        mergedProperties[key] as JsonSchema,
+      domainProperties[key] = mergePropertyDefinitions(
+        domainProperties[key] as JsonSchema,
         prop as JsonSchema,
       );
     });
-
-    // Add required properties
+    // Add required properties from UPDATE operation
     operationRequired.forEach((prop) => requiredProperties.add(prop));
-  });
-
-  // Helper to recursively collect readOnly property paths
-  function collectReadOnlyPaths(
-    properties: JsonSchema,
-    pathPrefix: string = "",
-    parentIsReadOnly: boolean = false,
-  ): string[] {
-    const paths: string[] = [];
-
-    for (const [key, prop] of Object.entries(properties)) {
-      const propSchema = prop as JsonSchema;
-      const currentPath = pathPrefix ? `${pathPrefix}/${key}` : key;
-
-      const isTopLevel = !pathPrefix;
-      const inGet = isTopLevel && getProperties.has(key);
-      const notInWrites = !createProperties.has(key) &&
-        !updateProperties.has(key) &&
-        !deleteProperties.has(key);
-      const isReadOnly = parentIsReadOnly || (inGet && notInWrites);
-
-      if (isReadOnly) {
-        paths.push(currentPath);
-      }
-
-      if (propSchema?.properties && typeof propSchema.properties === "object") {
-        paths.push(
-          ...collectReadOnlyPaths(
-            propSchema.properties as JsonSchema,
-            currentPath,
-            isReadOnly,
-          ),
-        );
-      }
-    }
-
-    return paths;
   }
+
+  const resourceValueProperties = {
+    ...(getObjShape?.properties as JsonSchema || {}),
+  };
 
   // Build onlyProperties
   const onlyProperties: OnlyProperties = {
@@ -303,35 +257,45 @@ export function mergeResourceOperations(
     if (
       !updateProperties.has(prop)
     ) {
-      onlyProperties.createOnly.push(`/${prop}`);
+      onlyProperties.createOnly.push(prop);
     }
   });
 
-  // Collect all readOnly paths (including nested ones)
-  const readOnlyPaths = collectReadOnlyPaths(mergedProperties);
-  onlyProperties.readOnly.push(...readOnlyPaths);
+  // readOnly: in GET but not in POST or PUT
+  getProperties.forEach((prop) => {
+    if (!createProperties.has(prop) && !updateProperties.has(prop)) {
+      onlyProperties.readOnly.push(prop);
+    }
+  });
 
-  // writeOnly: in POST/PUT/DELETE but not in GET
+  // writeOnly: in POST/PUT but not in GET
   const writeProps = [
     ...createProperties,
     ...updateProperties,
-    ...deleteProperties,
   ];
   onlyProperties.writeOnly = [
     ...new Set(
-      writeProps.filter((prop) => !getProperties.has(prop)).map((prop) =>
-        `/${prop}`
-      ),
+      writeProps.filter((prop) => !getProperties.has(prop)),
     ),
   ];
 
-  // Normalize properties to handle oneOf with primitives
-  const normalizedProperties = Object.fromEntries(
-    Object.entries(mergedProperties).map(([key, prop]) => [
+  // Normalize domain properties (POST + PUT = writable)
+  const normalizedDomainProperties = Object.fromEntries(
+    Object.entries(domainProperties).map(([key, prop]) => [
       key,
       normalizeHetznerProperty(prop as JsonSchema),
     ]),
   );
+
+  // Normalize resource_value properties (GET response = readable)
+  const normalizedResourceValueProperties = Object.fromEntries(
+    Object.entries(resourceValueProperties).map(([key, prop]) => [
+      key,
+      normalizeHetznerProperty(prop as JsonSchema),
+    ]),
+  );
+
+  const mergedProperties = { ...normalizedDomainProperties };
 
   // Convert noun to PascalCase for the resource name (e.g., "certificates" -> "Certificate")
   const resourceName = _.startCase(_.camelCase(noun)).replace(/ /g, "");
@@ -339,12 +303,20 @@ export function mergeResourceOperations(
   const schema: HetznerSchema = {
     typeName: `Hetzner::Cloud::${resourceName}`,
     description,
-    properties: normalizedProperties as Record<string, CfProperty>,
+    properties: mergedProperties as Record<string, CfProperty>,
     requiredProperties,
     primaryIdentifier: ["id"],
     handlers,
     endpoint: noun,
   };
 
-  return { schema, onlyProperties };
+  return {
+    schema,
+    onlyProperties,
+    domainProperties: normalizedDomainProperties as Record<string, CfProperty>,
+    resourceValueProperties: normalizedResourceValueProperties as Record<
+      string,
+      CfProperty
+    >,
+  };
 }
