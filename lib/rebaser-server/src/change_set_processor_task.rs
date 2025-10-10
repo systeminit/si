@@ -549,6 +549,7 @@ mod handlers {
         ChangeSet,
         Workspace,
         WorkspaceSnapshot,
+        WorkspaceSnapshotError,
         WsEvent,
         action::{
             Action,
@@ -745,11 +746,17 @@ mod handlers {
                 | dal::TransactionsError::ChangeSet(_)
                 // - Failed to determine workspace via db query
                 // - Failed to determine snapshot address via db query
-                // - Failed to load snapshot from layer db
-                //
-                | dal::TransactionsError::Workspace(_)
+                 => HandlerError::transient_service(err),
+                dal::TransactionsError::Workspace(workspace_err)
                 => {
-                    HandlerError::transient_service(err)
+                    // - Failed to load snapshot from layer db after trying for 10s
+                    //   so we should not retry because if we gave it 10s, it'll never be there
+                    if let dal::WorkspaceError::WorkspaceSnapshot(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched) = workspace_err.as_ref() {
+                        HandlerError::unprocessable(err)
+                    }
+                    else {
+                        HandlerError::transient_service(err)
+                    }
                 }
                 _ => HandlerError::pre_commit(err)
             })?;
