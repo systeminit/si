@@ -286,6 +286,27 @@ export function widget(
   };
 }
 
+export function addQualificationFunction(
+  funcPath: string,
+  name: string,
+  uniqueId: string,
+): SchemaOverrideFn {
+  return (spec) => {
+    const variant = spec.schemas[0].variants[0];
+    if (!variant.domain.uniqueId) {
+      throw new Error("Expected domain.uniqueId");
+    }
+    const { func, leafFuncSpec } = attachQualificationFunction(
+      funcPath,
+      name,
+      uniqueId,
+      variant.domain.uniqueId,
+    );
+
+    spec.funcs.push(func);
+    variant.leafFunctions.push(leafFuncSpec);
+  };
+}
 export function addScalarProp(
   propPath: PropPath,
   kind: "string" | "number" | "boolean",

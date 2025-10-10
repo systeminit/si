@@ -20,12 +20,18 @@ export function applyAssetOverrides(
     const variant = spec.schemas[0].variants[0];
 
     // If there's a schema-level override for this spec, run it
-    const schemaOverrideFn = providerConfig.overrides.schemaOverrides.get(
+    const schemaOverrideFns = providerConfig.overrides.schemaOverrides.get(
       spec.name,
     );
-    if (schemaOverrideFn) {
+    if (schemaOverrideFns) {
       logger.debug(`Running schema override for ${spec.name}`);
-      schemaOverrideFn(spec);
+      if (Array.isArray(schemaOverrideFns)) {
+        for (const schemaOverrideFn of schemaOverrideFns) {
+          schemaOverrideFn(spec);
+        }
+      } else {
+        schemaOverrideFns(spec);
+      }
     }
 
     // If there are prop-level overrides for this schema+spec, run them
