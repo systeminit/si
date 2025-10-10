@@ -15,6 +15,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@vitest/coverage-v8": "^2.0.0",
+    "esbuild": "^0.25.10",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   },
