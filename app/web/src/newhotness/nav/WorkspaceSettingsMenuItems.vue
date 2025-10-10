@@ -17,7 +17,7 @@
   />
   <DropdownMenuItem
     icon="settings"
-    label="Manage Workspace Tokens"
+    label="Manage API Tokens"
     @select="openWorkspaceApiTokensHandler"
   />
   <DropdownMenuItem
