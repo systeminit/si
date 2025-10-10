@@ -154,4 +154,4 @@ export const azureProviderConfig: ProviderConfig = {
   },
 };
 
-PROVIDER_REGISTRY[azureProviderConfig.name] = azureProviderConfig;
+// PROVIDER_REGISTRY[azureProviderConfig.name] = azureProviderConfig;
