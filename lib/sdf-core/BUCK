@@ -35,6 +35,7 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-util",
+        "//third-party/rust:tracing",
         "//third-party/rust:tracing-tunnel",
         "//third-party/rust:ulid",
         "//third-party/rust:y-sync",

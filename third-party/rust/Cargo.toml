@@ -72,7 +72,7 @@ dyn-clone = "1.0.17"
 env_logger = "0.11.6"
 fastrace = "0.7.4"
 flate2 = "1.0.35"
-foyer = { version = "0.14.1", features = ["tracing"] }
+foyer = { version = "0.20", features = ["tracing"] }
 fs4 = "0.12.0"
 fuser = { version = "0.16.0", default-features = false }
 futures = "0.3.31"
@@ -137,7 +137,7 @@ rustls = { version = "0.23.19", default-features = false } # NOTE(nick,fletcher)
 rustls-native-certs = "0.8.1"
 rustls-pemfile = { version = "2.2.0" }
 sea-orm = { version = "1.1.2", features = ["debug-print", "macros", "runtime-tokio-rustls", "sqlx-postgres", "with-chrono"] }
-serde = { version = "1.0.216", features = ["derive", "rc"] }
+serde = { version = "=1.0.216", features = ["derive", "rc"] }
 serde-aux = "4.5.0"
 serde-tuple-vec-map = "1.0.1"
 serde_json = { version = "1.0.133", features = ["preserve_order"] }
