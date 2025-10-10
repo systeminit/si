@@ -45,6 +45,7 @@ deno_test(
         ["**/*.ts", "**/test/*.ts"],
         exclude = [
             "src/pipelines/aws/funcs/**/*",
+            "src/pipelines/azure/funcs/**/*",
             "src/pipelines/hetzner/funcs/**/*",
             "src/pipelines/dummy/funcs/**/*",
         ]

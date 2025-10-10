@@ -253,6 +253,43 @@ export function mergeResourceOperations(
     operationRequired.forEach((prop) => requiredProperties.add(prop));
   });
 
+  // Helper to recursively collect readOnly property paths
+  function collectReadOnlyPaths(
+    properties: JsonSchema,
+    pathPrefix: string = "",
+    parentIsReadOnly: boolean = false,
+  ): string[] {
+    const paths: string[] = [];
+
+    for (const [key, prop] of Object.entries(properties)) {
+      const propSchema = prop as JsonSchema;
+      const currentPath = pathPrefix ? `${pathPrefix}/${key}` : key;
+
+      const isTopLevel = !pathPrefix;
+      const inGet = isTopLevel && getProperties.has(key);
+      const notInWrites = !createProperties.has(key) &&
+        !updateProperties.has(key) &&
+        !deleteProperties.has(key);
+      const isReadOnly = parentIsReadOnly || (inGet && notInWrites);
+
+      if (isReadOnly) {
+        paths.push(currentPath);
+      }
+
+      if (propSchema?.properties && typeof propSchema.properties === "object") {
+        paths.push(
+          ...collectReadOnlyPaths(
+            propSchema.properties as JsonSchema,
+            currentPath,
+            isReadOnly,
+          ),
+        );
+      }
+    }
+
+    return paths;
+  }
+
   // Build onlyProperties
   const onlyProperties: OnlyProperties = {
     createOnly: [],
@@ -270,15 +307,9 @@ export function mergeResourceOperations(
     }
   });
 
-  // readOnly: only in GET, not in POST/PUT/DELETE
-  getProperties.forEach((prop) => {
-    if (
-      !createProperties.has(prop) && !updateProperties.has(prop) &&
-      !deleteProperties.has(prop)
-    ) {
-      onlyProperties.readOnly.push(`/${prop}`);
-    }
-  });
+  // Collect all readOnly paths (including nested ones)
+  const readOnlyPaths = collectReadOnlyPaths(mergedProperties);
+  onlyProperties.readOnly.push(...readOnlyPaths);
 
   // writeOnly: in POST/PUT/DELETE but not in GET
   const writeProps = [

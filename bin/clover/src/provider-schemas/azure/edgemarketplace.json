@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Azure edgemarketplace",
-    "version": "2023-08-01",
+    "version": "2024-10-01",
     "description": "Azure edgemarketplace service specifications"
   },
   "host": "management.azure.com",
@@ -12,10 +12,10 @@
   "paths": {
     "/{resourceUri}/providers/Microsoft.EdgeMarketplace/offers": {
       "get": {
+        "operationId": "Offers_List",
         "tags": [
           "Offers"
         ],
-        "operationId": "Offers_List",
         "description": "List Offer resources by parent",
         "parameters": [
           {
@@ -29,71 +29,72 @@
           {
             "name": "resourceUri",
             "in": "path",
-            "required": true,
             "description": "The fully qualified Azure Resource manager identifier of the resource.",
+            "required": true,
             "type": "string",
-            "x-ms-skip-url-encoding": true,
-            "x-ms-parameter-location": "method"
+            "x-ms-parameter-location": "method",
+            "x-ms-skip-url-encoding": true
           },
           {
             "name": "$top",
             "in": "query",
-            "required": false,
             "description": "The number of result items to return.",
+            "required": false,
             "type": "integer",
             "format": "int32",
-            "x-ms-parameter-location": "method"
+            "x-ms-client-name": "top"
           },
           {
             "name": "skip",
             "in": "query",
-            "required": false,
             "description": "The number of result items to skip.",
-            "default": 0,
+            "required": false,
             "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
+            "format": "int32"
           },
           {
             "name": "maxpagesize",
             "in": "query",
-            "required": false,
             "description": "The maximum number of result items per page.",
+            "required": false,
             "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
+            "format": "int32"
           },
           {
             "name": "$filter",
             "in": "query",
-            "required": false,
             "description": "Filter the result list using the given expression.",
+            "required": false,
             "type": "string",
-            "x-ms-parameter-location": "method"
+            "x-ms-client-name": "filter"
           },
           {
             "name": "$skipToken",
             "in": "query",
-            "required": false,
             "description": "Skip over when retrieving results.",
+            "required": false,
             "type": "string",
-            "x-ms-parameter-location": "method"
+            "x-ms-client-name": "skipToken"
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "type": "object",
+              "description": "The response of a Offer list operation.",
               "properties": {
                 "value": {
                   "type": "array",
+                  "description": "The Offer items on this page",
                   "items": {
                     "type": "object",
+                    "description": "An offer.",
                     "properties": {
                       "id": {
                         "type": "string",
-                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "format": "arm-id",
+                        "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
                         "readOnly": true
                       },
                       "name": {
@@ -107,9 +108,9 @@
                         "readOnly": true
                       },
                       "systemData": {
-                        "type": "object",
                         "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
                         "readOnly": true,
+                        "type": "object",
                         "properties": {
                           "createdBy": {
                             "type": "string",
@@ -161,11 +162,6 @@
                       },
                       "properties": {
                         "description": "The resource-specific properties for this resource.",
-                        "x-ms-client-flatten": true,
-                        "x-ms-mutability": [
-                          "read",
-                          "create"
-                        ],
                         "type": "object",
                         "properties": {
                           "contentVersion": {
@@ -321,19 +317,17 @@
                               },
                               "categoryIds": {
                                 "type": "array",
+                                "description": "The category ids ",
                                 "items": {
                                   "type": "string"
-                                },
-                                "description": "The category ids ",
-                                "x-typespec-name": "string[]"
+                                }
                               },
                               "operatingSystems": {
                                 "type": "array",
+                                "description": "The operating systems",
                                 "items": {
                                   "type": "string"
-                                },
-                                "description": "The operating systems",
-                                "x-typespec-name": "string[]"
+                                }
                               }
                             },
                             "required": [
@@ -343,6 +337,7 @@
                           },
                           "provisioningState": {
                             "description": "The resource provisioning state",
+                            "readOnly": true,
                             "type": "string",
                             "enum": [
                               "Succeeded",
@@ -373,8 +368,10 @@
                           },
                           "marketplaceSkus": {
                             "type": "array",
+                            "description": "The marketplace skus",
                             "items": {
                               "type": "object",
+                              "description": "The marketplace sku",
                               "properties": {
                                 "catalogPlanId": {
                                   "type": "string",
@@ -436,8 +433,10 @@
                                 },
                                 "marketplaceSkuVersions": {
                                   "type": "array",
+                                  "description": "The marketplace sku version",
                                   "items": {
                                     "type": "object",
+                                    "description": "The marketplace sku version",
                                     "properties": {
                                       "name": {
                                         "type": "string",
@@ -456,541 +455,64 @@
                                       "stageName": {
                                         "type": "string",
                                         "description": "The stage name"
+                                      },
+                                      "launchType": {
+                                        "description": "The launch type",
+                                        "type": "string",
+                                        "enum": [
+                                          "Trusted",
+                                          "Unknown"
+                                        ],
+                                        "x-ms-enum": {
+                                          "name": "OfferLaunchType",
+                                          "modelAsString": true,
+                                          "values": [
+                                            {
+                                              "name": "Trusted",
+                                              "value": "Trusted",
+                                              "description": "The offer has been certified"
+                                            },
+                                            {
+                                              "name": "Unknown",
+                                              "value": "Unknown",
+                                              "description": "The offer has not been certified"
+                                            }
+                                          ]
+                                        }
                                       }
                                     },
-                                    "description": "The marketplace sku version",
                                     "required": [
                                       "name"
                                     ]
                                   },
-                                  "x-ms-identifiers": [],
-                                  "description": "The marketplace sku version",
-                                  "x-typespec-name": "MarketplaceSkuVersion[]"
-                                }
-                              },
-                              "description": "The marketplace sku",
-                              "required": [
-                                "catalogPlanId",
-                                "marketplaceSkuId"
-                              ]
-                            },
-                            "x-ms-identifiers": [],
-                            "description": "The marketplace skus",
-                            "x-typespec-name": "MarketplaceSku[]"
-                          }
-                        },
-                        "required": [
-                          "offerContent"
-                        ]
-                      }
-                    },
-                    "description": "An offer."
-                  },
-                  "description": "The Offer items on this page",
-                  "x-typespec-name": "Offer[]"
-                },
-                "nextLink": {
-                  "type": "string",
-                  "format": "uri",
-                  "description": "The link to the next page of items",
-                  "x-typespec-name": "TypeSpec.Rest.ResourceLocation"
-                }
-              },
-              "description": "The response of a Offer list operation.",
-              "required": [
-                "value"
-              ]
-            }
-          }
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/providers/Microsoft.EdgeMarketplace/offers": {
-      "get": {
-        "tags": [
-          "Offers"
-        ],
-        "operationId": "Offers_ListBySubscription",
-        "description": "List Offer resources by subscription",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "description": "The API version to use for this operation.",
-            "required": true,
-            "type": "string",
-            "minLength": 1
-          },
-          {
-            "name": "subscriptionId",
-            "in": "path",
-            "description": "The ID of the target subscription.",
-            "required": true,
-            "type": "string",
-            "minLength": 1
-          },
-          {
-            "name": "$top",
-            "in": "query",
-            "required": false,
-            "description": "The number of result items to return.",
-            "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "description": "The number of result items to skip.",
-            "default": 0,
-            "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "maxpagesize",
-            "in": "query",
-            "required": false,
-            "description": "The maximum number of result items per page.",
-            "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "$filter",
-            "in": "query",
-            "required": false,
-            "description": "Filter the result list using the given expression.",
-            "type": "string",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "$skipToken",
-            "in": "query",
-            "required": false,
-            "description": "Skip over when retrieving results.",
-            "type": "string",
-            "x-ms-parameter-location": "method"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "value": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
-                        "readOnly": true
-                      },
-                      "name": {
-                        "type": "string",
-                        "description": "The name of the resource",
-                        "readOnly": true
-                      },
-                      "type": {
-                        "type": "string",
-                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
-                        "readOnly": true
-                      },
-                      "systemData": {
-                        "type": "object",
-                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
-                        "readOnly": true,
-                        "properties": {
-                          "createdBy": {
-                            "type": "string",
-                            "description": "The identity that created the resource."
-                          },
-                          "createdByType": {
-                            "type": "string",
-                            "description": "The type of identity that created the resource.",
-                            "enum": [
-                              "User",
-                              "Application",
-                              "ManagedIdentity",
-                              "Key"
-                            ],
-                            "x-ms-enum": {
-                              "name": "createdByType",
-                              "modelAsString": true
-                            }
-                          },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The timestamp of resource creation (UTC)."
-                          },
-                          "lastModifiedBy": {
-                            "type": "string",
-                            "description": "The identity that last modified the resource."
-                          },
-                          "lastModifiedByType": {
-                            "type": "string",
-                            "description": "The type of identity that last modified the resource.",
-                            "enum": [
-                              "User",
-                              "Application",
-                              "ManagedIdentity",
-                              "Key"
-                            ],
-                            "x-ms-enum": {
-                              "name": "createdByType",
-                              "modelAsString": true
-                            }
-                          },
-                          "lastModifiedAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The timestamp of resource last modification (UTC)"
-                          }
-                        }
-                      },
-                      "properties": {
-                        "description": "The resource-specific properties for this resource.",
-                        "x-ms-client-flatten": true,
-                        "x-ms-mutability": [
-                          "read",
-                          "create"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "contentVersion": {
-                            "type": "string",
-                            "description": "The content version"
-                          },
-                          "contentUrl": {
-                            "type": "string",
-                            "description": "The content url"
-                          },
-                          "offerContent": {
-                            "description": "The offer content",
-                            "type": "object",
-                            "properties": {
-                              "displayName": {
-                                "type": "string",
-                                "description": "The display name of the offer"
-                              },
-                              "summary": {
-                                "type": "string",
-                                "description": "The summary"
-                              },
-                              "longSummary": {
-                                "type": "string",
-                                "description": "The long summary"
-                              },
-                              "description": {
-                                "type": "string",
-                                "description": "The description"
-                              },
-                              "offerId": {
-                                "type": "string",
-                                "description": "The offer id"
-                              },
-                              "offerType": {
-                                "type": "string",
-                                "description": "The offer type"
-                              },
-                              "supportUri": {
-                                "type": "string",
-                                "description": "The support uri"
-                              },
-                              "popularity": {
-                                "type": "integer",
-                                "format": "int32",
-                                "description": "The popularity of the offer"
-                              },
-                              "offerPublisher": {
-                                "description": "The publisher of the offer",
-                                "type": "object",
-                                "properties": {
-                                  "publisherId": {
-                                    "type": "string",
-                                    "description": "The publisher Id"
-                                  },
-                                  "publisherDisplayName": {
-                                    "type": "string",
-                                    "description": "The publisher name"
-                                  }
-                                },
-                                "required": [
-                                  "publisherId",
-                                  "publisherDisplayName"
-                                ]
-                              },
-                              "availability": {
-                                "description": "The availability of the offer",
-                                "type": "string",
-                                "enum": [
-                                  "Private",
-                                  "Public"
-                                ],
-                                "x-ms-enum": {
-                                  "name": "OfferAvailability",
-                                  "modelAsString": true,
-                                  "values": [
-                                    {
-                                      "name": "Private",
-                                      "value": "Private",
-                                      "description": "The offer availability is private"
-                                    },
-                                    {
-                                      "name": "Public",
-                                      "value": "Public",
-                                      "description": "The offer availability is public"
-                                    }
-                                  ]
-                                }
-                              },
-                              "releaseType": {
-                                "description": "The release type of the offer",
-                                "type": "string",
-                                "enum": [
-                                  "Preview",
-                                  "GA"
-                                ],
-                                "x-ms-enum": {
-                                  "name": "OfferReleaseType",
-                                  "modelAsString": true,
-                                  "values": [
-                                    {
-                                      "name": "Preview",
-                                      "value": "Preview",
-                                      "description": "The offer in preview"
-                                    },
-                                    {
-                                      "name": "GA",
-                                      "value": "GA",
-                                      "description": "The offer in GA"
-                                    }
-                                  ]
-                                }
-                              },
-                              "iconFileUris": {
-                                "description": "The icon files",
-                                "type": "object",
-                                "properties": {
-                                  "small": {
-                                    "type": "string",
-                                    "description": "uri of small icon"
-                                  },
-                                  "medium": {
-                                    "type": "string",
-                                    "description": "uri of medium icon"
-                                  },
-                                  "wide": {
-                                    "type": "string",
-                                    "description": "uri of wide icon"
-                                  },
-                                  "large": {
-                                    "type": "string",
-                                    "description": "uri of large icon"
-                                  }
-                                }
-                              },
-                              "termsAndConditions": {
-                                "description": "The terms and conditions",
-                                "type": "object",
-                                "properties": {
-                                  "legalTermsUri": {
-                                    "type": "string",
-                                    "description": "The legal terms and conditions uri"
-                                  },
-                                  "legalTermsType": {
-                                    "type": "string",
-                                    "description": "The type of legal terms"
-                                  },
-                                  "privacyPolicyUri": {
-                                    "type": "string",
-                                    "description": "The privacy policy uri"
-                                  }
-                                }
-                              },
-                              "categoryIds": {
-                                "type": "array",
-                                "items": {
-                                  "type": "string"
-                                },
-                                "description": "The category ids ",
-                                "x-typespec-name": "string[]"
-                              },
-                              "operatingSystems": {
-                                "type": "array",
-                                "items": {
-                                  "type": "string"
-                                },
-                                "description": "The operating systems",
-                                "x-typespec-name": "string[]"
-                              }
-                            },
-                            "required": [
-                              "displayName",
-                              "offerId"
-                            ]
-                          },
-                          "provisioningState": {
-                            "description": "The resource provisioning state",
-                            "type": "string",
-                            "enum": [
-                              "Succeeded",
-                              "Failed",
-                              "Canceled"
-                            ],
-                            "x-ms-enum": {
-                              "name": "ResourceProvisioningState",
-                              "modelAsString": true,
-                              "values": [
-                                {
-                                  "name": "Succeeded",
-                                  "value": "Succeeded",
-                                  "description": "Resource has been created."
-                                },
-                                {
-                                  "name": "Failed",
-                                  "value": "Failed",
-                                  "description": "Resource creation failed."
-                                },
-                                {
-                                  "name": "Canceled",
-                                  "value": "Canceled",
-                                  "description": "Resource creation was canceled."
-                                }
-                              ]
-                            }
-                          },
-                          "marketplaceSkus": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "catalogPlanId": {
-                                  "type": "string",
-                                  "description": "The catalog plan id"
-                                },
-                                "marketplaceSkuId": {
-                                  "type": "string",
-                                  "description": "The marketplace sku id"
-                                },
-                                "type": {
-                                  "type": "string",
-                                  "description": "The type of marketplace sku"
-                                },
-                                "displayName": {
-                                  "type": "string",
-                                  "description": "The display name of marketplace sku"
-                                },
-                                "summary": {
-                                  "type": "string",
-                                  "description": "The summary"
-                                },
-                                "longSummary": {
-                                  "type": "string",
-                                  "description": "The long summary"
-                                },
-                                "description": {
-                                  "type": "string",
-                                  "description": "The description"
-                                },
-                                "generation": {
-                                  "type": "string",
-                                  "description": "The generation"
-                                },
-                                "displayRank": {
-                                  "type": "integer",
-                                  "format": "int32",
-                                  "description": "The display rank of the sku"
-                                },
-                                "operatingSystem": {
-                                  "description": "The operating system supported",
-                                  "type": "object",
-                                  "properties": {
-                                    "family": {
-                                      "type": "string",
-                                      "description": "The family of the operating system"
-                                    },
-                                    "type": {
-                                      "type": "string",
-                                      "description": "The type of the operating system"
-                                    },
-                                    "name": {
-                                      "type": "string",
-                                      "description": "The name of the operating system"
-                                    }
-                                  },
-                                  "required": [
+                                  "x-ms-identifiers": [
                                     "name"
                                   ]
-                                },
-                                "marketplaceSkuVersions": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "name": {
-                                        "type": "string",
-                                        "description": "The name of sku version"
-                                      },
-                                      "sizeOnDiskInMb": {
-                                        "type": "integer",
-                                        "format": "int32",
-                                        "description": "The size of the image"
-                                      },
-                                      "minimumDownloadSizeInMb": {
-                                        "type": "integer",
-                                        "format": "int32",
-                                        "description": "The size of the download"
-                                      },
-                                      "stageName": {
-                                        "type": "string",
-                                        "description": "The stage name"
-                                      }
-                                    },
-                                    "description": "The marketplace sku version",
-                                    "required": [
-                                      "name"
-                                    ]
-                                  },
-                                  "x-ms-identifiers": [],
-                                  "description": "The marketplace sku version",
-                                  "x-typespec-name": "MarketplaceSkuVersion[]"
                                 }
                               },
-                              "description": "The marketplace sku",
                               "required": [
                                 "catalogPlanId",
                                 "marketplaceSkuId"
                               ]
                             },
-                            "x-ms-identifiers": [],
-                            "description": "The marketplace skus",
-                            "x-typespec-name": "MarketplaceSku[]"
+                            "x-ms-identifiers": [
+                              "marketplaceSkuId"
+                            ]
                           }
                         },
                         "required": [
                           "offerContent"
                         ]
                       }
-                    },
-                    "description": "An offer."
-                  },
-                  "description": "The Offer items on this page",
-                  "x-typespec-name": "Offer[]"
+                    }
+                  }
                 },
                 "nextLink": {
                   "type": "string",
                   "format": "uri",
-                  "description": "The link to the next page of items",
-                  "x-typespec-name": "TypeSpec.Rest.ResourceLocation"
+                  "description": "The link to the next page of items"
                 }
               },
-              "description": "The response of a Offer list operation.",
               "required": [
                 "value"
               ]
@@ -1001,10 +523,10 @@
     },
     "/{resourceUri}/providers/Microsoft.EdgeMarketplace/offers/{offerId}": {
       "get": {
+        "operationId": "Offers_Get",
         "tags": [
           "Offers"
         ],
-        "operationId": "Offers_Get",
         "description": "Get a Offer",
         "parameters": [
           {
@@ -1018,29 +540,31 @@
           {
             "name": "resourceUri",
             "in": "path",
-            "required": true,
             "description": "The fully qualified Azure Resource manager identifier of the resource.",
+            "required": true,
             "type": "string",
-            "x-ms-skip-url-encoding": true,
-            "x-ms-parameter-location": "method"
+            "x-ms-parameter-location": "method",
+            "x-ms-skip-url-encoding": true
           },
           {
             "name": "offerId",
             "in": "path",
-            "required": true,
             "description": "Id of the offer",
+            "required": true,
             "type": "string"
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "type": "object",
+              "description": "An offer.",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                  "format": "arm-id",
+                  "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
                   "readOnly": true
                 },
                 "name": {
@@ -1054,9 +578,9 @@
                   "readOnly": true
                 },
                 "systemData": {
-                  "type": "object",
                   "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
                   "readOnly": true,
+                  "type": "object",
                   "properties": {
                     "createdBy": {
                       "type": "string",
@@ -1108,11 +632,6 @@
                 },
                 "properties": {
                   "description": "The resource-specific properties for this resource.",
-                  "x-ms-client-flatten": true,
-                  "x-ms-mutability": [
-                    "read",
-                    "create"
-                  ],
                   "type": "object",
                   "properties": {
                     "contentVersion": {
@@ -1268,19 +787,17 @@
                         },
                         "categoryIds": {
                           "type": "array",
+                          "description": "The category ids ",
                           "items": {
                             "type": "string"
-                          },
-                          "description": "The category ids ",
-                          "x-typespec-name": "string[]"
+                          }
                         },
                         "operatingSystems": {
                           "type": "array",
+                          "description": "The operating systems",
                           "items": {
                             "type": "string"
-                          },
-                          "description": "The operating systems",
-                          "x-typespec-name": "string[]"
+                          }
                         }
                       },
                       "required": [
@@ -1290,6 +807,7 @@
                     },
                     "provisioningState": {
                       "description": "The resource provisioning state",
+                      "readOnly": true,
                       "type": "string",
                       "enum": [
                         "Succeeded",
@@ -1320,8 +838,10 @@
                     },
                     "marketplaceSkus": {
                       "type": "array",
+                      "description": "The marketplace skus",
                       "items": {
                         "type": "object",
+                        "description": "The marketplace sku",
                         "properties": {
                           "catalogPlanId": {
                             "type": "string",
@@ -1383,8 +903,10 @@
                           },
                           "marketplaceSkuVersions": {
                             "type": "array",
+                            "description": "The marketplace sku version",
                             "items": {
                               "type": "object",
+                              "description": "The marketplace sku version",
                               "properties": {
                                 "name": {
                                   "type": "string",
@@ -1403,35 +925,56 @@
                                 "stageName": {
                                   "type": "string",
                                   "description": "The stage name"
+                                },
+                                "launchType": {
+                                  "description": "The launch type",
+                                  "type": "string",
+                                  "enum": [
+                                    "Trusted",
+                                    "Unknown"
+                                  ],
+                                  "x-ms-enum": {
+                                    "name": "OfferLaunchType",
+                                    "modelAsString": true,
+                                    "values": [
+                                      {
+                                        "name": "Trusted",
+                                        "value": "Trusted",
+                                        "description": "The offer has been certified"
+                                      },
+                                      {
+                                        "name": "Unknown",
+                                        "value": "Unknown",
+                                        "description": "The offer has not been certified"
+                                      }
+                                    ]
+                                  }
                                 }
                               },
-                              "description": "The marketplace sku version",
                               "required": [
                                 "name"
                               ]
                             },
-                            "x-ms-identifiers": [],
-                            "description": "The marketplace sku version",
-                            "x-typespec-name": "MarketplaceSkuVersion[]"
+                            "x-ms-identifiers": [
+                              "name"
+                            ]
                           }
                         },
-                        "description": "The marketplace sku",
                         "required": [
                           "catalogPlanId",
                           "marketplaceSkuId"
                         ]
                       },
-                      "x-ms-identifiers": [],
-                      "description": "The marketplace skus",
-                      "x-typespec-name": "MarketplaceSku[]"
+                      "x-ms-identifiers": [
+                        "marketplaceSkuId"
+                      ]
                     }
                   },
                   "required": [
                     "offerContent"
                   ]
                 }
-              },
-              "description": "An offer."
+              }
             }
           }
         }
@@ -1439,10 +982,10 @@
     },
     "/{resourceUri}/providers/Microsoft.EdgeMarketplace/offers/{offerId}/generateAccessToken": {
       "post": {
+        "operationId": "Offers_GenerateAccessToken",
         "tags": [
           "Offers"
         ],
-        "operationId": "Offers_GenerateAccessToken",
         "description": "A long-running resource action.",
         "parameters": [
           {
@@ -1456,26 +999,27 @@
           {
             "name": "resourceUri",
             "in": "path",
-            "required": true,
             "description": "The fully qualified Azure Resource manager identifier of the resource.",
+            "required": true,
             "type": "string",
-            "x-ms-skip-url-encoding": true,
-            "x-ms-parameter-location": "method"
+            "x-ms-parameter-location": "method",
+            "x-ms-skip-url-encoding": true
           },
           {
             "name": "offerId",
             "in": "path",
-            "required": true,
             "description": "Id of the offer",
+            "required": true,
             "type": "string"
           },
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "description": "The content of the action request",
+            "required": true,
             "schema": {
               "type": "object",
+              "description": "Access token request object",
               "properties": {
                 "publisherName": {
                   "type": "string",
@@ -1510,7 +1054,6 @@
                   "description": "The device sku version."
                 }
               },
-              "description": "Access token request object",
               "required": [
                 "edgeMarketPlaceRegion"
               ]
@@ -1519,9 +1062,10 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "type": "object",
+              "description": "The disk access token",
               "properties": {
                 "diskId": {
                   "type": "string",
@@ -1536,7 +1080,6 @@
                   "description": "The access token."
                 }
               },
-              "description": "The disk access token",
               "required": [
                 "accessToken"
               ]
@@ -1545,14 +1088,14 @@
           "202": {
             "description": "Resource operation accepted.",
             "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              },
               "Location": {
-                "description": "The Location header contains the URL where the status of the long running operation can be checked.",
-                "type": "string"
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
               }
             }
           }
@@ -1561,10 +1104,10 @@
     },
     "/{resourceUri}/providers/Microsoft.EdgeMarketplace/offers/{offerId}/getAccessToken": {
       "post": {
+        "operationId": "Offers_GetAccessToken",
         "tags": [
           "Offers"
         ],
-        "operationId": "Offers_GetAccessToken",
         "description": "get access token.",
         "parameters": [
           {
@@ -1578,33 +1121,33 @@
           {
             "name": "resourceUri",
             "in": "path",
-            "required": true,
             "description": "The fully qualified Azure Resource manager identifier of the resource.",
+            "required": true,
             "type": "string",
-            "x-ms-skip-url-encoding": true,
-            "x-ms-parameter-location": "method"
+            "x-ms-parameter-location": "method",
+            "x-ms-skip-url-encoding": true
           },
           {
             "name": "offerId",
             "in": "path",
-            "required": true,
             "description": "Id of the offer",
+            "required": true,
             "type": "string"
           },
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "description": "The content of the action request",
+            "required": true,
             "schema": {
               "type": "object",
+              "description": "Access token request object",
               "properties": {
                 "requestId": {
                   "type": "string",
                   "description": "The name of the publisher."
                 }
               },
-              "description": "Access token request object",
               "required": [
                 "requestId"
               ]
@@ -1613,9 +1156,10 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "type": "object",
+              "description": "The disk access token",
               "properties": {
                 "diskId": {
                   "type": "string",
@@ -1630,7 +1174,6 @@
                   "description": "The access token."
                 }
               },
-              "description": "The disk access token",
               "required": [
                 "accessToken"
               ]
@@ -1639,12 +1182,369 @@
         }
       }
     },
+    "/{resourceUri}/providers/Microsoft.EdgeMarketplace/publishers": {
+      "get": {
+        "operationId": "Publishers_List",
+        "tags": [
+          "Publishers"
+        ],
+        "description": "List Publisher resources by parent",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceUri",
+            "in": "path",
+            "description": "The fully qualified Azure Resource manager identifier of the resource.",
+            "required": true,
+            "type": "string",
+            "x-ms-parameter-location": "method",
+            "x-ms-skip-url-encoding": true
+          },
+          {
+            "name": "$top",
+            "in": "query",
+            "description": "The number of result items to return.",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "x-ms-client-name": "top"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "description": "The number of result items to skip.",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "maxpagesize",
+            "in": "query",
+            "description": "The maximum number of result items per page.",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "$filter",
+            "in": "query",
+            "description": "Filter the result list using the given expression.",
+            "required": false,
+            "type": "string",
+            "x-ms-client-name": "filter"
+          },
+          {
+            "name": "$skipToken",
+            "in": "query",
+            "description": "Skip over when retrieving results.",
+            "required": false,
+            "type": "string",
+            "x-ms-client-name": "skipToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "The response of a Publisher list operation.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The Publisher items on this page",
+                  "items": {
+                    "type": "object",
+                    "description": "A publisher who provides offers.",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "arm-id",
+                        "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "properties": {
+                        "description": "The resource-specific properties for this resource.",
+                        "type": "object",
+                        "properties": {
+                          "provisioningState": {
+                            "description": "The resource provisioning state",
+                            "readOnly": true,
+                            "type": "string",
+                            "enum": [
+                              "Succeeded",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ResourceProvisioningState",
+                              "modelAsString": true,
+                              "values": [
+                                {
+                                  "name": "Succeeded",
+                                  "value": "Succeeded",
+                                  "description": "Resource has been created."
+                                },
+                                {
+                                  "name": "Failed",
+                                  "value": "Failed",
+                                  "description": "Resource creation failed."
+                                },
+                                {
+                                  "name": "Canceled",
+                                  "value": "Canceled",
+                                  "description": "Resource creation was canceled."
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "The link to the next page of items"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "/{resourceUri}/providers/Microsoft.EdgeMarketplace/publishers/{publisherName}": {
+      "get": {
+        "operationId": "Publishers_Get",
+        "tags": [
+          "Publishers"
+        ],
+        "description": "Get a Publisher",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "resourceUri",
+            "in": "path",
+            "description": "The fully qualified Azure Resource manager identifier of the resource.",
+            "required": true,
+            "type": "string",
+            "x-ms-parameter-location": "method",
+            "x-ms-skip-url-encoding": true
+          },
+          {
+            "name": "publisherName",
+            "in": "path",
+            "description": "Name of the publisher",
+            "required": true,
+            "type": "string",
+            "pattern": "^.*$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A publisher who provides offers.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "arm-id",
+                  "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
+                  "readOnly": true
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name of the resource",
+                  "readOnly": true
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                  "readOnly": true
+                },
+                "systemData": {
+                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "createdBy": {
+                      "type": "string",
+                      "description": "The identity that created the resource."
+                    },
+                    "createdByType": {
+                      "type": "string",
+                      "description": "The type of identity that created the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource creation (UTC)."
+                    },
+                    "lastModifiedBy": {
+                      "type": "string",
+                      "description": "The identity that last modified the resource."
+                    },
+                    "lastModifiedByType": {
+                      "type": "string",
+                      "description": "The type of identity that last modified the resource.",
+                      "enum": [
+                        "User",
+                        "Application",
+                        "ManagedIdentity",
+                        "Key"
+                      ],
+                      "x-ms-enum": {
+                        "name": "createdByType",
+                        "modelAsString": true
+                      }
+                    },
+                    "lastModifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp of resource last modification (UTC)"
+                    }
+                  }
+                },
+                "properties": {
+                  "description": "The resource-specific properties for this resource.",
+                  "type": "object",
+                  "properties": {
+                    "provisioningState": {
+                      "description": "The resource provisioning state",
+                      "readOnly": true,
+                      "type": "string",
+                      "enum": [
+                        "Succeeded",
+                        "Failed",
+                        "Canceled"
+                      ],
+                      "x-ms-enum": {
+                        "name": "ResourceProvisioningState",
+                        "modelAsString": true,
+                        "values": [
+                          {
+                            "name": "Succeeded",
+                            "value": "Succeeded",
+                            "description": "Resource has been created."
+                          },
+                          {
+                            "name": "Failed",
+                            "value": "Failed",
+                            "description": "Resource creation failed."
+                          },
+                          {
+                            "name": "Canceled",
+                            "value": "Canceled",
+                            "description": "Resource creation was canceled."
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/providers/Microsoft.EdgeMarketplace/operations": {
       "get": {
+        "operationId": "Operations_List",
         "tags": [
           "Operations"
         ],
-        "operationId": "Operations_List",
         "description": "List the operations for the provider",
         "parameters": [
           {
@@ -1658,7 +1558,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "type": "object",
               "description": "A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.",
@@ -1742,6 +1642,7 @@
                 },
                 "nextLink": {
                   "type": "string",
+                  "format": "uri",
                   "description": "URL to get the next set of operation list results (if there are any).",
                   "readOnly": true
                 }
@@ -1751,228 +1652,13 @@
         }
       }
     },
-    "/{resourceUri}/providers/Microsoft.EdgeMarketplace/publishers": {
+    "/subscriptions/{subscriptionId}/providers/Microsoft.EdgeMarketplace/offers": {
       "get": {
+        "operationId": "Offers_ListBySubscription",
         "tags": [
-          "Publishers"
+          "Offers"
         ],
-        "operationId": "Publishers_List",
-        "description": "List Publisher resources by parent",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "description": "The API version to use for this operation.",
-            "required": true,
-            "type": "string",
-            "minLength": 1
-          },
-          {
-            "name": "resourceUri",
-            "in": "path",
-            "required": true,
-            "description": "The fully qualified Azure Resource manager identifier of the resource.",
-            "type": "string",
-            "x-ms-skip-url-encoding": true,
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "$top",
-            "in": "query",
-            "required": false,
-            "description": "The number of result items to return.",
-            "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "description": "The number of result items to skip.",
-            "default": 0,
-            "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "maxpagesize",
-            "in": "query",
-            "required": false,
-            "description": "The maximum number of result items per page.",
-            "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "$filter",
-            "in": "query",
-            "required": false,
-            "description": "Filter the result list using the given expression.",
-            "type": "string",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "$skipToken",
-            "in": "query",
-            "required": false,
-            "description": "Skip over when retrieving results.",
-            "type": "string",
-            "x-ms-parameter-location": "method"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "value": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
-                        "readOnly": true
-                      },
-                      "name": {
-                        "type": "string",
-                        "description": "The name of the resource",
-                        "readOnly": true
-                      },
-                      "type": {
-                        "type": "string",
-                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
-                        "readOnly": true
-                      },
-                      "systemData": {
-                        "type": "object",
-                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
-                        "readOnly": true,
-                        "properties": {
-                          "createdBy": {
-                            "type": "string",
-                            "description": "The identity that created the resource."
-                          },
-                          "createdByType": {
-                            "type": "string",
-                            "description": "The type of identity that created the resource.",
-                            "enum": [
-                              "User",
-                              "Application",
-                              "ManagedIdentity",
-                              "Key"
-                            ],
-                            "x-ms-enum": {
-                              "name": "createdByType",
-                              "modelAsString": true
-                            }
-                          },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The timestamp of resource creation (UTC)."
-                          },
-                          "lastModifiedBy": {
-                            "type": "string",
-                            "description": "The identity that last modified the resource."
-                          },
-                          "lastModifiedByType": {
-                            "type": "string",
-                            "description": "The type of identity that last modified the resource.",
-                            "enum": [
-                              "User",
-                              "Application",
-                              "ManagedIdentity",
-                              "Key"
-                            ],
-                            "x-ms-enum": {
-                              "name": "createdByType",
-                              "modelAsString": true
-                            }
-                          },
-                          "lastModifiedAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The timestamp of resource last modification (UTC)"
-                          }
-                        }
-                      },
-                      "properties": {
-                        "description": "The resource-specific properties for this resource.",
-                        "x-ms-client-flatten": true,
-                        "x-ms-mutability": [
-                          "read",
-                          "create"
-                        ],
-                        "type": "object",
-                        "properties": {
-                          "provisioningState": {
-                            "description": "The resource provisioning state",
-                            "type": "string",
-                            "enum": [
-                              "Succeeded",
-                              "Failed",
-                              "Canceled"
-                            ],
-                            "x-ms-enum": {
-                              "name": "ResourceProvisioningState",
-                              "modelAsString": true,
-                              "values": [
-                                {
-                                  "name": "Succeeded",
-                                  "value": "Succeeded",
-                                  "description": "Resource has been created."
-                                },
-                                {
-                                  "name": "Failed",
-                                  "value": "Failed",
-                                  "description": "Resource creation failed."
-                                },
-                                {
-                                  "name": "Canceled",
-                                  "value": "Canceled",
-                                  "description": "Resource creation was canceled."
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        "required": [
-                          "provisioningState"
-                        ]
-                      }
-                    },
-                    "description": "A publisher who provides offers."
-                  },
-                  "description": "The Publisher items on this page",
-                  "x-typespec-name": "Publisher[]"
-                },
-                "nextLink": {
-                  "type": "string",
-                  "format": "uri",
-                  "description": "The link to the next page of items",
-                  "x-typespec-name": "TypeSpec.Rest.ResourceLocation"
-                }
-              },
-              "description": "The response of a Publisher list operation.",
-              "required": [
-                "value"
-              ]
-            }
-          }
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/providers/Microsoft.EdgeMarketplace/publishers": {
-      "get": {
-        "tags": [
-          "Publishers"
-        ],
-        "operationId": "Publishers_ListBySubscription",
-        "description": "List Publisher resources in subscription",
+        "description": "List Offer resources by subscription ID",
         "parameters": [
           {
             "name": "api-version",
@@ -1985,70 +1671,30 @@
           {
             "name": "subscriptionId",
             "in": "path",
-            "description": "The ID of the target subscription.",
+            "description": "The ID of the target subscription. The value must be an UUID.",
             "required": true,
             "type": "string",
-            "minLength": 1
-          },
-          {
-            "name": "$top",
-            "in": "query",
-            "required": false,
-            "description": "The number of result items to return.",
-            "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "description": "The number of result items to skip.",
-            "default": 0,
-            "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "maxpagesize",
-            "in": "query",
-            "required": false,
-            "description": "The maximum number of result items per page.",
-            "type": "integer",
-            "format": "int32",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "$filter",
-            "in": "query",
-            "required": false,
-            "description": "Filter the result list using the given expression.",
-            "type": "string",
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "$skipToken",
-            "in": "query",
-            "required": false,
-            "description": "Skip over when retrieving results.",
-            "type": "string",
-            "x-ms-parameter-location": "method"
+            "format": "uuid"
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "type": "object",
+              "description": "The response of a Offer list operation.",
               "properties": {
                 "value": {
                   "type": "array",
+                  "description": "The Offer items on this page",
                   "items": {
                     "type": "object",
+                    "description": "An offer.",
                     "properties": {
                       "id": {
                         "type": "string",
-                        "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                        "format": "arm-id",
+                        "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
                         "readOnly": true
                       },
                       "name": {
@@ -2062,9 +1708,9 @@
                         "readOnly": true
                       },
                       "systemData": {
-                        "type": "object",
                         "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
                         "readOnly": true,
+                        "type": "object",
                         "properties": {
                           "createdBy": {
                             "type": "string",
@@ -2116,15 +1762,480 @@
                       },
                       "properties": {
                         "description": "The resource-specific properties for this resource.",
-                        "x-ms-client-flatten": true,
-                        "x-ms-mutability": [
-                          "read",
-                          "create"
-                        ],
+                        "type": "object",
+                        "properties": {
+                          "contentVersion": {
+                            "type": "string",
+                            "description": "The content version"
+                          },
+                          "contentUrl": {
+                            "type": "string",
+                            "description": "The content url"
+                          },
+                          "offerContent": {
+                            "description": "The offer content",
+                            "type": "object",
+                            "properties": {
+                              "displayName": {
+                                "type": "string",
+                                "description": "The display name of the offer"
+                              },
+                              "summary": {
+                                "type": "string",
+                                "description": "The summary"
+                              },
+                              "longSummary": {
+                                "type": "string",
+                                "description": "The long summary"
+                              },
+                              "description": {
+                                "type": "string",
+                                "description": "The description"
+                              },
+                              "offerId": {
+                                "type": "string",
+                                "description": "The offer id"
+                              },
+                              "offerType": {
+                                "type": "string",
+                                "description": "The offer type"
+                              },
+                              "supportUri": {
+                                "type": "string",
+                                "description": "The support uri"
+                              },
+                              "popularity": {
+                                "type": "integer",
+                                "format": "int32",
+                                "description": "The popularity of the offer"
+                              },
+                              "offerPublisher": {
+                                "description": "The publisher of the offer",
+                                "type": "object",
+                                "properties": {
+                                  "publisherId": {
+                                    "type": "string",
+                                    "description": "The publisher Id"
+                                  },
+                                  "publisherDisplayName": {
+                                    "type": "string",
+                                    "description": "The publisher name"
+                                  }
+                                },
+                                "required": [
+                                  "publisherId",
+                                  "publisherDisplayName"
+                                ]
+                              },
+                              "availability": {
+                                "description": "The availability of the offer",
+                                "type": "string",
+                                "enum": [
+                                  "Private",
+                                  "Public"
+                                ],
+                                "x-ms-enum": {
+                                  "name": "OfferAvailability",
+                                  "modelAsString": true,
+                                  "values": [
+                                    {
+                                      "name": "Private",
+                                      "value": "Private",
+                                      "description": "The offer availability is private"
+                                    },
+                                    {
+                                      "name": "Public",
+                                      "value": "Public",
+                                      "description": "The offer availability is public"
+                                    }
+                                  ]
+                                }
+                              },
+                              "releaseType": {
+                                "description": "The release type of the offer",
+                                "type": "string",
+                                "enum": [
+                                  "Preview",
+                                  "GA"
+                                ],
+                                "x-ms-enum": {
+                                  "name": "OfferReleaseType",
+                                  "modelAsString": true,
+                                  "values": [
+                                    {
+                                      "name": "Preview",
+                                      "value": "Preview",
+                                      "description": "The offer in preview"
+                                    },
+                                    {
+                                      "name": "GA",
+                                      "value": "GA",
+                                      "description": "The offer in GA"
+                                    }
+                                  ]
+                                }
+                              },
+                              "iconFileUris": {
+                                "description": "The icon files",
+                                "type": "object",
+                                "properties": {
+                                  "small": {
+                                    "type": "string",
+                                    "description": "uri of small icon"
+                                  },
+                                  "medium": {
+                                    "type": "string",
+                                    "description": "uri of medium icon"
+                                  },
+                                  "wide": {
+                                    "type": "string",
+                                    "description": "uri of wide icon"
+                                  },
+                                  "large": {
+                                    "type": "string",
+                                    "description": "uri of large icon"
+                                  }
+                                }
+                              },
+                              "termsAndConditions": {
+                                "description": "The terms and conditions",
+                                "type": "object",
+                                "properties": {
+                                  "legalTermsUri": {
+                                    "type": "string",
+                                    "description": "The legal terms and conditions uri"
+                                  },
+                                  "legalTermsType": {
+                                    "type": "string",
+                                    "description": "The type of legal terms"
+                                  },
+                                  "privacyPolicyUri": {
+                                    "type": "string",
+                                    "description": "The privacy policy uri"
+                                  }
+                                }
+                              },
+                              "categoryIds": {
+                                "type": "array",
+                                "description": "The category ids ",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "operatingSystems": {
+                                "type": "array",
+                                "description": "The operating systems",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "displayName",
+                              "offerId"
+                            ]
+                          },
+                          "provisioningState": {
+                            "description": "The resource provisioning state",
+                            "readOnly": true,
+                            "type": "string",
+                            "enum": [
+                              "Succeeded",
+                              "Failed",
+                              "Canceled"
+                            ],
+                            "x-ms-enum": {
+                              "name": "ResourceProvisioningState",
+                              "modelAsString": true,
+                              "values": [
+                                {
+                                  "name": "Succeeded",
+                                  "value": "Succeeded",
+                                  "description": "Resource has been created."
+                                },
+                                {
+                                  "name": "Failed",
+                                  "value": "Failed",
+                                  "description": "Resource creation failed."
+                                },
+                                {
+                                  "name": "Canceled",
+                                  "value": "Canceled",
+                                  "description": "Resource creation was canceled."
+                                }
+                              ]
+                            }
+                          },
+                          "marketplaceSkus": {
+                            "type": "array",
+                            "description": "The marketplace skus",
+                            "items": {
+                              "type": "object",
+                              "description": "The marketplace sku",
+                              "properties": {
+                                "catalogPlanId": {
+                                  "type": "string",
+                                  "description": "The catalog plan id"
+                                },
+                                "marketplaceSkuId": {
+                                  "type": "string",
+                                  "description": "The marketplace sku id"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "description": "The type of marketplace sku"
+                                },
+                                "displayName": {
+                                  "type": "string",
+                                  "description": "The display name of marketplace sku"
+                                },
+                                "summary": {
+                                  "type": "string",
+                                  "description": "The summary"
+                                },
+                                "longSummary": {
+                                  "type": "string",
+                                  "description": "The long summary"
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "description": "The description"
+                                },
+                                "generation": {
+                                  "type": "string",
+                                  "description": "The generation"
+                                },
+                                "displayRank": {
+                                  "type": "integer",
+                                  "format": "int32",
+                                  "description": "The display rank of the sku"
+                                },
+                                "operatingSystem": {
+                                  "description": "The operating system supported",
+                                  "type": "object",
+                                  "properties": {
+                                    "family": {
+                                      "type": "string",
+                                      "description": "The family of the operating system"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "description": "The type of the operating system"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "The name of the operating system"
+                                    }
+                                  },
+                                  "required": [
+                                    "name"
+                                  ]
+                                },
+                                "marketplaceSkuVersions": {
+                                  "type": "array",
+                                  "description": "The marketplace sku version",
+                                  "items": {
+                                    "type": "object",
+                                    "description": "The marketplace sku version",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string",
+                                        "description": "The name of sku version"
+                                      },
+                                      "sizeOnDiskInMb": {
+                                        "type": "integer",
+                                        "format": "int32",
+                                        "description": "The size of the image"
+                                      },
+                                      "minimumDownloadSizeInMb": {
+                                        "type": "integer",
+                                        "format": "int32",
+                                        "description": "The size of the download"
+                                      },
+                                      "stageName": {
+                                        "type": "string",
+                                        "description": "The stage name"
+                                      },
+                                      "launchType": {
+                                        "description": "The launch type",
+                                        "type": "string",
+                                        "enum": [
+                                          "Trusted",
+                                          "Unknown"
+                                        ],
+                                        "x-ms-enum": {
+                                          "name": "OfferLaunchType",
+                                          "modelAsString": true,
+                                          "values": [
+                                            {
+                                              "name": "Trusted",
+                                              "value": "Trusted",
+                                              "description": "The offer has been certified"
+                                            },
+                                            {
+                                              "name": "Unknown",
+                                              "value": "Unknown",
+                                              "description": "The offer has not been certified"
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "name"
+                                    ]
+                                  },
+                                  "x-ms-identifiers": [
+                                    "name"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "catalogPlanId",
+                                "marketplaceSkuId"
+                              ]
+                            },
+                            "x-ms-identifiers": [
+                              "marketplaceSkuId"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "offerContent"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "The link to the next page of items"
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Microsoft.EdgeMarketplace/publishers": {
+      "get": {
+        "operationId": "Publishers_ListBySubscription",
+        "tags": [
+          "Publishers"
+        ],
+        "description": "List Publisher resources by subscription ID",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "The API version to use for this operation.",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The ID of the target subscription. The value must be an UUID.",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "The response of a Publisher list operation.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The Publisher items on this page",
+                  "items": {
+                    "type": "object",
+                    "description": "A publisher who provides offers.",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "arm-id",
+                        "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
+                        "readOnly": true
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the resource",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+                        "readOnly": true
+                      },
+                      "systemData": {
+                        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "createdBy": {
+                            "type": "string",
+                            "description": "The identity that created the resource."
+                          },
+                          "createdByType": {
+                            "type": "string",
+                            "description": "The type of identity that created the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource creation (UTC)."
+                          },
+                          "lastModifiedBy": {
+                            "type": "string",
+                            "description": "The identity that last modified the resource."
+                          },
+                          "lastModifiedByType": {
+                            "type": "string",
+                            "description": "The type of identity that last modified the resource.",
+                            "enum": [
+                              "User",
+                              "Application",
+                              "ManagedIdentity",
+                              "Key"
+                            ],
+                            "x-ms-enum": {
+                              "name": "createdByType",
+                              "modelAsString": true
+                            }
+                          },
+                          "lastModifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of resource last modification (UTC)"
+                          }
+                        }
+                      },
+                      "properties": {
+                        "description": "The resource-specific properties for this resource.",
                         "type": "object",
                         "properties": {
                           "provisioningState": {
                             "description": "The resource provisioning state",
+                            "readOnly": true,
                             "type": "string",
                             "enum": [
                               "Succeeded",
@@ -2153,187 +2264,20 @@
                               ]
                             }
                           }
-                        },
-                        "required": [
-                          "provisioningState"
-                        ]
+                        }
                       }
-                    },
-                    "description": "A publisher who provides offers."
-                  },
-                  "description": "The Publisher items on this page",
-                  "x-typespec-name": "Publisher[]"
+                    }
+                  }
                 },
                 "nextLink": {
                   "type": "string",
                   "format": "uri",
-                  "description": "The link to the next page of items",
-                  "x-typespec-name": "TypeSpec.Rest.ResourceLocation"
+                  "description": "The link to the next page of items"
                 }
               },
-              "description": "The response of a Publisher list operation.",
               "required": [
                 "value"
               ]
-            }
-          }
-        }
-      }
-    },
-    "/{resourceUri}/providers/Microsoft.EdgeMarketplace/publishers/{publisherName}": {
-      "get": {
-        "tags": [
-          "Publishers"
-        ],
-        "operationId": "Publishers_Get",
-        "description": "Get a Publisher",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "description": "The API version to use for this operation.",
-            "required": true,
-            "type": "string",
-            "minLength": 1
-          },
-          {
-            "name": "resourceUri",
-            "in": "path",
-            "required": true,
-            "description": "The fully qualified Azure Resource manager identifier of the resource.",
-            "type": "string",
-            "x-ms-skip-url-encoding": true,
-            "x-ms-parameter-location": "method"
-          },
-          {
-            "name": "publisherName",
-            "in": "path",
-            "required": true,
-            "description": "Name of the publisher",
-            "pattern": "^.*$",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
-                  "readOnly": true
-                },
-                "name": {
-                  "type": "string",
-                  "description": "The name of the resource",
-                  "readOnly": true
-                },
-                "type": {
-                  "type": "string",
-                  "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
-                  "readOnly": true
-                },
-                "systemData": {
-                  "type": "object",
-                  "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
-                  "readOnly": true,
-                  "properties": {
-                    "createdBy": {
-                      "type": "string",
-                      "description": "The identity that created the resource."
-                    },
-                    "createdByType": {
-                      "type": "string",
-                      "description": "The type of identity that created the resource.",
-                      "enum": [
-                        "User",
-                        "Application",
-                        "ManagedIdentity",
-                        "Key"
-                      ],
-                      "x-ms-enum": {
-                        "name": "createdByType",
-                        "modelAsString": true
-                      }
-                    },
-                    "createdAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "description": "The timestamp of resource creation (UTC)."
-                    },
-                    "lastModifiedBy": {
-                      "type": "string",
-                      "description": "The identity that last modified the resource."
-                    },
-                    "lastModifiedByType": {
-                      "type": "string",
-                      "description": "The type of identity that last modified the resource.",
-                      "enum": [
-                        "User",
-                        "Application",
-                        "ManagedIdentity",
-                        "Key"
-                      ],
-                      "x-ms-enum": {
-                        "name": "createdByType",
-                        "modelAsString": true
-                      }
-                    },
-                    "lastModifiedAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "description": "The timestamp of resource last modification (UTC)"
-                    }
-                  }
-                },
-                "properties": {
-                  "description": "The resource-specific properties for this resource.",
-                  "x-ms-client-flatten": true,
-                  "x-ms-mutability": [
-                    "read",
-                    "create"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "provisioningState": {
-                      "description": "The resource provisioning state",
-                      "type": "string",
-                      "enum": [
-                        "Succeeded",
-                        "Failed",
-                        "Canceled"
-                      ],
-                      "x-ms-enum": {
-                        "name": "ResourceProvisioningState",
-                        "modelAsString": true,
-                        "values": [
-                          {
-                            "name": "Succeeded",
-                            "value": "Succeeded",
-                            "description": "Resource has been created."
-                          },
-                          {
-                            "name": "Failed",
-                            "value": "Failed",
-                            "description": "Resource creation failed."
-                          },
-                          {
-                            "name": "Canceled",
-                            "value": "Canceled",
-                            "description": "Resource creation was canceled."
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  "required": [
-                    "provisioningState"
-                  ]
-                }
-              },
-              "description": "A publisher who provides offers."
             }
           }
         }
@@ -2343,19 +2287,20 @@
   "definitions": {
     "AccessTokenReadRequest": {
       "type": "object",
+      "description": "Access token request object",
       "properties": {
         "requestId": {
           "type": "string",
           "description": "The name of the publisher."
         }
       },
-      "description": "Access token request object",
       "required": [
         "requestId"
       ]
     },
     "AccessTokenRequest": {
       "type": "object",
+      "description": "Access token request object",
       "properties": {
         "publisherName": {
           "type": "string",
@@ -2390,10 +2335,27 @@
           "description": "The device sku version."
         }
       },
-      "description": "Access token request object",
       "required": [
         "edgeMarketPlaceRegion"
       ]
+    },
+    "ActionType": {
+      "type": "string",
+      "description": "ActionType Enum",
+      "enum": [
+        "Internal"
+      ],
+      "x-ms-enum": {
+        "name": "ActionType",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Internal",
+            "value": "Internal",
+            "description": "ActionType is internal"
+          }
+        ]
+      }
     },
     "Azure.ResourceManager.ResourceProvisioningState": {
       "type": "string",
@@ -2423,10 +2385,48 @@
             "description": "Resource creation was canceled."
           }
         ]
+      },
+      "readOnly": true
+    },
+    "CreatedByType": {
+      "type": "string",
+      "description": "Enum for CreatedBy",
+      "enum": [
+        "User",
+        "Application",
+        "ManagedIdentity",
+        "Key"
+      ],
+      "x-ms-enum": {
+        "name": "CreatedByType",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "User",
+            "value": "User",
+            "description": "The resource is created by user"
+          },
+          {
+            "name": "Application",
+            "value": "Application",
+            "description": "The resource is created by application"
+          },
+          {
+            "name": "ManagedIdentity",
+            "value": "ManagedIdentity",
+            "description": "The resource is created by managed identity"
+          },
+          {
+            "name": "Key",
+            "value": "Key",
+            "description": "The resource is created by key"
+          }
+        ]
       }
     },
     "DiskAccessToken": {
       "type": "object",
+      "description": "The disk access token",
       "properties": {
         "diskId": {
           "type": "string",
@@ -2441,13 +2441,13 @@
           "description": "The access token."
         }
       },
-      "description": "The disk access token",
       "required": [
         "accessToken"
       ]
     },
     "IconFileUris": {
       "type": "object",
+      "description": "Icon files",
       "properties": {
         "small": {
           "type": "string",
@@ -2465,11 +2465,11 @@
           "type": "string",
           "description": "uri of large icon"
         }
-      },
-      "description": "Icon files"
+      }
     },
     "MarketplaceSku": {
       "type": "object",
+      "description": "The marketplace sku",
       "properties": {
         "catalogPlanId": {
           "type": "string",
@@ -2531,8 +2531,10 @@
         },
         "marketplaceSkuVersions": {
           "type": "array",
+          "description": "The marketplace sku version",
           "items": {
             "type": "object",
+            "description": "The marketplace sku version",
             "properties": {
               "name": {
                 "type": "string",
@@ -2551,19 +2553,41 @@
               "stageName": {
                 "type": "string",
                 "description": "The stage name"
+              },
+              "launchType": {
+                "description": "The launch type",
+                "type": "string",
+                "enum": [
+                  "Trusted",
+                  "Unknown"
+                ],
+                "x-ms-enum": {
+                  "name": "OfferLaunchType",
+                  "modelAsString": true,
+                  "values": [
+                    {
+                      "name": "Trusted",
+                      "value": "Trusted",
+                      "description": "The offer has been certified"
+                    },
+                    {
+                      "name": "Unknown",
+                      "value": "Unknown",
+                      "description": "The offer has not been certified"
+                    }
+                  ]
+                }
               }
             },
-            "description": "The marketplace sku version",
             "required": [
               "name"
             ]
           },
-          "x-ms-identifiers": [],
-          "description": "The marketplace sku version",
-          "x-typespec-name": "MarketplaceSkuVersion[]"
+          "x-ms-identifiers": [
+            "name"
+          ]
         }
       },
-      "description": "The marketplace sku",
       "required": [
         "catalogPlanId",
         "marketplaceSkuId"
@@ -2571,6 +2595,7 @@
     },
     "MarketplaceSkuVersion": {
       "type": "object",
+      "description": "The marketplace sku version",
       "properties": {
         "name": {
           "type": "string",
@@ -2589,19 +2614,44 @@
         "stageName": {
           "type": "string",
           "description": "The stage name"
+        },
+        "launchType": {
+          "description": "The launch type",
+          "type": "string",
+          "enum": [
+            "Trusted",
+            "Unknown"
+          ],
+          "x-ms-enum": {
+            "name": "OfferLaunchType",
+            "modelAsString": true,
+            "values": [
+              {
+                "name": "Trusted",
+                "value": "Trusted",
+                "description": "The offer has been certified"
+              },
+              {
+                "name": "Unknown",
+                "value": "Unknown",
+                "description": "The offer has not been certified"
+              }
+            ]
+          }
         }
       },
-      "description": "The marketplace sku version",
       "required": [
         "name"
       ]
     },
     "Offer": {
       "type": "object",
+      "description": "An offer.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+          "format": "arm-id",
+          "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
           "readOnly": true
         },
         "name": {
@@ -2615,9 +2665,9 @@
           "readOnly": true
         },
         "systemData": {
-          "type": "object",
           "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
           "readOnly": true,
+          "type": "object",
           "properties": {
             "createdBy": {
               "type": "string",
@@ -2669,11 +2719,6 @@
         },
         "properties": {
           "description": "The resource-specific properties for this resource.",
-          "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ],
           "type": "object",
           "properties": {
             "contentVersion": {
@@ -2829,19 +2874,17 @@
                 },
                 "categoryIds": {
                   "type": "array",
+                  "description": "The category ids ",
                   "items": {
                     "type": "string"
-                  },
-                  "description": "The category ids ",
-                  "x-typespec-name": "string[]"
+                  }
                 },
                 "operatingSystems": {
                   "type": "array",
+                  "description": "The operating systems",
                   "items": {
                     "type": "string"
-                  },
-                  "description": "The operating systems",
-                  "x-typespec-name": "string[]"
+                  }
                 }
               },
               "required": [
@@ -2851,6 +2894,7 @@
             },
             "provisioningState": {
               "description": "The resource provisioning state",
+              "readOnly": true,
               "type": "string",
               "enum": [
                 "Succeeded",
@@ -2881,8 +2925,10 @@
             },
             "marketplaceSkus": {
               "type": "array",
+              "description": "The marketplace skus",
               "items": {
                 "type": "object",
+                "description": "The marketplace sku",
                 "properties": {
                   "catalogPlanId": {
                     "type": "string",
@@ -2944,8 +2990,10 @@
                   },
                   "marketplaceSkuVersions": {
                     "type": "array",
+                    "description": "The marketplace sku version",
                     "items": {
                       "type": "object",
+                      "description": "The marketplace sku version",
                       "properties": {
                         "name": {
                           "type": "string",
@@ -2964,39 +3012,60 @@
                         "stageName": {
                           "type": "string",
                           "description": "The stage name"
+                        },
+                        "launchType": {
+                          "description": "The launch type",
+                          "type": "string",
+                          "enum": [
+                            "Trusted",
+                            "Unknown"
+                          ],
+                          "x-ms-enum": {
+                            "name": "OfferLaunchType",
+                            "modelAsString": true,
+                            "values": [
+                              {
+                                "name": "Trusted",
+                                "value": "Trusted",
+                                "description": "The offer has been certified"
+                              },
+                              {
+                                "name": "Unknown",
+                                "value": "Unknown",
+                                "description": "The offer has not been certified"
+                              }
+                            ]
+                          }
                         }
                       },
-                      "description": "The marketplace sku version",
                       "required": [
                         "name"
                       ]
                     },
-                    "x-ms-identifiers": [],
-                    "description": "The marketplace sku version",
-                    "x-typespec-name": "MarketplaceSkuVersion[]"
+                    "x-ms-identifiers": [
+                      "name"
+                    ]
                   }
                 },
-                "description": "The marketplace sku",
                 "required": [
                   "catalogPlanId",
                   "marketplaceSkuId"
                 ]
               },
-              "x-ms-identifiers": [],
-              "description": "The marketplace skus",
-              "x-typespec-name": "MarketplaceSku[]"
+              "x-ms-identifiers": [
+                "marketplaceSkuId"
+              ]
             }
           },
           "required": [
             "offerContent"
           ]
         }
-      },
-      "description": "An offer."
+      }
     },
     "OfferAvailability": {
       "type": "string",
-      "description": "Says if the offer is public/private",
+      "description": "OfferAvailability Enum",
       "enum": [
         "Private",
         "Public"
@@ -3020,6 +3089,7 @@
     },
     "OfferContent": {
       "type": "object",
+      "description": "The offer content",
       "properties": {
         "displayName": {
           "type": "string",
@@ -3162,38 +3232,63 @@
         },
         "categoryIds": {
           "type": "array",
+          "description": "The category ids ",
           "items": {
             "type": "string"
-          },
-          "description": "The category ids ",
-          "x-typespec-name": "string[]"
+          }
         },
         "operatingSystems": {
           "type": "array",
+          "description": "The operating systems",
           "items": {
             "type": "string"
-          },
-          "description": "The operating systems",
-          "x-typespec-name": "string[]"
+          }
         }
       },
-      "description": "The offer content",
       "required": [
         "displayName",
         "offerId"
       ]
     },
+    "OfferLaunchType": {
+      "type": "string",
+      "description": "Offer launch type Enum",
+      "enum": [
+        "Trusted",
+        "Unknown"
+      ],
+      "x-ms-enum": {
+        "name": "OfferLaunchType",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Trusted",
+            "value": "Trusted",
+            "description": "The offer has been certified"
+          },
+          {
+            "name": "Unknown",
+            "value": "Unknown",
+            "description": "The offer has not been certified"
+          }
+        ]
+      }
+    },
     "OfferListResult": {
       "type": "object",
+      "description": "The response of a Offer list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The Offer items on this page",
           "items": {
             "type": "object",
+            "description": "An offer.",
             "properties": {
               "id": {
                 "type": "string",
-                "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                "format": "arm-id",
+                "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
                 "readOnly": true
               },
               "name": {
@@ -3207,9 +3302,9 @@
                 "readOnly": true
               },
               "systemData": {
-                "type": "object",
                 "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
                 "readOnly": true,
+                "type": "object",
                 "properties": {
                   "createdBy": {
                     "type": "string",
@@ -3261,11 +3356,6 @@
               },
               "properties": {
                 "description": "The resource-specific properties for this resource.",
-                "x-ms-client-flatten": true,
-                "x-ms-mutability": [
-                  "read",
-                  "create"
-                ],
                 "type": "object",
                 "properties": {
                   "contentVersion": {
@@ -3421,19 +3511,17 @@
                       },
                       "categoryIds": {
                         "type": "array",
+                        "description": "The category ids ",
                         "items": {
                           "type": "string"
-                        },
-                        "description": "The category ids ",
-                        "x-typespec-name": "string[]"
+                        }
                       },
                       "operatingSystems": {
                         "type": "array",
+                        "description": "The operating systems",
                         "items": {
                           "type": "string"
-                        },
-                        "description": "The operating systems",
-                        "x-typespec-name": "string[]"
+                        }
                       }
                     },
                     "required": [
@@ -3443,6 +3531,7 @@
                   },
                   "provisioningState": {
                     "description": "The resource provisioning state",
+                    "readOnly": true,
                     "type": "string",
                     "enum": [
                       "Succeeded",
@@ -3473,8 +3562,10 @@
                   },
                   "marketplaceSkus": {
                     "type": "array",
+                    "description": "The marketplace skus",
                     "items": {
                       "type": "object",
+                      "description": "The marketplace sku",
                       "properties": {
                         "catalogPlanId": {
                           "type": "string",
@@ -3536,8 +3627,10 @@
                         },
                         "marketplaceSkuVersions": {
                           "type": "array",
+                          "description": "The marketplace sku version",
                           "items": {
                             "type": "object",
+                            "description": "The marketplace sku version",
                             "properties": {
                               "name": {
                                 "type": "string",
@@ -3556,53 +3649,71 @@
                               "stageName": {
                                 "type": "string",
                                 "description": "The stage name"
+                              },
+                              "launchType": {
+                                "description": "The launch type",
+                                "type": "string",
+                                "enum": [
+                                  "Trusted",
+                                  "Unknown"
+                                ],
+                                "x-ms-enum": {
+                                  "name": "OfferLaunchType",
+                                  "modelAsString": true,
+                                  "values": [
+                                    {
+                                      "name": "Trusted",
+                                      "value": "Trusted",
+                                      "description": "The offer has been certified"
+                                    },
+                                    {
+                                      "name": "Unknown",
+                                      "value": "Unknown",
+                                      "description": "The offer has not been certified"
+                                    }
+                                  ]
+                                }
                               }
                             },
-                            "description": "The marketplace sku version",
                             "required": [
                               "name"
                             ]
                           },
-                          "x-ms-identifiers": [],
-                          "description": "The marketplace sku version",
-                          "x-typespec-name": "MarketplaceSkuVersion[]"
+                          "x-ms-identifiers": [
+                            "name"
+                          ]
                         }
                       },
-                      "description": "The marketplace sku",
                       "required": [
                         "catalogPlanId",
                         "marketplaceSkuId"
                       ]
                     },
-                    "x-ms-identifiers": [],
-                    "description": "The marketplace skus",
-                    "x-typespec-name": "MarketplaceSku[]"
+                    "x-ms-identifiers": [
+                      "marketplaceSkuId"
+                    ]
                   }
                 },
                 "required": [
                   "offerContent"
                 ]
               }
-            },
-            "description": "An offer."
-          },
-          "description": "The Offer items on this page",
-          "x-typespec-name": "Offer[]"
+            }
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-typespec-name": "TypeSpec.Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a Offer list operation.",
       "required": [
         "value"
       ]
     },
     "OfferProperties": {
       "type": "object",
+      "description": "The offer properties",
       "properties": {
         "contentVersion": {
           "type": "string",
@@ -3757,19 +3868,17 @@
             },
             "categoryIds": {
               "type": "array",
+              "description": "The category ids ",
               "items": {
                 "type": "string"
-              },
-              "description": "The category ids ",
-              "x-typespec-name": "string[]"
+              }
             },
             "operatingSystems": {
               "type": "array",
+              "description": "The operating systems",
               "items": {
                 "type": "string"
-              },
-              "description": "The operating systems",
-              "x-typespec-name": "string[]"
+              }
             }
           },
           "required": [
@@ -3779,6 +3888,7 @@
         },
         "provisioningState": {
           "description": "The resource provisioning state",
+          "readOnly": true,
           "type": "string",
           "enum": [
             "Succeeded",
@@ -3809,8 +3919,10 @@
         },
         "marketplaceSkus": {
           "type": "array",
+          "description": "The marketplace skus",
           "items": {
             "type": "object",
+            "description": "The marketplace sku",
             "properties": {
               "catalogPlanId": {
                 "type": "string",
@@ -3872,8 +3984,10 @@
               },
               "marketplaceSkuVersions": {
                 "type": "array",
+                "description": "The marketplace sku version",
                 "items": {
                   "type": "object",
+                  "description": "The marketplace sku version",
                   "properties": {
                     "name": {
                       "type": "string",
@@ -3892,36 +4006,58 @@
                     "stageName": {
                       "type": "string",
                       "description": "The stage name"
+                    },
+                    "launchType": {
+                      "description": "The launch type",
+                      "type": "string",
+                      "enum": [
+                        "Trusted",
+                        "Unknown"
+                      ],
+                      "x-ms-enum": {
+                        "name": "OfferLaunchType",
+                        "modelAsString": true,
+                        "values": [
+                          {
+                            "name": "Trusted",
+                            "value": "Trusted",
+                            "description": "The offer has been certified"
+                          },
+                          {
+                            "name": "Unknown",
+                            "value": "Unknown",
+                            "description": "The offer has not been certified"
+                          }
+                        ]
+                      }
                     }
                   },
-                  "description": "The marketplace sku version",
                   "required": [
                     "name"
                   ]
                 },
-                "x-ms-identifiers": [],
-                "description": "The marketplace sku version",
-                "x-typespec-name": "MarketplaceSkuVersion[]"
+                "x-ms-identifiers": [
+                  "name"
+                ]
               }
             },
-            "description": "The marketplace sku",
             "required": [
               "catalogPlanId",
               "marketplaceSkuId"
             ]
           },
-          "x-ms-identifiers": [],
-          "description": "The marketplace skus",
-          "x-typespec-name": "MarketplaceSku[]"
+          "x-ms-identifiers": [
+            "marketplaceSkuId"
+          ]
         }
       },
-      "description": "The offer properties",
       "required": [
         "offerContent"
       ]
     },
     "OfferPublisher": {
       "type": "object",
+      "description": "The offer publisher",
       "properties": {
         "publisherId": {
           "type": "string",
@@ -3932,7 +4068,6 @@
           "description": "The publisher name"
         }
       },
-      "description": "The offer publisher",
       "required": [
         "publisherId",
         "publisherDisplayName"
@@ -3940,7 +4075,7 @@
     },
     "OfferReleaseType": {
       "type": "string",
-      "description": "Offer release type",
+      "description": "Offer release type Enum",
       "enum": [
         "Preview",
         "GA"
@@ -3962,51 +4097,44 @@
         ]
       }
     },
-    "SkuOperatingSystem": {
-      "type": "object",
-      "properties": {
-        "family": {
-          "type": "string",
-          "description": "The family of the operating system"
-        },
-        "type": {
-          "type": "string",
-          "description": "The type of the operating system"
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the operating system"
-        }
-      },
-      "description": "The sku operating system",
-      "required": [
-        "name"
-      ]
-    },
-    "TermsAndConditions": {
-      "type": "object",
-      "properties": {
-        "legalTermsUri": {
-          "type": "string",
-          "description": "The legal terms and conditions uri"
-        },
-        "legalTermsType": {
-          "type": "string",
-          "description": "The type of legal terms"
-        },
-        "privacyPolicyUri": {
-          "type": "string",
-          "description": "The privacy policy uri"
-        }
-      },
-      "description": "Terms and conditions"
+    "Origin": {
+      "type": "string",
+      "description": "Origin Enum",
+      "enum": [
+        "user",
+        "system",
+        "user,system"
+      ],
+      "x-ms-enum": {
+        "name": "Origin",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "user",
+            "value": "user",
+            "description": "Origin is user"
+          },
+          {
+            "name": "system",
+            "value": "system",
+            "description": "Origin is system"
+          },
+          {
+            "name": "userAndSystem",
+            "value": "user,system",
+            "description": "Origin is user and system"
+          }
+        ]
+      }
     },
     "Publisher": {
       "type": "object",
+      "description": "A publisher who provides offers.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+          "format": "arm-id",
+          "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
           "readOnly": true
         },
         "name": {
@@ -4020,9 +4148,9 @@
           "readOnly": true
         },
         "systemData": {
-          "type": "object",
           "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
           "readOnly": true,
+          "type": "object",
           "properties": {
             "createdBy": {
               "type": "string",
@@ -4074,15 +4202,11 @@
         },
         "properties": {
           "description": "The resource-specific properties for this resource.",
-          "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ],
           "type": "object",
           "properties": {
             "provisioningState": {
               "description": "The resource provisioning state",
+              "readOnly": true,
               "type": "string",
               "enum": [
                 "Succeeded",
@@ -4111,25 +4235,25 @@
                 ]
               }
             }
-          },
-          "required": [
-            "provisioningState"
-          ]
+          }
         }
-      },
-      "description": "A publisher who provides offers."
+      }
     },
     "PublisherListResult": {
       "type": "object",
+      "description": "The response of a Publisher list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The Publisher items on this page",
           "items": {
             "type": "object",
+            "description": "A publisher who provides offers.",
             "properties": {
               "id": {
                 "type": "string",
-                "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+                "format": "arm-id",
+                "description": "Fully qualified resource ID for the resource. E.g. \"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}\"",
                 "readOnly": true
               },
               "name": {
@@ -4143,9 +4267,9 @@
                 "readOnly": true
               },
               "systemData": {
-                "type": "object",
                 "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
                 "readOnly": true,
+                "type": "object",
                 "properties": {
                   "createdBy": {
                     "type": "string",
@@ -4197,15 +4321,11 @@
               },
               "properties": {
                 "description": "The resource-specific properties for this resource.",
-                "x-ms-client-flatten": true,
-                "x-ms-mutability": [
-                  "read",
-                  "create"
-                ],
                 "type": "object",
                 "properties": {
                   "provisioningState": {
                     "description": "The resource provisioning state",
+                    "readOnly": true,
                     "type": "string",
                     "enum": [
                       "Succeeded",
@@ -4234,34 +4354,28 @@
                       ]
                     }
                   }
-                },
-                "required": [
-                  "provisioningState"
-                ]
+                }
               }
-            },
-            "description": "A publisher who provides offers."
-          },
-          "description": "The Publisher items on this page",
-          "x-typespec-name": "Publisher[]"
+            }
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-typespec-name": "TypeSpec.Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a Publisher list operation.",
       "required": [
         "value"
       ]
     },
     "PublisherProperties": {
       "type": "object",
+      "description": "Publisher properties",
       "properties": {
         "provisioningState": {
           "description": "The resource provisioning state",
+          "readOnly": true,
           "type": "string",
           "enum": [
             "Succeeded",
@@ -4290,66 +4404,57 @@
             ]
           }
         }
+      }
+    },
+    "SkuOperatingSystem": {
+      "type": "object",
+      "description": "The sku operating system",
+      "properties": {
+        "family": {
+          "type": "string",
+          "description": "The family of the operating system"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the operating system"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the operating system"
+        }
       },
-      "description": "Publisher properties",
       "required": [
-        "provisioningState"
+        "name"
       ]
+    },
+    "TermsAndConditions": {
+      "type": "object",
+      "description": "Terms and conditions",
+      "properties": {
+        "legalTermsUri": {
+          "type": "string",
+          "description": "The legal terms and conditions uri"
+        },
+        "legalTermsType": {
+          "type": "string",
+          "description": "The type of legal terms"
+        },
+        "privacyPolicyUri": {
+          "type": "string",
+          "description": "The privacy policy uri"
+        }
+      }
     }
   },
   "parameters": {
-    "Azure.Core.FilterQueryParameter": {
-      "name": "$filter",
-      "in": "query",
-      "required": false,
-      "description": "Filter the result list using the given expression.",
-      "type": "string",
-      "x-ms-parameter-location": "method"
-    },
-    "Azure.Core.MaxPageSizeQueryParameter": {
-      "name": "maxpagesize",
-      "in": "query",
-      "required": false,
-      "description": "The maximum number of result items per page.",
-      "type": "integer",
-      "format": "int32",
-      "x-ms-parameter-location": "method"
-    },
-    "Azure.Core.SkipQueryParameter": {
-      "name": "skip",
-      "in": "query",
-      "required": false,
-      "description": "The number of result items to skip.",
-      "default": 0,
-      "type": "integer",
-      "format": "int32",
-      "x-ms-parameter-location": "method"
-    },
-    "Azure.Core.TopQueryParameter": {
-      "name": "$top",
-      "in": "query",
-      "required": false,
-      "description": "The number of result items to return.",
-      "type": "integer",
-      "format": "int32",
-      "x-ms-parameter-location": "method"
-    },
-    "Azure.Core.SkipTokenParameter": {
-      "name": "$skipToken",
-      "in": "query",
-      "required": false,
-      "description": "Skip over when retrieving results.",
-      "type": "string",
-      "x-ms-parameter-location": "method"
-    },
     "Azure.ResourceManager.ResourceUriParameter": {
       "name": "resourceUri",
       "in": "path",
-      "required": true,
       "description": "The fully qualified Azure Resource manager identifier of the resource.",
+      "required": true,
       "type": "string",
-      "x-ms-skip-url-encoding": true,
-      "x-ms-parameter-location": "method"
+      "x-ms-parameter-location": "method",
+      "x-ms-skip-url-encoding": true
     }
   }
 }

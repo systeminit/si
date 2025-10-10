@@ -122,7 +122,7 @@ function hetznerClassifyProperties(schema: SuperSchema): OnlyProperties {
 
   return {
     createOnly: normalizeOnlyProperties(inferredOnlyProperties.createOnly),
-    readOnly: normalizeOnlyProperties(inferredOnlyProperties.readOnly),
+    readOnly: inferredOnlyProperties.readOnly,
     writeOnly: normalizeOnlyProperties(inferredOnlyProperties.writeOnly),
     primaryIdentifier: inferredOnlyProperties.primaryIdentifier,
   };
