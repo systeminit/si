@@ -177,12 +177,6 @@ export function mergeResourceOperations(
     deleteOperation,
   } = buildHandlersFromOperations(operations);
 
-  // Must have a get operation to proceed
-  if (!getOperation) {
-    console.error(`No GET operation found for ${noun}`);
-    return null;
-  }
-
   // Get description from the tag
   const tags = getOperation.tags as string[] | undefined;
   const tagName = tags?.[0];
@@ -197,61 +191,47 @@ export function mergeResourceOperations(
     }
   }
 
-  // Extract properties from GET response
-  const getContent = (getOperation.responses as any)?.["200"]?.content
+  // Extract properties from CREATE response
+  if (!postOperation) return;
+  const createContent = (postOperation.requestBody as any)?.content
     ?.["application/json"];
-  if (!getContent) {
-    console.error(`No JSON response content for GET ${noun}`);
-    return null;
-  }
-
-  const objShape = Object.values(
-    getContent.schema.properties,
-  ).pop() as JsonSchema | undefined;
-  if (!objShape) {
-    console.error("SHAPE EXPECTED", getContent);
+  if (!createContent) {
+    console.error(`No JSON response content for Create ${noun}`);
     return null;
   }
 
   const mergedProperties = {
-    ...(objShape.properties as JsonSchema),
+    ...(createContent.schema?.properties as JsonSchema),
   };
-  const requiredProperties = new Set((objShape.required as string[]) || []);
+  const requiredProperties = new Set(
+    (createContent.schema?.required as string[]) || [],
+  );
 
   // Properties that appear in different operations - for onlyProperties classification
-  const getProperties: PropertySet = new Set(
-    Object.keys(objShape.properties as JsonSchema),
+  const createProperties: PropertySet = new Set(
+    Object.keys(createContent.schema?.properties as JsonSchema),
   );
-  const createProperties: PropertySet = new Set();
+  const getProperties: PropertySet = new Set(
+    Object.keys(
+      (getOperation.responses as any)?.["200"]?.content?.["application/json"]
+        .schema?.properties,
+    ),
+  );
   const updateProperties: PropertySet = new Set();
   const deleteProperties: PropertySet = new Set();
 
-  // Process the other ops
-  [
-    { operation: postOperation, propertySet: createProperties, name: "create" },
-    { operation: putOperation, propertySet: updateProperties, name: "update" },
-    {
-      operation: deleteOperation,
-      propertySet: deleteProperties,
-      name: "delete",
-    },
-  ].forEach(({ operation, propertySet }) => {
+  //merge put into post
+  {
     const { properties: operationProps, required: operationRequired } =
-      extractPropertiesFromRequestBody(operation);
-
-    Object.keys(operationProps).forEach((prop) => propertySet.add(prop));
-
-    // Merge properties into the main schema
-    Object.entries(operationProps).forEach(([key, prop]) => {
+      extractPropertiesFromRequestBody(putOperation);
+    Object.keys(operationProps).forEach((prop) => updateProperties.add(prop));
+    Object.entries(updateProperties).forEach(([key, prop]) => {
       mergedProperties[key] = mergePropertyDefinitions(
         mergedProperties[key] as JsonSchema,
         prop as JsonSchema,
       );
     });
-
-    // Add required properties
-    operationRequired.forEach((prop) => requiredProperties.add(prop));
-  });
+  }
 
   // Helper to recursively collect readOnly property paths
   function collectReadOnlyPaths(
@@ -307,9 +287,9 @@ export function mergeResourceOperations(
     }
   });
 
-  // Collect all readOnly paths (including nested ones)
-  const readOnlyPaths = collectReadOnlyPaths(mergedProperties);
-  onlyProperties.readOnly.push(...readOnlyPaths);
+  getProperties.forEach((prop) => {
+    onlyProperties.readOnly.push(`/${prop}`);
+  });
 
   // writeOnly: in POST/PUT/DELETE but not in GET
   const writeProps = [
