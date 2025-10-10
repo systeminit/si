@@ -92,7 +92,7 @@ export function componentDiscoverTool(server: McpServer) {
         if (prereqError) {
           return prereqError;
         }
-        
+
         const siApi = new ComponentsApi(apiConfig);
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
@@ -104,6 +104,22 @@ export function componentDiscoverTool(server: McpServer) {
           });
           const schemaId = findSchemaResponse.data.schemaId;
 
+          const discoverTemplateresponse = await siApi.createComponent({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            createComponentV1Request: {
+              name: `Discover ${schemaName} - Temporary`,
+              schemaName,
+              attributes,
+            },
+          });
+          const discoverTemplateResult: Record<string, string> = {
+            componentId: discoverTemplateresponse.data.component.id,
+            componentName: discoverTemplateresponse.data.component.name,
+            schemaName: schemaName,
+          };
+
+          // Now get the variantFuncs so we can decide on the discovery function
           const defaultVariantResponse = await siSchemasApi.getDefaultVariant({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
@@ -131,21 +147,6 @@ export function componentDiscoverTool(server: McpServer) {
           });
 
           const funcName = discoverFuncResponse.data.name;
-
-          const discoverTemplateresponse = await siApi.createComponent({
-            workspaceId: WORKSPACE_ID,
-            changeSetId: changeSetId,
-            createComponentV1Request: {
-              name: `Discover ${schemaName} - Temporary`,
-              schemaName,
-              attributes,
-            },
-          });
-          const discoverTemplateResult: Record<string, string> = {
-            componentId: discoverTemplateresponse.data.component.id,
-            componentName: discoverTemplateresponse.data.component.name,
-            schemaName: schemaName,
-          };
 
           // Lets dequeue any actions created for this component
           const actionsApi = new ActionsApi(apiConfig);
