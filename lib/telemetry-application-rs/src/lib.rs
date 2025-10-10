@@ -641,8 +641,24 @@ fn create_client(
         update_telemetry_tx.clone(),
     );
 
+    // Initialize process metrics observer
+    let process_metrics_observer = {
+        let meter = telemetry::opentelemetry::global::meter(config.service_name);
+        match si_otel_metrics::ProcessMetricsObserver::init(meter) {
+            Ok(observer) => {
+                telemetry::tracing::debug!("process metrics observer initialized");
+                Some(observer)
+            }
+            Err(err) => {
+                telemetry::tracing::warn!(error = ?err, "failed to initialize process metrics observer");
+                None
+            }
+        }
+    };
+
     let guard = TelemetryShutdownGuard {
         update_telemetry_tx,
+        _process_metrics_observer: process_metrics_observer,
     };
 
     // Spawn this task free of the tracker as we want it to outlive the tracker when shutting down
@@ -682,6 +698,7 @@ pub enum LogFormat {
 #[must_use]
 pub struct TelemetryShutdownGuard {
     update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
+    _process_metrics_observer: Option<si_otel_metrics::ProcessMetricsObserver>,
 }
 
 impl TelemetryShutdownGuard {

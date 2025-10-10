@@ -49,6 +49,7 @@ services:
       - "3000:3000"
     volumes:
       - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
 
   jaeger:
     #<<: *loki-logged-service
