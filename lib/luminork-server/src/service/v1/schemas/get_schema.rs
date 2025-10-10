@@ -80,7 +80,7 @@ pub async fn get_schema(
 
     // Fall back to MV lookup for uninstalled schemas using CachedSchema
     match frigg
-        .get_current_deployment_object(ReferenceKind::CachedSchema, &schema_id.to_string())
+        .get_current_deployment_object(ReferenceKind::CachedSchema.into(), &schema_id.to_string())
         .await
     {
         Ok(Some(obj)) => {

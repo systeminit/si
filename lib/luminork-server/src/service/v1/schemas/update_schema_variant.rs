@@ -142,7 +142,7 @@ pub async fn update_schema_variant(
     // We know it is a builtin if we find a CachedSchema for its schema id
     // The only cached schemas we currently build are builtins - if that changes, this logic will need to change!
     let installed_from_upstream = (frigg
-        .get_current_deployment_object(ReferenceKind::CachedSchema, &schema_id.to_string())
+        .get_current_deployment_object(ReferenceKind::CachedSchema.into(), &schema_id.to_string())
         .await?)
         .is_some();
 
