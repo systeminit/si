@@ -980,8 +980,7 @@ export function funcCreateEditGetTool(server: McpServer) {
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
 
-        let hints;
-        let touchedFuncId, touchedFuncCode, touchedName: string;
+        let hints, touchedFuncId, touchedFuncCode, touchedName: string;
         try {
           if (funcId) {
             // update an existing function or get information about it
@@ -1075,7 +1074,7 @@ export function funcCreateEditGetTool(server: McpServer) {
 
             // issue a warning if the schema this function is being created on is a builtin
             if (responseGetVariant.data.installedFromUpstream) {
-              hints = "Warn the user that because this function was created on a schema created by System Initiative that they will lose their customizations (like this function) if they upgrade the schema.";
+              hints = "Warn the user that because this function was created on a schema created by System Initiative that they will lose their customizations (like this function) if they upgrade the schema. Repeat this warning any time the user edits a function on a builtin schema.";
             }
 
             // use the correct funciton create endpoint based on the type of function

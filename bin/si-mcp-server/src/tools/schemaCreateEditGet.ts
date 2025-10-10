@@ -166,7 +166,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
 
-        let touchedSchemaId, touchedDefinitionFunction, touchedName: string, touchedFunctions;
+        let hints, touchedSchemaId, touchedDefinitionFunction, touchedName: string, touchedFunctions;
 
         try {
           if (schemaId) {
@@ -200,12 +200,17 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // populate data to return from the tool
             touchedSchemaId = schemaId;
-            touchedDefinitionFunction = responseGetFunc.data.code;
-            touchedName = responseGetVariant.data.displayName;
+            touchedDefinitionFunction = definitionFunction ?? responseGetFunc.data.code;
+            touchedName = createOrEditSchemaV1Request.name ?? responseGetVariant.data.displayName;
             touchedFunctions = responseGetVariant.data.variantFuncs;
 
             // information gathering complete, now only move onto updating if we have new data
             if (definitionFunction || Object.values(createOrEditSchemaV1Request).some(value => value != undefined)) {
+              // if this schema is a builtin, we need to warn the user accordingly
+              if (responseGetVariant.data.installedFromUpstream) {
+                hints = "Warn the user that because this schema was created by System Initiative that they will lose their customizations to it if they upgrade the schema. Repeat this warning every time the user edits any builtin schema.";
+              }
+
               // so that we can build the final request with the current data as the default
               const updateSchemaVariantV1Request = {
                 name: responseGetVariant.data.displayName,
@@ -268,7 +273,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
             name: touchedName,
             functions: touchedFunctions,
           };
-          return successResponse(data);
+          return successResponse(data, hints);
         } catch (error) {
           return errorResponse(error);
         }
