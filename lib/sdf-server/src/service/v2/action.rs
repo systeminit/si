@@ -72,21 +72,21 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ActionRequestError {
-    #[error(transparent)]
+    #[error("action error: {0}")]
     Action(#[from] dal::action::ActionError),
     #[error("action already enqueued: {0}")]
     ActionAlreadyEnqueued(ActionPrototypeId),
     #[error("action history is missing a field - this is a bug!: {0}")]
     ActionHistoryFieldMissing(String),
-    #[error(transparent)]
+    #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error(transparent)]
+    #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
-    #[error(transparent)]
+    #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("Cannot cancel Running or Dispatched actions. ActionId {0}")]
     InvalidActionCancellation(ActionId),

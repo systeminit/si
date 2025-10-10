@@ -64,17 +64,17 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
-    #[error(transparent)]
+    #[error("certificate client error: {0}")]
     CertificateClient(#[from] PrivateCertManagerClientError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error("Parameter Store error: {0}")]
     ParameterStore(#[from] ParameterStoreClientError),
-    #[error(transparent)]
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
-    #[error(transparent)]
+    #[error("tls error: {0}")]
     Tls(#[from] si_tls::TlsError),
 }
 

@@ -291,9 +291,9 @@ pub enum ComponentError {
     OutputSocketNotFoundForComponentId(OutputSocketId, ComponentId),
     #[error("output socket {0} has more than one attribute value")]
     OutputSocketTooManyAttributeValues(OutputSocketId),
-    #[error(transparent)]
+    #[error("parse float error: {0}")]
     ParseFloat(#[from] ParseFloatError),
-    #[error(transparent)]
+    #[error("parse int error: {0}")]
     ParseInt(#[from] ParseIntError),
     #[error("prop error: {0}")]
     Prop(#[from] Box<PropError>),

@@ -26,7 +26,7 @@ pub mod config;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum InnitCtlError {
-    #[error(transparent)]
+    #[error("config error: {0}")]
     Config(#[from] config::ConfigError),
     #[error("handlebars error: {0}")]
     HandlebarsRender(#[from] handlebars::RenderError),

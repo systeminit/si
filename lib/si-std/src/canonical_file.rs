@@ -29,7 +29,7 @@ pub enum CanonicalFileError {
     #[error("no file_name after canonicalized join: {0}")]
     NoFileNameAfterJoin(String),
     // needed only for the test
-    #[error(transparent)]
+    #[error("var error: {0}")]
     VarError(#[from] std::env::VarError),
 }
 

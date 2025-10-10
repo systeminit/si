@@ -69,7 +69,7 @@ pub enum KeyPairError {
     Transactions(#[from] TransactionsError),
     #[error("cannot get key for different workspace")]
     UnauthorizedKeyAccess,
-    #[error(transparent)]
+    #[error("workspace error: {0}")]
     Workspace(#[from] Box<WorkspaceError>),
 }
 

@@ -17,15 +17,15 @@ use crate::AppState;
 #[derive(Debug, Error)]
 #[allow(clippy::large_enum_variant)]
 pub enum DevError {
-    #[error(transparent)]
+    #[error("builtin error: {0}")]
     Builtin(#[from] dal::BuiltinsError),
-    #[error(transparent)]
+    #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
     #[error("Function not found")]
     FuncNotFound,
-    #[error(transparent)]
+    #[error("nats error: {0}")]
     Nats(#[from] si_data_nats::NatsError),
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] si_data_pg::PgError),
     #[error("si db error: {0}")]
     SiDb(#[from] si_db::Error),

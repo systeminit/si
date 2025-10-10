@@ -62,15 +62,15 @@ const DEFAULT_AUTH_API_URL: &str = "https://auth-api.systeminit.com";
 pub enum ConfigError {
     #[error("config builder")]
     Builder(#[from] ConfigBuilderError),
-    #[error(transparent)]
+    #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
     #[error("error configuring for development")]
     Development(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
-    #[error(transparent)]
+    #[error("layer cache error: {0}")]
     LayerCache(#[from] LayerDbError),
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,
-    #[error(transparent)]
+    #[error("settings error: {0}")]
     Settings(#[from] si_settings::SettingsError),
     #[error("failed to resolve socket addrs")]
     SocketAddrResolve(#[source] std::io::Error),

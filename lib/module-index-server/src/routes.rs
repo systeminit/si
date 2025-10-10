@@ -103,9 +103,9 @@ async fn system_status_route() -> Json<Value> {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error(transparent)]
+    #[error("server error: {0}")]
     Server(#[from] ServerError),
 }
 

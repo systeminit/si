@@ -100,16 +100,16 @@ use crate::instance::{
 #[derive(Debug, Error)]
 pub enum LocalUdsInstanceError {
     /// Spec builder error.
-    #[error(transparent)]
+    #[error("builder error: {0}")]
     Builder(#[from] LocalUdsInstanceSpecBuilderError),
     /// Error when waiting for child process to shutdown.
-    #[error(transparent)]
+    #[error("child shutdown error: {0}")]
     ChildShutdown(#[from] ShutdownError),
     /// Failed to spawn a child process.
     #[error("failed to spawn cyclone child process: {0}")]
     ChildSpawn(#[source] io::Error),
     /// Cyclone client error.
-    #[error(transparent)]
+    #[error("client error: {0}")]
     Client(#[from] Box<ClientError>),
     /// Failed to build a container.
     #[error("failed to build a cyclone container: {0}")]
@@ -118,14 +118,14 @@ pub enum LocalUdsInstanceError {
     #[error("failed to spawn cyclone container: {0}")]
     ContainerRun(#[source] Error),
     /// Error when shutting down a container.
-    #[error(transparent)]
+    #[error("container shutdown error: {0}")]
     ContainerShutdown(#[from] Error),
     /// Docker api not found
     #[error("no docker api")]
     DockerAPINotFound,
     #[cfg(target_os = "linux")]
     /// Failed to firecracker jail.
-    #[error("failed in working with a jail: {0}")]
+    #[error("firecracker error: {0}")]
     Firecracker(#[from] FirecrackerJailError),
     /// Failed to create firecracker-setup file.
     #[error("failed to create firecracker-setup file: {0}")]
@@ -149,7 +149,7 @@ pub enum LocalUdsInstanceError {
     #[error("failed to create temp socket: {0}")]
     TempSocket(#[source] io::Error),
     /// Cyclone client `watch` endpoint error.
-    #[error(transparent)]
+    #[error("watch error: {0}")]
     Watch(#[from] Box<WatchError>),
     /// Cyclone client `watch` session ended earlier than expected.
     #[error("server closed watch session before expected")]

@@ -79,7 +79,7 @@ pub enum ViewError {
     MaterializedView(#[from] Box<dal_materialized_views::Error>),
     #[error("there is already a view called {0}")]
     NameAlreadyInUse(String),
-    #[error(transparent)]
+    #[error("parse int error: {0}")]
     ParseInt(#[from] ParseIntError),
     #[error("paste error")]
     Paste,

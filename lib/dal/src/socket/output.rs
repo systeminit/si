@@ -82,7 +82,7 @@ pub enum OutputSocketError {
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error(transparent)]
+    #[error("connection annotation error: {0}")]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("found too many matches for output and socket: {0}, {1}")]
     FoundTooManyForOutputSocketId(OutputSocketId, ComponentId),

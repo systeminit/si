@@ -76,16 +76,16 @@ use crate::instance::{
 #[derive(Debug, Error)]
 pub enum LocalHttpInstanceError {
     /// Spec builder error.
-    #[error(transparent)]
+    #[error("builder error: {0}")]
     Builder(#[from] LocalHttpInstanceSpecBuilderError),
     /// Error when waiting for child process to shutdown.
-    #[error(transparent)]
+    #[error("child shutdown error: {0}")]
     ChildShutdown(#[from] ShutdownError),
     /// Failed to spawn a child process.
     #[error("failed to spawn cyclone child process")]
     ChildSpawn(#[source] io::Error),
     /// Cyclone client error.
-    #[error(transparent)]
+    #[error("client error: {0}")]
     Client(#[from] ClientError),
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
@@ -94,7 +94,7 @@ pub enum LocalHttpInstanceError {
     #[error("error when binding local socket")]
     SocketBind(#[source] io::Error),
     /// Cyclone client `watch` endpoint error.
-    #[error(transparent)]
+    #[error("watch error: {0}")]
     Watch(#[from] WatchError),
     /// Cyclone client `watch` session ended earlier than expected.
     #[error("server closed watch session before expected")]

@@ -160,9 +160,9 @@ pub enum DiagramError {
     NodeWeight(#[from] Box<NodeWeightError>),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] Box<OutputSocketError>),
-    #[error(transparent)]
+    #[error("parse float error: {0}")]
     ParseFloat(#[from] ParseFloatError),
-    #[error(transparent)]
+    #[error("parse int error: {0}")]
     ParseInt(#[from] ParseIntError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),

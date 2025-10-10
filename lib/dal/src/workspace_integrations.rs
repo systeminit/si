@@ -17,7 +17,7 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceIntegrationsError {
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),

@@ -88,9 +88,9 @@ pub enum ManagementFuncJobError {
     NoPendingExecution(ComponentId, ManagementPrototypeId, ChangeSetId),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("tokio task error: {0}")]
     TokioTask(#[from] JoinError),
-    #[error(transparent)]
+    #[error("transactions error: {0}")]
     Transactions(#[from] Box<TransactionsError>),
     #[error(
         "management func {0} for component {1} waited too long for dependent values to be calculated"

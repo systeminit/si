@@ -101,7 +101,7 @@ pub enum WsEventError {
     NoWorkspaceInTenancy,
     #[error("number parse string error: {0}")]
     ParseIntError(#[from] ParseIntError),
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),

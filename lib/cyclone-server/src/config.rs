@@ -22,7 +22,7 @@ use thiserror::Error;
 pub enum ConfigError {
     #[error("config builder")]
     Builder(#[from] ConfigBuilderError),
-    #[error(transparent)]
+    #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,

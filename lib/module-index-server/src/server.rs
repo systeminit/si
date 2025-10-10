@@ -100,11 +100,11 @@ pub enum ServerError {
     Hyper(#[from] hyper::Error),
     #[error("jwt public key error: {0}")]
     JwtPublicKey(#[from] JwtPublicSigningKeyError),
-    #[error(transparent)]
+    #[error("pg pool error: {0}")]
     PgPool(#[from] Box<PgPoolError>),
-    #[error(transparent)]
+    #[error("posthog error: {0}")]
     Posthog(#[from] si_posthog::PosthogError),
-    #[error(transparent)]
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),

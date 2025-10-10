@@ -114,7 +114,7 @@ const CONNECTION_RECYCLING_METHOD: &str = r#"
 #[remain::sorted]
 #[derive(thiserror::Error, Debug)]
 pub enum PgError {
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] tokio_postgres::Error),
     #[error("transaction not exclusively referenced when commit attempted; arc_strong_count={0}")]
     TxnCommitNotExclusive(usize),

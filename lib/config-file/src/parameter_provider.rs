@@ -18,7 +18,7 @@ use tracing::{
 pub enum ParameterError {
     #[error("Failed to fetch parameters: {0}")]
     Fetch(String),
-    #[error(transparent)]
+    #[error("other error: {0}")]
     Other(#[from] Box<dyn Error + Send + Sync>),
 }
 
