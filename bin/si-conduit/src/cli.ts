@@ -94,6 +94,8 @@ export async function run() {
     } catch (error) {
       const errorMsg = unknownValueToErrorMessage(error);
 
+      (new Log(0)).error(errorMsg);
+
       const [command, ...args] = Deno.args;
 
       analytics.trackEvent("cli_error",

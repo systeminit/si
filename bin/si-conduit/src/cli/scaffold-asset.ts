@@ -6,6 +6,7 @@ import { SCHEMA_FILE_FORMAT_VERSION } from "../config.ts";
 
 export async function scaffoldAsset(ctx: BaseCliContext, assetName: string, assetFolder: string) {
   const { log, analytics } = ctx;
+  log.debug(`Running scaffold for asset ${assetName} in folder ${assetFolder}`);
 
   const assetDirName = makeStringSafeForFilename(assetName);
 
@@ -49,13 +50,13 @@ export async function scaffoldAsset(ctx: BaseCliContext, assetName: string, asse
     await Deno.writeTextFile(`${assetPath}/.format-version`, SCHEMA_FILE_FORMAT_VERSION.toString());
     log.debug(`Created .format-version`);
 
-    await createQualificationScaffold(assetPath, log);
-    await createActionScaffold(assetPath, "create", log);
-    await createActionScaffold(assetPath, "destroy", log);
-    await createActionScaffold(assetPath, "refresh", log);
-    await createActionScaffold(assetPath, "update", log);
-    await createCodegenScaffold(assetPath, log);
-    await createMgmtScaffold(assetPath, log);
+    await createQualificationScaffold(log, assetPath, assetName);
+    await createActionScaffold(log, assetPath, "create", assetName);
+    await createActionScaffold(log, assetPath, "destroy", assetName);
+    await createActionScaffold(log, assetPath, "refresh", assetName);
+    await createActionScaffold(log, assetPath, "update", assetName);
+    await createCodegenScaffold(log, assetPath, assetName);
+    await createMgmtScaffold(log, assetPath, assetName);
 
     log.info(`Asset "${assetName}" created successfully at ${assetPath}`);
 
@@ -86,7 +87,7 @@ async function createFunctionScaffold(
   log.debug(`Created code file`);
 }
 
-async function createQualificationScaffold(assetPath: string, log: Log) {
+async function createQualificationScaffold(log: Log, assetPath: string, namePrefix: string = "") {
   const code = `function main(input: Input) {
   return {
     result: "failure",
@@ -99,8 +100,8 @@ async function createQualificationScaffold(assetPath: string, log: Log) {
     `${assetPath}/qualifications`,
     "sample",
     {
-      name: "Does asset comply with criteria?",
-      displayName: "optional",
+      name: `${namePrefix}-qualification`,
+      displayName: "Does asset comply with criteria?",
       description: "optional",
       inputs: [
         "code",
@@ -117,7 +118,12 @@ async function createQualificationScaffold(assetPath: string, log: Log) {
 }
 // Create one of each kind of action (create, destroy, refresh, update)
 type funcKind = "create" | "destroy" | "refresh" | "update";
-async function createActionScaffold(assetPath: string, kindOrName: funcKind | string,  log: Log) {
+async function createActionScaffold(
+  log: Log,
+  assetPath: string,
+  kindOrName: funcKind | string,
+  namePrefix: string = "",
+) {
   const code = `function main(input: Input) {
   return {
     status: "error",
@@ -125,14 +131,15 @@ async function createActionScaffold(assetPath: string, kindOrName: funcKind | st
   }
 }`
 
+  const name = `${namePrefix}-${kindOrName}`;
 
   await createFunctionScaffold(
       log,
       `${assetPath}/actions`,
       kindOrName,
       {
-        name: "Do Something!",
-        displayName: "optional",
+        name,
+        displayName: name,
         description: "optional",
       },
       code
@@ -143,7 +150,7 @@ async function createActionScaffold(assetPath: string, kindOrName: funcKind | st
 
 
 // Create a codegen func
-async function createCodegenScaffold(assetPath: string, log: Log) {
+async function createCodegenScaffold(log: Log, assetPath: string, namePrefix: string = "") {
   const code = `function main() {
   const code = {};
   return {
@@ -152,13 +159,15 @@ async function createCodegenScaffold(assetPath: string, log: Log) {
   };
 }`;
 
+  const name = `${namePrefix}-codegen`;
+
   await createFunctionScaffold(
       log,
       `${assetPath}/codeGenerators`,
       "sample",
       {
-        name: "Does asset comply with criteria?",
-        displayName: "optional",
+        name,
+        displayName: "Generate JSON Code",
         description: "optional",
         inputs: [
           "code",
@@ -174,7 +183,7 @@ async function createCodegenScaffold(assetPath: string, log: Log) {
   log.debug(`Created scaffold codegen`);
 }
 
-async function createMgmtScaffold(assetPath: string, log: Log) {
+async function createMgmtScaffold(log: Log, assetPath: string, namePrefix: string = "") {
   const code =  `function main() {
   const ops = {
     update: {},
@@ -193,13 +202,15 @@ async function createMgmtScaffold(assetPath: string, log: Log) {
   };
 }`
 
+  const name = `${namePrefix}-import`;
+
   await createFunctionScaffold(
       log,
       `${assetPath}/management`,
       "sample",
       {
-        name: "Import Empty Resource",
-        displayName: "optional",
+        name,
+        displayName: "Import Empty Resource",
         description: "optional",
       },
       code

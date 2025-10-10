@@ -70,7 +70,6 @@ export class Analytics {
         },
       }
 
-      console.log("Analytics tracking payload:", payload);
       this.posthog.capture(payload);
     } catch (error) {
       console.error("Analytics tracking failed:", error);
