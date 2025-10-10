@@ -1,10 +1,13 @@
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import {
   addPropSuggestSource,
+  createScalarProp,
   ExpandedPropSpec,
   ExpandedPropSpecFor,
   findPropByName,
+  PropPath,
   propPathStr,
+  toPropPathArray,
 } from "../../spec/props.ts";
 import { PropUsageMap } from "../aws/pipeline-steps/addDefaultPropsAndSockets.ts";
 import { ActionFuncSpecKind } from "../../bindings/ActionFuncSpecKind.ts";
@@ -18,7 +21,7 @@ import {
   strippedBase64,
 } from "../../spec/funcs.ts";
 import { PropSpecWidgetKind } from "../../bindings/PropSpecWidgetKind.ts";
-import { PropOverrideFn } from "../types.ts";
+import { PropOverrideFn, SchemaOverrideFn } from "../types.ts";
 
 /**
  * Shared utility functions for asset overrides across all providers
@@ -281,4 +284,60 @@ export function widget(
       );
     }
   };
+}
+
+export function addScalarProp(
+  propPath: PropPath,
+  kind: "string" | "number" | "boolean",
+  required = false,
+): SchemaOverrideFn {
+  return (spec: ExpandedPkgSpec) => {
+    const parentPathArray = toPropPathArray(propPath);
+    const propName = parentPathArray.pop();
+    if (!propName) {
+      throw new Error(`propPath too short: ${propPath}`);
+    }
+    const parentProp = findObjectProp(spec, parentPathArray);
+    parentProp.entries.push(
+      createScalarProp(propName, kind, parentPathArray, required),
+    );
+  };
+}
+
+// Drill down object props based on the given propPath
+function findObjectProp(
+  spec: ExpandedPkgSpec,
+  propPathArray: ExpandedPropSpec["metadata"]["propPath"],
+): ExpandedPropSpecFor["object"] {
+  const variant = spec.schemas[0].variants[0];
+  // Split into first part, middle parts, last part
+  const [root, start, ...pathParts] = propPathArray;
+  if (root !== "root") {
+    throw new Error(`propPath must start with /root/: propPathArray`);
+  }
+
+  // Get the first prop (domain or resource_value) so we can drill down from there
+  let objectProp;
+  switch (start) {
+    case "domain":
+      objectProp = variant.domain;
+      break;
+    case "resource_value":
+      objectProp = variant.resourceValue;
+      break;
+    default:
+      throw new Error(`Invalid start of propPath: ${start}`);
+  }
+
+  // Drill down to the parent of the target prop
+  for (const part of pathParts) {
+    objectProp = findPropByName(objectProp, part);
+    if (objectProp?.kind !== "object") {
+      throw new Error(
+        `Could not find object prop ${part} under ${propPathArray}`,
+      );
+    }
+  }
+
+  return objectProp;
 }

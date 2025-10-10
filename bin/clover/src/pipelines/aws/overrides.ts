@@ -15,13 +15,10 @@ import {
   stringPropForOverride,
   suggest,
 } from "../generic/overrides.ts";
-import {
-  addPropSuggestSource,
-  createScalarProp,
-} from "../../spec/props.ts";
+import { addPropSuggestSource, createScalarProp } from "../../spec/props.ts";
 import { createFunc, modifyFunc, strippedBase64 } from "../../spec/funcs.ts";
 
-// AWS-specific property overrides
+// AWS-specific property overrides!!!
 export const AWS_PROP_OVERRIDES: Record<
   string,
   Record<string, PropOverrideFn | PropOverrideFn[]>
@@ -449,9 +446,10 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         const prop = propForOverride(variant.domain, propName);
 
         const currentWidgetOptions = prop.data.widgetOptions;
-        prop.data.widgetOptions = currentWidgetOptions?.filter(
-          (w) => w.label !== "si_create_only_prop",
-        ) ?? null;
+        prop.data.widgetOptions =
+          currentWidgetOptions?.filter(
+            (w) => w.label !== "si_create_only_prop",
+          ) ?? null;
 
         createOnly = createOnly?.filter((p: string) => p !== propName);
 
