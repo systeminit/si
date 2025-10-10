@@ -46,7 +46,7 @@ const schemaCreateEditGetInputSchemaRaw = {
     .describe(
       `
       <description>A typescript function, starting with "function main() {", defining the schema's properties using an AssetBuilder. Documentation on how to write this function can be found at https://docs.systeminit.com/reference/asset/schema</description>
-      <good-example>
+      <aws-good-example>
         const asset = new AssetBuilder();
 
         const stringProp = new PropBuilder()
@@ -102,14 +102,44 @@ const schemaCreateEditGetInputSchemaRaw = {
           .setEntry(integerProp)
           .build();
 
+        const extraProp = new PropBuilder()
+          .setName("extra")
+          .setKind("object")
+          .setHidden(false)
+          .setWidget(new PropWidgetDefinitionBuilder()
+              .setKind("header")
+              .build())
+          .addChild(
+              new PropBuilder()
+              .setName("Region")
+              .setKind("string")
+              .setHidden(false)
+              .setWidget(new PropWidgetDefinitionBuilder()
+                  .setKind("text")
+                  .build())
+              .suggestSource({
+                  schema: "Region",
+                  prop: "/domain/region"
+              })
+              .build()
+          )
+
+
+        const AWSCredentialSecretProp = new SecretPropBuilder()
+          .setName("AWS Credential")
+          .setSecretKind("AWS Credential")
+          .build();
+
         asset.addProp(stringProp);
         asset.addProp(codeEditorProp);
         asset.addProp(objectProp);
         asset.addProp(arrayProp);
         asset.addProp(mapProp);
+        asset.addProp(extraProp);
+        asset.addSecretProp(AWSCredentialSecretProp)
 
         return asset.build();
-      </good-example>
+      </aws-good-example>
       `,
     ),
 };
