@@ -35,11 +35,11 @@ use crate::s3::S3Config;
 pub enum ConfigError {
     #[error("config builder")]
     Builder(#[from] ConfigBuilderError),
-    #[error(transparent)]
+    #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
     #[error("error configuring for development")]
     Development(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
-    #[error(transparent)]
+    #[error("settings error: {0}")]
     Settings(#[from] si_settings::SettingsError),
 }
 

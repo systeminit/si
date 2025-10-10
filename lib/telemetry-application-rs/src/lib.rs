@@ -155,7 +155,7 @@ const DEFAULT_NEVER_MODULES: &[&str] = &["h2", "hyper"];
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error(transparent)]
+    #[error("directives parse error: {0}")]
     DirectivesParse(#[from] ParseError),
     #[error("file appender error: {0}")]
     FileAppender(#[from] logroller::LogRollerError),
@@ -165,11 +165,11 @@ pub enum Error {
     Signal(#[source] io::Error),
     #[error("failed to parse span event fmt token: {0}")]
     SpanEventParse(String),
-    #[error(transparent)]
+    #[error("trace error: {0}")]
     Trace(#[from] TraceError),
-    #[error(transparent)]
+    #[error("try init error: {0}")]
     TryInit(#[from] TryInitError),
-    #[error(transparent)]
+    #[error("update error: {0}")]
     Update(#[from] reload::Error),
 }
 

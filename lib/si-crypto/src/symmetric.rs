@@ -35,7 +35,7 @@ pub enum SymmetricCryptoError {
     #[error("failed to decode base64 encoded key")]
     Base64Decode(#[source] base64::DecodeError),
     /// When a file fails to be canonicalized
-    #[error(transparent)]
+    #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
     /// When a cipertext fails to decrypt
     #[error("error when decrypting ciphertext")]

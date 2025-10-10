@@ -71,9 +71,9 @@ pub enum InputSocketError {
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error(transparent)]
+    #[error("component error: {0}")]
     ComponentError(#[from] Box<ComponentError>),
-    #[error(transparent)]
+    #[error("connection annotation error: {0}")]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("found too many matches for input and socket: {0}, {1}")]
     FoundTooManyForInputSocketId(InputSocketId, ComponentId),

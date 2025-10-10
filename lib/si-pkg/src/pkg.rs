@@ -90,11 +90,11 @@ use crate::{
 pub enum SiPkgError {
     #[error("component pkg node {0} missing position child")]
     ComponentMissingPosition(String),
-    #[error(transparent)]
+    #[error("graph error: {0}")]
     Graph(#[from] GraphError),
-    #[error(transparent)]
+    #[error("io error: {0}")]
     Io(#[from] std::io::Error),
-    #[error(transparent)]
+    #[error("memory error: {0}")]
     Memory(#[from] TarWriterError),
     #[error("node not found with hash={0}")]
     NodeWithHashNotFound(Hash),
@@ -108,11 +108,11 @@ pub enum SiPkgError {
     PropTreeInvalid(String),
     #[error("Schema Variant missing required child: {0}")]
     SchemaVariantChildNotFound(&'static str),
-    #[error(transparent)]
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("spec error: {0}")]
     Spec(#[from] SpecError),
-    #[error(transparent)]
+    #[error("tar read error: {0}")]
     TarRead(#[from] TarReadError),
     #[error("unexpected pkg node type; expected={0}, actual={1}")]
     UnexpectedPkgNodeType(&'static str, &'static str),

@@ -165,7 +165,7 @@ impl TryFrom<PkgSpecBuilder> for PkgSpec {
 pub enum SpecError {
     #[error("Can't convert {0} to LeafInputLocation")]
     LeafInputLocationConversionError(String),
-    #[error(transparent)]
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     /// Uninitialized field
     #[error("{0} must be initialized")]

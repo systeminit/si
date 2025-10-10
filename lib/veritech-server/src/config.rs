@@ -58,7 +58,7 @@ const DEFAULT_HEARTBEAT_APP_PUBLISH_TIMEOUT_DURATION: Duration =
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ConfigError {
-    #[error(transparent)]
+    #[error("builder error: {0}")]
     Builder(#[from] ConfigBuilderError),
     #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
@@ -66,7 +66,7 @@ pub enum ConfigError {
     CycloneSpecBuild(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,
-    #[error(transparent)]
+    #[error("settings error: {0}")]
     Settings(#[from] si_settings::SettingsError),
     #[error("failed to resolve socket addrs")]
     SocketAddrResolve(#[source] std::io::Error),

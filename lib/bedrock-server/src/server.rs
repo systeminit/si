@@ -57,11 +57,11 @@ use crate::{
 pub enum ServerError {
     #[error("AWS credentials error: {0}")]
     AwsCredentials(String),
-    #[error(transparent)]
+    #[error("certificate client error: {0}")]
     CertificateClient(#[from] PrivateCertManagerClientError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
-    #[error(transparent)]
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("failed to setup signal handler")]
     Tls(#[from] si_tls::TlsError),
