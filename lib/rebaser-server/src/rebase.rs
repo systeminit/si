@@ -3,6 +3,7 @@ use std::time::Duration;
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     DalContext,
+    SchemaError,
     TransactionsError,
     Workspace,
     WorkspaceError,
@@ -446,6 +447,8 @@ async fn rebase_legacy(
 pub(crate) enum SendEddaUpdatesError {
     #[error("edda client error: {0}")]
     EddaClient(#[from] edda_client::ClientError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("workspace snapshot error: {0}")]
@@ -467,6 +470,7 @@ pub(crate) async fn send_updates_to_edda_split_snapshot(
             "rebaser.perform_rebase.detect_changes_for_edda_request"
         ))
         .await?;
+
     let change_batch_address = ctx.write_change_batch(changes).await?;
     let edda_update_request_id = edda
         .update_from_workspace_snapshot(

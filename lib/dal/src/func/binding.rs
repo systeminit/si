@@ -94,6 +94,10 @@ pub enum FuncBindingError {
         "action with kind ({0}) already exists for schema variant ({1}), cannot have two non-manual actions for the same kind in the same schema variant"
     )]
     ActionKindAlreadyExists(ActionKind, SchemaVariantId),
+    #[error(
+        "action with kind ({0}) already exists for schema ({1}), cannot have two non-manual actions for the same kind in the same schema"
+    )]
+    ActionKindAlreadyExistsForSchema(ActionKind, SchemaId),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("action prototype missing")]

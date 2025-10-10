@@ -317,12 +317,14 @@ impl SchemaVariant {
             Self::list_all_sockets(ctx, self.id()).await?;
         output_sockets.sort_by_cached_key(|os| os.id());
         input_sockets.sort_by_cached_key(|is| is.id());
-        let func_ids: Vec<_> = Self::all_func_ids(ctx, self.id())
+        let mut func_ids: Vec<_> = Self::all_func_ids(ctx, self.id())
             .await?
             .into_iter()
             .collect();
 
         let schema = Schema::get_by_id(ctx, schema_id).await?;
+        let schema_func_ids = Schema::all_overlay_func_ids(ctx, schema_id).await?;
+        func_ids.extend(schema_func_ids);
 
         let is_default = Schema::default_variant_id_opt(ctx, schema_id).await? == Some(self.id());
         let mut props = Self::all_props(ctx, self.id()).await?;

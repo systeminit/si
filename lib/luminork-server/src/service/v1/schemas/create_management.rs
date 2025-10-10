@@ -5,6 +5,7 @@ use axum::{
 use dal::{
     FuncId,
     SchemaVariant,
+    cached_module::CachedModule,
     func::authoring::FuncAuthoringClient,
 };
 use sdf_extract::{
@@ -51,7 +52,7 @@ pub async fn create_variant_management(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
     Path(SchemaVariantV1RequestPath {
-        schema_id: _,
+        schema_id,
         schema_variant_id,
     }): Path<SchemaVariantV1RequestPath>,
     payload: Result<
@@ -65,14 +66,30 @@ pub async fn create_variant_management(
         return Err(SchemaError::NotPermittedOnHead);
     }
 
-    let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
-    if schema_variant.is_locked() {
-        return Err(SchemaError::LockedVariant(schema_variant_id));
+    let schema_id_for_variant: dal::SchemaId =
+        SchemaVariant::schema_id(ctx, schema_variant_id).await?;
+    if schema_id != schema_id_for_variant {
+        return Err(SchemaError::SchemaVariantNotMemberOfSchema(
+            schema_id,
+            schema_variant_id,
+        ));
     }
 
-    let func =
+    let is_builtin = CachedModule::find_latest_for_schema_id(ctx, schema_id)
+        .await?
+        .is_some();
+    let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
+
+    let func = if is_builtin {
+        // Create an overlay function
+        FuncAuthoringClient::create_new_management_func(ctx, Some(payload.name), schema_id).await?
+    } else {
+        if schema_variant.is_locked() {
+            return Err(SchemaError::LockedVariant(schema_variant_id));
+        }
         FuncAuthoringClient::create_new_management_func(ctx, Some(payload.name), schema_variant_id)
-            .await?;
+            .await?
+    };
 
     FuncAuthoringClient::update_func(ctx, func.id, payload.display_name, payload.description)
         .await?;
@@ -88,11 +105,20 @@ pub async fn create_variant_management(
     )
     .await?;
 
+    let audit_sv_id = if is_builtin {
+        None
+    } else {
+        Some(schema_variant_id)
+    };
+
+    let audit_schema_id = if is_builtin { Some(schema_id) } else { None };
+
     ctx.write_audit_log(
         AuditLogKind::AttachManagementFunc {
             func_id: func.id,
             func_display_name: func.display_name.clone(),
-            schema_variant_id: Some(schema_variant_id),
+            schema_variant_id: audit_sv_id,
+            schema_id: audit_schema_id,
             component_id: None,
             subject_name: schema_variant.display_name().to_string(),
         },
@@ -108,7 +134,9 @@ pub async fn create_variant_management(
         serde_json::json!({
             "func_id": func.id,
             "func_name": func.name.to_owned(),
-            "schema_variant_id": schema_variant_id,
+            "schema_variant_id": audit_sv_id,
+            "schema_id": audit_schema_id,
+            "overlay": is_builtin,
         }),
     );
 

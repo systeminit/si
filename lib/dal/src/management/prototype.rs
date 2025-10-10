@@ -883,7 +883,7 @@ impl ManagementPrototype {
             ));
         }
 
-        let Some(schema_variant_id) = node_ids.first() else {
+        let Some(schema_variant_id) = schema_variant_sources.first() else {
             return Ok(None);
         };
 

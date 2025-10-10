@@ -2,6 +2,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_id::SchemaId;
 use telemetry::prelude::*;
 
 use super::{
@@ -81,6 +82,44 @@ impl ActionBinding {
             func.description.to_owned(),
             prototype_parent,
             func_id,
+        )
+        .await?;
+
+        FuncBinding::for_func_id(ctx, func_id).await
+    }
+
+    /// Creates an [`ActionPrototype`] overlay with the specified [`ActionKind`] for a given [`SchemaId`]
+    /// Checks to ensure there isn't already an Action with that Kind in the case of Create/Delete/Refresh
+    #[instrument(
+        level = "info",
+        skip(ctx),
+        name = "func.binding.action.create_action_binding_overlay"
+    )]
+    pub async fn create_action_binding_overlay(
+        ctx: &DalContext,
+        func_id: FuncId,
+        action_kind: ActionKind,
+        schema_id: SchemaId,
+    ) -> FuncBindingResult<Vec<FuncBinding>> {
+        // If not manual, don't create duplicate prototypes for variant AND actionKind
+        if action_kind != ActionKind::Manual {
+            let existing_prototypes = ActionPrototype::for_schema(ctx, schema_id).await?;
+            if existing_prototypes.iter().any(|p| p.kind == action_kind) {
+                return Err(FuncBindingError::ActionKindAlreadyExistsForSchema(
+                    action_kind,
+                    schema_id,
+                ));
+            }
+        }
+
+        let func = Func::get_by_id(ctx, func_id).await?;
+        ActionPrototype::new(
+            ctx,
+            action_kind,
+            func.name.to_owned(),
+            func.description.to_owned(),
+            ActionPrototypeParent::Schemas(vec![schema_id]),
+            func.id,
         )
         .await?;
 

@@ -306,12 +306,17 @@ async fn graceful_shutdown_signal(
 }
 
 mod handlers {
-    use std::result;
+    use std::{
+        collections::BTreeSet,
+        result,
+    };
 
     use dal::{
         ChangeSet,
         ChangeSetId,
         DalContext,
+        Schema,
+        Ulid,
         WorkspacePk,
         WorkspaceSnapshotAddress,
     };
@@ -328,7 +333,10 @@ mod handlers {
     use si_data_nats::Subject;
     use si_events::{
         change_batch::ChangeBatchAddress,
-        workspace_snapshot::Change,
+        workspace_snapshot::{
+            Change,
+            EntityKind,
+        },
     };
     use telemetry::prelude::*;
     use telemetry_utils::metric;
@@ -360,6 +368,8 @@ mod handlers {
         LayerDb(#[from] si_layer_cache::LayerDbError),
         #[error("materialized view error: {0}")]
         MaterializedView(#[from] materialized_view::MaterializedViewError),
+        #[error("schema error: {0}")]
+        Schema(#[from] dal::SchemaError),
         /// When failing to find the workspace
         #[error("workspace error: {0}")]
         Workspace(#[from] dal::WorkspaceError),
@@ -578,6 +588,7 @@ mod handlers {
                     }
 
                     changes = deduplicate_changes(changes);
+                    post_process_changes(ctx, &mut changes).await?;
 
                     // build_mv_for_changes_in_change_set now automatically combines
                     // explicit changes and outdated definitions
@@ -616,6 +627,64 @@ mod handlers {
         .map_err(|err| span.record_err(err))
     }
 
+    /// In order to have correct materialized views, sometimes a change in one thing
+    /// means we should report a change in some other thing, even though that thing
+    /// has not actually changed. For example, if an overlay function has been added
+    /// to a schema, we need to recalculate the materialized views for the schema
+    /// variants under that schema.
+    #[instrument(
+        level = "info",
+        name = "edda.requests.chnage_set.process.post_process_changes",
+        skip_all
+    )]
+    async fn post_process_changes(ctx: &DalContext, changes: &mut Vec<Change>) -> Result<()> {
+        let mut overlay_category_changed = false;
+        let mut changed_schemas = BTreeSet::new();
+        let mut changed_variants = BTreeSet::new();
+        for change in changes.iter() {
+            match change.entity_kind {
+                EntityKind::CategoryOverlay => {
+                    overlay_category_changed = true;
+                }
+                EntityKind::Schema => {
+                    let id: Ulid = change.entity_id.into();
+                    changed_schemas.insert(id);
+                }
+                EntityKind::SchemaVariant => {
+                    let id: Ulid = change.entity_id.into();
+                    changed_variants.insert(id);
+                }
+                _ => {}
+            }
+        }
+
+        if overlay_category_changed {
+            for changed_schema_id in changed_schemas {
+                let variant_ids =
+                    Schema::list_schema_variant_ids(ctx, changed_schema_id.into()).await?;
+                for variant_id in variant_ids {
+                    let variant_ulid: Ulid = variant_id.into();
+                    if changed_variants.contains(&variant_ulid) {
+                        continue;
+                    }
+                    let merkle_tree_hash = ctx
+                        .workspace_snapshot()?
+                        .get_node_weight(variant_id)
+                        .await?
+                        .merkle_tree_hash();
+
+                    changes.push(Change {
+                        entity_id: variant_ulid.into(),
+                        entity_kind: EntityKind::SchemaVariant,
+                        merkle_tree_hash,
+                    });
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     #[allow(clippy::too_many_arguments)]
     async fn process_incremental_updates(
         ctx: &DalContext,
@@ -641,6 +710,7 @@ mod handlers {
         }
 
         changes = deduplicate_changes(changes);
+        post_process_changes(ctx, &mut changes).await?;
 
         materialized_view::build_mv_for_changes_in_change_set(
             ctx,

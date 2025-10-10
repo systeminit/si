@@ -109,6 +109,7 @@ pub enum AuditLogKindV1 {
         func_id: FuncId,
         func_display_name: Option<String>,
         schema_variant_id: Option<SchemaVariantId>,
+        schema_id: Option<SchemaId>,
         component_id: Option<ComponentId>,
         subject_name: String,
     },
@@ -585,6 +586,7 @@ pub enum AuditLogMetadataV1 {
         schema_variant_id: Option<SchemaVariantId>,
         component_id: Option<ComponentId>,
         subject_name: String,
+        schema_id: Option<SchemaId>,
     },
     #[serde(rename_all = "camelCase")]
     AttachQualificationFunc {
@@ -1223,12 +1225,14 @@ impl From<Kind> for Metadata {
                 schema_variant_id,
                 component_id,
                 subject_name,
+                schema_id,
             } => Self::AttachManagementFunc {
                 func_id,
                 func_display_name,
                 schema_variant_id,
                 component_id,
                 subject_name,
+                schema_id,
             },
             Kind::AttachQualificationFunc {
                 func_id,

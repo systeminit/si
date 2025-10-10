@@ -24,13 +24,17 @@ pub async fn assemble(
     let default_variant_id = Schema::default_variant_id(&ctx, schema_id).await?;
     let schema_variant = SchemaVariant::get_by_id(&ctx, default_variant_id).await?;
 
-    let variant_func_ids: Vec<_> = SchemaVariant::all_func_ids(&ctx, default_variant_id)
-        .await?
-        .into_iter()
-        .collect();
+    let mut variant_func_ids = SchemaVariant::all_func_ids(&ctx, default_variant_id).await?;
+    let overlay_func_ids = Schema::all_overlay_func_ids(&ctx, schema_id).await?;
+    variant_func_ids.extend(overlay_func_ids);
 
-    let func_details =
-        build_func_details(&ctx, schema_variant.id(), variant_func_ids.clone()).await?;
+    let func_details = build_func_details(
+        &ctx,
+        schema_id,
+        schema_variant.id(),
+        variant_func_ids.clone(),
+    )
+    .await?;
 
     let domain_props = {
         let domain =
