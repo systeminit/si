@@ -5,7 +5,7 @@ outline:
 
 # Road map
 
-Updated September 25, 2025.
+Updated October 10, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
@@ -15,11 +15,18 @@ Want to influence the road map?
 We are expanding our list of supported providers, starting with Azure and Google
 Cloud. These new providers will be available in Q4 2025.
 
-## AI Authoring (In-development)
+- Hetzner Cloud is now in public beta
+- Azure is in development
+
+## AI Authoring (In public beta)
 
 We are adding the ability for our AI Agent to author schemas and functions. This
 will allow users to create their own customizations to schemas using natural
 language. This will be available in Q4 2025.
+
+Our AI Agent now has the ability to author schemas and functions. This is
+currently in public beta. We expect this to be generally available in the next
+few weeks.
 
 ## Job-specific interface (Generally Available)
 
@@ -41,7 +48,7 @@ We are enabling a user to be able to connect any data within the system.
 Currently, data connections are made via sockets, but we want to allow deeper
 connectivity of data between infrastructure.
 
-## External API for integrations to System Initiative (In public beta)
+## External API for integrations to System Initiative (Generally Available)
 
 We are building an API that can be used from 3rd party applications (like CI/CD
 systems or custom internal developer platforms) to manage your infrastructure
@@ -178,3 +185,4 @@ changes without additional development work.
 If there is something specific you want or need from these assets, or if you
 require support for something outside of AWS, chat with us on
 [Discord](https://discord.com/invite/q6H2ZyFh) anytime.
+ 
