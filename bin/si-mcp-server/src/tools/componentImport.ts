@@ -90,6 +90,23 @@ export function componentImportTool(server: McpServer) {
           });
           const schemaId = findSchemaResponse.data.schemaId;
 
+          const response = await siApi.createComponent({
+            workspaceId: WORKSPACE_ID,
+            changeSetId: changeSetId,
+            createComponentV1Request: {
+              name: resourceId,
+              resourceId,
+              schemaName,
+              attributes,
+            },
+          });
+          const result: Record<string, string> = {
+            componentId: response.data.component.id,
+            componentName: response.data.component.name,
+            schemaName: schemaName,
+          };
+
+          // Now get the variantFuncs so we can decide on the import function
           const defaultVariantResponse = await siSchemasApi.getDefaultVariant({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
@@ -118,21 +135,6 @@ export function componentImportTool(server: McpServer) {
 
           const funcName = importFuncResponse.data.name;
 
-          const response = await siApi.createComponent({
-            workspaceId: WORKSPACE_ID,
-            changeSetId: changeSetId,
-            createComponentV1Request: {
-              name: resourceId,
-              resourceId,
-              schemaName,
-              attributes,
-            },
-          });
-          const result: Record<string, string> = {
-            componentId: response.data.component.id,
-            componentName: response.data.component.name,
-            schemaName: schemaName,
-          };
           try {
             const importResponse = await siApi.executeManagementFunction({
               workspaceId: WORKSPACE_ID,
