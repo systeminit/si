@@ -618,7 +618,7 @@ where
     let op = {
         let maybe_previous_version = match frigg
             .get_current_deployment_object_with_index(
-                mv_kind,
+                mv_kind.into(),
                 &mv_id,
                 (*maybe_deployment_mv_index).clone(),
             )

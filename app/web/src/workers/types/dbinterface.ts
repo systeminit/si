@@ -239,6 +239,7 @@ export interface SharedDBInterface {
     changeSetId: ChangeSetId,
   ): Promise<boolean>;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
+  vanaheim(workspaceId: string): Promise<boolean>;
   exec(
     opts: ExecBaseOptions &
       ExecRowModeArrayOptions &
@@ -363,6 +364,7 @@ export interface TabDBInterface {
   addConnStatusFn(fn: ConnStatusFn): void;
   changeSetExists(workspaceId: string, changeSetId: ChangeSetId): boolean;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
+  vanaheim(workspaceId: string): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,
