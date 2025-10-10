@@ -2,6 +2,7 @@ import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
+import type { JsonValue } from "../bindings/serde_json/JsonValue.ts";
 import _ from "lodash";
 import ImportedJoi from "npm:joi@17.13.3";
 import { Extend } from "../extend.ts";
@@ -119,6 +120,8 @@ export type CreatePropQueue = {
 };
 
 const MAX_PROP_DEPTH = 30;
+
+export type PropPath = `/${"domain" | "resource_value"}/${string}`;
 
 export function findPropByName(
   objPropSpec: ExpandedPropSpecFor["object"],
@@ -739,7 +742,7 @@ export function addPropSuggestSource(
   prop.data.uiOptionals.suggestSources = [
     ...existingArray,
     suggestion,
-  ] as unknown as any;
+  ] as unknown as JsonValue;
   return prop;
 }
 
@@ -754,7 +757,7 @@ export function addPropSuggestAsSourceFor(
   prop.data.uiOptionals.suggestAsSourceFor = [
     ...existingArray,
     suggestion,
-  ] as unknown as any;
+  ] as unknown as JsonValue;
   return prop;
 }
 
@@ -787,10 +790,33 @@ export function propSuggestionFor(
   return {
     schema: variant.name,
     // stripping /root out
-    prop: "/" + prop.metadata.propPath.slice(1).join("/"),
+    prop: propPathStr(prop),
   };
 }
 
-export function propPathStr(prop: ExpandedPropSpec): string {
-  return "/" + prop.metadata.propPath.slice(1).join("/");
+export function propPathStr(prop: ExpandedPropSpec): PropPath {
+  return toPropPath(prop.metadata.propPath);
+}
+
+export function toPropPathArray(
+  propPath: PropPath,
+): ExpandedPropSpec["metadata"]["propPath"] {
+  if (propPath[0] !== "/") {
+    throw new Error(`propPath must start with /: ${propPath}`);
+  }
+  return ["root", ...propPath.split("/").slice(1)];
+}
+
+export function toPropPath(
+  propPathArray: ExpandedPropSpec["metadata"]["propPath"],
+): PropPath {
+  if (propPathArray[0] !== "root") {
+    throw new Error(`propPath array must start with root: ${propPathArray}`);
+  }
+  if (propPathArray[1] !== "domain" && propPathArray[1] !== "resource_value") {
+    throw new Error(
+      `propPath array must start with root/domain or resource_value: ${propPathArray}`,
+    );
+  }
+  return ("/" + propPathArray.slice(1).join("/")) as PropPath;
 }
