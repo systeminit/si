@@ -21,7 +21,7 @@ const CF_PROPERTY_TYPES = [
   "array",
   "json",
 ] as const;
-export type CfPropertyType = typeof CF_PROPERTY_TYPES[number];
+export type CfPropertyType = (typeof CF_PROPERTY_TYPES)[number];
 
 export type CfProperty =
   | Extend<CfBooleanProperty, { type: "boolean" }>
@@ -30,16 +30,16 @@ export type CfProperty =
   | Extend<CfIntegerProperty, { type: "integer" }>
   | Extend<CfArrayProperty, { type: "array" }>
   | CfObjectProperty // We may infer object-ness if type is undefined but other props are there
-  | Omit<JSONSchema.String, "type"> & { type: "json" }
+  | (Omit<JSONSchema.String, "type"> & { type: "json" })
   | CfMultiTypeProperty
   // Then we have this mess of array typed properties
-  | Extend<JSONSchema.Interface, {
-    properties?: Record<string, CfProperty>;
-    type: ["string", CfPropertyType] | [
-      CfPropertyType,
-      "string",
-    ];
-  }>;
+  | Extend<
+      JSONSchema.Interface,
+      {
+        properties?: Record<string, CfProperty>;
+        type: ["string", CfPropertyType] | [CfPropertyType, "string"];
+      }
+    >;
 
 export type CfBooleanProperty = JSONSchema.Boolean;
 
@@ -53,34 +53,41 @@ export type CfIntegerProperty = JSONSchema.Integer & {
   format?: string;
 };
 
-export type CfArrayProperty = Extend<JSONSchema.Array, {
-  // For properties of type array, defines the data structure of each array item.
-  // Contains a single schema. A list of schemas is not allowed.
-  items: CfProperty;
-  // For properties of type array, set to true to specify that the order in which array items are specified must be honored, and that changing the order of the array will indicate a change in the property.
-  // The default is true.
-  insertionOrder?: boolean;
-}>;
+export type CfArrayProperty = Extend<
+  JSONSchema.Array,
+  {
+    // For properties of type array, defines the data structure of each array item.
+    // Contains a single schema. A list of schemas is not allowed.
+    items: CfProperty;
+    // For properties of type array, set to true to specify that the order in which array items are specified must be honored, and that changing the order of the array will indicate a change in the property.
+    // The default is true.
+    insertionOrder?: boolean;
+  }
+>;
 
-export type CfObjectProperty = Extend<JSONSchema.Object, {
-  properties?: Record<string, CfProperty>;
-  // e.g. patternProperties: { "^[a-z]+": { type: "string" } }
-  patternProperties?: Record<string, CfProperty>;
-  // Any properties that are required if this property is specified.
-  dependencies?: Record<string, string[]>;
-  oneOf?: CfObjectProperty[];
-  anyOf?: CfObjectProperty[];
-  allOf?: CfObjectProperty[];
-}>;
+export type CfObjectProperty = Extend<
+  JSONSchema.Object,
+  {
+    properties?: Record<string, CfProperty>;
+    // e.g. patternProperties: { "^[a-z]+": { type: "string" } }
+    patternProperties?: Record<string, CfProperty>;
+    // Any properties that are required if this property is specified.
+    dependencies?: Record<string, string[]>;
+    oneOf?: CfObjectProperty[];
+    anyOf?: CfObjectProperty[];
+    allOf?: CfObjectProperty[];
+  }
+>;
 
-type CfMultiTypeProperty =
-  & Pick<JSONSchema.Interface, "$ref" | "$comment" | "title" | "description">
-  & {
-    type?: undefined;
-    oneOf?: CfProperty[];
-    allOf?: CfProperty[];
-    anyOf?: CfProperty[];
-  };
+type CfMultiTypeProperty = Pick<
+  JSONSchema.Interface,
+  "$ref" | "$comment" | "title" | "description"
+> & {
+  type?: undefined;
+  oneOf?: CfProperty[];
+  allOf?: CfProperty[];
+  anyOf?: CfProperty[];
+};
 
 export type CfHandlerKind = "create" | "read" | "update" | "delete" | "list";
 export type CfHandler = {
@@ -246,9 +253,7 @@ export interface ProviderConfig {
    * @param options - Pipeline options including paths and filters
    * @returns Promise of array of expanded package specs
    */
-  loadSchemas: (
-    options: PipelineOptions,
-  ) => Promise<ExpandedPkgSpec[]>;
+  loadSchemas: (options: PipelineOptions) => Promise<ExpandedPkgSpec[]>;
 
   /**
    * Function to fetch/update the provider's schema from its source.
@@ -317,9 +322,7 @@ export interface ProviderConfig {
    * @param schema - The normalized SuperSchema
    * @returns Classification of properties by mutability
    */
-  classifyProperties: (
-    schema: SuperSchema,
-  ) => OnlyProperties;
+  classifyProperties: (schema: SuperSchema) => OnlyProperties;
 
   /**
    * Required provider-specific asset and property overrides
@@ -330,7 +333,7 @@ export interface ProviderConfig {
       string,
       Record<string, PropOverrideFn | PropOverrideFn[]>
     >;
-    schemaOverrides: Map<string, SchemaOverrideFn>;
+    schemaOverrides: Map<string, SchemaOverrideFn | SchemaOverrideFn[]>;
   };
 }
 
