@@ -15,6 +15,15 @@ import {
   discoverSwaggerFiles,
   processSwaggerFiles,
 } from "./fetchSchema.ts";
+import {
+  ACTION_FUNC_SPECS,
+  CODE_GENERATION_FUNC_SPECS,
+  MANAGEMENT_FUNCS,
+  QUALIFICATION_FUNC_SPECS,
+} from "./funcs.ts";
+import { normalizeAzureProperty, parseAzureSchema } from "./spec.ts";
+import { generateAzureSpecs } from "./pipeline.ts";
+import { normalizeOnlyProperties } from "../generic/index.ts";
 
 async function azureFetchSchema() {
   let repoPath: string | null = null;
@@ -26,9 +35,8 @@ async function azureFetchSchema() {
     console.log(`Discovered ${swaggerFiles.length} swagger files`);
 
     const swaggers = await processSwaggerFiles(swaggerFiles);
-    const serviceSpecs = await consolidateSpecsByService(swaggers);
+    const serviceSpecs = consolidateSpecsByService(swaggers);
 
-    // Write each service to its own file
     const schemasDir = "./src/provider-schemas/azure";
     await Deno.mkdir(schemasDir, { recursive: true });
 
@@ -47,53 +55,98 @@ async function azureFetchSchema() {
   }
 }
 
+function createDocLink(
+  { typeName }: SuperSchema,
+  _defName: string | undefined,
+  _propName?: string,
+): string {
+  const parts = typeName.split("::");
+  const service = parts[1]?.toLowerCase();
+  const resourceType = parts[2]?.toLowerCase();
+
+  if (service && resourceType) {
+    return `https://learn.microsoft.com/en-us/rest/api/${service}/${resourceType}`;
+  }
+
+  return `https://learn.microsoft.com/en-us/azure`;
+}
+
+function azureCategory(schema: SuperSchema): string {
+  const parts = schema.typeName.split("::");
+  if (parts.length >= 2) {
+    return `${parts[0]}::${parts[1]}`;
+  }
+  return schema.typeName;
+}
+
+function azureIsChildRequired(
+  schema: SuperSchema,
+  _parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
+  childName: string,
+): boolean {
+  if (!("requiredProperties" in schema)) {
+    throw new Error("Expected Azure schema with requiredProperties Set");
+  }
+  return schema.requiredProperties.has(childName);
+}
+
+function azureNormalizeProperty(
+  prop: CfProperty,
+  _context: PropertyNormalizationContext,
+): CfProperty {
+  let propToNormalize = prop;
+  if ("properties" in prop && prop.properties && !prop.type) {
+    propToNormalize = { ...prop, type: "object" } as CfProperty;
+  }
+
+  return normalizeAzureProperty(propToNormalize as JsonSchema) as CfProperty;
+}
+
+function azureClassifyProperties(schema: SuperSchema): OnlyProperties {
+  const inferredOnlyProperties = (schema as any)._inferredOnlyProperties as
+    | OnlyProperties
+    | undefined;
+
+  if (!inferredOnlyProperties) {
+    throw new Error("Expected Azure schema to have _inferredOnlyProperties");
+  }
+
+  return {
+    createOnly: normalizeOnlyProperties(inferredOnlyProperties.createOnly),
+    readOnly: normalizeOnlyProperties(inferredOnlyProperties.readOnly),
+    writeOnly: normalizeOnlyProperties(inferredOnlyProperties.writeOnly),
+    primaryIdentifier: inferredOnlyProperties.primaryIdentifier,
+  };
+}
+
+async function azureLoadSchemas(
+  options: PipelineOptions,
+) {
+  return await generateAzureSpecs(options);
+}
+
 export const azureProviderConfig: ProviderConfig = {
   name: "azure",
   fetchSchema: azureFetchSchema,
-
-  // Stub implementations - will be replaced with full implementation later
   functions: {
-    createDocLink: () => "https://learn.microsoft.com/en-us/azure",
-    getCategory: (schema) => schema.typeName,
+    createDocLink,
+    getCategory: azureCategory,
   },
-
   funcSpecs: {
-    actions: {},
-    codeGeneration: {},
-    management: {},
-    qualification: {},
+    actions: ACTION_FUNC_SPECS,
+    codeGeneration: CODE_GENERATION_FUNC_SPECS,
+    management: MANAGEMENT_FUNCS,
+    qualification: QUALIFICATION_FUNC_SPECS,
   },
-
-  loadSchemas: async (_options: PipelineOptions) => {
-    console.warn(
-      "Azure spec generation not yet implemented - skipping Azure provider",
-    );
-    return [];
-  },
-
-  normalizeProperty: (
-    prop: CfProperty,
-    _context: PropertyNormalizationContext,
-  ) => prop,
-
-  isChildRequired: (
-    _schema: SuperSchema,
-    _parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
-    _childName: string,
-  ) => false,
-
-  classifyProperties: (_schema: SuperSchema): OnlyProperties => ({
-    createOnly: [],
-    readOnly: [],
-    writeOnly: [],
-    primaryIdentifier: ["id"],
-  }),
-
+  loadSchemas: azureLoadSchemas,
+  parseRawSchema: parseAzureSchema,
+  classifyProperties: azureClassifyProperties,
+  normalizeProperty: azureNormalizeProperty,
+  isChildRequired: azureIsChildRequired,
   overrides: {
     propOverrides: {},
     schemaOverrides: new Map(),
   },
-
   metadata: {
     color: "#0078D4",
     displayName: "Microsoft Azure",
@@ -101,4 +154,4 @@ export const azureProviderConfig: ProviderConfig = {
   },
 };
 
-PROVIDER_REGISTRY[azureProviderConfig.name] = azureProviderConfig;
+// PROVIDER_REGISTRY[azureProviderConfig.name] = azureProviderConfig;
