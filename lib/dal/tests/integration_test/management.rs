@@ -6,6 +6,7 @@ use dal::{
     ComponentId,
     DalContext,
     Func,
+    SchemaVariant,
     SchemaVariantId,
     Ulid,
     action::Action,
@@ -43,7 +44,10 @@ use dal_test::{
             find_management_prototype,
         },
         create_component_for_default_schema_name_in_default_view,
-        schema::variant,
+        schema::{
+            self,
+            variant,
+        },
     },
     test,
 };
@@ -110,7 +114,7 @@ async fn set_resource(ctx: &mut DalContext) -> Result<()> {
                     ],
                     resourceProps: [
                         {
-                            name: "name", 
+                            name: "name",
                             kind: "string"
                         },
                         {
@@ -1521,7 +1525,7 @@ async fn management_func_autosubscribe(ctx: &mut DalContext) -> Result<()> {
             function main() {
                 return {
                     props: [
-                        { name: "region", kind: "string", 
+                        { name: "region", kind: "string",
                             suggestAsSourceFor: [
                                     { schema: "fake::vpc", prop: "/domain/region" },
                                 ]},
@@ -1538,7 +1542,7 @@ async fn management_func_autosubscribe(ctx: &mut DalContext) -> Result<()> {
             function main() {
                 return {
                     props: [
-                        { name: "region", kind: "string", 
+                        { name: "region", kind: "string",
                             suggestAsSourceFor: [
                                     { schema: "fake::vpc", prop: "/domain/region" },
                                 ]},
@@ -1562,10 +1566,10 @@ async fn management_func_autosubscribe(ctx: &mut DalContext) -> Result<()> {
                             },
                     ],
                     resourceProps: [
-                         { 
+                         {
                                 name: "vpcId",
                                 kind: "string",
-                        
+
                             },
                     ]
                 };
@@ -1589,14 +1593,14 @@ async fn management_func_autosubscribe(ctx: &mut DalContext) -> Result<()> {
                                     { schema: "fake::region", prop: "/domain/region" }
                                 ]
                             },
-                            { 
+                            {
                                 name: "vpcId",
                                 kind: "string",
                                 suggestSources: [
                                     { schema: "fake::vpc", prop: "/resource_value/vpcId" }
                                 ]
                             }
-                     
+
                     ],
                 };
             }
@@ -1623,7 +1627,7 @@ async fn management_func_autosubscribe(ctx: &mut DalContext) -> Result<()> {
                                 }
                             },
                             vpc2: {
-                                kind: "fake::vpc", 
+                                kind: "fake::vpc",
                                 attributes: {
                                     "/domain/region": "us-west-2",
                                     "/resource_value/vpcId": "vpc-67890"
@@ -1894,4 +1898,66 @@ async fn create_subscription_tracker_asset(ctx: &DalContext) -> Result<SchemaVar
     )
     .await?;
     Ok(subscription_tracker)
+}
+
+#[test]
+async fn schema_level_management_prototypes(ctx: &mut DalContext) -> Result<()> {
+    let test_variant_id = variant::create(
+        ctx,
+        "schema level mgmt test",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "cord", kind: "string" },
+                    ],
+                };
+            }
+        "#,
+    )
+    .await?;
+    let schema_id = SchemaVariant::schema_id(ctx, test_variant_id).await?;
+
+    schema::create_overlay_management_func(
+        ctx,
+        schema_id,
+        "overlay",
+        r##"
+            async function main({ thisComponent, components }: Input): Promise<Output> {
+                return {
+                    status: "ok",
+                    ops: {
+                        update: {
+                            self: {
+                                attributes: {
+                                    "/domain/cord": "threefold cord",
+                                }
+                            },
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
+
+    let variant_protos = ManagementPrototype::list_for_variant_id(ctx, test_variant_id).await?;
+    assert!(variant_protos.is_empty());
+
+    let mut overlay_protos = ManagementPrototype::list_for_schema_id(ctx, schema_id).await?;
+    let schema_and_variant_protos =
+        ManagementPrototype::list_for_schema_and_variant_id(ctx, test_variant_id).await?;
+
+    assert_eq!(overlay_protos, schema_and_variant_protos);
+    assert_eq!(1, overlay_protos.len());
+
+    let proto = overlay_protos.pop().expect("we know it's there!");
+    assert_eq!(proto.name, "overlay");
+
+    let view_id = View::get_id_for_default(ctx).await?;
+    let component = Component::new(ctx, "test for overlay", test_variant_id, view_id).await?;
+
+    let (_exec, _ret) = exec_mgmt_func(ctx, component.id(), "overlay", Some(view_id)).await?;
+
+    Ok(())
 }

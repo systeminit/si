@@ -57,11 +57,13 @@ pub async fn all_latest_for_component(
         ComponentId,
     )>,
 ) -> ManagementApiResult<Json<Vec<FuncRunView>>> {
-    let sv_id = Component::schema_variant_id(ctx, component_id).await?;
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
     let mut runs = vec![];
 
-    for mgmt_prototype in ManagementPrototype::list_for_variant_id(ctx, sv_id).await? {
+    for mgmt_prototype in
+        ManagementPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id).await?
+    {
         let func_id = ManagementPrototype::func_id(ctx, mgmt_prototype.id).await?;
 
         let Some(run) = ctx

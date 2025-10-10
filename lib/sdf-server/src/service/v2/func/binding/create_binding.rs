@@ -388,7 +388,8 @@ pub async fn create_binding(
                             ManagementBinding::create_management_binding(
                                 &ctx,
                                 func_id,
-                                schema_variant_id,
+                                None,
+                                Some(schema_variant_id),
                             )
                             .await?;
                             let schema = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;

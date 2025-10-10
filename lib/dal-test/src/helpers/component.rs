@@ -88,11 +88,12 @@ pub async fn find_management_prototype(
 ) -> Result<ManagementPrototype> {
     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
-    let management_prototype = ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
-        .await?
-        .into_iter()
-        .find(|proto| proto.name() == prototype_name)
-        .expect("could not find prototype");
+    let management_prototype =
+        ManagementPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id)
+            .await?
+            .into_iter()
+            .find(|proto| proto.name() == prototype_name)
+            .expect("could not find prototype");
 
     Ok(management_prototype)
 }

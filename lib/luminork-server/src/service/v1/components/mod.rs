@@ -286,7 +286,9 @@ pub async fn get_component_functions(
     }
 
     let mut management_functions = Vec::new();
-    for prototype in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await? {
+    for prototype in
+        ManagementPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id).await?
+    {
         let func_id = ManagementPrototype::func_id(ctx, prototype.id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
 

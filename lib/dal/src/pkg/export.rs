@@ -576,6 +576,7 @@ impl PkgExporter {
         schema_variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<ManagementFuncSpec>> {
         let mut specs = vec![];
+        // Only export variant level mgmt protos. No overlays
         let management_prototypes =
             ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await?;
 

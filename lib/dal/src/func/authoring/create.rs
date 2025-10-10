@@ -29,6 +29,7 @@ use crate::{
         management::ManagementBinding,
     },
     generate_name,
+    management::prototype::ManagementPrototypeParent,
     schema::variant::leaves::{
         LeafInputLocation,
         LeafKind,
@@ -54,7 +55,7 @@ static DEFAULT_VALIDATION_CODE: &str = include_str!("data/defaults/validation.ts
 pub(crate) async fn create_management_func(
     ctx: &DalContext,
     name: Option<String>,
-    schema_variant_id: SchemaVariantId,
+    parent: ManagementPrototypeParent,
 ) -> FuncAuthoringResult<Func> {
     let func = create_func_stub(
         ctx,
@@ -67,7 +68,21 @@ pub(crate) async fn create_management_func(
     )
     .await?;
 
-    ManagementBinding::create_management_binding(ctx, func.id, schema_variant_id).await?;
+    match parent {
+        ManagementPrototypeParent::Schemas(schema_ids) => {
+            ManagementBinding::create_management_binding(ctx, func.id, Some(schema_ids), None)
+                .await?;
+        }
+        ManagementPrototypeParent::SchemaVariant(schema_variant_id) => {
+            ManagementBinding::create_management_binding(
+                ctx,
+                func.id,
+                None,
+                Some(schema_variant_id),
+            )
+            .await?;
+        }
+    }
 
     Ok(func)
 }
