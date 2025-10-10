@@ -21,7 +21,7 @@ export const HETZNER_PROP_OVERRIDES: Record<
   },
 };
 
-// Hetzner-specific schema overrides
+// Hetzner-specific schema overrides!!!
 export const HETZNER_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
   //
   // Add Hetzner::Cloud::Locations.name so it can be selected and filled in
