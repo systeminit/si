@@ -889,6 +889,14 @@
       "MONTHLY"
     ]
   },
+  "Displays whether this delivery destination is CloudWatch Logs, Amazon S3, Kinesis Data Firehose, or XRay.": {
+    "enum": [
+      "CloudWatch Logs",
+      "Amazon S3",
+      "Kinesis Data Firehose",
+      "XRay"
+    ]
+  },
   "The type of the analyzer, must be one of ACCOUNT, ORGANIZATION, ACCOUNT_UNUSED_ACCESS or ORGANIZATION_UNUSED_ACCESS": {
     "enum": [
       "ACCOUNT",
@@ -4354,6 +4362,9 @@
   "ARN for the EventBridge bus.": {
     "enum": null
   },
+  "ARN format": {
+    "enum": null
+  },
   "ARN identifier of the Managed Notification.\nExample: arn:aws:notifications::381491923782:managed-notification-configuration/category/AWS-Health/sub-category/Billing": {
     "enum": null
   },
@@ -5269,6 +5280,9 @@
   "Description of the Guardrail version": {
     "enum": null
   },
+  "Description of the Memory resource": {
+    "enum": null
+  },
   "Description of the Prompt Router.": {
     "enum": null
   },
@@ -5387,6 +5401,9 @@
     "enum": null
   },
   "Duration (in seconds) to delay live content before presentation.": {
+    "enum": null
+  },
+  "Duration in days until memory events expire": {
     "enum": null
   },
   "EMR release label.": {
@@ -6584,6 +6601,9 @@
     "enum": null
   },
   "Name of the Keyspace which contains the User-Defined Type.": {
+    "enum": null
+  },
+  "Name of the Memory resource": {
     "enum": null
   },
   "Name of the OpenSearch Ingestion Service pipeline to create. Pipeline names are unique across the pipelines owned by an account within an AWS Region.": {
