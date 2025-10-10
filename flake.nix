@@ -390,7 +390,20 @@
         };
 
         devShells.default = mkShell {
-          shellHook = with pkgs; if pkgs.stdenv.isLinux then ''
+          shellHook = with pkgs; ''
+            mkdir -p .buckconfig.d
+            if [ -n "$SI_RBE_TOKEN" ]; then
+              cat > .buckconfig.d/10-nix.buckconfig <<EOF
+[rbe]
+enabled = true
+EOF
+            else
+              cat > .buckconfig.d/10-nix.buckconfig <<EOF
+[rbe]
+enabled = false
+EOF
+            fi
+          '' + (if pkgs.stdenv.isLinux then ''
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
             export BINDGEN_EXTRA_CLANG_ARGS="\
               $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
@@ -400,7 +413,7 @@
               $NIX_CFLAGS_COMPILE"
             export OUT=${placeholder "out"}
             echo $OUT
-          '' else "";
+          '' else "");
           packages =
             [
               alejandra
