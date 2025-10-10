@@ -58,6 +58,7 @@ export function addDefaultProps(
         "The name of the resource group where this resource will be created";
       resourceGroupProp.data.docLink =
         "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal";
+      resourceGroupProp.metadata.createOnly = true;
 
       addPropSuggestSource(resourceGroupProp, {
         schema: "Azure Resource Group",
@@ -80,6 +81,7 @@ export function addDefaultProps(
         "The Azure subscription ID where this resource will be created";
       subscriptionIdProp.data.docLink =
         "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/manage-subscription";
+      subscriptionIdProp.metadata.createOnly = true;
 
       addPropSuggestSource(subscriptionIdProp, {
         schema: "Azure Subscription",

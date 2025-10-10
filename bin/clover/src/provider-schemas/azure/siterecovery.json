@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Azure siterecovery",
-    "version": "2025-02-01",
+    "version": "2025-08-01",
     "description": "Azure siterecovery service specifications"
   },
   "host": "management.azure.com",
@@ -19814,6 +19814,440 @@
               "properties": {
                 "properties": {
                   "description": "The properties of the update mobility service request.",
+                  "type": "object",
+                  "properties": {
+                    "runAsAccountId": {
+                      "description": "The CS run as account Id.",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "description": "Replication protected item.",
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Resource Id",
+                  "type": "string",
+                  "readOnly": true
+                },
+                "name": {
+                  "description": "Resource Name",
+                  "type": "string",
+                  "readOnly": true
+                },
+                "type": {
+                  "description": "Resource Type",
+                  "type": "string",
+                  "readOnly": true
+                },
+                "location": {
+                  "description": "Resource Location",
+                  "type": "string"
+                },
+                "properties": {
+                  "description": "The custom data.",
+                  "type": "object",
+                  "properties": {
+                    "friendlyName": {
+                      "description": "The name.",
+                      "type": "string"
+                    },
+                    "protectedItemType": {
+                      "description": "The type of protected item type.",
+                      "type": "string"
+                    },
+                    "protectableItemId": {
+                      "description": "The protected item ARM Id.",
+                      "type": "string"
+                    },
+                    "recoveryServicesProviderId": {
+                      "description": "The recovery provider ARM Id.",
+                      "type": "string"
+                    },
+                    "primaryFabricFriendlyName": {
+                      "description": "The friendly name of the primary fabric.",
+                      "type": "string"
+                    },
+                    "primaryFabricProvider": {
+                      "description": "The fabric provider of the primary fabric.",
+                      "type": "string"
+                    },
+                    "recoveryFabricFriendlyName": {
+                      "description": "The friendly name of recovery fabric.",
+                      "type": "string"
+                    },
+                    "recoveryFabricId": {
+                      "description": "The Arm Id of recovery fabric.",
+                      "type": "string"
+                    },
+                    "primaryProtectionContainerFriendlyName": {
+                      "description": "The name of primary protection container friendly name.",
+                      "type": "string"
+                    },
+                    "recoveryProtectionContainerFriendlyName": {
+                      "description": "The name of recovery container friendly name.",
+                      "type": "string"
+                    },
+                    "protectionState": {
+                      "description": "The protection status.",
+                      "type": "string"
+                    },
+                    "protectionStateDescription": {
+                      "description": "The protection state description.",
+                      "type": "string"
+                    },
+                    "activeLocation": {
+                      "description": "The Current active location of the PE.",
+                      "type": "string"
+                    },
+                    "testFailoverState": {
+                      "description": "The Test failover state.",
+                      "type": "string"
+                    },
+                    "testFailoverStateDescription": {
+                      "description": "The Test failover state description.",
+                      "type": "string"
+                    },
+                    "switchProviderState": {
+                      "description": "The switch provider state.",
+                      "type": "string"
+                    },
+                    "switchProviderStateDescription": {
+                      "description": "The switch provider state description.",
+                      "type": "string"
+                    },
+                    "allowedOperations": {
+                      "description": "The allowed operations on the Replication protected item.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "replicationHealth": {
+                      "description": "The consolidated protection health for the VM taking any issues with SRS as well as all the replication units associated with the VM's replication group into account. This is a string representation of the ProtectionHealth enumeration.",
+                      "type": "string"
+                    },
+                    "failoverHealth": {
+                      "description": "The consolidated failover health for the VM.",
+                      "type": "string"
+                    },
+                    "healthErrors": {
+                      "description": "List of health errors.",
+                      "type": "array",
+                      "items": {
+                        "description": "Health Error.",
+                        "type": "object",
+                        "properties": {
+                          "innerHealthErrors": {
+                            "description": "The inner health errors. HealthError having a list of HealthError as child errors is problematic. InnerHealthError is used because this will prevent an infinite loop of structures when Hydra tries to auto-generate the contract. We are exposing the related health errors as inner health errors and all API consumers can utilize this in the same fashion as Exception -&gt; InnerException.",
+                            "type": "array",
+                            "items": {
+                              "description": "Implements InnerHealthError class. HealthError object has a list of InnerHealthErrors as child errors. InnerHealthError is used because this will prevent an infinite loop of structures when Hydra tries to auto-generate the contract. We are exposing the related health errors as inner health errors and all API consumers can utilize this in the same fashion as Exception -&gt; InnerException.",
+                              "type": "object",
+                              "properties": {
+                                "errorSource": {
+                                  "description": "Source of error.",
+                                  "type": "string"
+                                },
+                                "errorType": {
+                                  "description": "Type of error.",
+                                  "type": "string"
+                                },
+                                "errorLevel": {
+                                  "description": "Level of error.",
+                                  "type": "string"
+                                },
+                                "errorCategory": {
+                                  "description": "Category of error.",
+                                  "type": "string"
+                                },
+                                "errorCode": {
+                                  "description": "Error code.",
+                                  "type": "string"
+                                },
+                                "summaryMessage": {
+                                  "description": "Summary message of the entity.",
+                                  "type": "string"
+                                },
+                                "errorMessage": {
+                                  "description": "Error message.",
+                                  "type": "string"
+                                },
+                                "possibleCauses": {
+                                  "description": "Possible causes of error.",
+                                  "type": "string"
+                                },
+                                "recommendedAction": {
+                                  "description": "Recommended action to resolve error.",
+                                  "type": "string"
+                                },
+                                "creationTimeUtc": {
+                                  "format": "date-time",
+                                  "description": "Error creation time (UTC).",
+                                  "type": "string"
+                                },
+                                "recoveryProviderErrorMessage": {
+                                  "description": "DRA error message.",
+                                  "type": "string"
+                                },
+                                "entityId": {
+                                  "description": "ID of the entity.",
+                                  "type": "string"
+                                },
+                                "errorId": {
+                                  "description": "The health error unique id.",
+                                  "type": "string"
+                                },
+                                "customerResolvability": {
+                                  "description": "Value indicating whether the health error is customer resolvable.",
+                                  "enum": [
+                                    "Allowed",
+                                    "NotAllowed"
+                                  ],
+                                  "type": "string",
+                                  "x-ms-enum": {
+                                    "name": "HealthErrorCustomerResolvability",
+                                    "modelAsString": true
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "errorSource": {
+                            "description": "Source of error.",
+                            "type": "string"
+                          },
+                          "errorType": {
+                            "description": "Type of error.",
+                            "type": "string"
+                          },
+                          "errorLevel": {
+                            "description": "Level of error.",
+                            "type": "string"
+                          },
+                          "errorCategory": {
+                            "description": "Category of error.",
+                            "type": "string"
+                          },
+                          "errorCode": {
+                            "description": "Error code.",
+                            "type": "string"
+                          },
+                          "summaryMessage": {
+                            "description": "Summary message of the entity.",
+                            "type": "string"
+                          },
+                          "errorMessage": {
+                            "description": "Error message.",
+                            "type": "string"
+                          },
+                          "possibleCauses": {
+                            "description": "Possible causes of error.",
+                            "type": "string"
+                          },
+                          "recommendedAction": {
+                            "description": "Recommended action to resolve error.",
+                            "type": "string"
+                          },
+                          "creationTimeUtc": {
+                            "format": "date-time",
+                            "description": "Error creation time (UTC).",
+                            "type": "string"
+                          },
+                          "recoveryProviderErrorMessage": {
+                            "description": "DRA error message.",
+                            "type": "string"
+                          },
+                          "entityId": {
+                            "description": "ID of the entity.",
+                            "type": "string"
+                          },
+                          "errorId": {
+                            "description": "The health error unique id.",
+                            "type": "string"
+                          },
+                          "customerResolvability": {
+                            "description": "Value indicating whether the health error is customer resolvable.",
+                            "enum": [
+                              "Allowed",
+                              "NotAllowed"
+                            ],
+                            "type": "string",
+                            "x-ms-enum": {
+                              "name": "HealthErrorCustomerResolvability",
+                              "modelAsString": true
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "policyId": {
+                      "description": "The ID of Policy governing this PE.",
+                      "type": "string"
+                    },
+                    "policyFriendlyName": {
+                      "description": "The name of Policy governing this PE.",
+                      "type": "string"
+                    },
+                    "lastSuccessfulFailoverTime": {
+                      "format": "date-time",
+                      "description": "The Last successful failover time.",
+                      "type": "string"
+                    },
+                    "lastSuccessfulTestFailoverTime": {
+                      "format": "date-time",
+                      "description": "The Last successful test failover time.",
+                      "type": "string"
+                    },
+                    "currentScenario": {
+                      "description": "The current scenario.",
+                      "type": "object",
+                      "properties": {
+                        "scenarioName": {
+                          "description": "Scenario name.",
+                          "type": "string"
+                        },
+                        "jobId": {
+                          "description": "ARM Id of the job being executed.",
+                          "type": "string"
+                        },
+                        "startTime": {
+                          "format": "date-time",
+                          "description": "Start time of the workflow.",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "failoverRecoveryPointId": {
+                      "description": "The recovery point ARM Id to which the Vm was failed over.",
+                      "type": "string"
+                    },
+                    "providerSpecificDetails": {
+                      "description": "The Replication provider custom settings.",
+                      "required": [
+                        "instanceType"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "instanceType": {
+                          "description": "Gets the Instance type.",
+                          "type": "string"
+                        }
+                      },
+                      "discriminator": "instanceType"
+                    },
+                    "recoveryContainerId": {
+                      "description": "The recovery container Id.",
+                      "type": "string"
+                    },
+                    "eventCorrelationId": {
+                      "description": "The correlation Id for events associated with this protected item.",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "headers": {
+              "Location": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.RecoveryServices/vaults/{resourceName}/replicationFabrics/{fabricName}/replicationProtectionContainers/{protectionContainerName}/replicationProtectedItems/{replicatedProtectedItemName}/reinstallMobilityService": {
+      "post": {
+        "tags": [
+          "ReplicationProtectedItems"
+        ],
+        "summary": "Reinstall the mobility service on a protected item.",
+        "description": "The operation to reinstall the installed mobility service software on a replication protected item to the latest available version.",
+        "operationId": "ReplicationProtectedItems_ReinstallMobilityService",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "description": "Client Api Version.",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of the resource group where the recovery services vault is present.",
+            "required": true,
+            "type": "string",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "resourceName",
+            "in": "path",
+            "description": "The name of the recovery services vault.",
+            "required": true,
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$"
+          },
+          {
+            "name": "subscriptionId",
+            "in": "path",
+            "description": "The subscription Id.",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "fabricName",
+            "in": "path",
+            "description": "The name of the fabric containing the protected item.",
+            "required": true,
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$"
+          },
+          {
+            "name": "protectionContainerName",
+            "in": "path",
+            "description": "The name of the container containing the protected item.",
+            "required": true,
+            "type": "string",
+            "pattern": ".*"
+          },
+          {
+            "name": "replicatedProtectedItemName",
+            "in": "path",
+            "description": "The name of the protected item on which the agent is to be updated.",
+            "required": true,
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$"
+          },
+          {
+            "name": "updateMobilityServiceRequest",
+            "in": "body",
+            "description": "Request to update the mobility service on the protected item.",
+            "required": true,
+            "schema": {
+              "description": "Request to Reinstall the mobility service on a protected item.",
+              "type": "object",
+              "properties": {
+                "properties": {
+                  "description": "The properties of the reinstall mobility service request",
                   "type": "object",
                   "properties": {
                     "runAsAccountId": {
@@ -45018,6 +45452,42 @@
     }
   },
   "definitions": {
+    "A2AAgentReinstallBlockingErrorDetails": {
+      "description": "A2A source agent reinstall blocking error details.",
+      "type": "object",
+      "properties": {
+        "errorCode": {
+          "description": "error code.",
+          "type": "string"
+        },
+        "errorMessage": {
+          "description": "error message.",
+          "type": "string"
+        },
+        "possibleCauses": {
+          "description": "possible causes.",
+          "type": "string"
+        },
+        "recommendedAction": {
+          "description": "recommended action.",
+          "type": "string"
+        },
+        "errorMessageParameters": {
+          "description": "error message parameters.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "errorTags": {
+          "description": "error tags.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "A2AAddDisksInput": {
       "description": "A2A add disk(s) input.",
       "type": "object",
@@ -46162,6 +46632,11 @@
         "recoveryCapacityReservationGroupId": {
           "description": "The recovery capacity reservation group Id.",
           "type": "string"
+        },
+        "platformFaultDomain": {
+          "format": "int32",
+          "description": "the platform fault domain.",
+          "type": "integer"
         },
         "autoProtectionOfDataDisk": {
           "description": "A value indicating whether the auto protection is enabled.",
@@ -47960,6 +48435,92 @@
             "name": "ChurnOptionSelected",
             "modelAsString": true
           }
+        },
+        "agentReinstallAttemptToVersion": {
+          "description": "The agent version to which last agent reinstall was attempted.",
+          "type": "string"
+        },
+        "osFamilyName": {
+          "description": "The OS family name.",
+          "type": "string"
+        },
+        "distroName": {
+          "description": "The distro name.",
+          "type": "string"
+        },
+        "distroNameForWhichAgentIsInstalled": {
+          "description": "The agent os name last agent reinstall was attempted.",
+          "type": "string"
+        },
+        "isAgentUpgradeable": {
+          "description": "A value indicating whether replication agent upgradeable.",
+          "type": "boolean"
+        },
+        "isAgentReinstallRequired": {
+          "description": "A value indicating whether replication agent reinstallation is required.",
+          "type": "boolean"
+        },
+        "reasonsBlockingReInstall": {
+          "description": "value for reason blocking reinstall.",
+          "type": "string"
+        },
+        "reasonsBlockingReinstallDetails": {
+          "description": "whether reinstall is possible or not.",
+          "type": "array",
+          "items": {
+            "description": "A2A source agent reinstall blocking error details.",
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "description": "error code.",
+                "type": "string"
+              },
+              "errorMessage": {
+                "description": "error message.",
+                "type": "string"
+              },
+              "possibleCauses": {
+                "description": "possible causes.",
+                "type": "string"
+              },
+              "recommendedAction": {
+                "description": "recommended action.",
+                "type": "string"
+              },
+              "errorMessageParameters": {
+                "description": "error message parameters.",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "errorTags": {
+                "description": "error tags.",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "isAgentUpgradeInProgress": {
+          "description": "A value indicating whether replication agent Upgrade is In-Progress.",
+          "type": "boolean"
+        },
+        "autoAgentUpgradeRetryCount": {
+          "format": "int64",
+          "description": "auto agent upgrade retry count.",
+          "type": "integer"
+        },
+        "isAgentUpgradeRetryThresholdExhausted": {
+          "description": "A value indicating whether replication agent Upgrade retry exhausted.",
+          "type": "boolean"
+        },
+        "platformFaultDomain": {
+          "format": "int32",
+          "description": "the platform fault domain.",
+          "type": "integer"
         }
       },
       "x-ms-discriminator-value": "A2A"
@@ -49219,6 +49780,11 @@
           "description": "The recovery capacity reservation group Id.",
           "type": "string"
         },
+        "platformFaultDomain": {
+          "format": "int32",
+          "description": "the platform fault domain.",
+          "type": "integer"
+        },
         "diskEncryptionInfo": {
           "description": "The recovery disk encryption information.",
           "type": "object",
@@ -49538,6 +50104,15 @@
         "recoveryCapacityReservationGroupId": {
           "description": "The recovery capacity reservation group Id.",
           "type": "string"
+        },
+        "recoveryAvailabilityZone": {
+          "description": "The recovery availability zone.",
+          "type": "string"
+        },
+        "platformFaultDomain": {
+          "format": "int32",
+          "description": "The platform fault domain.",
+          "type": "integer"
         }
       },
       "x-ms-discriminator-value": "A2A"
@@ -56735,6 +57310,10 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "HyperVReplicaAzure"
@@ -56902,6 +57481,10 @@
         },
         "osUpgradeVersion": {
           "description": "A value indicating the inplace OS Upgrade version.",
+          "type": "string"
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
           "type": "string"
         }
       },
@@ -57566,6 +58149,10 @@
               }
             }
           }
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "HyperVReplicaAzure"
@@ -57828,6 +58415,10 @@
               }
             }
           }
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "HyperVReplicaAzure"
@@ -61632,6 +62223,42 @@
         }
       },
       "x-ms-discriminator-value": "InMageRcm"
+    },
+    "InMageRcmAgentReinstallBlockingErrorDetails": {
+      "description": "InMageRcm source agent reinstall blocking error details.",
+      "type": "object",
+      "properties": {
+        "errorCode": {
+          "description": "error code.",
+          "type": "string"
+        },
+        "errorMessage": {
+          "description": "error message.",
+          "type": "string"
+        },
+        "possibleCauses": {
+          "description": "possible causes.",
+          "type": "string"
+        },
+        "recommendedAction": {
+          "description": "recommended action.",
+          "type": "string"
+        },
+        "errorMessageParameters": {
+          "description": "error message parameters.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "errorTags": {
+          "description": "error tags.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
     },
     "InMageRcmAgentUpgradeBlockingErrorDetails": {
       "description": "InMageRcm source agent upgrade blocking error details.",
@@ -65819,6 +66446,10 @@
               }
             }
           }
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "InMageRcm"
@@ -68035,6 +68666,7 @@
               "MissingUpgradePath",
               "InvalidAgentVersion",
               "InvalidDriverVersion",
+              "ReInstallRequired",
               "Unknown"
             ],
             "type": "string",
@@ -68755,6 +69387,7 @@
                   "MissingUpgradePath",
                   "InvalidAgentVersion",
                   "InvalidDriverVersion",
+                  "ReInstallRequired",
                   "Unknown"
                 ],
                 "type": "string",
@@ -69016,6 +69649,42 @@
         }
       }
     },
+    "InMageRcmLastAgentReinstallErrorDetails": {
+      "description": "InMageRcm source agent reinstall blocking error details.",
+      "type": "object",
+      "properties": {
+        "errorCode": {
+          "description": "error code.",
+          "type": "string"
+        },
+        "errorMessage": {
+          "description": "error message.",
+          "type": "string"
+        },
+        "possibleCauses": {
+          "description": "possible causes.",
+          "type": "string"
+        },
+        "recommendedAction": {
+          "description": "recommended action.",
+          "type": "string"
+        },
+        "errorMessageParameters": {
+          "description": "error message parameters.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "errorTags": {
+          "description": "error tags.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "InMageRcmLastAgentUpgradeErrorDetails": {
       "description": "InMageRcm last source agent upgrade error details.",
       "type": "object",
@@ -69123,6 +69792,7 @@
               "MissingUpgradePath",
               "InvalidAgentVersion",
               "InvalidDriverVersion",
+              "ReInstallRequired",
               "Unknown"
             ],
             "type": "string",
@@ -69136,6 +69806,119 @@
         "isUpgradeable": {
           "description": "A value indicating whether agent is upgradeable or not.",
           "type": "string",
+          "readOnly": true
+        },
+        "agentReinstallState": {
+          "description": "The agent auto reinstall state.",
+          "type": "array",
+          "items": {
+            "enum": [
+              "UserTriggered",
+              "AutoTriggered"
+            ],
+            "type": "string",
+            "x-ms-enum": {
+              "name": "MobilityAgentReinstallType",
+              "modelAsString": true
+            }
+          },
+          "readOnly": true
+        },
+        "lastAgentReinstallType": {
+          "description": "The last agent reinstall type.",
+          "type": "string",
+          "readOnly": true
+        },
+        "agentReinstallJobId": {
+          "description": "The agent reinstall job Id.",
+          "type": "string",
+          "readOnly": true
+        },
+        "agentReinstallAttemptToVersion": {
+          "description": "The last agent reinstall type.",
+          "type": "string",
+          "readOnly": true
+        },
+        "osFamilyName": {
+          "description": "The OS family name.",
+          "type": "string"
+        },
+        "distroName": {
+          "description": "The distro name.",
+          "type": "string"
+        },
+        "distroNameForWhichAgentIsInstalled": {
+          "description": "Distro name for which agent is installed.",
+          "type": "string"
+        },
+        "isAgentUpgradeable": {
+          "description": "A value indicating whether replication agent upgradeable.",
+          "type": "boolean"
+        },
+        "isAgentReinstallRequired": {
+          "description": "A value indicating whether replication agent reinstallation is required.",
+          "type": "boolean"
+        },
+        "isLastReinstallSuccessful": {
+          "description": "A value indicating whether replication agent reinstallation is required.",
+          "type": "boolean"
+        },
+        "reasonsBlockingReinstall": {
+          "description": "whether reinstall is possible or not.",
+          "type": "array",
+          "items": {
+            "enum": [
+              "DistroNotSupported",
+              "AgentNoHeartbeat",
+              "Unknown"
+            ],
+            "type": "string",
+            "x-ms-enum": {
+              "name": "AgentReinstallBlockedReason",
+              "modelAsString": true
+            }
+          },
+          "readOnly": true
+        },
+        "reasonsBlockingReinstallDetails": {
+          "description": "whether reinstall is possible or not.",
+          "type": "array",
+          "items": {
+            "description": "InMageRcm source agent reinstall blocking error details.",
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "description": "error code.",
+                "type": "string"
+              },
+              "errorMessage": {
+                "description": "error message.",
+                "type": "string"
+              },
+              "possibleCauses": {
+                "description": "possible causes.",
+                "type": "string"
+              },
+              "recommendedAction": {
+                "description": "recommended action.",
+                "type": "string"
+              },
+              "errorMessageParameters": {
+                "description": "error message parameters.",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "errorTags": {
+                "description": "error tags.",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "readOnly": true
         }
       }
@@ -70329,6 +71112,7 @@
                   "MissingUpgradePath",
                   "InvalidAgentVersion",
                   "InvalidDriverVersion",
+                  "ReInstallRequired",
                   "Unknown"
                 ],
                 "type": "string",
@@ -70342,6 +71126,119 @@
             "isUpgradeable": {
               "description": "A value indicating whether agent is upgradeable or not.",
               "type": "string",
+              "readOnly": true
+            },
+            "agentReinstallState": {
+              "description": "The agent auto reinstall state.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "UserTriggered",
+                  "AutoTriggered"
+                ],
+                "type": "string",
+                "x-ms-enum": {
+                  "name": "MobilityAgentReinstallType",
+                  "modelAsString": true
+                }
+              },
+              "readOnly": true
+            },
+            "lastAgentReinstallType": {
+              "description": "The last agent reinstall type.",
+              "type": "string",
+              "readOnly": true
+            },
+            "agentReinstallJobId": {
+              "description": "The agent reinstall job Id.",
+              "type": "string",
+              "readOnly": true
+            },
+            "agentReinstallAttemptToVersion": {
+              "description": "The last agent reinstall type.",
+              "type": "string",
+              "readOnly": true
+            },
+            "osFamilyName": {
+              "description": "The OS family name.",
+              "type": "string"
+            },
+            "distroName": {
+              "description": "The distro name.",
+              "type": "string"
+            },
+            "distroNameForWhichAgentIsInstalled": {
+              "description": "Distro name for which agent is installed.",
+              "type": "string"
+            },
+            "isAgentUpgradeable": {
+              "description": "A value indicating whether replication agent upgradeable.",
+              "type": "boolean"
+            },
+            "isAgentReinstallRequired": {
+              "description": "A value indicating whether replication agent reinstallation is required.",
+              "type": "boolean"
+            },
+            "isLastReinstallSuccessful": {
+              "description": "A value indicating whether replication agent reinstallation is required.",
+              "type": "boolean"
+            },
+            "reasonsBlockingReinstall": {
+              "description": "whether reinstall is possible or not.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "DistroNotSupported",
+                  "AgentNoHeartbeat",
+                  "Unknown"
+                ],
+                "type": "string",
+                "x-ms-enum": {
+                  "name": "AgentReinstallBlockedReason",
+                  "modelAsString": true
+                }
+              },
+              "readOnly": true
+            },
+            "reasonsBlockingReinstallDetails": {
+              "description": "whether reinstall is possible or not.",
+              "type": "array",
+              "items": {
+                "description": "InMageRcm source agent reinstall blocking error details.",
+                "type": "object",
+                "properties": {
+                  "errorCode": {
+                    "description": "error code.",
+                    "type": "string"
+                  },
+                  "errorMessage": {
+                    "description": "error message.",
+                    "type": "string"
+                  },
+                  "possibleCauses": {
+                    "description": "possible causes.",
+                    "type": "string"
+                  },
+                  "recommendedAction": {
+                    "description": "recommended action.",
+                    "type": "string"
+                  },
+                  "errorMessageParameters": {
+                    "description": "error message parameters.",
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "errorTags": {
+                    "description": "error tags.",
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
               "readOnly": true
             }
           }
@@ -70785,6 +71682,10 @@
               }
             }
           }
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "InMageRcm"
@@ -70962,6 +71863,10 @@
         },
         "osUpgradeVersion": {
           "description": "A value indicating the inplace OS Upgrade version.",
+          "type": "string"
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
           "type": "string"
         }
       },
@@ -71278,6 +72183,10 @@
               }
             }
           }
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "InMageRcm"
@@ -81924,6 +82833,32 @@
         }
       }
     },
+    "ReinstallMobilityServiceRequest": {
+      "description": "Request to Reinstall the mobility service on a protected item.",
+      "type": "object",
+      "properties": {
+        "properties": {
+          "description": "The properties of the reinstall mobility service request",
+          "type": "object",
+          "properties": {
+            "runAsAccountId": {
+              "description": "The CS run as account Id.",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "ReinstallMobilityServiceRequestProperties": {
+      "description": "The properties of an update mobility service request.",
+      "type": "object",
+      "properties": {
+        "runAsAccountId": {
+          "description": "The CS run as account Id.",
+          "type": "string"
+        }
+      }
+    },
     "RemoveDisksInput": {
       "description": "Input for remove disk(s) operation.",
       "type": "object",
@@ -92080,6 +93015,10 @@
         "userSelectedOSName": {
           "description": "The OS name selected by user.",
           "type": "string"
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "VMwareCbt"
@@ -92173,6 +93112,10 @@
           "x-ms-identifiers": [
             "stepName"
           ]
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "VMwareCbt"
@@ -92977,6 +93920,10 @@
           "description": "A value indicating the SRS operation name.",
           "type": "string",
           "readOnly": true
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "VMwareCbt"
@@ -93885,6 +94832,10 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "targetCapacityReservationGroupId": {
+          "description": "The target capacity reservation group ARM Id.",
+          "type": "string"
         }
       },
       "x-ms-discriminator-value": "VMwareCbt"

@@ -9,42 +9,6 @@ import {
   type PropertySet,
 } from "./schema.ts";
 
-const AZURE_RESPONSE_ONLY_PROPS = new Set(["id", "type", "name"]);
-
-function filterReadOnly(properties: JsonSchema): JsonSchema {
-  const filtered: JsonSchema = {};
-
-  for (const [key, prop] of Object.entries(properties)) {
-    const propSchema = prop as JsonSchema;
-
-    if (propSchema?.readOnly) continue;
-    if (AZURE_RESPONSE_ONLY_PROPS.has(key)) continue;
-
-    if (propSchema && typeof propSchema === "object" && propSchema.properties) {
-      const nestedFiltered = filterReadOnly(
-        propSchema.properties as JsonSchema,
-      );
-      if (Object.keys(nestedFiltered).length > 0) {
-        filtered[key] = { ...propSchema, properties: nestedFiltered };
-      }
-    } else {
-      filtered[key] = prop;
-    }
-  }
-
-  return filtered;
-}
-
-function unwrapNestedProperties(properties: JsonSchema): JsonSchema {
-  if (properties.properties && typeof properties.properties === "object") {
-    const nestedProps = (properties.properties as JsonSchema).properties;
-    if (nestedProps && typeof nestedProps === "object") {
-      return { ...properties, ...nestedProps };
-    }
-  }
-  return properties;
-}
-
 export function extractPropertiesFromRequestBody(
   operation: JsonSchema | null,
 ): { properties: JsonSchema; required: string[] } {
@@ -54,9 +18,7 @@ export function extractPropertiesFromRequestBody(
 
   if (!schema) return { properties: {}, required: [] };
 
-  let properties = (schema?.properties as JsonSchema) || {};
-  properties = filterReadOnly(properties);
-  properties = unwrapNestedProperties(properties);
+  const properties = (schema?.properties as JsonSchema) || {};
 
   return {
     properties,
@@ -72,8 +34,7 @@ export function extractPropertiesFromResponseBody(
 
   if (!schema) return { properties: {}, required: [] };
 
-  let properties = (schema?.properties as JsonSchema) || {};
-  properties = unwrapNestedProperties(properties);
+  const properties = (schema?.properties as JsonSchema) || {};
 
   return {
     properties,
@@ -344,8 +305,6 @@ export function mergeAzureResourceOperations(
     });
   });
 
-  mergedProperties = filterReadOnly(mergedProperties);
-
   // Build onlyProperties
   const onlyProperties: OnlyProperties = {
     createOnly: [],
@@ -354,13 +313,44 @@ export function mergeAzureResourceOperations(
     primaryIdentifier: ["id"],
   };
 
-  // readOnly: only in GET, not in PUT/PATCH/DELETE
+  // Recursively collect readOnly property paths from the schema
+  function collectReadOnlyPaths(
+    properties: JsonSchema,
+    pathPrefix: string = "",
+  ): string[] {
+    const paths: string[] = [];
+
+    for (const [key, prop] of Object.entries(properties)) {
+      const propSchema = prop as JsonSchema;
+      const currentPath = pathPrefix ? `${pathPrefix}/${key}` : key;
+
+      if (propSchema?.readOnly === true) {
+        paths.push(currentPath);
+      }
+
+      if (propSchema?.properties && typeof propSchema.properties === "object") {
+        paths.push(...collectReadOnlyPaths(propSchema.properties as JsonSchema, currentPath));
+      }
+    }
+
+    return paths;
+  }
+
+  // Collect all readOnly paths from the merged properties
+  const readOnlyPaths = collectReadOnlyPaths(mergedProperties);
+  onlyProperties.readOnly.push(...readOnlyPaths);
+
+  // Also mark properties that are in GET but not in any write operations
   getPropertySet.forEach((prop) => {
-    if (
-      !createUpdateProperties.has(prop) && !updateProperties.has(prop) &&
-      !deleteProperties.has(prop)
-    ) {
-      onlyProperties.readOnly.push(`/${prop}`);
+    const isPrimaryIdentifier = onlyProperties.primaryIdentifier.includes(prop);
+    const notInWrites = !createUpdateProperties.has(prop) &&
+                       !updateProperties.has(prop) &&
+                       !deleteProperties.has(prop);
+
+    if (isPrimaryIdentifier || notInWrites) {
+      if (!onlyProperties.readOnly.includes(prop)) {
+        onlyProperties.readOnly.push(prop);
+      }
     }
   });
 
@@ -493,7 +483,7 @@ export function parseAzureSchema(rawSchema: unknown): SuperSchema[] {
     }
   });
 
-  console.log(
+  logger.debug(
     `Generated ${schemas.length} schemas from ${
       Object.keys(resourceOperations).length
     } resource types`,
