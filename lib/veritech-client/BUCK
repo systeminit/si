@@ -39,7 +39,6 @@ rust_test(
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-util",
         "//third-party/rust:tracing",
-        "//third-party/rust:tracing-subscriber",
         "//third-party/rust:uuid",
         ":veritech-client",
     ],

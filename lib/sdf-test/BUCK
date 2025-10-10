@@ -6,7 +6,6 @@ rust_library(
         "//lib/dal:dal",
         "//lib/dal-test:dal-test",
         "//lib/sdf-core:sdf-core",
-        "//lib/sdf-server:sdf-server",
         "//lib/si-data-spicedb:si-data-spicedb",
         "//third-party/rust:rand",
     ],
