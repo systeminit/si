@@ -38,21 +38,21 @@ pub mod restore_authentication;
 pub enum SessionError {
     #[error("auth api error: {0}")]
     AuthApiError(String),
-    #[error(transparent)]
+    #[error("context transactions error: {0}")]
     ContextTransactions(#[from] TransactionsError),
     #[error("ulid decode error: {0}")]
     Decode(#[from] ulid::DecodeError),
     #[error("json serialize failed")]
     JSONSerialize(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("key pair error: {0}")]
     KeyPair(#[from] KeyPairError),
     #[error("login failed")]
     LoginFailed,
-    #[error(transparent)]
+    #[error("nats error: {0}")]
     Nats(#[from] si_data_nats::NatsError),
     #[error("Permissions error: {0}")]
     Permissions(#[from] permissions::Error),
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] si_data_pg::PgError),
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
@@ -60,9 +60,9 @@ pub enum SessionError {
     SiDb(#[from] si_db::Error),
     #[error("SpiceDb error: {0}")]
     SpiceDb(#[from] SpiceDbError),
-    #[error(transparent)]
+    #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
-    #[error(transparent)]
+    #[error("workspace integration error: {0}")]
     WorkspaceIntegration(#[from] WorkspaceIntegrationsError),
     #[error("workspace {0} not yet migrated to new snapshot graph version. Migration required")]
     WorkspaceNotYetMigrated(WorkspacePk),

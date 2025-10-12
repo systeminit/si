@@ -61,9 +61,9 @@ pub fn public_routes(state: AppState) -> Router {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error(transparent)]
+    #[error("parameter store client error: {0}")]
     ParameterStoreClient(#[from] ParameterStoreClientError),
-    #[error(transparent)]
+    #[error("server error: {0}")]
     Server(#[from] ServerError),
 }
 

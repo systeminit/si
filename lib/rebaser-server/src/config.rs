@@ -47,13 +47,13 @@ const DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD: Duration =
 pub enum ConfigError {
     #[error("config builder")]
     Builder(#[from] ConfigBuilderError),
-    #[error(transparent)]
+    #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
     #[error("error configuring for development")]
     Development(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
-    #[error(transparent)]
+    #[error("layer cache error: {0}")]
     LayerCache(#[from] LayerDbError),
-    #[error(transparent)]
+    #[error("settings error: {0}")]
     Settings(#[from] si_settings::SettingsError),
 }
 

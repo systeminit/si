@@ -112,23 +112,23 @@ pub enum WorkspaceError {
     ExportingFromSystemActor,
     #[error("Trying to import a changeset that does not have a valid base: {0}")]
     ImportingOrphanChangeset(ChangeSetId),
-    #[error(transparent)]
+    #[error("key pair error: {0}")]
     KeyPair(#[from] KeyPairError),
     #[error("LayerDb error: {0}")]
     LayerDb(#[from] LayerDbError),
-    #[error(transparent)]
+    #[error("nats error: {0}")]
     Nats(#[from] NatsError),
     #[error("no user in context")]
     NoUserInContext,
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error(transparent)]
+    #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
     SiDb(#[from] si_db::Error),
     #[error("strum parse error: {0}")]
     StrumParse(#[from] strum::ParseError),
-    #[error(transparent)]
+    #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("unknown snapshot kind {0} for workspace: {1}")]
     UnknownSnapshotKind(String, WorkspacePk),

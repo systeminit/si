@@ -91,9 +91,9 @@ pub enum DependentValueUpdateError {
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("status update error: {0}")]
     StatusUpdate(#[from] Box<StatusUpdateError>),
-    #[error(transparent)]
+    #[error("tokio task error: {0}")]
     TokioTask(#[from] JoinError),
-    #[error(transparent)]
+    #[error("transactions error: {0}")]
     Transactions(#[from] Box<TransactionsError>),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),

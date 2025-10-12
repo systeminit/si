@@ -15,7 +15,7 @@ use thiserror::Error;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SettingsError {
-    #[error(transparent)]
+    #[error("config file error: {0}")]
     ConfigFile(#[from] config_file::ConfigFileError),
 }
 

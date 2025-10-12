@@ -96,7 +96,7 @@ pub enum ExecutionError {
     ChildRecvIO(#[source] io::Error),
     #[error("failed to send child process message")]
     ChildSendIO(#[source] io::Error),
-    #[error(transparent)]
+    #[error("child shutdown error: {0}")]
     ChildShutdown(#[from] ShutdownError),
     #[error("failed to spawn child process; program={0}")]
     ChildSpawn(#[source] io::Error, PathBuf),

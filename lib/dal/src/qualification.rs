@@ -61,9 +61,9 @@ pub struct QualificationSummary {
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum QualificationSummaryError {
-    #[error(transparent)]
+    #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
-    #[error(transparent)]
+    #[error("pg error: {0}")]
     Pg(#[from] PgError),
 }
 
@@ -173,7 +173,7 @@ pub enum QualificationError {
     Prop(#[from] PropError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("validation resolver error: {0}")]
     ValidationResolver(#[from] ValidationError),
 }
 

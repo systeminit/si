@@ -46,9 +46,9 @@ const DEFAULT_ENVIRONMENT: &str = "local";
 pub enum InnitClientError {
     #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
-    #[error(transparent)]
+    #[error("certificate client error: {0}")]
     CertificateClient(#[from] PrivateCertManagerClientError),
-    #[error(transparent)]
+    #[error("config error: {0}")]
     Config(#[from] config::ConfigError),
     #[error("Deserialization error: {0}")]
     Deserialization(serde_json::Error),
@@ -64,7 +64,7 @@ pub enum InnitClientError {
     Request(#[from] reqwest::Error),
     #[error("Serialization error: {0}")]
     Serialization(serde_json::Error),
-    #[error(transparent)]
+    #[error("tls error: {0}")]
     Tls(#[from] si_tls::TlsError),
     #[error("Url parse error: {0}")]
     UrlParse(#[from] url::ParseError),

@@ -76,7 +76,7 @@ pub enum ClientError {
     Subscriber(#[from] SubscriberError),
     #[error("tokio join error: {0}")]
     TokioJoinError(#[from] tokio::task::JoinError),
-    #[error(transparent)]
+    #[error("transport error: {0}")]
     Transport(Box<dyn std::error::Error + Sync + Send + 'static>),
 }
 

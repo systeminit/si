@@ -26,9 +26,9 @@ pub enum JobQueueProcessorError {
     MissingWorkspacePk,
     #[error("pinga client error: {0}")]
     PingaClient(#[from] Box<pinga_client::ClientError>),
-    #[error(transparent)]
+    #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("transport error: {0}")]
     Transport(Box<dyn std::error::Error + Sync + Send + 'static>),
 }
 
