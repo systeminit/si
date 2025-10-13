@@ -2,6 +2,49 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## October 6th to 12th 2025
+
+### ✨ Added
+
+- Added a new **Search API endpoint** to the Public API.
+- Updated the **Qualifications function API endpoint** in the Public API to
+  allow using secrets.
+- Added ability to **collapse panels** in the Func Run Details page.
+- Added ability to **search by `isUpgradable` and `hasDiff`** via the Public
+  API.
+- Enabled **MCP tools for authoring schemas and functions**.
+- Added ability to **select all components in a group** and **multi-select
+  ranges of components** in the web app.
+- Added **Hetzner** to the Add Component filter list.
+- Added ability to **unlock a function** via the Public API.
+- Added ability to **edit a template and its associated management function**
+  via the MCP server.
+
+### 🔄 Changed
+
+- Updated the **snapshot eviction logic** to remove the grace period.
+- Optimized the frontend to use **bulk queries for patches**.
+- Displayed **`schemaId` and `schemaVariantId`** in the component debug panel.
+- Updated **onboarding flow** to skip for invited users if someone in the
+  workspace has already completed it.
+- Changed **web app patching priority** based on user activity.
+- Ran **compute validation jobs in parallel** for faster processing.
+- Updated **hover and selected states** in GridTiles for better usability.
+- Removed redundant **buttons that reopened the onboarding flow**.
+
+### 🐞 Fixed
+
+- Fixed an issue where **possible connections** weren’t cache-busted correctly.
+- Fixed issues where **Map and Explore** in the web UI conflicted over query
+  string parameters.
+- Fixed an issue when **importing or discovering Hetzner Cloud servers**.
+- Fixed issues with **left and right arrow key navigation** in the Add Component
+  modal.
+- Fixed an issue where **onboarding didn’t trigger for new users**.
+- Fixed **increased retry intervals** in Actions to prevent overloading.
+- Fixed an issue where **autosubscribe could create graph cycles**.
+- Fixed unnecessary **workspace snapshot loading** to improve performance.
+
 ## September 29th to October 5th 2025
 
 ### ✨ Added
@@ -53,6 +96,8 @@ All notable changes to System Initiative will be documented in this file.
   together.
 - Fixed an issue where **abandoning a change set** via web app or Public API
   failed if the snapshot didn’t exist.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/TVzI8mKUmD0?si=y1wNNfP58cJeRF7B" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## September 22nd to 28th 2025
 
