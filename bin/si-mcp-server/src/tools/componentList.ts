@@ -19,7 +19,24 @@ import { ChangeSet } from "../data/changeSets.ts";
 const name = "component-list";
 const title = "List components";
 const description =
-  `<description>Lists all components. Returns an array of components with componentId, component name, and the schema name. On failure, returns error details</description><usage>Use this tool to understand what components are present in a change set in the workspace, and to find their componentId or schemaName in order to work with them.</usage>`;
+  `
+  <important>
+      *DO NOT USE THIS TOOL FOR TEMPLATE GENERATION:*
+      - For template generation, use the template-generate tool's built-in search functionality
+      - For discovering components, use the template-generate tool's search instead
+      - Only use component-list when you need to retrieve a comprehensive list of ALL components or apply
+    complex regex filtering that isn't supported by search syntax
+      </important>
+      <description>Lists all components. Returns an array of components with componentId, component name, and
+    the schema name. On failure, returns error details</description>
+      <usage>Use this tool ONLY when you need to:
+      1. Get a complete inventory of all components in a change set
+      2. Apply complex regex-based filtering not available in search syntax
+      3. Perform operations that require the full component list
+
+      DO NOT use this tool for finding components to include in templates - use template-generate's search
+    instead.
+      </usage>  `;
 
 const ListComponentsInputSchemaRaw = {
   changeSetId: z.string().optional().describe(
