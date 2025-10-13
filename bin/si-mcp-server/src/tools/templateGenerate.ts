@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { ComponentsApi, SchemasApi } from "@systeminit/api-client";
+import { ComponentsApi, SchemasApi, SearchApi } from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
@@ -11,9 +11,16 @@ import {
 } from "./commonBehavior.ts";
 
 const name = "template-generate";
-const title = "Generate a template from a list a components";
+const title = "Generate a template from user provided or searched for componentIds";
 const description =
-  `<description>Generate a template for a given list of componentIds and a name for the template. If the list is empty, do not use this tool. Only include componentIds explicitly listed. The name can either be explicitly given or generated based on the names of the components themselves. The name must be relevant to the components chosen. Returns the 'success' on successful creation of a template. On failure, returns error details.</description><usage>Use this tool to generate a template from at least one component in a change set. Use only the component-list tool to understand the components that are available to be included in a template. For the template name, generate it based on the component names, schema names, and their conceptual relevancy to one another. To see all of its information after the template has been generated, use the schema-find tool.</usage>`;
+  `
+  <important>
+  Do not use the component-list tool, *always* prefer this tools search functionality.
+  </important>
+  <description>Generate a template for a user provided list of componentIds or componentIds returned via this tools search functionality. Only include provided componentIds or results from the search in this tool. The name can either be explicitly given or generated based on the names of the components themselves. The name must be relevant to the components chosen. Returns the 'success' on successful creation of a template. On failure, returns error details.</description>
+  <usage>Use this tool to generate a template from provided componentIds or componentIds returned from search results in a change set. If using search, reference the syntax here for how to perform searches for one or multiple components -> 'https://docs.systeminit.com/explanation/search-syntax'. For the template name, generate it based on the component names, schema names, and their conceptual relevancy to one another. To see all of its information after the template has been generated, use the schema-find tool.
+  </usage>
+  `;
 
 const TemplateGenerateInputSchemaRaw = {
   changeSetId: z.string().describe(
@@ -23,8 +30,60 @@ const TemplateGenerateInputSchemaRaw = {
     z.string().describe(
       "the component id to be included in the generated template",
     ),
-  ).describe(
-    "the list of component ids to be included in the generated template",
+  ).optional().describe(
+    "the list of component ids to be included in the generated template, if none provided the tool will search",
+  ),
+  searchQuery: z.string().optional().describe(
+    `
+    <description>
+    when componentIds are not provided this search query will be used to search for componentIds to include in the template
+    </description>
+    <documentation>
+    Search Syntax
+
+    Component name: Search for prod to find components with prod in their name.
+    Schema name: Search for Instance to find EC2 instances.
+    Combine them: Search for prod Instance to find EC2 instances with prod in their name!
+    When you need more than mere words can convey, you can use more advanced search features like attribute searches and boolean logic.
+
+    Attribute Search Syntax
+    To search inside components, you can use attribute searches. InstanceType:, for example, will search for instances with that type. Specific syntax for attribute searches:
+
+    Basic Syntax: InstanceType:m8g.medium will search for m8g.medium instances.
+
+    Alternatives: InstanceType:m8g.medium|m8g.small will search for m8g.medium or m8g.large instances.
+
+    Wildcards: InstanceType:m8g.* will search for all m8g instances regardless of size.
+
+    Wildcards can be placed anywhere in the value: InstanceType:m*.large will match m8g.large, m7g.large and even m7i-flex.large.
+
+    Tip: While building your infrastructure, you may want to find things where you did not specify an attribute. For example, !AvailabilityZone:* will bring back instances where you did not specify an AvailabilityZone, so you can add one!
+
+    Exact Matches: Runtime:"python3.11" will match only the python3.11 runtime on a lambda function, but not python3.
+
+    You can use quotes (") to pin down your search and match an exact value. If you don't use quotes, things that start with the value you specify are matched.
+
+    Quotes will also allow you to use spaces in your search: Description:"Production Access".
+
+    Attribute Paths: LaunchTemplate/Version:1 will match instances with LaunchTemplate version 1.
+
+    Sometimes an attribute has a generic name, and you need to specify more of its path. LaunchTemplate/Version:1 is useful because it will not bring in every other AWS resource with a random Version field set to 1.
+
+    Schema: schema:AWS::EC2::Instance, or schema:Instance, will find all EC2 instances.
+
+    All of these features can be mixed and matched: InstanceType:m8g.*|"mac1.metal" will find m8g instances as well as mac1.metal instances.
+
+    Boolean Logic
+    Sometimes you need more precise logic than just "find things matching A, B and C." For this, we support full boolean logic, with nesting:
+
+    Negation: !InstanceType:m8g.large will match all instances that are not m8g.large.
+    Alternatives: Instance | Image will match all instances and images.
+    Grouping: (prod Instance) | (dev Image) will match Instances in prod, and images with "dev" in the name.
+    "And" (narrowing a search) is done by putting spaces between things. & is supported but redundant: prod Instance and prod & Instance do the same thing.
+
+    </documentation>
+
+    `
   ),
   templateName: z.string().describe(
     "the name of the template that will be generated",
@@ -99,18 +158,43 @@ export function templateGenerateTool(server: McpServer) {
       outputSchema: TemplateGenerateOutputSchemaRaw,
     },
     async (
-      { changeSetId, componentIds, templateName },
+      { changeSetId, componentIds, templateName, searchQuery },
     ): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
         const siComponentsApi = new ComponentsApi(apiConfig);
         const siSchemasApi = new SchemasApi(apiConfig);
+        const siSearchApi = new SearchApi(apiConfig);
 
         try {
+          let templateComponentIds: string[];
+          const hasListOfIds = componentIds && componentIds.length > 0;
+
+          if (hasListOfIds && !searchQuery) {
+            templateComponentIds = componentIds;
+          } else if (!hasListOfIds && searchQuery) {
+            const searchResponse = await siSearchApi.search({
+              workspaceId: WORKSPACE_ID,
+              changeSetId: changeSetId,
+              q: searchQuery,
+            });
+
+            templateComponentIds = searchResponse.data.components.map((component) => component.id);
+
+            if (templateComponentIds.length < 1) {
+              return errorResponse("No components found for the provided search query.");
+            }
+
+          } else if (hasListOfIds && searchQuery) {
+            return errorResponse("You cannot use both a list of componentIds and a search query.")
+          } else {
+            return errorResponse("You must provide either a list of componentIds or a search query.");
+          }
+
           const response = await siComponentsApi.generateTemplate({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             generateTemplateV1Request: {
-              componentIds,
+              componentIds: templateComponentIds,
               assetName: templateName,
               funcName: `Generate ${templateName}`,
             },
