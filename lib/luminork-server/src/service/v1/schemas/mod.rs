@@ -273,7 +273,7 @@ impl From<LuminorkSchemaVariantFunc> for SchemaVariantFunc {
     }
 }
 
-#[derive(Serialize, Debug, ToSchema)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSchemaVariantV1Response {
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VZ")]
@@ -580,7 +580,7 @@ pub struct GetSchemaVariantV1Response {
     pub domain_props: Option<PropSchemaV1>,
 }
 
-#[derive(Serialize, Debug, ToSchema)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PropSchemaV1 {
     #[schema(value_type = String)]
