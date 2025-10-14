@@ -19,6 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List
+from system_initiative_api_client.models.get_schema_variant_v1_response import GetSchemaVariantV1Response
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -27,8 +28,9 @@ class UnlockedSchemaV1Response(BaseModel):
     UnlockedSchemaV1Response
     """ # noqa: E501
     schema_id: StrictStr = Field(alias="schemaId")
+    unlocked_variant: GetSchemaVariantV1Response = Field(alias="unlockedVariant")
     unlocked_variant_id: StrictStr = Field(alias="unlockedVariantId")
-    __properties: ClassVar[List[str]] = ["schemaId", "unlockedVariantId"]
+    __properties: ClassVar[List[str]] = ["schemaId", "unlockedVariant", "unlockedVariantId"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -69,6 +71,9 @@ class UnlockedSchemaV1Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of unlocked_variant
+        if self.unlocked_variant:
+            _dict['unlockedVariant'] = self.unlocked_variant.to_dict()
         return _dict
 
     @classmethod
@@ -82,6 +87,7 @@ class UnlockedSchemaV1Response(BaseModel):
 
         _obj = cls.model_validate({
             "schemaId": obj.get("schemaId"),
+            "unlockedVariant": GetSchemaVariantV1Response.from_dict(obj["unlockedVariant"]) if obj.get("unlockedVariant") is not None else None,
             "unlockedVariantId": obj.get("unlockedVariantId")
         })
         return _obj
