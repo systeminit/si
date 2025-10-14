@@ -70,6 +70,8 @@ import {
   DeploymentPatchBatch,
   ConnStatusFn,
   StoredMvIndex,
+  AtomWithData,
+  AtomOperation,
 } from "./types/dbinterface";
 import {
   BifrostComponent,
@@ -89,6 +91,8 @@ import {
   DefaultSubscriptions,
   DefaultSubscription,
   AttributeValue,
+  GLOBAL_ENTITIES,
+  GlobalEntity,
 } from "./types/entity_kind_types";
 import {
   bulkDone,
@@ -199,6 +203,7 @@ const dropTables = () => {
   const sql = `
   DROP TABLE IF EXISTS index_mtm_atoms;
   DROP TABLE IF EXISTS atoms;
+  DROP TABLE IF EXISTS global_atoms;
   DROP TABLE IF EXISTS indexes;
   DROP TABLE IF EXISTS changesets;
   DROP TABLE IF EXISTS weak_references;
@@ -236,6 +241,15 @@ const ensureTables = (testing: boolean) => {
     checksum TEXT NOT NULL,
     data BLOB,
     PRIMARY KEY (kind, args, checksum)
+  ) WITHOUT ROWID;
+
+  CREATE TABLE IF NOT EXISTS global_atoms (
+    kind TEXT NOT NULL,
+    args TEXT NOT NULL,
+    checksum TEXT NOT NULL,
+    data BLOB,
+    PRIMARY KEY (kind, args)
+    CONSTRAINT uniqueness UNIQUE (kind, args) ON CONFLICT REPLACE
   ) WITHOUT ROWID;
 
   CREATE TABLE IF NOT EXISTS index_mtm_atoms (
@@ -760,9 +774,9 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
 };
 
 // Insert atoms in chunks of 2000 per query
-const bulkCreateAtoms = async (
+const bulkCreateAtoms = (
   db: Database,
-  indexObjects: (IndexObjectMeta | AtomWithDocument)[],
+  indexObjects: (BulkSuccess | AtomWithDocument)[],
   chunkSize = 2000,
 ) => {
   for (let i = 0; i < indexObjects.length; i += chunkSize) {
@@ -801,7 +815,7 @@ const bulkCreateAtoms = async (
 // Insert many-to-many relationships for atoms in chunks of 2000 per query
 const bulkInsertAtomMTMs = (
   db: Database,
-  indexObjects: (Common | IndexObjectMeta)[],
+  indexObjects: (Common | BulkSuccess)[],
   indexChecksum: Checksum,
   chunkSize = 2000,
 ) => {
@@ -1058,24 +1072,28 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
   });
 };
 
-const existingWorkspaceAtoms = (
-  db: Database,
-  atoms: Required<WorkspaceAtom>[],
-) => {
+type AtomPieces = Pick<Required<WorkspaceAtom>, "kind" | "id" | "toChecksum">;
+const existingWorkspaceAtoms = (db: Database, atoms: AtomPieces[]) => {
+  return _existingAtoms(db, "atoms", atoms);
+};
+
+const existingDeploymentAtoms = (db: Database, atoms: AtomPieces[]) => {
+  return _existingAtoms(db, "global_atoms", atoms);
+};
+
+const _existingAtoms = (db: Database, table: string, atoms: AtomPieces[]) => {
   const placeholders = [];
   const bind: string[] = [];
 
   for (const atom of atoms) {
-    placeholders.push("(?, ?, ?)");
-    bind.push(atom.kind, atom.id, atom.toChecksum);
+    placeholders.push("(?, ?)");
+    bind.push(atom.kind, atom.id);
   }
 
   const sql = `
-    select atoms.kind, atoms.args, atoms.checksum
-    from atoms
-    where (atoms.kind, atoms.args, atoms.checksum) in (${placeholders.join(
-      ",",
-    )})
+    select ${table}.kind, ${table}.args, ${table}.checksum, data
+    from ${table}
+    where (${table}.kind, ${table}.args) in (${placeholders.join(",")})
   `;
 
   const rows = db.exec({
@@ -1084,18 +1102,106 @@ const existingWorkspaceAtoms = (
     returnValue: "resultRows",
   });
 
-  const result: { [key: string]: Common } = {};
+  const result: { [key: string]: AtomWithRawData } = {};
   for (const row of rows) {
-    const [kind, id, checksum] = row;
+    const [kind, id, checksum, data] = row;
     const atom = {
       kind: kind as EntityKind,
       id: id as string,
       checksum: checksum as string,
+      data: data as ArrayBuffer,
     };
     result[atomCacheKey(atom)] = atom;
   }
 
   return result;
+};
+
+const handleDeploymentPatchMessage = async (
+  db: Database,
+  data: DeploymentPatchBatch,
+) => {
+  await tracer.startActiveSpan("DeploymentPatchBatch", async (span) => {
+    span.setAttributes({
+      patchKind: "workspace",
+      numRawPatches: data.patches.length,
+      rawPatches: JSON.stringify(data.patches),
+    });
+
+    const patches = data.patches.filter(
+      (patch): patch is Required<AtomOperation> =>
+        patch.fromChecksum !== undefined,
+    );
+
+    const existing = existingDeploymentAtoms(db, patches);
+
+    const inserts: AtomWithData[] = [];
+    const removals: Common[] = [];
+    const modifications: AtomWithData[] = [];
+    const hammers: Common[] = [];
+
+    while (patches.length > 0) {
+      const p = patches.shift();
+      if (!p) break;
+
+      // filter out no-ops based on the toChecksum
+      const key = atomCacheKey({ ...p, checksum: p.toChecksum });
+      if (existing[key]) continue;
+
+      if (p.fromChecksum === "0") {
+        const doc = applyOperations({}, p.patch).newDocument;
+        inserts.push({ ...p, checksum: p.toChecksum, data: doc });
+        continue;
+      }
+
+      if (p.toChecksum === "0") {
+        removals.push({ ...p, checksum: p.toChecksum });
+        continue;
+      }
+
+      const fromKey = atomCacheKey({ ...p, checksum: p.fromChecksum });
+      const existingAtom = existing[fromKey];
+      if (!existingAtom) {
+        hammers.push({ ...p, checksum: p.toChecksum });
+        continue;
+      }
+      const oldDoc = decodeDocumentFromDB(existingAtom.data);
+      const doc = applyOperations(oldDoc, p.patch).newDocument;
+      modifications.push({ ...p, data: doc, checksum: p.toChecksum });
+    }
+
+    if (inserts.length > 0) writeDeploymentAtoms(db, inserts);
+
+    if (removals.length > 0) {
+      const bind: string[] = [];
+      const placeholders: string[] = [];
+      removals.forEach((r) => {
+        placeholders.push("(?, ?)");
+        bind.push(r.kind, r.id);
+      });
+      db.exec({
+        sql: `DELETE FROM global_atoms WHERE (kind, args) IN (${placeholders.join(
+          ",",
+        )})`,
+        bind,
+      });
+    }
+
+    if (modifications.length > 0) writeDeploymentAtoms(db, modifications);
+
+    if (hammers.length > 0) {
+      span.setAttributes({
+        upToDate: false,
+        numHammers: hammers.length,
+      });
+      const workspaceId = Object.keys(sdfClients).pop();
+      if (!workspaceId) {
+        error("Cannot process deployment patch, no workspace clients found");
+        return;
+      }
+      await deploymentBulk(db, workspaceId, hammers, span);
+    } else span.setAttribute("upToDate", true);
+  });
 };
 
 const handleWorkspacePatchMessage = async (
@@ -1388,7 +1494,7 @@ const handlePatchOperations = async (
   // Ok we have all the patches we could apply, insert them into the database
   if (atomsToInsert.length > 0) {
     const startCreate = performance.now();
-    await bulkCreateAtoms(db, atomsToInsert);
+    bulkCreateAtoms(db, atomsToInsert);
     span.setAttribute(
       "performance.bulkCreateAtoms",
       performance.now() - startCreate,
@@ -1603,7 +1709,12 @@ const patchAtom = async (
   return afterDoc;
 };
 
-type BulkResponse = { successful: IndexObjectMeta[]; failed: MjolnirBulk[] };
+interface BulkSuccess {
+  workspaceSnapshotAddress: string;
+  frontEndObject: AtomWithData;
+  indexChecksum: string;
+}
+type BulkResponse = { successful: BulkSuccess[]; failed: MjolnirBulk[] };
 const mjolnirBulk = async (
   db: Database,
   workspaceId: string,
@@ -1634,7 +1745,7 @@ const mjolnirBulk = async (
     }
   }
 
-  await bulkCreateAtoms(db, cachedAtoms);
+  bulkCreateAtoms(db, cachedAtoms);
   bulkInsertAtomMTMs(db, cachedAtoms, indexChecksum);
 
   const pattern = [
@@ -1727,7 +1838,7 @@ const mjolnirBulk = async (
   );
   await handleHammer(db, msg);
 
-  await bulkCreateAtoms(db, req.data.successful);
+  bulkCreateAtoms(db, req.data.successful);
   bulkInsertAtomMTMs(db, req.data.successful, indexChecksum);
 
   for (const obj of req.data.successful) {
@@ -1760,6 +1871,54 @@ const mjolnirBulk = async (
   const writeToSqlMs = performance.now() - startWriteToSql;
   debug(`🔨 MJOLNIR BULK DONE! ${writeToSqlMs}ms`);
   bulkDone({ workspaceId, changeSetId });
+};
+
+const deploymentMjolnir = async (
+  db: Database,
+  workspaceId: string,
+  kind: GlobalEntity,
+  id: Id,
+) => {
+  const pattern = [
+    "v2",
+    "workspaces",
+    { workspaceId },
+    "mjolnir",
+  ] as URLPattern;
+  const [url, desc] = describePattern(pattern);
+  const params = { kind, id };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let req: undefined | AxiosResponse<AtomWithData, any>;
+
+  await tracer.startActiveSpan(`GET ${desc}`, async (span) => {
+    const sdf = getSdfClientForWorkspace(workspaceId, span);
+    if (!sdf) {
+      span.end();
+      return;
+    }
+    span.setAttributes({ workspaceId, kind, id });
+    try {
+      req = await sdf<AtomWithData>({
+        method: "get",
+        url,
+        params,
+      });
+      debug("🔨 MJOLNIR HTTP SUCCESS:", kind, id, "status:", req.status);
+    } catch (err) {
+      span.setAttribute("http.status", 404);
+      debug("🔨 MJOLNIR HTTP 404:", kind, id, err);
+      error("MJOLNIR 404", url, params, err);
+    } finally {
+      if (req?.status) span.setAttribute("http.status", req.status);
+      span.end();
+    }
+  });
+
+  if (!req || req.status !== 200) return;
+
+  const { checksum, data } = req.data;
+  writeDeploymentAtoms(db, [{ checksum, data, kind, id }]);
 };
 
 const mjolnir = (
@@ -2036,6 +2195,10 @@ interface AtomWithDocument extends Common {
   doc: AtomDocument;
 }
 
+interface AtomWithRawData extends Common {
+  data: ArrayBuffer;
+}
+
 const atomDocumentsForChecksums = (
   db: Database,
   atoms: Common[],
@@ -2142,6 +2305,9 @@ export const CHANGE_SET_INDEX_URL = (
     "index",
   ] as URLPattern;
 
+export const DEPLOYMENT_INDEX_URL = (workspaceId: string) =>
+  ["v2", "workspaces", { workspaceId }, "deployment_index"] as URLPattern;
+
 export const STATUS_INDEX_IN_PROGRESS = 202;
 
 const getSdfClientForWorkspace = (workspaceId: string, span?: Span) => {
@@ -2177,6 +2343,191 @@ const retry = async <T>(
     await sleep(Math.min(ms, ONE_MIN));
     return retry(fn, retryNum);
   } else return r;
+};
+
+type DeploymentBulkResponse = {
+  successful: AtomWithData[];
+  failed: MjolnirBulk[];
+};
+const deploymentBulk = async (
+  db: Database,
+  workspaceId: string,
+  hammerObjs: Common[],
+  span: Span,
+) => {
+  const bulkPattern = [
+    "v2",
+    "workspaces",
+    { workspaceId },
+    "multi_mjolnir",
+  ] as URLPattern;
+  const [bulkUrl, bulkDesc] = describePattern(bulkPattern);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let bulkReq: undefined | AxiosResponse<DeploymentBulkResponse, any>;
+  await tracer.startActiveSpan(`GET ${bulkDesc}`, async (span) => {
+    const sdf = getSdfClientForWorkspace(workspaceId, span);
+    if (!sdf) {
+      span.end();
+      return;
+    }
+
+    span.setAttributes({
+      workspaceId,
+      numHammers: hammerObjs.length,
+    });
+    const startBulkMjolnirReq = performance.now();
+    bulkReq = await sdf<DeploymentBulkResponse>({
+      method: "post",
+      url: bulkUrl,
+      data: { requests: hammerObjs },
+    });
+    if (bulkReq.status !== 200) {
+      span.setAttribute("http.status", bulkReq.status);
+      debug("🔨 DEPLOYMENT MJOLNIR HTTP:", bulkReq.status);
+      error("MJOLNIR", bulkReq.status, bulkUrl, hammerObjs);
+    } else {
+      debug(
+        "🔨 DEPLOYMENT MJOLNIR BULK HTTP SUCCESS:",
+        `${performance.now() - startBulkMjolnirReq}ms`,
+      );
+      span.setAttributes({
+        successful: bulkReq.data.successful.length,
+        failed: bulkReq.data.failed.length,
+      });
+    }
+    if (bulkReq?.status) span.setAttribute("http.status", bulkReq.status);
+    span.end();
+  });
+
+  if (!bulkReq || bulkReq.status !== 200) {
+    debug("🔨 DEPLOYMENT MJOLNIR BULK FAILED:", "no response");
+    return false;
+  }
+
+  const startWriteToSql = performance.now();
+  writeDeploymentAtoms(db, bulkReq.data.successful);
+  const writeToSqlMs = performance.now() - startWriteToSql;
+  span.setAttributes({
+    "performance.deploymentBulkSqlWrite": writeToSqlMs,
+  });
+  debug(`🔨 DEPLOYMENT MJOLNIR BULK DONE! ${writeToSqlMs}ms`);
+};
+
+/**
+ * This is a coldstart for the "global" / deployment MVs
+ * that are not workspace / changeset specific.
+ */
+const vanaheim = async (
+  db: Database,
+  workspaceId: string,
+): Promise<boolean> => {
+  return await tracer.startActiveSpan("vanaheim", async (span: Span) => {
+    span.setAttributes({ workspaceId });
+    const sdf = getSdfClientForWorkspace(workspaceId, span);
+    if (!sdf) {
+      span.end();
+      return false;
+    }
+
+    const pattern = DEPLOYMENT_INDEX_URL(workspaceId);
+    const [url, desc] = describePattern(pattern);
+    const frigg = tracer.startSpan(`GET ${desc}`);
+    frigg.setAttributes({ workspaceId });
+    const req = await retry<IndexObjectMeta>(async () => {
+      const req = await sdf<IndexObjectMeta>({
+        method: "get",
+        url,
+      });
+      return req;
+    });
+
+    frigg.setAttribute("status", req.status);
+    if (req.status === STATUS_INDEX_IN_PROGRESS) {
+      debug("‼️ DEPLOYMENT INDEX NOT READY");
+      frigg.end();
+      span.end();
+      return false;
+    }
+
+    const atoms = req.data.frontEndObject.data.mvList;
+    const existingAtoms = new Map<string, Common>();
+    const uncachedAtoms = new Map<string, Common>();
+
+    const placeholders = [];
+    const bind: string[] = [];
+
+    for (const atom of atoms) {
+      placeholders.push("(?, ?, ?)");
+      bind.push(atom.kind, atom.id, atom.checksum);
+    }
+
+    const sql = `
+      select global_atoms.kind, global_atoms.args, global_atoms.checksum
+      from global_atoms
+      where (global_atoms.kind, global_atoms.args, global_atoms.checksum) in (${placeholders.join(
+        ",",
+      )})
+    `;
+
+    const rows = db.exec({
+      sql,
+      bind,
+      returnValue: "resultRows",
+    });
+
+    for (const row of rows) {
+      const [kind, id, checksum] = row;
+      const atom = {
+        kind: kind as EntityKind,
+        id: id as string,
+        checksum: checksum as string,
+      };
+      const key = atomCacheKey(atom);
+      existingAtoms.set(key, { ...atom });
+    }
+
+    for (const atom of atoms) {
+      const key = atomCacheKey(atom);
+      if (!existingAtoms.has(key)) {
+        uncachedAtoms.set(key, atom);
+      }
+    }
+
+    const hammerObjs = [...uncachedAtoms.values()];
+    if (hammerObjs.length === 0) {
+      span.setAttribute("upToDate", true);
+      return true;
+    }
+    span.setAttribute("upToDate", false);
+
+    await deploymentBulk(db, workspaceId, hammerObjs, span);
+
+    return true;
+  });
+};
+
+const writeDeploymentAtoms = (db: Database, atoms: AtomWithData[]) => {
+  const bind: Array<string | Uint8Array> = [];
+  const placeholders: string[] = [];
+  atoms.forEach((atom) => {
+    bind.push(
+      atom.kind,
+      atom.checksum,
+      atom.id,
+      encodeDocumentForDB(atom.data),
+    );
+    placeholders.push("(?, ?, ?, ?)");
+  });
+
+  const sql = `insert into global_atoms
+    (kind, checksum, args, data)
+      VALUES
+    ${placeholders.join(",")}
+    ON CONFLICT (kind, args)
+    DO UPDATE SET checksum=excluded.checksum, data=excluded.data;
+  `;
+
+  db.exec({ sql, bind });
 };
 
 const niflheim = async (
@@ -3434,6 +3785,45 @@ const queryAttributes = (
   return components.map((c) => c[0] as ComponentId);
 };
 
+const getGlobal = (
+  db: Database,
+  workspaceId: string,
+  kind: GlobalEntity,
+  id: Id,
+): -1 | object => {
+  const sql = `
+    select
+      data
+    from
+      global_atoms
+    where
+      global_atoms.kind = ? AND
+      global_atoms.args = ?
+    ;`;
+  const bind = [kind, id];
+  const start = performance.now();
+  const atomData = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = performance.now();
+  const data = oneInOne(atomData);
+  debug(
+    "❓ sql get",
+    `[${end - start}ms]`,
+    bind,
+    " returns ?",
+    !(data === NOROW),
+  );
+  if (data === NOROW) {
+    deploymentMjolnir(db, workspaceId, kind, id);
+    return -1;
+  }
+  const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
+  return atomDoc;
+};
+
 const get = (
   db: Database,
   workspaceId: string,
@@ -3445,6 +3835,8 @@ const get = (
   followComputed = true,
   followReferences = true,
 ): -1 | object => {
+  if (kind in GLOBAL_ENTITIES) throw new Error(`Use "get_global" for ${kind}`);
+
   const sql = `
     select
       data
@@ -3934,7 +4326,13 @@ const dbInterface: TabDBInterface = {
                 data.patches.length,
               );
 
-              debug("📨 DEPLOYMENT PATCH IS NOT BEING HANDLED RIGHT NOW");
+              processPatchQueue.add(
+                async () =>
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                  await sqlite!.transaction(
+                    async (db) => await handleDeploymentPatchMessage(db, data),
+                  ),
+              );
             } else if (data.kind === MessageKind.WORKSPACE_INDEXUPDATE) {
               // Index has been updated - signal lobby exit
               debug("📨 INDEX UPDATE", data.meta.changeSetId);
@@ -4094,7 +4492,12 @@ const dbInterface: TabDBInterface = {
   addListenerLobbyExit(cb: LobbyExitFn) {
     lobbyExitFn = cb;
   },
-
+  getGlobal(workspaceId, kind, id) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) => getGlobal(db, workspaceId, kind, id));
+  },
   get(workspaceId, changeSetId, kind, id) {
     if (IGNORE_LIST.has(kind)) return -1;
 
@@ -4198,6 +4601,14 @@ const dbInterface: TabDBInterface = {
       pruneAtomsForClosedChangeSet(db, workspaceId, changeSetId),
     );
   },
+  async vanaheim(workspaceId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return await sqlite.transaction(
+      async (db) => await vanaheim(db, workspaceId),
+    );
+  },
   async niflheim(workspaceId, changeSetId) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
@@ -4208,6 +4619,12 @@ const dbInterface: TabDBInterface = {
   },
   encodeDocumentForDB,
   decodeDocumentFromDB,
+  handleDeploymentPatchMessage(data) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) => handleDeploymentPatchMessage(db, data));
+  },
   handleWorkspacePatchMessage(data) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);

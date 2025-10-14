@@ -62,16 +62,12 @@ impl FriggStore {
     ))]
     pub async fn get_deployment_object(
         &self,
-        kind: ReferenceKind,
+        kind: &str,
         id: &str,
         checksum: &str,
     ) -> Result<Option<FrontendObject>> {
         match self
-            .get_object_raw_bytes(&Self::deployment_object_key(
-                &kind.to_string(),
-                id,
-                checksum,
-            ))
+            .get_object_raw_bytes(&Self::deployment_object_key(kind, id, checksum))
             .await?
         {
             Some((bytes, _)) => Ok(Some(
@@ -91,7 +87,7 @@ impl FriggStore {
     ))]
     pub async fn get_current_deployment_object(
         &self,
-        kind: ReferenceKind,
+        kind: &str,
         id: &str,
     ) -> Result<Option<FrontendObject>> {
         let maybe_mv_index = self.get_deployment_index().await?.map(|r| r.0);
@@ -111,18 +107,39 @@ impl FriggStore {
     )]
     pub async fn get_current_deployment_object_with_index(
         &self,
-        kind: ReferenceKind,
+        kind: &str,
         id: &str,
         maybe_mv_index: Option<FrontendObject>,
     ) -> Result<Option<FrontendObject>> {
-        let kind_str = kind.to_string();
         let Some(current_index) = maybe_mv_index else {
             return Ok(None);
         };
         let mv_list = Self::mv_list_from_deployment_mv_index_version_data(current_index.data)?;
 
         for index_entry in mv_list {
-            if index_entry.kind == kind_str && index_entry.id == id {
+            if index_entry.kind == kind && index_entry.id == id {
+                return Ok(Some(
+                    self.get_deployment_object(kind, id, &index_entry.checksum)
+                        .await?
+                        .ok_or_else(|| FriggError::ObjectNotFoundForDeploymentIndex {
+                            kind: kind.to_string(),
+                            id: id.to_string(),
+                        })?,
+                ));
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub async fn get_current_deployment_object_with_mvlist(
+        &self,
+        kind: &str,
+        id: &str,
+        mv_list: &[IndexReference],
+    ) -> Result<Option<FrontendObject>> {
+        for index_entry in mv_list {
+            if index_entry.kind == kind && index_entry.id == id {
                 return Ok(Some(
                     self.get_deployment_object(kind, id, &index_entry.checksum)
                         .await?
@@ -146,9 +163,8 @@ impl FriggStore {
     ))]
     pub async fn get_current_deployment_objects_by_kind(
         &self,
-        kind: ReferenceKind,
+        kind: &str,
     ) -> Result<Vec<FrontendObject>> {
-        let kind_str = kind.to_string();
         let Some((current_index, _)) = self.get_deployment_index().await? else {
             return Ok(Vec::new());
         };
@@ -156,7 +172,7 @@ impl FriggStore {
 
         let mut objects = Vec::new();
         for index_entry in mv_list {
-            if index_entry.kind == kind_str {
+            if index_entry.kind == kind {
                 if let Ok(Some(obj)) = self
                     .get_deployment_object(kind, &index_entry.id, &index_entry.checksum)
                     .await
@@ -169,7 +185,7 @@ impl FriggStore {
         Ok(objects)
     }
 
-    fn mv_list_from_deployment_mv_index_version_data(
+    pub fn mv_list_from_deployment_mv_index_version_data(
         versioned_index_data: serde_json::Value,
     ) -> Result<Vec<IndexReference>> {
         Ok(

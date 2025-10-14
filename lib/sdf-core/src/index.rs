@@ -35,6 +35,8 @@ pub enum IndexError {
     Acquire(#[from] tokio::sync::AcquireError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
+    #[error("index not found after fresh rebuild (v1);")]
+    DeploymentIndexNotFoundAfterFreshBuild(),
     #[error("deserializing mv index data error: {0}")]
     DeserializingMvIndexData(#[source] serde_json::Error),
     #[error("edda client error: {0}")]

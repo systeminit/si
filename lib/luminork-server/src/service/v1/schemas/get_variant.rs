@@ -97,7 +97,7 @@ pub async fn get_variant(
                 // The only cached schemas we currently build are builtins - if that changes, this logic will need to change!
                 let installed_from_upstream = (frigg
                     .get_current_deployment_object(
-                        ReferenceKind::CachedSchema,
+                        ReferenceKind::CachedSchema.into(),
                         &schema_id.to_string(),
                     )
                     .await?)
@@ -164,7 +164,10 @@ pub async fn get_variant(
 
     // Phase 1 Fallback: Try CachedDefaultVariant MV (deployment-level, for uninstalled modules)
     match frigg
-        .get_current_deployment_object(ReferenceKind::CachedDefaultVariant, &schema_id.to_string())
+        .get_current_deployment_object(
+            ReferenceKind::CachedDefaultVariant.into(),
+            &schema_id.to_string(),
+        )
         .await?
     {
         Some(obj) => {
