@@ -295,7 +295,9 @@ const rightClickMenuItems = computed(() => {
       label: "Pin",
       shortcut: "P",
       icon: "pin",
-      onSelect: () => emit("pin", componentId),
+      onSelect: () => {
+        emit("pin", componentId);
+      },
     });
   }
 
