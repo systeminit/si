@@ -1,4 +1,4 @@
-async function main(input: Input): Promise < Output > {
+async function main(input: Input): Promise<Output> {
   // Copied from the region asset
   if (!input.domain?.region) {
     return {
@@ -20,23 +20,23 @@ async function main(input: Input): Promise < Output > {
     console.error(child.stderr);
     return {
       result: "failure",
-      message: "Error from API"
-    }
+      message: "Error from API",
+    };
   }
 
   const regionDetails = JSON.parse(child.stdout).Regions;
   if (regionDetails.length === 0 || regionDetails.length > 1) {
     return {
       result: "failure",
-      message: "Unable to find Region"
-    }
+      message: "Unable to find Region",
+    };
   }
 
   if (regionDetails[0].OptInStatus === "not-opted-in") {
     return {
       result: "failure",
-      message: "Region not-opted-in for use"
-    }
+      message: "Region not-opted-in for use",
+    };
   }
 
   return {

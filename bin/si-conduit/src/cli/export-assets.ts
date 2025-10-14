@@ -27,11 +27,15 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
       actionFiles.push({
         kind,
         strippedFileName,
-      })
+      });
     }
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) {
-      throw new Error(`Error reading actions directory for asset "${assetName}": ${unknownValueToErrorMessage(error)}`);
+      throw new Error(
+        `Error reading actions directory for asset "${assetName}": ${
+          unknownValueToErrorMessage(error)
+        }`,
+      );
     }
     // If actions folder doesn't exist, that's ok - just continue
     return [];
@@ -49,7 +53,9 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
       const code = await Deno.readTextFile(actionTsPath);
 
       if (!code || code.trim() === "") {
-        log.error(`Empty code in action file "${actionTsPath}" for asset "${assetName}", skipping...`);
+        log.error(
+          `Empty code in action file "${actionTsPath}" for asset "${assetName}", skipping...`,
+        );
         continue;
       }
 
@@ -59,7 +65,9 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
         actionJsonContent = await Deno.readTextFile(actionJsonPath);
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
-          log.error(`No matching .json file found for action "${actionTsPath}" in asset "${assetName}", skipping...`);
+          log.error(
+            `No matching .json file found for action "${actionTsPath}" in asset "${assetName}", skipping...`,
+          );
           continue;
         }
         throw error;
@@ -73,7 +81,9 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
         if (kind === "Manual") {
           name = strippedFileName;
         } else {
-          log.error(`Missing required 'name' field in "${actionJsonPath}" for non manual asset "${assetName}", skipping...`);
+          log.error(
+            `Missing required 'name' field in "${actionJsonPath}" for non manual asset "${assetName}", skipping...`,
+          );
           continue;
         }
       }
@@ -89,16 +99,24 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
 
       actions.push(actionObject);
     } catch (error) {
-      log.error(`Error processing action "${strippedFileName}" for asset "${assetName}": ${unknownValueToErrorMessage(error)}, skipping...`);
+      log.error(
+        `Error processing action "${strippedFileName}" for asset "${assetName}": ${
+          unknownValueToErrorMessage(error)
+        }, skipping...`,
+      );
     }
   }
 
   return actions;
 }
 
-type ActionArray = Awaited<ReturnType<typeof parseActions>>
+type ActionArray = Awaited<ReturnType<typeof parseActions>>;
 
-async function parseQualifications(qualificationsPath: string, assetName: string, log: Log) {
+async function parseQualifications(
+  qualificationsPath: string,
+  assetName: string,
+  log: Log,
+) {
   const qualificationFiles = [];
 
   // Read the file list from the actions folder
@@ -106,7 +124,9 @@ async function parseQualifications(qualificationsPath: string, assetName: string
     const qualificationEntries = Deno.readDirSync(qualificationsPath);
 
     for (const qualificationEntry of qualificationEntries) {
-      if (!qualificationEntry.isFile || !qualificationEntry.name.endsWith(".ts")) {
+      if (
+        !qualificationEntry.isFile || !qualificationEntry.name.endsWith(".ts")
+      ) {
         continue;
       }
 
@@ -115,11 +135,15 @@ async function parseQualifications(qualificationsPath: string, assetName: string
 
       qualificationFiles.push({
         strippedFileName,
-      })
+      });
     }
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) {
-      throw new Error(`Error reading actions directory for asset "${assetName}": ${unknownValueToErrorMessage(error)}`);
+      throw new Error(
+        `Error reading actions directory for asset "${assetName}": ${
+          unknownValueToErrorMessage(error)
+        }`,
+      );
     }
     // If actions folder doesn't exist, skip qualifications for the asset by returning early
     return [];
@@ -130,22 +154,27 @@ async function parseQualifications(qualificationsPath: string, assetName: string
   // For each listed file, get the contents and the optional metadata file ({kind}.json)
   for (const { strippedFileName } of qualificationFiles) {
     const qualificationTsPath = `${qualificationsPath}/${strippedFileName}.ts`;
-    const qualificationJsonPath = `${qualificationsPath}/${strippedFileName}.json`;
+    const qualificationJsonPath =
+      `${qualificationsPath}/${strippedFileName}.json`;
 
     try {
       // Read the TypeScript file
       const code = await Deno.readTextFile(qualificationTsPath);
 
       if (!code || code.trim() === "") {
-        log.error(`Empty code in qualification file "${qualificationTsPath}" for asset "${assetName}", skipping...`);
+        log.error(
+          `Empty code in qualification file "${qualificationTsPath}" for asset "${assetName}", skipping...`,
+        );
         continue;
       }
 
       // Read the matching JSON file
       let qualificationMetadata = {} as Record<string, string>;
       try {
-        const qualificationJsonContent = await Deno.readTextFile(qualificationJsonPath);
-        qualificationMetadata = JSON.parse(qualificationJsonContent)
+        const qualificationJsonContent = await Deno.readTextFile(
+          qualificationJsonPath,
+        );
+        qualificationMetadata = JSON.parse(qualificationJsonContent);
       } catch (error) {
         // Not finding the metadata file is ok - just continue
         if (!(error instanceof Deno.errors.NotFound)) throw error;
@@ -163,17 +192,24 @@ async function parseQualifications(qualificationsPath: string, assetName: string
 
       qualifications.push(qualificationObject);
     } catch (error) {
-      log.error(`Error processing qualification "${strippedFileName}" for asset "${assetName}": ${unknownValueToErrorMessage(error)}, skipping...`);
+      log.error(
+        `Error processing qualification "${strippedFileName}" for asset "${assetName}": ${
+          unknownValueToErrorMessage(error)
+        }, skipping...`,
+      );
     }
   }
 
   return qualifications;
 }
 
-type QualificationArray = Awaited<ReturnType<typeof parseQualifications>>
+type QualificationArray = Awaited<ReturnType<typeof parseQualifications>>;
 
-
-export async function exportAssets(context: AuthenticatedCliContext, assetsPath: string, skipConfirmation?: boolean) {
+export async function exportAssets(
+  context: AuthenticatedCliContext,
+  assetsPath: string,
+  skipConfirmation?: boolean,
+) {
   const { apiConfiguration, log, workspace } = context;
 
   const {
@@ -182,13 +218,13 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
   } = workspace;
 
   const schemas = [] as {
-    name: string,
-    code: string,
-    category: string,
-    description: string,
-    link?: string,
-    actions: ActionArray,
-    qualifications: QualificationArray,
+    name: string;
+    code: string;
+    category: string;
+    description: string;
+    link?: string;
+    actions: ActionArray;
+    qualifications: QualificationArray;
   }[];
 
   let readSchemas = 0; // This is the total number of read schema directories, including failures
@@ -219,10 +255,14 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
         continue;
       }
 
-      if (isNaN(thisFormatVersion) || thisFormatVersion !== SCHEMA_FILE_FORMAT_VERSION) {
-        let msg = `Unsupported format version ${thisFormatVersion} on the asset ${assetName}. `
-        + `Supported version is ${SCHEMA_FILE_FORMAT_VERSION}. `
-        + `You can run a new scaffold command and port your schema over to push it with this executable`;
+      if (
+        isNaN(thisFormatVersion) ||
+        thisFormatVersion !== SCHEMA_FILE_FORMAT_VERSION
+      ) {
+        let msg =
+          `Unsupported format version ${thisFormatVersion} on the asset ${assetName}. ` +
+          `Supported version is ${SCHEMA_FILE_FORMAT_VERSION}. ` +
+          `You can run a new scaffold command and port your schema over to push it with this executable`;
 
         log.error(msg);
         continue;
@@ -267,9 +307,17 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
           }
         }
 
-        const qualifications = await parseQualifications(`${assetsPath}/${assetName}/qualifications`, assetName, log);
+        const qualifications = await parseQualifications(
+          `${assetsPath}/${assetName}/qualifications`,
+          assetName,
+          log,
+        );
 
-        const actions = await parseActions(`${assetsPath}/${assetName}/actions`, assetName, log);
+        const actions = await parseActions(
+          `${assetsPath}/${assetName}/actions`,
+          assetName,
+          log,
+        );
 
         schemas.push({
           name,
@@ -279,17 +327,21 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
           link,
           qualifications,
           actions,
-        })
+        });
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
-          log.error(`No index.ts file found for asset "${assetName}", skipping...\n`);
+          log.error(
+            `No index.ts file found for asset "${assetName}", skipping...\n`,
+          );
           continue;
         }
         throw error;
       }
     }
   } catch (error) {
-    throw new Error(`Error reading assets directory: ${unknownValueToErrorMessage(error)}`);
+    throw new Error(
+      `Error reading assets directory: ${unknownValueToErrorMessage(error)}`,
+    );
   }
 
   const failedSchemaDirectories = readSchemas - schemas.length;
@@ -300,11 +352,11 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
       ? ` Failed to read ${failedSchemaDirectories} asset description(s).`
       : "";
 
-    const emptyMsg = schemas.length === 0
-      ? " Aborting."
-      : "";
+    const emptyMsg = schemas.length === 0 ? " Aborting." : "";
 
-    console.log(`Found ${schemas.length} asset(s) to import.${failureMsg}${emptyMsg}`);
+    console.log(
+      `Found ${schemas.length} asset(s) to import.${failureMsg}${emptyMsg}`,
+    );
 
     if (schemas.length === 0) {
       return;
@@ -312,18 +364,20 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
 
     let confirmed = false;
     while (!confirmed) {
-      console.log("Do you want to continue? (y = yes, l = list assets, any other key = cancel)");
+      console.log(
+        "Do you want to continue? (y = yes, l = list assets, any other key = cancel)",
+      );
 
       const buf = new Uint8Array(1024);
       const n = await Deno.stdin.read(buf);
       const line = new TextDecoder().decode(buf.subarray(0, n ?? 0)).trim();
       const input = line.charAt(0).toLowerCase();
 
-      if (input === 'l') {
+      if (input === "l") {
         console.log("\nAssets to be imported:");
-        schemas.forEach(schema => console.log(`  - ${schema.name}`));
+        schemas.forEach((schema) => console.log(`  - ${schema.name}`));
         console.log();
-      } else if (input === 'y') {
+      } else if (input === "y") {
         confirmed = true;
       } else {
         return;
@@ -346,14 +400,13 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
     throw new Error("Error creating changeset");
   }
 
-
   let importedSchemas = 0;
   try {
     const siSchemasApi = new SchemasApi(apiConfiguration);
     // console.log("SchemasApi methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(siSchemasApi)));
 
     for (let schema of schemas) {
-      const {code, name, category, description} = schema;
+      const { code, name, category, description } = schema;
 
       let existingSchemaId = undefined;
       let existingSchemaIsInstalled = undefined;
@@ -376,13 +429,15 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
       let schemaId;
       let variantId;
       if (existingSchemaId) {
-        log.info(`existing schema ${name} (${existingSchemaId}), unlocking and updating...`);
+        log.info(
+          `existing schema ${name} (${existingSchemaId}), unlocking and updating...`,
+        );
 
         const unlockSchemaResponse = await siSchemasApi.unlockSchema({
           workspaceId,
           changeSetId,
           schemaId: existingSchemaId,
-        })
+        });
 
         const schemaVariantId = unlockSchemaResponse.data.unlockedVariantId;
 
@@ -398,11 +453,10 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
             category,
             description,
           },
-        })
+        });
 
         schemaId = existingSchemaId;
         variantId = schemaVariantId;
-
       } else {
         log.info(`creating schema ${name}...`);
 
@@ -431,7 +485,7 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
           schemaId,
           schemaVariantId: variantId,
           createVariantQualificationFuncV1Request: qualification,
-        })
+        });
       }
 
       for (const action of schema.actions) {
@@ -447,11 +501,16 @@ export async function exportAssets(context: AuthenticatedCliContext, assetsPath:
       }
     }
 
-    const changeSetUrl = `${workspaceUrlPrefix}/w/${workspaceId}/${changeSetId}/l/a`;
-    console.log(`${importedSchemas} schemas imported. To see them, go to: ${changeSetUrl}`);
+    const changeSetUrl =
+      `${workspaceUrlPrefix}/w/${workspaceId}/${changeSetId}/l/a`;
+    console.log(
+      `${importedSchemas} schemas imported. To see them, go to: ${changeSetUrl}`,
+    );
   } catch (error) {
     if (error instanceof AxiosError) {
-      log.error(`API error creating schemas: (${error.status}) ${error.response?.data.message}`);
+      log.error(
+        `API error creating schemas: (${error.status}) ${error.response?.data.message}`,
+      );
       log.error(`Request: ${error.request.method} ${error.request.path}`);
     } else {
       log.error(`Error creating schemas: ${unknownValueToErrorMessage(error)}`);

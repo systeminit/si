@@ -18,11 +18,15 @@ function decodeJWT(token: string): Record<string, unknown> {
     const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
     return JSON.parse(decoded);
   } catch (error) {
-    throw new Error(`Failed to decode JWT: ${unknownValueToErrorMessage(error)}`);
+    throw new Error(
+      `Failed to decode JWT: ${unknownValueToErrorMessage(error)}`,
+    );
   }
 }
 
-export function tryGetUserDataFromToken(apiToken?: string): { workspaceId: string, userId: string } | undefined {
+export function tryGetUserDataFromToken(
+  apiToken?: string,
+): { workspaceId: string; userId: string } | undefined {
   apiToken = apiToken ?? Deno.env.get("SI_API_TOKEN");
 
   if (!apiToken) {

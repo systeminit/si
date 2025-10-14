@@ -1,10 +1,17 @@
 import { BaseCliContext } from "../cli.ts";
-import { makeStringSafeForFilename, unknownValueToErrorMessage } from "../helpers.ts";
+import {
+  makeStringSafeForFilename,
+  unknownValueToErrorMessage,
+} from "../helpers.ts";
 import { Log } from "../log.ts";
 import { ensureDir } from "jsr:@std/fs/ensure-dir";
 import { SCHEMA_FILE_FORMAT_VERSION } from "../config.ts";
 
-export async function scaffoldAsset(ctx: BaseCliContext, assetName: string, assetFolder: string) {
+export async function scaffoldAsset(
+  ctx: BaseCliContext,
+  assetName: string,
+  assetFolder: string,
+) {
   const { log, analytics } = ctx;
   log.debug(`Running scaffold for asset ${assetName} in folder ${assetFolder}`);
 
@@ -37,17 +44,21 @@ export async function scaffoldAsset(ctx: BaseCliContext, assetName: string, asse
     };
     await Deno.writeTextFile(
       `${assetPath}/metadata.json`,
-      JSON.stringify(metadata, null, 2)
+      JSON.stringify(metadata, null, 2),
     );
     log.debug(`Created metadata.json`);
 
     // Create index.ts
-    const indexContent = `function main() {\n  return new AssetBuilder().build();\n}\n`;
+    const indexContent =
+      `function main() {\n  return new AssetBuilder().build();\n}\n`;
     await Deno.writeTextFile(`${assetPath}/index.ts`, indexContent);
     log.debug(`Created index.ts`);
 
     // Create the version file
-    await Deno.writeTextFile(`${assetPath}/.format-version`, SCHEMA_FILE_FORMAT_VERSION.toString());
+    await Deno.writeTextFile(
+      `${assetPath}/.format-version`,
+      SCHEMA_FILE_FORMAT_VERSION.toString(),
+    );
     log.debug(`Created .format-version`);
 
     await createQualificationScaffold(log, assetPath, assetName);
@@ -62,7 +73,9 @@ export async function scaffoldAsset(ctx: BaseCliContext, assetName: string, asse
 
     analytics.trackEvent("scaffold_asset", { assetName });
   } catch (error) {
-    throw new Error(`Error creating asset: ${unknownValueToErrorMessage(error)}`);
+    throw new Error(
+      `Error creating asset: ${unknownValueToErrorMessage(error)}`,
+    );
   }
 }
 
@@ -77,8 +90,8 @@ async function createFunctionScaffold(
 
   // Create the metadata file
   await Deno.writeTextFile(
-      `${path}/${fileName}.json`,
-      JSON.stringify(metadata, null, 2)
+    `${path}/${fileName}.json`,
+    JSON.stringify(metadata, null, 2),
   );
   log.debug(`Created metadata file`);
 
@@ -87,13 +100,17 @@ async function createFunctionScaffold(
   log.debug(`Created code file`);
 }
 
-async function createQualificationScaffold(log: Log, assetPath: string, namePrefix: string = "") {
+async function createQualificationScaffold(
+  log: Log,
+  assetPath: string,
+  namePrefix: string = "",
+) {
   const code = `function main(input: Input) {
   return {
     result: "failure",
     message: "Region not-opted-in for use"
   }
-}`
+}`;
 
   await createFunctionScaffold(
     log,
@@ -108,10 +125,10 @@ async function createQualificationScaffold(log: Log, assetPath: string, namePref
         "deletedAt",
         "domain",
         "resource",
-        "secrets"
+        "secrets",
       ],
     },
-     code
+    code,
   );
 
   log.debug(`Created scaffold qualification`);
@@ -129,28 +146,31 @@ async function createActionScaffold(
     status: "error",
     message: "${kindOrName} Action not implemented"
   }
-}`
+}`;
 
   const name = `${namePrefix}-${kindOrName}`;
 
   await createFunctionScaffold(
-      log,
-      `${assetPath}/actions`,
-      kindOrName,
-      {
-        name,
-        displayName: name,
-        description: "optional",
-      },
-      code
+    log,
+    `${assetPath}/actions`,
+    kindOrName,
+    {
+      name,
+      displayName: name,
+      description: "optional",
+    },
+    code,
   );
 
   log.debug(`Created scaffold ${kindOrName} action`);
 }
 
-
 // Create a codegen func
-async function createCodegenScaffold(log: Log, assetPath: string, namePrefix: string = "") {
+async function createCodegenScaffold(
+  log: Log,
+  assetPath: string,
+  namePrefix: string = "",
+) {
   const code = `function main() {
   const code = {};
   return {
@@ -162,29 +182,33 @@ async function createCodegenScaffold(log: Log, assetPath: string, namePrefix: st
   const name = `${namePrefix}-codegen`;
 
   await createFunctionScaffold(
-      log,
-      `${assetPath}/codeGenerators`,
-      "sample",
-      {
-        name,
-        displayName: "Generate JSON Code",
-        description: "optional",
-        inputs: [
-          "code",
-          "deletedAt",
-          "domain",
-          "resource",
-          "secrets"
-        ],
-      },
-      code
+    log,
+    `${assetPath}/codeGenerators`,
+    "sample",
+    {
+      name,
+      displayName: "Generate JSON Code",
+      description: "optional",
+      inputs: [
+        "code",
+        "deletedAt",
+        "domain",
+        "resource",
+        "secrets",
+      ],
+    },
+    code,
   );
 
   log.debug(`Created scaffold codegen`);
 }
 
-async function createMgmtScaffold(log: Log, assetPath: string, namePrefix: string = "") {
-  const code =  `function main() {
+async function createMgmtScaffold(
+  log: Log,
+  assetPath: string,
+  namePrefix: string = "",
+) {
+  const code = `function main() {
   const ops = {
     update: {},
     actions: {
@@ -200,20 +224,20 @@ async function createMgmtScaffold(log: Log, assetPath: string, namePrefix: strin
     message: "Imported Resource",
     ops,
   };
-}`
+}`;
 
   const name = `${namePrefix}-import`;
 
   await createFunctionScaffold(
-      log,
-      `${assetPath}/management`,
-      "sample",
-      {
-        name,
-        displayName: "Import Empty Resource",
-        description: "optional",
-      },
-      code
+    log,
+    `${assetPath}/management`,
+    "sample",
+    {
+      name,
+      displayName: "Import Empty Resource",
+      description: "optional",
+    },
+    code,
   );
 
   log.debug(`Created scaffold qualification`);

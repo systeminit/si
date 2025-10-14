@@ -1,11 +1,11 @@
-async function main(component: Input): Promise < Output > {
+async function main(component: Input): Promise<Output> {
   const identityType = component.properties?.domain?.IdentityType;
   if (!identityType) {
     return {
       status: "error",
       message: "schema using this function must have an IdentityType property.",
       payload: component.properties,
-    }
+    };
   }
   if (component.properties.resource?.payload) {
     return {
@@ -29,14 +29,19 @@ async function main(component: Input): Promise < Output > {
     codeGen = "awsIamRoleCodeGen";
     responseField = "Role";
   }
-  const identity = _.get(component, ["properties", "domain", identityField]) || "";
+  const identity = _.get(component, ["properties", "domain", identityField]) ||
+    "";
 
-  const command = `create-${identityType}`
+  const command = `create-${identityType}`;
 
   let code = component.properties.code?.[codeGen]?.code as string;
   if (identityType === "role") {
     const codeObj = JSON.parse(code);
-    _.set(codeObj, ["AssumeRolePolicyDocument"], JSON.stringify(codeObj.AssumeRolePolicyDocument))
+    _.set(
+      codeObj,
+      ["AssumeRolePolicyDocument"],
+      JSON.stringify(codeObj.AssumeRolePolicyDocument),
+    );
     code = JSON.stringify(codeObj, null, 2);
   }
   const args = [
@@ -51,7 +56,8 @@ async function main(component: Input): Promise < Output > {
     console.error(child.stderr);
     return {
       status: "error",
-      message: `Unable to create ${identityType} ${identity}; AWS CLI 2 exited with non zero code: ${child.exitCode}`,
+      message:
+        `Unable to create ${identityType} ${identity}; AWS CLI 2 exited with non zero code: ${child.exitCode}`,
     };
   }
 

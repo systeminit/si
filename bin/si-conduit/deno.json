@@ -5,6 +5,6 @@
   },
   "imports": {
     "@systeminit/api-client": "jsr:@systeminit/api-client@^1.2.0",
-    "posthog-node": "npm:posthog-node@^4.2.1",
+    "posthog-node": "npm:posthog-node@^4.2.1"
   }
 }

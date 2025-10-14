@@ -21,17 +21,22 @@ export class AuthApiClient {
         headers: {
           Authorization: `Bearer ${this.apiToken}`,
         },
-      }
+      },
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch workspace details: ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch workspace details: ${response.statusText}`,
+      );
     }
 
-    const { instanceUrl, displayName, id, instanceEnvType } = await response.json();
+    const { instanceUrl, displayName, id, instanceEnvType } = await response
+      .json();
 
     if (!instanceUrl || !displayName || !id || !instanceEnvType) {
-      throw new Error('Failed to fetch workspace details: missing required fields');
+      throw new Error(
+        "Failed to fetch workspace details: missing required fields",
+      );
     }
 
     return {

@@ -8,7 +8,6 @@ import { AuthApiClient, WorkspaceDetails } from "./auth-api-client.ts";
 import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Analytics } from "./analytics.ts";
 
-
 export type BaseCliContext = {
   log: Log;
   analytics: Analytics;
@@ -20,7 +19,9 @@ export type AuthenticatedCliContext = BaseCliContext & {
 };
 
 /// From the environment variables, extract the configuration needed to run auth commands
-async function initializeCliContextWithAuth(baseCtx: BaseCliContext): Promise<AuthenticatedCliContext> {
+async function initializeCliContextWithAuth(
+  baseCtx: BaseCliContext,
+): Promise<AuthenticatedCliContext> {
   const { log, analytics } = baseCtx;
   const { apiUrl, apiToken, workspaceId } = extractConfig();
 
@@ -71,8 +72,11 @@ export async function run() {
 
       return whoami(ctx);
     })
-    .command("export-assets <assets-path:string>", "Export all assets from the assets folder")
-      .option("-s, --skip-confirmation", "Skip confirmation prompt")
+    .command(
+      "export-assets <assets-path:string>",
+      "Export all assets from the assets folder",
+    )
+    .option("-s, --skip-confirmation", "Skip confirmation prompt")
     .action(async ({ verbose, skipConfirmation }, assetsPath) => {
       const log = new Log(verbose);
 
@@ -81,37 +85,38 @@ export async function run() {
       return exportAssets(ctx, assetsPath, skipConfirmation);
     })
     .command("scaffold <asset-name:string>", "Scaffold a new asset")
-    .option("-f, --folder <folder:string>", "Asset folder path", { default: "." })
+    .option("-f, --folder <folder:string>", "Asset folder path", {
+      default: ".",
+    })
     .action(({ verbose, folder }, assetName) => {
       const log = new Log(verbose);
 
       return scaffoldAsset({ analytics, log }, assetName, folder);
     });
 
-    let exitCode = 0;
-    try {
-      await cmd.parse(Deno.args);
-    } catch (error) {
-      const errorMsg = unknownValueToErrorMessage(error);
+  let exitCode = 0;
+  try {
+    await cmd.parse(Deno.args);
+  } catch (error) {
+    const errorMsg = unknownValueToErrorMessage(error);
 
-      (new Log(0)).error(errorMsg);
+    (new Log(0)).error(errorMsg);
 
-      const [command, ...args] = Deno.args;
+    const [command, ...args] = Deno.args;
 
-      analytics.trackEvent("cli_error",
-      {
-        error: errorMsg,
-        command,
-        args,
-      });
+    analytics.trackEvent("cli_error", {
+      error: errorMsg,
+      command,
+      args,
+    });
 
-      exitCode = 1
-    }
+    exitCode = 1;
+  }
 
-    // Idle for a bit to allow the analytics event to be sent
-    await analytics.shutdown();
+  // Idle for a bit to allow the analytics event to be sent
+  await analytics.shutdown();
 
-    Deno.exit(exitCode);
+  Deno.exit(exitCode);
 }
 
 async function getWorkspaceDetails(apiToken: string, workspaceId?: string) {

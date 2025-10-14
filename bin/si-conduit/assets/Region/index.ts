@@ -4,7 +4,6 @@ function main() {
     .setKind("string")
     .build();
 
-
   const credentialProp = new SecretPropBuilder()
     .setName("credential")
     .setSecretKind("AWS Credential")

@@ -1,7 +1,6 @@
 import { PostHog } from "posthog-node";
 
-
-const POSTHOG_EVENT_PREFIX = "conduit"
+const POSTHOG_EVENT_PREFIX = "conduit";
 const POSTHOG_SHUTDOWN_MAX_MS = 2000;
 
 export class Analytics {
@@ -11,7 +10,7 @@ export class Analytics {
   private readonly userId: string | undefined;
   private readonly workspaceId: string | undefined;
 
-  constructor(authData?: { userId: string, workspaceId: string }) {
+  constructor(authData?: { userId: string; workspaceId: string }) {
     this.sessionId = crypto.randomUUID();
     this.posthog = this.initializePostHog();
 
@@ -46,12 +45,14 @@ export class Analytics {
     if (!this.posthog) return;
     const event = `${POSTHOG_EVENT_PREFIX}-${eventName}`;
     try {
-      const [workspaceId, userId] = [this.getWorkspaceId(), this.getDistinctId()];
-
+      const [workspaceId, userId] = [
+        this.getWorkspaceId(),
+        this.getDistinctId(),
+      ];
 
       let distinctId = userId;
 
-      const variablePayload: Record<string, unknown> = {}
+      const variablePayload: Record<string, unknown> = {};
       if (!distinctId || !workspaceId) {
         distinctId = crypto.randomUUID();
 
@@ -68,7 +69,7 @@ export class Analytics {
           ...variablePayload,
           ...properties,
         },
-      }
+      };
 
       this.posthog.capture(payload);
     } catch (error) {
@@ -77,6 +78,6 @@ export class Analytics {
   }
 
   async shutdown() {
-    await this.posthog.shutdown(POSTHOG_SHUTDOWN_MAX_MS)
+    await this.posthog.shutdown(POSTHOG_SHUTDOWN_MAX_MS);
   }
 }
