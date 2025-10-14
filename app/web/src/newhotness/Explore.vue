@@ -361,7 +361,9 @@
               @resetFilter="resetFilter"
               @bulkDone="bulkDone"
               @childClicked="componentClicked"
-              @childSelect="(idx: number, event?: MouseEvent) => selectComponent(idx, event)"
+              @childSelect="
+                (idx: number, event?: MouseEvent) => selectComponent(idx, event)
+              "
               @childDeselect="(idx: number) => deselectComponent(idx)"
               @childHover="
                 (componentId) => {
@@ -532,7 +534,11 @@
       :viewListOptions="viewListOptions"
       @clearSelected="clearSelection"
       @edit="navigateToFocusedComponent"
-      @pin="(c) => (gridMode = { mode: 'pinned', label: '', componentId: c })"
+      @pin="
+        (c) => {
+          gridMode = { mode: 'pinned', label: '', componentId: c };
+        }
+      "
       @bulk="startBulkEdit"
     />
   </section>
@@ -1028,7 +1034,9 @@ watch(
 
 watch(gridMode, (newMode, oldMode) => {
   // Ignore the grid mode in map view.
-  if (!showGrid.value) return;
+  if (!showGrid.value) {
+    return;
+  }
 
   // If we are moving in or out of pinning mode, we need to clear the selection.
   if (newMode.mode === "pinned" || oldMode.mode === "pinned") {
@@ -1858,6 +1866,13 @@ watch(selectedComponentIndexes, () => {
   if (selectedURI) query.s = selectedURI;
   else delete query.s;
 
+  // Don't remove the s param if we're clearing selection while entering pinned mode
+  // The gridMode watcher will handle updating the query with the pinned param
+  if (!selectedURI && gridMode.value.mode === "pinned") {
+    // Preserve the pinned state when clearing selections
+    return;
+  }
+
   storeFilterAndGroup(query);
   router.push({
     query,
@@ -2489,53 +2504,59 @@ const setSelectionsFromQuery = async () => {
       break;
   }
 
-  switch (query.groupBy) {
-    case "diffstatus":
-      gridMode.value = {
-        mode: "groupBy",
-        criteria: "diff",
-        label: "Diff Status",
-      };
-      break;
-    case "qualificationstatus":
-      gridMode.value = {
-        mode: "groupBy",
-        criteria: "qualification",
-        label: "Qualification Status",
-      };
-      break;
-    case "upgradeable":
-      gridMode.value = {
-        mode: "groupBy",
-        criteria: "upgrade",
-        label: "Upgradeable",
-      };
-      break;
-    case "schemaname":
-      gridMode.value = {
-        mode: "groupBy",
-        criteria: "schemaName",
-        label: "Schema Name",
-      };
-      break;
-    case "resource":
-      gridMode.value = {
-        mode: "groupBy",
-        criteria: "resource",
-        label: "Resource",
-      };
-      break;
-    case "incompatibleComponents":
-      gridMode.value = {
-        mode: "groupBy",
-        criteria: "incompatibleComponents",
-        label: "Incompatible Components",
-      };
-      break;
-    case undefined:
-    default:
-      gridMode.value = { mode: "default", label: "" };
-      break;
+  // Only set gridMode if there's an explicit groupBy value
+  // Don't reset to default here - let pinned/defaultSubscriptions checks below handle it
+  if (query.groupBy) {
+    switch (query.groupBy) {
+      case "diffstatus":
+        gridMode.value = {
+          mode: "groupBy",
+          criteria: "diff",
+          label: "Diff Status",
+        };
+        break;
+      case "qualificationstatus":
+        gridMode.value = {
+          mode: "groupBy",
+          criteria: "qualification",
+          label: "Qualification Status",
+        };
+        break;
+      case "upgradeable":
+        gridMode.value = {
+          mode: "groupBy",
+          criteria: "upgrade",
+          label: "Upgradeable",
+        };
+        break;
+      case "schemaname":
+        gridMode.value = {
+          mode: "groupBy",
+          criteria: "schemaName",
+          label: "Schema Name",
+        };
+        break;
+      case "resource":
+        gridMode.value = {
+          mode: "groupBy",
+          criteria: "resource",
+          label: "Resource",
+        };
+        break;
+      case "incompatibleComponents":
+        gridMode.value = {
+          mode: "groupBy",
+          criteria: "incompatibleComponents",
+          label: "Incompatible Components",
+        };
+        break;
+      default:
+        // Unknown groupBy value, don't set gridMode
+        break;
+    }
+  } else if (!query.pinned && query.defaultSubscriptions !== "1") {
+    // Only reset to default if there's no groupBy, pinned, or defaultSubscriptions
+    gridMode.value = { mode: "default", label: "" };
   }
 
   if (query.pinned !== undefined) {
