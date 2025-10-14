@@ -1,0 +1,3 @@
+[submodule "bin/clover/src/provider-schemas/azure-rest-api-specs"]
+	path = bin/clover/src/provider-schemas/azure-rest-api-specs
+	url = https://github.com/Azure/azure-rest-api-specs.git

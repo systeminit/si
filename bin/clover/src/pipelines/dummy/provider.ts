@@ -55,7 +55,7 @@ function dummyIsChildRequired(
   return false;
 }
 
-function dummyParseRawSchema(_rawSchema: unknown): ExpandedPkgSpec[] {
+export function dummyParseRawSchema(_rawSchema: unknown): ExpandedPkgSpec[] {
   const schemas = [serverSchema, databaseSchema];
   const specs: ExpandedPkgSpec[] = [];
 
@@ -83,7 +83,7 @@ function dummyParseRawSchema(_rawSchema: unknown): ExpandedPkgSpec[] {
       schema,
       schema.description,
       onlyProperties,
-      dummyProviderConfig,
+      DUMMY_PROVIDER_CONFIG,
       domainProperties,
       resourceValueProperties,
     );
@@ -94,14 +94,13 @@ function dummyParseRawSchema(_rawSchema: unknown): ExpandedPkgSpec[] {
   return specs;
 }
 
-async function dummyLoadSchemas(
-  options: PipelineOptions,
-) {
+async function dummyLoadSchemas(options: PipelineOptions) {
   return await generateDummySpecs(options);
 }
 
-async function dummyFetchSchema() {
+function dummyFetchSchema(): Promise<void> {
   console.log("Dummy provider uses hardcoded schemas - no fetching needed");
+  return Promise.resolve();
 }
 
 const dummyProviderFunctions: ProviderFunctions = {
@@ -116,13 +115,13 @@ const dummyProviderFuncSpecs: ProviderFuncSpecs = {
   qualification: QUALIFICATION_FUNC_SPECS,
 };
 
-export const dummyProviderConfig: ProviderConfig = {
+export const DUMMY_PROVIDER_CONFIG: ProviderConfig = {
   name: "dummy",
+  isStable: false,
   functions: dummyProviderFunctions,
   funcSpecs: dummyProviderFuncSpecs,
   loadSchemas: dummyLoadSchemas,
   fetchSchema: dummyFetchSchema,
-  parseRawSchema: dummyParseRawSchema,
   metadata: {
     color: "#808080",
     displayName: "Dummy Provider",
@@ -136,4 +135,4 @@ export const dummyProviderConfig: ProviderConfig = {
   },
 };
 
-PROVIDER_REGISTRY[dummyProviderConfig.name] = dummyProviderConfig;
+PROVIDER_REGISTRY[DUMMY_PROVIDER_CONFIG.name] = DUMMY_PROVIDER_CONFIG;

@@ -2,7 +2,7 @@ import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { OnlyProperties } from "../../spec/props.ts";
 import { makeModule } from "../generic/index.ts";
 import { CfProperty, SuperSchema } from "../types.ts";
-import { dummyProviderConfig } from "./provider.ts";
+import { DUMMY_PROVIDER_CONFIG } from "./provider.ts";
 import { databaseSchema, serverSchema } from "./schema.ts";
 
 function splitDummyProperties(
@@ -48,7 +48,7 @@ export function pkgSpecFromDummy(): ExpandedPkgSpec[] {
       schema,
       schema.description,
       onlyProperties,
-      dummyProviderConfig,
+      DUMMY_PROVIDER_CONFIG,
       domainProperties,
       resourceValueProperties,
     );
@@ -58,4 +58,3 @@ export function pkgSpecFromDummy(): ExpandedPkgSpec[] {
 
   return specs;
 }
-

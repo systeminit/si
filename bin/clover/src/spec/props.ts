@@ -397,6 +397,9 @@ export function createPropFromCf(
             normalizedCfProp.format,
           )}))`;
           break;
+        case "base64url":
+          // TODO ADD VALIDATION FOR THIS
+          break;
         case undefined:
           break;
         default:
@@ -539,28 +542,11 @@ export function createPropFromCf(
   throw new Error(`no matching kind in prop with path: ${propPath}`);
 }
 
-export type requiredFn = (
+type requiredFn = (
   superSchema: SuperSchema,
   parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ) => boolean;
-function childIsRequired(
-  superSchema: SuperSchema,
-  parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
-  childName: string,
-) {
-  // If the parent is an object, then the child is required only if the parent is required
-  // *and* the child is in the parent's "required" list
-  if (parentProp?.kind === "object") {
-    if (!parentProp?.metadata.required) return false;
-    if (!parentProp.cfProp) return false;
-    if (!("required" in parentProp.cfProp)) return false;
-    return parentProp.cfProp.required?.includes(childName) ?? false;
-  }
-  // If the parent is the root prop, or an array or map, the child is required (i.e. if it
-  // gets created then it must have a value).
-  return true;
-}
 
 function setJoiValidation(prop: ExpandedPropSpec, joiValidation: string) {
   prop.joiValidation = joiValidation;

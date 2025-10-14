@@ -1,5 +1,8 @@
+import path from "node:path";
 import {
   CfProperty,
+  CommonCommandOptions,
+  FetchSchemaOptions,
   PipelineOptions,
   PropertyNormalizationContext,
   PROVIDER_REGISTRY,
@@ -7,51 +10,36 @@ import {
   SuperSchema,
 } from "../types.ts";
 import { ExpandedPropSpecFor } from "../../spec/props.ts";
-import { type JsonSchema } from "./schema.ts";
-import {
-  cleanupRepo,
-  cloneAzureSpecs,
-  consolidateSpecsByService,
-  discoverSwaggerFiles,
-  processSwaggerFiles,
-} from "./fetchSchema.ts";
 import {
   ACTION_FUNC_SPECS,
   CODE_GENERATION_FUNC_SPECS,
   MANAGEMENT_FUNCS,
   QUALIFICATION_FUNC_SPECS,
 } from "./funcs.ts";
-import { normalizeAzureProperty, parseAzureSchema } from "./spec.ts";
+import { normalizeAzureProperty } from "./spec.ts";
 import { generateAzureSpecs } from "./pipeline.ts";
 
-async function azureFetchSchema() {
-  let repoPath: string | null = null;
+export function azureRestApiSpecsRepo(options: CommonCommandOptions) {
+  return path.join(options.providerSchemasPath, "azure-rest-api-specs");
+}
 
-  try {
-    repoPath = await cloneAzureSpecs();
+async function azureFetchSchema(options: FetchSchemaOptions) {
+  const specsRepo = azureRestApiSpecsRepo(options);
+  console.log(`Updating Azure specs in ${specsRepo} ...`);
 
-    const swaggerFiles = await discoverSwaggerFiles(repoPath);
-    console.log(`Discovered ${swaggerFiles.length} swagger files`);
+  // Update the bin/clover/src/provider-schemas/azure-rest-api-specs submodule
+  const command = new Deno.Command("git", {
+    args: ["submodule", "update", "--init", "--recursive"],
+  });
 
-    const swaggers = await processSwaggerFiles(swaggerFiles);
-    const serviceSpecs = consolidateSpecsByService(swaggers);
+  const { code, stderr } = await command.output();
 
-    const schemasDir = "./src/provider-schemas/azure";
-    await Deno.mkdir(schemasDir, { recursive: true });
-
-    for (const [serviceName, spec] of serviceSpecs) {
-      const filename = `${schemasDir}/${serviceName}.json`;
-      await Deno.writeTextFile(filename, JSON.stringify(spec, null, 2));
-    }
-
-    console.log(
-      `Azure schemas saved to ${schemasDir}/ (${serviceSpecs.size} files)`,
-    );
-  } finally {
-    if (repoPath) {
-      await cleanupRepo(repoPath);
-    }
+  if (code !== 0) {
+    const errorText = new TextDecoder().decode(stderr);
+    throw new Error(`Failed to update Azure specs: ${errorText}`);
   }
+
+  console.log("Update complete");
 }
 
 function createDocLink(
@@ -95,20 +83,19 @@ function azureNormalizeProperty(
 ): CfProperty {
   let propToNormalize = prop;
   if ("properties" in prop && prop.properties && !prop.type) {
-    propToNormalize = { ...prop, type: "object" } as CfProperty;
+    propToNormalize = { ...prop, type: "object" };
   }
 
-  return normalizeAzureProperty(propToNormalize as JsonSchema) as CfProperty;
+  return normalizeAzureProperty(propToNormalize);
 }
 
-async function azureLoadSchemas(
-  options: PipelineOptions,
-) {
+async function azureLoadSchemas(options: PipelineOptions) {
   return await generateAzureSpecs(options);
 }
 
-export const azureProviderConfig: ProviderConfig = {
+export const AZURE_PROVIDER_CONFIG: ProviderConfig = {
   name: "azure",
+  isStable: false,
   fetchSchema: azureFetchSchema,
   functions: {
     createDocLink,
@@ -121,7 +108,6 @@ export const azureProviderConfig: ProviderConfig = {
     qualification: QUALIFICATION_FUNC_SPECS,
   },
   loadSchemas: azureLoadSchemas,
-  parseRawSchema: parseAzureSchema,
   normalizeProperty: azureNormalizeProperty,
   isChildRequired: azureIsChildRequired,
   overrides: {
@@ -135,4 +121,4 @@ export const azureProviderConfig: ProviderConfig = {
   },
 };
 
-// PROVIDER_REGISTRY[azureProviderConfig.name] = azureProviderConfig;
+PROVIDER_REGISTRY[AZURE_PROVIDER_CONFIG.name] = AZURE_PROVIDER_CONFIG;

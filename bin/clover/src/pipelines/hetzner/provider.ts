@@ -1,4 +1,4 @@
-import { ExpandedPropSpecFor, OnlyProperties } from "../../spec/props.ts";
+import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import {
   CfProperty,
@@ -14,7 +14,7 @@ import {
   HETZNER_PROP_OVERRIDES,
   HETZNER_SCHEMA_OVERRIDES,
 } from "./overrides.ts";
-import { makeModule, normalizeOnlyProperties } from "../generic/index.ts";
+import { makeModule } from "../generic/index.ts";
 import {
   ACTION_FUNC_SPECS,
   CODE_GENERATION_FUNC_SPECS,
@@ -75,7 +75,7 @@ function hetznerNormalizeProperty(
   return normalizeHetznerProperty(propToNormalize as JsonSchema) as CfProperty;
 }
 
-function hetznerParseRawSchema(rawSchema: unknown): ExpandedPkgSpec[] {
+export function hetznerParseRawSchema(rawSchema: unknown): ExpandedPkgSpec[] {
   const allSchemas = rawSchema as JsonSchema;
   const specs: ExpandedPkgSpec[] = [];
 
@@ -119,9 +119,7 @@ function hetznerParseRawSchema(rawSchema: unknown): ExpandedPkgSpec[] {
   return specs;
 }
 
-async function hetznerLoadSchemas(
-  options: PipelineOptions,
-) {
+async function hetznerLoadSchemas(options: PipelineOptions) {
   return await generateHetznerSpecs(options);
 }
 
@@ -152,10 +150,10 @@ const hetznerProviderFuncSpecs: ProviderFuncSpecs = {
 
 export const hetznerProviderConfig: ProviderConfig = {
   name: "hetzner",
+  isStable: true,
   functions: hetznerProviderFunctions,
   funcSpecs: hetznerProviderFuncSpecs,
   loadSchemas: hetznerLoadSchemas,
-  parseRawSchema: hetznerParseRawSchema,
   fetchSchema: hetznerFetchSchema,
   metadata: {
     color: "#D50C2D",

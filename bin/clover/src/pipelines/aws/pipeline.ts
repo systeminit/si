@@ -1,5 +1,5 @@
 import { loadCfDatabase } from "../../cfDb.ts";
-import { awsProviderConfig } from "./provider.ts";
+import { AWS_PROVIDER_CONFIG } from "./provider.ts";
 import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { addDefaultPropsAndSockets } from "./pipeline-steps/addDefaultPropsAndSockets.ts";
 import { generateIntrinsicFuncs } from "./../generic/generateIntrinsicFuncs.ts";
@@ -21,6 +21,7 @@ import {
   createCredentialSuggestion,
   createRegionSuggestion,
 } from "./pipeline-steps/genericAwsProperties.ts";
+import { parseSchema } from "./spec.ts";
 
 export async function generateAwsSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -33,14 +34,14 @@ export async function generateAwsSpecs(options: {
   const existing_specs = await getExistingSpecs(options);
   const inferred = await loadInferred(options.inferred);
 
-  let specs = awsProviderConfig.parseRawSchema(db);
+  let specs = parseSchema(db);
 
   // EXECUTE PIPELINE STEPS
 
   specs = await removeBadDocLinks(specs, options.docLinkCache);
   specs = addInferredEnums(specs, inferred);
   specs = addDefaultPropsAndSockets(specs);
-  specs = generateDefaultFuncsFromConfig(specs, awsProviderConfig);
+  specs = generateDefaultFuncsFromConfig(specs, AWS_PROVIDER_CONFIG);
   specs = generateIntrinsicFuncs(specs);
   specs = removeUnneededAssets(specs);
 
@@ -51,7 +52,7 @@ export async function generateAwsSpecs(options: {
   specs = createCredentialSuggestion(specs);
 
   // Apply provider-specific overrides
-  specs = applyAssetOverrides(specs, awsProviderConfig);
+  specs = applyAssetOverrides(specs, AWS_PROVIDER_CONFIG);
 
   // prune assets that cannot be created by cloud control and must be create
   // using cf
