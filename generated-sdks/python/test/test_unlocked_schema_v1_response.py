@@ -36,11 +36,85 @@ class TestUnlockedSchemaV1Response(unittest.TestCase):
         if include_optional:
             return UnlockedSchemaV1Response(
                 schema_id = '01H9ZQD35JPMBGHH69BT0Q79VZ',
+                unlocked_variant = system_initiative_api_client.models.get_schema_variant_v1_response.GetSchemaVariantV1Response(
+                    asset_func_id = '01H9ZQD35JPMBGHH69BT0Q75XY', 
+                    category = 'AWS::EC2', 
+                    color = '#FF5733', 
+                    description = 'Amazon EC2 Instance resource type', 
+                    display_name = 'AWS EC2 Instance', 
+                    domain_props = system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
+                        children = [
+                            system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
+                                default_value = null, 
+                                description = '', 
+                                doc_link = '', 
+                                hidden = True, 
+                                name = '', 
+                                prop_id = '', 
+                                prop_type = '', 
+                                validation_format = '', )
+                            ], 
+                        default_value = null, 
+                        description = '', 
+                        doc_link = '', 
+                        hidden = True, 
+                        name = '', 
+                        prop_id = '', 
+                        prop_type = '', 
+                        validation_format = '', ), 
+                    installed_from_upstream = False, 
+                    is_default_variant = True, 
+                    is_locked = False, 
+                    link = 'https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html', 
+                    variant_func_ids = [01H9ZQD35JPMBGHH69BT0Q75AA, 01H9ZQD35JPMBGHH69BT0Q75BB], 
+                    variant_funcs = [
+                        system_initiative_api_client.models.schema_variant_func.SchemaVariantFunc(
+                            func_kind = null, 
+                            id = '01H9ZQD35JPMBGHH69BT0Q79VZ', )
+                        ], 
+                    variant_id = '01H9ZQD35JPMBGHH69BT0Q79VZ', ),
                 unlocked_variant_id = '01H9ZQD35JPMBGHH69BT0Q75XY'
             )
         else:
             return UnlockedSchemaV1Response(
                 schema_id = '01H9ZQD35JPMBGHH69BT0Q79VZ',
+                unlocked_variant = system_initiative_api_client.models.get_schema_variant_v1_response.GetSchemaVariantV1Response(
+                    asset_func_id = '01H9ZQD35JPMBGHH69BT0Q75XY', 
+                    category = 'AWS::EC2', 
+                    color = '#FF5733', 
+                    description = 'Amazon EC2 Instance resource type', 
+                    display_name = 'AWS EC2 Instance', 
+                    domain_props = system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
+                        children = [
+                            system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
+                                default_value = null, 
+                                description = '', 
+                                doc_link = '', 
+                                hidden = True, 
+                                name = '', 
+                                prop_id = '', 
+                                prop_type = '', 
+                                validation_format = '', )
+                            ], 
+                        default_value = null, 
+                        description = '', 
+                        doc_link = '', 
+                        hidden = True, 
+                        name = '', 
+                        prop_id = '', 
+                        prop_type = '', 
+                        validation_format = '', ), 
+                    installed_from_upstream = False, 
+                    is_default_variant = True, 
+                    is_locked = False, 
+                    link = 'https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html', 
+                    variant_func_ids = [01H9ZQD35JPMBGHH69BT0Q75AA, 01H9ZQD35JPMBGHH69BT0Q75BB], 
+                    variant_funcs = [
+                        system_initiative_api_client.models.schema_variant_func.SchemaVariantFunc(
+                            func_kind = null, 
+                            id = '01H9ZQD35JPMBGHH69BT0Q79VZ', )
+                        ], 
+                    variant_id = '01H9ZQD35JPMBGHH69BT0Q79VZ', ),
                 unlocked_variant_id = '01H9ZQD35JPMBGHH69BT0Q75XY',
         )
         """

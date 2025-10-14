@@ -1649,6 +1649,32 @@ Schemas management endpoints
 ```json
 {
   "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "unlockedVariant": {
+    "assetFuncId": "01H9ZQD35JPMBGHH69BT0Q75XY",
+    "category": "AWS::EC2",
+    "color": "#FF5733",
+    "description": "Amazon EC2 Instance resource type",
+    "displayName": "AWS EC2 Instance",
+    "domainProps": {},
+    "installedFromUpstream": false,
+    "isDefaultVariant": true,
+    "isLocked": false,
+    "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
+    "variantFuncIds": [
+      "01H9ZQD35JPMBGHH69BT0Q75AA",
+      "01H9ZQD35JPMBGHH69BT0Q75BB"
+    ],
+    "variantFuncs": [
+      {
+        "funcKind": {
+          "actionKind": "Create",
+          "kind": "action"
+        },
+        "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+      }
+    ],
+    "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+  },
   "unlockedVariantId": "01H9ZQD35JPMBGHH69BT0Q75XY"
 }
 ```
@@ -5958,6 +5984,32 @@ xor
 ```json
 {
   "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "unlockedVariant": {
+    "assetFuncId": "01H9ZQD35JPMBGHH69BT0Q75XY",
+    "category": "AWS::EC2",
+    "color": "#FF5733",
+    "description": "Amazon EC2 Instance resource type",
+    "displayName": "AWS EC2 Instance",
+    "domainProps": {},
+    "installedFromUpstream": false,
+    "isDefaultVariant": true,
+    "isLocked": false,
+    "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
+    "variantFuncIds": [
+      "01H9ZQD35JPMBGHH69BT0Q75AA",
+      "01H9ZQD35JPMBGHH69BT0Q75BB"
+    ],
+    "variantFuncs": [
+      {
+        "funcKind": {
+          "actionKind": "Create",
+          "kind": "action"
+        },
+        "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+      }
+    ],
+    "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+  },
   "unlockedVariantId": "01H9ZQD35JPMBGHH69BT0Q75XY"
 }
 
@@ -5968,6 +6020,7 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |schemaId|string|true|none|none|
+|unlockedVariant|[GetSchemaVariantV1Response](#schemagetschemavariantv1response)|true|none|none|
 |unlockedVariantId|string|true|none|none|
 
 ## [UpdateComponentV1Request](#tocS_UpdateComponentV1Request)

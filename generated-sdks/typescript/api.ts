@@ -2587,6 +2587,12 @@ export interface UnlockedSchemaV1Response {
     'schemaId': string;
     /**
      * 
+     * @type {GetSchemaVariantV1Response}
+     * @memberof UnlockedSchemaV1Response
+     */
+    'unlockedVariant': GetSchemaVariantV1Response;
+    /**
+     * 
      * @type {string}
      * @memberof UnlockedSchemaV1Response
      */
