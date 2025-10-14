@@ -23,7 +23,6 @@ const description =
   <important>
       *DO NOT USE THIS TOOL FOR TEMPLATE GENERATION:*
       - For template generation, use the template-generate tool's built-in search functionality
-      - For discovering components, use the template-generate tool's search instead
       - Only use component-list when you need to retrieve a comprehensive list of ALL components or apply
     complex regex filtering that isn't supported by search syntax
       </important>
