@@ -1,7 +1,5 @@
-import path from "node:path";
 import {
   CfProperty,
-  CommonCommandOptions,
   FetchSchemaOptions,
   PipelineOptions,
   PropertyNormalizationContext,
@@ -18,13 +16,10 @@ import {
 } from "./funcs.ts";
 import { normalizeAzureProperty } from "./spec.ts";
 import { generateAzureSpecs } from "./pipeline.ts";
-
-export function azureRestApiSpecsRepo(options: CommonCommandOptions) {
-  return path.join(options.providerSchemasPath, "azure-rest-api-specs");
-}
+import { initAzureRestApiSpecsRepo } from "./schema.ts";
 
 async function azureFetchSchema(options: FetchSchemaOptions) {
-  const specsRepo = azureRestApiSpecsRepo(options);
+  const specsRepo = initAzureRestApiSpecsRepo(options);
   console.log(`Updating Azure specs in ${specsRepo} ...`);
 
   // Update the bin/clover/src/provider-schemas/azure-rest-api-specs submodule
