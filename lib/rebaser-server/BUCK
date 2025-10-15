@@ -22,6 +22,7 @@ rust_library(
         "//lib/si-events-rs:si-events",
         "//lib/si-frontend-types-rs:si-frontend-types",
         "//lib/si-layer-cache:si-layer-cache",
+        "//lib/si-service-endpoints:si-service-endpoints",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/si-tls:si-tls",
