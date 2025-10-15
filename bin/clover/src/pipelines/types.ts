@@ -7,6 +7,7 @@ import { FuncSpecInfo } from "../spec/funcs.ts";
 import type { CfSchema } from "./aws/schema.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { ExpandedPropSpec, ExpandedPropSpecFor } from "../spec/props.ts";
+import { Provider } from "../types.ts";
 
 const CF_PROPERTY_TYPES = [
   "boolean",
@@ -30,12 +31,12 @@ export type CfProperty =
   | CfMultiTypeProperty
   // Then we have this mess of array typed properties
   | Extend<
-    JSONSchema.Interface,
-    {
-      properties?: Record<string, CfProperty>;
-      type: ["string", CfPropertyType] | [CfPropertyType, "string"];
-    }
-  >;
+      JSONSchema.Interface,
+      {
+        properties?: Record<string, CfProperty>;
+        type: ["string", CfPropertyType] | [CfPropertyType, "string"];
+      }
+    >;
 
 export type CfBooleanProperty = JSONSchema.Boolean;
 
@@ -75,17 +76,15 @@ export type CfObjectProperty = Extend<
   }
 >;
 
-type CfMultiTypeProperty =
-  & Pick<
-    JSONSchema.Interface,
-    "$ref" | "$comment" | "title" | "description"
-  >
-  & {
-    type?: undefined;
-    oneOf?: CfProperty[];
-    allOf?: CfProperty[];
-    anyOf?: CfProperty[];
-  };
+type CfMultiTypeProperty = Pick<
+  JSONSchema.Interface,
+  "$ref" | "$comment" | "title" | "description"
+> & {
+  type?: undefined;
+  oneOf?: CfProperty[];
+  allOf?: CfProperty[];
+  anyOf?: CfProperty[];
+};
 
 export type CfHandlerKind = "create" | "read" | "update" | "delete" | "list";
 export type CfHandler = {
@@ -157,9 +156,22 @@ export interface ProviderFuncSpecs {
 }
 
 /**
+ * Common options shared between all commands
+ */
+export interface CommonCommandOptions {
+  provider: Provider;
+  providerSchemasPath: string;
+}
+
+/**
+ * Options passed to provider fetchSchema functions
+ */
+export interface FetchSchemaOptions extends CommonCommandOptions {}
+
+/**
  * Options passed to provider pipeline functions
  */
-export interface PipelineOptions {
+export interface PipelineOptions extends CommonCommandOptions {
   forceUpdateExistingPackages?: boolean;
   moduleIndexUrl: string;
   docLinkCache: string;
@@ -234,6 +246,11 @@ export interface ProviderConfig {
   name: string;
 
   /**
+   * Whether this provider is considered stable and will run with `--provider=all`
+   */
+  isStable: boolean;
+
+  /**
    * Provider-specific functions for documentation, categorization, and normalization
    */
   functions: ProviderFunctions;
@@ -257,7 +274,7 @@ export interface ProviderConfig {
    * Function to fetch/update the provider's schema from its source.
    * Should download or generate the provider's schema file and save it to src/provider-schemas/
    */
-  fetchSchema: () => Promise<void>;
+  fetchSchema: (options: FetchSchemaOptions) => Promise<void>;
 
   /**
    * Visual and descriptive metadata for the provider
@@ -300,21 +317,6 @@ export interface ProviderConfig {
   ) => boolean;
 
   /**
-   * Function to parse raw provider schema(s) and generate package specs.
-   *
-   * Each provider determines how to split properties between domain (writable/input)
-   * and resource_value (readable/output) based on its own schema semantics:
-   * - AWS: Uses CloudFormation readOnly/writeOnly/createOnly flags
-   * - Hetzner: Uses HTTP operations (POST/PUT = domain, GET = resource_value)
-   * - Azure: Uses OpenAPI operations (write methods = domain, read methods = resource_value)
-   * - Other providers: Can implement their own logic
-   *
-   * @param rawSchema - The raw schema in provider's native format
-   * @returns Array of ExpandedPkgSpec ready for pipeline processing
-   */
-  parseRawSchema: (rawSchema: unknown) => ExpandedPkgSpec[];
-
-  /**
    * Required provider-specific asset and property overrides
    * Applied during the pipeline after basic spec generation
    */
@@ -332,3 +334,11 @@ export interface ProviderConfig {
  * To add a new provider, simply add its config to this registry.
  */
 export const PROVIDER_REGISTRY: Record<string, ProviderConfig> = {};
+
+export function selectedProviders(
+  options: CommonCommandOptions,
+): ProviderConfig[] {
+  if (options.provider === "all")
+    return Object.values(PROVIDER_REGISTRY).filter((p) => p.isStable);
+  return [PROVIDER_REGISTRY[options.provider]];
+}

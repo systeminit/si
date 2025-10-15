@@ -7,7 +7,7 @@ import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForEx
 import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
 import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { applyAssetOverrides } from "../generic/applyAssetOverrides.ts";
-import { dummyProviderConfig } from "./provider.ts";
+import { DUMMY_PROVIDER_CONFIG, dummyParseRawSchema } from "./provider.ts";
 
 export async function generateDummySpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -20,12 +20,12 @@ export async function generateDummySpecs(options: {
 
   const existing_specs = await getExistingSpecs(options);
 
-  specs = dummyProviderConfig.parseRawSchema({});
+  specs = dummyParseRawSchema({});
 
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
-  specs = generateDefaultFuncsFromConfig(specs, dummyProviderConfig);
-  specs = applyAssetOverrides(specs, dummyProviderConfig);
+  specs = generateDefaultFuncsFromConfig(specs, DUMMY_PROVIDER_CONFIG);
+  specs = applyAssetOverrides(specs, DUMMY_PROVIDER_CONFIG);
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);

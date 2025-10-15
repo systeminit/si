@@ -3,7 +3,6 @@ import _logger from "../logger.ts";
 import { PkgSpec } from "../bindings/PkgSpec.ts";
 import { SchemaVariantSpec } from "../bindings/SchemaVariantSpec.ts";
 import { SchemaSpec } from "../bindings/SchemaSpec.ts";
-import { Provider } from "../types.ts";
 import { bfsPropTree, ExpandedPropSpec } from "../spec/props.ts";
 import {
   ExpandedPkgSpec,
@@ -11,7 +10,7 @@ import {
   ExpandedSchemaVariantSpec,
 } from "../spec/pkgs.ts";
 import { PropSpec } from "../bindings/PropSpec.ts";
-import { PROVIDER_REGISTRY } from "../pipelines/types.ts";
+import { PipelineOptions, selectedProviders } from "../pipelines/types.ts";
 // Import all providers to ensure they register themselves
 import "../pipelines/aws/spec.ts";
 import "../pipelines/hetzner/provider.ts";
@@ -20,35 +19,13 @@ import "../pipelines/dummy/spec.ts";
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
 
-export async function generateSiSpecs(options: {
-  forceUpdateExistingPackages?: boolean;
-  moduleIndexUrl: string;
-  docLinkCache: string;
-  inferred: string;
-  services?: string[];
-  provider: Provider;
-}) {
-  let specs: ExpandedPkgSpec[] = [];
+export async function generateSiSpecs(options: PipelineOptions) {
+  const specs: ExpandedPkgSpec[] = [];
 
-  if (options.provider === "all") {
-    // Generate specs for all providers
-    for (const [providerName, config] of Object.entries(PROVIDER_REGISTRY)) {
-      // Skip dummy provider
-      if (providerName === "dummy") continue;
-
-      logger.info(`Generating specs for provider: ${providerName}`);
-      const providerSpecs = await config.loadSchemas(options);
-      specs.push(...providerSpecs);
-    }
-  } else {
-    // Generate specs for specific provider
-    const config = PROVIDER_REGISTRY[options.provider];
-    if (!config) {
-      console.log(`Unsupported provider type: "${options.provider}"`);
-      console.log(`Available providers: ${Object.keys(PROVIDER_REGISTRY).join(", ")}`);
-      Deno.exit();
-    }
-    specs = await config.loadSchemas(options);
+  for (const config of selectedProviders(options)) {
+    logger.info(`Generating specs for provider: ${config.name}`);
+    const providerSpecs = await config.loadSchemas(options);
+    specs.push(...providerSpecs);
   }
 
   // WRITE OUT SPECS
@@ -74,9 +51,7 @@ export async function generateSiSpecs(options: {
     imported += 1;
   }
 
-  console.log(
-    `built ${imported} out of ${specs.length}`,
-  );
+  console.log(`built ${imported} out of ${specs.length}`);
 }
 
 function unexpandPackageSpec(expandedSpec: ExpandedPkgSpec): PkgSpec {

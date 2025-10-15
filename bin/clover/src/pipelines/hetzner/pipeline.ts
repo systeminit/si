@@ -11,7 +11,7 @@ import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
 import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { addDefaultProps } from "./pipeline-steps/addDefaultProps.ts";
 import { applyAssetOverrides } from "../generic/applyAssetOverrides.ts";
-import { hetznerProviderConfig } from "./provider.ts";
+import { hetznerParseRawSchema, hetznerProviderConfig } from "./provider.ts";
 
 export async function generateHetznerSpecs(options: {
   forceUpdateExistingPackages?: boolean;
@@ -24,7 +24,7 @@ export async function generateHetznerSpecs(options: {
 
   const existing_specs = await getExistingSpecs(options);
 
-  specs = hetznerProviderConfig.parseRawSchema(rawSchema);
+  specs = hetznerParseRawSchema(rawSchema);
 
   specs = addDefaultProps(specs);
 

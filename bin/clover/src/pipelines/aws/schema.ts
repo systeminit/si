@@ -18,7 +18,7 @@ export type CfSchema = {
     cloudFormationSystemTags?: boolean;
     tagProperty?: string;
   };
-  handlers?: Record<CfHandlerKind, CfHandler>;
+  handlers?: { [key in CfHandlerKind]?: CfHandler };
   remote?: unknown;
   definitions?: Record<string, CfProperty>;
   properties: Record<string, CfProperty>;
@@ -31,7 +31,7 @@ export type CfSchema = {
   deprecatedProperties?: JSONPointer[];
   additionalIdentifiers?: JSONPointer[];
   resourceLink?: {
-    "$comment": JSONSchema.Interface["$comment"];
+    $comment: JSONSchema.Interface["$comment"];
     templateUri: string;
     mappings: Record<string, JSONPointer>;
   };

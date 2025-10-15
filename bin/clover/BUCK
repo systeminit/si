@@ -48,6 +48,7 @@ deno_test(
             "src/pipelines/azure/funcs/**/*",
             "src/pipelines/hetzner/funcs/**/*",
             "src/pipelines/dummy/funcs/**/*",
+            "src/provider-schemas/**",
         ]
     ),
     ignore = [

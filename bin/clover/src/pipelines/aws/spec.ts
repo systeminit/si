@@ -2,7 +2,7 @@ import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { OnlyProperties } from "../../spec/props.ts";
 import { makeModule, normalizeOnlyProperties } from "../generic/index.ts";
 import { CfProperty } from "../types.ts";
-import { awsProviderConfig } from "./provider.ts";
+import { AWS_PROVIDER_CONFIG } from "./provider.ts";
 import type { CfDb, CfSchema } from "./schema.ts";
 
 function pruneProperties(
@@ -25,7 +25,9 @@ function pruneProperties(
 
     // Check if this is an object with nested properties
     if (
-      typeof cfProp === "object" && cfProp !== null && "properties" in cfProp &&
+      typeof cfProp === "object" &&
+      cfProp !== null &&
+      "properties" in cfProp &&
       cfProp.properties
     ) {
       const prunedChildren = pruneProperties(
@@ -110,7 +112,7 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
     cfSchema,
     cfSchema.description,
     onlyProperties,
-    awsProviderConfig,
+    AWS_PROVIDER_CONFIG,
     domainProperties,
     resourceValueProperties,
   );
@@ -145,7 +147,7 @@ export function parseSchema(rawSchema: unknown): ExpandedPkgSpec[] {
         cfSchema,
         cfSchema.description,
         onlyProperties,
-        awsProviderConfig,
+        AWS_PROVIDER_CONFIG,
         domainProperties,
         resourceValueProperties,
       );

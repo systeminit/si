@@ -19,7 +19,6 @@ import {
 } from "./funcs.ts";
 import type { CfSchema } from "./schema.ts";
 import { generateAwsSpecs } from "./pipeline.ts";
-import { parseSchema } from "./spec.ts";
 
 function cfCategory(schema: CfSchema): string {
   const [metaCategory, category] = schema.typeName.split("::");
@@ -76,12 +75,9 @@ async function awsLoadSchemas(options: PipelineOptions) {
 }
 
 async function awsFetchSchema() {
-  const child = await new Deno.Command(
-    Deno.execPath(),
-    {
-      args: ["run", "updateSchema"],
-    },
-  ).output();
+  const child = await new Deno.Command(Deno.execPath(), {
+    args: ["run", "updateSchema"],
+  }).output();
 
   const td = new TextDecoder();
   if (!child.success) {
@@ -102,12 +98,12 @@ const awsProviderFuncSpecs: ProviderFuncSpecs = {
   qualification: QUALIFICATION_FUNC_SPECS,
 };
 
-export const awsProviderConfig: ProviderConfig = {
+export const AWS_PROVIDER_CONFIG: ProviderConfig = {
   name: "aws",
+  isStable: true,
   functions: awsProviderFunctions,
   funcSpecs: awsProviderFuncSpecs,
   loadSchemas: awsLoadSchemas,
-  parseRawSchema: parseSchema,
   fetchSchema: awsFetchSchema,
   metadata: {
     color: "#FF9900",
@@ -122,4 +118,4 @@ export const awsProviderConfig: ProviderConfig = {
   },
 };
 
-PROVIDER_REGISTRY[awsProviderConfig.name] = awsProviderConfig;
+PROVIDER_REGISTRY[AWS_PROVIDER_CONFIG.name] = AWS_PROVIDER_CONFIG;

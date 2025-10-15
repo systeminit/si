@@ -1,12 +1,17 @@
-import { Command } from "jsr:@cliffy/command@^1.0.0-rc.8";
+import path from "node:path";
+import { Command, EnumType } from "jsr:@cliffy/command@^1.0.0-rc.8";
 import { fetchSchema } from "./commands/fetchSchema.ts";
 import { generateSiSpecs } from "./commands/generateSiSpecs.ts";
 import { generateTarFromSpec } from "./commands/generateTarFromSpec.ts";
 import { inferAi } from "./commands/inferAi.ts";
 import type { Provider } from "./types.ts";
+import { PROVIDER_REGISTRY } from "./pipelines/types.ts";
 
 const DEFAULT_MODULE_INDEX_URL = "http://0.0.0.0:5157";
-
+const DEFAULT_PROVIDER_SCHEMAS_PATH = path.join(
+  import.meta.dirname!,
+  "provider-schemas",
+);
 export async function run() {
   const command = new Command()
     .name("clover")
@@ -16,25 +21,31 @@ export async function run() {
       "LOG_LEVEL=<value:string>",
       "Set the log level; defaults to info",
     )
-    .action(() => {
-      command.showHelp();
-      Deno.exit(1);
-    })
-    // fetch-schema
-    .command(
-      "fetch-schema",
-      "Getch cloudformation schema from aws.",
+    .globalOption(
+      "--provider-schemas-path <path:string>",
+      "Path where provider-specific schemas are cached.",
+      {
+        default: DEFAULT_PROVIDER_SCHEMAS_PATH,
+      },
     )
-    .option(
-      "-p, --provider=[provider]",
+    .globalType(
+      "provider",
+      new EnumType<Provider>([...Object.keys(PROVIDER_REGISTRY), "all"]),
+    )
+    .globalOption(
+      "-p, --provider=<value:provider>",
       "The specific provider to generate specs for",
       {
         required: true,
       },
     )
-    .action(async (options) => {
-      await fetchSchema(options.provider as Provider);
+    .action(() => {
+      command.showHelp();
+      Deno.exit(1);
     })
+    // fetch-schema
+    .command("fetch-schema", "Getch cloudformation schema from aws.")
+    .action(async (options) => await fetchSchema(options))
     // generate-specs
     .command(
       "generate-specs [...services:string]",
@@ -59,13 +70,6 @@ To generate all specs containing "ECS" or "S3", you can pass some services as ar
       "--force-update-existing-packages",
       "Force the existing package list to be updated",
     )
-    .option(
-      "-p, --provider=[provider]",
-      "The specific provider to generate specs for",
-      {
-        required: true,
-      },
-    )
     .env(
       "SI_BEARER_TOKEN=<value:string>",
       "Auth token for interacting with the module index",
@@ -77,14 +81,11 @@ To generate all specs containing "ECS" or "S3", you can pass some services as ar
       { prefix: "SI_" },
     )
     .action(async (options, ...services: string[]) => {
-      await generateSiSpecs(
-        {
-          ...options,
-          provider: options.provider as Provider,
-          moduleIndexUrl: options.moduleIndexUrl ?? DEFAULT_MODULE_INDEX_URL,
-          services: services?.length > 0 ? services : undefined,
-        },
-      );
+      await generateSiSpecs({
+        ...options,
+        moduleIndexUrl: options.moduleIndexUrl ?? DEFAULT_MODULE_INDEX_URL,
+        services: services?.length > 0 ? services : undefined,
+      });
     })
     // infer-ai
     .command(
@@ -107,11 +108,7 @@ force the AI to re-infer all specs, pass the --force flag.
     .option("--inferred <file:string>", "Inferred database location", {
       default: "inferred.json",
     })
-    .env(
-      "OPENAI_API_KEY=<value:string>",
-      "OpenAI AI token",
-      { required: true },
-    )
+    .env("OPENAI_API_KEY=<value:string>", "OpenAI AI token", { required: true })
     .action(async (options, ...services: string[]) => {
       await inferAi({
         ...options,
