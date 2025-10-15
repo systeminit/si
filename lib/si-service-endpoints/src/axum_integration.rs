@@ -1,14 +1,22 @@
-use crate::{DefaultServiceEndpoints, ServiceEndpointsConfig};
+use std::sync::Arc;
+
 use axum::{
     Router,
     extract::State,
     http::StatusCode,
-    response::{IntoResponse, Json},
+    response::{
+        IntoResponse,
+        Json,
+    },
     routing::get,
 };
 use serde_json::json;
-use std::sync::Arc;
 use tower_http::cors::CorsLayer;
+
+use crate::{
+    DefaultServiceEndpoints,
+    ServiceEndpointsConfig,
+};
 
 pub fn create_router(
     service: Arc<DefaultServiceEndpoints>,
@@ -21,15 +29,11 @@ pub fn create_router(
         .with_state(service)
 }
 
-async fn health_handler(
-    State(_service): State<Arc<DefaultServiceEndpoints>>,
-) -> impl IntoResponse {
+async fn health_handler(State(_service): State<Arc<DefaultServiceEndpoints>>) -> impl IntoResponse {
     (StatusCode::OK, Json(json!({ "status": "healthy" })))
 }
 
-async fn config_handler(
-    State(service): State<Arc<DefaultServiceEndpoints>>,
-) -> impl IntoResponse {
+async fn config_handler(State(service): State<Arc<DefaultServiceEndpoints>>) -> impl IntoResponse {
     let response = json!({
         "service": service.service_name(),
         "config": service.config()

@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-service-endpoints",
     deps = [
+        "//lib/telemetry-rs:telemetry",
         "//third-party/rust:axum",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
