@@ -1,4 +1,5 @@
 import { OnlyProperties } from "../../spec/props.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import {
   CfProperty,
   PipelineOptions,
@@ -19,6 +20,7 @@ import { databaseSchema, serverSchema } from "./schema.ts";
 import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import { generateDummySpecs } from "./pipeline.ts";
 import { DUMMY_PROP_OVERRIDES, DUMMY_SCHEMA_OVERRIDES } from "./overrides.ts";
+import { makeModule } from "../generic/index.ts";
 
 function createDocLink(
   _schema: SuperSchema,
@@ -53,17 +55,43 @@ function dummyIsChildRequired(
   return false;
 }
 
-function dummyParseRawSchema(_rawSchema: unknown): SuperSchema[] {
-  return [serverSchema, databaseSchema];
-}
+function dummyParseRawSchema(_rawSchema: unknown): ExpandedPkgSpec[] {
+  const schemas = [serverSchema, databaseSchema];
+  const specs: ExpandedPkgSpec[] = [];
 
-function dummyClassifyProperties(_schema: SuperSchema): OnlyProperties {
-  return {
-    createOnly: [],
-    readOnly: ["id", "ipAddress", "status"],
-    writeOnly: [],
-    primaryIdentifier: ["id"],
-  };
+  for (const schema of schemas) {
+    const onlyProperties: OnlyProperties = {
+      createOnly: [],
+      readOnly: ["id", "ipAddress", "status"],
+      writeOnly: [],
+      primaryIdentifier: ["id"],
+    };
+
+    const readOnlySet = new Set(onlyProperties.readOnly);
+    const domainProperties: Record<string, CfProperty> = {};
+    const resourceValueProperties: Record<string, CfProperty> = {};
+
+    for (const [name, prop] of Object.entries(schema.properties)) {
+      if (readOnlySet.has(name)) {
+        resourceValueProperties[name] = prop as CfProperty;
+      } else {
+        domainProperties[name] = prop as CfProperty;
+      }
+    }
+
+    const spec = makeModule(
+      schema,
+      schema.description,
+      onlyProperties,
+      dummyProviderConfig,
+      domainProperties,
+      resourceValueProperties,
+    );
+
+    specs.push(spec);
+  }
+
+  return specs;
 }
 
 async function dummyLoadSchemas(
@@ -95,7 +123,6 @@ export const dummyProviderConfig: ProviderConfig = {
   loadSchemas: dummyLoadSchemas,
   fetchSchema: dummyFetchSchema,
   parseRawSchema: dummyParseRawSchema,
-  classifyProperties: dummyClassifyProperties,
   metadata: {
     color: "#808080",
     displayName: "Dummy Provider",

@@ -6,11 +6,7 @@ import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
 import { FuncSpecInfo } from "../spec/funcs.ts";
 import type { CfSchema } from "./aws/schema.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
-import {
-  ExpandedPropSpec,
-  ExpandedPropSpecFor,
-  OnlyProperties,
-} from "../spec/props.ts";
+import { ExpandedPropSpec, ExpandedPropSpecFor } from "../spec/props.ts";
 
 const CF_PROPERTY_TYPES = [
   "boolean",
@@ -34,12 +30,12 @@ export type CfProperty =
   | CfMultiTypeProperty
   // Then we have this mess of array typed properties
   | Extend<
-      JSONSchema.Interface,
-      {
-        properties?: Record<string, CfProperty>;
-        type: ["string", CfPropertyType] | [CfPropertyType, "string"];
-      }
-    >;
+    JSONSchema.Interface,
+    {
+      properties?: Record<string, CfProperty>;
+      type: ["string", CfPropertyType] | [CfPropertyType, "string"];
+    }
+  >;
 
 export type CfBooleanProperty = JSONSchema.Boolean;
 
@@ -79,15 +75,17 @@ export type CfObjectProperty = Extend<
   }
 >;
 
-type CfMultiTypeProperty = Pick<
-  JSONSchema.Interface,
-  "$ref" | "$comment" | "title" | "description"
-> & {
-  type?: undefined;
-  oneOf?: CfProperty[];
-  allOf?: CfProperty[];
-  anyOf?: CfProperty[];
-};
+type CfMultiTypeProperty =
+  & Pick<
+    JSONSchema.Interface,
+    "$ref" | "$comment" | "title" | "description"
+  >
+  & {
+    type?: undefined;
+    oneOf?: CfProperty[];
+    allOf?: CfProperty[];
+    anyOf?: CfProperty[];
+  };
 
 export type CfHandlerKind = "create" | "read" | "update" | "delete" | "list";
 export type CfHandler = {
@@ -302,27 +300,19 @@ export interface ProviderConfig {
   ) => boolean;
 
   /**
-   * Optional function to parse raw provider schema(s) into normalized SuperSchema(s).
-   * This is where provider-specific parsing and inference happens (e.g., parsing
-   * OpenAPI specs, inferring property classifications from HTTP methods).
+   * Function to parse raw provider schema(s) and generate package specs.
    *
-   * If not provided, the provider is expected to handle schema parsing elsewhere
-   * (e.g., AWS uses a pre-built CloudFormation database).
+   * Each provider determines how to split properties between domain (writable/input)
+   * and resource_value (readable/output) based on its own schema semantics:
+   * - AWS: Uses CloudFormation readOnly/writeOnly/createOnly flags
+   * - Hetzner: Uses HTTP operations (POST/PUT = domain, GET = resource_value)
+   * - Azure: Uses OpenAPI operations (write methods = domain, read methods = resource_value)
+   * - Other providers: Can implement their own logic
    *
    * @param rawSchema - The raw schema in provider's native format
-   * @returns Array of normalized SuperSchemas ready for makeModule
+   * @returns Array of ExpandedPkgSpec ready for pipeline processing
    */
-  parseRawSchema?: (rawSchema: unknown) => SuperSchema[];
-
-  /**
-   * Function to extract OnlyProperties classification from a schema.
-   * This determines which properties are createOnly, readOnly, writeOnly,
-   * and what the primaryIdentifier is.
-   *
-   * @param schema - The normalized SuperSchema
-   * @returns Classification of properties by mutability
-   */
-  classifyProperties: (schema: SuperSchema) => OnlyProperties;
+  parseRawSchema: (rawSchema: unknown) => ExpandedPkgSpec[];
 
   /**
    * Required provider-specific asset and property overrides

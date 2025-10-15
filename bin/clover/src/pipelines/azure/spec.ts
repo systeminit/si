@@ -1,7 +1,10 @@
 import logger from "../../logger.ts";
 import { OnlyProperties } from "../../spec/props.ts";
-import type { CfProperty, SuperSchema } from "../types.ts";
+import type { CfProperty } from "../types.ts";
 import { CfHandler, CfHandlerKind } from "../types.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
+import { makeModule } from "../generic/index.ts";
+import { azureProviderConfig } from "./provider.ts";
 import {
   type AzureOperationData,
   type AzureSchema,
@@ -237,7 +240,7 @@ export function mergeAzureResourceOperations(
   resourceType: string,
   operations: AzureOperationData[],
   apiVersion: string,
-): { schema: AzureSchema; onlyProperties: OnlyProperties } | null {
+): ExpandedPkgSpec | null {
   const {
     handlers,
     getOperation,
@@ -263,7 +266,7 @@ export function mergeAzureResourceOperations(
     return null;
   }
 
-  let mergedProperties = { ...getProperties };
+  const mergedProperties = { ...getProperties };
   const requiredProperties = new Set(getRequired);
 
   const getPropertySet: PropertySet = new Set(Object.keys(getProperties));
@@ -329,7 +332,12 @@ export function mergeAzureResourceOperations(
       }
 
       if (propSchema?.properties && typeof propSchema.properties === "object") {
-        paths.push(...collectReadOnlyPaths(propSchema.properties as JsonSchema, currentPath));
+        paths.push(
+          ...collectReadOnlyPaths(
+            propSchema.properties as JsonSchema,
+            currentPath,
+          ),
+        );
       }
     }
 
@@ -344,8 +352,8 @@ export function mergeAzureResourceOperations(
   getPropertySet.forEach((prop) => {
     const isPrimaryIdentifier = onlyProperties.primaryIdentifier.includes(prop);
     const notInWrites = !createUpdateProperties.has(prop) &&
-                       !updateProperties.has(prop) &&
-                       !deleteProperties.has(prop);
+      !updateProperties.has(prop) &&
+      !deleteProperties.has(prop);
 
     if (isPrimaryIdentifier || notInWrites) {
       if (!onlyProperties.readOnly.includes(prop)) {
@@ -394,6 +402,19 @@ export function mergeAzureResourceOperations(
     }
   }
 
+  // Split properties into domain (writable) and resource_value (readable)
+  const readOnlySet = new Set(onlyProperties.readOnly);
+  const domainProperties: Record<string, CfProperty> = {};
+  const resourceValueProperties: Record<string, CfProperty> = {};
+
+  for (const [name, prop] of Object.entries(normalizedProperties)) {
+    if (readOnlySet.has(name)) {
+      resourceValueProperties[name] = prop;
+    } else {
+      domainProperties[name] = prop;
+    }
+  }
+
   const schema: AzureSchema = {
     typeName: resourceType,
     description,
@@ -404,7 +425,14 @@ export function mergeAzureResourceOperations(
     apiVersion,
   };
 
-  return { schema, onlyProperties };
+  return makeModule(
+    schema,
+    description,
+    onlyProperties,
+    azureProviderConfig,
+    domainProperties,
+    resourceValueProperties,
+  );
 }
 
 function isResourcePath(path: string): boolean {
@@ -428,9 +456,9 @@ function extractResourceTypeFromPath(path: string): string | null {
   return null;
 }
 
-export function parseAzureSchema(rawSchema: unknown): SuperSchema[] {
+export function parseAzureSchema(rawSchema: unknown): ExpandedPkgSpec[] {
   const schema = rawSchema as JsonSchema;
-  const schemas: SuperSchema[] = [];
+  const specs: ExpandedPkgSpec[] = [];
 
   if (!schema.paths) {
     console.warn("No paths found in Azure schema");
@@ -472,22 +500,21 @@ export function parseAzureSchema(rawSchema: unknown): SuperSchema[] {
   const apiVersion = schemaInfo?.version as string | undefined || "2023-01-01";
 
   Object.entries(resourceOperations).forEach(([resourceType, operations]) => {
-    const result = mergeAzureResourceOperations(
+    const spec = mergeAzureResourceOperations(
       resourceType,
       operations,
       apiVersion,
     );
-    if (result) {
-      (result.schema as any)._inferredOnlyProperties = result.onlyProperties;
-      schemas.push(result.schema);
+    if (spec) {
+      specs.push(spec);
     }
   });
 
   logger.debug(
-    `Generated ${schemas.length} schemas from ${
+    `Generated ${specs.length} schemas from ${
       Object.keys(resourceOperations).length
     } resource types`,
   );
 
-  return schemas;
+  return specs;
 }

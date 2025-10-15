@@ -1,6 +1,5 @@
 import { normalizeProperty } from "../../cfDb.ts";
-import { normalizeOnlyProperties } from "../generic/index.ts";
-import { ExpandedPropSpecFor, OnlyProperties } from "../../spec/props.ts";
+import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import {
   CfProperty,
   PipelineOptions,
@@ -20,6 +19,7 @@ import {
 } from "./funcs.ts";
 import type { CfSchema } from "./schema.ts";
 import { generateAwsSpecs } from "./pipeline.ts";
+import { parseSchema } from "./spec.ts";
 
 function cfCategory(schema: CfSchema): string {
   const [metaCategory, category] = schema.typeName.split("::");
@@ -71,16 +71,6 @@ function awsIsChildRequired(
   return true;
 }
 
-function awsClassifyProperties(schema: SuperSchema): OnlyProperties {
-  const cfSchema = schema as CfSchema;
-  return {
-    createOnly: normalizeOnlyProperties(cfSchema.createOnlyProperties),
-    readOnly: normalizeOnlyProperties(cfSchema.readOnlyProperties),
-    writeOnly: normalizeOnlyProperties(cfSchema.writeOnlyProperties),
-    primaryIdentifier: normalizeOnlyProperties(cfSchema.primaryIdentifier),
-  };
-}
-
 async function awsLoadSchemas(options: PipelineOptions) {
   return await generateAwsSpecs(options);
 }
@@ -117,7 +107,7 @@ export const awsProviderConfig: ProviderConfig = {
   functions: awsProviderFunctions,
   funcSpecs: awsProviderFuncSpecs,
   loadSchemas: awsLoadSchemas,
-  classifyProperties: awsClassifyProperties,
+  parseRawSchema: parseSchema,
   fetchSchema: awsFetchSchema,
   metadata: {
     color: "#FF9900",

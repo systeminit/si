@@ -1,4 +1,5 @@
 import { ExpandedPropSpecFor, OnlyProperties } from "../../spec/props.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import {
   CfProperty,
   PipelineOptions,
@@ -13,7 +14,7 @@ import {
   HETZNER_PROP_OVERRIDES,
   HETZNER_SCHEMA_OVERRIDES,
 } from "./overrides.ts";
-import { normalizeOnlyProperties } from "../generic/index.ts";
+import { makeModule, normalizeOnlyProperties } from "../generic/index.ts";
 import {
   ACTION_FUNC_SPECS,
   CODE_GENERATION_FUNC_SPECS,
@@ -74,9 +75,9 @@ function hetznerNormalizeProperty(
   return normalizeHetznerProperty(propToNormalize as JsonSchema) as CfProperty;
 }
 
-function hetznerParseRawSchema(rawSchema: unknown): SuperSchema[] {
+function hetznerParseRawSchema(rawSchema: unknown): ExpandedPkgSpec[] {
   const allSchemas = rawSchema as JsonSchema;
-  const schemas: SuperSchema[] = [];
+  const specs: ExpandedPkgSpec[] = [];
 
   const resourceOperations: Record<string, OperationData[]> = {};
   Object.entries((allSchemas.paths as JsonSchema) || {}).forEach(
@@ -103,29 +104,19 @@ function hetznerParseRawSchema(rawSchema: unknown): SuperSchema[] {
   Object.entries(resourceOperations).forEach(([noun, operations]) => {
     const result = mergeResourceOperations(noun, operations, allSchemas);
     if (result) {
-      (result.schema as any)._inferredOnlyProperties = result.onlyProperties;
-      schemas.push(result.schema);
+      const spec = makeModule(
+        result.schema,
+        result.schema.description,
+        result.onlyProperties,
+        hetznerProviderConfig,
+        result.domainProperties,
+        result.resourceValueProperties,
+      );
+      specs.push(spec);
     }
   });
 
-  return schemas;
-}
-
-function hetznerClassifyProperties(schema: SuperSchema): OnlyProperties {
-  const inferredOnlyProperties = (schema as any)._inferredOnlyProperties as
-    | OnlyProperties
-    | undefined;
-
-  if (!inferredOnlyProperties) {
-    throw new Error("Expected Hetzner schema to have _inferredOnlyProperties");
-  }
-
-  return {
-    createOnly: normalizeOnlyProperties(inferredOnlyProperties.createOnly),
-    readOnly: inferredOnlyProperties.readOnly,
-    writeOnly: normalizeOnlyProperties(inferredOnlyProperties.writeOnly),
-    primaryIdentifier: inferredOnlyProperties.primaryIdentifier,
-  };
+  return specs;
 }
 
 async function hetznerLoadSchemas(
@@ -165,7 +156,6 @@ export const hetznerProviderConfig: ProviderConfig = {
   funcSpecs: hetznerProviderFuncSpecs,
   loadSchemas: hetznerLoadSchemas,
   parseRawSchema: hetznerParseRawSchema,
-  classifyProperties: hetznerClassifyProperties,
   fetchSchema: hetznerFetchSchema,
   metadata: {
     color: "#D50C2D",

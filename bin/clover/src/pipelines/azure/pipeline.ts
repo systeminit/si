@@ -1,10 +1,7 @@
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { PipelineOptions } from "../types.ts";
 import { join } from "https://deno.land/std@0.224.0/path/mod.ts";
-import {
-  generateDefaultFuncsFromConfig,
-  generateSpecsFromRawSchema,
-} from "../generic/index.ts";
+import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { getExistingSpecs } from "../../specUpdates.ts";
 import { generateIntrinsicFuncs } from "../generic/generateIntrinsicFuncs.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggestionsAcrossAssets.ts";
@@ -31,7 +28,7 @@ export async function generateAzureSpecs(
       const filePath = join(schemasDir, entry.name);
       const rawSchema = JSON.parse(await Deno.readTextFile(filePath));
 
-      const serviceSpecs = generateSpecsFromRawSchema(rawSchema, azureConfig);
+      const serviceSpecs = azureConfig.parseRawSchema(rawSchema);
       specs.push(...serviceSpecs);
     }
   } catch (error) {

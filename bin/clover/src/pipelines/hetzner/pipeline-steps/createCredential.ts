@@ -50,6 +50,8 @@ function createCredentialSpec(
     credential.description,
     onlyProperties,
     hetznerProviderConfig,
+    credential.properties,
+    {},
   );
 
   const [schema] = spec.schemas;

@@ -43,97 +43,19 @@ export function normalizeOnlyProperties(props: string[] | undefined): string[] {
   return newProps;
 }
 
-/**
- * Recursively prunes a properties tree based on readOnly classification.
- * This handles nested properties by walking the entire tree.
- * Empty parent objects are removed entirely.
- *
- * @param properties - The properties tree to prune
- * @param onlyProperties - Classification of properties (readOnly, writeOnly, etc.)
- * @param keepReadOnly - If true, keep readOnly properties; if false, keep writable properties
- * @param pathPrefix - Current path in the tree (for nested property matching)
- * @returns Pruned properties tree
- */
-function pruneProperties(
-  properties: Record<string, CfProperty>,
-  onlyProperties: OnlyProperties,
-  keepReadOnly: boolean,
-  pathPrefix: string = "",
-): Record<string, CfProperty> {
-  const readOnlySet = new Set(onlyProperties.readOnly);
-  const result: Record<string, CfProperty> = {};
-
-  for (const [name, prop] of Object.entries(properties)) {
-    if (!prop) continue;
-
-    const cfProp = prop as CfProperty;
-    const currentPath = pathPrefix ? `${pathPrefix}/${name}` : name;
-    // Check both the simple name and the full path to handle both normalized and non-normalized readOnly lists
-    const isReadOnly = readOnlySet.has(name) || readOnlySet.has(currentPath);
-    const shouldKeep = keepReadOnly ? isReadOnly : !isReadOnly;
-
-    // Check if this is an object with nested properties
-    if (
-      typeof cfProp === "object" && cfProp !== null && "properties" in cfProp &&
-      cfProp.properties
-    ) {
-      const prunedChildren = pruneProperties(
-        cfProp.properties as Record<string, CfProperty>,
-        onlyProperties,
-        keepReadOnly,
-        currentPath,
-      );
-
-      // Only include if this object has matching children
-      // Never include empty objects - they are pruned entirely
-      if (Object.keys(prunedChildren).length > 0) {
-        result[name] = { ...cfProp, properties: prunedChildren };
-      }
-    } else if (shouldKeep) {
-      result[name] = cfProp;
-    }
-  }
-
-  return result;
-}
-
 export function makeModule(
   schema: SuperSchema,
   description: string,
   onlyProperties: OnlyProperties,
   providerConfig: ProviderConfig,
+  domainProperties: Record<string, CfProperty>,
+  resourceValueProperties: Record<string, CfProperty>,
 ) {
   const { createDocLink: docFn, getCategory: categoryFn } =
     providerConfig.functions;
   const color = providerConfig.metadata?.color || "#FF9900"; // Default to AWS orange
 
-  // Recursively split properties into domain (writable) and resource_value (readOnly)
-  const domainProperties = pruneProperties(
-    schema.properties as Record<string, CfProperty>,
-    onlyProperties,
-    false, // keep writable properties
-  );
-  const resourceValueProperties = pruneProperties(
-    schema.properties as Record<string, CfProperty>,
-    onlyProperties,
-    true, // keep readOnly properties
-  );
-
-  // Filter out properties that don't have type or schema composition
-  for (const [name, prop] of Object.entries(domainProperties)) {
-    const cfProp = prop as CfProperty;
-    if (!cfProp.type && !cfProp.oneOf && !cfProp.anyOf) {
-      delete domainProperties[name];
-    }
-  }
-  for (const [name, prop] of Object.entries(resourceValueProperties)) {
-    const cfProp = prop as CfProperty;
-    if (!cfProp.type && !cfProp.oneOf && !cfProp.anyOf) {
-      delete resourceValueProperties[name];
-    }
-  }
-
-  // Create prop specs using the pruned properties
+  // Create prop specs using the provided properties
   const domain = createDefaultPropFromCf(
     "domain",
     domainProperties,
@@ -256,33 +178,6 @@ export function generateDefaultFuncsFromConfig(
     (domainId: string) =>
       createQualificationFuncs(config.funcSpecs.qualification, domainId),
   );
-
-  return specs;
-}
-
-/**
- * Generate ExpandedPkgSpecs from raw schemas using a ProviderConfig.
- * This is a generic helper that can be used by any provider that has
- * implemented parseRawSchema and classifyProperties hooks.
- *
- * @param rawSchema - Raw schema data in provider's native format
- * @param config - Provider configuration with parsing and classification hooks
- * @returns Array of ExpandedPkgSpecs ready for pipeline processing
- */
-export function generateSpecsFromRawSchema(
-  rawSchema: unknown,
-  config: ProviderConfig,
-): ExpandedPkgSpec[] {
-  // Parse raw schema into normalized SuperSchemas
-  const schemas = config.parseRawSchema
-    ? config.parseRawSchema(rawSchema)
-    : (rawSchema as SuperSchema[]);
-
-  // Transform each schema into a spec
-  const specs: ExpandedPkgSpec[] = schemas.map((schema) => {
-    const onlyProperties = config.classifyProperties(schema);
-    return makeModule(schema, schema.description, onlyProperties, config);
-  });
 
   return specs;
 }

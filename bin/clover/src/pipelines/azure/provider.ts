@@ -6,7 +6,7 @@ import {
   ProviderConfig,
   SuperSchema,
 } from "../types.ts";
-import { ExpandedPropSpecFor, OnlyProperties } from "../../spec/props.ts";
+import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import { type JsonSchema } from "./schema.ts";
 import {
   cleanupRepo,
@@ -23,7 +23,6 @@ import {
 } from "./funcs.ts";
 import { normalizeAzureProperty, parseAzureSchema } from "./spec.ts";
 import { generateAzureSpecs } from "./pipeline.ts";
-import { normalizeOnlyProperties } from "../generic/index.ts";
 
 async function azureFetchSchema() {
   let repoPath: string | null = null;
@@ -102,25 +101,6 @@ function azureNormalizeProperty(
   return normalizeAzureProperty(propToNormalize as JsonSchema) as CfProperty;
 }
 
-function azureClassifyProperties(schema: SuperSchema): OnlyProperties {
-  const inferredOnlyProperties = (schema as any)._inferredOnlyProperties as
-    | OnlyProperties
-    | undefined;
-
-  if (!inferredOnlyProperties) {
-    throw new Error("Expected Azure schema to have _inferredOnlyProperties");
-  }
-
-  return {
-    createOnly: normalizeOnlyProperties(inferredOnlyProperties.createOnly),
-    readOnly: inferredOnlyProperties.readOnly,
-    writeOnly: normalizeOnlyProperties(inferredOnlyProperties.writeOnly),
-    primaryIdentifier: normalizeOnlyProperties(
-      inferredOnlyProperties.primaryIdentifier,
-    ),
-  };
-}
-
 async function azureLoadSchemas(
   options: PipelineOptions,
 ) {
@@ -142,7 +122,6 @@ export const azureProviderConfig: ProviderConfig = {
   },
   loadSchemas: azureLoadSchemas,
   parseRawSchema: parseAzureSchema,
-  classifyProperties: azureClassifyProperties,
   normalizeProperty: azureNormalizeProperty,
   isChildRequired: azureIsChildRequired,
   overrides: {

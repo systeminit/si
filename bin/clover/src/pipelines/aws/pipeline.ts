@@ -1,5 +1,4 @@
 import { loadCfDatabase } from "../../cfDb.ts";
-import { pkgSpecFromCf } from "./spec.ts";
 import { awsProviderConfig } from "./provider.ts";
 import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { addDefaultPropsAndSockets } from "./pipeline-steps/addDefaultPropsAndSockets.ts";
@@ -34,19 +33,7 @@ export async function generateAwsSpecs(options: {
   const existing_specs = await getExistingSpecs(options);
   const inferred = await loadInferred(options.inferred);
 
-  const cfSchemas = Object.values(db);
-
-  let specs = [] as ExpandedPkgSpec[];
-
-  for (const cfSchema of cfSchemas) {
-    try {
-      const pkg = pkgSpecFromCf(cfSchema);
-
-      specs.push(pkg);
-    } catch (e) {
-      console.log(`Error Building: ${cfSchema.typeName}: ${e}`);
-    }
-  }
+  let specs = awsProviderConfig.parseRawSchema(db);
 
   // EXECUTE PIPELINE STEPS
 
