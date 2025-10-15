@@ -7,7 +7,7 @@
 
 // Default configuration values
 const DEFAULT_CONFIG = {
-  baseUrl: "http://localhost:5380",
+  baseUrl: 'http://localhost:5380',
   timeout: 30000,
 };
 
@@ -44,7 +44,7 @@ export class ApiError extends Error {
     data: unknown,
   ) {
     super(message);
-    this.name = "ApiError";
+    this.name = 'ApiError';
     this.status = status;
     this.statusText = statusText;
     this.data = data;
@@ -54,7 +54,7 @@ export class ApiError extends Error {
 export class ConfigError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "ConfigError";
+    this.name = 'ConfigError';
   }
 }
 
@@ -99,14 +99,14 @@ export class LuminorkClient {
     const url = new URL(path, this.config.baseUrl);
 
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
       ...options.headers,
     };
 
     // Add auth token if available
     if (this.config.authToken) {
-      headers["Authorization"] = `Bearer ${this.config.authToken}`;
+      headers['Authorization'] = `Bearer ${this.config.authToken}`;
     }
 
     // Prepare request options
@@ -116,7 +116,7 @@ export class LuminorkClient {
     };
 
     // Add body for non-GET requests
-    if (options.method !== "GET" && options.body) {
+    if (options.method !== 'GET' && options.body) {
       requestInit.body = JSON.stringify(options.body);
     }
 
@@ -134,9 +134,9 @@ export class LuminorkClient {
 
       // Parse response
       let data: T;
-      const contentType = response.headers.get("content-type");
+      const contentType = response.headers.get('content-type');
 
-      if (contentType && contentType.includes("application/json")) {
+      if (contentType && contentType.includes('application/json')) {
         data = (await response.json()) as T;
       } else {
         data = (await response.text()) as unknown as T;
@@ -162,19 +162,19 @@ export class LuminorkClient {
         throw error;
       }
 
-      if (error instanceof DOMException && error.name === "AbortError") {
+      if (error instanceof DOMException && error.name === 'AbortError') {
         throw new ApiError(
           `Request timeout after ${timeout}ms`,
           408,
-          "Request Timeout",
-          { error: "timeout" },
+          'Request Timeout',
+          { error: 'timeout' },
         );
       }
 
       throw new ApiError(
         `API request failed: ${error instanceof Error ? error.message : String(error)}`,
         500,
-        "Internal Error",
+        'Internal Error',
         { error: String(error) },
       );
     }
@@ -185,9 +185,9 @@ export class LuminorkClient {
    */
   async get<T = unknown>(
     path: string,
-    options: Omit<RequestOptions, "method" | "body"> = {},
+    options: Omit<RequestOptions, 'method' | 'body'> = {},
   ): Promise<ApiResponse<T>> {
-    return this.request<T>(path, { ...options, method: "GET" });
+    return this.request<T>(path, { ...options, method: 'GET' });
   }
 
   /**
@@ -196,9 +196,9 @@ export class LuminorkClient {
   async post<T = unknown>(
     path: string,
     body: unknown = undefined,
-    options: Omit<RequestOptions, "method" | "body"> = {},
+    options: Omit<RequestOptions, 'method' | 'body'> = {},
   ): Promise<ApiResponse<T>> {
-    return this.request<T>(path, { ...options, method: "POST", body });
+    return this.request<T>(path, { ...options, method: 'POST', body });
   }
 
   /**
@@ -207,9 +207,9 @@ export class LuminorkClient {
   async put<T = unknown>(
     path: string,
     body: unknown = undefined,
-    options: Omit<RequestOptions, "method" | "body"> = {},
+    options: Omit<RequestOptions, 'method' | 'body'> = {},
   ): Promise<ApiResponse<T>> {
-    return this.request<T>(path, { ...options, method: "PUT", body });
+    return this.request<T>(path, { ...options, method: 'PUT', body });
   }
 
   /**
@@ -217,36 +217,40 @@ export class LuminorkClient {
    */
   async delete<T = unknown>(
     path: string,
-    options: Omit<RequestOptions, "method" | "body"> = {},
+    options: Omit<RequestOptions, 'method' | 'body'> = {},
   ): Promise<ApiResponse<T>> {
-    return this.request<T>(path, { ...options, method: "DELETE" });
+    return this.request<T>(path, { ...options, method: 'DELETE' });
   }
 
   /**
    * Check system status
    */
-  async getSystemStatus(): Promise<ApiResponse<{ "What is this?": string; "API Documentation": string }>> {
-    return this.get<{ "What is this?": string; "API Documentation": string }>("/");
+  async getSystemStatus(): Promise<
+    ApiResponse<{ 'What is this?': string; 'API Documentation': string }>
+  > {
+    return this.get<{ 'What is this?': string; 'API Documentation': string }>('/');
   }
 
   /**
    * Get current user information
    */
-  async whoami(): Promise<ApiResponse<{
-    userId: string;
-    userEmail: string;
-    workspaceId: string;
-    token: {
-      iat: number;
-      exp: number;
-      sub: string;
-      jti: string;
-      version: string;
+  async whoami(): Promise<
+    ApiResponse<{
       userId: string;
+      userEmail: string;
       workspaceId: string;
-      role: string;
-    }
-  }>> {
+      token: {
+        iat: number;
+        exp: number;
+        sub: string;
+        jti: string;
+        version: string;
+        userId: string;
+        workspaceId: string;
+        role: string;
+      };
+    }>
+  > {
     return this.get<{
       userId: string;
       userEmail: string;
@@ -260,7 +264,7 @@ export class LuminorkClient {
         userId: string;
         workspaceId: string;
         role: string;
-      }
-    }>("/whoami");
+      };
+    }>('/whoami');
   }
 }

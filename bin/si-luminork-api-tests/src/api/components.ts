@@ -4,7 +4,7 @@
  * Client for interacting with Components endpoints
  */
 
-import { LuminorkClient, ApiResponse } from "../client.ts";
+import { ApiResponse, LuminorkClient } from '../client.ts';
 
 // Type definitions for Components API
 export interface ComponentView {
@@ -159,7 +159,7 @@ export class ComponentsApi {
     data: CreateComponentRequest,
   ): Promise<ApiResponse<CreateComponentResponse>> {
     return this.client.post<CreateComponentResponse>(
-      this.buildPath(workspaceId, changeSetId, ""),
+      this.buildPath(workspaceId, changeSetId, ''),
       data,
     );
   }
@@ -172,7 +172,7 @@ export class ComponentsApi {
     changeSetId: string,
   ): Promise<ApiResponse<ListComponentsResponse>> {
     return this.client.get<ListComponentsResponse>(
-      this.buildPath(workspaceId, changeSetId, ""),
+      this.buildPath(workspaceId, changeSetId, ''),
     );
   }
 
@@ -185,17 +185,17 @@ export class ComponentsApi {
     params: FindComponentParams,
   ): Promise<ApiResponse<GetComponentResponse>> {
     const url = new URL(
-      this.buildPath(workspaceId, changeSetId, "/find"),
+      this.buildPath(workspaceId, changeSetId, '/find'),
       this.client.getBaseUrl(),
     );
 
     // Add search parameters
     if (params.name) {
-      url.searchParams.append("component", params.name);
+      url.searchParams.append('component', params.name);
     }
 
     if (params.schema_id) {
-      url.searchParams.append("schema_id", params.schema_id);
+      url.searchParams.append('schema_id', params.schema_id);
     }
 
     return this.client.get<GetComponentResponse>(url.toString());
