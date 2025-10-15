@@ -144,7 +144,7 @@
     {
       "name": "Zones",
       "x-nav-path": "DNS/Zones",
-      "description": "A Zone represents a [Domain Name System (DNS) zone](https://wikipedia.org/wiki/DNS_zone) managed by Hetzner authoritative nameservers.\nPlease see [Hetzner Docs](https://docs.hetzner.com/dns-console/dns/general/dns-overview#the-difference-between-domain-and-zone) for the difference between zones and domains.\n\nThis API supports all zone names with [well-known public suffixes](https://publicsuffix.org/) (e.g. `.de`, `.com`, `.co.uk`).\nSubdomains are not supported.\n\n### Zone Modes\n\nThis API supports two types of zone modes.\n\n- In _primary_ mode, resource record sets ([RRSets](#zone-rrsets)) and resource records (RRs) are managed via the Cloud API or Cloud Console.\n- In _secondary_ mode, Hetzner's nameservers query [RRSets](#zone-rrsets) and RRs from given primary nameservers via [AXFR](https://en.wikipedia.org/wiki/DNS_zone_transfer).\n\nThe zone mode cannot be changed, the zone must be deleted and re-created with a new mode.\n\n### SOA Serial\n\nFor zones in primary mode, Hetzner automatically increases the `SOA` record serial number.\nAs convention, a `YYYYMMDDnn` format with incrementing `nn` is used.\n\n### Zone file import\n\nThis API supports importing a zone file in BIND (RFC [1034](https://datatracker.ietf.org/doc/html/rfc1034)/[1035](https://datatracker.ietf.org/doc/html/rfc1035)) format.\n\nImporting a zone file is only applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\nDuring an import:\n\n- An `$ORIGIN` directive may be present, it must match the [Zone](#zones)'s name with an ending dot\n- A `$TTL` directive may be present, it is used as new default [Zone](#zones) Time To Live (TTL)\n- Only `IN` (internet) class records are allowed\n- The assigned authoritative Hetzner nameservers must be present as `NS` records\n- A `SOA` record must be present\n- Comments for individual records are imported, comments on their own lines are discarded\n\nZone file example:\n\n```dns\n$ORIGIN\texample.com.\n$TTL\t3600\n\n@\tIN\tSOA\thydrogen.ns.hetzner.com. dns.hetzner.com. 2024010100 86400 10800 3600000 3600\n\n@\tIN\t10800\tNS\thydrogen.ns.hetzner.com. ; Some comment.\n@\tIN\t10800\tNS\toxygen.ns.hetzner.com.\n@\tIN\t10800\tNS\thelium.ns.hetzner.de.\n```\n"
+      "description": "A Zone represents a [Domain Name System (DNS) zone](https://wikipedia.org/wiki/DNS_zone) managed by Hetzner authoritative nameservers.\nPlease see [Hetzner Docs](https://docs.hetzner.com/dns-console/dns/general/dns-overview#the-difference-between-domain-and-zone) for the difference between zones and domains.\n\nThis API supports all zone names with [well-known public suffixes](https://publicsuffix.org/) (e.g. `.de`, `.com`, `.co.uk`).\nSubdomains are not supported.\n\n### Zone Modes\n\nThis API supports two types of zone modes.\n\n- In _primary_ mode, resource record sets ([RRSets](#zone-rrsets)) and resource records (RRs) are managed via the Cloud API or Hetzner Console.\n- In _secondary_ mode, Hetzner's nameservers query [RRSets](#zone-rrsets) and RRs from given primary nameservers via [AXFR](https://en.wikipedia.org/wiki/DNS_zone_transfer).\n\nThe zone mode cannot be changed, the zone must be deleted and re-created with a new mode.\n\n### SOA Serial\n\nFor zones in primary mode, Hetzner automatically increases the `SOA` record serial number.\nAs convention, a `YYYYMMDDnn` format with incrementing `nn` is used.\n\n### Zone file import\n\nThis API supports importing a zone file in BIND (RFC [1034](https://datatracker.ietf.org/doc/html/rfc1034)/[1035](https://datatracker.ietf.org/doc/html/rfc1035)) format.\n\nImporting a zone file is only applicable for [Zones](#zones) in primary mode.\n\nDuring an import:\n\n- An `$ORIGIN` directive may be present, it must match the [Zone](#zones)'s name with an ending dot\n- A `$TTL` directive may be present, it is used as new default [Zone](#zones) Time To Live (TTL)\n- Only `IN` (internet) class records are allowed\n- The assigned authoritative Hetzner nameservers must be present as `NS` records\n- A `SOA` record must be present\n- Comments for individual records are imported, comments on their own lines are discarded\n\nZone file example:\n\n```dns\n$ORIGIN\texample.com.\n$TTL\t3600\n\n@\tIN\tSOA\thydrogen.ns.hetzner.com. dns.hetzner.com. 2024010100 86400 10800 3600000 3600\n\n@\tIN\t10800\tNS\thydrogen.ns.hetzner.com. ; Some comment.\n@\tIN\t10800\tNS\toxygen.ns.hetzner.com.\n@\tIN\t10800\tNS\thelium.ns.hetzner.de.\n```\n"
     },
     {
       "name": "Zone Actions",
@@ -153,7 +153,7 @@
     {
       "name": "Zone RRSets",
       "x-nav-path": "DNS/RRSets",
-      "description": "This API operates on resource record sets (RRSets) instead of individual resource records (RRs).\nAn RRSet is identified by a name and type. For example, the two RRs\n\n- (name: `@`, type: `MX`, value: `10 smtp.example.com.`) and\n- (name: `@`, type: `MX`, value: `20 smtp-backup.example.com.`)\n\nare part of the RRSet identified by (name: `@`, type: `MX`).\n"
+      "description": "This API operates on resource record sets (RRSets) instead of individual resource records (RRs).\nAn RRSet is identified by a name and type. For example, the two RRs\n\n- (name: `@`, type: `MX`, value: `10 smtp.example.com.`) and\n- (name: `@`, type: `MX`, value: `20 smtp-backup.example.com.`)\n\nare part of the RRSet identified by (name: `@`, type: `MX`).\n\nPlease see [Hetzner Docs](https://docs.hetzner.com/networking/dns/record-types/overview) for more information on types.\n"
     },
     {
       "name": "Zone RRSet Actions",
@@ -45802,7 +45802,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zone-modes).\n",
+              "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zones).\n",
               "type": "string",
               "enum": [
                 "primary",
@@ -45901,7 +45901,7 @@
                             "example": "2016-01-30T23:55:00+00:00"
                           },
                           "mode": {
-                            "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zone-modes).\n",
+                            "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zones).\n",
                             "type": "string",
                             "enum": [
                               "primary",
@@ -46197,7 +46197,7 @@
                     "example": "example.com"
                   },
                   "mode": {
-                    "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zone-modes).\n",
+                    "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zones).\n",
                     "type": "string",
                     "enum": [
                       "primary",
@@ -46226,7 +46226,7 @@
                     }
                   },
                   "primary_nameservers": {
-                    "description": "Primary nameservers of the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [secondary mode](#zone-modes).\nIgnored for [Zones](#zones) in [primary mode](#zone-modes).\n",
+                    "description": "Primary nameservers of the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in secondary mode.\nIgnored for [Zones](#zones) in primary mode.\n",
                     "type": "array",
                     "items": {
                       "description": "Primary nameserver that returns [Zones](#zones) via `AXFR`.\n\nMust allow queries from and may send `NOTIFY` queries to [Hetzner's secondary\nnameservers](https://docs.hetzner.com/dns-console/dns/general/authoritative-name-servers#secondary-dns-servers-old-name-servers-for-robot-customers).\n",
@@ -46273,7 +46273,7 @@
                     ]
                   },
                   "rrsets": {
-                    "description": "[RRSets](#zone-rrsets) to be added to the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\nIgnored for [Zones](#zones) in [secondary mode](#zone-modes).\n",
+                    "description": "[RRSets](#zone-rrsets) to be added to the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in primary mode.\nIgnored for [Zones](#zones) in secondary mode.\n",
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -46359,7 +46359,7 @@
                     }
                   },
                   "zonefile": {
-                    "description": "Zone file to import.\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\nIgnored for [Zones](#zones) in [secondary mode](#zone-modes).\n\nIf provided, `rrsets` must be empty.\n\nSee [Zone file import](#zone-file-import) for more details.\n",
+                    "description": "Zone file to import.\n\nOnly applicable for [Zones](#zones) in primary mode.\nIgnored for [Zones](#zones) in secondary mode.\n\nIf provided, `rrsets` must be empty.\n\nSee [Zone file import](#zone-file-import) for more details.\n",
                     "type": "string",
                     "example": "$ORIGIN\texample.com.\n$TTL\t3600\n\n@\tIN\tSOA\thydrogen.ns.hetzner.com. dns.hetzner.com. 2024010100 86400 10800 3600000 3600\n\n@\tIN\t10800\tNS\thydrogen.ns.hetzner.com. ; Some comment.\n@\tIN\t10800\tNS\toxygen.ns.hetzner.com.\n@\tIN\t10800\tNS\thelium.ns.hetzner.de.\n"
                   }
@@ -46458,7 +46458,7 @@
                           "example": "2016-01-30T23:55:00+00:00"
                         },
                         "mode": {
-                          "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zone-modes).\n",
+                          "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zones).\n",
                           "type": "string",
                           "enum": [
                             "primary",
@@ -46898,7 +46898,7 @@
                           "example": "2016-01-30T23:55:00+00:00"
                         },
                         "mode": {
-                          "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zone-modes).\n",
+                          "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zones).\n",
                           "type": "string",
                           "enum": [
                             "primary",
@@ -47183,7 +47183,7 @@
                           "example": "2016-01-30T23:55:00+00:00"
                         },
                         "mode": {
-                          "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zone-modes).\n",
+                          "description": "Mode of the [Zone](#zones).\n\nFor more information, see [Zone Modes](#zones).\n",
                           "type": "string",
                           "enum": [
                             "primary",
@@ -47607,7 +47607,7 @@
       "get": {
         "operationId": "get_zone_zonefile",
         "summary": "Export a Zone file",
-        "description": "Returns a generated [Zone](#zones) file in BIND (RFC [1034](https://datatracker.ietf.org/doc/html/rfc1034)/[1035](https://datatracker.ietf.org/doc/html/rfc1035)) format.\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Returns a generated [Zone](#zones) file in BIND (RFC [1034](https://datatracker.ietf.org/doc/html/rfc1034)/[1035](https://datatracker.ietf.org/doc/html/rfc1035)) format.\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zones"
         ],
@@ -48592,7 +48592,7 @@
       "post": {
         "operationId": "change_zone_primary_nameservers",
         "summary": "Change a Zone's Primary Nameservers",
-        "description": "Overwrites the primary nameservers of a [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [secondary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                        |\n|-----------------------|------------------------------------|\n| `incorrect_zone_mode` | The zone is not in secondary mode. |\n",
+        "description": "Overwrites the primary nameservers of a [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in secondary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                        |\n|-----------------------|------------------------------------|\n| `incorrect_zone_mode` | The zone is not in secondary mode. |\n",
         "tags": [
           "Zone Actions"
         ],
@@ -49031,7 +49031,7 @@
       "post": {
         "operationId": "change_zone_ttl",
         "summary": "Change a Zone's Default TTL",
-        "description": "Changes the default Time To Live (TTL) of a [Zone](#zones).\n\nThis TTL is used for [RRSets](#zone-rrsets) that do not explicitly define a TTL.\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Changes the default Time To Live (TTL) of a [Zone](#zones).\n\nThis TTL is used for [RRSets](#zone-rrsets) that do not explicitly define a TTL.\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone Actions"
         ],
@@ -49234,7 +49234,7 @@
       "post": {
         "operationId": "import_zone_zonefile",
         "summary": "Import a Zone file",
-        "description": "Imports a zone file, replacing all resource record sets ([RRSets](#zone-rrsets)).\n\nThe import will fail if existing [RRSet](#zone-rrsets) are `change` protected.\n\nSee [Zone file import](#zone-file-import) for more details.\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Imports a zone file, replacing all resource record sets ([RRSets](#zone-rrsets)).\n\nThe import will fail if existing [RRSet](#zone-rrsets) are `change` protected.\n\nSee [Zone file import](#zone-file-import) for more details.\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone Actions"
         ],
@@ -49434,7 +49434,7 @@
       "get": {
         "operationId": "list_zone_rrsets",
         "summary": "List RRSets",
-        "description": "Returns all [RRSets](#zone-rrsets) in the [Zone](#zones).\n\nUse the provided URI parameters to modify the result.\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Returns all [RRSets](#zone-rrsets) in the [Zone](#zones).\n\nUse the provided URI parameters to modify the result.\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSets"
         ],
@@ -49770,7 +49770,7 @@
       "post": {
         "operationId": "create_zone_rrset",
         "summary": "Create an RRSet",
-        "description": "Create an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Create an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSets"
         ],
@@ -50170,7 +50170,7 @@
       "get": {
         "operationId": "get_zone_rrset",
         "summary": "Get an RRSet",
-        "description": "Returns a single [RRSet](#zone-rrsets) from the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Returns a single [RRSet](#zone-rrsets) from the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSets"
         ],
@@ -50380,7 +50380,7 @@
       "put": {
         "operationId": "update_zone_rrset",
         "summary": "Update an RRSet",
-        "description": "Updates an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Updates an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSets"
         ],
@@ -50637,7 +50637,7 @@
       "delete": {
         "operationId": "delete_zone_rrset",
         "summary": "Delete an RRSet",
-        "description": "Deletes an [RRSet](#zone-rrsets) from the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Deletes an [RRSet](#zone-rrsets) from the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSets"
         ],
@@ -50854,7 +50854,7 @@
       "post": {
         "operationId": "change_zone_rrset_protection",
         "summary": "Change an RRSet's Protection",
-        "description": "Changes the protection of an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Changes the protection of an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSet Actions"
         ],
@@ -51093,7 +51093,7 @@
       "post": {
         "operationId": "change_zone_rrset_ttl",
         "summary": "Change an RRSet's TTL",
-        "description": "Changes the Time To Live (TTL) of an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Changes the Time To Live (TTL) of an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSet Actions"
         ],
@@ -51334,7 +51334,7 @@
       "post": {
         "operationId": "set_zone_rrset_records",
         "summary": "Set Records of an RRSet",
-        "description": "Overwrites the resource records (RRs) of an existing [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Overwrites the resource records (RRs) of an existing [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSet Actions"
         ],
@@ -51593,7 +51593,7 @@
       "post": {
         "operationId": "add_zone_rrset_records",
         "summary": "Add Records to an RRSet",
-        "description": "Adds resource records (RRs) to an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nFor convenience, the [RRSet](#zone-rrsets) will be automatically created if it doesn't exist. Otherwise, the new\nrecords are appended to the existing [RRSet](#zone-rrsets).\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Adds resource records (RRs) to an [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nFor convenience, the [RRSet](#zone-rrsets) will be automatically created if it doesn't exist. Otherwise, the new\nrecords are appended to the existing [RRSet](#zone-rrsets).\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSet Actions"
         ],
@@ -51860,7 +51860,7 @@
       "post": {
         "operationId": "remove_zone_rrset_records",
         "summary": "Remove Records from an RRSet",
-        "description": "Removes resource records (RRs) from an existing [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nFor convenience, the [RRSet](#zone-rrsets) will be automatically deleted if it doesn't contain any RRs afterwards.\n\nOnly applicable for [Zones](#zones) in [primary mode](#zone-modes).\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Removes resource records (RRs) from an existing [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nFor convenience, the [RRSet](#zone-rrsets) will be automatically deleted if it doesn't contain any RRs afterwards.\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSet Actions"
         ],
