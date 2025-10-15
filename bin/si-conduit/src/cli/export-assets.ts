@@ -112,98 +112,107 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
 
 type ActionArray = Awaited<ReturnType<typeof parseActions>>;
 
-async function parseQualifications(
-  qualificationsPath: string,
+async function parseSimpleFuncDirectory(
+  directoryPath: string,
   assetName: string,
   log: Log,
 ) {
-  const qualificationFiles = [];
+  const files = [] as string[];
 
   // Read the file list from the actions folder
   try {
-    const qualificationEntries = Deno.readDirSync(qualificationsPath);
+    const entries = Deno.readDirSync(directoryPath);
 
-    for (const qualificationEntry of qualificationEntries) {
+    for (const entry of entries) {
       if (
-        !qualificationEntry.isFile || !qualificationEntry.name.endsWith(".ts")
+        !entry.isFile || !entry.name.endsWith(".ts")
       ) {
         continue;
       }
 
-      const actionFileName = qualificationEntry.name;
-      const strippedFileName = actionFileName.replace(/\.ts$/, "");
+      const fileName = entry.name;
+      const strippedFileName = fileName.replace(/\.ts$/, "");
 
-      qualificationFiles.push({
-        strippedFileName,
-      });
+      files.push(strippedFileName);
     }
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) {
       throw new Error(
-        `Error reading actions directory for asset "${assetName}": ${
+        `Error reading funcs directory "${directoryPath}" for asset "${assetName}": ${
           unknownValueToErrorMessage(error)
         }`,
       );
     }
-    // If actions folder doesn't exist, skip qualifications for the asset by returning early
+    // If folder doesn't exist, skip by returning early
     return [];
   }
 
-  const qualifications = [];
+  const funcs = [];
 
-  // For each listed file, get the contents and the optional metadata file ({kind}.json)
-  for (const { strippedFileName } of qualificationFiles) {
-    const qualificationTsPath = `${qualificationsPath}/${strippedFileName}.ts`;
-    const qualificationJsonPath =
-      `${qualificationsPath}/${strippedFileName}.json`;
+  for (const strippedFileName of files) {
+    const funcTsPath = `${directoryPath}/${strippedFileName}.ts`;
+    const funcJsonPath =
+      `${directoryPath}/${strippedFileName}.json`;
 
     try {
       // Read the TypeScript file
-      const code = await Deno.readTextFile(qualificationTsPath);
+      const code = await Deno.readTextFile(funcTsPath);
 
       if (!code || code.trim() === "") {
         log.error(
-          `Empty code in qualification file "${qualificationTsPath}" for asset "${assetName}", skipping...`,
+          `Empty code in file "${funcTsPath}" for asset "${assetName}", skipping...`,
         );
         continue;
       }
 
       // Read the matching JSON file
-      let qualificationMetadata = {} as Record<string, string>;
+      let metadata = {} as Record<string, string>;
       try {
-        const qualificationJsonContent = await Deno.readTextFile(
-          qualificationJsonPath,
+        const jsonContent = await Deno.readTextFile(
+          funcJsonPath,
         );
-        qualificationMetadata = JSON.parse(qualificationJsonContent);
+        metadata = JSON.parse(jsonContent);
       } catch (error) {
         // Not finding the metadata file is ok - just continue
         if (!(error instanceof Deno.errors.NotFound)) throw error;
       }
 
-      let name = qualificationMetadata.name ?? strippedFileName;
+      let name = metadata.name ?? strippedFileName;
 
       // Build action object
-      const qualificationObject = {
+      const funcObject = {
         name,
-        displayName: qualificationMetadata.displayName ?? null,
-        description: qualificationMetadata.description ?? null,
+        displayName: metadata.displayName ?? name,
+        description: metadata.description ?? null,
         code: code,
       };
 
-      qualifications.push(qualificationObject);
+      funcs.push(funcObject);
     } catch (error) {
       log.error(
-        `Error processing qualification "${strippedFileName}" for asset "${assetName}": ${
+        `Error processing "${strippedFileName}" for asset "${assetName}": ${
           unknownValueToErrorMessage(error)
         }, skipping...`,
       );
     }
   }
 
-  return qualifications;
+  return funcs;
 }
 
-type QualificationArray = Awaited<ReturnType<typeof parseQualifications>>;
+type SimpleFuncArray = Awaited<ReturnType<typeof parseSimpleFuncDirectory>>;
+
+interface Schema {
+  name: string
+  code: string;
+  category: string;
+  description: string;
+  link?: string;
+  actions: ActionArray;
+  qualifications: SimpleFuncArray;
+  codeGenerators: SimpleFuncArray;
+  managementFuncs: SimpleFuncArray;
+}
 
 export async function exportAssets(
   context: AuthenticatedCliContext,
@@ -217,15 +226,7 @@ export async function exportAssets(
     id: workspaceId,
   } = workspace;
 
-  const schemas = [] as {
-    name: string;
-    code: string;
-    category: string;
-    description: string;
-    link?: string;
-    actions: ActionArray;
-    qualifications: QualificationArray;
-  }[];
+  const schemas = [] as Schema[];
 
   let readSchemas = 0; // This is the total number of read schema directories, including failures
   // Read schemas from the local folder
@@ -307,7 +308,7 @@ export async function exportAssets(
           }
         }
 
-        const qualifications = await parseQualifications(
+        const qualifications = await parseSimpleFuncDirectory(
           `${assetsPath}/${assetName}/qualifications`,
           assetName,
           log,
@@ -315,6 +316,18 @@ export async function exportAssets(
 
         const actions = await parseActions(
           `${assetsPath}/${assetName}/actions`,
+          assetName,
+          log,
+        );
+
+        const codeGenerators = await parseSimpleFuncDirectory(
+          `${assetsPath}/${assetName}/codeGenerators`,
+          assetName,
+          log,
+        );
+
+        const managementFuncs = await parseSimpleFuncDirectory(
+          `${assetsPath}/${assetName}/management`,
           assetName,
           log,
         );
@@ -327,6 +340,8 @@ export async function exportAssets(
           link,
           qualifications,
           actions,
+          codeGenerators,
+          managementFuncs,
         });
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
@@ -489,14 +504,33 @@ export async function exportAssets(
       }
 
       for (const action of schema.actions) {
-        // TODO check if the actions already exist
-
         await siSchemasApi.createVariantAction({
           workspaceId,
           changeSetId,
           schemaId,
           schemaVariantId: variantId,
           createVariantActionFuncV1Request: action,
+        });
+      }
+
+
+      for (const func of schema.codeGenerators) {
+        await siSchemasApi.createVariantCodegen({
+          workspaceId,
+          changeSetId,
+          schemaId,
+          schemaVariantId: variantId,
+          createVariantCodegenFuncV1Request: func,
+        });
+      }
+
+      for (const func of schema.managementFuncs) {
+        await siSchemasApi.createVariantManagement({
+          workspaceId,
+          changeSetId,
+          schemaId,
+          schemaVariantId: variantId,
+          createVariantManagementFuncV1Request: func,
         });
       }
     }

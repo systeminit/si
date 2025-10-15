@@ -120,13 +120,6 @@ async function createQualificationScaffold(
       name: `${namePrefix}-qualification`,
       displayName: "Does asset comply with criteria?",
       description: "optional",
-      inputs: [
-        "code",
-        "deletedAt",
-        "domain",
-        "resource",
-        "secrets",
-      ],
     },
     code,
   );
@@ -189,13 +182,6 @@ async function createCodegenScaffold(
       name,
       displayName: "Generate JSON Code",
       description: "optional",
-      inputs: [
-        "code",
-        "deletedAt",
-        "domain",
-        "resource",
-        "secrets",
-      ],
     },
     code,
   );

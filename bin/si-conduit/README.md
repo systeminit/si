@@ -2,9 +2,9 @@ Tasks
 
 - [x] Read format-version on push
 - [x] make sure we use the asset name from metadata.json
-- [ ] Qualifications: Deal with qualification input from the metadata file
-- [ ] push management funcs
-- [ ] Push code generators, also has the inputs on metadata.json
+- [x] ~~Qualifications: Deal with qualification input from the metadata file~~
+- [x] push management funcs
+- [x] Push code generators ~~, also has the inputs on metadata.json~~
 - [ ] Deal with existing func bindings for asset updates
 - [ ] Deal with existing func names for new and updating assets
 - [ ] Add push posthog event
