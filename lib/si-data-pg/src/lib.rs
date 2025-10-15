@@ -474,7 +474,9 @@ impl PgPool {
         span.record("db.pool.size", pool_status.size);
         span.record("db.pool.available", pool_status.available);
 
-        let inner = self.pool.get().await?;
+        let inner = self.pool.get().await.inspect_err(
+            |err| error!(si.error.message = ?err, error = ?err, "error getting pg pool"),
+        )?;
 
         Ok(InstrumentedClient {
             inner,
@@ -662,7 +664,13 @@ impl InstrumentedClient {
         )
     )]
     pub async fn prepare(&self, query: &str) -> Result<Statement, PgError> {
-        self.inner.prepare(query).await.map_err(Into::into)
+        self.inner
+            .prepare(query)
+            .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?query, "error preparing query"),
+            )
+            .map_err(Into::into)
     }
 
     /// Like `prepare`, but allows the types of query parameters to be explicitly specified.
@@ -694,6 +702,9 @@ impl InstrumentedClient {
         self.inner
             .prepare_typed(query, parameter_types)
             .await
+             .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query = ?query, "error preparing typed query"),
+            )
             .map_err(Into::into)
     }
 
@@ -737,6 +748,9 @@ impl InstrumentedClient {
             .inner
             .query(statement, params)
             .await
+             .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query"),
+            )
             .map(|rows| {
                 rows.into_iter()
                     .map(|inner| PgRow { inner })
@@ -791,6 +805,9 @@ impl InstrumentedClient {
             .inner
             .query_one(statement, params)
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query_one"),
+            )
             .map(|inner| PgRow { inner })
             .map_err(Into::into);
         if r.is_ok() {
@@ -841,6 +858,9 @@ impl InstrumentedClient {
             .inner
             .query_opt(statement, params)
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query_opt"),
+            )
             .map(|maybe| maybe.map(|inner| PgRow { inner }))
             .map_err(Into::into);
         if let Ok(ref maybe) = r {
@@ -898,6 +918,9 @@ impl InstrumentedClient {
         self.inner
             .query_raw(statement, params)
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing raw query"),
+            )
             .map(|row_stream| {
                 row_stream
                     .map(|row_result| row_result.map(|inner| PgRow { inner }).map_err(Into::into))
@@ -943,6 +966,9 @@ impl InstrumentedClient {
         self.inner
             .execute(statement, params)
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing"),
+            )
             .map_err(Into::into)
     }
 
@@ -985,6 +1011,9 @@ impl InstrumentedClient {
         self.inner
             .execute_raw(statement, params)
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing raw"),
+            )
             .map_err(Into::into)
     }
 
@@ -1267,6 +1296,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .commit()
             .instrument(self.tx_span.clone())
             .await
+            .inspect_err(|err| error!(si.error.message = ?err, error = ?err, "error committing"))
             .map_err(Into::into);
         self.tx_span.record("db.transaction", "commit");
         r
@@ -1302,6 +1332,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .rollback()
             .instrument(self.tx_span.clone())
             .await
+            .inspect_err(|err| error!(si.error.message = ?err, error = ?err, "error rolling back"))
             .map_err(Into::into);
         self.tx_span.record("db.transaction", "rollback");
         r
@@ -1336,6 +1367,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .prepare(query)
             .instrument(self.tx_span.clone())
             .await
+            .inspect_err(|err| error!(si.error.message = ?err, error = ?err, "error preparing"))
             .map_err(Into::into)
     }
 
@@ -1417,6 +1449,9 @@ impl<'a> InstrumentedTransaction<'a> {
             .query(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query in Pg Txn"),
+            )
             .map(|rows| {
                 rows.into_iter()
                     .map(|inner| PgRow { inner })
@@ -1472,7 +1507,9 @@ impl<'a> InstrumentedTransaction<'a> {
             .inner
             .query_one(statement, params)
             .instrument(self.tx_span.clone())
-            .await
+            .await.inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query_one in Pg Txn"),
+            )
             .map(|inner| PgRow { inner })
             .map_err(Into::into);
         if r.is_ok() {
@@ -1525,6 +1562,9 @@ impl<'a> InstrumentedTransaction<'a> {
             .query_opt(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query_opt in Pg Txn"),
+            )
             .map(|maybe| maybe.map(|inner| PgRow { inner }))
             .map_err(Into::into);
         if let Ok(ref maybe) = r {
@@ -1586,6 +1626,9 @@ impl<'a> InstrumentedTransaction<'a> {
             .query_raw(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query_raw in Pg Txn"),
+            )
             .map(|row_stream| {
                 row_stream
                     .map(|row_result| row_result.map(|inner| PgRow { inner }).map_err(Into::into))
@@ -1635,6 +1678,9 @@ impl<'a> InstrumentedTransaction<'a> {
             .execute(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing in Pg Txn"),
+            )
             .map_err(Into::into)
     }
 
@@ -1681,6 +1727,9 @@ impl<'a> InstrumentedTransaction<'a> {
             .execute_raw(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing_raw in Pg Txn"),
+            )
             .map_err(Into::into)
     }
 
@@ -2040,7 +2089,9 @@ impl<'a> InstrumentedTransaction<'a> {
             self.inner
                 .transaction()
                 .instrument(self.tx_span.clone())
-                .await?,
+                .await.inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, "error creating nested transaction in Pg Txn"),
+            )?,
             self.metadata.clone(),
             current_span_for_debug!(),
         ))
@@ -2245,7 +2296,9 @@ pub struct PgSharedTransaction {
 impl PgSharedTransaction {
     pub async fn create(pg_conn: InstrumentedClient) -> Result<Self, PgError> {
         let metadata = pg_conn.metadata.clone();
-        let inner = PgOwnedTransaction::create(pg_conn).await?;
+        let inner = PgOwnedTransaction::create(pg_conn).await.inspect_err(
+            |err| error!(si.error.message = ?err, error = ?err, "error creating pg shared txn"),
+        )?;
         Ok(Self {
             inner: Arc::new(Mutex::new(inner)),
             metadata,
@@ -2282,7 +2335,10 @@ impl PgSharedTransaction {
             .with_mut(|inner| inner.txn.take())
             .expect("txn is only consumed once with commit/rollback--this is an internal bug")
             .commit()
-            .await?;
+            .await
+            .inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, "error committing into conns"),
+            )?;
         let conn = owned_txn.into_heads().conn;
 
         Ok(conn)
@@ -2322,7 +2378,9 @@ impl PgSharedTransaction {
             .with_mut(|inner| inner.txn.take())
             .expect("txn is only consumed once with commit/rollback--this is an internal bug")
             .rollback()
-            .await?;
+            .await.inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, "error rolling back into conns"),
+            )?;
         let conn = owned_txn.into_heads().conn;
 
         Ok(conn)
@@ -2385,7 +2443,9 @@ impl PgSharedTransaction {
     /// - If the internal transaction has already been consumed which is an internal correctness
     ///   bug
     pub async fn commit(self) -> Result<(), PgError> {
-        let _ = self.commit_into_conn().await?;
+        let _ = self.commit_into_conn().await.inspect_err(
+            |err| error!(si.error.message = ?err, error = ?err, "error committing with pg shared txn"),
+        )?;
         Ok(())
     }
 
@@ -2414,7 +2474,9 @@ impl PgSharedTransaction {
     /// - If the internal transaction has already been consumed which is an internal correctness
     ///   bug
     pub async fn rollback(self) -> Result<(), PgError> {
-        let _ = self.rollback_into_conn().await?;
+        let _ = self.rollback_into_conn().await.inspect_err(
+            |err| error!(si.error.message = ?err, error = ?err, "error rolling back in pg shared txn"),
+        )?;
         Ok(())
     }
 
@@ -2475,7 +2537,9 @@ impl PgSharedTransaction {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Vec<PgRow>, PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
-            Some(txn) => txn.query(statement, params).await,
+            Some(txn) => txn.query(statement, params).await.inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query in PG shared txn"),
+            ),
             None => {
                 unreachable!("txn is only consumed with commit/rollback--this is an internal bug")
             }
@@ -2504,7 +2568,9 @@ impl PgSharedTransaction {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<PgRow, PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
-            Some(txn) => txn.query_one(statement, params).await,
+            Some(txn) => txn.query_one(statement, params).await.inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query_one in PG shared txn"),
+            ),
             None => {
                 unreachable!("txn is only consumed with commit/rollback--this is an internal bug")
             }
@@ -2533,7 +2599,9 @@ impl PgSharedTransaction {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Option<PgRow>, PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
-            Some(txn) => txn.query_opt(statement, params).await,
+            Some(txn) => txn.query_opt(statement, params).await.inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query_opt in PG shared txn"),
+            ),
             None => {
                 unreachable!("txn is only consumed with commit/rollback--this is an internal bug")
             }
@@ -2599,7 +2667,9 @@ impl PgSharedTransaction {
         I::IntoIter: ExactSizeIterator,
     {
         match self.inner.lock().await.borrow_txn().as_ref() {
-            Some(txn) => txn.query_raw(statement, params).await,
+            Some(txn) => txn.query_raw(statement, params).await.inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing query_raw in PG shared txn"),
+            ),
             None => {
                 unreachable!("txn is only consumed with commit/rollback--this is an internal bug")
             }
@@ -2628,7 +2698,9 @@ impl PgSharedTransaction {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<u64, PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
-            Some(txn) => txn.execute(statement, params).await,
+            Some(txn) => txn.execute(statement, params).await.inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing in PG shared txn"),
+            ),
             None => {
                 unreachable!("txn is only consumed with commit/rollback--this is an internal bug")
             }
@@ -2658,7 +2730,9 @@ impl PgSharedTransaction {
         I::IntoIter: ExactSizeIterator,
     {
         match self.inner.lock().await.borrow_txn().as_ref() {
-            Some(txn) => txn.execute_raw(statement, params).await,
+            Some(txn) => txn.execute_raw(statement, params).await.inspect_err(
+                |err| error!(si.error.message = ?err, error = ?err, si.query=?statement, "error executing_raw in PG shared txn"),
+            ),
             None => {
                 unreachable!("txn is only consumed with commit/rollback--this is an internal bug")
             }
