@@ -5,6 +5,8 @@ use dal::{
     Func,
     FuncId,
     Prop,
+    Schema,
+    SchemaId,
     SchemaVariant,
     SchemaVariantId,
     action::prototype::ActionPrototype,
@@ -39,13 +41,18 @@ pub async fn assemble(
 ) -> crate::Result<LuminorkSchemaVariantMv> {
     let schema_variant = SchemaVariant::get_by_id(&ctx, id).await?;
 
-    let variant_func_ids: Vec<_> = SchemaVariant::all_func_ids(&ctx, id)
-        .await?
-        .into_iter()
-        .collect();
+    let mut variant_func_ids = SchemaVariant::all_func_ids(&ctx, id).await?;
+    let schema_id = SchemaVariant::schema_id(&ctx, id).await?;
+    let overlay_func_ids = Schema::all_overlay_func_ids(&ctx, schema_id).await?;
+    variant_func_ids.extend(overlay_func_ids);
 
-    let func_details =
-        build_func_details(&ctx, schema_variant.id(), variant_func_ids.clone()).await?;
+    let func_details = build_func_details(
+        &ctx,
+        schema_id,
+        schema_variant.id(),
+        variant_func_ids.clone(),
+    )
+    .await?;
 
     let domain_props = {
         let domain = Prop::find_prop_by_path(&ctx, id, &RootPropChild::Domain.prop_path()).await?;
@@ -79,18 +86,26 @@ pub async fn assemble(
 
 pub async fn build_func_details(
     ctx: &DalContext,
+    schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
     variant_func_ids: Vec<FuncId>,
 ) -> crate::Result<Vec<LuminorkSchemaVariantFunc>> {
-    let action_prototypes = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+    let mut variant_action_prototypes =
+        ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+    let schema_action_prototypes = ActionPrototype::for_schema(ctx, schema_id).await?;
+    variant_action_prototypes.extend(schema_action_prototypes);
+
     let management_prototypes =
         ManagementPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id).await?;
 
     let mut index: HashMap<FuncId, FuncKindVariant> = HashMap::new();
 
-    for prototype in action_prototypes {
-        let func_id = ActionPrototype::func_id(ctx, prototype.id).await?;
-        index.insert(func_id, FuncKindVariant::Action(prototype.kind.into()));
+    for action_prototype in variant_action_prototypes {
+        let func_id = ActionPrototype::func_id(ctx, action_prototype.id).await?;
+        index.insert(
+            func_id,
+            FuncKindVariant::Action(action_prototype.kind.into()),
+        );
     }
 
     for mp in management_prototypes {

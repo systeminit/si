@@ -2,6 +2,7 @@ use base64::{
     Engine,
     engine::general_purpose,
 };
+use si_id::SchemaId;
 use telemetry::prelude::*;
 
 use super::{
@@ -92,6 +93,44 @@ pub(crate) async fn create_management_func(
     level = "debug",
     skip(ctx)
 )]
+pub(crate) async fn create_action_func_overlay(
+    ctx: &DalContext,
+    name: Option<String>,
+    action_kind: ActionKind,
+    schema_id: SchemaId,
+) -> FuncAuthoringResult<Func> {
+    // need to see if there's already an action func of this particular kind for the schema variant
+    // before doing anything else
+
+    let func = create_func_stub(
+        ctx,
+        name.clone(),
+        FuncBackendKind::JsAction,
+        FuncBackendResponseType::Action,
+        DEFAULT_ACTION_CODE,
+        DEFAULT_CODE_HANDLER,
+        false,
+    )
+    .await?;
+
+    if let Err(err) =
+        ActionBinding::create_action_binding_overlay(ctx, func.id, action_kind, schema_id).await
+    {
+        if let crate::func::binding::FuncBindingError::ActionKindAlreadyExistsForSchema(_, _) = &err
+        {
+            Func::delete_by_id(ctx, func.id).await?;
+        }
+        return Err(err)?;
+    }
+
+    Ok(func)
+}
+
+#[instrument(
+    name = "func.authoring.create_func.create.action",
+    level = "debug",
+    skip(ctx)
+)]
 pub(crate) async fn create_action_func(
     ctx: &DalContext,
     name: Option<String>,
@@ -101,8 +140,8 @@ pub(crate) async fn create_action_func(
     // need to see if there's already an action func of this particular kind for the schema variant
     // before doing anything else
 
-    let exising_actions = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
-    for action in exising_actions {
+    let existing_actions_for_variant = ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+    for action in existing_actions_for_variant {
         if action.kind == action_kind && action_kind != ActionKind::Manual {
             return Err(FuncAuthoringError::ActionKindAlreadyExists(
                 action_kind,

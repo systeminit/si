@@ -6,6 +6,7 @@ use dal::{
     FuncId,
     SchemaVariant,
     action::prototype::ActionKind,
+    cached_module::CachedModule,
     func::authoring::FuncAuthoringClient,
 };
 use sdf_extract::{
@@ -52,7 +53,7 @@ pub async fn create_variant_action(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
     Path(SchemaVariantV1RequestPath {
-        schema_id: _,
+        schema_id,
         schema_variant_id,
     }): Path<SchemaVariantV1RequestPath>,
     payload: Result<
@@ -66,18 +67,41 @@ pub async fn create_variant_action(
         return Err(SchemaError::NotPermittedOnHead);
     }
 
-    let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
-    if schema_variant.is_locked() {
-        return Err(SchemaError::LockedVariant(schema_variant_id));
+    let schema_id_for_variant: dal::SchemaId =
+        SchemaVariant::schema_id(ctx, schema_variant_id).await?;
+    if schema_id != schema_id_for_variant {
+        return Err(SchemaError::SchemaVariantNotMemberOfSchema(
+            schema_id,
+            schema_variant_id,
+        ));
     }
 
-    let func = FuncAuthoringClient::create_new_action_func(
-        ctx,
-        Some(payload.name),
-        payload.kind,
-        schema_variant_id,
-    )
-    .await?;
+    let is_builtin = CachedModule::find_latest_for_schema_id(ctx, schema_id)
+        .await?
+        .is_some();
+
+    let func = if is_builtin {
+        FuncAuthoringClient::create_new_action_func_overlay(
+            ctx,
+            Some(payload.name),
+            payload.kind,
+            schema_id,
+        )
+        .await?
+    } else {
+        let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
+        if schema_variant.is_locked() {
+            return Err(SchemaError::LockedVariant(schema_variant_id));
+        }
+
+        FuncAuthoringClient::create_new_action_func(
+            ctx,
+            Some(payload.name),
+            payload.kind,
+            schema_variant_id,
+        )
+        .await?
+    };
 
     FuncAuthoringClient::update_func(ctx, func.id, payload.display_name, payload.description)
         .await?;

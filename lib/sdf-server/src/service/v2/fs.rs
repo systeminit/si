@@ -993,6 +993,7 @@ async fn create_func(
                     func_id: func.id,
                     func_display_name: func.display_name.clone(),
                     schema_variant_id: Some(unlocked_variant.id()),
+                    schema_id: None,
                     component_id: None,
                     subject_name: unlocked_variant.display_name().to_string(),
                 },

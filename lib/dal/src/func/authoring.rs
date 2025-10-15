@@ -36,6 +36,7 @@ use base64::{
 use chrono::Utc;
 use si_events::FuncRunId;
 use si_frontend_types::FuncSummary;
+use si_id::SchemaId;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -355,6 +356,22 @@ impl FuncAuthoringClient {
     ) -> FuncAuthoringResult<Func> {
         SchemaVariant::error_if_locked(ctx, schema_variant_id).await?;
         let func = create::create_action_func(ctx, name, action_kind, schema_variant_id).await?;
+        Ok(func)
+    }
+
+    /// Creates a new Action Func overlay and returns it
+    #[instrument(
+        name = "func.authoring.create_new_action_func_overlay",
+        level = "info",
+        skip(ctx)
+    )]
+    pub async fn create_new_action_func_overlay(
+        ctx: &DalContext,
+        name: Option<String>,
+        action_kind: ActionKind,
+        schema_id: SchemaId,
+    ) -> FuncAuthoringResult<Func> {
+        let func = create::create_action_func_overlay(ctx, name, action_kind, schema_id).await?;
         Ok(func)
     }
 

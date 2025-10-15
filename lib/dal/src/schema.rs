@@ -1,8 +1,5 @@
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-    },
+    collections::HashMap,
     fmt::Debug,
     sync::Arc,
 };
@@ -31,12 +28,15 @@ pub use variant::{
 
 use crate::{
     DalContext,
-    Func,
     FuncError,
     FuncId,
     HelperError,
     SchemaVariantError,
     TransactionsError,
+    action::prototype::{
+        ActionPrototype,
+        ActionPrototypeError,
+    },
     cached_module::{
         CachedModule,
         CachedModuleError,
@@ -47,6 +47,10 @@ use crate::{
         SchemaContent,
         SchemaContentDiscriminants,
         SchemaContentV1,
+    },
+    management::prototype::{
+        ManagementPrototype,
+        ManagementPrototypeError,
     },
     pkg::{
         ImportOptions,
@@ -79,6 +83,8 @@ pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminant
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("cached module error: {0}")]
     CachedModule(#[from] CachedModuleError),
     #[error("change set error: {0}")]
@@ -91,6 +97,8 @@ pub enum SchemaError {
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("management prototype error: {0}")]
+    ManagementPrototype(#[from] Box<ManagementPrototypeError>),
     #[error("No default schema variant exists for {0}")]
     NoDefaultSchemaVariant(SchemaId),
     #[error("node weight error: {0}")]
@@ -248,6 +256,34 @@ impl Schema {
         Ok(Self::assemble(id, content))
     }
 
+    pub async fn all_overlay_func_ids(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaResult<Vec<FuncId>> {
+        let mut func_ids = vec![];
+        let action_prototypes = ActionPrototype::for_schema(ctx, schema_id)
+            .await
+            .map_err(Box::new)?;
+        for action_proto in action_prototypes {
+            let func_id = ActionPrototype::func_id(ctx, action_proto.id())
+                .await
+                .map_err(Box::new)?;
+            func_ids.push(func_id);
+        }
+
+        let management_prototypes = ManagementPrototype::list_for_schema_id(ctx, schema_id)
+            .await
+            .map_err(Box::new)?;
+        for management_proto in management_prototypes {
+            let func_id = ManagementPrototype::func_id(ctx, management_proto.id())
+                .await
+                .map_err(Box::new)?;
+            func_ids.push(func_id);
+        }
+
+        Ok(func_ids)
+    }
+
     pub async fn default_variant_id(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -291,21 +327,16 @@ impl Schema {
     ) -> SchemaResult<Vec<SchemaVariantId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let schema_variant_edges = workspace_snapshot
-            .edges_directed(schema_id, Outgoing)
-            .await?;
-        let mut schema_variant_ids = Vec::with_capacity(schema_variant_edges.len());
-        for (edge_weight, _, target_index) in schema_variant_edges {
-            if EdgeWeightKindDiscriminants::Use == edge_weight.kind().into() {
-                schema_variant_ids.push(
-                    workspace_snapshot
-                        .get_node_weight(target_index)
-                        .await?
-                        .id()
-                        .into(),
-                );
-            }
-        }
+        let schema_variant_ids: Vec<_> = workspace_snapshot
+            .edges_directed_for_edge_weight_kind(
+                schema_id,
+                Outgoing,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?
+            .into_iter()
+            .map(|(_, _, target_id)| target_id.into())
+            .collect();
 
         Ok(schema_variant_ids)
     }
@@ -573,25 +604,6 @@ impl Schema {
                 Self::install_from_module(ctx, uninstalled_module).await?
             }
         })
-    }
-
-    /// Collect all [`FuncIds`](crate::Func) corresponding to the provided [`SchemaId`](Schema).
-    /// Since [`SchemaVariants`](SchemaVariant) can use the same [`Funcs`](crate::Func) (and
-    /// often do), we use a [`HashSet`] to de-duplicate results.
-    pub async fn all_func_ids(ctx: &DalContext, id: SchemaId) -> SchemaResult<HashSet<FuncId>> {
-        let mut func_ids = HashSet::new();
-        for schema_variant_id in Self::list_schema_variant_ids(ctx, id).await? {
-            func_ids.extend(SchemaVariant::all_func_ids(ctx, schema_variant_id).await?);
-        }
-        Ok(func_ids)
-    }
-
-    /// Collect all [`Funcs`](crate::Func) corresponding to the provided [`SchemaId`](Schema).
-    pub async fn all_funcs(ctx: &DalContext, id: SchemaId) -> SchemaResult<Vec<Func>> {
-        let func_id_set = Self::all_func_ids(ctx, id).await?;
-        let func_ids = Vec::from_iter(func_id_set.into_iter());
-        let funcs = Func::list_from_ids(ctx, func_ids.as_slice()).await?;
-        Ok(funcs)
     }
 
     pub async fn is_name_taken(ctx: &DalContext, name: &String) -> SchemaResult<bool> {
