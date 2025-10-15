@@ -49,6 +49,7 @@ services:
       - "3000:3000"
     volumes:
       - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
 
   jaeger:
     #<<: *loki-logged-service
@@ -156,6 +157,8 @@ services:
   prometheus:
     #<<: *loki-logged-service
     image: prom/prometheus
+    ports:
+      - "9090:9090"
     volumes:
       - "./config/prometheus/config.yml:/etc/prometheus/prometheus.yml"
     depends_on:
