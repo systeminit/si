@@ -1,0 +1,16 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-service-endpoints",
+    deps = [
+        "//third-party/rust:axum",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:tower",
+        "//third-party/rust:tower-http",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)
