@@ -339,6 +339,18 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
+  async getKind(workspaceId, changeSetId, kind) {
+    return await withLeader(
+      async (remote) => await remote.getKind(workspaceId, changeSetId, kind),
+    );
+  },
+
+  async getDefaultSchemaVariants() {
+    return await withLeader(
+      async (remote) => await remote.getDefaultSchemaVariants(),
+    );
+  },
+
   async queryAttributes(
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,

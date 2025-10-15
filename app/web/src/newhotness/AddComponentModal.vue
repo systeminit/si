@@ -235,16 +235,19 @@ import { debounce } from "lodash-es";
 import { FzfResultItem } from "fzf";
 import EditingPill from "@/components/EditingPill.vue";
 import {
-  BifrostSchemaVariantCategories,
   CategoryVariant,
   EntityKind,
   SchemaVariant,
-  UninstalledVariant,
   BifrostComponent,
   EddaComponent,
   AttributeTree,
 } from "@/workers/types/entity_kind_types";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import {
+  getDefaultSchemaVariants,
+  getKind,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import { useFzf } from "./logic_composables/fzf";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -305,20 +308,17 @@ const onEnter = async () => {
   if (api.inFlight.value) return; // you've already submitted, disable submission
 
   if (!selectedAsset.value) return;
-  const variant =
-    "uninstalled" in selectedAsset.value.variant
-      ? (selectedAsset.value.variant as UninstalledVariant)
-      : (selectedAsset.value.variant as SchemaVariant);
+  const key = selectedAsset.value.key;
   let params: componentTypes.ComponentIdType;
-  if ("schemaVariantId" in variant)
+  if ("schemaVariantId" in key && key.schemaVariantId)
     params = {
       schemaType: "installed",
-      schemaVariantId: variant.schemaVariantId,
+      schemaVariantId: key.schemaVariantId,
     };
   else
     params = {
       schemaType: "uninstalled",
-      schemaId: variant.schemaId,
+      schemaId: key.schemaId,
     };
 
   const payload = componentTypes.createComponentPayload(params);
@@ -526,41 +526,79 @@ type UISchemaKey = {
   schemaVariantId?: string;
 };
 
-const queryKey = makeKey(EntityKind.SchemaVariantCategories);
-const schemaVariantCategoriesOverBifrost =
-  useQuery<BifrostSchemaVariantCategories | null>({
-    queryKey,
-    queryFn: async () =>
-      await bifrost<BifrostSchemaVariantCategories>(
-        makeArgs(EntityKind.SchemaVariantCategories),
-      ),
-  });
+const defaultSchemaKey = makeKey(EntityKind.DefaultSchemaIdAndVariant);
+const defaultSchemas = useQuery({
+  queryKey: defaultSchemaKey,
+  queryFn: async () => await getDefaultSchemaVariants(),
+});
+
+const installedVariantsKey = makeKey(EntityKind.SchemaVariant);
+const installedVariants = useQuery({
+  queryKey: installedVariantsKey,
+  queryFn: async () =>
+    await getKind<SchemaVariant>(makeArgs(EntityKind.SchemaVariant)),
+});
 
 const categories = computed(() => {
-  const rawCategoryData =
-    schemaVariantCategoriesOverBifrost.data.value?.categories ?? [];
-  return rawCategoryData.map((rawCategory) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const firstSV = rawCategory.schemaVariants[0]!;
-    const categoryInfo: UICategoryInfo = {
-      name: rawCategory.displayName,
-      color: firstSV.color,
-      icon: pickIcon(rawCategory.displayName),
-    };
-    const category: UICategory = {
-      ...categoryInfo,
-      assets: [],
-    };
-    rawCategory.schemaVariants.forEach((sv) => {
-      const asset: UIAsset = {
-        key: buildKey(sv),
-        variant: sv,
-        name: sv.displayName ?? sv.schemaName,
-        uiCategory: categoryInfo,
-      };
-      category.assets.push(asset);
+  // do all the installed variants first, they always show
+  const categories: Record<string, UICategory> = {};
+  const installedSchemas: Set<string> = new Set();
+  if (installedVariants.data.value) {
+    installedVariants.data.value.forEach((variant) => {
+      let category = categories[variant.category];
+      if (!category) {
+        category = {
+          name: variant.category,
+          color: variant.color,
+          icon: pickIcon(variant.category),
+          assets: [],
+        };
+      }
+      installedSchemas.add(variant.schemaId);
+      category.assets.push({
+        variant,
+        key: {
+          schemaId: variant.schemaId,
+          schemaVariantId: variant.schemaVariantId,
+        },
+        name: variant.displayName ?? "Unknown Name",
+        uiCategory: category,
+      });
+      categories[variant.category] = category;
     });
-    return category;
+  }
+
+  // don't show a duplicated default schema if its already installed
+  if (defaultSchemas.data.value) {
+    Object.entries(defaultSchemas.data.value).forEach(([schemaId, variant]) => {
+      let category = categories[variant.category];
+      if (!category) {
+        category = {
+          name: variant.category,
+          color: variant.color,
+          icon: pickIcon(variant.category),
+          assets: [],
+        };
+      }
+      if (!installedSchemas.has(schemaId)) {
+        category.assets.push({
+          variant,
+          key: {
+            schemaId,
+          },
+          name: variant.displayName,
+          uiCategory: category,
+        });
+        categories[variant.category] = category;
+      }
+    });
+  }
+
+  return Object.values(categories).sort((a, b) => {
+    const n1 = a.name.toUpperCase();
+    const n2 = b.name.toUpperCase();
+    if (n1 === n2) return 0;
+    return n1 < n2 ? -1 : 1;
   });
 });
 
@@ -573,19 +611,6 @@ const compareKeys = (
     key1.schemaId === key2.schemaId &&
     key1.schemaVariantId === key2.schemaVariantId
   );
-};
-
-const buildKey = (sv: CategoryVariant) => {
-  const variant =
-    "uninstalled" in sv ? (sv as UninstalledVariant) : (sv as SchemaVariant);
-  const key: UISchemaKey = {
-    schemaId: variant.schemaId,
-  };
-
-  if ("schemaVariantId" in variant)
-    key.schemaVariantId = variant.schemaVariantId;
-
-  return key;
 };
 
 // Memoized fuzzy search instance to avoid recreating on every search

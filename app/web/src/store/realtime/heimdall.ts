@@ -31,6 +31,7 @@ import {
   ConnStatusFn,
 } from "@/workers/types/dbinterface";
 import {
+  CachedDefaultVariant,
   Connection,
   EntityKind,
   GlobalEntity,
@@ -42,6 +43,7 @@ import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
 import { WorkspaceMetadata, WorkspacePk } from "@/api/sdf/dal/workspace";
+import { SchemaId } from "@/api/sdf/dal/schema";
 import {
   cachedAppEmitter,
   SHOW_CACHED_APP_NOTIFICATION_EVENT,
@@ -507,6 +509,42 @@ export const bifrostList = async <T>(args: {
   console.log("🌈 bifrost queryList", args.kind, args.id, end - start, "ms");
   if (!maybeAtomDoc) return null;
   return reactive(JSON.parse(maybeAtomDoc));
+};
+
+export const getKind = async <T>(args: {
+  workspaceId: WorkspacePk;
+  changeSetId: ChangeSetId;
+  kind: Exclude<EntityKind, GlobalEntity>;
+}): Promise<T[]> => {
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
+  const start = performance.now();
+  const records = await db.getKind(
+    args.workspaceId,
+    args.changeSetId,
+    args.kind,
+  );
+  const end = performance.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost getKind", end - start, "ms");
+  return records.map((r) => JSON.parse(r));
+};
+
+export const getDefaultSchemaVariants = async (): Promise<
+  Record<SchemaId, CachedDefaultVariant>
+> => {
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
+  const start = performance.now();
+  const records = await db.getDefaultSchemaVariants();
+  const end = performance.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost getDefaultSchemaVariants", end - start, "ms");
+  const parsed: Record<SchemaId, CachedDefaultVariant> = {};
+  Object.entries(records).forEach(([k, v]) => {
+    parsed[k] = JSON.parse(v);
+  });
+  return parsed;
 };
 
 /**
