@@ -4,19 +4,16 @@
  * Tests for the components API endpoints.
  */
 
+import { assertEquals, assertExists } from 'https://deno.land/std@0.220.1/assert/mod.ts';
 import {
-  assertEquals,
-  assertExists,
-} from "https://deno.land/std@0.220.1/assert/mod.ts";
-import {
-  createTestClient,
-  generateTestName,
   cleanupTestResources,
   ConfigError,
-} from "../src/test-utils.ts";
-import { ApiError } from "../src/client.ts";
+  createTestClient,
+  generateTestName,
+} from '../src/test-utils.ts';
+import { ApiError } from '../src/client.ts';
 
-Deno.test("Components API - Create and Update Components", async () => {
+Deno.test('Components API - Create and Update Components', async () => {
   try {
     const { api, config } = await createTestClient();
 
@@ -27,7 +24,7 @@ Deno.test("Components API - Create and Update Components", async () => {
       const createChangeSetResponse = await api.changeSets.createChangeSet(
         config.workspaceId,
         {
-          changeSetName: generateTestName("component_test_changeset"),
+          changeSetName: generateTestName('component_test_changeset'),
         },
       );
 
@@ -44,11 +41,11 @@ Deno.test("Components API - Create and Update Components", async () => {
       assertEquals(schemasResponse.status, 200);
 
       // Use AWS::EC2::VPC as the schema name as requested
-      const schemaName = "AWS::EC2::VPC";
+      const schemaName = 'AWS::EC2::VPC';
       console.log(`Using schema: ${schemaName}`);
 
       // Create a component with the correct payload format
-      const componentName = generateTestName("test_component");
+      const componentName = generateTestName('test_component');
       const createComponentResponse = await api.components.createComponent(
         config.workspaceId,
         changeSetId,
@@ -102,10 +99,9 @@ Deno.test("Components API - Create and Update Components", async () => {
       assertExists(listComponentsResponse.data.componentDetails);
 
       // Verify our component is in the list
-      const isComponentInList =
-        listComponentsResponse.data.componentDetails.some((c) => {
-          return c.componentId === componentId;
-        });
+      const isComponentInList = listComponentsResponse.data.componentDetails.some((c) => {
+        return c.componentId === componentId;
+      });
       assertEquals(
         isComponentInList,
         true,
@@ -127,12 +123,12 @@ Deno.test("Components API - Create and Update Components", async () => {
       assertEquals(
         findComponentResponse.status,
         200,
-        "Find component response status should be 200",
+        'Find component response status should be 200',
       );
       assertEquals(
         findComponentResponse.data.component.name,
         updatedName,
-        "Find component names should be equal",
+        'Find component names should be equal',
       );
 
       // Delete the component
@@ -154,9 +150,9 @@ Deno.test("Components API - Create and Update Components", async () => {
         );
 
         // If we get here, the delete didn't work - we shouldn't be able to get the component
-        console.error("Component still exists after deletion:", response);
+        console.error('Component still exists after deletion:', response);
         throw new Error(
-          "Component should have been deleted - was still able to retrieve it",
+          'Component should have been deleted - was still able to retrieve it',
         );
       } catch (error) {
         // Check if this is an ApiError with 404 status (expected case)
@@ -164,17 +160,15 @@ Deno.test("Components API - Create and Update Components", async () => {
           console.log(
             `Verified component was deleted successfully - got expected 404 Not Found response`,
           );
-        }
-        // The API might return error differently than expected - check error message for 404 references
+        } // The API might return error differently than expected - check error message for 404 references
         else if (
           error instanceof Error &&
-          (error.message.includes("404") || error.message.includes("Not Found"))
+          (error.message.includes('404') || error.message.includes('Not Found'))
         ) {
           console.log(
-            "Successfully deleted component - error message contains 404 Not Found reference",
+            'Successfully deleted component - error message contains 404 Not Found reference',
           );
-        }
-        // For any other errors, re-throw it with a descriptive message
+        } // For any other errors, re-throw it with a descriptive message
         else {
           console.error("Error wasn't a 404 Not Found response:", error);
           throw error;

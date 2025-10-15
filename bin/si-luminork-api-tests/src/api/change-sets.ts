@@ -4,7 +4,7 @@
  * Client for interacting with Change Sets endpoints
  */
 
-import { LuminorkClient, ApiResponse } from "../client.ts";
+import { ApiResponse, LuminorkClient } from '../client.ts';
 
 // Type definitions for Change Sets API
 export interface ChangeSetView {
@@ -89,7 +89,7 @@ export class ChangeSetsApi {
     data: CreateChangeSetRequest,
   ): Promise<ApiResponse<CreateChangeSetResponse>> {
     return this.client.post<CreateChangeSetResponse>(
-      this.buildPath(workspaceId, ""),
+      this.buildPath(workspaceId, ''),
       data,
     );
   }
@@ -101,7 +101,7 @@ export class ChangeSetsApi {
     workspaceId: string,
   ): Promise<ApiResponse<ListChangeSetsResponse>> {
     return this.client.get<ListChangeSetsResponse>(
-      this.buildPath(workspaceId, ""),
+      this.buildPath(workspaceId, ''),
     );
   }
 
@@ -172,7 +172,7 @@ export class ChangeSetsApi {
     workspaceId: string,
   ): Promise<ApiResponse<PurgeOpenChangeSetsResponse>> {
     return this.client.post<PurgeOpenChangeSetsResponse>(
-      this.buildPath(workspaceId, "/purge_open"),
+      this.buildPath(workspaceId, '/purge_open'),
       undefined,
     );
   }
