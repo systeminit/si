@@ -76,7 +76,24 @@ pub async fn create_component(
                 None => return Err(ComponentsError::SchemaNameNotFound(payload.schema_name)),
             },
         };
-    let variant_id = Schema::get_or_install_default_variant(ctx, schema_id).await?;
+    // Ensure that the schema is installed, get the default variant id
+    let mut variant_id = Schema::get_or_install_default_variant(ctx, schema_id).await?;
+
+    // Determine which variant to use based on use_working_copy flag
+    if payload.use_working_copy.unwrap_or(false) {
+        // User wants to use the unlocked (working copy) variant
+        match SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await? {
+            Some(unlocked_variant) => {
+                // An unlocked variant already exists, use it
+                variant_id = unlocked_variant.id();
+            }
+            None => {
+                // No unlocked variant exists, so we should throw an error
+                return Err(ComponentsError::NoWorkingCopy(schema_id));
+            }
+        }
+    };
+
     let variant = SchemaVariant::get_by_id(ctx, variant_id).await?;
 
     let view_id: ViewId;
@@ -222,6 +239,9 @@ pub struct CreateComponentV1Request {
         })
     )]
     pub attributes: AttributeSources,
+
+    #[schema(example = true)]
+    pub use_working_copy: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]

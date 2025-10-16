@@ -107,31 +107,38 @@ pub async fn update_schema_variant(
     let updated_schema_variant_id =
         VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id).await?;
 
-    // Final check that we updated the correct variant!!
-    if updated_schema_variant_id != schema_variant_id {
-        return Err(SchemaError::LockedVariant(schema_variant_id));
-    }
+    // The updated variant may be different after regenerating, so let's get it
+    let updated_variant = SchemaVariant::get_by_id_opt(ctx, updated_schema_variant_id)
+        .await?
+        .ok_or(SchemaError::SchemaVariantNotFound(
+            updated_schema_variant_id,
+        ))?;
 
     tracker.track(
         ctx,
         "api_update_variant",
         json!({
             "schema_variant_id": schema_variant_id,
+            "updated_schema_variant_id": updated_schema_variant_id,
         }),
     );
 
     ctx.write_audit_log(
-        AuditLogKind::RegenerateSchemaVariant { schema_variant_id },
-        variant.display_name().to_string(),
+        AuditLogKind::RegenerateSchemaVariant {
+            schema_variant_id: updated_schema_variant_id,
+        },
+        updated_variant.display_name().to_string(),
     )
     .await?;
 
     ctx.commit().await?;
 
-    let luminork_variant = slow_rt::spawn(
-        dal_materialized_views::luminork::schema::variant::assemble(ctx.clone(), variant.id()),
-    )?
-    .await??;
+    let luminork_variant =
+        slow_rt::spawn(dal_materialized_views::luminork::schema::variant::assemble(
+            ctx.clone(),
+            updated_variant.id(),
+        ))?
+        .await??;
 
     let variant_funcs: Vec<SchemaVariantFunc> = luminork_variant
         .variant_funcs

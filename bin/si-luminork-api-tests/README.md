@@ -65,7 +65,7 @@ deno task test:watch
 ### Run a Specific Test
 
 ```bash
-deno test tests/system-status.test.ts
+deno task test tests/system-status.test.ts
 ```
 
 ### Using the Convenience Script
@@ -115,25 +115,25 @@ import { createTestClient, generateTestName } from "../src/test-utils.ts";
 Deno.test("My Custom Test", async () => {
   // Get configured API client and test configuration
   const { api, config } = await createTestClient();
-  
+
   // Create a test change set
   const response = await api.changeSets.createChangeSet(config.workspaceId, {
     name: generateTestName("my_test"),
     description: "Created by my custom test"
   });
-  
+
   // Assert response is as expected
   assertEquals(response.status, 201);
-  
+
   const changeSetId = response.data.id;
-  
+
   // List schemas in workspace
   const schemasResponse = await api.schemas.listSchemas(config.workspaceId);
-  
+
   // Create a component in the change set
   if (schemasResponse.data.items.length > 0) {
     const schemaId = schemasResponse.data.items[0].id;
-    
+
     const componentResponse = await api.components.createComponent(
       config.workspaceId,
       changeSetId,
@@ -142,10 +142,10 @@ Deno.test("My Custom Test", async () => {
         schema_id: schemaId
       }
     );
-    
+
     assertEquals(componentResponse.status, 201);
   }
-  
+
   // Clean up resources when done
   await api.changeSets.deleteChangeSet(config.workspaceId, changeSetId);
 });
