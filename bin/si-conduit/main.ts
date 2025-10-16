@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env
 
-import { run } from "./src/cli.ts";
+import { start } from "./src/cli2.ts";
 
 if (import.meta.main) {
-  await run();
+  await start();
 }

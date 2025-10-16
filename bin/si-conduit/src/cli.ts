@@ -58,7 +58,7 @@ export async function run() {
     .globalOption(
       "-v, --verbose [level:number]",
       "Enable verbose logging (optionally specify level: 0 -> only errors and output, 1 -> 0 + info messages or  2 -> 1 + debug messages)",
-      (value) => value === true ? 1 : value,
+      (value) => (value === true ? 1 : value),
     )
     .action(function () {
       this.showHelp();
@@ -100,7 +100,7 @@ export async function run() {
   } catch (error) {
     const errorMsg = unknownValueToErrorMessage(error);
 
-    (new Log(0)).error(errorMsg);
+    new Log(0).error(errorMsg);
 
     const [command, ...args] = Deno.args;
 

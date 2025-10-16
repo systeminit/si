@@ -1,9 +1,11 @@
 {
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read --allow-write --env-file=.env.local main.ts",
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-write main.ts",
     "build": "deno compile --allow-net --allow-env --allow-read --allow-write main.ts"
   },
   "imports": {
+    "@cliffy/prompt": "jsr:@cliffy/prompt@^1.0.0-rc.7",
+    "@std/path": "https://deno.land/std@0.224.0/path/mod.ts",
     "@systeminit/api-client": "jsr:@systeminit/api-client@^1.2.0",
     "posthog-node": "npm:posthog-node@^4.2.1"
   }
