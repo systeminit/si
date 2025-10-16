@@ -1,19 +1,25 @@
 import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
-import { AuthenticatedCliContext } from "../cli.ts";
+import { AuthenticatedCliContext } from "./helpers.ts";
 import { AxiosError } from "axios";
-import { Log } from "../log.ts";
+import { Context } from "../context.ts";
 import { unknownValueToErrorMessage } from "../helpers.ts";
 import { SCHEMA_FILE_FORMAT_VERSION } from "../config.ts";
+import { AbsoluteDirectoryPath, Project } from "../project.ts";
 
-async function parseActions(actionsPath: string, assetName: string, log: Log) {
+async function parseActions(
+  ctx: Context,
+  schemaName: string,
+  funcBasePath: AbsoluteDirectoryPath,
+) {
+  const logger = ctx.logger;
   const validActionKinds = ["create", "destroy", "refresh", "update"];
   const actionFiles = [];
 
   // Read the file list from the actions folder
   try {
-    const actionEntries = Deno.readDirSync(actionsPath);
+    const actionEntries = Deno.readDir(funcBasePath.toString());
 
-    for (const actionEntry of actionEntries) {
+    for await (const actionEntry of actionEntries) {
       if (!actionEntry.isFile || !actionEntry.name.endsWith(".ts")) {
         continue;
       }
@@ -32,8 +38,10 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) {
       throw new Error(
-        `Error reading actions directory for asset "${assetName}": ${
-          unknownValueToErrorMessage(error)
+        `Error reading actions directory for asset "${schemaName}": ${
+          unknownValueToErrorMessage(
+            error,
+          )
         }`,
       );
     }
@@ -45,16 +53,17 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
 
   // For each listed file, get the contents and the required metadata file ({kind}.json)
   for (const { kind, strippedFileName } of actionFiles) {
-    const actionTsPath = `${actionsPath}/${strippedFileName}.ts`;
-    const actionJsonPath = `${actionsPath}/${strippedFileName}.json`;
+    const actionTsPath = `${funcBasePath.toString()}/${strippedFileName}.ts`;
+    const actionJsonPath =
+      `${funcBasePath.toString()}/${strippedFileName}.metadata.json`;
 
     try {
       // Read the TypeScript file
       const code = await Deno.readTextFile(actionTsPath);
 
       if (!code || code.trim() === "") {
-        log.error(
-          `Empty code in action file "${actionTsPath}" for asset "${assetName}", skipping...`,
+        logger.error(
+          `Empty code in action file "${actionTsPath}" for asset "${schemaName}", skipping...`,
         );
         continue;
       }
@@ -65,8 +74,8 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
         actionJsonContent = await Deno.readTextFile(actionJsonPath);
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
-          log.error(
-            `No matching .json file found for action "${actionTsPath}" in asset "${assetName}", skipping...`,
+          logger.error(
+            `No matching .json file found for action "${actionTsPath}" in asset "${schemaName}", skipping...`,
           );
           continue;
         }
@@ -81,8 +90,8 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
         if (kind === "Manual") {
           name = strippedFileName;
         } else {
-          log.error(
-            `Missing required 'name' field in "${actionJsonPath}" for non manual asset "${assetName}", skipping...`,
+          logger.error(
+            `Missing required 'name' field in "${actionJsonPath}" for non manual asset "${schemaName}", skipping...`,
           );
           continue;
         }
@@ -99,9 +108,11 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
 
       actions.push(actionObject);
     } catch (error) {
-      log.error(
-        `Error processing action "${strippedFileName}" for asset "${assetName}": ${
-          unknownValueToErrorMessage(error)
+      logger.error(
+        `Error processing action "${strippedFileName}" for asset "${schemaName}": ${
+          unknownValueToErrorMessage(
+            error,
+          )
         }, skipping...`,
       );
     }
@@ -113,20 +124,19 @@ async function parseActions(actionsPath: string, assetName: string, log: Log) {
 type ActionArray = Awaited<ReturnType<typeof parseActions>>;
 
 async function parseSimpleFuncDirectory(
-  directoryPath: string,
-  assetName: string,
-  log: Log,
+  ctx: Context,
+  schemaName: string,
+  funcBasePath: AbsoluteDirectoryPath,
 ) {
+  const logger = ctx.logger;
   const files = [] as string[];
 
   // Read the file list from the actions folder
   try {
-    const entries = Deno.readDirSync(directoryPath);
+    const entries = Deno.readDir(funcBasePath.toString());
 
-    for (const entry of entries) {
-      if (
-        !entry.isFile || !entry.name.endsWith(".ts")
-      ) {
+    for await (const entry of entries) {
+      if (!entry.isFile || !entry.name.endsWith(".ts")) {
         continue;
       }
 
@@ -138,8 +148,10 @@ async function parseSimpleFuncDirectory(
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) {
       throw new Error(
-        `Error reading funcs directory "${directoryPath}" for asset "${assetName}": ${
-          unknownValueToErrorMessage(error)
+        `Error reading funcs directory "${funcBasePath}" for asset "${schemaName}": ${
+          unknownValueToErrorMessage(
+            error,
+          )
         }`,
       );
     }
@@ -150,16 +162,17 @@ async function parseSimpleFuncDirectory(
   const funcs = [];
 
   for (const strippedFileName of files) {
-    const funcTsPath = `${directoryPath}/${strippedFileName}.ts`;
-    const funcJsonPath = `${directoryPath}/${strippedFileName}.json`;
+    const funcTsPath = `${funcBasePath.toString()}/${strippedFileName}.ts`;
+    const funcJsonPath =
+      `${funcBasePath.toString()}/${strippedFileName}.metadata.json`;
 
     try {
       // Read the TypeScript file
       const code = await Deno.readTextFile(funcTsPath);
 
       if (!code || code.trim() === "") {
-        log.error(
-          `Empty code in file "${funcTsPath}" for asset "${assetName}", skipping...`,
+        logger.error(
+          `Empty code in file "${funcTsPath}" for asset "${schemaName}", skipping...`,
         );
         continue;
       }
@@ -167,16 +180,14 @@ async function parseSimpleFuncDirectory(
       // Read the matching JSON file
       let metadata = {} as Record<string, string>;
       try {
-        const jsonContent = await Deno.readTextFile(
-          funcJsonPath,
-        );
+        const jsonContent = await Deno.readTextFile(funcJsonPath);
         metadata = JSON.parse(jsonContent);
       } catch (error) {
         // Not finding the metadata file is ok - just continue
         if (!(error instanceof Deno.errors.NotFound)) throw error;
       }
 
-      let name = metadata.name ?? strippedFileName;
+      const name = metadata.name ?? strippedFileName;
 
       // Build action object
       const funcObject = {
@@ -188,9 +199,11 @@ async function parseSimpleFuncDirectory(
 
       funcs.push(funcObject);
     } catch (error) {
-      log.error(
-        `Error processing "${strippedFileName}" for asset "${assetName}": ${
-          unknownValueToErrorMessage(error)
+      logger.error(
+        `Error processing "${strippedFileName}" for asset "${schemaName}": ${
+          unknownValueToErrorMessage(
+            error,
+          )
         }, skipping...`,
       );
     }
@@ -214,44 +227,44 @@ interface Schema {
 }
 
 export async function pushAssets(
-  context: AuthenticatedCliContext,
-  assetsPath: string,
+  cliContext: AuthenticatedCliContext,
+  project: Project,
   skipConfirmation?: boolean,
 ) {
-  const { apiConfiguration, log, workspace, analytics } = context;
+  const { apiConfiguration, workspace, ctx } = cliContext;
+  const logger = ctx.logger;
 
-  const {
-    instanceUrl: workspaceUrlPrefix,
-    id: workspaceId,
-  } = workspace;
+  const { instanceUrl: workspaceUrlPrefix, id: workspaceId } = workspace;
 
   const schemas = [] as Schema[];
 
   let readSchemas = 0; // This is the total number of read schema directories, including failures
   // Read schemas from the local folder
   try {
-    const entries = Deno.readDirSync(assetsPath);
+    const schemasBasePath = project.schemasBasePath().toString();
 
-    for (const entry of entries) {
+    const entries = Deno.readDir(schemasBasePath);
+
+    for await (const entry of entries) {
       if (!entry.isDirectory) {
         continue;
       }
 
       readSchemas += 1;
 
-      const assetName = entry.name;
+      const schemaName = entry.name;
 
-      const versionFilePath = `${assetsPath}/${assetName}/.format-version`;
+      const versionFilePath = project.schemaFormatVersionPath(schemaName);
 
       let thisFormatVersion: number;
       try {
-        const formatContent = await Deno.readTextFile(versionFilePath);
+        const formatContent = await versionFilePath.readTextFile();
         thisFormatVersion = parseInt(formatContent);
       } catch (error) {
         const msg = error instanceof Deno.errors.NotFound
-          ? `.format-version file not found on the ${assetName} directory`
+          ? `.format-version file not found on the ${schemaName} directory`
           : unknownValueToErrorMessage(error);
-        log.error(msg);
+        logger.error(msg);
         continue;
       }
 
@@ -259,27 +272,27 @@ export async function pushAssets(
         isNaN(thisFormatVersion) ||
         thisFormatVersion !== SCHEMA_FILE_FORMAT_VERSION
       ) {
-        let msg =
-          `Unsupported format version ${thisFormatVersion} on the asset ${assetName}. ` +
+        const msg =
+          `Unsupported format version ${thisFormatVersion} on the asset ${schemaName}. ` +
           `Supported version is ${SCHEMA_FILE_FORMAT_VERSION}. ` +
           `You can run a new scaffold command and port your schema over to push it with this executable`;
 
-        log.error(msg);
+        logger.error(msg);
         continue;
       }
 
-      const indexPath = `${assetsPath}/${assetName}/index.ts`;
+      const schemaCodePath = project.schemaFuncCodePath(schemaName);
       try {
-        const code = await Deno.readTextFile(indexPath);
+        const code = await schemaCodePath.readTextFile();
 
         let name: string;
         let category: string;
         let description: string;
         let link: string;
 
-        const metadataPath = `${assetsPath}/${assetName}/metadata.json`;
+        const schemaMetadataPath = project.schemaMetadataPath(schemaName);
         try {
-          const metadataContent = await Deno.readTextFile(metadataPath);
+          const metadataContent = await schemaMetadataPath.readTextFile();
           const metadata = JSON.parse(metadataContent);
 
           name = metadata.name;
@@ -293,42 +306,42 @@ export async function pushAssets(
           link = metadata.link;
         } catch (error) {
           const msg = error instanceof Deno.errors.NotFound
-            ? `metadata.json file not found on the ${assetName} directory`
+            ? `metadata.json file not found on the ${schemaName} directory`
             : unknownValueToErrorMessage(error);
-          log.error(msg);
+          logger.error(msg);
           continue;
         }
 
         if (category === "") {
           // Try to get the category from the asset name
-          const categoryMatch = assetName.match(/^([^\s:]+::[^\s:]+)::(.+)$/);
+          const categoryMatch = schemaName.match(/^([^\s:]+::[^\s:]+)::(.+)$/);
           if (categoryMatch && categoryMatch[1] !== undefined) {
             category = categoryMatch[1];
           }
         }
 
         const qualifications = await parseSimpleFuncDirectory(
-          `${assetsPath}/${assetName}/qualifications`,
-          assetName,
-          log,
+          ctx,
+          schemaName,
+          project.qualificationBasePath(schemaName),
         );
 
         const actions = await parseActions(
-          `${assetsPath}/${assetName}/actions`,
-          assetName,
-          log,
+          ctx,
+          schemaName,
+          project.actionBasePath(schemaName),
         );
 
         const codeGenerators = await parseSimpleFuncDirectory(
-          `${assetsPath}/${assetName}/codeGenerators`,
-          assetName,
-          log,
+          ctx,
+          schemaName,
+          project.codegenBasePath(schemaName),
         );
 
         const managementFuncs = await parseSimpleFuncDirectory(
-          `${assetsPath}/${assetName}/management`,
-          assetName,
-          log,
+          ctx,
+          schemaName,
+          project.managementBasePath(schemaName),
         );
 
         schemas.push({
@@ -344,8 +357,8 @@ export async function pushAssets(
         });
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
-          log.error(
-            `No index.ts file found for asset "${assetName}", skipping...\n`,
+          logger.error(
+            `No index.ts file found for asset "${schemaName}", skipping...\n`,
           );
           continue;
         }
@@ -418,7 +431,7 @@ export async function pushAssets(
   try {
     const siSchemasApi = new SchemasApi(apiConfiguration);
 
-    for (let schema of schemas) {
+    for (const schema of schemas) {
       const { code, name, category, description } = schema;
 
       let existingSchemaId = undefined;
@@ -442,7 +455,7 @@ export async function pushAssets(
       let schemaId;
       let variantId;
       if (existingSchemaId) {
-        log.info(
+        logger.info(
           `existing schema ${name} (${existingSchemaId}), unlocking and updating...`,
         );
 
@@ -471,7 +484,7 @@ export async function pushAssets(
         schemaId = existingSchemaId;
         variantId = schemaVariantId;
       } else {
-        log.info(`creating schema ${name}...`);
+        logger.info(`creating schema ${name}...`);
 
         const createSchemaResponse = await siSchemasApi.createSchema({
           workspaceId,
@@ -535,7 +548,7 @@ export async function pushAssets(
     const changeSetUrl =
       `${workspaceUrlPrefix}/w/${workspaceId}/${changeSetId}/l/a`;
 
-    analytics.trackEvent("push_assets", {
+    ctx.analytics.trackEvent("push_assets", {
       pushedSchemasCount: pushedSchemas,
       pushedSchemaNames: schemas.map((schema) => schema.name),
       workspaceId,
@@ -548,14 +561,16 @@ export async function pushAssets(
     );
   } catch (error) {
     if (error instanceof AxiosError) {
-      log.error(
+      logger.error(
         `API error creating schemas: (${error.status}) ${error.response?.data.message}`,
       );
-      log.error(`Request: ${error.request.method} ${error.request.path}`);
+      logger.error(`Request: ${error.request.method} ${error.request.path}`);
     } else {
-      log.error(`Error creating schemas: ${unknownValueToErrorMessage(error)}`);
+      logger.error(
+        `Error creating schemas: ${unknownValueToErrorMessage(error)}`,
+      );
     }
-    log.info("Deleting changeset...");
+    logger.info("Deleting changeset...");
     changeSetsApi.abandonChangeSet({
       workspaceId,
       changeSetId,
