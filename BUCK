@@ -1,7 +1,6 @@
 load(
     "@prelude-si//:macros.bzl",
     "alias",
-    "deno_workspace",
     "export_file",
     "nix_flake_lock",
     "pnpm_lock",
@@ -99,10 +98,6 @@ nix_flake_lock(
 
 export_file(
     name = "package.json",
-)
-
-export_file(
-    name = "deno.json",
 )
 
 pnpm_workspace(
