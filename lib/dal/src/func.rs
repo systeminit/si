@@ -84,6 +84,7 @@ pub mod backend;
 pub mod binding;
 pub mod intrinsics;
 mod kind;
+pub mod leaf;
 pub mod runner;
 
 pub use kind::FuncKind;

@@ -73,14 +73,14 @@ use crate::{
         FuncKind,
         argument::FuncArgument,
         intrinsics::IntrinsicFunc,
+        leaf::{
+            LeafInputLocation,
+            LeafKind,
+        },
     },
     management::prototype::ManagementPrototype,
     pkg::PkgError,
     prop::PropPath,
-    schema::variant::leaves::{
-        LeafInputLocation,
-        LeafKind,
-    },
 };
 
 pub type FuncSpecMap = super::ChangeSetThingMap<FuncId, FuncSpec>;

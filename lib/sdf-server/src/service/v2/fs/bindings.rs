@@ -38,9 +38,9 @@ use dal::{
             management::ManagementBinding,
         },
         intrinsics::IntrinsicFunc,
+        leaf::LeafKind,
     },
     prop::PropPath,
-    schema::variant::leaves::LeafKind,
 };
 use si_events::{
     ActionKind,

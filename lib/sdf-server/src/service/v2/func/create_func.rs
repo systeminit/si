@@ -19,10 +19,10 @@ use dal::{
             AttributeFuncDestination,
             EventualParent,
         },
-    },
-    schema::variant::leaves::{
-        LeafInputLocation,
-        LeafKind,
+        leaf::{
+            LeafInputLocation,
+            LeafKind,
+        },
     },
 };
 use sdf_extract::change_set::ChangeSetDalContext;

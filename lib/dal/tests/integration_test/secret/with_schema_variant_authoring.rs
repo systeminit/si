@@ -1,18 +1,18 @@
 use dal::{
     DalContext,
     Func,
-    func::binding::{
-        EventualParent,
-        FuncBinding,
-        leaf::LeafBinding,
-    },
-    schema::variant::{
-        authoring::VariantAuthoringClient,
-        leaves::{
+    func::{
+        binding::{
+            EventualParent,
+            FuncBinding,
+            leaf::LeafBinding,
+        },
+        leaf::{
             LeafInputLocation,
             LeafKind,
         },
     },
+    schema::variant::authoring::VariantAuthoringClient,
 };
 use dal_test::{
     helpers::ChangeSetTestHelpers,

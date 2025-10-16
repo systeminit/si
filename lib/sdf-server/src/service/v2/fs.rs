@@ -46,18 +46,16 @@ use dal::{
             EventualParent,
             FuncBindingError,
         },
-    },
-    pkg::PkgError,
-    prop::PropError,
-    schema::variant::{
-        authoring::{
-            VariantAuthoringClient,
-            VariantAuthoringError,
-        },
-        leaves::{
+        leaf::{
             LeafInputLocation,
             LeafKind,
         },
+    },
+    pkg::PkgError,
+    prop::PropError,
+    schema::variant::authoring::{
+        VariantAuthoringClient,
+        VariantAuthoringError,
     },
     slow_rt::{
         self,
