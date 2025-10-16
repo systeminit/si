@@ -294,7 +294,7 @@ async fn update_attributes_inner(
         match value.try_into()? {
             Some(value) => {
                 counts.set_count += 1;
-                // Create the attribute at the given pa th if it does not exist
+                // Create the attribute at the given path if it does not exist
                 let path = av_to_set.path();
                 let target_av_id = av_to_set.clone().vivify(ctx, component_id).await?;
 

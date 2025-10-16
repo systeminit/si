@@ -35,7 +35,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    AttributeValue,
     ChangeSetError,
     ChangeSetId,
     Component,
@@ -776,8 +775,10 @@ impl Action {
         // that would be operating on the same Component until after the DependentValuesUpdate has
         // finished working with that Component.
         let mut dvu_component_ids: HashSet<ComponentId> = HashSet::new();
-        for av_id in &dependent_value_graph.all_value_ids() {
-            dvu_component_ids.insert(AttributeValue::component_id(ctx, *av_id).await?);
+        for value in dependent_value_graph.all_value_ids() {
+            if let Some(component_id) = dependent_value_graph.cached_component_id_for_value(value) {
+                dvu_component_ids.insert(component_id);
+            }
         }
 
         for possible_action_id in action_dependency_graph.independent_actions() {

@@ -1,6 +1,7 @@
 use std::{
     collections::{
         BTreeMap,
+        BTreeSet,
         HashMap,
         HashSet,
         VecDeque,
@@ -8,11 +9,16 @@ use std::{
         hash_map::Entry,
     },
     fs::File,
-    io::Write,
+    io::Write as _,
+    sync::Arc,
 };
 
 use petgraph::prelude::*;
 use si_events::ulid::Ulid;
+use si_id::{
+    LeafPrototypeId,
+    SchemaId,
+};
 use telemetry::prelude::*;
 
 use super::{
@@ -26,6 +32,7 @@ use crate::{
     ComponentId,
     DalContext,
     EdgeWeightKind,
+    Func,
     Prop,
     PropKind,
     Secret,
@@ -38,6 +45,7 @@ use crate::{
     },
     component::ControllingFuncData,
     dependency_graph::DependencyGraph,
+    schema::leaf::LeafPrototype,
     workspace_snapshot::{
         DependentValueRoot,
         WorkspaceSnapshotSelector,
@@ -46,11 +54,52 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DependentValue {
+    AttributeValue(AttributeValueId),
+    OverlayDestination {
+        leaf_prototype_id: LeafPrototypeId,
+        destination_map_id: AttributeValueId,
+        destination_element_id: Option<AttributeValueId>,
+        root_attribute_value_id: AttributeValueId,
+    },
+}
+
+impl DependentValue {
+    pub fn attribute_value_id(&self) -> AttributeValueId {
+        match self {
+            DependentValue::AttributeValue(attribute_value_id) => *attribute_value_id,
+            DependentValue::OverlayDestination {
+                destination_map_id,
+                destination_element_id,
+                ..
+            } => (*destination_element_id).unwrap_or(*destination_map_id),
+        }
+    }
+}
+
+impl From<DependentValue> for Ulid {
+    fn from(value: DependentValue) -> Self {
+        value.attribute_value_id().into()
+    }
+}
+
+impl From<DependentValue> for AttributeValueId {
+    fn from(value: DependentValue) -> Self {
+        value.attribute_value_id()
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct DependentValueGraph {
-    inner: DependencyGraph<AttributeValueId>,
-    values_that_need_to_execute_from_prototype_function: HashSet<AttributeValueId>,
-    component_ids_for_av: BTreeMap<AttributeValueId, ComponentId>,
+    inner: DependencyGraph<DependentValue>,
+    values_that_need_to_execute_from_prototype_function: BTreeSet<DependentValue>,
+    component_id_for_av: BTreeMap<AttributeValueId, ComponentId>,
+    root_attribute_values_for_component: BTreeMap<ComponentId, AttributeValueId>,
+    schema_id_for_component: BTreeMap<ComponentId, SchemaId>,
+    leaf_prototypes_for_schema: BTreeMap<SchemaId, Arc<Vec<(LeafPrototype, String)>>>,
+    leaf_overlays_for_component: BTreeMap<ComponentId, Arc<Vec<ComponentLeaf>>>,
+    leaf_element_ids: BTreeMap<AttributeValueId, ComponentLeaf>,
 }
 
 // We specifically need to track if the value is one of the child values we
@@ -63,7 +112,16 @@ enum WorkQueueValue {
     Discovered(AttributeValueId),
 }
 
+#[derive(Debug, Clone)]
+struct ComponentLeaf {
+    destination_map_id: AttributeValueId,
+    destination_element_id: Option<AttributeValueId>,
+    inputs: Vec<AttributeValueId>,
+    prototype_id: LeafPrototypeId,
+}
+
 impl WorkQueueValue {
+    #[inline(always)]
     fn id(&self) -> AttributeValueId {
         match self {
             WorkQueueValue::Initial(id)
@@ -80,16 +138,13 @@ impl DependentValueGraph {
         ctx: &DalContext,
         roots: Vec<DependentValueRoot>,
     ) -> AttributeValueResult<Self> {
-        let mut dependent_value_graph = Self {
-            inner: DependencyGraph::new(),
-            values_that_need_to_execute_from_prototype_function: HashSet::new(),
-            component_ids_for_av: BTreeMap::new(),
-        };
+        let mut dependent_value_graph = Self::default();
 
         let values = dependent_value_graph.parse_initial_ids(ctx, roots).await?;
         dependent_value_graph
             .populate_for_values(ctx, values)
             .await?;
+
         Ok(dependent_value_graph)
     }
 
@@ -115,19 +170,47 @@ impl DependentValueGraph {
                 continue;
             }
 
-            self.inner.add_id(root_ulid.into());
-
             let node_weight = workspace_snapshot.get_node_weight(root_ulid).await?;
 
             match node_weight.into() {
                 NodeWeightDiscriminants::AttributeValue => {
                     let initial_attribute_value_id: AttributeValueId = root_ulid.into();
 
-                    if AttributeValue::is_set_by_dependent_function(ctx, initial_attribute_value_id)
+                    let component_id = self
+                        .component_id_for_av(ctx, initial_attribute_value_id)
+                        .await?;
+                    let root_attribute_value_id = self
+                        .root_attribute_value_for_component(ctx, component_id)
+                        .await?;
+                    // We don't need this result here, we just need to calculate the
+                    // data to setup the cached maps
+                    self.leaf_overlays_for_component(ctx, component_id).await?;
+
+                    // If this is a leaf overlay destination element (the k/v
+                    // pair for the result of a leaf) then we want to be sure we
+                    // re-execute it
+                    if let Some(leaf) = self.leaf_element_ids.get(&initial_attribute_value_id) {
+                        let overlay_destination = DependentValue::OverlayDestination {
+                            leaf_prototype_id: leaf.prototype_id,
+                            destination_map_id: leaf.destination_map_id,
+                            destination_element_id: leaf.destination_element_id,
+                            root_attribute_value_id,
+                        };
+
+                        self.values_needs_to_execute_from_prototype_function(overlay_destination);
+                        self.inner.add_id(overlay_destination);
+                    } else {
+                        if AttributeValue::is_set_by_dependent_function(
+                            ctx,
+                            initial_attribute_value_id,
+                        )
                         .await?
-                    {
-                        self.values_that_need_to_execute_from_prototype_function
-                            .insert(initial_attribute_value_id);
+                        {
+                            self.values_that_need_to_execute_from_prototype_function
+                                .insert(DependentValue::AttributeValue(initial_attribute_value_id));
+                        }
+                        self.inner
+                            .add_id(DependentValue::AttributeValue(initial_attribute_value_id));
                     }
 
                     values.push(WorkQueueValue::Initial(initial_attribute_value_id));
@@ -144,7 +227,11 @@ impl DependentValueGraph {
                             .await
                             .map_err(Box::new)?;
                     self.values_that_need_to_execute_from_prototype_function
-                        .extend(direct_dependents.clone());
+                        .extend(
+                            direct_dependents
+                                .iter()
+                                .map(|id| DependentValue::AttributeValue(*id)),
+                        );
                     values.extend(
                         direct_dependents
                             .iter()
@@ -233,8 +320,8 @@ impl DependentValueGraph {
                             }
 
                             self.value_depends_on(
-                                subscriber_controlling_av_id,
-                                resolved_controlling_av_id,
+                                DependentValue::AttributeValue(subscriber_controlling_av_id),
+                                DependentValue::AttributeValue(resolved_controlling_av_id),
                             );
                         }
                     }
@@ -270,11 +357,32 @@ impl DependentValueGraph {
             let current_component_id = self
                 .component_id_for_av(ctx, current_attribute_value.id())
                 .await?;
+            let root_attribute_value_id = self
+                .root_attribute_value_for_component(ctx, current_component_id)
+                .await?;
 
-            if AttributeValue::parent_id(ctx, current_attribute_value.id())
-                .await?
-                .is_none()
-            {
+            // Gather up the leaf overlays (if any) for this component to see if
+            // the current attribute value is an input to them, then add it to
+            // the graph if so
+            let overlay_leaves = self
+                .leaf_overlays_for_component(ctx, current_component_id)
+                .await?;
+            for leaf in overlay_leaves.iter() {
+                if leaf.inputs.contains(&current_attribute_value.id()) {
+                    let destination_map_value = DependentValue::OverlayDestination {
+                        leaf_prototype_id: leaf.prototype_id,
+                        destination_map_id: leaf.destination_map_id,
+                        destination_element_id: leaf.destination_element_id,
+                        root_attribute_value_id,
+                    };
+                    self.value_depends_on(
+                        destination_map_value,
+                        DependentValue::AttributeValue(current_attribute_value.id()),
+                    );
+                }
+            }
+
+            if current_attribute_value.id() == root_attribute_value_id {
                 let new_work_queue_values = self
                     .process_subscription_dependencies(
                         ctx,
@@ -376,9 +484,11 @@ impl DependentValueGraph {
 
                     work_queue
                         .push_back(WorkQueueValue::Discovered(controlling_attribute_value_id));
-                    self.inner.id_depends_on(
-                        controlling_attribute_value_id,
-                        current_attribute_value_controlling_value_id,
+                    self.value_depends_on(
+                        DependentValue::AttributeValue(controlling_attribute_value_id),
+                        DependentValue::AttributeValue(
+                            current_attribute_value_controlling_value_id,
+                        ),
                     );
                 }
             }
@@ -401,15 +511,131 @@ impl DependentValueGraph {
         // Walking to the root for every value discovered
         // in the loop above ensures we construct a single
         // DVU connected graph for every tree of dependencies.
-        for id in self.inner.all_ids() {
+        let all_ids: Vec<_> = self.inner.all_ids().collect();
+        for id in all_ids {
             let mut cursor = id;
-            while let Some(parent_av_id) = AttributeValue::parent_id(ctx, cursor).await? {
-                self.value_depends_on(parent_av_id, cursor);
-                cursor = parent_av_id;
+            while let Some(parent_av_id) =
+                AttributeValue::parent_id(ctx, cursor.attribute_value_id()).await?
+            {
+                let parent_value = DependentValue::AttributeValue(parent_av_id);
+                self.value_depends_on(parent_value, cursor);
+                cursor = parent_value;
             }
         }
 
         Ok(())
+    }
+
+    async fn leaf_overlays_for_component(
+        &mut self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<Arc<Vec<ComponentLeaf>>> {
+        if let Some(existing) = self.leaf_overlays_for_component.get(&component_id) {
+            return Ok(existing.clone());
+        }
+
+        let schema_id = self.schema_id_for_component(ctx, component_id).await?;
+        let root_attribute_value_id = self
+            .root_attribute_value_for_component(ctx, component_id)
+            .await?;
+
+        let prototypes = self.leaf_prototypes_for_schema_id(ctx, schema_id).await?;
+        let mut component_leaves = vec![];
+        for (prototype, func_name) in prototypes.as_ref() {
+            let inputs = prototype
+                .resolve_inputs(ctx, root_attribute_value_id)
+                .await
+                .map_err(Box::new)?;
+
+            let destination_map_id = prototype
+                .resolve_output_map(ctx, root_attribute_value_id)
+                .await
+                .map_err(Box::new)?;
+
+            let destination_element_id =
+                AttributeValue::map_child_opt(ctx, destination_map_id, func_name).await?;
+
+            let leaf = ComponentLeaf {
+                destination_map_id,
+                destination_element_id,
+                inputs,
+                prototype_id: prototype.id(),
+            };
+
+            if let Some(destination_element_id) = destination_element_id {
+                self.leaf_element_ids
+                    .insert(destination_element_id, leaf.clone());
+            }
+
+            component_leaves.push(leaf);
+        }
+
+        let arcvec = Arc::new(component_leaves);
+        self.leaf_overlays_for_component
+            .insert(component_id, arcvec.clone());
+
+        Ok(arcvec)
+    }
+
+    async fn leaf_prototypes_for_schema_id(
+        &mut self,
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> AttributeValueResult<Arc<Vec<(LeafPrototype, String)>>> {
+        Ok(match self.leaf_prototypes_for_schema.entry(schema_id) {
+            btree_map::Entry::Vacant(vacant_entry) => {
+                let mut prototypes_and_func_names = vec![];
+                let prototypes = LeafPrototype::for_schema(ctx, schema_id)
+                    .await
+                    .map_err(Box::new)?;
+                for proto in prototypes {
+                    let func_id = LeafPrototype::func_id(ctx, proto.id())
+                        .await
+                        .map_err(Box::new)?;
+
+                    let func = Func::get_by_id(ctx, func_id).await?;
+                    prototypes_and_func_names.push((proto, func.name));
+                }
+                let arcvec = Arc::new(prototypes_and_func_names);
+                vacant_entry.insert(arcvec.clone());
+
+                arcvec
+            }
+            btree_map::Entry::Occupied(occupied_entry) => occupied_entry.get().clone(),
+        })
+    }
+
+    async fn schema_id_for_component(
+        &mut self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<SchemaId> {
+        Ok(match self.schema_id_for_component.entry(component_id) {
+            btree_map::Entry::Vacant(vacant_entry) => {
+                let schema_id = Component::schema_id_for_component_id(ctx, component_id).await?;
+                vacant_entry.insert(schema_id);
+                schema_id
+            }
+            btree_map::Entry::Occupied(occupied_entry) => *occupied_entry.get(),
+        })
+    }
+
+    async fn root_attribute_value_for_component(
+        &mut self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<AttributeValueId> {
+        Ok(
+            match self.root_attribute_values_for_component.entry(component_id) {
+                btree_map::Entry::Vacant(vacant_entry) => {
+                    let root_av_id = Component::root_attribute_value_id(ctx, component_id).await?;
+                    vacant_entry.insert(root_av_id);
+                    root_av_id
+                }
+                btree_map::Entry::Occupied(occupied_entry) => *occupied_entry.get(),
+            },
+        )
     }
 
     async fn component_id_for_av(
@@ -417,7 +643,7 @@ impl DependentValueGraph {
         ctx: &DalContext,
         value_id: AttributeValueId,
     ) -> AttributeValueResult<ComponentId> {
-        Ok(match self.component_ids_for_av.entry(value_id) {
+        Ok(match self.component_id_for_av.entry(value_id) {
             btree_map::Entry::Vacant(vacant_entry) => {
                 let component_id = AttributeValue::component_id(ctx, value_id).await?;
                 vacant_entry.insert(component_id);
@@ -427,12 +653,22 @@ impl DependentValueGraph {
         })
     }
 
-    pub async fn debug_dot(&self, ctx: &DalContext, suffix: Option<&str>) {
-        let mut is_for_map = HashMap::new();
-        let mut component_name_map = HashMap::new();
+    /// Return the cached record of the component id that this value belongs to.
+    /// Once a dependent value graph has been constructed, this will always
+    /// return `Some(_)` if the value has been taken from this graph.
+    pub fn cached_component_id_for_value(&self, value: DependentValue) -> Option<ComponentId> {
+        let attribute_value_id = value.attribute_value_id();
+        self.component_id_for_av.get(&attribute_value_id).copied()
+    }
 
-        for attribute_value_id in self.inner.id_to_index_map().keys() {
-            let component_id = AttributeValue::component_id(ctx, *attribute_value_id)
+    #[allow(clippy::disallowed_methods)]
+    pub async fn debug_dot(&self, ctx: &DalContext, suffix: Option<&str>) {
+        let mut is_for_map = BTreeMap::new();
+        let mut component_name_map = BTreeMap::new();
+
+        for dependent_value in self.inner.id_to_index_map().keys() {
+            let av_id = dependent_value.attribute_value_id();
+            let component_id = AttributeValue::component_id(ctx, av_id)
                 .await
                 .expect("get component id for av");
             let component = Component::get_by_id(ctx, component_id)
@@ -440,39 +676,53 @@ impl DependentValueGraph {
                 .expect("get component");
 
             component_name_map.insert(
-                *attribute_value_id,
+                *dependent_value,
                 component
                     .name(ctx)
                     .await
                     .expect("able to get component name"),
             );
-            let is_for = AttributeValue::is_for(ctx, *attribute_value_id)
+            let is_for = AttributeValue::is_for(ctx, av_id)
                 .await
                 .expect("able to get value is for")
                 .debug_info(ctx)
                 .await
                 .expect("able to get info for value is for");
-            is_for_map.insert(*attribute_value_id, is_for);
+            is_for_map.insert(*dependent_value, is_for);
         }
 
         let label_value_fn =
-            move |_: &StableDiGraph<AttributeValueId, ()>,
-                  (_, attribute_value_id): (NodeIndex, &AttributeValueId)| {
-                let attribute_value_id = *attribute_value_id;
+            move |_: &StableDiGraph<DependentValue, ()>,
+                  (_, dependent_value): (NodeIndex, &DependentValue)| {
+                let dependent_value = *dependent_value;
                 let is_for = is_for_map.clone();
 
                 let is_for_string = is_for
                     .clone()
-                    .get(&attribute_value_id)
+                    .get(&dependent_value)
                     .map(ToOwned::to_owned)
                     .expect("is for exists for every value");
 
                 let component_name = component_name_map
-                    .get(&attribute_value_id)
+                    .get(&dependent_value)
                     .map(ToOwned::to_owned)
                     .expect("component name exists for every value");
 
-                format!("label = \"{component_name}\n{attribute_value_id}\n{is_for_string}\"")
+                let dep_value_string = match dependent_value {
+                    DependentValue::AttributeValue(attribute_value_id) => {
+                        attribute_value_id.to_string()
+                    }
+                    DependentValue::OverlayDestination {
+                        destination_map_id,
+                        destination_element_id,
+                        ..
+                    } => format!(
+                        "leaf({})",
+                        destination_element_id.unwrap_or(destination_map_id),
+                    ),
+                };
+
+                format!("label = \"{component_name}\n{dep_value_string}\n{is_for_string}\"")
             };
 
         let dot = petgraph::dot::Dot::with_attr_getters(
@@ -485,13 +735,13 @@ impl DependentValueGraph {
             &label_value_fn,
         );
 
-        let filename_no_extension = format!("{}-{}", Ulid::new(), suffix.unwrap_or("depgraph"));
-        let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
-            .expect("could not create file");
-
+        let filename = format!("{}-{}.txt", Ulid::new(), suffix.unwrap_or("depgraph"));
+        let home_env = std::env::var("HOME").expect("No HOME environment variable set");
+        let home = std::path::Path::new(&home_env);
+        let mut file = File::create(home.join(&filename)).expect("could not create file");
         file.write_all(format!("{dot:?}").as_bytes())
             .expect("could not write file");
-        println!("dot output stored in file (filename without extension: {filename_no_extension})");
+        println!("dot output stored in file (filename without extension: {filename})");
     }
 
     async fn get_controlling_attribute_value_id(
@@ -526,35 +776,31 @@ impl DependentValueGraph {
         )
     }
 
-    pub fn value_depends_on(
-        &mut self,
-        value_id: AttributeValueId,
-        depends_on_id: AttributeValueId,
-    ) {
-        self.inner.id_depends_on(value_id, depends_on_id);
+    pub fn value_depends_on(&mut self, value: DependentValue, depends_on: DependentValue) {
+        self.inner.id_depends_on(value, depends_on);
     }
 
-    pub fn contains_value(&self, value_id: AttributeValueId) -> bool {
+    pub fn contains_value(&self, value_id: DependentValue) -> bool {
         self.inner.contains_id(value_id)
     }
 
-    pub fn direct_dependencies_of(&self, value_id: AttributeValueId) -> Vec<AttributeValueId> {
+    pub fn direct_dependencies_of(&self, value_id: DependentValue) -> Vec<DependentValue> {
         self.inner.direct_dependencies_of(value_id)
     }
 
-    pub fn remove_value(&mut self, value_id: AttributeValueId) {
-        self.inner.remove_id(value_id);
+    pub fn remove_value(&mut self, value: DependentValue) {
+        self.inner.remove_id(value);
     }
 
-    pub fn cycle_on_self(&mut self, value_id: AttributeValueId) {
+    pub fn cycle_on_self(&mut self, value_id: DependentValue) {
         self.inner.cycle_on_self(value_id);
     }
 
-    pub fn independent_values(&self) -> Vec<AttributeValueId> {
+    pub fn independent_values(&self) -> Vec<DependentValue> {
         self.inner.independent_ids()
     }
 
-    pub fn all_value_ids(&self) -> Vec<AttributeValueId> {
+    pub fn all_value_ids(&self) -> impl Iterator<Item = DependentValue> {
         self.inner.all_ids()
     }
 
@@ -563,7 +809,7 @@ impl DependentValueGraph {
     /// marked as needing to be processed, it likely needs to execute from its prototype function.
     pub fn values_needs_to_execute_from_prototype_function(
         &self,
-        value_id: AttributeValueId,
+        value_id: DependentValue,
     ) -> bool {
         self.values_that_need_to_execute_from_prototype_function
             .contains(&value_id)

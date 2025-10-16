@@ -1049,6 +1049,7 @@ impl WorkspaceSnapshotGraphV4 {
                     EdgeWeightKindDiscriminants::ValueSubscription => "green",
                     EdgeWeightKindDiscriminants::DefaultSubscriptionSource => "green",
                     EdgeWeightKindDiscriminants::Reason => "blue",
+                    EdgeWeightKindDiscriminants::LeafPrototype => "red",
                 };
 
                 match edgeref.weight().kind() {
@@ -1097,6 +1098,7 @@ impl WorkspaceSnapshotGraphV4 {
                             ContentAddressDiscriminants::ValidationOutput => "darkcyan",
                             ContentAddressDiscriminants::ValidationPrototype => "black",
                             ContentAddressDiscriminants::View => "black",
+                            ContentAddressDiscriminants::AttributePaths => "blue",
                         };
                         (discrim.to_string(), color)
                     }
@@ -1175,6 +1177,7 @@ impl WorkspaceSnapshotGraphV4 {
                         ("ApprovalRequirementDefinition".to_string(), "black")
                     }
                     NodeWeight::Reason(_) => ("Reason".to_string(), "black"),
+                    NodeWeight::LeafPrototype(_) => ("LeafPrototype".into(), "blue"),
                 };
                 let color = color.to_string();
                 let id = node_weight.id();
@@ -1716,7 +1719,8 @@ impl WorkspaceSnapshotGraphV4 {
                     | EdgeWeightKind::DiagramObject
                     | EdgeWeightKind::DefaultSubscriptionSource
                     | EdgeWeightKind::ApprovalRequirementDefinition
-                    | EdgeWeightKind::Reason => {}
+                    | EdgeWeightKind::Reason
+                    | EdgeWeightKind::LeafPrototype => {}
                 }
             }
         }

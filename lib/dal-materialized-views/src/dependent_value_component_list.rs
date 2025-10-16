@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use dal::{
-    AttributeValue,
     DalContext,
     attribute::value::DependentValueGraph,
     workspace_snapshot::DependentValueRoot,
@@ -23,8 +22,12 @@ pub async fn assemble(ctx: DalContext) -> super::Result<DependentValueComponentL
     .await?;
 
     let mut component_id_set = HashSet::new();
-    for attribute_value_id in dependent_value_graph.all_value_ids() {
-        component_id_set.insert(AttributeValue::component_id(ctx, attribute_value_id).await?);
+    for dependent_value in dependent_value_graph.all_value_ids() {
+        if let Some(component_id) =
+            dependent_value_graph.cached_component_id_for_value(dependent_value)
+        {
+            component_id_set.insert(component_id);
+        }
     }
     let mut component_ids: Vec<_> = component_id_set.into_iter().collect();
     component_ids.sort();

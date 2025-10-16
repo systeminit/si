@@ -440,6 +440,7 @@ pub enum AuditLogKindV1 {
         schema_variant_display_name: String,
         before_value: Option<serde_json::Value>,
         after_value: Option<serde_json::Value>,
+        is_leaf_overlay: bool,
     },
     UpdateFuncMetadata {
         func_id: FuncId,
@@ -948,6 +949,7 @@ pub enum AuditLogMetadataV1 {
         schema_variant_display_name: String,
         before_value: Option<serde_json::Value>,
         after_value: Option<serde_json::Value>,
+        is_leaf_overlay: bool,
     },
     #[serde(rename_all = "camelCase")]
     UpdateFuncMetadata {
@@ -1768,6 +1770,7 @@ impl From<Kind> for Metadata {
                 schema_variant_display_name,
                 before_value,
                 after_value,
+                is_leaf_overlay,
             } => Self::UpdateDependentProperty {
                 prop_id,
                 prop_name,
@@ -1782,6 +1785,7 @@ impl From<Kind> for Metadata {
                 schema_variant_display_name,
                 before_value,
                 after_value,
+                is_leaf_overlay,
             },
             Kind::UpdateFuncMetadata {
                 func_id,

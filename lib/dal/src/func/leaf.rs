@@ -7,10 +7,14 @@ use si_pkg::{
     LeafInputLocation as PkgLeafInputLocation,
     LeafKind as PkgLeafKind,
 };
-use strum::EnumIter;
+use strum::{
+    AsRefStr,
+    EnumIter,
+};
 
 use crate::{
     FuncBackendResponseType,
+    attribute::path::AttributePath,
     func::argument::FuncArgumentKind,
     prop::PropPath,
     schema::variant::root_prop::RootPropChild,
@@ -23,7 +27,7 @@ use crate::{
 /// [`Func`](crate::Func) within the same [`map`](crate::PropKind::Map). The kind of
 /// [`Func`](crate::Func) allowed corresponds to the [`LeafKind`].
 #[remain::sorted]
-#[derive(Clone, Copy, Debug, EnumIter, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Clone, Copy, Debug, EnumIter, PartialEq, Eq, Serialize, Deserialize, Hash, AsRefStr)]
 pub enum LeafKind {
     /// This variant corresponds to the "/root/code" subtree whose leaves leverage code generation
     /// [`Funcs`](crate::Func).
@@ -81,6 +85,33 @@ impl From<LeafInputLocation> for si_frontend_types::LeafInputLocation {
             LeafInputLocation::Domain => si_frontend_types::LeafInputLocation::Domain,
             LeafInputLocation::Resource => si_frontend_types::LeafInputLocation::Resource,
             LeafInputLocation::Secrets => si_frontend_types::LeafInputLocation::Secrets,
+        }
+    }
+}
+
+impl From<LeafInputLocation> for AttributePath {
+    fn from(value: LeafInputLocation) -> Self {
+        AttributePath::from_json_pointer(match value {
+            LeafInputLocation::Code => "/code",
+            LeafInputLocation::DeletedAt => "/deleted_at",
+            LeafInputLocation::Domain => "/domain",
+            LeafInputLocation::Resource => "/resource",
+            LeafInputLocation::Secrets => "/secrets",
+        })
+    }
+}
+
+impl From<&AttributePath> for Option<LeafInputLocation> {
+    fn from(value: &AttributePath) -> Self {
+        match value {
+            AttributePath::JsonPointer(path) => match path.as_str() {
+                "/code" => Some(LeafInputLocation::Code),
+                "/deleted_at" => Some(LeafInputLocation::DeletedAt),
+                "/domain" => Some(LeafInputLocation::Domain),
+                "/resource" => Some(LeafInputLocation::Resource),
+                "/secrets" => Some(LeafInputLocation::Secrets),
+                _ => None,
+            },
         }
     }
 }
@@ -195,6 +226,13 @@ impl LeafKind {
         match self {
             LeafKind::CodeGeneration => ("code", "codeItem"),
             LeafKind::Qualification => ("qualification", "qualificationItem"),
+        }
+    }
+
+    pub fn map_path(&self) -> AttributePath {
+        match self {
+            LeafKind::CodeGeneration => AttributePath::from_json_pointer("/code"),
+            LeafKind::Qualification => AttributePath::from_json_pointer("/qualification"),
         }
     }
 }

@@ -4,6 +4,7 @@ use serde::{
 };
 use si_events::ulid::Ulid;
 use si_id::UserPk;
+use strum::AsRefStr;
 
 use super::{
     NodeWeight,
@@ -35,7 +36,7 @@ impl ReasonNodeWeight {
 
 /// What reason is expressed by this Reason node?
 /// NOTE: this is postcard encoded, add new reasons to the end
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, AsRefStr)]
 pub enum Reason {
     DefaultSubscription,
     UserAdded(Option<UserPk>),

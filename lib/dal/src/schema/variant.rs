@@ -2391,7 +2391,8 @@ impl SchemaVariant {
                 | EdgeWeightKindDiscriminants::ApprovalRequirementDefinition
                 | EdgeWeightKindDiscriminants::ValueSubscription
                 | EdgeWeightKindDiscriminants::DefaultSubscriptionSource
-                | EdgeWeightKindDiscriminants::Reason => {}
+                | EdgeWeightKindDiscriminants::Reason
+                | EdgeWeightKindDiscriminants::LeafPrototype => {}
             }
         }
 

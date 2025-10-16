@@ -15,6 +15,7 @@ use si_events::{
 };
 use si_id::{
     ActionPrototypeId,
+    LeafPrototypeId,
     ManagementPrototypeId,
 };
 use si_layer_cache::LayerDbError;
@@ -76,6 +77,7 @@ use crate::{
     },
 };
 
+pub mod leaf;
 pub mod variant;
 
 pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminants::V1;
@@ -206,6 +208,14 @@ impl Schema {
         destination_id: ManagementPrototypeId,
         add_fn: add_edge_to_management_prototype,
         discriminant: EdgeWeightKindDiscriminants::ManagementPrototype,
+        result: SchemaResult,
+    );
+
+    implement_add_edge_to!(
+        source_id: SchemaId,
+        destination_id: LeafPrototypeId,
+        add_fn: add_edge_to_leaf_prototype,
+        discriminant: EdgeWeightKindDiscriminants::LeafPrototype,
         result: SchemaResult,
     );
 

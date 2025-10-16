@@ -53,6 +53,7 @@ pub enum EntityKind {
     Geometry,
     InputSocket,
     JsonValue,
+    LeafPrototype,
     ManagementPrototype,
     Module,
     Ordering,

@@ -19,6 +19,7 @@ use serde_json::{
     json,
 };
 use si_events::{
+    ContentHash,
     FuncRunValue,
     ulid::Ulid,
 };
@@ -86,6 +87,7 @@ use crate::{
     },
     implement_add_edge_to,
     prop::PropError,
+    schema::leaf::LeafPrototypeError,
     socket::{
         input::InputSocketError,
         output::OutputSocketError,
@@ -218,6 +220,8 @@ pub enum AttributeValueError {
     JsonptrParseIndexError(String, jsonptr::index::ParseIndexError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
+    #[error("leaf prototype error: {0}")]
+    LeafPrototype(#[from] Box<LeafPrototypeError>),
     #[error("missing attribute value with id: {0}")]
     MissingForId(AttributeValueId),
     #[error("missing key for map entry {0}")]
@@ -435,6 +439,14 @@ impl From<AttributeValueNodeWeight> for AttributeValue {
             func_execution_pk: None,
         }
     }
+}
+
+#[derive(Debug)]
+pub struct PrototypeExecution {
+    pub func_run_value: FuncRunValue,
+    pub func: Func,
+    pub input_attribute_value_ids: Vec<AttributeValueId>,
+    pub value_id: AttributeValueId,
 }
 
 impl AttributeValue {
@@ -681,7 +693,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         read_lock: Arc<RwLock<()>>,
-    ) -> AttributeValueResult<(FuncRunValue, Func, Vec<AttributeValueId>)> {
+    ) -> AttributeValueResult<PrototypeExecution> {
         // When functions are being executed in the dependent values update job,
         // we need to ensure we are not reading our input sources from a graph
         // that is in the process of being mutated on another thread, since it
@@ -733,40 +745,8 @@ impl AttributeValue {
             }
         };
 
-        let content_value: Option<si_events::CasValue> =
-            func_values.value().cloned().map(Into::into);
-        let content_unprocessed_value: Option<si_events::CasValue> =
-            func_values.unprocessed_value().cloned().map(Into::into);
-
-        let value_address = match content_value {
-            Some(value) => Some(
-                ctx.layer_db()
-                    .cas()
-                    .write(
-                        Arc::new(value.into()),
-                        None,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )?
-                    .0,
-            ),
-            None => None,
-        };
-
-        let unprocessed_value_address = match content_unprocessed_value {
-            Some(value) => Some(
-                ctx.layer_db()
-                    .cas()
-                    .write(
-                        Arc::new(value.into()),
-                        None,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )?
-                    .0,
-            ),
-            None => None,
-        };
+        let (unprocessed_value_address, value_address) =
+            write_values_to_cas(ctx, &func_values).await?;
 
         let func = Func::get_by_id(ctx, prototype_func_id).await?;
         if !func.is_intrinsic() {
@@ -776,7 +756,12 @@ impl AttributeValue {
             .await?;
         }
 
-        Ok((func_values, func, input_attribute_value_ids))
+        Ok(PrototypeExecution {
+            func_run_value: func_values,
+            func,
+            input_attribute_value_ids,
+            value_id: attribute_value_id,
+        })
     }
 
     #[instrument(level = "debug" skip(ctx))]
@@ -954,13 +939,16 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
-        // this lock is never locked for writing so is effectively a no-op here
+        // this lock is never locked for writing outside of the
+        // DependentValueUpdate so is effectively a no-op here
         let read_lock = Arc::new(RwLock::new(()));
-        let (execution_result, func, _) =
-            Self::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
+        let PrototypeExecution {
+            func_run_value,
+            func,
+            ..
+        } = Self::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
 
-        Self::set_values_from_func_run_value(ctx, attribute_value_id, execution_result, func)
-            .await?;
+        Self::set_values_from_func_run_value(ctx, attribute_value_id, func_run_value, func).await?;
 
         Ok(())
     }
@@ -1021,7 +1009,7 @@ impl AttributeValue {
             .into())
     }
 
-    async fn element_prop_id_for_id(
+    pub async fn element_prop_id_for_id(
         ctx: &DalContext,
         parent_attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<PropId> {
@@ -1219,13 +1207,16 @@ impl AttributeValue {
 
     pub async fn map_children(
         ctx: &DalContext,
-        id: AttributeValueId,
+        map_attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<HashMap<String, AttributeValueId>> {
         let mut result = HashMap::new();
 
         let snapshot = ctx.workspace_snapshot()?;
 
-        for (edge_weight, _, target_idx) in snapshot.edges_directed(id, Outgoing).await? {
+        for (edge_weight, _, target_idx) in snapshot
+            .edges_directed(map_attribute_value_id, Outgoing)
+            .await?
+        {
             let EdgeWeightKind::Contain(Some(key)) = edge_weight.kind() else {
                 continue;
             };
@@ -1240,20 +1231,26 @@ impl AttributeValue {
 
     pub async fn map_child_opt(
         ctx: &DalContext,
-        id: AttributeValueId,
+        map_attribute_value_id: AttributeValueId,
         name: &str,
     ) -> AttributeValueResult<Option<AttributeValueId>> {
-        Ok(Self::map_children(ctx, id).await?.get(name).copied())
+        Ok(Self::map_children(ctx, map_attribute_value_id)
+            .await?
+            .get(name)
+            .copied())
     }
 
     pub async fn map_child(
         ctx: &DalContext,
-        id: AttributeValueId,
+        map_attribute_value_id: AttributeValueId,
         name: &str,
     ) -> AttributeValueResult<AttributeValueId> {
-        Self::map_child_opt(ctx, id, name)
+        Self::map_child_opt(ctx, map_attribute_value_id, name)
             .await?
-            .ok_or(AttributeValueError::NoChildWithName(id, name.to_string()))
+            .ok_or(AttributeValueError::NoChildWithName(
+                map_attribute_value_id,
+                name.to_string(),
+            ))
     }
 
     /// Return a hashset of all the keys contained by this attribute value (if any)
@@ -1697,7 +1694,9 @@ impl AttributeValue {
         let maybe_existing_prototype_id =
             Self::component_prototype_id(ctx, attribute_value_id).await?;
 
-        if let Some(existing_prototype_id) = maybe_existing_prototype_id {
+        if let Some(existing_prototype_id) = maybe_existing_prototype_id
+            && attribute_prototype_id != existing_prototype_id
+        {
             AttributePrototype::remove(ctx, existing_prototype_id).await?;
         }
 
@@ -1830,40 +1829,8 @@ impl AttributeValue {
     ) -> AttributeValueResult<()> {
         let av_node_weight = Self::node_weight(ctx, attribute_value_id).await?;
 
-        let content_value: Option<si_events::CasValue> =
-            func_run_value.value().cloned().map(Into::into);
-        let content_unprocessed_value: Option<si_events::CasValue> =
-            func_run_value.unprocessed_value().cloned().map(Into::into);
-
-        let value_address = match content_value {
-            Some(value) => Some(
-                ctx.layer_db()
-                    .cas()
-                    .write(
-                        Arc::new(value.into()),
-                        None,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )?
-                    .0,
-            ),
-            None => None,
-        };
-
-        let unprocessed_value_address = match content_unprocessed_value {
-            Some(value) => Some(
-                ctx.layer_db()
-                    .cas()
-                    .write(
-                        Arc::new(value.into()),
-                        None,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )?
-                    .0,
-            ),
-            None => None,
-        };
+        let (unprocessed_value_address, value_address) =
+            write_values_to_cas(ctx, &func_run_value).await?;
 
         if !func.is_intrinsic() {
             FuncRunner::update_run(ctx, func_run_value.func_run_id(), |func_run| {
@@ -1888,36 +1855,6 @@ impl AttributeValue {
         {
             ctx.enqueue_compute_validations(attribute_value_id).await?;
         }
-
-        // Enqueue update actions if they exist
-
-        // FIXME(paulo): This is wrong, we should not enqueue updates here, since this branch is triggered from DVU
-        // Which would make the rebaser dispatch the update action if the DVU is running on head, without user intervention
-        /*
-        {
-            let component_id = Self::component_id(ctx, attribute_value_id).await?;
-            let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-
-            for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
-                ctx,
-                schema_variant_id,
-                ActionKind::Update,
-            )
-            .await
-            .map_err(|err| AttributeValueError::Action(err.to_string()))?
-            {
-                if Action::find_equivalent(ctx, prototype_id, Some(component_id))
-                    .await
-                    .map_err(|err| AttributeValueError::Action(err.to_string()))?
-                    .is_none()
-                {
-                    Action::new(ctx, prototype_id, Some(component_id))
-                        .await
-                        .map_err(|err| AttributeValueError::Action(err.to_string()))?;
-                }
-            }
-        }
-        */
 
         Ok(())
     }
@@ -2734,4 +2671,46 @@ impl AttributeValue {
             }
         })
     }
+}
+
+pub async fn write_values_to_cas(
+    ctx: &DalContext,
+    func_run_value: &FuncRunValue,
+) -> AttributeValueResult<(Option<ContentHash>, Option<ContentHash>)> {
+    let content_value: Option<si_events::CasValue> =
+        func_run_value.value().cloned().map(Into::into);
+    let content_unprocessed_value: Option<si_events::CasValue> =
+        func_run_value.unprocessed_value().cloned().map(Into::into);
+
+    let value_address = match content_value {
+        Some(value) => Some(
+            ctx.layer_db()
+                .cas()
+                .write(
+                    Arc::new(value.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )?
+                .0,
+        ),
+        None => None,
+    };
+
+    let unprocessed_value_address = match content_unprocessed_value {
+        Some(value) => Some(
+            ctx.layer_db()
+                .cas()
+                .write(
+                    Arc::new(value.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )?
+                .0,
+        ),
+        None => None,
+    };
+
+    Ok((unprocessed_value_address, value_address))
 }

@@ -50,6 +50,7 @@ id!(GeometryId);
 id!(HistoryEventPk);
 id!(InputSocketId);
 id!(LayeredEventId);
+id!(LeafPrototypeId);
 id!(ModuleId);
 id!(NaxumApiTypesRequestId);
 id!(OutputSocketId);
