@@ -9,7 +9,7 @@ import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { ExpandedPropSpec, ExpandedPropSpecFor } from "../spec/props.ts";
 import { Provider } from "../types.ts";
 
-const CF_PROPERTY_TYPES = [
+export const CF_PROPERTY_TYPES = [
   "boolean",
   "string",
   "number",
@@ -19,6 +19,10 @@ const CF_PROPERTY_TYPES = [
   "json",
 ] as const;
 export type CfPropertyType = (typeof CF_PROPERTY_TYPES)[number];
+const CF_PROPERTY_TYPE_SET = new Set<string>(CF_PROPERTY_TYPES);
+export function isCfPropertyType(type: unknown): type is CfPropertyType {
+  return typeof type === "string" && CF_PROPERTY_TYPE_SET.has(type);
+}
 
 export type CfProperty =
   | Extend<CfBooleanProperty, { type: "boolean" }>
@@ -294,7 +298,7 @@ export interface ProviderConfig {
    * @returns Normalized CfProperty that can be processed by createPropFromCf
    */
   normalizeProperty: (
-    prop: CfProperty,
+    prop: JSONSchema,
     context: PropertyNormalizationContext,
   ) => CfProperty;
 

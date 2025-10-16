@@ -24,6 +24,7 @@ import {
 import { type JsonSchema, type OperationData } from "./schema.ts";
 import { mergeResourceOperations, normalizeHetznerProperty } from "./spec.ts";
 import { generateHetznerSpecs } from "./pipeline.ts";
+import { JSONSchema } from "../draft_07.ts";
 
 function createDocLink(
   { typeName }: SuperSchema,
@@ -64,11 +65,16 @@ function hetznerIsChildRequired(
 }
 
 function hetznerNormalizeProperty(
-  prop: CfProperty,
+  prop: JSONSchema,
   _context: PropertyNormalizationContext,
 ): CfProperty {
   let propToNormalize = prop;
-  if ("properties" in prop && prop.properties && !prop.type) {
+  if (
+    typeof prop === "object" &&
+    "properties" in prop &&
+    prop.properties &&
+    !prop.type
+  ) {
     propToNormalize = { ...prop, type: "object" } as CfProperty;
   }
 

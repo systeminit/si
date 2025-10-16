@@ -21,6 +21,7 @@ import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import { generateDummySpecs } from "./pipeline.ts";
 import { DUMMY_PROP_OVERRIDES, DUMMY_SCHEMA_OVERRIDES } from "./overrides.ts";
 import { makeModule } from "../generic/index.ts";
+import { JSONSchema } from "../draft_07.ts";
 
 function createDocLink(
   _schema: SuperSchema,
@@ -35,13 +36,18 @@ function dummyCategory(schema: SuperSchema): string {
 }
 
 function dummyNormalizeProperty(
-  prop: CfProperty,
+  prop: JSONSchema,
   _context: PropertyNormalizationContext,
 ): CfProperty {
-  if ("properties" in prop && prop.properties && !prop.type) {
+  if (
+    typeof prop === "object" &&
+    "properties" in prop &&
+    prop.properties &&
+    !prop.type
+  ) {
     return { ...prop, type: "object" } as CfProperty;
   }
-  return prop;
+  return prop as CfProperty;
 }
 
 function dummyIsChildRequired(

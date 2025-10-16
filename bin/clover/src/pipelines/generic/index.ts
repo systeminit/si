@@ -5,7 +5,10 @@ import {
 } from "../../spec/pkgs.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { CfProperty, ProviderConfig, SuperSchema } from "../types.ts";
-import { createDefaultPropFromCf, OnlyProperties } from "../../spec/props.ts";
+import {
+  createDefaultPropFromJsonSchema,
+  OnlyProperties,
+} from "../../spec/props.ts";
 import { SiPkgKind } from "../../bindings/SiPkgKind.ts";
 import { FuncSpec } from "../../bindings/FuncSpec.ts";
 import { generateDefaultActionFuncs } from "./generateDefaultActionFuncs.ts";
@@ -56,7 +59,7 @@ export function makeModule(
   const color = providerConfig.metadata?.color || "#FF9900"; // Default to AWS orange
 
   // Create prop specs using the provided properties
-  const domain = createDefaultPropFromCf(
+  const domain = createDefaultPropFromJsonSchema(
     "domain",
     domainProperties,
     schema,
@@ -65,7 +68,7 @@ export function makeModule(
     providerConfig,
   );
 
-  const resourceValue = createDefaultPropFromCf(
+  const resourceValue = createDefaultPropFromJsonSchema(
     "resource_value",
     resourceValueProperties,
     schema,
@@ -74,7 +77,7 @@ export function makeModule(
     providerConfig,
   );
 
-  const secrets = createDefaultPropFromCf(
+  const secrets = createDefaultPropFromJsonSchema(
     "secrets",
     {},
     schema,

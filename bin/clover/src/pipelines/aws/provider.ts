@@ -1,9 +1,7 @@
 import { normalizeProperty } from "../../cfDb.ts";
 import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import {
-  CfProperty,
   PipelineOptions,
-  PropertyNormalizationContext,
   PROVIDER_REGISTRY,
   ProviderConfig,
   ProviderFuncSpecs,
@@ -19,6 +17,7 @@ import {
 } from "./funcs.ts";
 import type { CfSchema } from "./schema.ts";
 import { generateAwsSpecs } from "./pipeline.ts";
+import { JSONSchema } from "../draft_07.ts";
 
 function cfCategory(schema: CfSchema): string {
   const [metaCategory, category] = schema.typeName.split("::");
@@ -49,10 +48,7 @@ function createDocLink(
   return docLink;
 }
 
-function awsNormalizeProperty(
-  prop: CfProperty,
-  _context: PropertyNormalizationContext,
-): CfProperty {
+function awsNormalizeProperty(prop: JSONSchema) {
   return normalizeProperty(prop);
 }
 

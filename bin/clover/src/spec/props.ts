@@ -15,6 +15,8 @@ import {
   ProviderConfig,
   SuperSchema,
 } from "../pipelines/types.ts";
+import { JSONSchema } from "../pipelines/draft_07.ts";
+import logger from "../logger.ts";
 
 export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
 
@@ -102,24 +104,7 @@ interface PropSpecOverrides {
     | undefined;
 }
 
-export type CreatePropArgs = {
-  // The path to this prop, e.g. ["root", "domain"]
-  propPath: string[];
-  // The definition for this prop in the schema
-  cfProp: CfProperty & { defName?: string };
-  // The parent prop's definition
-  parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined;
-  // A handler to add the prop to its parent after it has been created
-  addTo?: (data: ExpandedPropSpec) => undefined;
-};
-
-export type CreatePropQueue = {
-  superSchema: SuperSchema;
-  onlyProperties: OnlyProperties;
-  queue: CreatePropArgs[];
-};
-
-const MAX_PROP_DEPTH = 30;
+const MAX_PROP_DEPTH = 40;
 
 export type PropPath = `/${"domain" | "resource_value"}/${string}`;
 
@@ -137,61 +122,26 @@ export function findPropByName(
 }
 
 // Create top-level prop such as domain, resource_value, secrets, etc.
-export function createDefaultPropFromCf(
+export function createDefaultPropFromJsonSchema(
   name: DefaultPropType,
-  properties: Record<string, CfProperty>,
-  superSchema: SuperSchema,
+  properties: Record<string, JSONSchema>,
+  schema: SuperSchema,
   onlyProperties: OnlyProperties,
   docFn: DocFn,
   providerConfig: ProviderConfig,
 ): ExpandedPropSpecFor["object"] {
-  // Enqueue the root prop only, and then iterate over its children
-  let rootProp: ExpandedPropSpecFor["object"] | undefined;
-  const queue: CreatePropQueue = {
-    superSchema,
-    onlyProperties,
-    queue: [
-      {
-        propPath: ["root", name],
-        // Pretend the prop only has the specified properties (since we split it up)
-        cfProp: { ...superSchema, properties },
-        parentProp: undefined,
-        addTo: (prop: ExpandedPropSpec) => {
-          if (prop.kind !== "object") {
-            throw new Error(`${name} prop is not an object`);
-          }
-          // Set "rootProp" before returning it
-          rootProp = prop;
-        },
-      },
-    ],
-  };
+  const propsBeingCreated: JSONSchema[] = [];
 
-  // Use provider's required function
-  const requiredFn = providerConfig.isChildRequired;
+  // Recursively create prop and all its children
+  const rootProp = createPropFromJsonSchema(
+    ["root", name],
+    { ...schema, properties },
+    undefined,
+  );
 
-  while (queue.queue.length > 0) {
-    const propArgs = queue.queue.shift()!;
-    if (propArgs.propPath.length > MAX_PROP_DEPTH) {
-      throw new Error(
-        `Prop tree loop detected: Tried creating prop more than ${MAX_PROP_DEPTH} levels deep in the prop tree: ${propArgs.propPath}`,
-      );
-    }
-
-    const prop = createPropFromCf(
-      propArgs,
-      queue,
-      docFn,
-      requiredFn,
-      providerConfig,
-    );
-    if (!prop) continue;
-    if (propArgs.addTo) propArgs.addTo(prop);
-  }
-
-  if (!rootProp) {
+  if (rootProp?.kind !== "object") {
     throw new Error(
-      `createProp for ${superSchema.typeName} did not generate a ${name} prop`,
+      `createProp for ${schema.typeName} did not generate a ${name} object prop`,
     );
   }
 
@@ -202,6 +152,341 @@ export function createDefaultPropFromCf(
   rootProp.data.documentation = null;
 
   return rootProp;
+
+  function createPropFromJsonSchema(
+    // The path to this prop, e.g. ["root", "domain"]
+    propPath: string[],
+    // The definition for this prop in the schema
+    schemaProp: JSONSchema & { defName?: string },
+    // The parent prop's definition
+    parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
+  ): ExpandedPropSpec | undefined {
+    if (propPath.length > MAX_PROP_DEPTH) {
+      throw new Error(
+        `Prop tree loop detected: Tried creating prop more than ${MAX_PROP_DEPTH} levels deep in the prop tree: ${propPath.join(
+          "/",
+        )}`,
+      );
+    }
+
+    if (propsBeingCreated.includes(schemaProp)) {
+      logger.debug(`Circular property definition: ${propPath.join("/")}`);
+      return undefined;
+    }
+    try {
+      propsBeingCreated.push(schemaProp);
+
+      // Apply provider-specific normalization
+      const cfProp = providerConfig.normalizeProperty(schemaProp, {
+        propPath,
+        schema,
+        parentProp,
+      });
+
+      const name = propPath[propPath.length - 1];
+      const required = providerConfig.isChildRequired(schema, parentProp, name);
+      const propUniqueId = ulid();
+      const data: ExpandedPropSpec["data"] = {
+        name,
+        validationFormat: null,
+        defaultValue: null,
+        funcUniqueId: null,
+        inputs: [],
+        widgetKind: null,
+        widgetOptions: [],
+        hidden: false,
+        docLink:
+          parentProp?.kind === "object"
+            ? docFn(schema, schemaProp.defName, name)
+            : null,
+        documentation: cfProp.description ?? null,
+        uiOptionals: null,
+      };
+      const partialProp: Partial<ExpandedPropSpec> = {
+        name,
+        data,
+        uniqueId: propUniqueId,
+        metadata: {
+          createOnly: onlyProperties.createOnly.includes(name),
+          readOnly: onlyProperties.readOnly.includes(name),
+          writeOnly: onlyProperties.writeOnly.includes(name),
+          primaryIdentifier: onlyProperties.primaryIdentifier.includes(name),
+          propPath,
+          required,
+        },
+        cfProp,
+      };
+
+      if (partialProp.metadata?.createOnly) {
+        setCreateOnlyProp(data);
+      }
+
+      if (!cfProp.title) {
+        cfProp.title = name;
+      }
+
+      if (cfProp.type === "integer" || cfProp.type === "number") {
+        let prop;
+        if (cfProp.type === "integer") {
+          prop = partialProp as ExpandedPropSpecFor["number"];
+          prop.kind = "number";
+        } else {
+          prop = partialProp as ExpandedPropSpecFor["float"];
+          prop.kind = "float";
+        }
+        if (cfProp.enum) {
+          prop.data.widgetKind = "ComboBox";
+          for (const val of cfProp.enum) {
+            const valString = val.toString();
+            prop.data.widgetOptions!.push({
+              label: valString,
+              value: valString,
+            });
+          }
+        } else {
+          prop.data.widgetKind = "Text";
+        }
+
+        // Add validation
+        let validation = "";
+        if (cfProp.type === "integer") {
+          validation += ".integer()";
+        }
+        if (cfProp.minimum !== undefined) {
+          validation += `.min(${cfProp.minimum})`;
+        }
+        if (cfProp.maximum !== undefined) {
+          validation += `.max(${cfProp.maximum})`;
+        }
+        if (cfProp.exclusiveMinimum !== undefined) {
+          validation += `.greater(${cfProp.exclusiveMinimum})`;
+        }
+        if (cfProp.exclusiveMaximum !== undefined) {
+          validation += `.less(${cfProp.exclusiveMaximum})`;
+        }
+        if (cfProp.multipleOf !== undefined) {
+          validation += `.multiple(${cfProp.multipleOf})`;
+        }
+        switch (cfProp.format) {
+          case "int64":
+          case "double":
+            // These formats are inherent to JS
+            break;
+          case undefined:
+            break;
+          default:
+            throw new Error(`Unsupported number format: ${cfProp.format}`);
+        }
+        if (required) validation += ".required()";
+        if (validation) setJoiValidation(prop, `Joi.number()${validation}`);
+
+        return prop;
+      } else if (cfProp.type === "boolean") {
+        const prop = partialProp as ExpandedPropSpecFor["boolean"];
+        prop.kind = "boolean";
+        prop.data.widgetKind = "Checkbox";
+
+        // Add validation
+        let validation = "";
+        if (required) validation += ".required()";
+        if (validation) setJoiValidation(prop, `Joi.boolean()${validation}`);
+
+        return prop;
+      } else if (cfProp.type === "string") {
+        const prop = partialProp as ExpandedPropSpecFor["string"];
+        prop.kind = "string";
+        if (cfProp.enum) {
+          prop.data.widgetKind = "ComboBox";
+          for (const val of cfProp.enum) {
+            prop.data.widgetOptions!.push({
+              label: val,
+              value: val,
+            });
+          }
+        } else {
+          prop.data.widgetKind = "Text";
+        }
+
+        // Add validation
+        if (cfProp.format === "date-time" || cfProp.format === "timestamp") {
+          prop.joiValidation = "Joi.date().iso()";
+        } else {
+          let validation = "";
+
+          // https://json-schema.org/understanding-json-schema/reference/type#built-in-formats
+          switch (cfProp.format) {
+            case "uri":
+              validation += ".uri()";
+              break;
+            case "json-pointer":
+              // https://tools.ietf.org/html/rfc6901
+              // We don't validate the whole thing there, but we at least check that it starts with slash!
+              validation += `.pattern(/^\\//)`;
+              break;
+            case "iso-8601":
+              // TODO
+              break;
+            case "decimal":
+              // TODO
+              break;
+            case "string":
+              // This seems meaningless (actually, the two fields that use it, QuickSight::DataSet::CreatedAt
+              // and QuickSight::DataSet::LastUpdatedAt, are both number types in the actual API, so
+              // it's not clear why these are strings in the first place)
+              break;
+            // This is a special case (and seems likely wrong), but may as well support it
+            case "(^arn:[a-z\\d-]+:rekognition:[a-z\\d-]+:\\d{12}:collection\\/([a-zA-Z0-9_.\\-]+){1,255})":
+              validation += `.pattern(new RegExp(${JSON.stringify(
+                cfProp.format,
+              )}))`;
+              break;
+            case "base64url":
+              // TODO ADD VALIDATION FOR THIS
+              break;
+            case undefined:
+              break;
+            default:
+              throw new Error(`Unsupported format: ${cfProp.format}`);
+          }
+          if (cfProp.minLength !== undefined) {
+            validation += `.min(${cfProp.minLength})`;
+          }
+          if (cfProp.maxLength !== undefined) {
+            validation += `.max(${cfProp.maxLength})`;
+          }
+          if (cfProp.pattern !== undefined) {
+            const toRegexp = cfPcreToRegexp(cfProp.pattern);
+            if (toRegexp) {
+              validation += `.pattern(new RegExp(${JSON.stringify(
+                toRegexp.pattern,
+              )}${
+                toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""
+              }))`;
+            }
+          }
+          if (required) validation += ".required()";
+          if (validation) setJoiValidation(prop, `Joi.string()${validation}`);
+        }
+        return prop;
+      } else if (cfProp.type === "json") {
+        // TODO if this is gonna be json we should really check that it's valid json ...
+        const prop = partialProp as ExpandedPropSpecFor["string"];
+        prop.kind = "string";
+        prop.data.widgetKind = "CodeEditor";
+
+        // Add validation
+        let validation = "";
+        if (required) validation += ".required()";
+        if (validation) setJoiValidation(prop, `Joi.string()${validation}`);
+
+        return prop;
+      } else if (cfProp.type === "array") {
+        const prop = partialProp as ExpandedPropSpecFor["array"];
+        prop.kind = "array";
+        prop.data.widgetKind = "Array";
+
+        const typeProp = createPropFromJsonSchema(
+          [...propPath, `${name}Item`],
+          cfProp.items,
+          prop,
+        );
+        if (!typeProp) {
+          logger.warn(
+            `Ignoring ${propPath.join("/")}: unable to create array item type`,
+          );
+          return undefined;
+        }
+        prop.typeProp = typeProp;
+
+        return prop;
+      } else if (cfProp.type === "object") {
+        if (cfProp.patternProperties || cfProp.additionalProperties) {
+          const prop = partialProp as ExpandedPropSpecFor["map"];
+          prop.kind = "map";
+          prop.data.widgetKind = "Map";
+
+          const itemPath = [...propPath, `${name}Item`];
+          let typeProp: ExpandedPropSpec | undefined;
+
+          if (cfProp.patternProperties) {
+            const patternProps = Object.entries(cfProp.patternProperties);
+
+            if (patternProps.length === 1) {
+              const [_thing, patternProp] = patternProps[0];
+              typeProp = createPropFromJsonSchema(itemPath, patternProp, prop);
+            } else if (patternProps.length === 2) {
+              // If there is 2 pattern props, that means we have a validation for the key and another one for the value of the map.
+              // We take the second one as the type of the value, since it's the thing we can store right now
+              const [_thing, patternProp] = patternProps[1];
+              typeProp = createPropFromJsonSchema(itemPath, patternProp, prop);
+            } else {
+              console.log(patternProps);
+              throw new Error("too many pattern props you fool");
+            }
+          } else if (cfProp.additionalProperties) {
+            // Use additionalProperties as the map value type
+            typeProp = createPropFromJsonSchema(
+              itemPath,
+              cfProp.additionalProperties,
+              prop,
+            );
+          }
+
+          if (!typeProp) {
+            logger.warn(
+              `Ignoring ${propPath.join("/")}: unable to create map item type`,
+            );
+            return undefined;
+          }
+          prop.typeProp = typeProp;
+
+          return prop;
+        } else if (cfProp.properties) {
+          const prop = partialProp as ExpandedPropSpecFor["object"];
+          prop.kind = "object";
+          prop.data.widgetKind = "Header";
+          prop.entries = [];
+          for (const [name, childCfProp] of Object.entries(cfProp.properties)) {
+            const childProp = createPropFromJsonSchema(
+              [...propPath, name],
+              childCfProp,
+              prop,
+            );
+            // Just skip props we don't understand
+            if (childProp) prop.entries.push(childProp);
+          }
+          return prop;
+        } else {
+          const prop = partialProp as ExpandedPropSpecFor["string"];
+          prop.kind = "string";
+          prop.data.widgetKind = "Text";
+
+          // Add validation
+          let validation = "";
+          if (required) validation += ".required()";
+          if (validation) setJoiValidation(prop, `Joi.string()${validation}`);
+
+          return prop;
+        }
+      }
+
+      if (!cfProp.type && cfProp.description == "") {
+        return undefined;
+      }
+
+      if (!cfProp.type && cfProp.title) {
+        return undefined;
+      }
+
+      // console.log(cfProp);
+      console.log(cfProp);
+      throw new Error(
+        `no matching kind in prop with path: ${propPath.join("/")}`,
+      );
+    } finally {
+      propsBeingCreated.pop();
+    }
+  }
 }
 
 export function createDefaultProp(
@@ -218,330 +503,6 @@ export type DocFn = (
   propName?: string,
 ) => string;
 
-export function createPropFromCf(
-  { propPath, cfProp, parentProp }: CreatePropArgs,
-  { superSchema, onlyProperties, queue }: CreatePropQueue,
-  docFn: DocFn,
-  requiredFn: requiredFn,
-  providerConfig: ProviderConfig,
-): ExpandedPropSpec | undefined {
-  const name = propPath[propPath.length - 1];
-  const required = requiredFn(superSchema, parentProp, name);
-  const propUniqueId = ulid();
-  const data: ExpandedPropSpec["data"] = {
-    name,
-    validationFormat: null,
-    defaultValue: null,
-    funcUniqueId: null,
-    inputs: [],
-    widgetKind: null,
-    widgetOptions: [],
-    hidden: false,
-    docLink:
-      parentProp?.kind === "object"
-        ? docFn(superSchema, cfProp.defName, name)
-        : null,
-    documentation: cfProp.description ?? null,
-    uiOptionals: null,
-  };
-  const partialProp: Partial<ExpandedPropSpec> = {
-    name,
-    data,
-    uniqueId: propUniqueId,
-    metadata: {
-      createOnly: onlyProperties.createOnly.includes(name),
-      readOnly: onlyProperties.readOnly.includes(name),
-      writeOnly: onlyProperties.writeOnly.includes(name),
-      primaryIdentifier: onlyProperties.primaryIdentifier.includes(name),
-      propPath,
-      required,
-    },
-    cfProp,
-  };
-
-  if (partialProp.metadata?.createOnly) {
-    setCreateOnlyProp(data);
-  }
-
-  if (!cfProp.title) {
-    cfProp.title = name;
-  }
-
-  // Apply provider-specific normalization
-  const normalizedCfProp = providerConfig.normalizeProperty(cfProp, {
-    propPath,
-    schema: superSchema,
-    parentProp,
-  });
-
-  if (
-    normalizedCfProp.type === "integer" ||
-    normalizedCfProp.type === "number"
-  ) {
-    let prop;
-    if (normalizedCfProp.type === "integer") {
-      prop = partialProp as ExpandedPropSpecFor["number"];
-      prop.kind = "number";
-    } else {
-      prop = partialProp as ExpandedPropSpecFor["float"];
-      prop.kind = "float";
-    }
-    if (normalizedCfProp.enum) {
-      prop.data.widgetKind = "ComboBox";
-      for (const val of normalizedCfProp.enum) {
-        const valString = val.toString();
-        prop.data.widgetOptions!.push({
-          label: valString,
-          value: valString,
-        });
-      }
-    } else {
-      prop.data.widgetKind = "Text";
-    }
-
-    // Add validation
-    let validation = "";
-    if (normalizedCfProp.type === "integer") {
-      validation += ".integer()";
-    }
-    if (normalizedCfProp.minimum !== undefined) {
-      validation += `.min(${normalizedCfProp.minimum})`;
-    }
-    if (normalizedCfProp.maximum !== undefined) {
-      validation += `.max(${normalizedCfProp.maximum})`;
-    }
-    if (normalizedCfProp.exclusiveMinimum !== undefined) {
-      validation += `.greater(${normalizedCfProp.exclusiveMinimum})`;
-    }
-    if (normalizedCfProp.exclusiveMaximum !== undefined) {
-      validation += `.less(${normalizedCfProp.exclusiveMaximum})`;
-    }
-    if (normalizedCfProp.multipleOf !== undefined) {
-      validation += `.multiple(${normalizedCfProp.multipleOf})`;
-    }
-    switch (normalizedCfProp.format) {
-      case "int64":
-      case "double":
-        // These formats are inherent to JS
-        break;
-      case undefined:
-        break;
-      default:
-        throw new Error(
-          `Unsupported number format: ${normalizedCfProp.format}`,
-        );
-    }
-    if (required) validation += ".required()";
-    if (validation) setJoiValidation(prop, `Joi.number()${validation}`);
-
-    return prop;
-  } else if (normalizedCfProp.type === "boolean") {
-    const prop = partialProp as ExpandedPropSpecFor["boolean"];
-    prop.kind = "boolean";
-    prop.data.widgetKind = "Checkbox";
-
-    // Add validation
-    let validation = "";
-    if (required) validation += ".required()";
-    if (validation) setJoiValidation(prop, `Joi.boolean()${validation}`);
-
-    return prop;
-  } else if (normalizedCfProp.type === "string") {
-    const prop = partialProp as ExpandedPropSpecFor["string"];
-    prop.kind = "string";
-    if (normalizedCfProp.enum) {
-      prop.data.widgetKind = "ComboBox";
-      for (const val of normalizedCfProp.enum) {
-        prop.data.widgetOptions!.push({
-          label: val,
-          value: val,
-        });
-      }
-    } else {
-      prop.data.widgetKind = "Text";
-    }
-
-    // Add validation
-    if (
-      normalizedCfProp.format === "date-time" ||
-      normalizedCfProp.format === "timestamp"
-    ) {
-      prop.joiValidation = "Joi.date().iso()";
-    } else {
-      let validation = "";
-
-      // https://json-schema.org/understanding-json-schema/reference/type#built-in-formats
-      switch (normalizedCfProp.format) {
-        case "uri":
-          validation += ".uri()";
-          break;
-        case "json-pointer":
-          // https://tools.ietf.org/html/rfc6901
-          // We don't validate the whole thing there, but we at least check that it starts with slash!
-          validation += `.pattern(/^\\//)`;
-          break;
-        case "iso-8601":
-          // TODO
-          break;
-        case "decimal":
-          // TODO
-          break;
-        case "string":
-          // This seems meaningless (actually, the two fields that use it, QuickSight::DataSet::CreatedAt
-          // and QuickSight::DataSet::LastUpdatedAt, are both number types in the actual API, so
-          // it's not clear why these are strings in the first place)
-          break;
-        // This is a special case (and seems likely wrong), but may as well support it
-        case "(^arn:[a-z\\d-]+:rekognition:[a-z\\d-]+:\\d{12}:collection\\/([a-zA-Z0-9_.\\-]+){1,255})":
-          validation += `.pattern(new RegExp(${JSON.stringify(
-            normalizedCfProp.format,
-          )}))`;
-          break;
-        case "base64url":
-          // TODO ADD VALIDATION FOR THIS
-          break;
-        case undefined:
-          break;
-        default:
-          throw new Error(`Unsupported format: ${normalizedCfProp.format}`);
-      }
-      if (normalizedCfProp.minLength !== undefined) {
-        validation += `.min(${normalizedCfProp.minLength})`;
-      }
-      if (normalizedCfProp.maxLength !== undefined) {
-        validation += `.max(${normalizedCfProp.maxLength})`;
-      }
-      if (normalizedCfProp.pattern !== undefined) {
-        const toRegexp = cfPcreToRegexp(normalizedCfProp.pattern);
-        if (toRegexp) {
-          validation += `.pattern(new RegExp(${JSON.stringify(
-            toRegexp.pattern,
-          )}${toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""}))`;
-        }
-      }
-      if (required) validation += ".required()";
-      if (validation) setJoiValidation(prop, `Joi.string()${validation}`);
-    }
-    return prop;
-  } else if (normalizedCfProp.type === "json") {
-    // TODO if this is gonna be json we should really check that it's valid json ...
-    const prop = partialProp as ExpandedPropSpecFor["string"];
-    prop.kind = "string";
-    prop.data.widgetKind = "CodeEditor";
-
-    // Add validation
-    let validation = "";
-    if (required) validation += ".required()";
-    if (validation) setJoiValidation(prop, `Joi.string()${validation}`);
-
-    return prop;
-  } else if (normalizedCfProp.type === "array") {
-    const prop = partialProp as ExpandedPropSpecFor["array"];
-    prop.kind = "array";
-    prop.data.widgetKind = "Array";
-
-    queue.push({
-      propPath: [...propPath, `${name}Item`],
-      cfProp: normalizedCfProp.items,
-      parentProp: prop,
-      addTo: (data: ExpandedPropSpec) => {
-        prop.typeProp = data;
-      },
-    });
-
-    return prop;
-  } else if (normalizedCfProp.type === "object") {
-    if (
-      normalizedCfProp.patternProperties ||
-      normalizedCfProp.additionalProperties
-    ) {
-      const prop = partialProp as ExpandedPropSpecFor["map"];
-      prop.kind = "map";
-      prop.data.widgetKind = "Map";
-
-      let cfItemProp;
-
-      if (normalizedCfProp.patternProperties) {
-        const patternProps = Object.entries(normalizedCfProp.patternProperties);
-
-        if (patternProps.length === 1) {
-          const [_thing, patternProp] = patternProps[0];
-          cfItemProp = patternProp;
-        } else if (patternProps.length === 2) {
-          // If there is 2 pattern props, that means we have a validation for the key and another one for the value of the map.
-          // We take the second one as the type of the value, since it's the thing we can store right now
-          const [_thing, patternProp] = patternProps[1];
-          cfItemProp = patternProp;
-        } else {
-          console.log(patternProps);
-          throw new Error("too many pattern props you fool");
-        }
-      } else if (normalizedCfProp.additionalProperties) {
-        // Use additionalProperties as the map value type
-        cfItemProp = normalizedCfProp.additionalProperties;
-      }
-
-      if (!cfItemProp) {
-        throw new Error(
-          "could not extract type from pattern prop or additionalProperties",
-        );
-      }
-
-      queue.push({
-        cfProp: cfItemProp as CfProperty,
-        propPath: [...propPath, `${name}Item`],
-        parentProp: prop,
-        addTo: (data: ExpandedPropSpec) => {
-          prop.typeProp = data;
-        },
-      });
-
-      return prop;
-    } else if (normalizedCfProp.properties) {
-      const prop = partialProp as ExpandedPropSpecFor["object"];
-      prop.kind = "object";
-      prop.data.widgetKind = "Header";
-      prop.entries = [];
-      for (const [name, childCfProp] of Object.entries(
-        normalizedCfProp.properties,
-      )) {
-        queue.push({
-          cfProp: childCfProp,
-          propPath: [...propPath, name],
-          parentProp: prop,
-          addTo: (childProp: ExpandedPropSpec) => {
-            prop.entries.push(childProp);
-          },
-        });
-      }
-      return prop;
-    } else {
-      const prop = partialProp as ExpandedPropSpecFor["string"];
-      prop.kind = "string";
-      prop.data.widgetKind = "Text";
-
-      // Add validation
-      let validation = "";
-      if (required) validation += ".required()";
-      if (validation) setJoiValidation(prop, `Joi.string()${validation}`);
-
-      return prop;
-    }
-  }
-
-  if (!normalizedCfProp.type && normalizedCfProp.description == "") {
-    return undefined;
-  }
-
-  if (!normalizedCfProp.type && normalizedCfProp.title) {
-    return undefined;
-  }
-
-  // console.log(cfProp);
-  console.log(normalizedCfProp);
-  throw new Error(`no matching kind in prop with path: ${propPath}`);
-}
-
 type requiredFn = (
   superSchema: SuperSchema,
   parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
@@ -556,7 +517,7 @@ function setJoiValidation(prop: ExpandedPropSpec, joiValidation: string) {
   try {
     prop.data.validationFormat = JSON.stringify(eval(joiValidation).describe());
   } catch (e) {
-    console.error(joiValidation);
+    logger.error(joiValidation);
     throw e;
   }
 }
