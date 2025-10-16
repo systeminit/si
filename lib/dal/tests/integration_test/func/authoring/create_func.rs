@@ -18,15 +18,13 @@ use dal::{
             AttributeFuncDestination,
             EventualParent,
         },
-    },
-    prop::PropPath,
-    schema::variant::{
-        authoring::VariantAuthoringClient,
-        leaves::{
+        leaf::{
             LeafInputLocation,
             LeafKind,
         },
     },
+    prop::PropPath,
+    schema::variant::authoring::VariantAuthoringClient,
 };
 use dal_test::{
     helpers::{

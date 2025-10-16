@@ -66,10 +66,10 @@ use crate::{
             FuncArgumentId,
         },
         binding::attribute::AttributeBindingMalformedInput,
+        leaf::LeafKind,
     },
     management::prototype::ManagementPrototypeError,
     prop::PropError,
-    schema::variant::leaves::LeafKind,
     socket::{
         input::InputSocketError,
         output::OutputSocketError,

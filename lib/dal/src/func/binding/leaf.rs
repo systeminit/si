@@ -23,13 +23,15 @@ use crate::{
     SchemaVariant,
     SchemaVariantId,
     attribute::prototype::argument::AttributePrototypeArgument,
-    func::argument::FuncArgument,
-    prop::PropPath,
-    schema::variant::leaves::{
-        LeafInput,
-        LeafInputLocation,
-        LeafKind,
+    func::{
+        argument::FuncArgument,
+        leaf::{
+            LeafInput,
+            LeafInputLocation,
+            LeafKind,
+        },
     },
+    prop::PropPath,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]

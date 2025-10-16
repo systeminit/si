@@ -19,16 +19,14 @@ use dal::{
             EventualParent,
             FuncBinding,
         },
-    },
-    prop::PropPath,
-    qualification::QualificationSubCheckStatus,
-    schema::variant::{
-        authoring::VariantAuthoringClient,
-        leaves::{
+        leaf::{
             LeafInputLocation,
             LeafKind,
         },
     },
+    prop::PropPath,
+    qualification::QualificationSubCheckStatus,
+    schema::variant::authoring::VariantAuthoringClient,
 };
 use dal_test::{
     expected::commit_and_update_snapshot_to_visibility,

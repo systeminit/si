@@ -96,18 +96,16 @@ use crate::{
             FuncArgumentId,
             FuncArgumentKind,
         },
-    },
-    management::prototype::ManagementPrototypeParent,
-    prop::PropError,
-    schema::variant::{
-        authoring::{
-            VariantAuthoringClient,
-            VariantAuthoringError,
-        },
-        leaves::{
+        leaf::{
             LeafInputLocation,
             LeafKind,
         },
+    },
+    management::prototype::ManagementPrototypeParent,
+    prop::PropError,
+    schema::variant::authoring::{
+        VariantAuthoringClient,
+        VariantAuthoringError,
     },
     socket::output::OutputSocketError,
     workspace_snapshot::dependent_value_root::DependentValueRootError,
