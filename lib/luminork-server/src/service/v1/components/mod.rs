@@ -140,6 +140,8 @@ pub enum ComponentsError {
         "Cannot set secrets directly on a non-secret defining component, use attributes instead"
     )]
     NotSecretDefiningComponent(ComponentId),
+    #[error("No working copy exists for schema with id: {0}")]
+    NoWorkingCopy(SchemaId),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] dal::socket::output::OutputSocketError),
     #[error("prop error: {0}")]

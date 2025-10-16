@@ -24,9 +24,25 @@ export interface ComponentView {
   resourceProps?: Array<unknown>;
 }
 
+// Attribute value types that can be used in component attributes
+export type AttributeValue =
+  | { $source: null | { component: string; path: string; func?: string } }
+  | string
+  | unknown[]
+  | boolean
+  | Record<string, unknown>
+  | number;
+
 export interface CreateComponentRequest {
   name: string;
   schemaName: string;
+  resourceId?: string;
+  viewName?: string;
+  managedBy?: {
+    component?: string;
+  };
+  attributes?: Record<string, AttributeValue>;
+  useWorkingCopy?: boolean;
 }
 
 export interface UpdateComponentRequest {
