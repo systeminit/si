@@ -14,7 +14,7 @@ import {
 } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
-import { makeModule } from "../generic/index.ts";
+import { makeModule, normalizeOnlyProperties } from "../generic/index.ts";
 import { AZURE_PROVIDER_CONFIG } from "./provider.ts";
 
 export function extractPropertiesFromRequestBody(
@@ -403,10 +403,18 @@ export function mergeAzureResourceOperations(
     apiVersion,
   };
 
+  // Normalize onlyProperties to simple property names (like AWS does)
+  const normalizedOnlyProperties: OnlyProperties = {
+    createOnly: normalizeOnlyProperties(onlyProperties.createOnly),
+    readOnly: normalizeOnlyProperties(onlyProperties.readOnly),
+    writeOnly: normalizeOnlyProperties(onlyProperties.writeOnly),
+    primaryIdentifier: normalizeOnlyProperties(onlyProperties.primaryIdentifier),
+  };
+
   return makeModule(
     schema,
     description,
-    onlyProperties,
+    normalizedOnlyProperties,
     AZURE_PROVIDER_CONFIG,
     domainProperties,
     resourceValueProperties,
