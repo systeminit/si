@@ -28,16 +28,14 @@ use dal::{
             leaf::LeafBinding,
         },
         intrinsics::IntrinsicFunc,
-    },
-    prop::PropPath,
-    property_editor::values::PropertyEditorValues,
-    schema::variant::{
-        authoring::VariantAuthoringClient,
-        leaves::{
+        leaf::{
             LeafInputLocation,
             LeafKind,
         },
     },
+    prop::PropPath,
+    property_editor::values::PropertyEditorValues,
+    schema::variant::authoring::VariantAuthoringClient,
 };
 use dal_test::{
     Result,

@@ -73,6 +73,10 @@ use crate::{
         argument::FuncArgument,
         binding::attribute::AttributeBinding,
         intrinsics::IntrinsicFunc,
+        leaf::{
+            LeafInputLocation,
+            LeafKind,
+        },
     },
     management::prototype::ManagementPrototype,
     module::{
@@ -80,13 +84,7 @@ use crate::{
         ModuleId,
     },
     prop::PropPath,
-    schema::variant::{
-        SchemaVariantJson,
-        leaves::{
-            LeafInputLocation,
-            LeafKind,
-        },
-    },
+    schema::variant::SchemaVariantJson,
     socket::connection_annotation::ConnectionAnnotation,
 };
 

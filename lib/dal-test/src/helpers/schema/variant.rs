@@ -7,14 +7,12 @@ use dal::{
     func::{
         authoring::FuncAuthoringClient,
         binding::EventualParent,
-    },
-    schema::variant::{
-        authoring::VariantAuthoringClient,
-        leaves::{
+        leaf::{
             LeafInputLocation,
             LeafKind,
         },
     },
+    schema::variant::authoring::VariantAuthoringClient,
 };
 
 use crate::{

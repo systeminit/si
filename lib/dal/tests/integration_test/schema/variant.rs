@@ -4,12 +4,10 @@ use dal::{
     Func,
     Prop,
     Schema,
+    func::leaf::LeafKind,
     schema::{
         SchemaVariant,
-        variant::{
-            leaves::LeafKind,
-            root_prop::RootPropChild,
-        },
+        variant::root_prop::RootPropChild,
     },
 };
 use dal_test::{

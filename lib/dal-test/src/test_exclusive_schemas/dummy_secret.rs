@@ -5,12 +5,12 @@ use dal::{
     func::{
         argument::FuncArgumentKind,
         intrinsics::IntrinsicFunc,
+        leaf::LeafKind,
     },
     pkg::{
         ImportOptions,
         import_pkg_from_pkg,
     },
-    schema::variant::leaves::LeafKind,
 };
 use si_pkg::{
     AuthenticationFuncSpec,

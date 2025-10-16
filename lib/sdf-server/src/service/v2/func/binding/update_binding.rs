@@ -22,8 +22,8 @@ use dal::{
             attribute::AttributeBinding,
             leaf::LeafBinding,
         },
+        leaf::LeafInputLocation,
     },
-    schema::variant::leaves::LeafInputLocation,
 };
 use si_frontend_types::{
     self as frontend_types,
