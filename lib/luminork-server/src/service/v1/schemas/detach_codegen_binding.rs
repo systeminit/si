@@ -5,11 +5,13 @@ use axum::{
 use dal::{
     Func,
     SchemaVariant,
-    func::binding::{
-        FuncBinding,
-        leaf::LeafBinding,
+    func::{
+        binding::{
+            FuncBinding,
+            leaf::LeafBinding,
+        },
+        leaf::LeafKind,
     },
-    schema::variant::leaves::LeafKind,
 };
 use sdf_extract::{
     PosthogEventTracker,

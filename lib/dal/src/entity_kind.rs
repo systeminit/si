@@ -89,7 +89,8 @@ impl EntityKind {
             | EntityKindEvents::OutOfGraph
             | EntityKindEvents::Reason
             | EntityKindEvents::CategoryDefaultSubscriptionSources
-            | EntityKindEvents::CategoryOverlay => None,
+            | EntityKindEvents::CategoryOverlay
+            | EntityKindEvents::LeafPrototype => None,
             EntityKindEvents::SchemaVariant => {
                 let variant_name = SchemaVariant::get_by_id(ctx, id.into_inner().into())
                     .await?

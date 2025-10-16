@@ -40,6 +40,7 @@ use crate::{
         prototype::ActionKind,
     },
     approval_requirement::ApprovalRequirementApprover,
+    attribute::path::AttributePath,
     func::argument::FuncArgumentKind,
     prop::WidgetOptions,
     property_editor::schema::WidgetKind,
@@ -91,6 +92,7 @@ pub enum ContentTypes {
     Geometry(GeometryContent),
     View(ViewContent),
     ApprovalRequirementDefinition(ApprovalRequirementDefinitionContent),
+    AttributePaths(AttributePathsContent),
 }
 
 macro_rules! impl_into_content_types {
@@ -831,4 +833,18 @@ pub enum ApprovalRequirementDefinitionContent {
 pub struct ApprovalRequirementDefinitionContentV1 {
     pub minimum: usize,
     pub approvers: HashSet<ApprovalRequirementApprover>,
+}
+
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum AttributePathsContent {
+    V1(AttributePathsContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AttributePathsContentV1(pub Vec<AttributePath>);
+
+impl From<Vec<AttributePath>> for AttributePathsContent {
+    fn from(paths: Vec<AttributePath>) -> Self {
+        AttributePathsContent::V1(AttributePathsContentV1(paths))
+    }
 }

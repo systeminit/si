@@ -90,6 +90,8 @@ pub enum EdgeWeightKind {
     /// An edge from anything to a Reason object which explains the reason for
     /// the existence of said thing
     Reason,
+    /// An edge from a schema to an overaly leaf prototype
+    LeafPrototype,
 }
 
 impl EdgeWeightKind {
@@ -162,7 +164,8 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::DiagramObject
             | EdgeWeightKind::DefaultSubscriptionSource
             | EdgeWeightKind::ApprovalRequirementDefinition
-            | EdgeWeightKind::Reason => None,
+            | EdgeWeightKind::Reason
+            | EdgeWeightKind::LeafPrototype => None,
         }
     }
 
@@ -192,7 +195,8 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::ApprovalRequirementDefinition
             | EdgeWeightKind::DefaultSubscriptionSource
             | EdgeWeightKind::ValueSubscription(_)
-            | EdgeWeightKind::Reason => false,
+            | EdgeWeightKind::Reason
+            | EdgeWeightKind::LeafPrototype => false,
         }
     }
 
@@ -222,7 +226,8 @@ impl si_split_graph::CustomEdgeWeight<EdgeWeightKindDiscriminants> for EdgeWeigh
             | EdgeWeightKind::ApprovalRequirementDefinition
             | EdgeWeightKind::DefaultSubscriptionSource
             | EdgeWeightKind::ValueSubscription(_)
-            | EdgeWeightKind::Reason => self.clone(),
+            | EdgeWeightKind::Reason
+            | EdgeWeightKind::LeafPrototype => self.clone(),
         }
     }
 }
