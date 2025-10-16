@@ -127,7 +127,7 @@ export type Listable =
   | EntityKind.ComponentList
   | EntityKind.IncomingConnectionsList
   | EntityKind.ViewList;
-export type Gettable = Exclude<EntityKind, Listable>;
+export type Gettable = Exclude<Exclude<EntityKind, Listable>, GlobalEntity>;
 
 export interface QueryAttributesTerm {
   key: string;
@@ -218,6 +218,12 @@ export interface SharedDBInterface {
     kind: Listable,
     id: Id,
   ): Promise<string>;
+  getKind(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: Exclude<EntityKind, GlobalEntity>,
+  ): Promise<string[]>;
+  getDefaultSchemaVariants(): Promise<Record<string, string>>;
   /**
    * Query AttributeTree MVs in a changeset, looking for components that match the given terms.
    *
@@ -333,6 +339,12 @@ export interface TabDBInterface {
     kind: Gettable,
     id: Id,
   ): boolean;
+  getDefaultSchemaVariants(): Record<string, string>;
+  getKind(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: Exclude<EntityKind, GlobalEntity>,
+  ): string[];
   getList(
     workspaceId: string,
     changeSetId: ChangeSetId,

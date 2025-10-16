@@ -27,7 +27,6 @@ export enum EntityKind {
   ActionViewList = "ActionViewList",
   AttributeTree = "AttributeTree",
   AuditLogsForComponent = "AuditLogsForComponent",
-  CachedSchemas = "CachedSchemas",
   Component = "Component",
   ComponentDiff = "ComponentDiff",
   ComponentDetails = "ComponentDetails",
@@ -48,7 +47,6 @@ export enum EntityKind {
   QueryAttributes = "QueryAttributes",
   SchemaMembers = "SchemaMembers",
   SchemaVariant = "SchemaVariant",
-  SchemaVariantCategories = "SchemaVariantCategories",
   SecretDefinition = "SecretDefinition",
   View = "View",
   ViewComponentList = "ViewComponentList",
@@ -60,7 +58,9 @@ export enum EntityKind {
   LuminorkSchemaVariant = "LuminorkSchemaVariant",
   // DEPLOYMENT aka GLOBAL
   CachedSchema = "CachedSchema",
+  CachedSchemaVariant = "CachedSchemaVariant",
   CachedDefaultVariant = "CachedDefaultVariant",
+  DefaultSchemaIdAndVariant = "DefaultSchemaIdAndVariant",
 }
 
 export const GLOBAL_ENTITIES = [
@@ -148,23 +148,6 @@ export interface RawViewList {
   views: Reference<EntityKind.View>[];
 }
 
-export interface BifrostSchemaVariantCategories {
-  id: string; // workspace id
-  categories: Categories;
-}
-
-export interface EddaSchemaVariantCategories {
-  id: string; // workspace id
-  categories: Array<{
-    displayName: string;
-    schemaVariants: Array<{
-      type: "uninstalled" | "installed";
-      id: string;
-    }>;
-  }>;
-  uninstalled: Record<string, UninstalledVariant>;
-}
-
 export interface BifrostActionViewList {
   id: ChangeSetId;
   actions: ActionProposedView[];
@@ -247,7 +230,10 @@ export interface UninstalledVariant {
   isLocked: boolean;
 }
 
-export type CategoryVariant = SchemaVariant | UninstalledVariant;
+export type CategoryVariant =
+  | SchemaVariant
+  | UninstalledVariant
+  | CachedDefaultVariant;
 
 export type Categories = {
   displayName: string;
@@ -729,4 +715,53 @@ export interface AuditLog {
     role?: null | string;
     tokenId?: null | string;
   };
+}
+
+export interface CachedSchema {
+  id: string;
+  name: string;
+  defaultVariantId: string;
+  variantIds: string[];
+}
+
+export interface SchemaProp {
+  propId: PropId;
+  name: string;
+  propType: string;
+  description?: string;
+  children?: SchemaProp[];
+  validationFormat?: string;
+  defaultValue?: JSON | number | string | boolean;
+  hidden?: boolean;
+  docLink?: string;
+}
+
+export interface CachedSchemaVariant {
+  id: SchemaVariantId;
+  variantId: SchemaVariantId;
+  displayName: string;
+  category: string;
+  color: string;
+  isLocked: boolean;
+  description?: string;
+  link?: string;
+  assetFuncId: FuncId;
+  variantFuncIds: FuncId[];
+  isDefaultVariant: boolean;
+  domainProps?: SchemaProp;
+}
+
+export interface CachedDefaultVariant {
+  id: SchemaId; // <<-- notice the difference!
+  variantId: SchemaVariantId;
+  displayName: string;
+  category: string;
+  color: string;
+  isLocked: boolean;
+  description?: string;
+  link?: string;
+  assetFuncId: FuncId;
+  variantFuncIds: FuncId[];
+  isDefaultVariant: boolean;
+  domainProps?: SchemaProp;
 }

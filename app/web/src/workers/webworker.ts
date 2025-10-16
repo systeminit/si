@@ -76,16 +76,12 @@ import {
 import {
   BifrostComponent,
   Connection,
-  BifrostSchemaVariantCategories,
-  CategoryVariant,
   EddaComponent,
   IncomingConnections,
-  EddaSchemaVariantCategories,
   EntityKind,
   PossibleConnection,
   SchemaMembers,
   SchemaVariant,
-  UninstalledVariant,
   AttributeTree,
   ManagementConnections,
   DefaultSubscriptions,
@@ -539,6 +535,10 @@ const bustOrQueue = (
 ) => {
   if (skipQueue) bustCacheFn(workspaceId, changeSetId, kind, id);
   else bustQueueAdd(workspaceId, changeSetId, kind, id, bustCacheFn);
+  // if we're busting an entity kind, and the key is not the workspaceId, bust the kind with workspaceId too
+  // this make the `getKind` query with `makeArgs` and no `id` passed (which uses the workspace) remain responsive
+  if (id !== workspaceId)
+    bustOrQueue(workspaceId, changeSetId, kind, workspaceId, skipQueue);
 };
 
 const bustCacheAndReferences = (
@@ -2741,7 +2741,7 @@ const clearAllWeakReferences = (db: Database, changeSetId: string) => {
   });
 };
 
-const clearWeakReferences = (
+const _clearWeakReferences = (
   db: Database,
   changeSetId: string,
   referrer: { kind: string; args: string },
@@ -3377,11 +3377,7 @@ const flip = (i: Connection): Connection => {
  * If you are looking up a `Reference`
  * THOU SHALT make a `weakReference` on a miss (-1)
  */
-const HAVE_REFERENCES = [
-  EntityKind.Component,
-  EntityKind.ViewList,
-  EntityKind.SchemaVariantCategories,
-];
+const HAVE_REFERENCES = [EntityKind.Component, EntityKind.ViewList];
 const getReferences = (
   db: Database,
   atomDoc: AtomDocument,
@@ -3408,69 +3404,7 @@ const getReferences = (
 
   let hasReferenceError = false;
 
-  if (kind === EntityKind.SchemaVariantCategories) {
-    const data = atomDoc as EddaSchemaVariantCategories;
-    const bifrost: BifrostSchemaVariantCategories = {
-      id: data.id,
-      categories: [],
-    };
-    const variantIds = data.categories.flatMap((c) =>
-      c.schemaVariants.filter((c) => c.type === "installed").map((c) => c.id),
-    );
-    const installedVariants = getMany(
-      db,
-      workspaceId,
-      changeSetId,
-      EntityKind.SchemaVariant,
-      variantIds,
-      indexChecksum,
-    );
-    clearWeakReferences(db, changeSetId, {
-      kind,
-      args: data.id,
-    });
-    data.categories.forEach((category) => {
-      const variants = category.schemaVariants.map((schemaVariant) => {
-        if (schemaVariant.type === "uninstalled") {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          const variant = data.uninstalled[schemaVariant.id]!;
-          variant.uninstalled = "uninstalled";
-          return variant as UninstalledVariant;
-        } else {
-          const result = installedVariants[schemaVariant.id] as
-            | SchemaVariant
-            | -1;
-          if (result === -1) {
-            hasReferenceError = true;
-            mjolnir(
-              db,
-              workspaceId,
-              changeSetId,
-              EntityKind.SchemaVariant,
-              schemaVariant.id,
-            );
-          }
-          weakReference(
-            db,
-            changeSetId,
-            { kind: EntityKind.SchemaVariant, args: schemaVariant.id },
-            { kind, args: data.id },
-          );
-          return result;
-        }
-      });
-
-      const schemaVariants = variants.filter(
-        (v): v is CategoryVariant => v !== -1 && v && "schemaId" in v,
-      );
-      bifrost.categories.push({
-        displayName: category.displayName,
-        schemaVariants,
-      });
-    });
-    span.end();
-    return [bifrost, hasReferenceError];
-  } else if (kind === EntityKind.Component) {
+  if (kind === EntityKind.Component) {
     const data = atomDoc as EddaComponent;
     const sv = get(
       db,
@@ -3697,6 +3631,68 @@ from
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return atomData[0]![0] as string;
+};
+
+const getKind = (
+  db: Database,
+  _workspaceId: string,
+  changeSetId: ChangeSetId,
+  kind: Exclude<EntityKind, GlobalEntity>,
+  // NOTE: use the `makeArgs` helper for this call, and do not pass an ID (it will use the workspaceId)
+) => {
+  const rows = db.exec({
+    sql: `
+    select CAST(data as text)
+    from atoms
+      inner join index_mtm_atoms mtm ON
+        atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+      inner join changesets ON changesets.index_checksum = indexes.checksum
+    where
+      changesets.change_set_id = ? AND
+      atoms.kind = ?
+    `,
+    bind: [changeSetId, kind],
+    returnValue: "resultRows",
+  });
+  return rows.map((r) => r[0] as string | undefined).filter(nonNullable);
+};
+
+/**
+ * @param db SQLite db connection
+ * @returns Record<string, string> where the key is a SchemaId, and the value is a string of JSON
+ */
+const getDefaultSchemaVariants = (db: Database) => {
+  const sql = `
+select
+  jsonb_extract(CAST(global_atoms.data as text), '$') ->> '$.id',
+  CAST(data as text)
+from
+  global_atoms
+where
+  kind = ?
+  `;
+  const start = performance.now();
+  const atomData = db.exec({
+    sql,
+    bind: [EntityKind.CachedDefaultVariant],
+    returnValue: "resultRows",
+  });
+  const end = performance.now();
+  debug(
+    "❓ sql getDefaultSchemaVariants",
+    `[${end - start}ms]`,
+    " returns ?",
+    !(atomData.length === 0),
+  );
+
+  return atomData.reduce((obj, row) => {
+    const [id, data] = row;
+    if (id && data) {
+      obj[id as string] = data as string;
+    }
+    return obj;
+  }, {} as Record<string, string>);
 };
 
 const queryAttributes = (
@@ -4012,7 +4008,7 @@ const getSchemaMembers = (
 /**
  * NOTE: getMany returns Edda types, not Bifrost types! Because it does not follow references
  */
-const getMany = (
+const _getMany = (
   db: Database,
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -4528,6 +4524,20 @@ const dbInterface: TabDBInterface = {
       getList(db, workspaceId, changeSetId, kind, id),
     );
   },
+  getKind(workspaceId, changeSetId, kind) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) =>
+      getKind(db, workspaceId, changeSetId, kind),
+    );
+  },
+  getDefaultSchemaVariants() {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) => getDefaultSchemaVariants(db));
+  },
   getOutgoingConnectionsByComponentId,
   getOutgoingConnectionsCounts,
   getIncomingManagementByComponentId,
@@ -4709,7 +4719,15 @@ const dbInterface: TabDBInterface = {
         bind: [changeSetId],
         returnValue: "resultRows",
       });
-      return { changesets, indexes, atoms, mtm };
+      const global = db.exec({
+        sql: `select
+                kind, args, checksum,
+                CAST(data as text)
+              from
+                global_atoms;`,
+        returnValue: "resultRows",
+      });
+      return { changesets, indexes, atoms, mtm, global };
     });
   },
   /**
