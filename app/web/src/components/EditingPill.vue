@@ -6,7 +6,7 @@
       color: `#${text.toHex()}`,
     }"
   >
-    EDITING
+    Working Copy
   </div>
 </template>
 
@@ -29,7 +29,7 @@ watch(
 
 const text = computed(() => {
   const textBgHsl = primaryColor.value.toHsl();
-  textBgHsl.l = textBgHsl.l > 0.5 ? 0.08 : 0.95;
+  textBgHsl.l = textBgHsl.l > 0.5 ? 0 : 1;
   return tinycolor(textBgHsl);
 });
 </script>
