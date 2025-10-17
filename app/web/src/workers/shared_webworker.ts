@@ -345,12 +345,6 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
-  async getDefaultSchemaVariants() {
-    return await withLeader(
-      async (remote) => await remote.getDefaultSchemaVariants(),
-    );
-  },
-
   async queryAttributes(
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,

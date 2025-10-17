@@ -60,7 +60,6 @@ export enum EntityKind {
   CachedSchema = "CachedSchema",
   CachedSchemaVariant = "CachedSchemaVariant",
   CachedDefaultVariant = "CachedDefaultVariant",
-  DefaultSchemaIdAndVariant = "DefaultSchemaIdAndVariant",
 }
 
 export const GLOBAL_ENTITIES = [
@@ -68,6 +67,8 @@ export const GLOBAL_ENTITIES = [
   EntityKind.CachedDefaultVariant,
 ] as const;
 export type GlobalEntity = (typeof GLOBAL_ENTITIES)[number];
+
+export const GLOBAL_IDENTIFIER = "-";
 
 /**
  * NOTE, if you want to narrow the type of a variable
