@@ -94,7 +94,6 @@ nix_omnibus_pkg(
     pkg_name = "lang-js",
     build_dep = "//bin/lang-js:bin",
     srcs = {
-        "//:deno.json": ".",
         "//:flake.nix": ".",
         "//:flake.lock": ".",
         "//:rust-toolchain": ".",
