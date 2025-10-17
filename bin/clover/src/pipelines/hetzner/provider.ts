@@ -21,7 +21,11 @@ import {
   MANAGEMENT_FUNCS,
   QUALIFICATION_FUNC_SPECS,
 } from "./funcs.ts";
-import { type JsonSchema, type OperationData } from "./schema.ts";
+import {
+  HetznerSchema,
+  type JsonSchema,
+  type OperationData,
+} from "./schema.ts";
 import { mergeResourceOperations, normalizeHetznerProperty } from "./spec.ts";
 import { generateHetznerSpecs } from "./pipeline.ts";
 import { JSONSchema } from "../draft_07.ts";
@@ -54,7 +58,7 @@ function hCategory(schema: SuperSchema): string {
 }
 
 function hetznerIsChildRequired(
-  schema: SuperSchema,
+  schema: SuperSchema | HetznerSchema,
   _parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ): boolean {
