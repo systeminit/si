@@ -3267,6 +3267,7 @@ dependencies = [
  "forklift-server",
  "innit-client",
  "si-service",
+ "telemetry-utils",
 ]
 
 [[package]]
