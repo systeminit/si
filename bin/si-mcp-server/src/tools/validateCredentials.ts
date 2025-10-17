@@ -20,32 +20,35 @@ const ValidateCredentialOutputSchemaRaw = {
     "If the status is failure, the error message will contain information about what went wrong",
   ),
   data: z.object({
-    userId: z.string().describe("The SI User Id"),
     userEmail: z.string().email().describe("The Users Email"),
     workspaceId: z.string().describe(
       "The Workspace ID that is valid for this token",
     ),
     token: z.object({
-      iat: z.number().describe("The issue time for the token"),
-      exp: z.number().describe("The expiration time for the token"),
-      sub: z.string().describe(
-        "The subject the token was issued for; usually the same as userId",
-      ),
-      jti: z.string(),
-      version: z.string(),
-      userId: z.string().describe("The SI User Id"),
+      expiry: z.number().describe("The expiration time for the token"),
       workspaceId: z.string().describe(
         "The Workspace ID that is valid for this token",
       ),
       role: z.string().describe(
         "The role for this token; will be 'automation' if its using an API token",
       ),
-    }).describe("The decoded JWT token"),
+    }).describe("Token attributes"),
   }).optional().describe("The response data, populated on success"),
 };
 const ValidateCredentialOutputSchema = z.object(
   ValidateCredentialOutputSchemaRaw,
 );
+
+// Filter out some of the API response here just to take away any notion of leaked creds
+interface WhoamiResponse {
+  userEmail: string;
+  workspaceId: string;
+  token: {
+    exp: number;
+    workspaceId: string;
+    role: string;
+  };
+}
 
 export function validateCredentialsTool(server: McpServer) {
   server.registerTool(
@@ -67,9 +70,16 @@ export function validateCredentialsTool(server: McpServer) {
         const siApi = new WhoamiApi(apiConfig);
         try {
           const response = await siApi.whoami();
-          return successResponse(
-            response.data,
-          );
+          const data = response.data as WhoamiResponse;
+          return successResponse({
+            userEmail: data.userEmail,
+            workspaceId: data.workspaceId,
+            token: {
+              expiry: data.token.exp,
+              workspaceId: data.token.workspaceId,
+              role: data.token.role,
+            },
+          });
         } catch (error) {
           return errorResponse(error);
         }
