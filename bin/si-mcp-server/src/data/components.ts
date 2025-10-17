@@ -29,5 +29,5 @@ export const AttributesSchema = z.record(
     z.number().describe("a number value"),
   ]),
 ).describe(
-  "the attributes of the component; the desired state of the resource",
+  "the attributes of the component; the desired state of the resource. do not start attributes with /root",
 );
