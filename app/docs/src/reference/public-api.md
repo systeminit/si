@@ -472,6 +472,7 @@ Components management endpoints
   "name": "MyComponentName",
   "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
+  "useWorkingCopy": true,
   "viewName": "MyView"
 }
 ```
@@ -3509,6 +3510,7 @@ xor
   "name": "MyComponentName",
   "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
+  "useWorkingCopy": true,
   "viewName": "MyView"
 }
 
@@ -3524,6 +3526,7 @@ xor
 |name|string|true|none|none|
 |resourceId|string,null|false|none|none|
 |schemaName|string|true|none|none|
+|useWorkingCopy|boolean,null|false|none|none|
 |viewName|string,null|false|none|none|
 
 ## [CreateComponentV1Response](#tocS_CreateComponentV1Response)

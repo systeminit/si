@@ -595,6 +595,12 @@ export interface CreateComponentV1Request {
     'schemaName': string;
     /**
      * 
+     * @type {boolean}
+     * @memberof CreateComponentV1Request
+     */
+    'useWorkingCopy'?: boolean | null;
+    /**
+     * 
      * @type {string}
      * @memberof CreateComponentV1Request
      */

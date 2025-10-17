@@ -40,6 +40,7 @@ class TestCreateComponentV1Request(unittest.TestCase):
                 name = 'MyComponentName',
                 resource_id = 'i-12345678',
                 schema_name = 'AWS::EC2::Instance',
+                use_working_copy = True,
                 view_name = 'MyView'
             )
         else:
