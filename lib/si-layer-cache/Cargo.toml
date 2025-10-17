@@ -20,6 +20,7 @@ miniz_oxide = { workspace = true }
 mixtrics = { workspace = true }
 nats-std = { path = "../../lib/nats-std" }
 postcard = { workspace = true }
+rand = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
@@ -43,5 +44,4 @@ ulid = { workspace = true }
 
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
-rand = { workspace = true }
 si-tls = { path = "../../lib/si-tls" }

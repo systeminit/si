@@ -108,6 +108,18 @@ pub enum LayerDbError {
     PgPool(#[from] PgPoolError),
     #[error("postcard error: {0}")]
     Postcard(#[from] postcard::Error),
+    #[error("failed to create retry queue directory: {0}")]
+    RetryQueueDirCreate(#[source] std::io::Error),
+    #[error("failed to read retry queue directory: {0}")]
+    RetryQueueDirRead(#[source] std::io::Error),
+    #[error("failed to delete retry queue file: {0}")]
+    RetryQueueFileDelete(#[source] std::io::Error),
+    #[error("failed to read retry queue file: {0}")]
+    RetryQueueFileRead(#[source] std::io::Error),
+    #[error("failed to write retry queue file: {0}")]
+    RetryQueueFileWrite(#[source] std::io::Error),
+    #[error("invalid retry queue filename: {0:?}")]
+    RetryQueueInvalidFilename(std::ffi::OsString),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("tokio oneshot recv error: {0}")]
