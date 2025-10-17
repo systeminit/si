@@ -11,7 +11,10 @@ use serde::{
     Serialize,
 };
 
-use super::IntegrationsResult;
+use super::{
+    IntegrationResponse,
+    IntegrationsResult,
+};
 use crate::{
     extract::{
         HandlerContext,
@@ -22,8 +25,8 @@ use crate::{
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct GetIntegrationResponse {
-    pub integration: Option<WorkspaceIntegration>,
+pub struct WorkspaceIntegrationResponse {
+    pub integration: Option<IntegrationResponse>,
 }
 
 pub async fn get_integration(
@@ -32,10 +35,12 @@ pub async fn get_integration(
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
     Host(_host_name): Host,
-) -> IntegrationsResult<Json<GetIntegrationResponse>> {
+) -> IntegrationsResult<Json<WorkspaceIntegrationResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
-    let integration = WorkspaceIntegration::get_integrations_for_workspace_pk(&ctx).await?;
+    let integration = WorkspaceIntegration::get_integrations_for_workspace_pk(&ctx)
+        .await?
+        .map(|i| i.into());
 
-    Ok(Json(GetIntegrationResponse { integration }))
+    Ok(Json(WorkspaceIntegrationResponse { integration }))
 }

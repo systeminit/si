@@ -12,8 +12,6 @@ import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
 import { AuthApiRequest } from ".";
 
-export type WorkspaceIntegrationId = string;
-
 type WorkspaceExportId = string;
 type WorkspaceExportSummary = {
   id: WorkspaceExportId;
@@ -43,7 +41,6 @@ export type WorkspaceImportSummary = {
 };
 
 export type WorkspaceIntegration = {
-  pk: WorkspaceIntegrationId;
   workspaceId: WorkspacePk;
   slackWebhookUrl?: string;
 };
@@ -187,17 +184,13 @@ export const useWorkspacesStore = () => {
             onSuccess: (response) => {
               if (response)
                 this.integrations = {
-                  pk: response.integration.pk,
-                  workspaceId: response.integration.workspace_pk,
-                  slackWebhookUrl: response.integration.slack_webhook_url,
+                  workspaceId: response.integration.workspacePk,
+                  slackWebhookUrl: response.integration.slackWebhookUrl,
                 };
             },
           });
         },
-        async UPDATE_INTEGRATION(
-          workspaceIntegrationId: WorkspaceIntegrationId,
-          webhookUrl: string,
-        ) {
+        async UPDATE_INTEGRATION(webhookUrl: string) {
           if (
             this.selectedWorkspacePk === null ||
             this.selectedWorkspacePk === ""
@@ -205,12 +198,17 @@ export const useWorkspacesStore = () => {
             return;
           return new ApiRequest({
             method: "post",
-            url: `v2/workspaces/${this.selectedWorkspacePk}/integrations/${workspaceIntegrationId}`,
+            url: `v2/workspaces/${this.selectedWorkspacePk}/integrations`,
             params: {
               slackWebhookUrl: webhookUrl,
             },
             onSuccess: (response) => {
-              this.integrations = response.integration;
+              if (response.integration) {
+                this.integrations = {
+                  workspaceId: response.integration.workspacePk,
+                  slackWebhookUrl: response.integration.slackWebhookUrl,
+                };
+              }
             },
           });
         },

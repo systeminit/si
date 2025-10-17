@@ -9,9 +9,17 @@ use axum::{
         post,
     },
 };
-use dal::UserPk;
+use dal::{
+    UserPk,
+    WorkspacePk,
+    workspace_integrations::WorkspaceIntegration,
+};
 use hyper::StatusCode;
 use sdf_core::api_error::ApiError;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 
 use crate::AppState;
@@ -22,8 +30,8 @@ pub mod update_integration;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum IntegrationsError {
-    #[error("integration with id {0} not found")]
-    IntegrationNotFound(dal::workspace_integrations::WorkspaceIntegrationId),
+    #[error("integration for workspace {0} not found")]
+    IntegrationNotFoundForWorkspace(WorkspacePk),
     #[error("invalid user found")]
     InvalidUser,
     #[error("permissions error: {0}")]
@@ -50,9 +58,22 @@ impl IntoResponse for IntegrationsError {
 
 pub fn v2_routes() -> Router<AppState> {
     Router::new()
-        .route(
-            "/:workspace_integration_id",
-            post(update_integration::update_integration),
-        )
+        .route("/", post(update_integration::update_integration))
         .route("/", get(get_integrations::get_integration))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct IntegrationResponse {
+    pub workspace_pk: WorkspacePk,
+    pub slack_webhook_url: Option<String>,
+}
+
+impl From<WorkspaceIntegration> for IntegrationResponse {
+    fn from(integration: WorkspaceIntegration) -> Self {
+        Self {
+            workspace_pk: integration.workspace_pk(),
+            slack_webhook_url: integration.slack_webhook_url(),
+        }
+    }
 }
