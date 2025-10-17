@@ -241,13 +241,9 @@ import {
   BifrostComponent,
   EddaComponent,
   AttributeTree,
+  CachedDefaultVariant,
 } from "@/workers/types/entity_kind_types";
-import {
-  getDefaultSchemaVariants,
-  getKind,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { getKind, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { useFzf } from "./logic_composables/fzf";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -526,10 +522,13 @@ type UISchemaKey = {
   schemaVariantId?: string;
 };
 
-const defaultSchemaKey = makeKey(EntityKind.DefaultSchemaIdAndVariant);
+const defaultSchemaKey = makeKey(EntityKind.CachedDefaultVariant);
 const defaultSchemas = useQuery({
   queryKey: defaultSchemaKey,
-  queryFn: async () => await getDefaultSchemaVariants(),
+  queryFn: async () =>
+    await getKind<CachedDefaultVariant>(
+      makeArgs(EntityKind.CachedDefaultVariant),
+    ),
 });
 
 const installedVariantsKey = makeKey(EntityKind.SchemaVariant);
@@ -570,7 +569,7 @@ const categories = computed(() => {
 
   // don't show a duplicated default schema if its already installed
   if (defaultSchemas.data.value) {
-    Object.entries(defaultSchemas.data.value).forEach(([schemaId, variant]) => {
+    defaultSchemas.data.value.forEach((variant) => {
       let category = categories[variant.category];
       if (!category) {
         category = {
@@ -580,11 +579,11 @@ const categories = computed(() => {
           assets: [],
         };
       }
-      if (!installedSchemas.has(schemaId)) {
+      if (!installedSchemas.has(variant.id)) {
         category.assets.push({
           variant,
           key: {
-            schemaId,
+            schemaId: variant.id,
           },
           name: variant.displayName,
           uiCategory: category,

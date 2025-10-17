@@ -221,9 +221,8 @@ export interface SharedDBInterface {
   getKind(
     workspaceId: string,
     changeSetId: ChangeSetId,
-    kind: Exclude<EntityKind, GlobalEntity>,
+    kind: EntityKind,
   ): Promise<string[]>;
-  getDefaultSchemaVariants(): Promise<Record<string, string>>;
   /**
    * Query AttributeTree MVs in a changeset, looking for components that match the given terms.
    *
@@ -339,11 +338,10 @@ export interface TabDBInterface {
     kind: Gettable,
     id: Id,
   ): boolean;
-  getDefaultSchemaVariants(): Record<string, string>;
   getKind(
     workspaceId: string,
     changeSetId: ChangeSetId,
-    kind: Exclude<EntityKind, GlobalEntity>,
+    kind: EntityKind,
   ): string[];
   getList(
     workspaceId: string,

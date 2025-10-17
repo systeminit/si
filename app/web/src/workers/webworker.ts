@@ -89,6 +89,7 @@ import {
   AttributeValue,
   GLOBAL_ENTITIES,
   GlobalEntity,
+  GLOBAL_IDENTIFIER,
 } from "./types/entity_kind_types";
 import {
   bulkDone,
@@ -524,6 +525,10 @@ const kindAndArgsFromKey = (key: QueryKey): { kind: EntityKind; id: Id } => {
   const kind = pieces[0] as EntityKind;
   const id = pieces[1];
   return { kind, id };
+};
+
+const bustDeployment = (kind: GlobalEntity, id: string) => {
+  bustCacheFn(GLOBAL_IDENTIFIER, GLOBAL_IDENTIFIER, kind, id);
 };
 
 const bustOrQueue = (
@@ -1117,6 +1122,9 @@ const _existingAtoms = (db: Database, table: string, atoms: AtomPieces[]) => {
   return result;
 };
 
+type GlobalAtom = Common & {
+  kind: GlobalEntity;
+};
 const handleDeploymentPatchMessage = async (
   db: Database,
   data: DeploymentPatchBatch,
@@ -1188,6 +1196,19 @@ const handleDeploymentPatchMessage = async (
     }
 
     if (modifications.length > 0) writeDeploymentAtoms(db, modifications);
+
+    const kinds: GlobalEntity[] = [];
+    [...modifications, ...inserts, ...removals]
+      .filter((atom): atom is GlobalAtom =>
+        GLOBAL_ENTITIES.includes(atom.kind as GlobalEntity),
+      )
+      .forEach((atom) => {
+        kinds.push(atom.kind);
+        bustDeployment(atom.kind, atom.id);
+      });
+    kinds.forEach((k) => {
+      bustDeployment(k, GLOBAL_IDENTIFIER);
+    });
 
     if (hammers.length > 0) {
       span.setAttributes({
@@ -3637,11 +3658,17 @@ const getKind = (
   db: Database,
   _workspaceId: string,
   changeSetId: ChangeSetId,
-  kind: Exclude<EntityKind, GlobalEntity>,
-  // NOTE: use the `makeArgs` helper for this call, and do not pass an ID (it will use the workspaceId)
+  kind: EntityKind,
+  // NOTE: use the `makeArgs` helper for this call, and do not pass an ID
 ) => {
-  const rows = db.exec({
-    sql: `
+  const isGlobal = GLOBAL_ENTITIES.includes(kind as GlobalEntity);
+  const sql = isGlobal
+    ? `
+    select CAST(data as text)
+    from global_atoms
+    where kind = ?
+  `
+    : `
     select CAST(data as text)
     from atoms
       inner join index_mtm_atoms mtm ON
@@ -3649,50 +3676,15 @@ const getKind = (
       inner join indexes ON mtm.index_checksum = indexes.checksum
       inner join changesets ON changesets.index_checksum = indexes.checksum
     where
-      changesets.change_set_id = ? AND
-      atoms.kind = ?
-    `,
-    bind: [changeSetId, kind],
+      atoms.kind = ? AND
+      changesets.change_set_id = ?
+  `;
+  const rows = db.exec({
+    sql,
+    bind: isGlobal ? [kind] : [kind, changeSetId],
     returnValue: "resultRows",
   });
   return rows.map((r) => r[0] as string | undefined).filter(nonNullable);
-};
-
-/**
- * @param db SQLite db connection
- * @returns Record<string, string> where the key is a SchemaId, and the value is a string of JSON
- */
-const getDefaultSchemaVariants = (db: Database) => {
-  const sql = `
-select
-  jsonb_extract(CAST(global_atoms.data as text), '$') ->> '$.id',
-  CAST(data as text)
-from
-  global_atoms
-where
-  kind = ?
-  `;
-  const start = performance.now();
-  const atomData = db.exec({
-    sql,
-    bind: [EntityKind.CachedDefaultVariant],
-    returnValue: "resultRows",
-  });
-  const end = performance.now();
-  debug(
-    "❓ sql getDefaultSchemaVariants",
-    `[${end - start}ms]`,
-    " returns ?",
-    !(atomData.length === 0),
-  );
-
-  return atomData.reduce((obj, row) => {
-    const [id, data] = row;
-    if (id && data) {
-      obj[id as string] = data as string;
-    }
-    return obj;
-  }, {} as Record<string, string>);
 };
 
 const queryAttributes = (
@@ -4531,12 +4523,6 @@ const dbInterface: TabDBInterface = {
     return sqlite.transaction((db) =>
       getKind(db, workspaceId, changeSetId, kind),
     );
-  },
-  getDefaultSchemaVariants() {
-    if (!sqlite) {
-      throw new Error(DB_NOT_INIT_ERR);
-    }
-    return sqlite.transaction((db) => getDefaultSchemaVariants(db));
   },
   getOutgoingConnectionsByComponentId,
   getOutgoingConnectionsCounts,
