@@ -45,7 +45,24 @@ export const CODE_GENERATION_FUNC_SPECS = {} as const satisfies Record<
   FuncSpecInfo
 >;
 
-export const MANAGEMENT_FUNCS = {} as const satisfies Record<
+export const MANAGEMENT_FUNCS = {
+  "Discover on Azure": {
+    id: "a82d730eac534eac4ce84954a8c1a19a817553c23bdccfcc5fc33f14c21ca923",
+    backendKind: "management",
+    responseType: "management",
+    displayName: "Discover on Azure",
+    path: "./src/pipelines/azure/funcs/management/discover.ts",
+    handlers: ["list", "read"],
+  },
+  "Import from Azure": {
+    id: "61d66b00cf1db372a49903bdd9c2f864ad0da606c320604623acdd72c4df6c37",
+    backendKind: "management",
+    responseType: "management",
+    displayName: "Import from Azure",
+    path: "./src/pipelines/azure/funcs/management/import.ts",
+    handlers: ["read"],
+  },
+} as const satisfies Record<
   string,
   FuncSpecInfo & { handlers: CfHandlerKind[] }
 >;
