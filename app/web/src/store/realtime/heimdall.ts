@@ -237,7 +237,7 @@ const bustTanStackCache: BustCacheFn = (
   noBroadcast?: boolean,
 ) => {
   if (workspaceId === GLOBAL_IDENTIFIER && changeSetId === GLOBAL_IDENTIFIER) {
-    const queryKey = ["global", kind, id];
+    const queryKey = [GLOBAL_IDENTIFIER, kind, id];
     queryClient?.invalidateQueries({ queryKey });
   } else {
     const queryKey = [workspaceId, changeSetId, kind, id];
