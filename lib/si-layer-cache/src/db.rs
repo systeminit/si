@@ -301,6 +301,7 @@ where
             pg_pool.clone(),
             &nats_client,
             instance_id,
+            cache_config.disk_path().to_path_buf(), // Use cache disk path as base
             token.clone(),
         )
         .await?;

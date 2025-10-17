@@ -362,4 +362,9 @@ impl CacheConfig {
         self.disk_path = self.disk_path.join(path);
         self
     }
+
+    /// Returns the disk path for the cache
+    pub fn disk_path(&self) -> &Path {
+        &self.disk_path
+    }
 }
