@@ -1,6 +1,9 @@
 use axum::{
     Router,
-    extract::multipart::MultipartError,
+    extract::{
+        DefaultBodyLimit,
+        multipart::MultipartError,
+    },
     http::StatusCode,
     response::{
         IntoResponse,
@@ -33,6 +36,9 @@ mod list;
 mod module_by_hash;
 mod module_by_id;
 mod sync;
+
+// 20MB upload limit for module files
+const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 20;
 
 pub type ModuleAPIResult<T> = Result<T, ModulesAPIError>;
 
@@ -112,4 +118,5 @@ pub fn v2_routes() -> Router<AppState> {
             "/install_from_file",
             post(install_from_file::install_module_from_file),
         )
+        .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES))
 }
