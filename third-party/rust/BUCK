@@ -1848,7 +1848,7 @@ cargo.rust_library(
         ":hyper-util-0.1.16",
         ":pin-project-lite-0.2.16",
         ":rustls-0.23.29",
-        ":rustls-native-certs-0.8.1",
+        ":rustls-native-certs-0.8.2",
         ":rustls-pki-types-1.12.0",
         ":tokio-1.46.1",
         ":tower-0.5.2",
@@ -8390,7 +8390,7 @@ cargo.rust_library(
         ":hyper-1.6.0",
         ":hyper-util-0.1.16",
         ":rustls-0.23.29",
-        ":rustls-native-certs-0.8.1",
+        ":rustls-native-certs-0.8.2",
         ":tokio-1.46.1",
         ":tokio-rustls-0.26.2",
         ":tower-service-0.3.3",
@@ -11875,6 +11875,7 @@ cargo.rust_library(
         "default",
         "logs",
         "metrics",
+        "otel_unstable",
         "pin-project-lite",
         "trace",
     ],
@@ -15875,23 +15876,23 @@ cargo.rust_library(
 
 alias(
     name = "rustls-native-certs",
-    actual = ":rustls-native-certs-0.8.1",
+    actual = ":rustls-native-certs-0.8.2",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "rustls-native-certs-0.8.1.crate",
-    sha256 = "7fcff2dd52b58a8d98a70243663a0d234c4e2b79235637849d15913394a247d3",
-    strip_prefix = "rustls-native-certs-0.8.1",
-    urls = ["https://static.crates.io/crates/rustls-native-certs/0.8.1/download"],
+    name = "rustls-native-certs-0.8.2.crate",
+    sha256 = "9980d917ebb0c0536119ba501e90834767bffc3d60641457fd84a1f3fd337923",
+    strip_prefix = "rustls-native-certs-0.8.2",
+    urls = ["https://static.crates.io/crates/rustls-native-certs/0.8.2/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "rustls-native-certs-0.8.1",
-    srcs = [":rustls-native-certs-0.8.1.crate"],
+    name = "rustls-native-certs-0.8.2",
+    srcs = [":rustls-native-certs-0.8.2.crate"],
     crate = "rustls_native_certs",
-    crate_root = "rustls-native-certs-0.8.1.crate/src/lib.rs",
+    crate_root = "rustls-native-certs-0.8.2.crate/src/lib.rs",
     edition = "2021",
     named_deps = {
         "pki_types": ":rustls-pki-types-1.12.0",
@@ -19913,6 +19914,7 @@ cargo.rust_library(
     features = [
         "default",
         "metrics",
+        "metrics_gauge_unstable",
         "smallvec",
         "tracing-log",
     ],

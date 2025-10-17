@@ -273,7 +273,7 @@ tower = { version = "0.4.13", features = ["full"] }
 tower-http = { version = "0.4.4", features = ["compression-br", "compression-deflate", "compression-gzip", "cors", "decompression-deflate", "decompression-gzip", "trace"] } # todo: pinning back to 0.4.4, upgrade this alongside hyper/http/axum/tokio-tungstenite
 tracing = { version = "0.1.41" }
 tracing-appender = "0.2.3"
-tracing-opentelemetry = "0.27.0"
+tracing-opentelemetry = { version = "0.27.0", features = ["metrics_gauge_unstable"] }
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json", "std"] }
 tracing-tunnel = "0.1.0"
 trybuild = { version = "1.0.101", features = ["diff"] }
