@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from system_initiative_api_client.models.component_reference import ComponentReference
 from typing import Optional, Set
@@ -32,8 +32,9 @@ class CreateComponentV1Request(BaseModel):
     name: StrictStr
     resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
     schema_name: StrictStr = Field(alias="schemaName")
+    use_working_copy: Optional[StrictBool] = Field(default=None, alias="useWorkingCopy")
     view_name: Optional[StrictStr] = Field(default=None, alias="viewName")
-    __properties: ClassVar[List[str]] = ["attributes", "managedBy", "name", "resourceId", "schemaName", "viewName"]
+    __properties: ClassVar[List[str]] = ["attributes", "managedBy", "name", "resourceId", "schemaName", "useWorkingCopy", "viewName"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -82,6 +83,11 @@ class CreateComponentV1Request(BaseModel):
         if self.resource_id is None and "resource_id" in self.model_fields_set:
             _dict['resourceId'] = None
 
+        # set to None if use_working_copy (nullable) is None
+        # and model_fields_set contains the field
+        if self.use_working_copy is None and "use_working_copy" in self.model_fields_set:
+            _dict['useWorkingCopy'] = None
+
         # set to None if view_name (nullable) is None
         # and model_fields_set contains the field
         if self.view_name is None and "view_name" in self.model_fields_set:
@@ -104,6 +110,7 @@ class CreateComponentV1Request(BaseModel):
             "name": obj.get("name"),
             "resourceId": obj.get("resourceId"),
             "schemaName": obj.get("schemaName"),
+            "useWorkingCopy": obj.get("useWorkingCopy"),
             "viewName": obj.get("viewName")
         })
         return _obj
