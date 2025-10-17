@@ -96,7 +96,7 @@ impl LayeredEventMetadata {
 pub use si_id::LayeredEventId;
 
 #[remain::sorted]
-#[derive(AsRefStr, Debug, Serialize, Deserialize)]
+#[derive(AsRefStr, Debug, Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum LayeredEventKind {
@@ -119,7 +119,7 @@ pub enum LayeredEventKind {
     SplitSnapshotSuperGraphWrite,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LayeredEventPayload {
     pub db_name: Arc<String>,
     pub key: Arc<str>,
@@ -143,7 +143,7 @@ impl LayeredEventPayload {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LayeredEvent {
     pub event_id: LayeredEventId,
     pub event_kind: LayeredEventKind,
