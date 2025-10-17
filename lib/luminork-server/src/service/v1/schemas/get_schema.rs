@@ -23,6 +23,7 @@ use super::{
     SchemaResponseV1,
     SchemaResult,
     SchemaV1RequestPath,
+    check_schema_upgrade_available,
 };
 use crate::extract::{
     PosthogEventTracker,
@@ -58,6 +59,7 @@ pub async fn get_schema(
     if let Ok(Some(schema)) = Schema::get_by_id_opt(ctx, schema_id).await {
         let default_variant_id = Schema::default_variant_id(ctx, schema_id).await?;
         let variants = SchemaVariant::list_for_schema(ctx, schema_id).await?;
+        let upgrade_available = check_schema_upgrade_available(ctx, schema_id).await?;
 
         tracker.track(
             ctx,
@@ -75,6 +77,7 @@ pub async fn get_schema(
             name: schema.name,
             default_variant_id,
             variant_ids: variants.into_iter().map(|v| v.id).collect_vec(),
+            upgrade_available,
         }));
     }
 
@@ -101,6 +104,7 @@ pub async fn get_schema(
                     name: cached_schema.name,
                     default_variant_id: cached_schema.default_variant_id,
                     variant_ids: cached_schema.variant_ids,
+                    upgrade_available: None, // Uninstalled schema
                 }));
             }
         }

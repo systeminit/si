@@ -24,6 +24,7 @@ use utoipa::{
 use super::{
     SchemaError,
     SchemaResult,
+    check_schema_upgrade_available,
 };
 use crate::extract::{
     PosthogEventTracker,
@@ -133,6 +134,12 @@ pub async fn find_schema(
         },
     };
 
+    let upgrade_available = if installed {
+        check_schema_upgrade_available(ctx, schema_id).await?
+    } else {
+        None
+    };
+
     tracker.track(
         ctx,
         "api_find_schema",
@@ -146,6 +153,7 @@ pub async fn find_schema(
         schema_id,
         category,
         installed,
+        upgrade_available,
     }))
 }
 
@@ -160,6 +168,8 @@ pub struct FindSchemaV1Response {
     pub category: Option<String>,
     #[schema(value_type = bool)]
     pub installed: bool,
+    #[schema(value_type = Option<bool>)]
+    pub upgrade_available: Option<bool>,
 }
 
 enum SchemaReference {

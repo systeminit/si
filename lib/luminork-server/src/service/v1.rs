@@ -159,6 +159,7 @@ pub use schemas::{
     },
     unlock_schema::UnlockedSchemaV1Response,
     update_schema_variant::UpdateSchemaVariantV1Request,
+    upgrade_schema::UpgradeSchemaResponse,
 };
 pub use search::{
     SearchV1Request,
@@ -221,6 +222,7 @@ pub use crate::api_types::func_run::v1::{
         schemas::create_codegen::create_variant_codegen,
         schemas::create_management::create_variant_management,
         schemas::update_schema_variant::update_schema_variant,
+        schemas::upgrade_schema::upgrade_schema,
         funcs::get_func_run::get_func_run,
         funcs::get_func::get_func,
         funcs::update_func::update_func,

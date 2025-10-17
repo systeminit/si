@@ -45,6 +45,7 @@ use si_frontend_mv_types::{
     management::ManagementFuncKind,
     prop_schema::PropSchemaV1 as CachedPropSchemaV1,
 };
+use si_pkg::SiPkgError;
 use thiserror::Error;
 use utoipa::{
     self,
@@ -67,6 +68,7 @@ pub mod list_schemas;
 pub mod search_schemas;
 pub mod unlock_schema;
 pub mod update_schema_variant;
+pub mod upgrade_schema;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -87,8 +89,12 @@ pub enum SchemaError {
     MaterializedViews(#[from] dal_materialized_views::Error),
     #[error("schema missing asset func id: {0}")]
     MissingVariantFunc(SchemaVariantId),
+    #[error("module error: {0}")]
+    Module(#[from] dal::module::ModuleError),
     #[error("changes not permitted on HEAD change set")]
     NotPermittedOnHead,
+    #[error("pkg error: {0}")]
+    Pkg(#[from] dal::pkg::PkgError),
     #[error("prop error: {0}")]
     Prop(#[from] Box<PropError>),
     #[error("schema error: {0}")]
@@ -103,10 +109,20 @@ pub enum SchemaError {
     SchemaVariantNotFound(SchemaVariantId),
     #[error("schema variant {0} not a variant for the schema {1} error")]
     SchemaVariantNotMemberOfSchema(SchemaId, SchemaVariantId),
+    #[error("serde_json error: {0}")]
+    Serde(#[from] serde_json::Error),
+    #[error("sipkg error: {0}")]
+    SiPkg(#[from] SiPkgError),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] dal::slow_rt::SlowRuntimeError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("Cannot upgrade schema {0} - has unlocked variants that need to be locked first")]
+    UnlockedVariantFoundForSchema(SchemaId),
+    #[error("No cached module found for schema {0}")]
+    UpgradableModuleNotFound(SchemaId),
+    #[error("No schema variants imported for schema {0}")]
+    UpgradeFailed(SchemaId),
     #[error("validation error: {0}")]
     Validation(String),
     #[error("variant authoring error: {0}")]
@@ -144,6 +160,10 @@ impl crate::service::v1::common::ErrorIntoResponse for SchemaError {
             SchemaError::SchemaNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaError::SchemaNotFoundByName(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaError::SchemaVariantNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            SchemaError::UpgradableModuleNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            SchemaError::UnlockedVariantFoundForSchema(_) => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
             SchemaError::SchemaVariantNotMemberOfSchema(_, _) => {
                 (StatusCode::PRECONDITION_REQUIRED, self.to_string())
             }
@@ -187,6 +207,7 @@ pub fn routes() -> Router<AppState> {
             Router::new()
                 .route("/", get(get_schema::get_schema))
                 .route("/unlock", post(unlock_schema::unlock_schema))
+                .route("/upgrade", post(upgrade_schema::upgrade_schema))
                 .nest(
                     "/variant",
                     Router::new()
@@ -632,6 +653,8 @@ pub struct GetSchemaV1Response {
     pub default_variant_id: SchemaVariantId,
     #[schema(value_type = Vec<String>, example = json!(["01H9ZQD35JPMBGHH69BT0Q79VZ", "01H9ZQD35JPMBGHH69BT0Q79VY"]))]
     pub variant_ids: Vec<SchemaVariantId>,
+    #[schema(value_type = Option<bool>)]
+    pub upgrade_available: Option<bool>,
 }
 
 #[derive(Serialize, Debug, ToSchema)]
@@ -698,13 +721,49 @@ pub struct SchemaResponse {
     pub installed: bool,
 }
 
+/// Check if an upgrade is available for a given schema.
+///
+/// Returns:
+/// - `Some(true)` if an upgrade is available (installed hash is in past hashes)
+/// - `Some(false)` if no upgrade is available (hashes match or no newer version)
+/// - `None` if upgrade check is not applicable (no cached module or no installed module)
+pub async fn check_schema_upgrade_available(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+) -> SchemaResult<Option<bool>> {
+    // Get the latest cached module
+    let Some(cached_module) = CachedModule::find_latest_for_schema_id(ctx, schema_id).await? else {
+        return Ok(None);
+    };
+
+    // Get the installed module
+    let Some(installed_module) =
+        dal::module::Module::find_for_module_schema_id(ctx, schema_id.into()).await?
+    else {
+        return Ok(None);
+    };
+
+    // Check if hashes differ
+    if cached_module.latest_hash == installed_module.root_hash() {
+        return Ok(Some(false));
+    }
+
+    // Check if installed hash is in past hashes (means upgrade available)
+    let past_hashes = CachedModule::list_for_schema_id(ctx, schema_id)
+        .await?
+        .iter()
+        .map(|cm| cm.latest_hash.to_owned())
+        .collect::<HashSet<String>>();
+
+    Ok(Some(past_hashes.contains(installed_module.root_hash())))
+}
+
 pub async fn get_full_schema_list(ctx: &DalContext) -> SchemaResult<Vec<SchemaResponse>> {
     let schema_ids = dal::Schema::list_ids(ctx).await?;
     let installed_schema_ids: HashSet<_> = schema_ids.iter().collect();
 
     // Get cached modules with their metadata
     let cached_modules = CachedModule::latest_modules(ctx).await?;
-    // Create a map of schema ID to cached module data
     let mut cached_module_map: HashMap<SchemaId, CachedModule> = HashMap::new();
     for module in cached_modules {
         cached_module_map.insert(module.schema_id, module);
@@ -712,7 +771,8 @@ pub async fn get_full_schema_list(ctx: &DalContext) -> SchemaResult<Vec<SchemaRe
 
     // Combine both sources to create a complete list
     let mut all_schemas: Vec<SchemaResponse> = Vec::new();
-    // First add installed schemas from Schema::list_ids
+
+    // First add installed schemas
     for schema_id in &schema_ids {
         if let Some(module) = cached_module_map.get(schema_id) {
             // Schema is both installed and in cache
