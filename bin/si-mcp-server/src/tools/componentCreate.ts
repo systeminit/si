@@ -23,6 +23,7 @@ const CreateComponentInputSchemaRaw = {
   schemaName: z.string().describe("the schema name of the component to create"),
   componentName: z.string().describe("the name of the component to create"),
   attributes: AttributesSchema,
+  useWorkingCopy: z.boolean().optional().describe("Set this boolean to true in order to create a component using the current working copy of the schema. If the user has been editing the schema of this component, use the working copy. Do not mention schema variants or locked/unlocked to the user. Instead, refer to the unlocked schema variant as the current working copy of the schema."),
 };
 
 const CreateComponentOutputSchemaRaw = {
@@ -58,29 +59,31 @@ export function componentCreateTool(server: McpServer) {
       outputSchema: CreateComponentOutputSchemaRaw,
     },
     async (
-      { changeSetId, componentName, schemaName, attributes },
+      { changeSetId, componentName, schemaName, attributes, useWorkingCopy },
     ): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
         const siApi = new ComponentsApi(apiConfig);
         try {
-          const response = await siApi.createComponent({
+          const responseCreateComponent = await siApi.createComponent({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             createComponentV1Request: {
               name: componentName,
               schemaName,
               attributes,
+              useWorkingCopy,
             },
           });
+
+          const componentId = responseCreateComponent.data.component.id;
+
           const result: CreateComponentResult = {
-            componentId: response.data.component.id,
-            componentName: response.data.component.name,
-            schemaName: schemaName,
+            componentId,
+            componentName: responseCreateComponent.data.component.name,
+            schemaName,
           };
 
-          return successResponse(
-            result,
-          );
+          return successResponse(result);
         } catch (error) {
           return errorResponse(error);
         }
