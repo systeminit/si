@@ -1,11 +1,9 @@
 import assert from "node:assert";
 import logger from "../../logger.ts";
-import { OnlyProperties } from "../../spec/props.ts";
-import { CfProperty, CfHandler, CfHandlerKind } from "../types.ts";
+import { CfHandler, CfHandlerKind } from "../types.ts";
 import {
   AzureOperationData,
   AzureSchema,
-  PropertySet,
   isAzureObjectProperty,
   AzureProperty,
   AzureOpenApiDocument,
@@ -16,41 +14,72 @@ import { JSONSchema } from "../draft_07.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { makeModule } from "../generic/index.ts";
 import { AZURE_PROVIDER_CONFIG } from "./provider.ts";
+import { OnlyProperties } from "../../spec/props.ts";
+import { assertUnreachable } from "../../assertUnreachable.ts";
 
-export function extractPropertiesFromRequestBody(
-  operation: AzureOpenApiOperation | null,
-) {
-  const bodyParams = operation?.parameters?.filter((p) => p.in === "body");
-  if (!bodyParams || bodyParams.length == 0)
-    return { properties: {}, required: [] };
-  assert(bodyParams.length <= 1, "Expected at most one body parameter");
+const IGNORE_RESOURCE_TYPES = new Set<string>([
+  // These don't have an id property in the GET response; TODO look into this
+  "Azure::Portal::Consoles",
+  "Azure::Portal::UserSettings",
+]);
 
-  const { schema } = bodyParams[0];
-  assert(isAzureObjectProperty(schema), "Body schema is not an object");
+export function parseAzureSpec(
+  openApiDoc: AzureOpenApiDocument,
+): ExpandedPkgSpec[] {
+  const specs: ExpandedPkgSpec[] = [];
 
-  return {
-    properties: schema.properties ?? {},
-    required: schema.required ?? [],
-  };
-}
+  if (!openApiDoc.paths) {
+    console.warn("No paths found in Azure schema");
+    return [];
+  }
 
-export function extractPropertiesFromResponseBody(
-  operation: AzureOpenApiOperation | null,
-) {
-  const schema = operation?.responses?.["200"]?.schema;
-  if (!schema) return { properties: {}, required: [] };
-  assert(
-    isAzureObjectProperty(schema),
-    `Response schema is not an object: ${operation.operationId}`,
+  const resourceOperations: Record<string, AzureOperationData[]> = {};
+
+  for (const [path, methods] of Object.entries(openApiDoc.paths)) {
+    const resourceType = extractResourceTypeFromPath(path);
+
+    if (!resourceType) continue;
+    if (resourceType.includes("Reminder: Need renaming")) continue; // lol
+    // these are the supplemental actions endpoints. Skipping for now
+    if (resourceType.endsWith("Operations")) continue;
+    if (IGNORE_RESOURCE_TYPES.has(resourceType)) continue;
+
+    for (const method of AZURE_HTTP_METHODS) {
+      const openApiOperation = methods?.[method];
+      if (!openApiOperation) continue;
+
+      if (!resourceOperations[resourceType]) {
+        resourceOperations[resourceType] = [];
+      }
+
+      resourceOperations[resourceType].push({
+        method,
+        path,
+        openApiOperation,
+        apiVersion: undefined,
+      });
+    }
+  }
+
+  Object.entries(resourceOperations).forEach(([resourceType, operations]) => {
+    const spec = mergeAzureResourceOperations(
+      resourceType,
+      operations,
+      openApiDoc.info.version,
+    );
+    if (spec) {
+      specs.push(spec);
+    }
+  });
+
+  logger.debug(
+    `Generated ${specs.length} schemas from ${
+      Object.keys(resourceOperations).length
+    } resource types`,
   );
 
-  return {
-    properties: schema.properties ?? {},
-    required: schema.required ?? [],
-  };
+  return specs;
 }
-
-/// Normalize a generic JSONSchema into an AzureProperty, *recursively*
 
 /// Normalize a generic JSONSchema into an AzureProperty:
 /// - "true" and "false" become { type: "string" }
@@ -161,90 +190,12 @@ export function normalizeAzureProperty(prop: JSONSchema): AzureProperty {
   return prop as AzureProperty;
 }
 
-/// Normalize, with a seen list to check for cycles
-function normalizeAzurePropertyRecursively(
-  prop: JSONSchema,
-  seen: Set<JSONSchema>,
-): AzureProperty {
-  // If there's a circular reference, we know we're already normalizing this prop, so we don't
-  // do it twice.
-  if (seen.has(prop)) return prop as AzureProperty;
-  seen.add(prop);
-
-  // First normalize the base types
-  prop = normalizeAzureProperty(prop);
-
-  // Recursively normalize properties, additionalProperties, and items
-  if (prop.properties) {
-    prop = {
-      ...prop,
-      properties: Object.fromEntries(
-        Object.entries(prop.properties)
-          .filter(([_k, v]) => typeof v === "object" && v !== null)
-          .map(([k, v]) => [k, normalizeAzurePropertyRecursively(v, seen)]),
-      ),
-    };
-  }
-
-  // Normalize additionalProperties
-  if (prop.additionalProperties) {
-    prop = {
-      ...prop,
-      additionalProperties: normalizeAzurePropertyRecursively(
-        prop.additionalProperties,
-        seen,
-      ),
-    };
-  }
-
-  // Normalize items
-  if (prop.items) {
-    if (Array.isArray(prop.items)) {
-      prop.items = prop.items.map((item) =>
-        normalizeAzurePropertyRecursively(item, seen),
-      ) as JSONSchema[];
-    } else {
-      prop.items = normalizeAzurePropertyRecursively(prop.items, seen);
-    }
-  }
-
-  return prop as AzureProperty;
-}
-
-export function mergePropertyDefinitions(
-  existing: AzureProperty | undefined,
-  newProp: AzureProperty,
-): AzureProperty {
-  if (!existing) return newProp;
-  assert(typeof existing !== "boolean");
-  assert(typeof newProp !== "boolean");
-
-  const merged = { ...existing };
-
-  if ("enum" in merged) {
-    assert("enum" in newProp, "Cannot merge enum with non-enum");
-    const existingEnum = merged.enum as unknown[] | undefined;
-    const newPropEnum = newProp.enum as unknown[] | undefined;
-    if (existingEnum && newPropEnum) {
-      merged.enum = [...new Set([...existingEnum, ...newPropEnum])];
-    } else if (newPropEnum) {
-      merged.enum = newPropEnum;
-    }
-  }
-
-  if (newProp.description && !merged.description) {
-    merged.description = newProp.description;
-  }
-
-  return merged;
-}
-
-export function buildHandlersFromOperations(operations: AzureOperationData[]) {
+function buildHandlersFromOperations(operations: AzureOperationData[]) {
   const result: {
     handlers: { [key in CfHandlerKind]?: CfHandler };
     getOperation?: AzureOpenApiOperation;
     putOperation?: AzureOpenApiOperation;
-    patchOperation?: AzureOpenApiOperation;
+    // patchOperation?: AzureOpenApiOperation;
     deleteOperation?: AzureOpenApiOperation;
   } = { handlers: {} };
 
@@ -270,11 +221,11 @@ export function buildHandlersFromOperations(operations: AzureOperationData[]) {
         result.handlers["update"] = defaultHandler;
         break;
       }
-      case "patch": {
-        result.patchOperation = op;
-        result.handlers["update"] = defaultHandler;
-        break;
-      }
+      // case "patch": {
+      //   result.patchOperation = op;
+      //   result.handlers["update"] = defaultHandler;
+      //   break;
+      // }
       case "delete": {
         result.deleteOperation = op;
         result.handlers["delete"] = defaultHandler;
@@ -286,29 +237,44 @@ export function buildHandlersFromOperations(operations: AzureOperationData[]) {
   return result;
 }
 
-export function mergeAzureResourceOperations(
+function mergeAzureResourceOperations(
   resourceType: string,
   operations: AzureOperationData[],
   apiVersion: string,
 ): ExpandedPkgSpec | null {
-  const {
-    handlers,
-    getOperation,
-    putOperation,
-    patchOperation,
-    deleteOperation,
-  } = buildHandlersFromOperations(operations);
+  const { handlers, getOperation, putOperation } =
+    buildHandlersFromOperations(operations);
 
   if (!getOperation) {
     logger.debug(`No GET operation found for ${resourceType}`);
     return null;
   }
-
-  if (!putOperation && !patchOperation && !deleteOperation) {
+  if (!putOperation) {
     // readonly schema! Skipping.
-    logger.debug(
-      `No PUT, PATCH or DELETE operations found for ${resourceType}`,
+    logger.debug(`No PUT operation found for ${resourceType}`);
+    return null;
+  }
+
+  // Grab resourceValue properties from the GET response
+  const { properties: resourceValueProperties } =
+    extractPropertiesFromResponseBody(getOperation);
+  if (Object.keys(resourceValueProperties).length === 0) {
+    logger.debug(`No properties found in GET response for ${resourceType}`);
+    return null;
+  }
+  if (!("id" in resourceValueProperties)) {
+    throw new Error(
+      `No id property in GET response: ${getOperation.operationId}`,
     );
+  }
+
+  // Grab domain properties from the PUT request
+  let { properties: domainProperties, required: requiredProperties } =
+    extractPropertiesFromRequestBody(putOperation);
+  // Remove readonly properties from the domain
+  domainProperties = removeReadOnlyProperties(domainProperties, new Set());
+  if (Object.keys(domainProperties).length === 0) {
+    logger.debug(`No properties found in GET response for ${resourceType}`);
     return null;
   }
 
@@ -317,164 +283,21 @@ export function mergeAzureResourceOperations(
     (getOperation.summary as string) ||
     `Azure ${resourceType} resource`;
 
-  const { properties: getProperties, required: getRequired } =
-    extractPropertiesFromResponseBody(getOperation);
-
-  if (!getProperties || Object.keys(getProperties).length === 0) {
-    logger.debug(`No properties found in GET response for ${resourceType}`);
-    return null;
-  }
-
-  const mergedProperties = { ...getProperties };
-  const requiredProperties = new Set(getRequired);
-
-  const getPropertySet: PropertySet = new Set(Object.keys(getProperties));
-  const createUpdateProperties: PropertySet = new Set();
-  const updateProperties: PropertySet = new Set();
-  const deleteProperties: PropertySet = new Set();
-
-  // Process write operations
-  [
-    {
-      operation: putOperation,
-      propertySet: createUpdateProperties,
-      name: "put",
-    },
-    { operation: patchOperation, propertySet: updateProperties, name: "patch" },
-    {
-      operation: deleteOperation,
-      propertySet: deleteProperties,
-      name: "delete",
-    },
-  ].forEach(({ operation, propertySet }) => {
-    if (!operation) return;
-
-    const { properties: operationProps, required: operationRequired } =
-      extractPropertiesFromRequestBody(operation);
-
-    Object.keys(operationProps).forEach((prop) => propertySet.add(prop));
-    operationRequired.forEach((prop) => requiredProperties.add(prop));
-
-    Object.entries(operationProps).forEach(([key, prop]) => {
-      if (key === "properties") {
-        mergedProperties[key] = prop;
-      } else {
-        mergedProperties[key] = mergePropertyDefinitions(
-          mergedProperties[key],
-          prop,
-        );
-      }
-    });
-  });
-
-  // Build onlyProperties
+  const primaryIdentifier = ["id"];
+  const schema: AzureSchema = {
+    typeName: resourceType,
+    description,
+    requiredProperties: new Set(requiredProperties),
+    handlers,
+    apiVersion,
+  };
+  // TODO figure out readOnly and writeOnly properties based on which tree they appear in
   const onlyProperties: OnlyProperties = {
     createOnly: [],
     readOnly: [],
     writeOnly: [],
-    primaryIdentifier: ["id"],
+    primaryIdentifier,
   };
-
-  // Recursively collect readOnly property paths from the schema
-  function collectReadOnlyPaths(
-    properties: JSONSchema,
-    pathPrefix: string = "",
-    seen: JSONSchema[] = [],
-  ): string[] {
-    if (seen.includes(properties)) return [];
-    seen.push(properties);
-    try {
-      const paths: string[] = [];
-
-      for (const [key, prop] of Object.entries(properties)) {
-        const propSchema = prop;
-        const currentPath = pathPrefix ? `${pathPrefix}/${key}` : key;
-
-        if (propSchema?.readOnly === true) {
-          paths.push(currentPath);
-        }
-
-        if (
-          propSchema?.properties &&
-          typeof propSchema.properties === "object"
-        ) {
-          paths.push(
-            ...collectReadOnlyPaths(propSchema.properties, currentPath, seen),
-          );
-        }
-      }
-
-      return paths;
-    } finally {
-      seen.pop();
-    }
-  }
-
-  // Collect all readOnly paths from the merged properties
-  const readOnlyPaths = collectReadOnlyPaths(mergedProperties);
-  onlyProperties.readOnly.push(...readOnlyPaths);
-
-  // Also mark properties that are in GET but not in any write operations
-  getPropertySet.forEach((prop) => {
-    const isPrimaryIdentifier = onlyProperties.primaryIdentifier.includes(prop);
-    const notInWrites =
-      !createUpdateProperties.has(prop) &&
-      !updateProperties.has(prop) &&
-      !deleteProperties.has(prop);
-
-    if (isPrimaryIdentifier || notInWrites) {
-      if (!onlyProperties.readOnly.includes(prop)) {
-        onlyProperties.readOnly.push(prop);
-      }
-    }
-  });
-
-  // createOnly: in PUT (create/update) but not in PATCH (update-only)
-  if (patchOperation && updateProperties.size > 0) {
-    createUpdateProperties.forEach((prop) => {
-      if (!updateProperties.has(prop)) {
-        onlyProperties.createOnly.push(`/${prop}`);
-      }
-    });
-  }
-
-  // writeOnly: in PUT/PATCH/DELETE but not in GET
-  const writeProps = [
-    ...createUpdateProperties,
-    ...updateProperties,
-    ...deleteProperties,
-  ];
-  onlyProperties.writeOnly = [
-    ...new Set(
-      writeProps
-        .filter((prop) => !getPropertySet.has(prop))
-        .map((prop) => `/${prop}`),
-    ),
-  ];
-
-  // Split properties into domain (writable) and resource_value (readable)
-  const readOnlySet = new Set(onlyProperties.readOnly);
-  const domainProperties: Record<string, CfProperty> = {};
-  const resourceValueProperties: Record<string, CfProperty> = {};
-
-  for (const [name, prop] of Object.entries(mergedProperties)) {
-    if (readOnlySet.has(name)) {
-      resourceValueProperties[name] = prop;
-    } else {
-      domainProperties[name] = prop;
-    }
-  }
-
-  const schema: AzureSchema = {
-    typeName: resourceType,
-    description,
-    properties: mergedProperties,
-    requiredProperties,
-    primaryIdentifier: ["id"],
-    handlers,
-    apiVersion,
-  };
-
   return makeModule(
     schema,
     description,
@@ -483,6 +306,95 @@ export function mergeAzureResourceOperations(
     domainProperties,
     resourceValueProperties,
   );
+}
+
+function extractPropertiesFromRequestBody(
+  operation: AzureOpenApiOperation | null,
+) {
+  const bodyParams = operation?.parameters?.filter((p) => p.in === "body");
+  if (!bodyParams || bodyParams.length == 0)
+    return { properties: {}, required: [] };
+  assert(bodyParams.length <= 1, "Expected at most one body parameter");
+
+  const { schema } = bodyParams[0];
+  assert(isAzureObjectProperty(schema), "Body schema is not an object");
+
+  return {
+    properties: schema.properties ?? {},
+    required: schema.required ?? [],
+  };
+}
+
+function extractPropertiesFromResponseBody(
+  operation: AzureOpenApiOperation | null,
+) {
+  const schema = operation?.responses?.["200"]?.schema;
+  if (!schema) return { properties: {}, required: [] };
+  assert(
+    isAzureObjectProperty(schema),
+    `Response schema is not an object: ${operation.operationId}`,
+  );
+
+  return {
+    properties: schema.properties ?? {},
+    required: schema.required ?? [],
+  };
+}
+
+function removeReadOnlyProperties(
+  properties: Record<string, AzureProperty>,
+  seen: Set<AzureProperty>,
+): Record<string, AzureProperty> {
+  return Object.fromEntries(
+    Object.entries(properties)
+      .map(([key, childProp]) => [key, removeReadOnlyProperty(childProp, seen)])
+      .filter(([_, childProp]) => childProp !== undefined),
+  );
+}
+
+function removeReadOnlyProperty(
+  property: AzureProperty | undefined,
+  seen: Set<AzureProperty>,
+): AzureProperty | undefined {
+  if (!property) return undefined;
+  if (seen.has(property)) return undefined;
+  seen.add(property);
+
+  // If *this* property is readOnly, it should be removed.
+  if (property.readOnly) {
+    return undefined;
+  }
+  switch (property.type) {
+    case "object":
+    case undefined: {
+      if (property.properties) {
+        const properties = removeReadOnlyProperties(property.properties, seen);
+        if (Object.keys(properties).length === 0) return undefined;
+        property = { ...property, properties };
+      }
+      break;
+    }
+    case "array": {
+      // If the items are readOnly, the array is readOnly
+      const items = removeReadOnlyProperty(property.items, seen);
+      if (!items) return undefined;
+      property.items = items;
+      break;
+    }
+    case "boolean":
+    case "integer":
+    case "number":
+    case "string":
+    case "json":
+      break;
+    default:
+      // Probably *shouldn't* have this by now? But if it does, one side or the other is always primitive
+      if (!Array.isArray(property.type)) {
+        assertUnreachable(property.type);
+      }
+      break;
+  }
+  return property;
 }
 
 function extractResourceTypeFromPath(path: string): string | null {
@@ -494,61 +406,4 @@ function extractResourceTypeFromPath(path: string): string | null {
   const capitalizedResource =
     resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
   return `Azure::${serviceName}::${capitalizedResource}`;
-}
-
-export function parseAzureSpec(
-  openApiDoc: AzureOpenApiDocument,
-): ExpandedPkgSpec[] {
-  const specs: ExpandedPkgSpec[] = [];
-
-  if (!openApiDoc.paths) {
-    console.warn("No paths found in Azure schema");
-    return [];
-  }
-
-  const resourceOperations: Record<string, AzureOperationData[]> = {};
-
-  for (const [path, methods] of Object.entries(openApiDoc.paths)) {
-    const resourceType = extractResourceTypeFromPath(path);
-
-    if (!resourceType) continue;
-    if (resourceType.includes("Reminder: Need renaming")) continue; // lol
-    // these are the supplemental actions endpoints. Skipping for now
-    if (resourceType.endsWith("Operations")) continue;
-
-    for (const method of AZURE_HTTP_METHODS) {
-      const openApiOperation = methods?.[method];
-      if (!openApiOperation) continue;
-
-      if (!resourceOperations[resourceType]) {
-        resourceOperations[resourceType] = [];
-      }
-
-      resourceOperations[resourceType].push({
-        method,
-        path,
-        openApiOperation,
-        apiVersion: undefined,
-      });
-    }
-  }
-
-  Object.entries(resourceOperations).forEach(([resourceType, operations]) => {
-    const spec = mergeAzureResourceOperations(
-      resourceType,
-      operations,
-      openApiDoc.info.version,
-    );
-    if (spec) {
-      specs.push(spec);
-    }
-  });
-
-  logger.debug(
-    `Generated ${specs.length} schemas from ${
-      Object.keys(resourceOperations).length
-    } resource types`,
-  );
-
-  return specs;
 }

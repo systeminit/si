@@ -3,15 +3,16 @@ import { OnlyProperties } from "../../spec/props.ts";
 import { makeModule } from "../generic/index.ts";
 import { CfProperty, SuperSchema } from "../types.ts";
 import { DUMMY_PROVIDER_CONFIG } from "./provider.ts";
-import { databaseSchema, serverSchema } from "./schema.ts";
+import { databaseSchema, DummySchema, serverSchema } from "./schema.ts";
 
 function splitDummyProperties(
-  schema: SuperSchema,
+  schema: SuperSchema | DummySchema,
   onlyProperties: OnlyProperties,
 ): {
   domainProperties: Record<string, CfProperty>;
   resourceValueProperties: Record<string, CfProperty>;
 } {
+  if (!("properties" in schema)) throw new Error("Not DummySchema");
   const readOnlySet = new Set(onlyProperties.readOnly);
   const domainProperties: Record<string, CfProperty> = {};
   const resourceValueProperties: Record<string, CfProperty> = {};

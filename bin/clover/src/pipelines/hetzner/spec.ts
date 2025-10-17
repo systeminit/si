@@ -21,9 +21,7 @@ export function extractPropertiesFromRequestBody(
   };
 }
 
-export function buildHandlersFromOperations(
-  operations: OperationData[],
-): {
+export function buildHandlersFromOperations(operations: OperationData[]): {
   handlers: Record<CfHandlerKind, CfHandler>;
   getOperation: JsonSchema | null;
   postOperation: JsonSchema | null;
@@ -80,9 +78,7 @@ export function normalizeHetznerProperty(prop: JsonSchema): JsonSchema {
     if (normalized.properties) {
       normalized.properties = Object.fromEntries(
         Object.entries(normalized.properties as Record<string, JsonSchema>).map(
-          (
-            [key, value],
-          ) => [key, normalizeHetznerProperty(value)],
+          ([key, value]) => [key, normalizeHetznerProperty(value)],
         ),
       );
     }
@@ -169,12 +165,8 @@ export function mergeResourceOperations(
   domainProperties: Record<string, CfProperty>;
   resourceValueProperties: Record<string, CfProperty>;
 } | null {
-  const {
-    handlers,
-    getOperation,
-    postOperation,
-    putOperation,
-  } = buildHandlersFromOperations(operations);
+  const { handlers, getOperation, postOperation, putOperation } =
+    buildHandlersFromOperations(operations);
 
   // Get description from the tag
   const tags = getOperation?.tags as string[] | undefined;
@@ -192,8 +184,9 @@ export function mergeResourceOperations(
 
   // Extract properties from CREATE (POST) request
   if (!postOperation) return null;
-  const createContent = (postOperation.requestBody as any)?.content
-    ?.["application/json"];
+  const createContent = (postOperation.requestBody as any)?.content?.[
+    "application/json"
+  ];
   if (!createContent) {
     console.error(`No JSON response content for Create ${noun}`);
     return null;
@@ -212,12 +205,13 @@ export function mergeResourceOperations(
     Object.keys(createContent.schema?.properties as JsonSchema),
   );
 
-  const getContent = (getOperation?.responses as any)?.["200"]?.content
-    ?.["application/json"];
+  const getContent = (getOperation?.responses as any)?.["200"]?.content?.[
+    "application/json"
+  ];
   const getObjShape = getContent?.schema?.properties
-    ? Object.values(getContent.schema.properties).pop() as
-      | JsonSchema
-      | undefined
+    ? (Object.values(getContent.schema.properties).pop() as
+        | JsonSchema
+        | undefined)
     : undefined;
   const getProperties: PropertySet = new Set(
     Object.keys((getObjShape?.properties as JsonSchema) || {}),
@@ -241,7 +235,7 @@ export function mergeResourceOperations(
   }
 
   const resourceValueProperties = {
-    ...(getObjShape?.properties as JsonSchema || {}),
+    ...((getObjShape?.properties as JsonSchema) || {}),
   };
 
   // Build onlyProperties
@@ -254,9 +248,7 @@ export function mergeResourceOperations(
 
   // createOnly: only in POST, not in PUT
   createProperties.forEach((prop) => {
-    if (
-      !updateProperties.has(prop)
-    ) {
+    if (!updateProperties.has(prop)) {
       onlyProperties.createOnly.push(prop);
     }
   });
@@ -269,14 +261,9 @@ export function mergeResourceOperations(
   });
 
   // writeOnly: in POST/PUT but not in GET
-  const writeProps = [
-    ...createProperties,
-    ...updateProperties,
-  ];
+  const writeProps = [...createProperties, ...updateProperties];
   onlyProperties.writeOnly = [
-    ...new Set(
-      writeProps.filter((prop) => !getProperties.has(prop)),
-    ),
+    ...new Set(writeProps.filter((prop) => !getProperties.has(prop))),
   ];
 
   // Normalize domain properties (POST + PUT = writable)
@@ -295,17 +282,13 @@ export function mergeResourceOperations(
     ]),
   );
 
-  const mergedProperties = { ...normalizedDomainProperties };
-
   // Convert noun to PascalCase for the resource name (e.g., "certificates" -> "Certificate")
   const resourceName = _.startCase(_.camelCase(noun)).replace(/ /g, "");
 
   const schema: HetznerSchema = {
     typeName: `Hetzner::Cloud::${resourceName}`,
     description,
-    properties: mergedProperties as Record<string, CfProperty>,
     requiredProperties,
-    primaryIdentifier: ["id"],
     handlers,
     endpoint: noun,
   };

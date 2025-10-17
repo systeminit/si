@@ -1,6 +1,11 @@
-import { SuperSchema } from "../types.ts";
+import { CfProperty, SuperSchema } from "../types.ts";
 
-export const serverSchema: SuperSchema = {
+export interface DummySchema extends SuperSchema {
+  properties: Record<string, CfProperty>;
+  requiredProperties: Set<string>;
+}
+
+export const serverSchema: DummySchema = {
   typeName: "Dummy::Server",
   description: "A dummy server resource for testing",
   properties: {
@@ -32,7 +37,6 @@ export const serverSchema: SuperSchema = {
     },
   },
   requiredProperties: new Set(["name", "size", "region"]),
-  primaryIdentifier: ["id"],
   handlers: {
     create: { permissions: [], timeoutInMinutes: 60 },
     read: { permissions: [], timeoutInMinutes: 60 },
@@ -42,7 +46,7 @@ export const serverSchema: SuperSchema = {
   },
 };
 
-export const databaseSchema: SuperSchema = {
+export const databaseSchema: DummySchema = {
   typeName: "Dummy::Database",
   description: "A dummy database resource for testing",
   properties: {
@@ -78,7 +82,6 @@ export const databaseSchema: SuperSchema = {
     },
   },
   requiredProperties: new Set(["name", "engine"]),
-  primaryIdentifier: ["id"],
   handlers: {
     create: { permissions: [], timeoutInMinutes: 60 },
     read: { permissions: [], timeoutInMinutes: 60 },

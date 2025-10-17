@@ -14,7 +14,7 @@ import {
 } from "./funcs.ts";
 import { normalizeAzureProperty } from "./spec.ts";
 import { generateAzureSpecs } from "./pipeline.ts";
-import { initAzureRestApiSpecsRepo } from "./schema.ts";
+import { AzureSchema, initAzureRestApiSpecsRepo } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
 
 async function azureFetchSchema(options: FetchSchemaOptions) {
@@ -61,7 +61,7 @@ function azureCategory(schema: SuperSchema): string {
 }
 
 function azureIsChildRequired(
-  schema: SuperSchema,
+  schema: SuperSchema | AzureSchema,
   _parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ): boolean {

@@ -15,11 +15,10 @@ import {
   MANAGEMENT_FUNCS,
   QUALIFICATION_FUNC_SPECS,
 } from "./funcs.ts";
-import type { CfSchema } from "./schema.ts";
 import { generateAwsSpecs } from "./pipeline.ts";
 import { JSONSchema } from "../draft_07.ts";
 
-function cfCategory(schema: CfSchema): string {
+function cfCategory(schema: SuperSchema): string {
   const [metaCategory, category] = schema.typeName.split("::");
   return `${metaCategory}::${category}`;
 }

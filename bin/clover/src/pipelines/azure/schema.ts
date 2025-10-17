@@ -1,10 +1,9 @@
 import type {
   CfArrayProperty,
-  CfHandler,
-  CfHandlerKind,
   CfObjectProperty,
   CfProperty,
   CommonCommandOptions,
+  SuperSchema,
 } from "../types.ts";
 import { JSONSchema } from "../draft_07.ts";
 import assert from "node:assert";
@@ -38,8 +37,6 @@ type DereferenceChildren<T> = {
   [K in keyof T]: Dereference<T[K]>;
 };
 
-type JSONPointer = string;
-
 export type PropertySet = Set<string>;
 
 export interface AzureOperationData {
@@ -49,15 +46,8 @@ export interface AzureOperationData {
   apiVersion?: string;
 }
 
-export interface AzureSchema {
-  typeName: string;
-  description: string;
-  sourceUrl?: string;
-  documentationUrl?: string;
-  properties: Record<string, CfProperty>;
+export interface AzureSchema extends SuperSchema {
   requiredProperties: Set<string>;
-  primaryIdentifier: JSONPointer[];
-  handlers?: { [key in CfHandlerKind]?: CfHandler };
   apiVersion?: string;
 }
 
@@ -71,9 +61,14 @@ export const AZURE_HTTP_METHODS = [
 ] as const;
 export type AzureHttpMethod = (typeof AZURE_HTTP_METHODS)[number];
 
-export type AzureProperty = CfProperty;
-export type AzureObjectProperty = CfObjectProperty;
-export type AzureArrayProperty = CfArrayProperty;
+export type AzureProperty = CfProperty & AzurePropExtensions;
+export type AzureObjectProperty = CfObjectProperty & AzurePropExtensions;
+export type AzureArrayProperty = CfArrayProperty & AzurePropExtensions;
+interface AzurePropExtensions {
+  readOnly?: boolean;
+  items?: AzureProperty;
+  properties?: Record<string, AzureProperty>;
+}
 
 export function isAzureObjectProperty(o: unknown): o is AzureObjectProperty {
   if (!(typeof o === "object" && o !== null)) return false;
