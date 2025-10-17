@@ -24,6 +24,15 @@ const VERSION = "0.1.0";
 const ENV_VAR_PREFIX = "SI_CONDUIT_";
 
 /**
+ * Global options available to all commands
+ */
+type GlobalOptions = {
+  apiBaseUrl?: string;
+  apiToken?: string;
+  root?: RootPath;
+};
+
+/**
  * Main entry point for the CLI application.
  *
  * Parses command-line arguments and dispatches to the appropriate command
@@ -59,20 +68,26 @@ function buildCommand() {
     .description("FIXME: System Initiative Conduit CLI")
     .globalType("root-path", new RootPathType())
     .globalEnv(
-      "SI_CONDUIT_ROOT=<path:root-path>",
+      "SI_CONDUIT_ROOT=<PATH:root-path>",
       "Project root directory (searches for .conduitroot if not specified)",
-      { prefix: ENV_VAR_PREFIX },
+      { prefix: "SI_CONDUIT_" },
     )
     .globalOption(
-      "--root <path:root-path>",
+      "--root <PATH:root-path>",
       "Project root directory (searches for .conduitroot if not specified)",
     )
+    .globalEnv("SI_API_BASE_URL=<URL:string>", "FIXME: docs", { prefix: "SI_" })
+    .globalOption("--api-base-url <URL:string>", "FIXME: docs", {
+      default: "https://api.systeminit.com",
+    })
+    .globalEnv("SI_API_TOKEN=<TOKEN:string>", "FIXME: docs", { prefix: "SI_" })
+    .globalOption("--api-token <TOKEN:string>", "FIXME: docs")
     .action(function () {
       this.showHelp();
     })
     .command("completion", new CompletionsCommand())
-    .command("schema", buildSchemaCommand())
-    .command("remote", buildRemoteCommand());
+    .command("schema", buildSchemaCommand() as any)
+    .command("remote", buildRemoteCommand() as any);
 }
 
 /**
@@ -249,10 +264,7 @@ function buildSchemaScaffoldCommand() {
 }
 
 /** Creates a new SubCommand with root path options configured */
-function createSubCommand(): Command<
-  { root?: RootPath },
-  { rootPath: typeof RootPathType }
-> {
+function createSubCommand(): Command<GlobalOptions> {
   return new Command();
 }
 
