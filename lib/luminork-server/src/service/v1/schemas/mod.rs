@@ -10,6 +10,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
     routing::{
+        delete,
         get,
         post,
         put,
@@ -17,18 +18,24 @@ use axum::{
 };
 use dal::{
     DalContext,
+    FuncError,
     FuncId,
     PropId,
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
     TransactionsError,
-    action::prototype::ActionKind,
+    action::prototype::{
+        ActionKind,
+        ActionPrototypeError,
+    },
     cached_module::CachedModule,
     func::{
         FuncKind,
         authoring::FuncAuthoringError,
+        binding::FuncBindingError,
     },
+    management::prototype::ManagementPrototypeError,
     prop::PropError,
     schema::variant::authoring::VariantAuthoringError,
 };
@@ -59,6 +66,11 @@ pub mod create_codegen;
 pub mod create_management;
 pub mod create_qualification;
 pub mod create_schema;
+pub mod detach_action_binding;
+pub mod detach_authentication_binding;
+pub mod detach_codegen_binding;
+pub mod detach_management_binding;
+pub mod detach_qualification_binding;
 pub mod find_schema;
 pub mod get_default_variant;
 pub mod get_schema;
@@ -71,18 +83,28 @@ pub mod update_schema_variant;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SchemaError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] dal::attribute::prototype::AttributePrototypeError),
     #[error("cached module error: {0}")]
     CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("decode error: {0}")]
     Decode(#[from] ulid::DecodeError),
     #[error("frigg error: {0}")]
     Frigg(#[from] FriggError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("func authoring error: {0}")]
     FuncAuthoring(#[from] FuncAuthoringError),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
     #[error("join error: {0}")]
     Join(#[from] tokio::task::JoinError),
     #[error("trying to modify locked variant: {0}")]
     LockedVariant(SchemaVariantId),
+    #[error("management prototype error: {0}")]
+    ManagementPrototype(#[from] ManagementPrototypeError),
     #[error("materialized views error: {0}")]
     MaterializedViews(#[from] dal_materialized_views::Error),
     #[error("schema missing asset func id: {0}")]
@@ -131,6 +153,23 @@ pub struct SchemaVariantV1RequestPath {
     pub schema_variant_id: SchemaVariantId,
 }
 
+#[derive(Deserialize, ToSchema)]
+pub struct SchemaVariantFuncV1RequestPath {
+    #[schema(value_type = String)]
+    pub schema_id: SchemaId,
+    #[schema(value_type = String)]
+    pub schema_variant_id: SchemaVariantId,
+    #[schema(value_type = String)]
+    pub func_id: FuncId,
+}
+
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DetachFuncBindingV1Response {
+    #[schema(example = true)]
+    pub success: bool,
+}
+
 impl IntoResponse for SchemaError {
     fn into_response(self) -> axum::response::Response {
         use crate::service::v1::common::ErrorIntoResponse;
@@ -148,6 +187,9 @@ impl crate::service::v1::common::ErrorIntoResponse for SchemaError {
                 (StatusCode::PRECONDITION_REQUIRED, self.to_string())
             }
             SchemaError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
+            SchemaError::SchemaVariant(dal::SchemaVariantError::SchemaVariantLocked(_)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }
@@ -201,18 +243,38 @@ pub fn routes() -> Router<AppState> {
                                 Router::new()
                                     .route("/action", post(create_action::create_variant_action))
                                     .route(
+                                        "/action/:func_id",
+                                        delete(detach_action_binding::detach_action_func_binding),
+                                    )
+                                    .route(
                                         "/management",
                                         post(create_management::create_variant_management),
+                                    )
+                                    .route(
+                                        "/management/:func_id",
+                                        delete(detach_management_binding::detach_management_func_binding),
                                     )
                                     .route(
                                         "/authentication",
                                         post(create_authentication::create_variant_authentication),
                                     )
+                                    .route(
+                                        "/authentication/:func_id",
+                                        delete(detach_authentication_binding::detach_authentication_func_binding),
+                                    )
                                     .route("/codegen", post(create_codegen::create_variant_codegen))
+                                    .route(
+                                        "/codegen/:func_id",
+                                        delete(detach_codegen_binding::detach_codegen_func_binding),
+                                    )
                                     .route(
                                         "/qualification",
                                         post(create_qualification::create_variant_qualification),
-                                    ),
+                                    )
+                                    .route(
+                                    "/qualification/:func_id",
+                                    delete(detach_qualification_binding::detach_qualification_func_binding),
+                                ),
                             ),
                         ),
                 ),

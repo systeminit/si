@@ -974,6 +974,19 @@ export interface DeleteSecretV1Response {
 /**
  * 
  * @export
+ * @interface DetachFuncBindingV1Response
+ */
+export interface DetachFuncBindingV1Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DetachFuncBindingV1Response
+     */
+    'success': boolean;
+}
+/**
+ * 
+ * @export
  * @interface DuplicateComponentsV1Request
  */
 export interface DuplicateComponentsV1Request {
@@ -7250,6 +7263,256 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Delete the binding between an action func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachActionFuncBinding: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('detachActionFuncBinding', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('detachActionFuncBinding', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('detachActionFuncBinding', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('detachActionFuncBinding', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'funcId' is not null or undefined
+            assertParamExists('detachActionFuncBinding', 'funcId', funcId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/action/{func_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)))
+                .replace(`{${"func_id"}}`, encodeURIComponent(String(funcId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Delete the binding between an authentication func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachAuthenticationFuncBinding: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('detachAuthenticationFuncBinding', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('detachAuthenticationFuncBinding', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('detachAuthenticationFuncBinding', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('detachAuthenticationFuncBinding', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'funcId' is not null or undefined
+            assertParamExists('detachAuthenticationFuncBinding', 'funcId', funcId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/authentication/{func_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)))
+                .replace(`{${"func_id"}}`, encodeURIComponent(String(funcId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Delete the binding between a codegen func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachCodegenFuncBinding: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('detachCodegenFuncBinding', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('detachCodegenFuncBinding', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('detachCodegenFuncBinding', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('detachCodegenFuncBinding', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'funcId' is not null or undefined
+            assertParamExists('detachCodegenFuncBinding', 'funcId', funcId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/codegen/{func_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)))
+                .replace(`{${"func_id"}}`, encodeURIComponent(String(funcId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Delete the binding between a management func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachManagementFuncBinding: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('detachManagementFuncBinding', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('detachManagementFuncBinding', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('detachManagementFuncBinding', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('detachManagementFuncBinding', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'funcId' is not null or undefined
+            assertParamExists('detachManagementFuncBinding', 'funcId', funcId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/management/{func_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)))
+                .replace(`{${"func_id"}}`, encodeURIComponent(String(funcId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Delete the binding between a qualification func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachQualificationFuncBinding: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('detachQualificationFuncBinding', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('detachQualificationFuncBinding', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('detachQualificationFuncBinding', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('detachQualificationFuncBinding', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'funcId' is not null or undefined
+            assertParamExists('detachQualificationFuncBinding', 'funcId', funcId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/qualification/{func_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)))
+                .replace(`{${"func_id"}}`, encodeURIComponent(String(funcId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Find schema by name or schema id
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -7724,6 +7987,91 @@ export const SchemasApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Delete the binding between an action func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async detachActionFuncBinding(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DetachFuncBindingV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.detachActionFuncBinding(workspaceId, changeSetId, schemaId, schemaVariantId, funcId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.detachActionFuncBinding']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Delete the binding between an authentication func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async detachAuthenticationFuncBinding(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DetachFuncBindingV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.detachAuthenticationFuncBinding(workspaceId, changeSetId, schemaId, schemaVariantId, funcId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.detachAuthenticationFuncBinding']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Delete the binding between a codegen func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async detachCodegenFuncBinding(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DetachFuncBindingV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.detachCodegenFuncBinding(workspaceId, changeSetId, schemaId, schemaVariantId, funcId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.detachCodegenFuncBinding']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Delete the binding between a management func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async detachManagementFuncBinding(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DetachFuncBindingV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.detachManagementFuncBinding(workspaceId, changeSetId, schemaId, schemaVariantId, funcId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.detachManagementFuncBinding']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Delete the binding between a qualification func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async detachQualificationFuncBinding(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DetachFuncBindingV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.detachQualificationFuncBinding(workspaceId, changeSetId, schemaId, schemaVariantId, funcId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.detachQualificationFuncBinding']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Find schema by name or schema id
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -7919,6 +8267,56 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Delete the binding between an action func and the schema variant
+         * @param {SchemasApiDetachActionFuncBindingRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachActionFuncBinding(requestParameters: SchemasApiDetachActionFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response> {
+            return localVarFp.detachActionFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Delete the binding between an authentication func and the schema variant
+         * @param {SchemasApiDetachAuthenticationFuncBindingRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachAuthenticationFuncBinding(requestParameters: SchemasApiDetachAuthenticationFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response> {
+            return localVarFp.detachAuthenticationFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Delete the binding between a codegen func and the schema variant
+         * @param {SchemasApiDetachCodegenFuncBindingRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachCodegenFuncBinding(requestParameters: SchemasApiDetachCodegenFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response> {
+            return localVarFp.detachCodegenFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Delete the binding between a management func and the schema variant
+         * @param {SchemasApiDetachManagementFuncBindingRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachManagementFuncBinding(requestParameters: SchemasApiDetachManagementFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response> {
+            return localVarFp.detachManagementFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Delete the binding between a qualification func and the schema variant
+         * @param {SchemasApiDetachQualificationFuncBindingRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachQualificationFuncBinding(requestParameters: SchemasApiDetachQualificationFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response> {
+            return localVarFp.detachQualificationFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Find schema by name or schema id
          * @param {SchemasApiFindSchemaRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -8065,6 +8463,56 @@ export interface SchemasApiInterface {
      * @memberof SchemasApiInterface
      */
     createVariantQualification(requestParameters: SchemasApiCreateVariantQualificationRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantQualificationFuncV1Response>;
+
+    /**
+     * 
+     * @summary Delete the binding between an action func and the schema variant
+     * @param {SchemasApiDetachActionFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    detachActionFuncBinding(requestParameters: SchemasApiDetachActionFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response>;
+
+    /**
+     * 
+     * @summary Delete the binding between an authentication func and the schema variant
+     * @param {SchemasApiDetachAuthenticationFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    detachAuthenticationFuncBinding(requestParameters: SchemasApiDetachAuthenticationFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response>;
+
+    /**
+     * 
+     * @summary Delete the binding between a codegen func and the schema variant
+     * @param {SchemasApiDetachCodegenFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    detachCodegenFuncBinding(requestParameters: SchemasApiDetachCodegenFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response>;
+
+    /**
+     * 
+     * @summary Delete the binding between a management func and the schema variant
+     * @param {SchemasApiDetachManagementFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    detachManagementFuncBinding(requestParameters: SchemasApiDetachManagementFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response>;
+
+    /**
+     * 
+     * @summary Delete the binding between a qualification func and the schema variant
+     * @param {SchemasApiDetachQualificationFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    detachQualificationFuncBinding(requestParameters: SchemasApiDetachQualificationFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response>;
 
     /**
      * 
@@ -8384,6 +8832,216 @@ export interface SchemasApiCreateVariantQualificationRequest {
      * @memberof SchemasApiCreateVariantQualification
      */
     readonly createVariantQualificationFuncV1Request: CreateVariantQualificationFuncV1Request
+}
+
+/**
+ * Request parameters for detachActionFuncBinding operation in SchemasApi.
+ * @export
+ * @interface SchemasApiDetachActionFuncBindingRequest
+ */
+export interface SchemasApiDetachActionFuncBindingRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiDetachActionFuncBinding
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiDetachActionFuncBinding
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiDetachActionFuncBinding
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiDetachActionFuncBinding
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * Func identifier
+     * @type {string}
+     * @memberof SchemasApiDetachActionFuncBinding
+     */
+    readonly funcId: string
+}
+
+/**
+ * Request parameters for detachAuthenticationFuncBinding operation in SchemasApi.
+ * @export
+ * @interface SchemasApiDetachAuthenticationFuncBindingRequest
+ */
+export interface SchemasApiDetachAuthenticationFuncBindingRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAuthenticationFuncBinding
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAuthenticationFuncBinding
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAuthenticationFuncBinding
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAuthenticationFuncBinding
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * Func identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAuthenticationFuncBinding
+     */
+    readonly funcId: string
+}
+
+/**
+ * Request parameters for detachCodegenFuncBinding operation in SchemasApi.
+ * @export
+ * @interface SchemasApiDetachCodegenFuncBindingRequest
+ */
+export interface SchemasApiDetachCodegenFuncBindingRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiDetachCodegenFuncBinding
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiDetachCodegenFuncBinding
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiDetachCodegenFuncBinding
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiDetachCodegenFuncBinding
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * Func identifier
+     * @type {string}
+     * @memberof SchemasApiDetachCodegenFuncBinding
+     */
+    readonly funcId: string
+}
+
+/**
+ * Request parameters for detachManagementFuncBinding operation in SchemasApi.
+ * @export
+ * @interface SchemasApiDetachManagementFuncBindingRequest
+ */
+export interface SchemasApiDetachManagementFuncBindingRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiDetachManagementFuncBinding
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiDetachManagementFuncBinding
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiDetachManagementFuncBinding
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiDetachManagementFuncBinding
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * Func identifier
+     * @type {string}
+     * @memberof SchemasApiDetachManagementFuncBinding
+     */
+    readonly funcId: string
+}
+
+/**
+ * Request parameters for detachQualificationFuncBinding operation in SchemasApi.
+ * @export
+ * @interface SchemasApiDetachQualificationFuncBindingRequest
+ */
+export interface SchemasApiDetachQualificationFuncBindingRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiDetachQualificationFuncBinding
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiDetachQualificationFuncBinding
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiDetachQualificationFuncBinding
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiDetachQualificationFuncBinding
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * Func identifier
+     * @type {string}
+     * @memberof SchemasApiDetachQualificationFuncBinding
+     */
+    readonly funcId: string
 }
 
 /**
@@ -8722,6 +9380,66 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
      */
     public createVariantQualification(requestParameters: SchemasApiCreateVariantQualificationRequest, options?: RawAxiosRequestConfig) {
         return SchemasApiFp(this.configuration).createVariantQualification(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantQualificationFuncV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Delete the binding between an action func and the schema variant
+     * @param {SchemasApiDetachActionFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public detachActionFuncBinding(requestParameters: SchemasApiDetachActionFuncBindingRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).detachActionFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Delete the binding between an authentication func and the schema variant
+     * @param {SchemasApiDetachAuthenticationFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public detachAuthenticationFuncBinding(requestParameters: SchemasApiDetachAuthenticationFuncBindingRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).detachAuthenticationFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Delete the binding between a codegen func and the schema variant
+     * @param {SchemasApiDetachCodegenFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public detachCodegenFuncBinding(requestParameters: SchemasApiDetachCodegenFuncBindingRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).detachCodegenFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Delete the binding between a management func and the schema variant
+     * @param {SchemasApiDetachManagementFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public detachManagementFuncBinding(requestParameters: SchemasApiDetachManagementFuncBindingRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).detachManagementFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Delete the binding between a qualification func and the schema variant
+     * @param {SchemasApiDetachQualificationFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public detachQualificationFuncBinding(requestParameters: SchemasApiDetachQualificationFuncBindingRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).detachQualificationFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
