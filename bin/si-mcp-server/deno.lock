@@ -12,7 +12,7 @@
     "jsr:@std/fmt@~1.0.2": "1.0.8",
     "jsr:@std/internal@^1.0.10": "1.0.10",
     "jsr:@std/text@~1.0.7": "1.0.16",
-    "jsr:@systeminit/api-client@^1.3.2": "1.3.2",
+    "jsr:@systeminit/api-client@^1.4.0": "1.4.0",
     "npm:@modelcontextprotocol/sdk@^1.16.0": "1.18.1_express@5.1.0_zod@3.25.76",
     "npm:axios@*": "1.12.2",
     "npm:axios@^1.12.0": "1.12.2",
@@ -76,8 +76,8 @@
     "@std/text@1.0.16": {
       "integrity": "ddb9853b75119a2473857d691cf1ec02ad90793a2e8b4a4ac49d7354281a0cf8"
     },
-    "@systeminit/api-client@1.3.2": {
-      "integrity": "cdbf93c8b3176ad82dc1ad6703cccf7a65cadea7e333848391995e6b01d0e8a5",
+    "@systeminit/api-client@1.4.0": {
+      "integrity": "b409d4d0f063cc78096cde37617a19f1f5a5ae174d50f05349e6f30f1ba903d5",
       "dependencies": [
         "npm:axios@^1.6.1"
       ]
@@ -673,7 +673,7 @@
       "jsr:@onjara/optic@^2.0.3",
       "jsr:@std/assert@1",
       "jsr:@std/encoding@^1.0.10",
-      "jsr:@systeminit/api-client@^1.3.2",
+      "jsr:@systeminit/api-client@^1.4.0",
       "npm:@modelcontextprotocol/sdk@^1.16.0",
       "npm:axios@^1.6.1",
       "npm:jwt-decode@4",
