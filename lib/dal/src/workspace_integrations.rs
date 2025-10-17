@@ -6,12 +6,12 @@ use si_data_pg::{
     PgError,
     PgRow,
 };
+use si_id::WorkspacePk;
 use thiserror::Error;
 
 use crate::{
     DalContext,
     TransactionsError,
-    workspace::WorkspaceId,
 };
 
 #[remain::sorted]
@@ -30,7 +30,7 @@ pub use si_id::WorkspaceIntegrationId;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceIntegration {
     pk: WorkspaceIntegrationId,
-    workspace_pk: WorkspaceId,
+    workspace_pk: WorkspacePk,
     slack_webhook_url: Option<String>,
 }
 
@@ -49,6 +49,10 @@ impl TryFrom<PgRow> for WorkspaceIntegration {
 impl WorkspaceIntegration {
     pub fn pk(&self) -> &WorkspaceIntegrationId {
         &self.pk
+    }
+
+    pub fn workspace_pk(&self) -> WorkspacePk {
+        self.workspace_pk
     }
 
     pub fn slack_webhook_url(&self) -> Option<String> {
@@ -106,26 +110,6 @@ impl WorkspaceIntegration {
             .query_opt(
                 "SELECT * FROM workspace_integrations AS w WHERE workspace_pk = $1",
                 &[&workspace_pk],
-            )
-            .await?;
-        let maybe_workspace_integration = match maybe_row {
-            Some(found) => Some(Self::try_from(found)?),
-            None => None,
-        };
-        Ok(maybe_workspace_integration)
-    }
-
-    pub async fn get_by_pk(
-        ctx: &DalContext,
-        workspace_integration_id: WorkspaceIntegrationId,
-    ) -> WorkspaceIntegrationsResult<Option<Self>> {
-        let maybe_row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(
-                "SELECT * FROM workspace_integrations AS w WHERE pk = $1",
-                &[&workspace_integration_id],
             )
             .await?;
         let maybe_workspace_integration = match maybe_row {

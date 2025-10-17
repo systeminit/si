@@ -10,10 +10,7 @@ use axum::{
 use dal::{
     UserPk,
     WorkspacePk,
-    workspace_integrations::{
-        WorkspaceIntegration,
-        WorkspaceIntegrationId,
-    },
+    workspace_integrations::WorkspaceIntegration,
 };
 use permissions::{
     Permission,
@@ -28,6 +25,7 @@ use si_events::audit_log::AuditLogKind;
 
 use super::{
     AppState,
+    IntegrationResponse,
     IntegrationsError,
     IntegrationsResult,
 };
@@ -49,7 +47,7 @@ pub struct UpdateIntegrationRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateIntegrationResponse {
-    pub integration: WorkspaceIntegration,
+    pub integration: IntegrationResponse,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -60,7 +58,7 @@ pub async fn update_integration(
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
     State(mut state): State<AppState>,
-    Path((workspace_pk, workspace_integration_id)): Path<(WorkspacePk, WorkspaceIntegrationId)>,
+    Path(workspace_pk): Path<WorkspacePk>,
     Json(request): Json<UpdateIntegrationRequest>,
 ) -> IntegrationsResult<Json<UpdateIntegrationResponse>> {
     let ctx = builder.build_head(access_builder).await?;
@@ -83,10 +81,10 @@ pub async fn update_integration(
         return Err(IntegrationsError::UserUnableToApproveIntegration(user_pk));
     }
 
-    let mut integration = WorkspaceIntegration::get_by_pk(&ctx, workspace_integration_id)
+    let mut integration = WorkspaceIntegration::get_integrations_for_workspace_pk(&ctx)
         .await?
-        .ok_or(IntegrationsError::IntegrationNotFound(
-            workspace_integration_id,
+        .ok_or(IntegrationsError::IntegrationNotFoundForWorkspace(
+            workspace_pk,
         ))?;
 
     if let Some(webhook_url) = request.slack_webhook_url {
@@ -118,5 +116,7 @@ pub async fn update_integration(
 
     ctx.commit_no_rebase().await?;
 
-    Ok(Json(UpdateIntegrationResponse { integration }))
+    Ok(Json(UpdateIntegrationResponse {
+        integration: integration.into(),
+    }))
 }

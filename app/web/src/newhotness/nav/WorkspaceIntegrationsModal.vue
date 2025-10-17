@@ -44,9 +44,8 @@ function open() {
 const webhookUrl = ref("");
 
 const updateIntegrations = () => {
-  if (!webhookUrl.value || webhookUrl.value === "" || !integration.value?.pk)
-    return;
-  workspacesStore.UPDATE_INTEGRATION(integration.value?.pk, webhookUrl.value);
+  if (!webhookUrl.value || webhookUrl.value === "") return;
+  workspacesStore.UPDATE_INTEGRATION(webhookUrl.value);
 
   modalRef.value?.close();
   webhookUrl.value = "";
