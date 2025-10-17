@@ -39,13 +39,10 @@ use si_id::{
 use crate::{
     component::attribute_tree::ValidationStatus,
     definition_checksum::DefinitionChecksum,
-    schema_variant::{
-        SchemaVariantsByCategory,
-        prop_tree::{
-            Prop,
-            PropKind,
-            PropWidgetKind,
-        },
+    schema_variant::prop_tree::{
+        Prop,
+        PropKind,
+        PropWidgetKind,
     },
 };
 
@@ -202,15 +199,6 @@ impl FrontendChecksum for Prop {
 impl FrontendChecksum for SchemaVariantId {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
-    }
-}
-
-impl FrontendChecksum for SchemaVariantsByCategory {
-    fn checksum(&self) -> Checksum {
-        let mut hasher = ChecksumHasher::new();
-        hasher.update(FrontendChecksum::checksum(&self.display_name).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.schema_variants).as_bytes());
-        hasher.finalize()
     }
 }
 

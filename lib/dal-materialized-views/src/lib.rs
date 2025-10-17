@@ -62,7 +62,6 @@ pub mod incoming_connections_list;
 pub mod luminork;
 pub mod mgmt_prototype_view_list;
 pub mod schema_variant;
-pub mod schema_variant_categories;
 pub mod secret;
 pub mod view;
 pub mod view_component_list;

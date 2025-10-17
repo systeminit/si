@@ -52,10 +52,7 @@ pub use crate::{
     cached_schema_variant::CachedSchemaVariant,
     materialized_view::MaterializedView,
     prop_schema::PropSchemaV1,
-    schema_variant::{
-        SchemaVariant,
-        UninstalledVariant,
-    },
+    schema_variant::SchemaVariant,
     view::{
         View,
         ViewList,

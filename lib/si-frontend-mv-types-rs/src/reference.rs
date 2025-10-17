@@ -62,7 +62,6 @@ pub enum ReferenceKind {
     ManagementConnections,
     SchemaMembers,
     SchemaVariant,
-    SchemaVariantCategories,
     View,
     ViewComponentList,
     ViewList,
