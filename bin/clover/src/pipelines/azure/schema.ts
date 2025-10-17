@@ -1,4 +1,5 @@
 import type {
+  CfArrayProperty,
   CfHandler,
   CfHandlerKind,
   CfObjectProperty,
@@ -7,8 +8,35 @@ import type {
 } from "../types.ts";
 import { JSONSchema } from "../draft_07.ts";
 import assert from "node:assert";
-import $RefParser from "@apidevtools/json-schema-ref-parser";
+import SwaggerParser from "@apidevtools/swagger-parser";
+import { OpenAPI } from "openapi-types";
 import path from "node:path";
+
+/// OpenAPI.Document without $ref, with some Azure-specific extensions
+export type AzureOpenApiDocument = Dereference<OpenAPI.Document<OperationExt>>;
+/// OpenAPI.Operation without $ref, with some Azure-specific extensions
+export type AzureOpenApiOperation = Dereference<
+  OpenAPI.Operation<OperationExt>
+>;
+/// Adds "schema" to responses in OpenAPI.Operation
+interface OperationExt {
+  responses?: {
+    [K in string]?: AzureOpenApiResponse;
+  };
+}
+/// Adds "schema" to responses in OpenAPI.Operation
+type AzureOpenApiResponse = NonNullable<
+  OpenAPI.Operation["responses"]
+>[string] & {
+  schema?: JSONSchema;
+};
+
+/// Remove { $ref } from schema (which is what happens when you call SwaggerParser.Dereference)
+type Dereference<T> = DereferenceChildren<Exclude<T, { $ref: string }>>;
+/// Remove { $ref } recursively from all children of a schema (used by Dereference)
+type DereferenceChildren<T> = {
+  [K in keyof T]: Dereference<T[K]>;
+};
 
 type JSONPointer = string;
 
@@ -33,17 +61,6 @@ export interface AzureSchema {
   apiVersion?: string;
 }
 
-export interface AzureOpenApiSpec {
-  info: {
-    title?: string;
-    version: string;
-    description?: string;
-  };
-  host: string;
-  schemes: string[];
-  paths: Record<string, Record<AzureHttpMethod, AzureOpenApiOperation>>;
-}
-
 export const AZURE_HTTP_METHODS = [
   "get",
   "put",
@@ -54,129 +71,22 @@ export const AZURE_HTTP_METHODS = [
 ] as const;
 export type AzureHttpMethod = (typeof AZURE_HTTP_METHODS)[number];
 
-export interface AzureOpenApiOperation {
-  operationId: string;
-  description?: string;
-  summary?: string;
-  parameters?: AzureOpenApiParameter[];
-  responses: Record<string, AzureOpenApiResponse>;
-}
-
-type AzureOpenApiParameter = {
-  name: string;
-  description?: string;
-} & (
-  | {
-      in: "query" | "header" | "path" | "cookie";
-    }
-  | {
-      name: string;
-      in: "body";
-      schema: JSONSchema.Object;
-    }
-);
-
-export interface AzureOpenApiResponse {
-  description?: string;
-  schema?: JSONSchema.Object;
-}
-
-export function assertAzureOpenApiSpec(
-  o: unknown,
-): asserts o is AzureOpenApiSpec {
-  assert(
-    typeof o === "object" && o !== null,
-    `Expected spec to be object: ${JSON.stringify(o, null, 2)}`,
-  );
-  assert(
-    "info" in o && typeof o.info === "object" && o.info !== null,
-    `Expected info in spec: ${JSON.stringify(o, null, 2)}`,
-  );
-  assert(
-    "paths" in o && typeof o.paths === "object" && o.paths !== null,
-    `Expected paths in spec: ${JSON.stringify(o, null, 2)}`,
-  );
-  for (const methods of Object.values(o.paths)) {
-    assert(typeof methods === "object" && methods !== null);
-    for (const [method, operation] of Object.entries(methods)) {
-      // TODO DataLakeStorage does this and it's unclear if it's an error
-      if (method === "parameters") continue;
-      assert(
-        AZURE_HTTP_METHODS.includes(method as AzureHttpMethod),
-        `Unexpected method ${method} in spec: ${JSON.stringify(o, null, 2)}`,
-      );
-      assertAzureOpenApiOperation(operation);
-    }
-  }
-}
-
-export function assertAzureOpenApiOperation(
-  o: unknown,
-): asserts o is AzureOpenApiOperation {
-  assert(
-    typeof o === "object" && o !== null,
-    `Expected operation to be object: ${JSON.stringify(o, null, 2)}`,
-  );
-  assert(
-    "operationId" in o,
-    `Expected operationId in operation: ${JSON.stringify(o, null, 2)}`,
-  );
-  if ("parameters" in o) {
-    assert(
-      Array.isArray(o.parameters),
-      `Expected parameters to be array: ${JSON.stringify(o, null, 2)}`,
-    );
-    for (const parameter of o.parameters) {
-      assertAzureOpenApiParameter(parameter);
-    }
-  }
-  assert(
-    "responses" in o && typeof o.responses === "object" && o.responses !== null,
-    `Expected responses in operation: ${JSON.stringify(o, null, 2)}`,
-  );
-  for (const response of Object.values(o.responses)) {
-    assertAzureOpenApiResponse(response);
-  }
-}
-
-export function assertAzureOpenApiParameter(
-  o: unknown,
-): asserts o is AzureOpenApiResponse {
-  assert(
-    typeof o === "object" && o !== null,
-    `Expected parameter to be object: ${JSON.stringify(o, null, 2)}`,
-  );
-  assert(
-    "name" in o && typeof o.name === "string",
-    `Expected name in parameter: ${JSON.stringify(o, null, 2)}`,
-  );
-  assert(
-    "in" in o && typeof o.in === "string",
-    `Expected 'in' in parameter: ${JSON.stringify(o, null, 2)}`,
-  );
-  if (o.in === "body") {
-    assert(
-      "schema" in o,
-      `Expected schema in body parameter: ${JSON.stringify(o, null, 2)}`,
-    );
-  }
-}
-
-export function assertAzureOpenApiResponse(
-  o: unknown,
-): asserts o is AzureOpenApiResponse {
-  assert(
-    typeof o === "object" && o !== null,
-    `Expected response to be object: ${JSON.stringify(o, null, 2)}`,
-  );
-}
-
 export type AzureProperty = CfProperty;
 export type AzureObjectProperty = CfObjectProperty;
+export type AzureArrayProperty = CfArrayProperty;
 
 export function isAzureObjectProperty(o: unknown): o is AzureObjectProperty {
   if (!(typeof o === "object" && o !== null)) return false;
-  return !("type" in o && o.type !== "object");
+  if ("type" in o && o.type === "object") return true;
+  if ("properties" in o) return true;
+  return false;
+}
+
+export function isAzureArrayProperty(o: unknown): o is AzureArrayProperty {
+  if (!(typeof o === "object" && o !== null)) return false;
+  if ("type" in o && o.type === "array") return true;
+  if ("items" in o) return true;
+  return false;
 }
 
 export async function initAzureRestApiSpecsRepo(options: CommonCommandOptions) {
@@ -196,18 +106,15 @@ export async function initAzureRestApiSpecsRepo(options: CommonCommandOptions) {
 export async function readAzureSwaggerSpec(filePath: string) {
   const fileUrl = new URL(`file://${filePath}`);
 
-  const swagger = await $RefParser.dereference(fileUrl.href, {
+  const swagger = (await SwaggerParser.dereference(fileUrl.href, {
     dereference: {
-      circular: "ignore",
       onDereference: (_path: string, value: JSONSchema) => {
         if (!(typeof value === "boolean")) {
           Object.assign(value, flattenAllOfProperties(value));
         }
       },
     },
-  });
-
-  assertAzureOpenApiSpec(swagger);
+  })) as AzureOpenApiDocument;
 
   const apiVersion = extractApiVersion(filePath);
   if (apiVersion) {

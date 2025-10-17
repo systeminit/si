@@ -56,7 +56,7 @@ async function getLatestAzureSpecs(options: PipelineOptions) {
       throw e;
     }
     processed++;
-    if (processed % 50 === 0) {
+    if (processed % 100 === 0) {
       console.log(`Processed ${processed} specs...`);
     }
   }

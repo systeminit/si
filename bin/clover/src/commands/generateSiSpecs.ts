@@ -72,7 +72,7 @@ function unexpandSchema(expanded: ExpandedSchemaSpec): SchemaSpec {
 function unexpandVariant(
   expanded: ExpandedSchemaVariantSpec,
 ): SchemaVariantSpec {
-  const { ...variant } = expanded;
+  const { superSchema: _, ...variant } = expanded;
   bfsPropTree(
     [
       variant.domain,

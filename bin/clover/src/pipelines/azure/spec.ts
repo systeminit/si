@@ -7,10 +7,10 @@ import {
   AzureSchema,
   PropertySet,
   isAzureObjectProperty,
-  AZURE_HTTP_METHODS,
-  AzureOpenApiOperation,
   AzureProperty,
-  AzureOpenApiSpec,
+  AzureOpenApiDocument,
+  AzureOpenApiOperation,
+  AZURE_HTTP_METHODS,
 } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
@@ -26,9 +26,7 @@ export function extractPropertiesFromRequestBody(
   assert(bodyParams.length <= 1, "Expected at most one body parameter");
 
   const { schema } = bodyParams[0];
-  if (!isAzureObjectProperty(schema))
-    console.log(`schema: ${JSON.stringify(schema, null, 2)}`);
-  assert(isAzureObjectProperty(schema), "Expected body schema to be an object");
+  assert(isAzureObjectProperty(schema), "Body schema is not an object");
 
   return {
     properties: schema.properties ?? {},
@@ -39,8 +37,12 @@ export function extractPropertiesFromRequestBody(
 export function extractPropertiesFromResponseBody(
   operation: AzureOpenApiOperation | null,
 ) {
-  const schema = operation?.responses["200"]?.schema;
+  const schema = operation?.responses?.["200"]?.schema;
   if (!schema) return { properties: {}, required: [] };
+  assert(
+    isAzureObjectProperty(schema),
+    `Response schema is not an object: ${operation.operationId}`,
+  );
 
   return {
     properties: schema.properties ?? {},
@@ -48,8 +50,17 @@ export function extractPropertiesFromResponseBody(
   };
 }
 
+/// Normalize a generic JSONSchema into an AzureProperty, *recursively*
+
+/// Normalize a generic JSONSchema into an AzureProperty:
+/// - "true" and "false" become { type: "string" }
+/// - missing "type" is inferred from "format", "properties", or "items"
+/// - Draft 4 exclusiveMinimum/Maximum bools converted to Draft 6+
+/// - formats normalized to SI-supported ones
 export function normalizeAzureProperty(prop: JSONSchema): AzureProperty {
-  if (prop === true || prop === false) return { type: "string" };
+  if (prop === true || prop === false) {
+    prop = { type: "string" };
+  }
 
   if (!prop.type) {
     // Infer type from format if present
@@ -75,10 +86,10 @@ export function normalizeAzureProperty(prop: JSONSchema): AzureProperty {
 
     // Draft 4 -> Draft 6+ conversion (exclusiveMinimum/Maximum)
     for (const key of ["exclusiveMinimum", "exclusiveMaximum"] as const) {
-      const val = normalized[key] as JSONSchema | boolean;
       const baseKey = key === "exclusiveMinimum" ? "minimum" : "maximum";
-      if (val === true && typeof normalized[baseKey] === "number") {
-        normalized[key] = normalized[baseKey];
+      const val = normalized[key] as JSONSchema | boolean;
+      const baseVal = prop[baseKey];
+      if (val === true && typeof baseVal === "number") {
         delete normalized[baseKey];
       } else if (val === false) {
         delete normalized[key];
@@ -116,41 +127,84 @@ export function normalizeAzureProperty(prop: JSONSchema): AzureProperty {
       }
     }
 
-    // Recursively normalize nested schemas
-    if (normalized.properties) {
-      normalized.properties = Object.fromEntries(
-        Object.entries(normalized.properties)
-          .filter(([_k, v]) => typeof v === "object" && v !== null)
-          .map(([k, v]) => [k, normalizeAzureProperty(v)]),
-      );
-    }
-
-    // Normalize additionalProperties and items (convert boolean to schema)
-    for (const key of ["additionalProperties", "items"] as const) {
-      if (normalized[key] === true) {
-        normalized[key] = { type: "string" };
-      } else if (normalized[key] && typeof normalized[key] === "object") {
-        normalized[key] = normalizeAzureProperty(normalized[key] as JSONSchema);
-      }
-    }
-
-    return normalized as AzureProperty;
+    prop = normalized;
   }
 
   // Handle oneOf with primitives by merging in the first non-string type
   if (prop.oneOf) {
-    const primitives = prop.oneOf.map((m) =>
-      typeof m === "object" &&
-      typeof m.type === "string" &&
-      ["string", "number", "integer", "boolean"].includes(m.type)
-        ? m.type
-        : undefined,
-    );
+    assert(!prop.type);
+    let type: "string" | "number" | "integer" | "boolean" | undefined;
+    for (const oneOf of prop.oneOf.map(normalizeAzureProperty)) {
+      switch (oneOf.type) {
+        // use string only if nothing else is available
+        case "string":
+          type ??= "string";
+          break;
+        // number/integer/boolean overrides string
+        case "number":
+        case "integer":
+        case "boolean":
+          if (!type || type === "string") type = oneOf.type;
+          break;
+        // We can't smoosh object/array together with string (or don't know how yet)
+        default:
+          if (type) throw new Error();
+          break;
+      }
+    }
+    if (type) {
+      prop = { ...prop, type };
+      delete prop.oneOf;
+    }
+  }
 
-    if (primitives.every((t) => t)) {
-      const type = primitives.find((t) => t !== "string") ?? "string";
-      const smooshed = { ...prop, type, oneOf: undefined };
-      return normalizeAzureProperty(smooshed);
+  return prop as AzureProperty;
+}
+
+/// Normalize, with a seen list to check for cycles
+function normalizeAzurePropertyRecursively(
+  prop: JSONSchema,
+  seen: Set<JSONSchema>,
+): AzureProperty {
+  // If there's a circular reference, we know we're already normalizing this prop, so we don't
+  // do it twice.
+  if (seen.has(prop)) return prop as AzureProperty;
+  seen.add(prop);
+
+  // First normalize the base types
+  prop = normalizeAzureProperty(prop);
+
+  // Recursively normalize properties, additionalProperties, and items
+  if (prop.properties) {
+    prop = {
+      ...prop,
+      properties: Object.fromEntries(
+        Object.entries(prop.properties)
+          .filter(([_k, v]) => typeof v === "object" && v !== null)
+          .map(([k, v]) => [k, normalizeAzurePropertyRecursively(v, seen)]),
+      ),
+    };
+  }
+
+  // Normalize additionalProperties
+  if (prop.additionalProperties) {
+    prop = {
+      ...prop,
+      additionalProperties: normalizeAzurePropertyRecursively(
+        prop.additionalProperties,
+        seen,
+      ),
+    };
+  }
+
+  // Normalize items
+  if (prop.items) {
+    if (Array.isArray(prop.items)) {
+      prop.items = prop.items.map((item) =>
+        normalizeAzurePropertyRecursively(item, seen),
+      ) as JSONSchema[];
+    } else {
+      prop.items = normalizeAzurePropertyRecursively(prop.items, seen);
     }
   }
 
@@ -158,24 +212,27 @@ export function normalizeAzureProperty(prop: JSONSchema): AzureProperty {
 }
 
 export function mergePropertyDefinitions(
-  existing: JSONSchema | undefined,
-  newProp: JSONSchema,
-): JSONSchema {
+  existing: AzureProperty | undefined,
+  newProp: AzureProperty,
+): AzureProperty {
   if (!existing) return newProp;
   assert(typeof existing !== "boolean");
   assert(typeof newProp !== "boolean");
 
   const merged = { ...existing };
 
-  const existingEnum = existing.enum as unknown[] | undefined;
-  const newPropEnum = newProp.enum as unknown[] | undefined;
-  if (existingEnum && newPropEnum) {
-    merged.enum = [...new Set([...existingEnum, ...newPropEnum])];
-  } else if (newPropEnum) {
-    merged.enum = newPropEnum;
+  if ("enum" in merged) {
+    assert("enum" in newProp, "Cannot merge enum with non-enum");
+    const existingEnum = merged.enum as unknown[] | undefined;
+    const newPropEnum = newProp.enum as unknown[] | undefined;
+    if (existingEnum && newPropEnum) {
+      merged.enum = [...new Set([...existingEnum, ...newPropEnum])];
+    } else if (newPropEnum) {
+      merged.enum = newPropEnum;
+    }
   }
 
-  if (newProp.description && !existing.description) {
+  if (newProp.description && !merged.description) {
     merged.description = newProp.description;
   }
 
@@ -197,11 +254,12 @@ export function buildHandlersFromOperations(operations: AzureOperationData[]) {
     const op = openApiOperation;
     const methodLower = method.toLowerCase();
 
+    // If there's no schema or it's not an object, we can't merge its properties
     switch (methodLower) {
       case "get": {
         const isList = op.operationId?.includes("List");
         result.handlers[isList ? "list" : "read"] = defaultHandler;
-        if (!isList || !result.getOperation) {
+        if (!isList) {
           result.getOperation = op;
         }
         break;
@@ -243,6 +301,14 @@ export function mergeAzureResourceOperations(
 
   if (!getOperation) {
     logger.debug(`No GET operation found for ${resourceType}`);
+    return null;
+  }
+
+  if (!putOperation && !patchOperation && !deleteOperation) {
+    // readonly schema! Skipping.
+    logger.debug(
+      `No PUT, PATCH or DELETE operations found for ${resourceType}`,
+    );
     return null;
   }
 
@@ -313,23 +379,35 @@ export function mergeAzureResourceOperations(
   function collectReadOnlyPaths(
     properties: JSONSchema,
     pathPrefix: string = "",
+    seen: JSONSchema[] = [],
   ): string[] {
-    const paths: string[] = [];
+    if (seen.includes(properties)) return [];
+    seen.push(properties);
+    try {
+      const paths: string[] = [];
 
-    for (const [key, prop] of Object.entries(properties)) {
-      const propSchema = prop;
-      const currentPath = pathPrefix ? `${pathPrefix}/${key}` : key;
+      for (const [key, prop] of Object.entries(properties)) {
+        const propSchema = prop;
+        const currentPath = pathPrefix ? `${pathPrefix}/${key}` : key;
 
-      if (propSchema?.readOnly === true) {
-        paths.push(currentPath);
+        if (propSchema?.readOnly === true) {
+          paths.push(currentPath);
+        }
+
+        if (
+          propSchema?.properties &&
+          typeof propSchema.properties === "object"
+        ) {
+          paths.push(
+            ...collectReadOnlyPaths(propSchema.properties, currentPath, seen),
+          );
+        }
       }
 
-      if (propSchema?.properties && typeof propSchema.properties === "object") {
-        paths.push(...collectReadOnlyPaths(propSchema.properties, currentPath));
-      }
+      return paths;
+    } finally {
+      seen.pop();
     }
-
-    return paths;
   }
 
   // Collect all readOnly paths from the merged properties
@@ -374,18 +452,12 @@ export function mergeAzureResourceOperations(
     ),
   ];
 
-  const normalizedProperties: Record<string, CfProperty> = {};
-  for (const [key, prop] of Object.entries(mergedProperties)) {
-    if (typeof prop !== "object" || prop === null) continue;
-    normalizedProperties[key] = normalizeAzureProperty(prop) as CfProperty;
-  }
-
   // Split properties into domain (writable) and resource_value (readable)
   const readOnlySet = new Set(onlyProperties.readOnly);
   const domainProperties: Record<string, CfProperty> = {};
   const resourceValueProperties: Record<string, CfProperty> = {};
 
-  for (const [name, prop] of Object.entries(normalizedProperties)) {
+  for (const [name, prop] of Object.entries(mergedProperties)) {
     if (readOnlySet.has(name)) {
       resourceValueProperties[name] = prop;
     } else {
@@ -396,7 +468,7 @@ export function mergeAzureResourceOperations(
   const schema: AzureSchema = {
     typeName: resourceType,
     description,
-    properties: normalizedProperties,
+    properties: mergedProperties,
     requiredProperties,
     primaryIdentifier: ["id"],
     handlers,
@@ -413,71 +485,59 @@ export function mergeAzureResourceOperations(
   );
 }
 
-function isResourcePath(path: string): boolean {
-  const match = path.match(
-    /providers\/([^/]+)\/([^/{]+)(\/\{[^}]+\})?(\/(.+))?/,
-  );
-  if (!match) return false;
-  return !match[4];
-}
-
 function extractResourceTypeFromPath(path: string): string | null {
-  const match = path.match(/providers\/([^/]+)\/([^/{]+)/);
-  if (match) {
-    const providerNamespace = match[1];
-    const serviceName = providerNamespace.split(".").pop() || providerNamespace;
-    const resourceType = match[2];
-    const capitalizedResource =
-      resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
-    return `Azure::${serviceName}::${capitalizedResource}`;
-  }
-  return null;
+  // Form: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/applicationGateways/{applicationGatewayName}
+  const match = path.match(/\/providers\/([^/]+)\/([^/{]+)\/\{[^/}]+\}$/);
+  if (!match) return null;
+  const [_, providerNamespace, resourceType] = match;
+  const serviceName = providerNamespace.split(".").pop() || providerNamespace;
+  const capitalizedResource =
+    resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
+  return `Azure::${serviceName}::${capitalizedResource}`;
 }
 
 export function parseAzureSpec(
-  openApiSpec: AzureOpenApiSpec,
+  openApiDoc: AzureOpenApiDocument,
 ): ExpandedPkgSpec[] {
   const specs: ExpandedPkgSpec[] = [];
 
-  if (!openApiSpec.paths) {
+  if (!openApiDoc.paths) {
     console.warn("No paths found in Azure schema");
     return [];
   }
 
   const resourceOperations: Record<string, AzureOperationData[]> = {};
 
-  Object.entries(openApiSpec.paths).forEach(([path, operations]) => {
-    if (!isResourcePath(path)) return;
+  for (const [path, methods] of Object.entries(openApiDoc.paths)) {
+    const resourceType = extractResourceTypeFromPath(path);
 
-    AZURE_HTTP_METHODS.forEach((method) => {
-      const openApiOperation = operations[method];
-      if (openApiOperation) {
-        const resourceType = extractResourceTypeFromPath(path);
+    if (!resourceType) continue;
+    if (resourceType.includes("Reminder: Need renaming")) continue; // lol
+    // these are the supplemental actions endpoints. Skipping for now
+    if (resourceType.endsWith("Operations")) continue;
 
-        if (!resourceType) return;
-        if (resourceType.includes("Reminder: Need renaming")) return; // lol
-        // these are the supplemental actions endpoints. Skipping for now
-        if (resourceType.endsWith("Operations")) return;
+    for (const method of AZURE_HTTP_METHODS) {
+      const openApiOperation = methods?.[method];
+      if (!openApiOperation) continue;
 
-        if (!resourceOperations[resourceType]) {
-          resourceOperations[resourceType] = [];
-        }
-
-        resourceOperations[resourceType].push({
-          method,
-          path,
-          openApiOperation,
-          apiVersion: undefined,
-        });
+      if (!resourceOperations[resourceType]) {
+        resourceOperations[resourceType] = [];
       }
-    });
-  });
+
+      resourceOperations[resourceType].push({
+        method,
+        path,
+        openApiOperation,
+        apiVersion: undefined,
+      });
+    }
+  }
 
   Object.entries(resourceOperations).forEach(([resourceType, operations]) => {
     const spec = mergeAzureResourceOperations(
       resourceType,
       operations,
-      openApiSpec.info.version,
+      openApiDoc.info.version,
     );
     if (spec) {
       specs.push(spec);

@@ -1,8 +1,6 @@
 import {
-  CfProperty,
   FetchSchemaOptions,
   PipelineOptions,
-  PropertyNormalizationContext,
   PROVIDER_REGISTRY,
   ProviderConfig,
   SuperSchema,
@@ -17,6 +15,7 @@ import {
 import { normalizeAzureProperty } from "./spec.ts";
 import { generateAzureSpecs } from "./pipeline.ts";
 import { initAzureRestApiSpecsRepo } from "./schema.ts";
+import { JSONSchema } from "../draft_07.ts";
 
 async function azureFetchSchema(options: FetchSchemaOptions) {
   const specsRepo = initAzureRestApiSpecsRepo(options);
@@ -72,16 +71,8 @@ function azureIsChildRequired(
   return schema.requiredProperties.has(childName);
 }
 
-function azureNormalizeProperty(
-  prop: CfProperty,
-  _context: PropertyNormalizationContext,
-): CfProperty {
-  let propToNormalize = prop;
-  if ("properties" in prop && prop.properties && !prop.type) {
-    propToNormalize = { ...prop, type: "object" };
-  }
-
-  return normalizeAzureProperty(propToNormalize);
+function azureNormalizeProperty(prop: JSONSchema) {
+  return normalizeAzureProperty(prop);
 }
 
 async function azureLoadSchemas(options: PipelineOptions) {

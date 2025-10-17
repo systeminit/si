@@ -16,7 +16,8 @@ import _logger from "./logger.ts";
 import { ServiceMissing } from "./errors.ts";
 import _ from "npm:lodash@4.17.21";
 import rawCfSchema from "./cf-schema.json" with { type: "json" };
-import { CfDb, CfObjectProperty, CfProperty, CfPropertyType, CfSchema } from "../../../bin/clover/src/pipelines/types.ts";
+import { CfDb, CfObjectProperty, CfProperty, CfPropertyType, CfSchema, isCfPropertyType } from "../../../bin/clover/src/pipelines/types.ts";
+import "./isArrayFix.ts"
 
 export type { CfDb, CfObjectProperty, CfProperty, CfPropertyType, CfSchema };
 
@@ -33,10 +34,11 @@ const logger = _logger.ns("cfDb").seal();
  * @returns The normalized property with consistent structure
  */
 export function normalizeProperty(
-  prop: CfProperty,
+  prop: JSONSchema,
 ): CfProperty {
-  const normalizedCfData = normalizePropertyType(prop);
-  return normalizeAnyOfAndOneOfTypes(normalizedCfData);
+  prop = normalizePropertyType(prop);
+  prop = normalizeAnyOfAndOneOfTypes(prop);
+  return prop as CfProperty;
 }
 
 /**
@@ -52,57 +54,57 @@ export function normalizeProperty(
  * @internal
  */
 function normalizePropertyType(
-  prop: CfProperty,
-): CfProperty {
-  // If it already has a single type, return the prop as-is
-  if (typeof prop.type === "string") return prop;
+  prop: JSONSchema,
+) {
+  if (typeof prop === "boolean") throw new Error("unexpected boolean type");
+
+  // If it's already a single CfPropertyType, return it as-is
+  if (isCfPropertyType(prop.type)) return prop;
+
+  // If it's not a recognized type name, throw
+  if (typeof prop.type === "string") throw new Error(`Unexpected prop type ${prop.type}`);
+  if (typeof prop.type === "number") throw new Error(`Unexpected numeric prop type (${prop.type})`);
 
   // Infer type when there is none.
   if (prop.type === undefined) {
     // Some props have no type but we can duck type them to objects
-    if (isCfObjectProperty(prop)) {
-      return { ...prop, type: "object" } as CfObjectProperty;
-    }
-
+    if (prop.properties || prop.patternProperties) return { ...prop, type: "object" };
     // TODO we really need to look inside the ref here rather than assuming string ...
-    if (prop.$ref) {
-      return { ...prop, type: "string" } as CfProperty;
-    }
+    if (prop.$ref) return { ...prop, type: "string" };
 
     // If it's a multi-type thing, return it--we don't really handle these yet.
     return prop;
   }
 
-  // The only remaining possible type is array.
+  if (Array.isArray(prop.type)) {
+    // If the cf type is an array, it's always string+something, and we use that something
+    // to guess the best type we should use
+    const nonStringType = prop.type.find((t) => t !== "string");
+    // TODO we need to know whether there *was* a string type here; and we need to know if
+    // there were more than one non-string type
 
-  // If the cf type is an array, it's always string+something, and we use that something
-  // to guess the best type we should use
-  const nonStringType = prop.type.find((t) => t !== "string");
-
-  let type: CfPropertyType;
-  switch (nonStringType) {
-    case "boolean":
-    case "integer":
-    case "number":
-      type = nonStringType;
-      break;
-    case "object":
-      // If it's an object we make it a json type, which will become a string type + textArea widget
-      type = "json";
-      break;
-    case "array": {
-      // When we get something that is string/array, the items object should already there
-      if (!("items" in prop)) {
-        throw new Error("array typed prop includes array but has no items");
+    switch (nonStringType) {
+      case "boolean":
+      case "integer":
+      case "number":
+        return { ...prop, type: nonStringType };
+      case "object":
+        // If it's an object we make it a json type, which will become a string type + textArea widget
+        return { ...prop, type: "json" };
+      case "array": {
+        // When we get something that is string/array, the items object should already there
+        if (!("items" in prop)) {
+          throw new Error("array typed prop includes array but has no items");
+        }
+        return { ...prop, type: "array" };
       }
-      type = "array";
-      break;
+      default:
+        throw new Error("unhandled array type");
     }
-    default:
-      console.log(prop);
-      throw new Error("unhandled array type");
   }
-  return { ...prop, type } as CfProperty;
+
+  // TODO handle other cases (looks like JSONSchema.Array)
+  throw new Error("unexpected property type");
 }
 
 /**
@@ -116,121 +118,121 @@ function normalizePropertyType(
  * @returns The property with normalized anyOf/oneOf structures
  * @internal
  */
- function normalizeAnyOfAndOneOfTypes(
-   prop: CfProperty,
- ): CfProperty {
-   if (prop.type) return prop;
- 
-   if (prop.oneOf) {
-     const mergedProp: (CfProperty & { type: "object" }) = {
-       description: prop.description,
-       type: "object",
-       properties: {},
-     };
-     let jsonProp: (CfProperty & { type: "string" }) | undefined = undefined;
-     let arrayProp: (CfProperty & { type: "array" }) | undefined = undefined;
- 
-     for (const ofMember of prop.oneOf) {
-       if (!mergedProp.properties) {
-         throw new Error("unexpected oneOf");
-       }
- 
-       if (ofMember.type === "object" && ofMember.properties) {
-         for (const title of _.keys(ofMember.properties)) {
-           mergedProp.properties[title] = ofMember.properties[title];
-         }
-       } else if (ofMember.type === "array" && ofMember.items) {
-         const title = ofMember.title ?? prop.title;
-         if (!title) {
-           console.log(prop);
-           throw new Error(
-             `oneOf array without title`,
-           );
-         }
- 
-         arrayProp = {
-           title,
-           description: prop.description,
-           type: "array",
-           items: normalizeProperty(ofMember.items),
-         };
-       } else if (ofMember.type === "object") {
-         // If its of type object with no properties, we treat it as a string
-         const title = ofMember.title ?? prop.title;
- 
-         jsonProp = {
-           title,
-           description: prop.description,
-           type: "string",
-         }
-       } else {
-         console.log(ofMember);
-         throw new Error(
-           `attempted to process oneOf as not an object or array: ${ofMember}`,
-         );
-       }
-     }
- 
-     // Array props take precedence over JSON props as well as explicit array props,
-     // because we are assuming that props that can be either object or array are really just a
-     // "one or many", i.e. T or T[]
-     if (arrayProp) return arrayProp;
-     // JSON prop is last resort, return the nicely typed one if there is one
-     if (mergedProp.properties) return mergedProp;
-     if (!jsonProp) throw new Error("Unexpected or empty oneOf");
-     return jsonProp;
-   }
- 
-   if (prop.anyOf) {
-     let isObject;
-     const properties = {} as Record<string, CfProperty>;
- 
-     for (const ofMember of prop.anyOf) {
-       if (!isCfObjectProperty(ofMember)) {
-         isObject = false;
-         break;
-       }
-       isObject = true;
- 
-       if (!ofMember.title) {
-         console.log(prop);
-         throw new Error("anyOf of objects without title");
-       }
- 
-       if (ofMember.properties) {
-         isObject = true;
- 
-         properties[ofMember.title] = {
-           ...ofMember.properties[ofMember.title],
-         };
-       } else if (ofMember.patternProperties) {
-         isObject = true;
- 
-         if (!ofMember.title) {
-           console.log(prop);
-           throw new Error("anyOf of objects without title");
-         }
- 
-         properties[ofMember.title] = ofMember;
-       }
-     }
- 
-     if (isObject) {
-       return {
-         description: prop.description,
-         type: "object",
-         properties,
-       };
-     } else {
-       return {
-         description: prop.description,
-         type: "string",
-       };
-     }
-   }
- 
-   return prop;
- }
+function normalizeAnyOfAndOneOfTypes(
+  prop: JSONSchema.Interface,
+) {
+  if (prop.type) return prop;
+
+  if (prop.oneOf) {
+    const mergedProp: (CfProperty & { type: "object" }) = {
+      description: prop.description,
+      type: "object",
+      properties: {},
+    };
+    let jsonProp: (CfProperty & { type: "string" }) | undefined = undefined;
+    let arrayProp: (CfProperty & { type: "array" }) | undefined = undefined;
+
+    for (let ofMember of prop.oneOf) {
+      if (!mergedProp.properties) {
+        throw new Error("unexpected oneOf");
+      }
+
+      ofMember = normalizePropertyType(ofMember);
+
+      if (ofMember.type === "object" && ofMember.properties) {
+        for (const title of _.keys(ofMember.properties)) {
+          mergedProp.properties[title] = normalizeProperty(ofMember.properties[title]);
+        }
+      } else if (ofMember.type === "array" && ofMember.items) {
+        const title = ofMember.title ?? prop.title;
+        if (!title) { throw new Error("oneOf array without title"); }
+
+        // we don't support this yet; throw an exception if it happens so we can decide
+        if (Array.isArray(ofMember.items)) throw new Error("unexpected array as item type");
+
+        arrayProp = {
+          title,
+          description: prop.description,
+          type: "array",
+          items: normalizeProperty(ofMember.items),
+        };
+      } else if (ofMember.type === "object") {
+        // If its of type object with no properties, we treat it as a string
+        const title = ofMember.title ?? prop.title;
+
+        jsonProp = {
+          title,
+          description: prop.description,
+          type: "string",
+        }
+      } else {
+        console.log(ofMember);
+        throw new Error(
+          `attempted to process oneOf as not an object or array: ${ofMember}`,
+        );
+      }
+    }
+
+    // Array props take precedence over JSON props as well as explicit array props,
+    // because we are assuming that props that can be either object or array are really just a
+    // "one or many", i.e. T or T[]
+    if (arrayProp) return arrayProp;
+    // JSON prop is last resort, return the nicely typed one if there is one
+    if (mergedProp.properties) return mergedProp;
+    if (!jsonProp) throw new Error("Unexpected or empty oneOf");
+    return jsonProp;
+  }
+
+  if (prop.anyOf) {
+    let isObject;
+    const properties = {} as Record<string, CfProperty>;
+
+    for (const ofMember of prop.anyOf) {
+      if (!isCfObjectProperty(ofMember)) {
+        isObject = false;
+        break;
+      }
+      isObject = true;
+
+      if (!ofMember.title) {
+        console.log(prop);
+        throw new Error("anyOf of objects without title");
+      }
+
+      if (ofMember.properties) {
+        isObject = true;
+
+        properties[ofMember.title] = {
+          ...ofMember.properties[ofMember.title],
+        };
+      } else if (ofMember.patternProperties) {
+        isObject = true;
+
+        if (!ofMember.title) {
+          console.log(prop);
+          throw new Error("anyOf of objects without title");
+        }
+
+        properties[ofMember.title] = ofMember;
+      }
+    }
+
+    if (isObject) {
+      return {
+        description: prop.description,
+        type: "object",
+        properties,
+      };
+    } else {
+      return {
+        description: prop.description,
+        type: "string",
+      };
+    }
+  }
+
+  return prop;
+}
 
 /**
  * Type guard that determines if a property can be treated as an object property.
@@ -243,14 +245,12 @@ function normalizePropertyType(
  * @internal
  */
 // Tells whether this can be treated like an object (even if it doesn't have type = object)
-function isCfObjectProperty(prop: CfProperty): prop is CfObjectProperty {
-  return prop.type === "object" || "properties" in prop ||
-    "patternProperties" in prop;
+function isCfObjectProperty(prop: JSONSchema): prop is CfObjectProperty {
+  return typeof prop === "object" && (prop.type === "object" || "properties" in prop ||
+    "patternProperties" in prop);
 }
 
 const DB: CfDb = {};
-const DEFAULT_PATH = "./cloudformation-schema";
-const MODULE_URL = new URL(import.meta.url);
 
 /**
  * Loads the CloudFormation database from schema files.
