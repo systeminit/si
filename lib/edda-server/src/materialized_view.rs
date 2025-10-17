@@ -64,10 +64,7 @@ use si_frontend_mv_types::{
         },
     },
     reference::ReferenceKind,
-    schema_variant::{
-        SchemaVariant as SchemaVariantMv,
-        SchemaVariantCategories as SchemaVariantCategoriesMv,
-    },
+    schema_variant::SchemaVariant as SchemaVariantMv,
     view::{
         View as ViewMv,
         ViewComponentList as ViewComponentListMv,
@@ -753,23 +750,6 @@ pub async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into()
                 ),
-                (*maybe_mv_index).clone(),
-            );
-        }
-        ReferenceKind::SchemaVariantCategories => {
-            let workspace_mv_id = workspace_pk.to_string();
-            metric!(
-                counter.edda.mv_build = 1,
-                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
-            );
-            spawn_build_mv_task!(
-                build_tasks,
-                ctx,
-                frigg,
-                change,
-                workspace_mv_id,
-                SchemaVariantCategoriesMv,
-                dal_materialized_views::schema_variant_categories::assemble(ctx.clone()),
                 (*maybe_mv_index).clone(),
             );
         }
