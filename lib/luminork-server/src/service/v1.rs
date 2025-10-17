@@ -121,11 +121,13 @@ pub use management_funcs::{
     get_management_func_run_state::GetManagementFuncJobStateV1Response,
 };
 pub use schemas::{
+    DetachFuncBindingV1Response,
     GetSchemaV1Response,
     GetSchemaVariantV1Response,
     PropSchemaV1,
     SchemaError,
     SchemaV1RequestPath,
+    SchemaVariantFuncV1RequestPath,
     SchemaVariantV1RequestPath,
     create_action::{
         CreateVariantActionFuncV1Request,
@@ -221,6 +223,11 @@ pub use crate::api_types::func_run::v1::{
         schemas::create_codegen::create_variant_codegen,
         schemas::create_management::create_variant_management,
         schemas::update_schema_variant::update_schema_variant,
+        schemas::detach_action_binding::detach_action_func_binding,
+        schemas::detach_authentication_binding::detach_authentication_func_binding,
+        schemas::detach_codegen_binding::detach_codegen_func_binding,
+        schemas::detach_qualification_binding::detach_qualification_func_binding,
+        schemas::detach_management_binding::detach_management_func_binding,
         funcs::get_func_run::get_func_run,
         funcs::get_func::get_func,
         funcs::update_func::update_func,

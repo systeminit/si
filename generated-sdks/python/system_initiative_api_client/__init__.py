@@ -82,6 +82,7 @@ __all__ = [
     "DeleteChangeSetV1Response",
     "DeleteComponentV1Response",
     "DeleteSecretV1Response",
+    "DetachFuncBindingV1Response",
     "DuplicateComponentsV1Request",
     "DuplicateComponentsV1Response",
     "EraseComponentV1Response",
@@ -234,6 +235,7 @@ from system_initiative_api_client.models.create_variant_qualification_func_v1_re
 from system_initiative_api_client.models.delete_change_set_v1_response import DeleteChangeSetV1Response as DeleteChangeSetV1Response
 from system_initiative_api_client.models.delete_component_v1_response import DeleteComponentV1Response as DeleteComponentV1Response
 from system_initiative_api_client.models.delete_secret_v1_response import DeleteSecretV1Response as DeleteSecretV1Response
+from system_initiative_api_client.models.detach_func_binding_v1_response import DetachFuncBindingV1Response as DetachFuncBindingV1Response
 from system_initiative_api_client.models.duplicate_components_v1_request import DuplicateComponentsV1Request as DuplicateComponentsV1Request
 from system_initiative_api_client.models.duplicate_components_v1_response import DuplicateComponentsV1Response as DuplicateComponentsV1Response
 from system_initiative_api_client.models.erase_component_v1_response import EraseComponentV1Response as EraseComponentV1Response

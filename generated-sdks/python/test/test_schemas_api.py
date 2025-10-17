@@ -68,6 +68,41 @@ class TestSchemasApi(unittest.TestCase):
         """
         pass
 
+    def test_detach_action_func_binding(self) -> None:
+        """Test case for detach_action_func_binding
+
+        Delete the binding between an action func and the schema variant
+        """
+        pass
+
+    def test_detach_authentication_func_binding(self) -> None:
+        """Test case for detach_authentication_func_binding
+
+        Delete the binding between an authentication func and the schema variant
+        """
+        pass
+
+    def test_detach_codegen_func_binding(self) -> None:
+        """Test case for detach_codegen_func_binding
+
+        Delete the binding between a codegen func and the schema variant
+        """
+        pass
+
+    def test_detach_management_func_binding(self) -> None:
+        """Test case for detach_management_func_binding
+
+        Delete the binding between a management func and the schema variant
+        """
+        pass
+
+    def test_detach_qualification_func_binding(self) -> None:
+        """Test case for detach_qualification_func_binding
+
+        Delete the binding between a qualification func and the schema variant
+        """
+        pass
+
     def test_find_schema(self) -> None:
         """Test case for find_schema
 
