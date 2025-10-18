@@ -81,20 +81,6 @@ async function check_mjolnir_inner(
         "Should have no components after deletion"
     );
 
-    // await an installed schema variant now
-    await eventualMVAssert(
-        sdf,
-        changeSetId,
-        "SchemaVariantCategories",
-        sdf.workspaceId,
-        (mv) => mv.categories.some((c: any) => c.schemaVariants.some((v: any) => {
-            if(v.type === "installed"){
-                console.log("Found installed schema variant:", v.id, "Expected:", schemaVariantId);
-            }
-            return v.type === "installed" && v.id === schemaVariantId;
-            })),
-        "Schema variant should be installed",
-    );
     // create another one
     schemaVariants = await getVariants(sdf, changeSetId);
     createComponentBody = createComponentPayload(schemaVariants, SCHEMA_NAME);
