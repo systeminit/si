@@ -31,8 +31,8 @@
       "x-nav-path": "Security/Certificates/Actions"
     },
     {
-      "name": "Datacenters",
-      "x-nav-path": "Locations/Datacenters",
+      "name": "Data Centers",
+      "x-nav-path": "Locations/Data Centers",
       "description": "Each Datacenter represents a _virtual_ Datacenter which is made up of possible many physical Datacenters where Servers are hosted.\n\nSee the [Hetzner Locations Docs](https://docs.hetzner.com/cloud/general/locations/#what-datacenters-are-there) for more details about Datacenters.\n"
     },
     {
@@ -3099,10 +3099,10 @@
     "/datacenters": {
       "get": {
         "operationId": "list_datacenters",
-        "summary": "List Datacenters",
-        "description": "Returns all [Datacenters](#datacenters).\n",
+        "summary": "List Data Centers",
+        "description": "Returns all [Data Centers](#data-centers).\n",
         "tags": [
-          "Datacenters"
+          "Data Centers"
         ],
         "parameters": [
           {
@@ -3161,38 +3161,38 @@
         ],
         "responses": {
           "200": {
-            "description": "Contains the queried [Datacenters](#datacenters).",
+            "description": "Contains the queried [Data Centers](#data-centers).",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "datacenters": {
-                      "description": "List of [Datacenters](#datacenters).",
+                      "description": "List of [Data Centers](#data-centers).",
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
                           "id": {
-                            "description": "ID of the [Datacenter](#datacenters).",
+                            "description": "ID of the [Data Center](#data-centers).",
                             "type": "integer",
                             "format": "int64",
                             "maximum": 9007199254740991,
                             "example": 42
                           },
                           "name": {
-                            "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                            "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                             "type": "string",
                             "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                             "example": "fsn1-dc8"
                           },
                           "description": {
-                            "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                            "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                             "type": "string",
                             "example": "Falkenstein DC Park 8"
                           },
                           "location": {
-                            "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                            "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                             "type": "object",
                             "properties": {
                               "id": {
@@ -3254,11 +3254,11 @@
                             ]
                           },
                           "server_types": {
-                            "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                            "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                             "type": "object",
                             "properties": {
                               "supported": {
-                                "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                                "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                                 "type": "array",
                                 "items": {
                                   "type": "integer",
@@ -3271,7 +3271,7 @@
                                 ]
                               },
                               "available": {
-                                "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                                "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                                 "type": "array",
                                 "items": {
                                   "type": "integer",
@@ -3284,7 +3284,7 @@
                                 ]
                               },
                               "available_for_migration": {
-                                "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                                "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                                 "type": "array",
                                 "items": {
                                   "type": "integer",
@@ -3314,7 +3314,7 @@
                       }
                     },
                     "recommendation": {
-                      "description": "Recommended [Datacenter](#datacenters) for creating new resources.",
+                      "description": "Recommended [Data Center](#data-centers) for creating new resources.",
                       "type": "integer",
                       "format": "int64",
                       "example": 1
@@ -3420,19 +3420,19 @@
     "/datacenters/{id}": {
       "get": {
         "operationId": "get_datacenter",
-        "summary": "Get a Datacenter",
-        "description": "Returns a single [Datacenter](#datacenters).\n",
+        "summary": "Get a Data Center",
+        "description": "Returns a single [Data Center](#data-centers).\n",
         "tags": [
-          "Datacenters"
+          "Data Centers"
         ],
         "parameters": [
           {
-            "description": "ID of the Datacenter.",
+            "description": "ID of the Data Center.",
             "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "description": "ID of the [Datacenter](#datacenters).",
+              "description": "ID of the [Data Center](#data-centers).",
               "type": "integer",
               "format": "int64",
               "maximum": 9007199254740991,
@@ -3442,7 +3442,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Contains the queried [Datacenter](#datacenters).",
+            "description": "Contains the queried [Data Center](#data-centers).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3452,25 +3452,25 @@
                       "type": "object",
                       "properties": {
                         "id": {
-                          "description": "ID of the [Datacenter](#datacenters).",
+                          "description": "ID of the [Data Center](#data-centers).",
                           "type": "integer",
                           "format": "int64",
                           "maximum": 9007199254740991,
                           "example": 42
                         },
                         "name": {
-                          "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                          "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                           "type": "string",
                           "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                           "example": "fsn1-dc8"
                         },
                         "description": {
-                          "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                          "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                           "type": "string",
                           "example": "Falkenstein DC Park 8"
                         },
                         "location": {
-                          "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                          "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                           "type": "object",
                           "properties": {
                             "id": {
@@ -3532,11 +3532,11 @@
                           ]
                         },
                         "server_types": {
-                          "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                          "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                           "type": "object",
                           "properties": {
                             "supported": {
-                              "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                              "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                               "type": "array",
                               "items": {
                                 "type": "integer",
@@ -3549,7 +3549,7 @@
                               ]
                             },
                             "available": {
-                              "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                              "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                               "type": "array",
                               "items": {
                                 "type": "integer",
@@ -3562,7 +3562,7 @@
                               ]
                             },
                             "available_for_migration": {
-                              "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                              "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                               "type": "array",
                               "items": {
                                 "type": "integer",
@@ -26927,29 +26927,29 @@
                             "example": false
                           },
                           "datacenter": {
-                            "description": "[Datacenter](#datacenters) the [Primary IP](#primary-ips) is located at.",
+                            "description": "[Data Center](#data-centers) the [Primary IP](#primary-ips) is located at.",
                             "type": "object",
                             "properties": {
                               "id": {
-                                "description": "ID of the [Datacenter](#datacenters).",
+                                "description": "ID of the [Data Center](#data-centers).",
                                 "type": "integer",
                                 "format": "int64",
                                 "maximum": 9007199254740991,
                                 "example": 42
                               },
                               "name": {
-                                "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                                "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                                 "type": "string",
                                 "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                                 "example": "fsn1-dc8"
                               },
                               "description": {
-                                "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                                "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                                 "type": "string",
                                 "example": "Falkenstein DC Park 8"
                               },
                               "location": {
-                                "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                                "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                                 "type": "object",
                                 "properties": {
                                   "id": {
@@ -27011,11 +27011,11 @@
                                 ]
                               },
                               "server_types": {
-                                "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                                "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                                 "type": "object",
                                 "properties": {
                                   "supported": {
-                                    "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                                    "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                                     "type": "array",
                                     "items": {
                                       "type": "integer",
@@ -27028,7 +27028,7 @@
                                     ]
                                   },
                                   "available": {
-                                    "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                                    "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                                     "type": "array",
                                     "items": {
                                       "type": "integer",
@@ -27041,7 +27041,7 @@
                                     ]
                                   },
                                   "available_for_migration": {
-                                    "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                                    "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                                     "type": "array",
                                     "items": {
                                       "type": "integer",
@@ -27258,7 +27258,7 @@
       "post": {
         "operationId": "create_primary_ip",
         "summary": "Create a Primary IP",
-        "description": "Create a new [Primary IP](#primary-ips).\n\nCan optionally be assigned to a resource by providing an `assignee_id` and `assignee_type`.\n\nIf not assigned to a resource the `datacenter` key needs to be provided. This can be either the ID or the name of the [Datacenter](#datacenters) this [Primary IP](#primary-ips) shall be created in.\n\nA [Primary IP](#primary-ips) can only be assigned to resource in the same [Datacenter](#datacenters) later on.\n\n#### Call specific error codes\n\n| Code                          | Description                                                              |\n|------------------------------ |------------------------------------------------------------------------- |\n| `server_not_stopped`          | The specified [Server](#servers) is running, but needs to be powered off |\n| `server_has_ipv4`             | The [Server](#servers) already has an ipv4 address                       |\n| `server_has_ipv6`             | The [Server](#servers) already has an ipv6 address                       |\n",
+        "description": "Create a new [Primary IP](#primary-ips).\n\nCan optionally be assigned to a resource by providing an `assignee_id` and `assignee_type`.\n\nIf not assigned to a resource the `datacenter` key needs to be provided. This can be either the ID or the name of the [Data Center](#data-centers) this [Primary IP](#primary-ips) shall be created in.\n\nA [Primary IP](#primary-ips) can only be assigned to resource in the same [Data Center](#data-centers) later on.\n\n#### Call specific error codes\n\n| Code                          | Description                                                              |\n|------------------------------ |------------------------------------------------------------------------- |\n| `server_not_stopped`          | The specified [Server](#servers) is running, but needs to be powered off |\n| `server_has_ipv4`             | The [Server](#servers) already has an ipv4 address                       |\n| `server_has_ipv6`             | The [Server](#servers) already has an ipv6 address                       |\n",
         "tags": [
           "Primary IPs"
         ],
@@ -27298,7 +27298,7 @@
                     "example": "ipv6"
                   },
                   "datacenter": {
-                    "description": "[Datacenter](#datacenters) ID or name.\n\nThe  [Primary IP](#primary-ips) will be bound to this [Datacenter](#datacenters). Omit if `assignee_id`/`assignee_type` is provided.\n",
+                    "description": "[Data Center](#data-centers) ID or name.\n\nThe  [Primary IP](#primary-ips) will be bound to this [Data Center](#data-centers). Omit if `assignee_id`/`assignee_type` is provided.\n",
                     "type": "string",
                     "example": "fsn1-dc8"
                   },
@@ -27381,29 +27381,29 @@
                           "example": false
                         },
                         "datacenter": {
-                          "description": "[Datacenter](#datacenters) the [Primary IP](#primary-ips) is located at.",
+                          "description": "[Data Center](#data-centers) the [Primary IP](#primary-ips) is located at.",
                           "type": "object",
                           "properties": {
                             "id": {
-                              "description": "ID of the [Datacenter](#datacenters).",
+                              "description": "ID of the [Data Center](#data-centers).",
                               "type": "integer",
                               "format": "int64",
                               "maximum": 9007199254740991,
                               "example": 42
                             },
                             "name": {
-                              "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                              "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                               "type": "string",
                               "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                               "example": "fsn1-dc8"
                             },
                             "description": {
-                              "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                              "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                               "type": "string",
                               "example": "Falkenstein DC Park 8"
                             },
                             "location": {
-                              "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                              "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                               "type": "object",
                               "properties": {
                                 "id": {
@@ -27465,11 +27465,11 @@
                               ]
                             },
                             "server_types": {
-                              "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                              "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                               "type": "object",
                               "properties": {
                                 "supported": {
-                                  "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                                  "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -27482,7 +27482,7 @@
                                   ]
                                 },
                                 "available": {
-                                  "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                                  "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -27495,7 +27495,7 @@
                                   ]
                                 },
                                 "available_for_migration": {
-                                  "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                                  "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -28352,29 +28352,29 @@
                           "example": false
                         },
                         "datacenter": {
-                          "description": "[Datacenter](#datacenters) the [Primary IP](#primary-ips) is located at.",
+                          "description": "[Data Center](#data-centers) the [Primary IP](#primary-ips) is located at.",
                           "type": "object",
                           "properties": {
                             "id": {
-                              "description": "ID of the [Datacenter](#datacenters).",
+                              "description": "ID of the [Data Center](#data-centers).",
                               "type": "integer",
                               "format": "int64",
                               "maximum": 9007199254740991,
                               "example": 42
                             },
                             "name": {
-                              "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                              "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                               "type": "string",
                               "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                               "example": "fsn1-dc8"
                             },
                             "description": {
-                              "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                              "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                               "type": "string",
                               "example": "Falkenstein DC Park 8"
                             },
                             "location": {
-                              "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                              "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                               "type": "object",
                               "properties": {
                                 "id": {
@@ -28436,11 +28436,11 @@
                               ]
                             },
                             "server_types": {
-                              "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                              "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                               "type": "object",
                               "properties": {
                                 "supported": {
-                                  "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                                  "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -28453,7 +28453,7 @@
                                   ]
                                 },
                                 "available": {
-                                  "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                                  "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -28466,7 +28466,7 @@
                                   ]
                                 },
                                 "available_for_migration": {
-                                  "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                                  "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -28721,29 +28721,29 @@
                           "example": false
                         },
                         "datacenter": {
-                          "description": "[Datacenter](#datacenters) the [Primary IP](#primary-ips) is located at.",
+                          "description": "[Data Center](#data-centers) the [Primary IP](#primary-ips) is located at.",
                           "type": "object",
                           "properties": {
                             "id": {
-                              "description": "ID of the [Datacenter](#datacenters).",
+                              "description": "ID of the [Data Center](#data-centers).",
                               "type": "integer",
                               "format": "int64",
                               "maximum": 9007199254740991,
                               "example": 42
                             },
                             "name": {
-                              "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                              "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                               "type": "string",
                               "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                               "example": "fsn1-dc8"
                             },
                             "description": {
-                              "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                              "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                               "type": "string",
                               "example": "Falkenstein DC Park 8"
                             },
                             "location": {
-                              "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                              "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                               "type": "object",
                               "properties": {
                                 "id": {
@@ -28805,11 +28805,11 @@
                               ]
                             },
                             "server_types": {
-                              "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                              "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                               "type": "object",
                               "properties": {
                                 "supported": {
-                                  "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                                  "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -28822,7 +28822,7 @@
                                   ]
                                 },
                                 "available": {
-                                  "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                                  "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -28835,7 +28835,7 @@
                                   ]
                                 },
                                 "available_for_migration": {
-                                  "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                                  "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -31170,29 +31170,29 @@
                             ]
                           },
                           "datacenter": {
-                            "description": "Datacenter this Resource is located at.",
+                            "description": "Data Center this Resource is located at.",
                             "type": "object",
                             "properties": {
                               "id": {
-                                "description": "ID of the [Datacenter](#datacenters).",
+                                "description": "ID of the [Data Center](#data-centers).",
                                 "type": "integer",
                                 "format": "int64",
                                 "maximum": 9007199254740991,
                                 "example": 42
                               },
                               "name": {
-                                "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                                "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                                 "type": "string",
                                 "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                                 "example": "fsn1-dc8"
                               },
                               "description": {
-                                "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                                "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                                 "type": "string",
                                 "example": "Falkenstein DC Park 8"
                               },
                               "location": {
-                                "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                                "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                                 "type": "object",
                                 "properties": {
                                   "id": {
@@ -31254,11 +31254,11 @@
                                 ]
                               },
                               "server_types": {
-                                "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                                "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                                 "type": "object",
                                 "properties": {
                                   "supported": {
-                                    "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                                    "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                                     "type": "array",
                                     "items": {
                                       "type": "integer",
@@ -31271,7 +31271,7 @@
                                     ]
                                   },
                                   "available": {
-                                    "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                                    "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                                     "type": "array",
                                     "items": {
                                       "type": "integer",
@@ -31284,7 +31284,7 @@
                                     ]
                                   },
                                   "available_for_migration": {
-                                    "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                                    "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                                     "type": "array",
                                     "items": {
                                       "type": "integer",
@@ -31852,7 +31852,7 @@
           "Servers"
         ],
         "requestBody": {
-          "description": "Please note that Server names must be unique per Project and valid hostnames as per RFC 1123 (i.e. may only contain letters, digits, periods, and dashes).\n\nFor `server_type` you can either use the ID as listed in `/server_types` or its name.\n\nFor `image` you can either use the ID as listed in `/images` or its name.\n\nIf you want to create the Server in a Location, you must set `location` to the ID or name as listed in `/locations`. This is the recommended way. You can be even more specific by setting `datacenter` to the ID or name as listed in `/datacenters`. However we only recommend this if you want to assign a specific Primary IP to the Server which is located in the specified Datacenter.\n\nSome properties like `start_after_create` or `automount` will trigger Actions after the Server is created. Those Actions are listed in the `next_actions` field in the response.\n\nFor accessing your Server we strongly recommend to use SSH keys by passing the respective key IDs in `ssh_keys`. If you do not specify any `ssh_keys` we will generate a root password for you and return it in the response.\n\nPlease note that provided user-data is stored in our systems. While we take measures to protect it we highly recommend that you don’t use it to store passwords or other sensitive information.\n\n#### Call specific error codes\n\n| Code                             | Description                                                |\n|----------------------------------|------------------------------------------------------------|\n| `placement_error`                | An error during the placement occurred                     |\n| `primary_ip_assigned`            | The specified Primary IP is already assigned to a server   |\n| `primary_ip_datacenter_mismatch` | The specified Primary IP is in a different datacenter      |\n| `primary_ip_version_mismatch`    | The specified Primary IP has the wrong IP Version          |\n",
+          "description": "Please note that Server names must be unique per Project and valid hostnames as per RFC 1123 (i.e. may only contain letters, digits, periods, and dashes).\n\nFor `server_type` you can either use the ID as listed in `/server_types` or its name.\n\nFor `image` you can either use the ID as listed in `/images` or its name.\n\nIf you want to create the Server in a Location, you must set `location` to the ID or name as listed in `/locations`. This is the recommended way. You can be even more specific by setting `datacenter` to the ID or name as listed in `/datacenters`. However we only recommend this if you want to assign a specific Primary IP to the Server which is located in the specified Data Center.\n\nSome properties like `start_after_create` or `automount` will trigger Actions after the Server is created. Those Actions are listed in the `next_actions` field in the response.\n\nFor accessing your Server we strongly recommend to use SSH keys by passing the respective key IDs in `ssh_keys`. If you do not specify any `ssh_keys` we will generate a root password for you and return it in the response.\n\nPlease note that provided user-data is stored in our systems. While we take measures to protect it we highly recommend that you don’t use it to store passwords or other sensitive information.\n\n#### Call specific error codes\n\n| Code                             | Description                                                |\n|----------------------------------|------------------------------------------------------------|\n| `placement_error`                | An error during the placement occurred                     |\n| `primary_ip_assigned`            | The specified Primary IP is already assigned to a server   |\n| `primary_ip_datacenter_mismatch` | The specified Primary IP is in a different datacenter      |\n| `primary_ip_version_mismatch`    | The specified Primary IP has the wrong IP Version          |\n",
           "required": true,
           "content": {
             "application/json": {
@@ -31871,7 +31871,7 @@
                     "example": "nbg1"
                   },
                   "datacenter": {
-                    "description": "ID or name of Datacenter to create Server in (must not be used together with location).",
+                    "description": "ID or name of Data Center to create Server in (must not be used together with location).",
                     "type": "string",
                     "example": "nbg1-dc3"
                   },
@@ -32480,29 +32480,29 @@
                           ]
                         },
                         "datacenter": {
-                          "description": "Datacenter this Resource is located at.",
+                          "description": "Data Center this Resource is located at.",
                           "type": "object",
                           "properties": {
                             "id": {
-                              "description": "ID of the [Datacenter](#datacenters).",
+                              "description": "ID of the [Data Center](#data-centers).",
                               "type": "integer",
                               "format": "int64",
                               "maximum": 9007199254740991,
                               "example": 42
                             },
                             "name": {
-                              "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                              "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                               "type": "string",
                               "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                               "example": "fsn1-dc8"
                             },
                             "description": {
-                              "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                              "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                               "type": "string",
                               "example": "Falkenstein DC Park 8"
                             },
                             "location": {
-                              "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                              "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                               "type": "object",
                               "properties": {
                                 "id": {
@@ -32564,11 +32564,11 @@
                               ]
                             },
                             "server_types": {
-                              "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                              "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                               "type": "object",
                               "properties": {
                                 "supported": {
-                                  "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                                  "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -32581,7 +32581,7 @@
                                   ]
                                 },
                                 "available": {
-                                  "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                                  "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -32594,7 +32594,7 @@
                                   ]
                                 },
                                 "available_for_migration": {
-                                  "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                                  "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -34468,29 +34468,29 @@
                           ]
                         },
                         "datacenter": {
-                          "description": "Datacenter this Resource is located at.",
+                          "description": "Data Center this Resource is located at.",
                           "type": "object",
                           "properties": {
                             "id": {
-                              "description": "ID of the [Datacenter](#datacenters).",
+                              "description": "ID of the [Data Center](#data-centers).",
                               "type": "integer",
                               "format": "int64",
                               "maximum": 9007199254740991,
                               "example": 42
                             },
                             "name": {
-                              "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                              "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                               "type": "string",
                               "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                               "example": "fsn1-dc8"
                             },
                             "description": {
-                              "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                              "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                               "type": "string",
                               "example": "Falkenstein DC Park 8"
                             },
                             "location": {
-                              "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                              "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                               "type": "object",
                               "properties": {
                                 "id": {
@@ -34552,11 +34552,11 @@
                               ]
                             },
                             "server_types": {
-                              "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                              "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                               "type": "object",
                               "properties": {
                                 "supported": {
-                                  "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                                  "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -34569,7 +34569,7 @@
                                   ]
                                 },
                                 "available": {
-                                  "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                                  "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -34582,7 +34582,7 @@
                                   ]
                                 },
                                 "available_for_migration": {
-                                  "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                                  "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -35596,29 +35596,29 @@
                           ]
                         },
                         "datacenter": {
-                          "description": "Datacenter this Resource is located at.",
+                          "description": "Data Center this Resource is located at.",
                           "type": "object",
                           "properties": {
                             "id": {
-                              "description": "ID of the [Datacenter](#datacenters).",
+                              "description": "ID of the [Data Center](#data-centers).",
                               "type": "integer",
                               "format": "int64",
                               "maximum": 9007199254740991,
                               "example": 42
                             },
                             "name": {
-                              "description": "Unique name for the [Datacenter](#datacenters).\n\nCan be used as a more descriptive identifier.\n",
+                              "description": "Unique name for the [Data Center](#data-centers).\n\nCan be used as a more descriptive identifier.\n",
                               "type": "string",
                               "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
                               "example": "fsn1-dc8"
                             },
                             "description": {
-                              "description": "Descriptive name for the [Datacenter](#datacenters).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
+                              "description": "Descriptive name for the [Data Center](#data-centers).\n\nDesired to be easy to understand for humans. Might be changed for cosmetic reasons. Do not use this as an identifier.\n",
                               "type": "string",
                               "example": "Falkenstein DC Park 8"
                             },
                             "location": {
-                              "description": "[Location](#locations) the [Datacenter](#datacenters) is located at.\n",
+                              "description": "[Location](#locations) the [Data Center](#data-centers) is located at.\n",
                               "type": "object",
                               "properties": {
                                 "id": {
@@ -35680,11 +35680,11 @@
                               ]
                             },
                             "server_types": {
-                              "description": "[Server Types](#server-types) supported and available in this [Datacenter](#datacenters).\n",
+                              "description": "[Server Types](#server-types) supported and available in this [Data Center](#data-centers).\n",
                               "type": "object",
                               "properties": {
                                 "supported": {
-                                  "description": "List of [Server Types](#server-types) supported in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) are generally available in this Datacenter, but might be\ntemporarily out of stock.\n",
+                                  "description": "List of [Server Types](#server-types) supported in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) are generally available in this Data Center, but might be\ntemporarily out of stock.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -35697,7 +35697,7 @@
                                   ]
                                 },
                                 "available": {
-                                  "description": "[Server Types](#server-types) currently available in this [Datacenter](#datacenters).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Datacenter](#datacenters) are listed as `supported`.\n",
+                                  "description": "[Server Types](#server-types) currently available in this [Data Center](#data-centers).\n\nThese [Server Types](#server-types) can currently be purchased. Types that are temporarily unavailable\nbut are supported in this [Data Center](#data-centers) are listed as `supported`.\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -35710,7 +35710,7 @@
                                   ]
                                 },
                                 "available_for_migration": {
-                                  "description": "[Server Types](#server-types) available to migrate to in this [Datacenter](#datacenters).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
+                                  "description": "[Server Types](#server-types) available to migrate to in this [Data Center](#data-centers).\n\nExisting [Servers](#servers) can be migrated to these [Server Types](#server-types).\n",
                                   "type": "array",
                                   "items": {
                                     "type": "integer",
@@ -49434,7 +49434,7 @@
       "get": {
         "operationId": "list_zone_rrsets",
         "summary": "List RRSets",
-        "description": "Returns all [RRSets](#zone-rrsets) in the [Zone](#zones).\n\nUse the provided URI parameters to modify the result.\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "description": "Returns all [RRSets](#zone-rrsets) in the [Zone](#zones).\n\nUse the provided URI parameters to modify the result.\n\nThe maximum value for `per_page` on this endpoint is `100` instead of `50`.\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
         "tags": [
           "Zone RRSets"
         ],
