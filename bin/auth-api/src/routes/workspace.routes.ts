@@ -39,7 +39,7 @@ import { tracker } from "../lib/tracker";
 import { findLatestTosForUser } from "../services/tos.service";
 import { automationApiRouter, extractAuthUser, router } from ".";
 
-router.get("/workspaces", async (ctx) => {
+automationApiRouter.get("/workspaces", async (ctx) => {
   const authUser = extractAuthUser(ctx);
   ctx.body = await getUserWorkspaces(authUser.id);
 });
@@ -98,7 +98,7 @@ automationApiRouter.get("/workspaces/:workspaceId", async (ctx) => {
   ctx.body = workspace;
 });
 
-router.delete("/workspaces/:workspaceId", async (ctx) => {
+automationApiRouter.delete("/workspaces/:workspaceId", async (ctx) => {
   extractAuthUser(ctx, true);
   const { authUser, workspaceId } = await authorizeWorkspaceRoute(ctx, [RoleType.OWNER]);
 
@@ -113,7 +113,7 @@ router.delete("/workspaces/:workspaceId", async (ctx) => {
   ctx.body = "";
 });
 
-router.post("/workspaces/new", async (ctx) => {
+automationApiRouter.post("/workspaces/new", async (ctx) => {
   const authUser = extractAuthUser(ctx, true);
 
   const reqBody = validate(
@@ -150,7 +150,7 @@ router.post("/workspaces/new", async (ctx) => {
   };
 });
 
-router.patch("/workspaces/:workspaceId", async (ctx) => {
+automationApiRouter.patch("/workspaces/:workspaceId", async (ctx) => {
   extractAuthUser(ctx, true);
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
     RoleType.OWNER,
@@ -192,7 +192,7 @@ export type Member = {
   role: string;
   signupAt: Date | null;
 };
-router.get("/workspace/:workspaceId/members", async (ctx) => {
+automationApiRouter.get("/workspace/:workspaceId/members", async (ctx) => {
   const { workspace } = await authorizeWorkspaceRoute(ctx, undefined);
 
   const members: Member[] = [];
@@ -211,7 +211,7 @@ router.get("/workspace/:workspaceId/members", async (ctx) => {
   ctx.body = members;
 });
 
-router.post("/workspace/:workspaceId/membership", async (ctx) => {
+automationApiRouter.post("/workspace/:workspaceId/membership", async (ctx) => {
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
     RoleType.OWNER,
   ]);
@@ -253,7 +253,7 @@ router.post("/workspace/:workspaceId/membership", async (ctx) => {
   ctx.body = members;
 });
 
-router.post("/workspace/:workspaceId/members", async (ctx) => {
+automationApiRouter.post("/workspace/:workspaceId/members", async (ctx) => {
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
     RoleType.OWNER,
     RoleType.APPROVER,
@@ -290,7 +290,7 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
   ctx.body = members;
 });
 
-router.delete("/workspace/:workspaceId/members", async (ctx) => {
+automationApiRouter.delete("/workspace/:workspaceId/members", async (ctx) => {
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
     RoleType.OWNER,
     RoleType.APPROVER,
