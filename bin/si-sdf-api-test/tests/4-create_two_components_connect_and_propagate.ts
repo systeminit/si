@@ -4,9 +4,7 @@ import {
   createComponent,
   createComponentPayload,
   eventualMVAssert,
-  getVariants,
   getViews,
-  retryWithBackoff,
   runWithTemporaryChangeset,
 } from "../test_helpers.ts";
 
@@ -31,9 +29,6 @@ async function create_two_components_connect_and_propagate_inner(
   sdf: SdfApiClient,
   changeSetId: string,
 ) {
-  // Get the schema variants (uninstalled and installed)
-  let schemaVariants = await getVariants(sdf, changeSetId);
-
   // Get the views and find the default one
   const views = await getViews(sdf, changeSetId);
   const defaultView = views.find((v: any) => v.isDefault);
@@ -41,15 +36,18 @@ async function create_two_components_connect_and_propagate_inner(
 
   // Create three components, an EC2 Instance, a Region, and a Credential
   let createEC2ComponentBody = createComponentPayload(
-    schemaVariants,
+    sdf,
+    changeSetId,
     "AWS::EC2::Instance",
   );
   let createRegionComponentBody = createComponentPayload(
-    schemaVariants,
+    sdf,
+    changeSetId,
     "Region",
   );
   let createCredentialComponentBody = createComponentPayload(
-    schemaVariants,
+    sdf,
+    changeSetId,
     "AWS Credential",
   );
   const newEC2ComponentId = await createComponent(

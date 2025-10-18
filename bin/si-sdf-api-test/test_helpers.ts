@@ -254,40 +254,6 @@ export async function createComponent(
   return newComponentId;
 }
 
-export function createComponentPayload(
-  schemaVariantCategoriesMV: any,
-  schemaName: string,
-) {
-  const installedVariant = schemaVariantCategoriesMV.installed?.find(
-    (sv: any) => sv.schemaName === schemaName,
-  );
-  if (installedVariant) {
-    return {
-      schemaVariantId: installedVariant.schemaVariantId,
-      x: "0",
-      y: "0",
-      height: "0",
-      width: "0",
-      parentId: null,
-      schemaType: "installed",
-    };
-  } else {
-    const uninstalledVariant = schemaVariantCategoriesMV.uninstalled?.find(
-      (sv: any) => sv.schemaName === schemaName,
-    );
-    assert(uninstalledVariant, `Expected to find ${schemaName} schema variant`);
-    return {
-      schemaId: uninstalledVariant.schemaId,
-      schemaType: "uninstalled",
-      x: "0",
-      y: "0",
-      height: "0",
-      width: "0",
-      parentId: null,
-    };
-  }
-}
-
 // Func Helpers ------------------------------------------------------------
 
 export async function getFuncRun(
@@ -419,7 +385,7 @@ export async function abandon_all_change_sets(sdf: SdfApiClient) {
 }
 
 export async function getActions(sdf: SdfApiClient, changeSetId: string) {
-  const actions = await sdf.mjolnir(
+  const actions = await sdf.changeSetMjolnir(
     changeSetId,
     "ActionViewList",
     sdf.workspaceId,
@@ -428,52 +394,76 @@ export async function getActions(sdf: SdfApiClient, changeSetId: string) {
   return actions;
 }
 
-export async function getVariants(sdf: SdfApiClient, changeSetId: string) {
-  const schemas = await sdf.mjolnir(
-    changeSetId,
-    "SchemaVariantCategories",
-    sdf.workspaceId,
-  );
-  assert(schemas, "Expected to get schemas MV");
-
-  const installedList: { kind: string; id: string }[] =
-    schemas.categories.flatMap((c: any) =>
-      c.schemaVariants
-        .filter((v: any) => v.type === "installed")
-        .map((v: any) => {
-          return {
-            kind: "SchemaVariant",
-            id: v.id,
-          };
-        }),
+// Used to generate the correct payload for sdf
+// If not given a Schema Id, assume it's a builtin, and find
+// the Id by the name by looking at the CachedSchemas Deployment MV
+// If given a schema Id, just try to find an installed one
+export async function createComponentPayload(
+  sdf: SdfApiClient,
+  changeSetId: string,
+  schemaName: string,
+  schemaId?: string,
+) {
+  const deploymentIndex = await sdf.fetchDeploymentIndex();
+  // todo: Parse the response, and look for the CachedSchemas
+  let actualSchemaId = "";
+  if (!schemaId) {
+    // Get the builtin version, so we can get the Schema Id as we only have the name
+    const builtins = await sdf.deploymentMjolnir(
+      "CachedSchemas",
+      "12345", // TODO USE THE ID HERE
     );
-  let installed = [];
-  if (installedList.length > 0) {
-    let installedResp = await sdf.multiMjolnir(changeSetId, installedList);
-    assert(installedResp, "Expected to get installed variants data");
-    installed = installedResp;
+
+    assert(builtins, "Expected to get schemas MV");
+
+    // now we have a list of builtins by Name/ID
+    // Find the Id that matches the schema name passed in
+    actualSchemaId = "Found thing";
+  } else {
+    actualSchemaId = schemaId;
   }
 
-  const uninstalled = schemas.categories.flatMap((c: any) =>
-    c.schemaVariants
-      .filter((v: any) => v.type === "uninstalled")
-      .map((v: any) => {
-        const uninstalledMeta = schemas.uninstalled?.[v.id];
-        assert(
-          uninstalledMeta,
-          `Expected uninstalled metadata for schemaId ${v.id}`,
-        );
-        return uninstalledMeta;
-      }),
+  assert(actualSchemaId, "we have a valid schema Id!");
+
+  // First is it installed?
+  const maybeInstalled = await sdf.changeSetMjolnir(
+    changeSetId,
+    "LuminorkDefaultVariant",
+    actualSchemaId,
   );
-  return { installed, uninstalled };
+  // if that exists
+  if (maybeInstalled) {
+    return {
+      schemaVariantId: maybeInstalled.variantId,
+      x: "0",
+      y: "0",
+      height: "0",
+      width: "0",
+      parentId: null,
+      schemaType: "installed",
+    };
+  } else {
+    return {
+      schemaId: actualSchemaId, // todo use the schema Id we JUST found above
+      schemaType: "uninstalled",
+      x: "0",
+      y: "0",
+      height: "0",
+      width: "0",
+      parentId: null,
+    };
+  }
 }
 
 export async function getViews(sdf: SdfApiClient, changeSetId: string) {
-  const viewsList = await sdf.mjolnir(changeSetId, "ViewList", sdf.workspaceId);
+  const viewsList = await sdf.changeSetMjolnir(
+    changeSetId,
+    "ViewList",
+    sdf.workspaceId,
+  );
   assert(viewsList, "Expected to get views MV");
   let viewsToFetch = viewsList.views;
-  let views = await sdf.multiMjolnir(changeSetId, viewsToFetch);
+  let views = await sdf.changeSetMultiMjolnir(changeSetId, viewsToFetch);
   assert(views, "Expected to get views data");
   return views;
 }
@@ -493,7 +483,7 @@ export async function eventualMVAssert(
   }
   await retryUntil(
     async () => {
-      const mv = await sdf.mjolnir(changeSetId, kind, id);
+      const mv = await sdf.changeSetMjolnir(changeSetId, kind, id);
       if (mv) {
         try {
           if (assertFn(mv)) {
