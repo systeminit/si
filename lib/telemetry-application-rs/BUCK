@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "telemetry-application",
     deps = [
+        "//lib/si-otel-metrics:si-otel-metrics",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:chrono",
         "//third-party/rust:console-subscriber",

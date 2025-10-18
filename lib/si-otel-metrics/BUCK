@@ -1,0 +1,16 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-otel-metrics",
+    deps = [
+        "//third-party/rust:opentelemetry",
+        "//third-party/rust:parking_lot",
+        "//third-party/rust:sysinfo",
+        "//third-party/rust:thiserror",
+    ],
+    env = {
+        "CARGO_PKG_NAME": "si-otel-metrics",
+        "CARGO_PKG_VERSION": "0.1.0",
+    },
+    srcs = glob(["src/**/*.rs"]),
+)
