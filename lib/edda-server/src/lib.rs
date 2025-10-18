@@ -11,6 +11,11 @@ mod deployment_processor_task;
 mod handlers;
 mod local_message;
 mod server;
+pub use si_service_endpoints::{
+    DefaultServiceEndpoints,
+    ServiceEndpointsConfig,
+    server::EndpointsServer,
+};
 pub use si_settings::{
     ConfigMap,
     ParameterProvider,

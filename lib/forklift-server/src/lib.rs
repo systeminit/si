@@ -34,6 +34,11 @@ pub use config::{
     StandardConfigFile,
 };
 pub use server::Server;
+pub use si_service_endpoints::{
+    DefaultServiceEndpoints,
+    ServiceEndpointsConfig,
+    server::EndpointsServer,
+};
 pub use si_settings::{
     ConfigMap,
     ParameterProvider,

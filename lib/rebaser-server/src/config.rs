@@ -21,6 +21,7 @@ use si_layer_cache::{
     db::LayerDbConfig,
     error::LayerDbError,
 };
+use si_service_endpoints::ServiceEndpointsConfig;
 use si_std::CanonicalFileError;
 use si_tls::CertificateSource;
 use telemetry::prelude::*;
@@ -66,7 +67,7 @@ impl ConfigError {
 type Result<T> = std::result::Result<T, ConfigError>;
 
 #[allow(missing_docs)]
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Serialize)]
 pub struct Config {
     #[builder(default = "PgPoolConfig::default()")]
     pg_pool: PgPoolConfig,
@@ -97,6 +98,9 @@ pub struct Config {
 
     #[builder(default = "default_snapshot_eviction_grace_period()")]
     snapshot_eviction_grace_period: Duration,
+
+    #[builder(default = "default_service_endpoints_config()")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl StandardConfig for Config {
@@ -162,6 +166,12 @@ impl Config {
     pub fn snapshot_eviction_grace_period(&self) -> Duration {
         self.snapshot_eviction_grace_period
     }
+
+    /// Gets a reference to the config's service endpoints configuration.
+    #[must_use]
+    pub fn service_endpoints(&self) -> &ServiceEndpointsConfig {
+        &self.service_endpoints
+    }
 }
 
 /// Static feature flags for Rebaser.
@@ -201,6 +211,8 @@ pub struct ConfigFile {
     features: Features,
     #[serde(default = "default_snapshot_eviction_grace_period_secs")]
     snapshot_eviction_grace_period_secs: u64,
+    #[serde(default = "default_service_endpoints_config")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl Default for ConfigFile {
@@ -216,6 +228,7 @@ impl Default for ConfigFile {
             quiescent_period_secs: default_quiescent_period_secs(),
             features: Default::default(),
             snapshot_eviction_grace_period_secs: default_snapshot_eviction_grace_period_secs(),
+            service_endpoints: default_service_endpoints_config(),
         }
     }
 }
@@ -243,6 +256,7 @@ impl TryFrom<ConfigFile> for Config {
         config.snapshot_eviction_grace_period(Duration::from_secs(
             value.snapshot_eviction_grace_period_secs,
         ));
+        config.service_endpoints(value.service_endpoints);
         config.build().map_err(Into::into)
     }
 }
@@ -277,6 +291,10 @@ fn default_quiescent_period_secs() -> u64 {
 
 fn default_snapshot_eviction_grace_period() -> Duration {
     DEFAULT_SNAPSHOT_EVICTION_GRACE_PERIOD
+}
+
+fn default_service_endpoints_config() -> ServiceEndpointsConfig {
+    ServiceEndpointsConfig::new(0)
 }
 
 fn default_snapshot_eviction_grace_period_secs() -> u64 {

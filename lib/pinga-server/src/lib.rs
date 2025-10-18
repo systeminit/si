@@ -17,6 +17,11 @@ mod config;
 mod handlers;
 pub mod server;
 
+pub use si_service_endpoints::{
+    DefaultServiceEndpoints,
+    ServiceEndpointsConfig,
+    server::EndpointsServer,
+};
 pub use si_settings::{
     ConfigMap,
     ParameterProvider,
@@ -32,7 +37,10 @@ pub use crate::{
         StandardConfigFile,
         detect_and_configure_development,
     },
-    server::Server,
+    server::{
+        Server,
+        ServerMetadata,
+    },
 };
 
 #[remain::sorted]

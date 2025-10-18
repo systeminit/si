@@ -20,6 +20,7 @@ use si_layer_cache::{
     db::LayerDbConfig,
     error::LayerDbError,
 };
+use si_service_endpoints::ServiceEndpointsConfig;
 pub use si_settings::{
     StandardConfig,
     StandardConfigFile,
@@ -55,7 +56,7 @@ impl ConfigError {
 
 type Result<T> = std::result::Result<T, ConfigError>;
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Serialize)]
 pub struct Config {
     #[builder(default = "PgPoolConfig::default()")]
     pg_pool: PgPoolConfig,
@@ -80,6 +81,9 @@ pub struct Config {
 
     #[builder(default = "default_layer_db_config()")]
     layer_db_config: LayerDbConfig,
+
+    #[builder(default = "default_service_endpoints_config()")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl StandardConfig for Config {
@@ -133,6 +137,12 @@ impl Config {
     pub fn layer_db_config(&self) -> &LayerDbConfig {
         &self.layer_db_config
     }
+
+    /// Gets a reference to the config's service endpoints configuration.
+    #[must_use]
+    pub fn service_endpoints(&self) -> &ServiceEndpointsConfig {
+        &self.service_endpoints
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -153,6 +163,8 @@ pub struct ConfigFile {
     layer_db_config: LayerDbConfig,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
+    #[serde(default = "default_service_endpoints_config")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl Default for ConfigFile {
@@ -166,6 +178,7 @@ impl Default for ConfigFile {
             instance_id: random_instance_id(),
             layer_db_config: default_layer_db_config(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
+            service_endpoints: default_service_endpoints_config(),
         }
     }
 }
@@ -189,6 +202,7 @@ impl TryFrom<ConfigFile> for Config {
         config.instance_id(value.instance_id);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
+        config.service_endpoints(value.service_endpoints);
         config.build().map_err(Into::into)
     }
 }
@@ -215,6 +229,10 @@ fn default_max_deliver() -> i64 {
 
 fn default_layer_db_config() -> LayerDbConfig {
     LayerDbConfig::default()
+}
+
+fn default_service_endpoints_config() -> ServiceEndpointsConfig {
+    ServiceEndpointsConfig::new(0)
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
