@@ -310,7 +310,7 @@ impl CachedModule {
         ctx: &DalContext,
         modules: &HashMap<String, ModuleDetailsResponse>,
         module_index_client: ModuleIndexClient,
-        _edda_client: EddaClient,
+        edda_client: EddaClient,
     ) -> CachedModuleResult<Vec<CachedModule>> {
         let hashes = modules.keys().map(ToOwned::to_owned).collect_vec();
         let uncached_hashes = CachedModule::find_missing_entries(ctx, hashes).await?;
@@ -355,11 +355,7 @@ impl CachedModule {
         }
 
         // Ask edda to rebuild the deployment MVs, which include the cached modules
-        //
-        // Until the performance issues in building the deployment-level MVs are fixed,
-        // this is only going to be deployed through the manual module sync process.
-        //
-        // edda_client.rebuild_for_deployment().await?;
+        edda_client.rebuild_for_deployment().await?;
 
         Ok(new_modules)
     }
