@@ -33,6 +33,13 @@ class TestComponentsApi(unittest.TestCase):
         """
         pass
 
+    def test_add_to_view(self) -> None:
+        """Test case for add_to_view
+
+        Add components to a view
+        """
+        pass
+
     def test_create_component(self) -> None:
         """Test case for create_component
 

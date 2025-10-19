@@ -157,6 +157,25 @@ export interface AddActionV1Response {
     'success': boolean;
 }
 /**
+ * 
+ * @export
+ * @interface AddToViewV1Request
+ */
+export interface AddToViewV1Request {
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof AddToViewV1Request
+     */
+    'componentIds': Array<string>;
+    /**
+     * 
+     * @type {string}
+     * @memberof AddToViewV1Request
+     */
+    'viewName': string;
+}
+/**
  * Standard error response format for v1 API
  * @export
  * @interface ApiError
@@ -4279,6 +4298,50 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
             };
         },
         /**
+         * Adds multiple components to a view by name. If the view doesn\'t exist, it will be created automatically.
+         * @summary Add components to a view
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {AddToViewV1Request} addToViewV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        addToView: async (workspaceId: string, changeSetId: string, addToViewV1Request: AddToViewV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('addToView', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('addToView', 'changeSetId', changeSetId)
+            // verify required parameter 'addToViewV1Request' is not null or undefined
+            assertParamExists('addToView', 'addToViewV1Request', addToViewV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/components/add_to_view`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(addToViewV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * 
          * @summary Create a component
          * @param {string} workspaceId Workspace identifier
@@ -4936,6 +4999,21 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Adds multiple components to a view by name. If the view doesn\'t exist, it will be created automatically.
+         * @summary Add components to a view
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {AddToViewV1Request} addToViewV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async addToView(workspaceId: string, changeSetId: string, addToViewV1Request: AddToViewV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.addToView(workspaceId, changeSetId, addToViewV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ComponentsApi.addToView']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * 
          * @summary Create a component
          * @param {string} workspaceId Workspace identifier
@@ -5172,6 +5250,16 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
             return localVarFp.addAction(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, requestParameters.addActionV1Request, options).then((request) => request(axios, basePath));
         },
         /**
+         * Adds multiple components to a view by name. If the view doesn\'t exist, it will be created automatically.
+         * @summary Add components to a view
+         * @param {ComponentsApiAddToViewRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        addToView(requestParameters: ComponentsApiAddToViewRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.addToView(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.addToViewV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
          * 
          * @summary Create a component
          * @param {ComponentsApiCreateComponentRequest} requestParameters Request parameters.
@@ -5329,6 +5417,16 @@ export interface ComponentsApiInterface {
      * @memberof ComponentsApiInterface
      */
     addAction(requestParameters: ComponentsApiAddActionRequest, options?: RawAxiosRequestConfig): AxiosPromise<AddActionV1Response>;
+
+    /**
+     * Adds multiple components to a view by name. If the view doesn\'t exist, it will be created automatically.
+     * @summary Add components to a view
+     * @param {ComponentsApiAddToViewRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApiInterface
+     */
+    addToView(requestParameters: ComponentsApiAddToViewRequest, options?: RawAxiosRequestConfig): AxiosPromise<void>;
 
     /**
      * 
@@ -5505,6 +5603,34 @@ export interface ComponentsApiAddActionRequest {
      * @memberof ComponentsApiAddAction
      */
     readonly addActionV1Request: AddActionV1Request
+}
+
+/**
+ * Request parameters for addToView operation in ComponentsApi.
+ * @export
+ * @interface ComponentsApiAddToViewRequest
+ */
+export interface ComponentsApiAddToViewRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ComponentsApiAddToView
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ComponentsApiAddToView
+     */
+    readonly changeSetId: string
+
+    /**
+     * 
+     * @type {AddToViewV1Request}
+     * @memberof ComponentsApiAddToView
+     */
+    readonly addToViewV1Request: AddToViewV1Request
 }
 
 /**
@@ -5958,6 +6084,18 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      */
     public addAction(requestParameters: ComponentsApiAddActionRequest, options?: RawAxiosRequestConfig) {
         return ComponentsApiFp(this.configuration).addAction(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, requestParameters.addActionV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Adds multiple components to a view by name. If the view doesn\'t exist, it will be created automatically.
+     * @summary Add components to a view
+     * @param {ComponentsApiAddToViewRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApi
+     */
+    public addToView(requestParameters: ComponentsApiAddToViewRequest, options?: RawAxiosRequestConfig) {
+        return ComponentsApiFp(this.configuration).addToView(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.addToViewV1Request, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

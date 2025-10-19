@@ -44,6 +44,7 @@ __all__ = [
     "ActionViewV1",
     "AddActionV1Request",
     "AddActionV1Response",
+    "AddToViewV1Request",
     "ApiError",
     "ApiSuccessString",
     "BuildingResponseV1",
@@ -197,6 +198,7 @@ from system_initiative_api_client.models.action_v1_request_path import ActionV1R
 from system_initiative_api_client.models.action_view_v1 import ActionViewV1 as ActionViewV1
 from system_initiative_api_client.models.add_action_v1_request import AddActionV1Request as AddActionV1Request
 from system_initiative_api_client.models.add_action_v1_response import AddActionV1Response as AddActionV1Response
+from system_initiative_api_client.models.add_to_view_v1_request import AddToViewV1Request as AddToViewV1Request
 from system_initiative_api_client.models.api_error import ApiError as ApiError
 from system_initiative_api_client.models.api_success_string import ApiSuccessString as ApiSuccessString
 from system_initiative_api_client.models.building_response_v1 import BuildingResponseV1 as BuildingResponseV1
