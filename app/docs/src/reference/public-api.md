@@ -554,6 +554,57 @@ Components management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Add components to a view
+
+<a id="opIdadd_to_view"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/components/add_to_view`
+
+Adds multiple components to a view by name. If the view doesn't exist, it will be created automatically.
+
+> Body parameter
+
+```json
+{
+  "componentIds": [
+    "string"
+  ],
+  "viewName": "string"
+}
+```
+
+<h3 id="add-components-to-a-view-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|body|body|[AddToViewV1Request](#schemaaddtoviewv1request)|true|none|
+
+> Example responses
+
+> 409 Response
+
+```json
+{
+  "message": "Invalid request data",
+  "statusCode": 422,
+  "code": 4001
+}
+```
+
+<h3 id="add-components-to-a-view-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|204|[No Content](https://tools.ietf.org/html/rfc7231#section-6.3.5)|Components added to view successfully|None|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|409|[Conflict](https://tools.ietf.org/html/rfc7231#section-6.5.8)|Conflict - Changes not permitted on HEAD change set|[ApiError](#schemaapierror)|
+|422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Duplicate a list of components
 
 <a id="opIdduplicate_components"></a>
@@ -1933,6 +1984,44 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Delete the binding between an action func and the schema variant
+
+<a id="opIddetach_action_func_binding"></a>
+
+> Request format
+
+`DELETE /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/action/{func_id}`
+
+<h3 id="delete-the-binding-between-an-action-func-and-the-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|func_id|path|string|true|Func identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="delete-the-binding-between-an-action-func-and-the-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Action function successfully deteched from the variant|[DetachFuncBindingV1Response](#schemadetachfuncbindingv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Create an authentication function and attach to a schema variant
 
 <a id="opIdcreate_variant_authentication"></a>
@@ -1979,6 +2068,44 @@ Schemas management endpoints
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Authentication function successfully created and attached to the variant|[CreateVariantAuthenticationFuncV1Response](#schemacreatevariantauthenticationfuncv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Delete the binding between an authentication func and the schema variant
+
+<a id="opIddetach_authentication_func_binding"></a>
+
+> Request format
+
+`DELETE /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/authentication/{func_id}`
+
+<h3 id="delete-the-binding-between-an-authentication-func-and-the-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|func_id|path|string|true|Func identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="delete-the-binding-between-an-authentication-func-and-the-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Authentication function successfully detached from the variant|[DetachFuncBindingV1Response](#schemadetachfuncbindingv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
@@ -2031,6 +2158,44 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Delete the binding between a codegen func and the schema variant
+
+<a id="opIddetach_codegen_func_binding"></a>
+
+> Request format
+
+`DELETE /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/codegen/{func_id}`
+
+<h3 id="delete-the-binding-between-a-codegen-func-and-the-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|func_id|path|string|true|Func identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="delete-the-binding-between-a-codegen-func-and-the-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Codegen function successfully deteched from the variant|[DetachFuncBindingV1Response](#schemadetachfuncbindingv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Create a management function and attach to a schema variant
 
 <a id="opIdcreate_variant_management"></a>
@@ -2080,6 +2245,44 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Delete the binding between a management func and the schema variant
+
+<a id="opIddetach_management_func_binding"></a>
+
+> Request format
+
+`DELETE /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/management/{func_id}`
+
+<h3 id="delete-the-binding-between-a-management-func-and-the-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|func_id|path|string|true|Func identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="delete-the-binding-between-a-management-func-and-the-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Management function successfully deteched from the variant|[DetachFuncBindingV1Response](#schemadetachfuncbindingv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Create a qualification and attach to a schema variant
 
 <a id="opIdcreate_variant_qualification"></a>
@@ -2126,6 +2329,44 @@ Schemas management endpoints
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Qualification successfully created and attached to the variant|[CreateVariantQualificationFuncV1Response](#schemacreatevariantqualificationfuncv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Delete the binding between a qualification func and the schema variant
+
+<a id="opIddetach_qualification_func_binding"></a>
+
+> Request format
+
+`DELETE /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/qualification/{func_id}`
+
+<h3 id="delete-the-binding-between-a-qualification-func-and-the-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|func_id|path|string|true|Func identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="delete-the-binding-between-a-qualification-func-and-the-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Qualification function successfully deteched from the variant|[DetachFuncBindingV1Response](#schemadetachfuncbindingv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
@@ -3023,6 +3264,30 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |success|boolean|true|none|none|
+
+## [AddToViewV1Request](#tocS_AddToViewV1Request)
+
+<a id="schemaaddtoviewv1request"></a>
+<a id="schema_AddToViewV1Request"></a>
+<a id="tocSaddtoviewv1request"></a>
+<a id="tocsaddtoviewv1request"></a>
+
+```json
+{
+  "componentIds": [
+    "string"
+  ],
+  "viewName": "string"
+}
+
+```
+
+### [Properties](#addtoviewv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|componentIds|[string]|true|none|none|
+|viewName|string|true|none|none|
 
 ## [ApiError](#tocS_ApiError)
 
@@ -3971,6 +4236,26 @@ xor
 ```
 
 ### [Properties](#deletesecretv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|success|boolean|true|none|none|
+
+## [DetachFuncBindingV1Response](#tocS_DetachFuncBindingV1Response)
+
+<a id="schemadetachfuncbindingv1response"></a>
+<a id="schema_DetachFuncBindingV1Response"></a>
+<a id="tocSdetachfuncbindingv1response"></a>
+<a id="tocsdetachfuncbindingv1response"></a>
+
+```json
+{
+  "success": true
+}
+
+```
+
+### [Properties](#detachfuncbindingv1response-properties)
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
