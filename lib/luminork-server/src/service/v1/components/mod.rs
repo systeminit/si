@@ -62,6 +62,7 @@ use utoipa::ToSchema;
 use crate::AppState;
 
 pub mod add_action;
+pub mod add_to_view;
 pub mod create_component;
 pub mod delete_component;
 pub mod duplicate_components;
@@ -625,6 +626,7 @@ pub fn routes() -> Router<AppState> {
             "/duplicate",
             post(duplicate_components::duplicate_components),
         )
+        .route("/add_to_view", post(add_to_view::add_to_view))
         .nest(
             "/:component_id",
             Router::new()
