@@ -156,6 +156,21 @@ export const ROUTES = {
       `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/index/multi_mjolnir`,
     method: "POST",
   },
+  deployment_mjolnir: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/mjolnir?kind=${vars.referenceKind}&id=${vars.materializedViewId}`,
+    method: "POST",
+  },
+  deployment_multi_mjolnir: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/multi_mjolnir`,
+    method: "POST",
+  },
+  deployment_index: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/deployment_index`,
+    method: "GET",
+  },
 
   // Websockets -----------------------------------------
   workspace_updates_ws: {
@@ -329,7 +344,7 @@ export class SdfApiClient {
 
     await retryUntil(
       async () => {
-        const dvuRoots = await this.mjolnir(
+        const dvuRoots = await this.changeSetMjolnir(
           changeSetId,
           "DependentValueComponentList",
           this.workspaceId,
@@ -377,7 +392,7 @@ export class SdfApiClient {
   }
 
   // Helper functions for interacting with MVs
-  public async mjolnir(
+  public async changeSetMjolnir(
     changeSetId: string,
     kind: string,
     id: string,
@@ -414,7 +429,7 @@ export class SdfApiClient {
     return null;
   }
 
-  public async multiMjolnir(
+  public async changeSetMultiMjolnir(
     changeSetId: string,
     mvs: { kind: string; id: string }[],
   ) {
@@ -448,6 +463,86 @@ export class SdfApiClient {
         await response.text(),
       );
       throw new Error(`Error ${response.status}: ${await response.text()}`);
+    }
+  }
+
+  public async deploymentMultiMjolnir(mvs: { kind: string; id: string }[]) {
+    const response = await this.call(
+      {
+        route: "deployment_multi_mjolnir",
+        body: { requests: mvs },
+      },
+      true,
+    );
+
+    if (response?.status === 200) {
+      try {
+        const json = await response.json();
+        if (json.failed && json.failed.length > 0) {
+          console.warn(
+            "Some MVs were not found during multi mjolnir:",
+            json.failed,
+          );
+        }
+        return json.successful.map((v: any) => v.frontEndObject.data);
+      } catch (err) {
+        console.error("Error trying to parse response body as JSON", err);
+        throw new Error(`Error trying to parse response body as JSON: ${err}`);
+      }
+    } else {
+      // Fail on non-200 errors
+      console.error(
+        `Error ${response.status}: Unable to fetch multiple Deployment MVs:`,
+        await response.text(),
+      );
+      throw new Error(`Error ${response.status}: ${await response.text()}`);
+    }
+  }
+
+  public async fetchDeploymentIndex(): Promise<any> {
+    const response = await this.call(
+      {
+        route: "deployment_index",
+      },
+      true,
+    );
+    if (response?.status === 200) {
+      const json = await response.json();
+      return json;
+    } else {
+      console.warn(`Deployment index missing! This is bad!`);
+      throw new Error(`Deployment index missing! This is bad!`);
+    }
+  }
+
+  public async deploymentMjolnir(
+    kind: string,
+    id: string,
+  ): Promise<any | null> {
+    const response = await this.call(
+      {
+        route: "deployment_mjolnir",
+        routeVars: { materializedViewId: id, referenceKind: kind },
+      },
+      true,
+    );
+    if (response?.status === 200) {
+      try {
+        const json = await response.json();
+        return json.data;
+      } catch (err) {
+        console.error("Error trying to parse response body as JSON", err);
+      }
+    } else {
+      console.warn(
+        `Deployment Materialized view for ${kind} with ID ${id} not found`,
+      );
+      throw new Error(
+        "Deployment Materialized view not found for kind: " +
+          kind +
+          ", id: " +
+          id,
+      );
     }
   }
 

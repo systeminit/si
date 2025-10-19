@@ -1,6 +1,13 @@
 import assert from "node:assert";
 import { SdfApiClient } from "../sdf_api_client.ts";
-import { createComponent, createComponentPayload, eventualMVAssert, getActions, getVariants, getViews, runWithTemporaryChangeset } from "../test_helpers.ts";
+import {
+  createComponent,
+  createComponentPayload,
+  eventualMVAssert,
+  getActions,
+  getViews,
+  runWithTemporaryChangeset,
+} from "../test_helpers.ts";
 
 export default async function add_action(sdfApiClient: SdfApiClient) {
   return runWithTemporaryChangeset(sdfApiClient, add_action_inner);
@@ -14,12 +21,14 @@ export async function add_action_inner(
   // Store the original length of actions to verify later
   assert(Array.isArray(data.actions), "Expected actions to be an array");
 
-
   const actionOriginalLength = data.actions.length;
 
   // Get all Schema Variants
-  let schemaVariants = await getVariants(sdfApiClient, changeSetId);
-  let createComponentBody = createComponentPayload(schemaVariants, "AWS::EC2::Instance");
+  let createComponentBody = await createComponentPayload(
+    sdfApiClient,
+    changeSetId,
+    "AWS::EC2::Instance",
+  );
 
   // Get the views and find the default one
   const views = await getViews(sdfApiClient, changeSetId);
@@ -40,8 +49,13 @@ export async function add_action_inner(
     changeSetId,
     "ActionViewList",
     sdfApiClient.workspaceId,
-    (mv) => { return mv.actions.some((action: any) => action.componentId === newComponentId) && mv.actions.length === actionOriginalLength + 1; },
+    (mv) => {
+      return (
+        mv.actions.some(
+          (action: any) => action.componentId === newComponentId,
+        ) && mv.actions.length === actionOriginalLength + 1
+      );
+    },
     "No action with the expected componentId found",
   );
-
 }

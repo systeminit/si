@@ -5,7 +5,6 @@ import {
   createComponent,
   createComponentPayload,
   eventualMVAssert,
-  getVariants,
   getViews,
   installModule,
 } from "../test_helpers.ts";
@@ -15,7 +14,8 @@ export default async function create_and_and_apply_across_change_sets(
 ) {
   return await create_and_and_apply_across_change_sets_inner(sdfApiClient);
 }
-const TEST_RESOURCE_ACTION_MODULE_ID = "01JMJB1QW3M8D7MNN8NGBR739J";
+const TEST_RESOURCE_ACTION_MODULE_ID = "01JMJB1QW3M8D7MNN8NGBR739J"; // From module index
+const TEST_RESOURCE_SCHEMA_ID = "01J85S2MXMFPJVW6FP3N9K4WSE"; // From module index - static id
 async function create_and_and_apply_across_change_sets_inner(
   sdf: SdfApiClient,
 ) {
@@ -35,15 +35,15 @@ async function create_and_and_apply_across_change_sets_inner(
       const defaultView = views.find((v: any) => v.isDefault);
       assert(defaultView, "Expected to find a default view");
 
-      let schemaVariants = await getVariants(sdf, changeSetId);
-
+      let createComponentMaybeUninstalled = await createComponentPayload(
+        sdf,
+        changeSetId,
+        "TestResourceActions",
+        TEST_RESOURCE_SCHEMA_ID,
+      );
       // first let's make sure our test asset is installed
       // this is really just so we can run this against any workspace
-      if (
-        !schemaVariants.installed.some(
-          (v: any) => v.schemaName === "TestResourceActions",
-        )
-      ) {
+      if (createComponentMaybeUninstalled.schemaType === "uninstalled") {
         const installResult = await installModule(
           sdf,
           changeSetId,
@@ -54,7 +54,6 @@ async function create_and_and_apply_across_change_sets_inner(
           installResult[0]?.schemaVariantId,
           "Expected to get a schemaVariantId after installing TestResourceActions module",
         );
-        const installedVariantId = installResult[0].schemaVariantId;
         console.log(
           "Installing TestResourceActions schema variant...",
           installResult,
@@ -62,32 +61,24 @@ async function create_and_and_apply_across_change_sets_inner(
         await eventualMVAssert(
           sdf,
           changeSetId,
-          "SchemaVariantCategories",
-          sdf.workspaceId,
+          "LuminorkDefaultVariant",
+          TEST_RESOURCE_SCHEMA_ID,
           (mv) => {
-            const installedList: string[] = mv.categories.flatMap((c: any) =>
-              c.schemaVariants
-                .filter((v: any) => v.type === "installed")
-                .map((v: any) => {
-                  return v.id;
-                }),
-            );
-            console.log("Installed Schema Variants:", installedList);
-            console.log("Expected Schema Variant ID:", installedVariantId);
-            return installedList.some((v: any) => v === installedVariantId);
+            return mv?.id === TEST_RESOURCE_SCHEMA_ID;
           },
           "Expected TestResourceActions schema variant to be installed",
         );
-        schemaVariants = await getVariants(sdf, changeSetId);
       }
 
       // Create a component with the TestResourceActions schema variant
       console.log(
         "Creating a component with the TestResourceActions schema variant...",
       );
-      let createComponentBody = createComponentPayload(
-        schemaVariants,
+      let createComponentBody = await createComponentPayload(
+        sdf,
+        changeSetId,
         "TestResourceActions",
+        TEST_RESOURCE_SCHEMA_ID,
       );
       const newComponentId = await createComponent(
         sdf,
@@ -159,7 +150,7 @@ async function cleanupHead(sdf: SdfApiClient): Promise<void> {
   const changeSetId = await createChangeSet(sdf);
   const workspaceId = sdf.workspaceId;
 
-  const components = await sdf.mjolnir(
+  const components = await sdf.changeSetMjolnir(
     changeSetId,
     "ComponentList",
     workspaceId,

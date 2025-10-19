@@ -5,10 +5,9 @@ import {
   runWithTemporaryChangeset,
   sleepBetween,
   createComponent,
-  getVariants,
-  createComponentPayload,
   getViews,
   eventualMVAssert,
+  createComponentPayload,
 } from "../test_helpers.ts";
 
 export default async function emulate_paul_stack(sdfApiClient: SdfApiClient) {
@@ -20,9 +19,11 @@ async function emulate_paul_stack_inner(
   sdf: SdfApiClient,
   changeSetId: string,
 ) {
-  // Get the schema variants (uninstalled and installed)
-  let schemaVariants = await getVariants(sdf, changeSetId);
-  let createRegionBody = createComponentPayload(schemaVariants, "Region");
+  let createRegionBody = await createComponentPayload(
+    sdf,
+    changeSetId,
+    "Region",
+  );
 
   // Get the views and find the default one
   const views = await getViews(sdf, changeSetId);
@@ -49,10 +50,12 @@ async function emulate_paul_stack_inner(
     },
   });
 
-
-
   // CREATE VPC
-  let createVPCBody = createComponentPayload(schemaVariants, "AWS::EC2::VPC");
+  let createVPCBody = await createComponentPayload(
+    sdf,
+    changeSetId,
+    "AWS::EC2::VPC",
+  );
   const vpcComponentId = await createComponent(
     sdf,
     changeSetId,
@@ -70,10 +73,10 @@ async function emulate_paul_stack_inner(
     },
     body: {
       "/domain/extra/Region": {
-        "$source": {
-          "component": regionComponentId,
-          "path": "/domain/region",
-        }
+        $source: {
+          component: regionComponentId,
+          path: "/domain/region",
+        },
       },
     },
   });
@@ -84,13 +87,13 @@ async function emulate_paul_stack_inner(
     changeSetId,
     "AttributeTree",
     vpcComponentId,
-    (mv) => Object.values(mv.attributeValues).some(
-      (av: any) => av.path === "/domain/extra/Region" &&
-        av.externalSources.length === 1,
-    ),
+    (mv) =>
+      Object.values(mv.attributeValues).some(
+        (av: any) =>
+          av.path === "/domain/extra/Region" && av.externalSources.length === 1,
+      ),
     "Expected VPC to be subscribed to Region",
   );
-
 
   // CONFIGURE VPC
   const updateVpcResponse = await sdf.call({
@@ -113,17 +116,20 @@ async function emulate_paul_stack_inner(
     changeSetId,
     "AttributeTree",
     vpcComponentId,
-    (mv) => Object.values(mv.attributeValues).some(
-      (av: any) => av.path === "/domain/CidrBlock" &&
-        av.value === "10.0.0.0/16"
-    ),
-    "Expected VPC to have CidrBlock set to 10.0.0.0/16"
+    (mv) =>
+      Object.values(mv.attributeValues).some(
+        (av: any) =>
+          av.path === "/domain/CidrBlock" && av.value === "10.0.0.0/16",
+      ),
+    "Expected VPC to have CidrBlock set to 10.0.0.0/16",
   );
 
-
   // Public Subnet Components
-  const createSubnetBody = createComponentPayload(schemaVariants, "AWS::EC2::Subnet");
-
+  const createSubnetBody = await createComponentPayload(
+    sdf,
+    changeSetId,
+    "AWS::EC2::Subnet",
+  );
 
   for (const { index, data } of [
     { CidrBlock: "10.0.128.0/20", AvailabilityZone: "us-east-1a" },
@@ -147,15 +153,15 @@ async function emulate_paul_stack_inner(
       },
       body: {
         "/domain/extra/Region": {
-          "$source": {
-            "component": regionComponentId,
-            "path": "/domain/region",
+          $source: {
+            component: regionComponentId,
+            path: "/domain/region",
           },
         },
         "/domain/VpcId": {
-          "$source": {
-            "component": vpcComponentId,
-            "path": "/resource_value/VpcId",
+          $source: {
+            component: vpcComponentId,
+            path: "/resource_value/VpcId",
           },
         },
       },
@@ -166,11 +172,13 @@ async function emulate_paul_stack_inner(
       changeSetId,
       "AttributeTree",
       subnetComponentId,
-      (mv) => Object.values(mv.attributeValues).some(
-        (av: any) => av.path === "/domain/extra/Region" &&
-          av.externalSources.length === 1 &&
-          av.externalSources[0].path === "/domain/region",
-      ),
+      (mv) =>
+        Object.values(mv.attributeValues).some(
+          (av: any) =>
+            av.path === "/domain/extra/Region" &&
+            av.externalSources.length === 1 &&
+            av.externalSources[0].path === "/domain/region",
+        ),
       "Expected Subnet to be subscribed to Region",
     );
 
@@ -210,7 +218,11 @@ async function emulate_paul_stack_inner(
   });
   await sdf.waitForDVURoots(changeSetId, 500, 30000);
   // verify that the region value propagated to the vpc and subnets
-  const componentsToCheck = await sdf.mjolnir(changeSetId, "ComponentList", sdf.workspaceId);
+  const componentsToCheck = await sdf.changeSetMjolnir(
+    changeSetId,
+    "ComponentList",
+    sdf.workspaceId,
+  );
   const componentIds = componentsToCheck.components.map((c) => c.id);
   for (const id of componentIds) {
     await eventualMVAssert(
@@ -218,17 +230,15 @@ async function emulate_paul_stack_inner(
       changeSetId,
       "AttributeTree",
       id,
-      (mv) => Object.values(mv.attributeValues).some(
-        (av: any) => av.path === "/domain/extra/Region" &&
-          av.value === "us-east-1",
-      ) || Object.values(mv.attributeValues).some(
-        (av: any) => av.path === "/domain/region" &&
-          av.value === "us-east-1",
-      ),
+      (mv) =>
+        Object.values(mv.attributeValues).some(
+          (av: any) =>
+            av.path === "/domain/extra/Region" && av.value === "us-east-1",
+        ) ||
+        Object.values(mv.attributeValues).some(
+          (av: any) => av.path === "/domain/region" && av.value === "us-east-1",
+        ),
       `Expected component ${id} to have region set to us-east-1`,
     );
   }
 }
-
-
-
