@@ -28,6 +28,7 @@ __all__ = [
     "SearchApi",
     "SecretsApi",
     "WhoamiApi",
+    "WorkspaceManagementApi",
     "ApiResponse",
     "ApiClient",
     "Configuration",
@@ -80,6 +81,8 @@ __all__ = [
     "CreateVariantManagementFuncV1Response",
     "CreateVariantQualificationFuncV1Request",
     "CreateVariantQualificationFuncV1Response",
+    "CreateWorkspaceRequest",
+    "CreatorUser",
     "DeleteChangeSetV1Response",
     "DeleteComponentV1Response",
     "DeleteSecretV1Response",
@@ -162,9 +165,12 @@ __all__ = [
     "UpdateSchemaVariantV1Request",
     "UpdateSecretV1Request",
     "UpdateSecretV1Response",
+    "UpdateWorkspaceRequest",
     "UpgradeComponentV1Response",
     "ViewV1",
     "WhoamiResponse",
+    "Workspace",
+    "WorkspaceManagementRequestPath",
 ]
 
 # import apis into sdk package
@@ -178,6 +184,7 @@ from system_initiative_api_client.api.schemas_api import SchemasApi as SchemasAp
 from system_initiative_api_client.api.search_api import SearchApi as SearchApi
 from system_initiative_api_client.api.secrets_api import SecretsApi as SecretsApi
 from system_initiative_api_client.api.whoami_api import WhoamiApi as WhoamiApi
+from system_initiative_api_client.api.workspace_management_api import WorkspaceManagementApi as WorkspaceManagementApi
 
 # import ApiClient
 from system_initiative_api_client.api_response import ApiResponse as ApiResponse
@@ -234,6 +241,8 @@ from system_initiative_api_client.models.create_variant_management_func_v1_reque
 from system_initiative_api_client.models.create_variant_management_func_v1_response import CreateVariantManagementFuncV1Response as CreateVariantManagementFuncV1Response
 from system_initiative_api_client.models.create_variant_qualification_func_v1_request import CreateVariantQualificationFuncV1Request as CreateVariantQualificationFuncV1Request
 from system_initiative_api_client.models.create_variant_qualification_func_v1_response import CreateVariantQualificationFuncV1Response as CreateVariantQualificationFuncV1Response
+from system_initiative_api_client.models.create_workspace_request import CreateWorkspaceRequest as CreateWorkspaceRequest
+from system_initiative_api_client.models.creator_user import CreatorUser as CreatorUser
 from system_initiative_api_client.models.delete_change_set_v1_response import DeleteChangeSetV1Response as DeleteChangeSetV1Response
 from system_initiative_api_client.models.delete_component_v1_response import DeleteComponentV1Response as DeleteComponentV1Response
 from system_initiative_api_client.models.delete_secret_v1_response import DeleteSecretV1Response as DeleteSecretV1Response
@@ -316,6 +325,9 @@ from system_initiative_api_client.models.update_func_v1_response import UpdateFu
 from system_initiative_api_client.models.update_schema_variant_v1_request import UpdateSchemaVariantV1Request as UpdateSchemaVariantV1Request
 from system_initiative_api_client.models.update_secret_v1_request import UpdateSecretV1Request as UpdateSecretV1Request
 from system_initiative_api_client.models.update_secret_v1_response import UpdateSecretV1Response as UpdateSecretV1Response
+from system_initiative_api_client.models.update_workspace_request import UpdateWorkspaceRequest as UpdateWorkspaceRequest
 from system_initiative_api_client.models.upgrade_component_v1_response import UpgradeComponentV1Response as UpgradeComponentV1Response
 from system_initiative_api_client.models.view_v1 import ViewV1 as ViewV1
 from system_initiative_api_client.models.whoami_response import WhoamiResponse as WhoamiResponse
+from system_initiative_api_client.models.workspace import Workspace as Workspace
+from system_initiative_api_client.models.workspace_management_request_path import WorkspaceManagementRequestPath as WorkspaceManagementRequestPath

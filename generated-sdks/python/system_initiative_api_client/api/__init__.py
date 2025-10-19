@@ -11,4 +11,5 @@ from system_initiative_api_client.api.schemas_api import SchemasApi
 from system_initiative_api_client.api.search_api import SearchApi
 from system_initiative_api_client.api.secrets_api import SecretsApi
 from system_initiative_api_client.api.whoami_api import WhoamiApi
+from system_initiative_api_client.api.workspace_management_api import WorkspaceManagementApi
 

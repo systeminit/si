@@ -203,6 +203,41 @@ impl AuthorizedForRole {
 
         Ok(result)
     }
+
+    // We don't worry too much about making sure that we can authorize for a specfic workspace here
+    // this isn't going to be used for any operations within a specific workspace
+    async fn authorize_for_workspace_management(
+        parts: &mut Parts,
+        state: &AppState,
+        role: SiJwtClaimRole,
+    ) -> Result<AuthorizedForRole, ErrorResponse> {
+        // This must not be done twice.
+        if parts.extensions.get::<AuthorizedForRole>().is_some() {
+            return Err(internal_error(
+                "Must only specify explicit endpoint authorization once",
+            ));
+        }
+
+        let token: ValidatedToken = parts.extract_with_state(state).await?;
+
+        // Validate the role
+        if !token.custom.authorized_for(role) {
+            return Err(unauthorized_error("Not authorized for role"));
+        }
+
+        let authentication_method = token.authentication_method().map_err(bad_request)?;
+
+        // Stash the authorization
+        let result = AuthorizedForRole {
+            user_id: token.custom.user_id(),
+            authentication_method,
+            workspace_id: token.custom.workspace_id(),
+            authorized_role: role,
+        };
+        parts.extensions.insert(result);
+
+        Ok(result)
+    }
 }
 
 #[async_trait]
@@ -238,6 +273,31 @@ impl FromRequestParts<AppState> for AuthorizedForWebRole {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         AuthorizedForRole::authorize_for(parts, state, SiJwtClaimRole::Web).await?;
+        Ok(Self)
+    }
+}
+
+///
+/// A user who has been authorized for the automation role and isn't scoped to a workspace.
+/// This is primarily used when interacting with workspace management from luminork
+///
+#[derive(Clone, Copy, Debug)]
+pub struct AuthorizedForWorkspaceManagement;
+
+#[async_trait]
+impl FromRequestParts<AppState> for AuthorizedForWorkspaceManagement {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        AuthorizedForRole::authorize_for_workspace_management(
+            parts,
+            state,
+            SiJwtClaimRole::Automation,
+        )
+        .await?;
         Ok(Self)
     }
 }
