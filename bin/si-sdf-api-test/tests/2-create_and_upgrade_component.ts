@@ -1,6 +1,12 @@
 import assert from "node:assert";
 import { SdfApiClient } from "../sdf_api_client.ts";
-import { createComponent, createComponentPayload, eventualMVAssert, getVariants, getViews, runWithTemporaryChangeset } from "../test_helpers.ts";
+import {
+  createComponent,
+  createComponentPayload,
+  eventualMVAssert,
+  getViews,
+  runWithTemporaryChangeset,
+} from "../test_helpers.ts";
 
 export default async function create_and_upgrade_component(
   sdfApiClient: SdfApiClient,
@@ -20,9 +26,11 @@ async function create_and_upgrade_component_inner(
   sdfApiClient: SdfApiClient,
   changeSetId: string,
 ) {
-  // Get all Schema Variants
-  let schemaVariants = await getVariants(sdfApiClient, changeSetId);
-  let createComponentBody = createComponentPayload(schemaVariants, "Region");
+  let createComponentBody = await createComponentPayload(
+    sdfApiClient,
+    changeSetId,
+    "Region",
+  );
 
   // Get the views and find the default one
   const views = await getViews(sdfApiClient, changeSetId);
@@ -37,20 +45,37 @@ async function create_and_upgrade_component_inner(
     createComponentBody,
   );
   assert(newComponentId, "Expected to get a component id after creation");
-  const region = await sdfApiClient.mjolnir(changeSetId, "Component", newComponentId);
+  const region = await sdfApiClient.changeSetMjolnir(
+    changeSetId,
+    "Component",
+    newComponentId,
+  );
   assert(region, "Expected to get a region after creation");
   const originalSchemaVariantId = region.schemaVariantId.id;
-  assert(originalSchemaVariantId, "Expected to get a schema variant id after creation");
+  assert(
+    originalSchemaVariantId,
+    "Expected to get a schema variant id after creation",
+  );
   const schemaId = region.schemaId;
   assert(schemaId, "Expected to get a schema id after creation");
 
   // ensure this schema is the default variant and there is no editing variant
-  const schemaMembers = await sdfApiClient.mjolnir(changeSetId, "SchemaMembers", schemaId);
+  const schemaMembers = await sdfApiClient.changeSetMjolnir(
+    changeSetId,
+    "SchemaMembers",
+    schemaId,
+  );
   assert(schemaMembers, "Expected to get a schema after creation");
-  assert(schemaMembers.defaultVariantId === originalSchemaVariantId, "Expected default variant to match original schema variant id");
-  assert(schemaMembers.editingVariantId === null, "Expected no editing variant for the schema");
+  assert(
+    schemaMembers.defaultVariantId === originalSchemaVariantId,
+    "Expected default variant to match original schema variant id",
+  );
+  assert(
+    schemaMembers.editingVariantId === null,
+    "Expected no editing variant for the schema",
+  );
 
-  // unlock the region schema variant 
+  // unlock the region schema variant
   const newSchemaVariant = await sdfApiClient.call({
     route: "create_unlocked_copy",
     routeVars: {
@@ -59,7 +84,10 @@ async function create_and_upgrade_component_inner(
       schemaVariantId: originalSchemaVariantId,
     },
   });
-  assert(newSchemaVariant, "Expected to get a new schema variant after unlocking");
+  assert(
+    newSchemaVariant,
+    "Expected to get a new schema variant after unlocking",
+  );
   console.log("Created new schema variant:", newSchemaVariant);
 
   // see that the component has an upgrade available
@@ -68,7 +96,9 @@ async function create_and_upgrade_component_inner(
     changeSetId,
     "SchemaMembers",
     schemaId,
-    (mv) => mv.defaultVariantId === originalSchemaVariantId && mv.editingVariantId !== null,
+    (mv) =>
+      mv.defaultVariantId === originalSchemaVariantId &&
+      mv.editingVariantId !== null,
     "Component MV should have upgradeAvailable set to true",
   );
   // upgrade the component
