@@ -7089,6 +7089,9 @@
   "Required for cross account crawls. For same account crawls as the target data, this can be left as null.": {
     "enum": null
   },
+  "Required to identify a specific APS Workspace associated with this Anomaly Detector.": {
+    "enum": null
+  },
   "Required to identify a specific APS Workspace associated with this RuleGroupsNamespace.": {
     "enum": null
   },
@@ -9322,6 +9325,12 @@
     "enum": null
   },
   "The Amazon-side ASN of the Route Server.": {
+    "enum": null
+  },
+  "The AnomalyDetector alias.": {
+    "enum": null
+  },
+  "The AnomalyDetector period of detection and metric generation.": {
     "enum": null
   },
   "The App type that the Lifecycle Configuration is attached to.": {
