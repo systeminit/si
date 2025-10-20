@@ -47,10 +47,38 @@ class TestWorkspaceManagementApi(unittest.TestCase):
         """
         pass
 
+    def test_invite_member(self) -> None:
+        """Test case for invite_member
+
+        Invite a new member to the workspace
+        """
+        pass
+
+    def test_list_members(self) -> None:
+        """Test case for list_members
+
+        List all members of a workspace
+        """
+        pass
+
     def test_list_workspaces(self) -> None:
         """Test case for list_workspaces
 
         List workspaces
+        """
+        pass
+
+    def test_remove_member(self) -> None:
+        """Test case for remove_member
+
+        Remove a member from the workspace
+        """
+        pass
+
+    def test_update_member_role(self) -> None:
+        """Test case for update_member_role
+
+        Update a member's role in the workspace
         """
         pass
 

@@ -39,8 +39,15 @@ use crate::{
 mod create_workspace;
 mod delete_workspace;
 mod get_workspace;
+mod invite_member;
+mod list_members;
 mod list_workspaces;
+mod remove_member;
+mod sync_members;
+mod update_member_role;
 mod update_workspace;
+
+use sync_members::sync_members;
 
 pub type WorkspaceManagementResult<T> = Result<T, WorkspaceManagementError>;
 
@@ -49,10 +56,56 @@ pub type WorkspaceManagementResult<T> = Result<T, WorkspaceManagementError>;
 pub enum WorkspaceManagementError {
     #[error("auth api error: {message}")]
     AuthApiError { status: StatusCode, message: String },
+    #[error("dal error: {0}")]
+    Dal(#[from] Box<dal::TransactionsError>),
+    #[error("invalid instance url: {0}")]
+    InvalidInstanceUrl(String),
+    #[error("key pair error: {0}")]
+    KeyPair(#[from] Box<dal::KeyPairError>),
+    #[error("permissions error: {0}")]
+    Permissions(#[from] Box<permissions::Error>),
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
+    #[error("si-db error: {0}")]
+    SiDb(#[from] Box<si_db::Error>),
+    #[error("user not found: {0}")]
+    UserNotFound(String),
     #[error("validation error: {0}")]
     Validation(String),
+    #[error("workspace integration error: {0}")]
+    WorkspaceIntegration(#[from] Box<dal::workspace_integrations::WorkspaceIntegrationsError>),
+    #[error("workspace permission denied: {0}")]
+    WorkspacePermission(String),
+}
+
+impl From<dal::TransactionsError> for WorkspaceManagementError {
+    fn from(value: dal::TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<permissions::Error> for WorkspaceManagementError {
+    fn from(value: permissions::Error) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<si_db::Error> for WorkspaceManagementError {
+    fn from(value: si_db::Error) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<dal::workspace_integrations::WorkspaceIntegrationsError> for WorkspaceManagementError {
+    fn from(value: dal::workspace_integrations::WorkspaceIntegrationsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<dal::KeyPairError> for WorkspaceManagementError {
+    fn from(value: dal::KeyPairError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 impl IntoResponse for WorkspaceManagementError {
@@ -88,7 +141,19 @@ impl crate::service::v1::common::ErrorIntoResponse for WorkspaceManagementError 
                 (*status, message.clone())
             }
             WorkspaceManagementError::Validation(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
-            WorkspaceManagementError::Request(_) => {
+            WorkspaceManagementError::InvalidInstanceUrl(msg) => {
+                (StatusCode::BAD_REQUEST, msg.clone())
+            }
+            WorkspaceManagementError::UserNotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
+            WorkspaceManagementError::WorkspacePermission(msg) => {
+                (StatusCode::FORBIDDEN, msg.clone())
+            }
+            WorkspaceManagementError::Request(_)
+            | WorkspaceManagementError::Dal(_)
+            | WorkspaceManagementError::KeyPair(_)
+            | WorkspaceManagementError::Permissions(_)
+            | WorkspaceManagementError::SiDb(_)
+            | WorkspaceManagementError::WorkspaceIntegration(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
         }
@@ -109,6 +174,7 @@ async fn handle_auth_api_error(res: reqwest::Response) -> WorkspaceManagementErr
         401 => StatusCode::UNAUTHORIZED,
         403 => StatusCode::FORBIDDEN,
         404 => StatusCode::NOT_FOUND,
+        409 => StatusCode::CONFLICT,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     };
 
@@ -136,12 +202,14 @@ pub fn routes(state: AppState) -> Router<AppState> {
                         .route("/", get(get_workspace::get_workspace))
                         .route("/", delete(delete_workspace::delete_workspace))
                         .route("/", patch(update_workspace::update_workspace))
-                        .layer(middleware::from_extractor::<TargetWorkspaceIdFromPath>()), //
-                                                                                           // ,
-                                                                                           // .route("/members", get(get_workspace_members::get_workspace_members)),
-                                                                                           // .route("/members", delete(delete_workspace_member::delete_workspace_member)),
-                                                                                           // .route("/members", post(create_workspace_member::create_workspace_member)),
-                                                                                           // .route("/update_member_access", post(update_member_access::update_member_access)), <---- REQUIRES TALKING TO DAL!!
+                        .route("/members", get(list_members::list_members))
+                        .route("/members", post(invite_member::invite_member))
+                        .route("/members", delete(remove_member::remove_member))
+                        .route(
+                            "/update_member_access",
+                            post(update_member_role::update_member_role),
+                        )
+                        .layer(middleware::from_extractor::<TargetWorkspaceIdFromPath>()),
                 ),
         )
         .route_layer(middleware::from_extractor_with_state::<
@@ -166,6 +234,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
         delete_workspace::delete_workspace,
         update_workspace::update_workspace,
         create_workspace::create_workspace,
+        list_members::list_members,
+        update_member_role::update_member_role,
+        invite_member::invite_member,
+        remove_member::remove_member,
     ),
     components(schemas(
         Workspace,
@@ -173,6 +245,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
         CreatorUser,
         CreateWorkspaceRequest,
         UpdateWorkspaceRequest,
+        Member,
+        UpdateMemberRoleRequest,
+        InviteMemberRequest,
+        RemoveMemberRequest,
     )),
     tags()
 )]
@@ -260,6 +336,50 @@ pub struct CreatorUser {
     pub last_name: Option<String>,
 }
 
+// Member types
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct Member {
+    #[schema(value_type = String, example = "01GW0KXH4YJBWC7BTBAZ6ZR7EA")]
+    pub user_id: String,
+
+    #[schema(example = "user@example.com")]
+    pub email: String,
+
+    #[schema(example = "John Doe")]
+    pub nickname: String,
+
+    #[schema(example = "OWNER")]
+    pub role: String,
+
+    #[schema(value_type = Option<String>)]
+    pub signup_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateMemberRoleRequest {
+    #[schema(example = "01GW0KXH4YJBWC7BTBAZ6ZR7EA")]
+    pub user_id: String,
+
+    #[schema(example = "EDITOR")]
+    pub role: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct InviteMemberRequest {
+    #[schema(example = "newuser@example.com")]
+    pub email: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoveMemberRequest {
+    #[schema(example = "user@example.com")]
+    pub email: String,
+}
+
 impl From<AuthApiWorkspace> for Workspace {
     fn from(auth: AuthApiWorkspace) -> Self {
         Workspace {
@@ -276,4 +396,32 @@ impl From<AuthApiWorkspace> for Workspace {
             creator_user: auth.creator_user,
         }
     }
+}
+
+// Map Auth API roles (EDITOR) to Luminork roles (COLLABORATOR) for responses
+fn map_member_role_from_auth_api(role: String) -> String {
+    if role.eq_ignore_ascii_case("EDITOR") {
+        "COLLABORATOR".to_string()
+    } else {
+        role
+    }
+}
+
+// Map Luminork roles (COLLABORATOR) to Auth API roles (EDITOR) for requests
+pub(super) fn map_role_to_auth_api(role: &str) -> String {
+    if role.eq_ignore_ascii_case("COLLABORATOR") {
+        "EDITOR".to_string()
+    } else {
+        role.to_string()
+    }
+}
+
+pub(super) fn transform_members(members: Vec<Member>) -> Vec<Member> {
+    members
+        .into_iter()
+        .map(|mut member| {
+            member.role = map_member_role_from_auth_api(member.role);
+            member
+        })
+        .collect()
 }

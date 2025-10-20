@@ -1858,6 +1858,19 @@ export interface HashMapValue {
 /**
  * 
  * @export
+ * @interface InviteMemberRequest
+ */
+export interface InviteMemberRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof InviteMemberRequest
+     */
+    'email': string;
+}
+/**
+ * 
+ * @export
  * @interface ListChangeSetV1Response
  */
 export interface ListChangeSetV1Response {
@@ -2015,6 +2028,43 @@ export interface ManagingConnectionViewV1 {
      * @memberof ManagingConnectionViewV1
      */
     'componentName': string;
+}
+/**
+ * 
+ * @export
+ * @interface Member
+ */
+export interface Member {
+    /**
+     * 
+     * @type {string}
+     * @memberof Member
+     */
+    'email': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Member
+     */
+    'nickname': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Member
+     */
+    'role': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Member
+     */
+    'signupAt'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Member
+     */
+    'userId': string;
 }
 /**
  * Response for merge status
@@ -2220,6 +2270,19 @@ export interface PutOnHoldActionV1Response {
      * @memberof PutOnHoldActionV1Response
      */
     'success': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface RemoveMemberRequest
+ */
+export interface RemoveMemberRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof RemoveMemberRequest
+     */
+    'email': string;
 }
 /**
  * 
@@ -2767,6 +2830,25 @@ export interface UpdateFuncV1Response {
      * @memberof UpdateFuncV1Response
      */
     'success': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface UpdateMemberRoleRequest
+ */
+export interface UpdateMemberRoleRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateMemberRoleRequest
+     */
+    'role': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateMemberRoleRequest
+     */
+    'userId': string;
 }
 /**
  * 
@@ -10751,6 +10833,80 @@ export const WorkspaceManagementApiAxiosParamCreator = function (configuration?:
         },
         /**
          * 
+         * @summary Invite a new member to the workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {InviteMemberRequest} inviteMemberRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        inviteMember: async (workspaceId: string, inviteMemberRequest: InviteMemberRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('inviteMember', 'workspaceId', workspaceId)
+            // verify required parameter 'inviteMemberRequest' is not null or undefined
+            assertParamExists('inviteMember', 'inviteMemberRequest', inviteMemberRequest)
+            const localVarPath = `/management/workspaces/{workspace_id}/members`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(inviteMemberRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary List all members of a workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listMembers: async (workspaceId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('listMembers', 'workspaceId', workspaceId)
+            const localVarPath = `/management/workspaces/{workspace_id}/members`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary List workspaces
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -10773,6 +10929,86 @@ export const WorkspaceManagementApiAxiosParamCreator = function (configuration?:
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Remove a member from the workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {RemoveMemberRequest} removeMemberRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        removeMember: async (workspaceId: string, removeMemberRequest: RemoveMemberRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('removeMember', 'workspaceId', workspaceId)
+            // verify required parameter 'removeMemberRequest' is not null or undefined
+            assertParamExists('removeMember', 'removeMemberRequest', removeMemberRequest)
+            const localVarPath = `/management/workspaces/{workspace_id}/members`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(removeMemberRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Update a member\'s role in the workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {UpdateMemberRoleRequest} updateMemberRoleRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateMemberRole: async (workspaceId: string, updateMemberRoleRequest: UpdateMemberRoleRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('updateMemberRole', 'workspaceId', workspaceId)
+            // verify required parameter 'updateMemberRoleRequest' is not null or undefined
+            assertParamExists('updateMemberRole', 'updateMemberRoleRequest', updateMemberRoleRequest)
+            const localVarPath = `/management/workspaces/{workspace_id}/update_member_access`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(updateMemberRoleRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -10870,6 +11106,33 @@ export const WorkspaceManagementApiFp = function(configuration?: Configuration) 
         },
         /**
          * 
+         * @summary Invite a new member to the workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {InviteMemberRequest} inviteMemberRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async inviteMember(workspaceId: string, inviteMemberRequest: InviteMemberRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Member>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.inviteMember(workspaceId, inviteMemberRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.inviteMember']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary List all members of a workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listMembers(workspaceId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Member>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listMembers(workspaceId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.listMembers']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary List workspaces
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -10878,6 +11141,34 @@ export const WorkspaceManagementApiFp = function(configuration?: Configuration) 
             const localVarAxiosArgs = await localVarAxiosParamCreator.listWorkspaces(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.listWorkspaces']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Remove a member from the workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {RemoveMemberRequest} removeMemberRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async removeMember(workspaceId: string, removeMemberRequest: RemoveMemberRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Member>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.removeMember(workspaceId, removeMemberRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.removeMember']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Update a member\'s role in the workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {UpdateMemberRoleRequest} updateMemberRoleRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async updateMemberRole(workspaceId: string, updateMemberRoleRequest: UpdateMemberRoleRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Member>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.updateMemberRole(workspaceId, updateMemberRoleRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.updateMemberRole']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -10936,12 +11227,52 @@ export const WorkspaceManagementApiFactory = function (configuration?: Configura
         },
         /**
          * 
+         * @summary Invite a new member to the workspace
+         * @param {WorkspaceManagementApiInviteMemberRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        inviteMember(requestParameters: WorkspaceManagementApiInviteMemberRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>> {
+            return localVarFp.inviteMember(requestParameters.workspaceId, requestParameters.inviteMemberRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary List all members of a workspace
+         * @param {WorkspaceManagementApiListMembersRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listMembers(requestParameters: WorkspaceManagementApiListMembersRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>> {
+            return localVarFp.listMembers(requestParameters.workspaceId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary List workspaces
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
         listWorkspaces(options?: RawAxiosRequestConfig): AxiosPromise<Array<Workspace>> {
             return localVarFp.listWorkspaces(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Remove a member from the workspace
+         * @param {WorkspaceManagementApiRemoveMemberRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        removeMember(requestParameters: WorkspaceManagementApiRemoveMemberRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>> {
+            return localVarFp.removeMember(requestParameters.workspaceId, requestParameters.removeMemberRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Update a member\'s role in the workspace
+         * @param {WorkspaceManagementApiUpdateMemberRoleRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateMemberRole(requestParameters: WorkspaceManagementApiUpdateMemberRoleRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>> {
+            return localVarFp.updateMemberRole(requestParameters.workspaceId, requestParameters.updateMemberRoleRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -10994,12 +11325,52 @@ export interface WorkspaceManagementApiInterface {
 
     /**
      * 
+     * @summary Invite a new member to the workspace
+     * @param {WorkspaceManagementApiInviteMemberRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    inviteMember(requestParameters: WorkspaceManagementApiInviteMemberRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>>;
+
+    /**
+     * 
+     * @summary List all members of a workspace
+     * @param {WorkspaceManagementApiListMembersRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    listMembers(requestParameters: WorkspaceManagementApiListMembersRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>>;
+
+    /**
+     * 
      * @summary List workspaces
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof WorkspaceManagementApiInterface
      */
     listWorkspaces(options?: RawAxiosRequestConfig): AxiosPromise<Array<Workspace>>;
+
+    /**
+     * 
+     * @summary Remove a member from the workspace
+     * @param {WorkspaceManagementApiRemoveMemberRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    removeMember(requestParameters: WorkspaceManagementApiRemoveMemberRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>>;
+
+    /**
+     * 
+     * @summary Update a member\'s role in the workspace
+     * @param {WorkspaceManagementApiUpdateMemberRoleRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    updateMemberRole(requestParameters: WorkspaceManagementApiUpdateMemberRoleRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>>;
 
     /**
      * 
@@ -11053,6 +11424,83 @@ export interface WorkspaceManagementApiGetWorkspaceRequest {
      * @memberof WorkspaceManagementApiGetWorkspace
      */
     readonly workspaceId: string
+}
+
+/**
+ * Request parameters for inviteMember operation in WorkspaceManagementApi.
+ * @export
+ * @interface WorkspaceManagementApiInviteMemberRequest
+ */
+export interface WorkspaceManagementApiInviteMemberRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof WorkspaceManagementApiInviteMember
+     */
+    readonly workspaceId: string
+
+    /**
+     * 
+     * @type {InviteMemberRequest}
+     * @memberof WorkspaceManagementApiInviteMember
+     */
+    readonly inviteMemberRequest: InviteMemberRequest
+}
+
+/**
+ * Request parameters for listMembers operation in WorkspaceManagementApi.
+ * @export
+ * @interface WorkspaceManagementApiListMembersRequest
+ */
+export interface WorkspaceManagementApiListMembersRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof WorkspaceManagementApiListMembers
+     */
+    readonly workspaceId: string
+}
+
+/**
+ * Request parameters for removeMember operation in WorkspaceManagementApi.
+ * @export
+ * @interface WorkspaceManagementApiRemoveMemberRequest
+ */
+export interface WorkspaceManagementApiRemoveMemberRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof WorkspaceManagementApiRemoveMember
+     */
+    readonly workspaceId: string
+
+    /**
+     * 
+     * @type {RemoveMemberRequest}
+     * @memberof WorkspaceManagementApiRemoveMember
+     */
+    readonly removeMemberRequest: RemoveMemberRequest
+}
+
+/**
+ * Request parameters for updateMemberRole operation in WorkspaceManagementApi.
+ * @export
+ * @interface WorkspaceManagementApiUpdateMemberRoleRequest
+ */
+export interface WorkspaceManagementApiUpdateMemberRoleRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof WorkspaceManagementApiUpdateMemberRole
+     */
+    readonly workspaceId: string
+
+    /**
+     * 
+     * @type {UpdateMemberRoleRequest}
+     * @memberof WorkspaceManagementApiUpdateMemberRole
+     */
+    readonly updateMemberRoleRequest: UpdateMemberRoleRequest
 }
 
 /**
@@ -11121,6 +11569,30 @@ export class WorkspaceManagementApi extends BaseAPI implements WorkspaceManageme
 
     /**
      * 
+     * @summary Invite a new member to the workspace
+     * @param {WorkspaceManagementApiInviteMemberRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public inviteMember(requestParameters: WorkspaceManagementApiInviteMemberRequest, options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).inviteMember(requestParameters.workspaceId, requestParameters.inviteMemberRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary List all members of a workspace
+     * @param {WorkspaceManagementApiListMembersRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public listMembers(requestParameters: WorkspaceManagementApiListMembersRequest, options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).listMembers(requestParameters.workspaceId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
      * @summary List workspaces
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -11128,6 +11600,30 @@ export class WorkspaceManagementApi extends BaseAPI implements WorkspaceManageme
      */
     public listWorkspaces(options?: RawAxiosRequestConfig) {
         return WorkspaceManagementApiFp(this.configuration).listWorkspaces(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Remove a member from the workspace
+     * @param {WorkspaceManagementApiRemoveMemberRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public removeMember(requestParameters: WorkspaceManagementApiRemoveMemberRequest, options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).removeMember(requestParameters.workspaceId, requestParameters.removeMemberRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Update a member\'s role in the workspace
+     * @param {WorkspaceManagementApiUpdateMemberRoleRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public updateMemberRole(requestParameters: WorkspaceManagementApiUpdateMemberRoleRequest, options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).updateMemberRole(requestParameters.workspaceId, requestParameters.updateMemberRoleRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
