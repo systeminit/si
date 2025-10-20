@@ -199,6 +199,7 @@ import Plug from "~icons/ph/plugs-fill";
 // MDI
 import MdiCheckboxBlankCircle from "~icons/mdi/checkbox-blank-circle";
 import MdiCheckboxBlankCircleOutline from "~icons/mdi/checkbox-blank-circle-outline";
+import MdiMouseLeftClickOutline from "~icons/mdi/mouse-left-click-outline";
 import MdiMouseRightClickOutline from "~icons/mdi/mouse-right-click-outline";
 
 // attribute widget types
@@ -365,6 +366,7 @@ export const ICONS = Object.freeze({
   mjolnir: Mjolnir,
   moon: Moon,
   "mouse-and-touchpad": MaterialSymbolsLightTouchpadMouseRounded,
+  "mouse-left-click-outline": MdiMouseLeftClickOutline,
   "mouse-right-click-outline": MdiMouseRightClickOutline,
   "mouse-scroll": IconoirMouseScrollWheel,
   multiselect: Boxes,

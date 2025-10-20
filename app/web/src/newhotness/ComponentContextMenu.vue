@@ -1,3 +1,10 @@
+<!-- eslint-disable vue/component-tags-order,import/first -->
+<script lang="ts">
+// Toggle this to true to show debugging info on the menu
+export const DEBUG_MODE = false;
+</script>
+
+<!-- eslint-disable vue/component-tags-order,import/first -->
 <template>
   <div>
     <DropdownMenu
@@ -26,6 +33,7 @@
   </div>
 </template>
 
+<!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 import {
   DropdownMenu,
@@ -210,6 +218,13 @@ const removeFromViewTooltip = computed(() => {
 // BEGIN CREATING THE MENU OPTIONS
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
+
+  if (DEBUG_MODE) {
+    items.push({
+      label: `COMPONENTS SELECTED: ${components.value.length}`,
+      header: true,
+    });
+  }
 
   // If we are dealing with both ghosted and regular components (which should not be possible),
   // then return helper text as a failsafe.
@@ -703,6 +718,10 @@ function open(
   });
 }
 
+function setSelectedComponents(componentsForMenu: ComponentInList[]) {
+  components.value = componentsForMenu;
+}
+
 function close() {
   components.value = [];
   contextMenuRef.value?.forceClose();
@@ -735,5 +754,6 @@ defineExpose({
   componentsRestore,
   createTemplateStart,
   focusFirstItem,
+  setSelectedComponents,
 });
 </script>

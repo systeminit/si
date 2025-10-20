@@ -1039,7 +1039,10 @@ watch(gridMode, (newMode, oldMode) => {
   }
 
   // If we are moving in or out of pinning mode, we need to clear the selection.
-  if (newMode.mode === "pinned" || oldMode.mode === "pinned") {
+  if (
+    (newMode.mode === "pinned" && oldMode.mode !== "pinned") ||
+    (newMode.mode !== "pinned" && oldMode.mode === "pinned")
+  ) {
     clearSelection();
   }
 
@@ -1716,6 +1719,8 @@ const allVisibleComponents = computed(() => {
   for (const row of gridRows.value) {
     if (row.type === "contentRow") {
       components.push(...row.components);
+    } else if (row.type === "pinnedContentRow") {
+      components.push(row.component);
     }
   }
   return components;
@@ -1925,6 +1930,7 @@ const previousComponent = (wrap = false) => {
 };
 
 watch([focusedComponentIdx], () => {
+  // console.log(focusedComponentIdx.value);
   if (focusedComponentIdx.value === -1) {
     searchRef.value?.focus();
   }
@@ -1968,11 +1974,12 @@ const fixContextMenu = async () => {
     await nextTick();
   }
 
-  // If we focus on the pinned component, do not bring up the context menu.
-  if (
+  // If we focus on the pinned component, hide the context menu
+  if (focusedComponentIsPinned.value) {
+    componentContextMenuRef.value?.close();
+  } else if (
     exploreContext.value.focusedComponentRef.value &&
     selectionComponentsForAction.value &&
-    !focusedComponentIsPinned.value &&
     !gridScrolling.value
   ) {
     componentContextMenuRef.value?.open(
@@ -1992,23 +1999,63 @@ const clearSelection = () => {
   }
 };
 
+// This function is fired when a ExploreGridTile checkbox is clicked
+// Or for complex selection logic resulting from holding shift/cmd/ctrl
 const selectComponent = (componentIdx: number, event?: MouseEvent) => {
-  // Range selection with shift key
-  if (event?.shiftKey && selectedComponentIndexes.size > 0) {
-    const selectedIndexes = Array.from(selectedComponentIndexes);
-    const lastSelectedIdx = Math.max(...selectedIndexes);
-    const start = Math.min(lastSelectedIdx, componentIdx);
-    const end = Math.max(lastSelectedIdx, componentIdx);
+  if (event?.shiftKey) {
+    // Shift key behavior takes priority first
+    if (
+      focusedComponentIdx.value !== undefined &&
+      selectedComponentIndexes.size === 0
+    ) {
+      // If a component is focused but nothing is selected, add it to the selection
+      selectedComponentIndexes.add(focusedComponentIdx.value);
+    } else if (
+      event.button === 0 &&
+      selectedComponentIndexes.has(componentIdx)
+    ) {
+      // If shift left click and clicked component is already selected, deselect it
+      deselectComponent(componentIdx);
+      return; // do not continue in this case!
+    }
 
-    // Select all components in the range
-    for (let i = start; i <= end; i++) {
-      selectedComponentIndexes.add(i);
+    if (selectedComponentIndexes.size > 0) {
+      // Range selection with shift key
+      const selectedIndexes = Array.from(selectedComponentIndexes);
+      const lastSelectedIdx = Math.max(...selectedIndexes);
+      const start = Math.min(lastSelectedIdx, componentIdx);
+      const end = Math.max(lastSelectedIdx, componentIdx);
+
+      // Select all components in the range
+      for (let i = start; i <= end; i++) {
+        selectedComponentIndexes.add(i);
+      }
+    } else {
+      // Add component to selected list (shift click with no selection)
+      selectedComponentIndexes.add(componentIdx);
+    }
+  } else if (event?.ctrlKey || event?.metaKey) {
+    // Pick - select or deselect invidual components
+    if (selectedComponentIndexes.has(componentIdx) && event.button === 0) {
+      // Remove component from selected list
+      deselectComponent(componentIdx);
+      return; // do not continue in this case!
+    } else {
+      // Add component to selected list
+      selectedComponentIndexes.add(componentIdx);
     }
   } else {
+    // Add component to selected list (checkbox click)
     selectedComponentIndexes.add(componentIdx);
   }
-  // Checkbox selections don't change focus - this prevents automatic context menu
+
+  // finally pop context menu if right click or menu is already open
+  if (event?.button === 2 || focusedComponentIdx.value !== undefined) {
+    setFocusedComponentIdx(componentIdx);
+  }
 };
+
+// This function just deselects a component, no other logic inside
 const deselectComponent = (componentIdx: number | string) => {
   // PSA: componentIdx coming through emits is typed as number, but at execution is a string
   if (typeof componentIdx === "string") componentIdx = parseInt(componentIdx);
@@ -2030,6 +2077,13 @@ const deselectComponent = (componentIdx: number | string) => {
   // Clear selection entirely if no more selections remain
   if (selectedComponentIndexes.size === 0) {
     clearSelection();
+  }
+
+  // If we still have selected components, fix the menu's selection accordingly
+  if (selectionComponentsForAction.value) {
+    componentContextMenuRef.value?.setSelectedComponents(
+      selectionComponentsForAction.value,
+    );
   }
 };
 
@@ -2108,12 +2162,13 @@ const componentClicked = (
   componentIdx: number,
 ) => {
   e.preventDefault();
-  if (e.shiftKey) {
-    // Range selection with shift key
+  if (e.shiftKey || e.metaKey || e.ctrlKey) {
+    // Complex selection logic here!
     selectComponent(componentIdx, e);
     return;
   }
 
+  // Basic selection logic here
   if (e.button === 0) {
     // Left-click: just navigate, don't affect selections
     componentNavigate(componentId);
@@ -2158,6 +2213,8 @@ const removeEmitters = () => {
 };
 
 const onArrow = () => {
+  // If the context menu is open and has no focus, focus its first item!
+  // All other arrow key controls are managed by the menu itself.
   componentContextMenuRef.value?.focusFirstItem(true);
 };
 
@@ -2397,6 +2454,13 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
 
     navigateToFocusedComponent();
   },
+  " ": () => {
+    // For non-pinned components, the ComponentContextMenu handles the spacebar press
+    // But for the pinned component, we need to handle it here
+    if (focusedComponentIdx.value === 0 && focusedComponentIsPinned.value) {
+      navigateToFocusedComponent();
+    }
+  },
   Tab: onTab,
   Escape: onEscape,
   Backspace: onBackspace,
@@ -2442,6 +2506,11 @@ const onScroll = (event: Event) => {
 
 const onScrollEnd = async () => {
   gridScrolling.value = false;
+
+  if (focusedComponentIsPinned.value) {
+    componentContextMenuRef.value?.close();
+    return;
+  }
 
   // We need to fix the context menu after scrolling!
   // If the element is scrolled into view, show the menu
