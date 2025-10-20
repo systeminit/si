@@ -15,12 +15,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  e2e-validation:
-    uses: ./.github/workflows/e2e-validation.yml
-    with:
-      environment: production
-      test_dir: cypress/e2e
-    secrets: inherit
+  # Disabled 2025-10-20. AWS outage affecting auth flow.
+  #
+  # e2e-validation:
+  #   uses: ./.github/workflows/e2e-validation.yml
+  #   with:
+  #     environment: production
+  #     test_dir: cypress/e2e
+  #   secrets: inherit
   api-test:
     uses: ./.github/workflows/run-api-test.yml
     with:
