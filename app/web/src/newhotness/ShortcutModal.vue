@@ -1,5 +1,5 @@
 <template>
-  <Modal ref="modalRef" title="Keyboard Controls" size="xl">
+  <Modal ref="modalRef" title="Controls" size="xl">
     <div
       :class="
         clsx(
@@ -48,6 +48,12 @@
       </div>
       <div>
         <div class="keys">
+          <Icon name="mouse-left-click-outline" />
+        </div>
+        <div>Left click on a component to see details about it.</div>
+      </div>
+      <div>
+        <div class="keys">
           <Icon name="mouse-right-click-outline" />
         </div>
         <div>Right click on a component to take action.</div>
@@ -89,6 +95,16 @@
         <div>
           Press <TextPill tighter variant="key">Escape</TextPill> to clear your
           current selection.
+        </div>
+      </div>
+      <div>
+        <div class="keys">
+          <Icon name="spacebar" />
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">Enter</TextPill> or
+          <TextPill tighter variant="key">Spacebar</TextPill> to open a selected
+          component's details.
         </div>
       </div>
 

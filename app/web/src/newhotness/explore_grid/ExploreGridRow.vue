@@ -47,10 +47,12 @@
     "
   >
     <Icon
+      class="cursor-pointer hover:scale-125"
       :name="row.collapsed ? 'chevron--right' : 'chevron--down'"
       @click="emit('clickCollapse', row.subKey, !row.collapsed)"
     />
     <Icon :name="getAssetIcon(row.schemaCategory)" size="md" />
+    <!-- TODO(Wendy) - we need a hover state here -->
     <div
       class="cursor-pointer select-none flex flex-row items-center gap-xs"
       @click="
@@ -160,6 +162,7 @@
       >
         <template #endItems>
           <div
+            v-tooltip="'Unpin'"
             :class="
               clsx(
                 'bg-neutral-600 border border-neutral-600 rounded p-2xs',
