@@ -209,13 +209,14 @@ function buildRemoteCommand() {
         .description(
           "Pushes schemas to your remote System Initiative workspace",
         )
-        .action(async ({ root }) => {
+        .option("-s, --skip-confirmation", "Skip confirmation prompt")
+        .action(async ({ root, skipConfirmation }) => {
           const project = createProject(root);
 
           const ctx = Context.instance();
           const cliContext = await initializeCliContextWithAuth({ ctx });
 
-          await pushAssets(cliContext, project);
+          await pushAssets(cliContext, project, skipConfirmation);
         }),
     );
 }

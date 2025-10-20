@@ -1,7 +1,7 @@
 {
   "workspace": [],
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read --allow-write main.ts",
+    "dev": "deno run --allow-net --allow-env --allow-read --env-file=.env.local --allow-write main.ts",
     "build": "deno compile --allow-net --allow-env --allow-read --allow-write main.ts",
     "lint": "deno lint",
     "test": "deno test"
@@ -15,7 +15,7 @@
     "@logtape/pretty": "jsr:@logtape/pretty@^1.1.0",
     "@logtape/redaction": "jsr:@logtape/redaction@^1.1.1",
     "@std/path": "https://deno.land/std@0.224.0/path/mod.ts",
-    "@systeminit/api-client": "jsr:@systeminit/api-client@^1.3.3",
+    "@systeminit/api-client": "jsr:@systeminit/api-client@^1.5.0",
     "axios": "npm:axios@1.11.0",
     "posthog-node": "npm:posthog-node@^4.2.1"
   },

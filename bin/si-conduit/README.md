@@ -326,7 +326,7 @@ Enable verbose logging to debug issues:
 
 ```bash
 # Maximum verbosity (trace level)
-si-conduit -vvvv schema scaffold generate MySchema
+si-conduit -v4 schema scaffold generate MySchema
 
 # Or specify a numeric level (0-4)
 si-conduit --verbose 4 schema scaffold generate MySchema
@@ -343,8 +343,8 @@ si-conduit --verbose 4 schema scaffold generate MySchema
 - [x] Push code generators
 - [x] Add PostHog analytics events
 - [x] Write comprehensive README
-- [ ] Handle existing function bindings for asset updates
-- [ ] Handle existing function names for new and updating assets
+- [x] Handle existing function bindings for asset updates
+- [x] Handle existing function names for new and updating assets
 
 ### Code Style
 
@@ -356,5 +356,5 @@ si-conduit --verbose 4 schema scaffold generate MySchema
 
 ## License
 
-See the main System Initiative repository for license information.
+See the root of the System Initiative repository for license information.
 

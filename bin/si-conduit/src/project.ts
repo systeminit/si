@@ -103,6 +103,9 @@ const CODEGENS_DIR = "codeGenerators" as const;
 /** Directory name for management functions within a schema. */
 const MANAGEMENTS_DIR = "management" as const;
 
+/** Directory name for authentication functions within a schema. */
+const AUTH_DIR = "authentication" as const;
+
 /** Directory name for qualifications within a schema. */
 const QUALIFICATIONS_DIR = "qualifications" as const;
 
@@ -538,6 +541,18 @@ export class Project {
   }
 
   /**
+   * Returns the relative path to a schema's management functions directory.
+   *
+   * @param schemaName - The name of the schema
+   * @returns A RelativeDirectoryPath to the authentication directory
+   */
+  authBaseRelativePath(schemaName: string): RelativeDirectoryPath {
+    return new RelativeDirectoryPath(
+      join(this.schemaBaseRelativePath(schemaName), AUTH_DIR),
+    );
+  }
+
+  /**
    * Returns the absolute path to a schema's management functions directory.
    *
    * @param schemaName - The name of the schema
@@ -546,6 +561,18 @@ export class Project {
   managementBasePath(schemaName: string): AbsoluteDirectoryPath {
     return new AbsoluteDirectoryPath(
       join(this.rootPath, this.managementBaseRelativePath(schemaName)),
+    );
+  }
+
+  /**
+   * Returns the absolute path to a schema's auth functions directory.
+   *
+   * @param schemaName - The name of the schema
+   * @returns An AbsoluteDirectoryPath to the authentication directory
+   */
+  authBasePath(schemaName: string): AbsoluteDirectoryPath {
+    return new AbsoluteDirectoryPath(
+      join(this.rootPath, this.authBaseRelativePath(schemaName)),
     );
   }
 

@@ -17,3 +17,16 @@ export function unknownValueToErrorMessage(value: unknown): string {
 export function makeStringSafeForFilename(str: string): string {
   return str.replace(/[\\/:*?"<>|]/g, "_");
 }
+
+// I kept deleting this and bringing it back when debugging API client usage, so let's keep it here
+export function logAllFunctions(obj: unknown) {
+  if (typeof obj !== 'object' || obj === null) {
+    console.log('Not an object:', obj);
+    return;
+  }
+
+  const objWithIndex = obj as Record<string, unknown>;
+  const allPrototypeProps = Object.getOwnPropertyNames(Object.getPrototypeOf(objWithIndex));
+  const prototypeFunctions = allPrototypeProps.filter(name => typeof objWithIndex[name] === 'function');
+  console.log(prototypeFunctions);
+}
