@@ -5,7 +5,9 @@
     irreversible
     confirmIcon="trash"
     confirmTone="destructive"
-    @confirm="emit('confirm')"
+    :loading="confirming"
+    loadingText="Erasing..."
+    @confirm="confirm"
   >
     <div>
       You are about to erase
@@ -61,8 +63,11 @@ const components = ref<ComponentInList[]>([]);
 
 const modalRef = ref<InstanceType<typeof ConfirmModal>>();
 
+const confirming = ref(false);
+
 function open(selectedComponents: ComponentInList[]) {
   components.value = selectedComponents;
+  confirming.value = false;
   modalRef.value?.open();
 }
 function close() {
@@ -73,6 +78,11 @@ function close() {
 const emit = defineEmits<{
   (e: "confirm"): void;
 }>();
+
+const confirm = () => {
+  confirming.value = true;
+  emit("confirm");
+};
 
 defineExpose({ open, close });
 </script>

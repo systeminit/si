@@ -21,6 +21,10 @@
           :icon="confirmIcon"
           :tone="confirmTone"
           :disabled="!irreversibleConfirmed"
+          :loading="loading"
+          :loadingText="loadingText"
+          :loadingIcon="loadingIcon"
+          :requestStatus="requestStatus"
           @click="emit('confirm')"
         >
           {{ confirmLabel }}
@@ -39,6 +43,7 @@ import {
   useModal,
   VormInput,
 } from "@si/vue-lib/design-system";
+import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import { nextTick, PropType, ref } from "vue";
 
 const props = defineProps({
@@ -52,6 +57,12 @@ const props = defineProps({
       "sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "4wxl" | "6xl" | "7xl" | "max"
     >,
     default: "lg",
+  },
+  loading: { type: Boolean },
+  loadingText: { type: String },
+  loadingIcon: { type: String as PropType<IconNames>, default: "loader" },
+  requestStatus: {
+    type: [Boolean, Object] as PropType<false | ApiRequestStatus>, // can be false if passing 'someCondition && status'
   },
 });
 

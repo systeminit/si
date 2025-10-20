@@ -4,6 +4,8 @@
     title="Duplicate"
     confirmLabel="Duplicate"
     size="xl"
+    :loading="isConfirming"
+    loadingText="Duplicating..."
     @confirm="emit('confirm', prefixName)"
   >
     <ErrorMessage v-if="requestError">{{ requestError }}</ErrorMessage>
