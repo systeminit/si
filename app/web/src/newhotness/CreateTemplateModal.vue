@@ -3,6 +3,8 @@
     ref="modalRef"
     title="Create template"
     confirmLabel="Create"
+    loadingText="Creating..."
+    :requestStatus="createTemplateApi.requestStatuses.value"
     @confirm="confirm"
     @keydown.enter="confirm"
   >
