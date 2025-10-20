@@ -48,7 +48,10 @@ use crate::{
         AppState,
         ApplicationRuntimeMode,
     },
-    service::v1,
+    service::{
+        v1,
+        workspace_management,
+    },
 };
 
 const MAINTENANCE_MODE_MESSAGE: &str = concat!(
@@ -97,6 +100,7 @@ async fn app_state_middeware<B>(
         (name = "secrets", description = "Secrets management endpoints"),
         (name = "funcs", description = "Functions management endpoints"),
         (name = "management_funcs", description = "Management functions endpoints"),
+        (name = "workspace_management", description = "Workspace management endpoints"),
     ),
     info(
         title = "System Initiative API",
@@ -131,6 +135,7 @@ struct ErrorDetail {
 pub async fn openapi_handler() -> Result<Json<utoipa::openapi::OpenApi>, (StatusCode, String)> {
     let mut openapi = ApiDoc::openapi();
     let v1_openapi = v1::get_openapi();
+    let workspace_management_openapi = workspace_management::get_openapi();
 
     for (path, path_item) in v1_openapi.paths.paths {
         openapi.paths.paths.insert(path, path_item);
@@ -139,6 +144,18 @@ pub async fn openapi_handler() -> Result<Json<utoipa::openapi::OpenApi>, (Status
     if let Some(openapi_components) = openapi.components.as_mut() {
         if let Some(v1_components) = v1_openapi.components {
             for (name, schema) in v1_components.schemas {
+                openapi_components.schemas.insert(name, schema);
+            }
+        }
+    }
+
+    for (path, path_item) in workspace_management_openapi.paths.paths {
+        openapi.paths.paths.insert(path, path_item);
+    }
+
+    if let Some(openapi_components) = openapi.components.as_mut() {
+        if let Some(components) = workspace_management_openapi.components {
+            for (name, schema) in components.schemas {
                 openapi_components.schemas.insert(name, schema);
             }
         }
@@ -204,6 +221,10 @@ pub fn routes(state: AppState) -> Router {
 
     Router::new()
         .nest("/whoami", crate::service::whoami::routes())
+        .nest(
+            "/management",
+            crate::service::workspace_management::routes(state.clone()),
+        )
         .nest("/v1", crate::service::v1::routes(state.clone()))
         .route("/openapi.json", get(openapi_handler_with_globals))
         // Add a route for Swagger UI HTML

@@ -954,6 +954,56 @@ export interface CreateVariantQualificationFuncV1Response {
 /**
  * 
  * @export
+ * @interface CreateWorkspaceRequest
+ */
+export interface CreateWorkspaceRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateWorkspaceRequest
+     */
+    'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateWorkspaceRequest
+     */
+    'displayName': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateWorkspaceRequest
+     */
+    'instanceUrl': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CreateWorkspaceRequest
+     */
+    'isDefault'?: boolean;
+}
+/**
+ * 
+ * @export
+ * @interface CreatorUser
+ */
+export interface CreatorUser {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreatorUser
+     */
+    'firstName'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreatorUser
+     */
+    'lastName'?: string | null;
+}
+/**
+ * 
+ * @export
  * @interface DeleteChangeSetV1Response
  */
 export interface DeleteChangeSetV1Response {
@@ -2808,6 +2858,31 @@ export interface UpdateSecretV1Response {
 /**
  * 
  * @export
+ * @interface UpdateWorkspaceRequest
+ */
+export interface UpdateWorkspaceRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateWorkspaceRequest
+     */
+    'description'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateWorkspaceRequest
+     */
+    'displayName'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateWorkspaceRequest
+     */
+    'instanceUrl'?: string | null;
+}
+/**
+ * 
+ * @export
  * @interface UpgradeComponentV1Response
  */
 export interface UpgradeComponentV1Response {
@@ -2873,6 +2948,92 @@ export interface WhoamiResponse {
      * @memberof WhoamiResponse
      */
     'workspaceId': string;
+}
+/**
+ * 
+ * @export
+ * @interface Workspace
+ */
+export interface Workspace {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Workspace
+     */
+    'approvalsEnabled': boolean;
+    /**
+     * 
+     * @type {CreatorUser}
+     * @memberof Workspace
+     */
+    'creatorUser'?: CreatorUser | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Workspace
+     */
+    'creatorUserId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Workspace
+     */
+    'description'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Workspace
+     */
+    'displayName': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Workspace
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Workspace
+     */
+    'instanceEnvType': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Workspace
+     */
+    'instanceUrl'?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Workspace
+     */
+    'isDefault': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof Workspace
+     */
+    'quarantinedAt'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Workspace
+     */
+    'role'?: string | null;
+}
+/**
+ * 
+ * @export
+ * @interface WorkspaceManagementRequestPath
+ */
+export interface WorkspaceManagementRequestPath {
+    /**
+     * 
+     * @type {string}
+     * @memberof WorkspaceManagementRequestPath
+     */
+    'workspace_id': string;
 }
 
 /**
@@ -10473,6 +10634,512 @@ export class WhoamiApi extends BaseAPI implements WhoamiApiInterface {
      */
     public whoami(options?: RawAxiosRequestConfig) {
         return WhoamiApiFp(this.configuration).whoami(options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * WorkspaceManagementApi - axios parameter creator
+ * @export
+ */
+export const WorkspaceManagementApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @summary Create a new workspace
+         * @param {CreateWorkspaceRequest} createWorkspaceRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createWorkspace: async (createWorkspaceRequest: CreateWorkspaceRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'createWorkspaceRequest' is not null or undefined
+            assertParamExists('createWorkspace', 'createWorkspaceRequest', createWorkspaceRequest)
+            const localVarPath = `/management/workspaces`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createWorkspaceRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Delete a workspace - please note, this is a soft delete and workspaces can be recovered
+         * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        deleteWorkspace: async (workspaceId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('deleteWorkspace', 'workspaceId', workspaceId)
+            const localVarPath = `/management/workspaces/{workspace_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Get the details of a workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getWorkspace: async (workspaceId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('getWorkspace', 'workspaceId', workspaceId)
+            const localVarPath = `/management/workspaces/{workspace_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary List workspaces
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listWorkspaces: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/management/workspaces`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Update the details of a workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {UpdateWorkspaceRequest} updateWorkspaceRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateWorkspace: async (workspaceId: string, updateWorkspaceRequest: UpdateWorkspaceRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('updateWorkspace', 'workspaceId', workspaceId)
+            // verify required parameter 'updateWorkspaceRequest' is not null or undefined
+            assertParamExists('updateWorkspace', 'updateWorkspaceRequest', updateWorkspaceRequest)
+            const localVarPath = `/management/workspaces/{workspace_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(updateWorkspaceRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * WorkspaceManagementApi - functional programming interface
+ * @export
+ */
+export const WorkspaceManagementApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = WorkspaceManagementApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @summary Create a new workspace
+         * @param {CreateWorkspaceRequest} createWorkspaceRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createWorkspace(createWorkspaceRequest: CreateWorkspaceRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Workspace>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createWorkspace(createWorkspaceRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.createWorkspace']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Delete a workspace - please note, this is a soft delete and workspaces can be recovered
+         * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async deleteWorkspace(workspaceId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.deleteWorkspace(workspaceId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.deleteWorkspace']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Get the details of a workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getWorkspace(workspaceId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Workspace>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getWorkspace(workspaceId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.getWorkspace']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary List workspaces
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listWorkspaces(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Workspace>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listWorkspaces(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.listWorkspaces']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Update the details of a workspace
+         * @param {string} workspaceId Workspace identifier
+         * @param {UpdateWorkspaceRequest} updateWorkspaceRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async updateWorkspace(workspaceId: string, updateWorkspaceRequest: UpdateWorkspaceRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Workspace>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.updateWorkspace(workspaceId, updateWorkspaceRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.updateWorkspace']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * WorkspaceManagementApi - factory interface
+ * @export
+ */
+export const WorkspaceManagementApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = WorkspaceManagementApiFp(configuration)
+    return {
+        /**
+         * 
+         * @summary Create a new workspace
+         * @param {WorkspaceManagementApiCreateWorkspaceRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createWorkspace(requestParameters: WorkspaceManagementApiCreateWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<Workspace> {
+            return localVarFp.createWorkspace(requestParameters.createWorkspaceRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Delete a workspace - please note, this is a soft delete and workspaces can be recovered
+         * @param {WorkspaceManagementApiDeleteWorkspaceRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        deleteWorkspace(requestParameters: WorkspaceManagementApiDeleteWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.deleteWorkspace(requestParameters.workspaceId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Get the details of a workspace
+         * @param {WorkspaceManagementApiGetWorkspaceRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getWorkspace(requestParameters: WorkspaceManagementApiGetWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<Workspace> {
+            return localVarFp.getWorkspace(requestParameters.workspaceId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary List workspaces
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listWorkspaces(options?: RawAxiosRequestConfig): AxiosPromise<Array<Workspace>> {
+            return localVarFp.listWorkspaces(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Update the details of a workspace
+         * @param {WorkspaceManagementApiUpdateWorkspaceRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateWorkspace(requestParameters: WorkspaceManagementApiUpdateWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<Workspace> {
+            return localVarFp.updateWorkspace(requestParameters.workspaceId, requestParameters.updateWorkspaceRequest, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * WorkspaceManagementApi - interface
+ * @export
+ * @interface WorkspaceManagementApi
+ */
+export interface WorkspaceManagementApiInterface {
+    /**
+     * 
+     * @summary Create a new workspace
+     * @param {WorkspaceManagementApiCreateWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    createWorkspace(requestParameters: WorkspaceManagementApiCreateWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<Workspace>;
+
+    /**
+     * 
+     * @summary Delete a workspace - please note, this is a soft delete and workspaces can be recovered
+     * @param {WorkspaceManagementApiDeleteWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    deleteWorkspace(requestParameters: WorkspaceManagementApiDeleteWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<void>;
+
+    /**
+     * 
+     * @summary Get the details of a workspace
+     * @param {WorkspaceManagementApiGetWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    getWorkspace(requestParameters: WorkspaceManagementApiGetWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<Workspace>;
+
+    /**
+     * 
+     * @summary List workspaces
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    listWorkspaces(options?: RawAxiosRequestConfig): AxiosPromise<Array<Workspace>>;
+
+    /**
+     * 
+     * @summary Update the details of a workspace
+     * @param {WorkspaceManagementApiUpdateWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    updateWorkspace(requestParameters: WorkspaceManagementApiUpdateWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<Workspace>;
+
+}
+
+/**
+ * Request parameters for createWorkspace operation in WorkspaceManagementApi.
+ * @export
+ * @interface WorkspaceManagementApiCreateWorkspaceRequest
+ */
+export interface WorkspaceManagementApiCreateWorkspaceRequest {
+    /**
+     * 
+     * @type {CreateWorkspaceRequest}
+     * @memberof WorkspaceManagementApiCreateWorkspace
+     */
+    readonly createWorkspaceRequest: CreateWorkspaceRequest
+}
+
+/**
+ * Request parameters for deleteWorkspace operation in WorkspaceManagementApi.
+ * @export
+ * @interface WorkspaceManagementApiDeleteWorkspaceRequest
+ */
+export interface WorkspaceManagementApiDeleteWorkspaceRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof WorkspaceManagementApiDeleteWorkspace
+     */
+    readonly workspaceId: string
+}
+
+/**
+ * Request parameters for getWorkspace operation in WorkspaceManagementApi.
+ * @export
+ * @interface WorkspaceManagementApiGetWorkspaceRequest
+ */
+export interface WorkspaceManagementApiGetWorkspaceRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof WorkspaceManagementApiGetWorkspace
+     */
+    readonly workspaceId: string
+}
+
+/**
+ * Request parameters for updateWorkspace operation in WorkspaceManagementApi.
+ * @export
+ * @interface WorkspaceManagementApiUpdateWorkspaceRequest
+ */
+export interface WorkspaceManagementApiUpdateWorkspaceRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof WorkspaceManagementApiUpdateWorkspace
+     */
+    readonly workspaceId: string
+
+    /**
+     * 
+     * @type {UpdateWorkspaceRequest}
+     * @memberof WorkspaceManagementApiUpdateWorkspace
+     */
+    readonly updateWorkspaceRequest: UpdateWorkspaceRequest
+}
+
+/**
+ * WorkspaceManagementApi - object-oriented interface
+ * @export
+ * @class WorkspaceManagementApi
+ * @extends {BaseAPI}
+ */
+export class WorkspaceManagementApi extends BaseAPI implements WorkspaceManagementApiInterface {
+    /**
+     * 
+     * @summary Create a new workspace
+     * @param {WorkspaceManagementApiCreateWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public createWorkspace(requestParameters: WorkspaceManagementApiCreateWorkspaceRequest, options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).createWorkspace(requestParameters.createWorkspaceRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Delete a workspace - please note, this is a soft delete and workspaces can be recovered
+     * @param {WorkspaceManagementApiDeleteWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public deleteWorkspace(requestParameters: WorkspaceManagementApiDeleteWorkspaceRequest, options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).deleteWorkspace(requestParameters.workspaceId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Get the details of a workspace
+     * @param {WorkspaceManagementApiGetWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public getWorkspace(requestParameters: WorkspaceManagementApiGetWorkspaceRequest, options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).getWorkspace(requestParameters.workspaceId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary List workspaces
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public listWorkspaces(options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).listWorkspaces(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Update the details of a workspace
+     * @param {WorkspaceManagementApiUpdateWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public updateWorkspace(requestParameters: WorkspaceManagementApiUpdateWorkspaceRequest, options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).updateWorkspace(requestParameters.workspaceId, requestParameters.updateWorkspaceRequest, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
