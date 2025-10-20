@@ -544,6 +544,14 @@ const categories = computed(() => {
   const installedSchemas: Set<string> = new Set();
   if (installedVariants.data.value) {
     installedVariants.data.value.forEach((variant) => {
+      // Only show installed variants that are either the default or are editing.
+      const members = ctx.schemaMembers?.value[variant.schemaId];
+      if (
+        members?.defaultVariantId !== variant.id &&
+        members?.editingVariantId !== variant.id
+      )
+        return;
+
       let category = categories[variant.category];
       if (!category) {
         category = {
