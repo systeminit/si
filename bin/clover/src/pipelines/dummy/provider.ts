@@ -16,7 +16,7 @@ import {
   MANAGEMENT_FUNCS,
   QUALIFICATION_FUNC_SPECS,
 } from "./funcs.ts";
-import { databaseSchema, serverSchema } from "./schema.ts";
+import { databaseSchema, DummySchema, serverSchema } from "./schema.ts";
 import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import { generateDummySpecs } from "./pipeline.ts";
 import { DUMMY_PROP_OVERRIDES, DUMMY_SCHEMA_OVERRIDES } from "./overrides.ts";
@@ -51,7 +51,7 @@ function dummyNormalizeProperty(
 }
 
 function dummyIsChildRequired(
-  schema: SuperSchema,
+  schema: SuperSchema | DummySchema,
   _parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
   childName: string,
 ): boolean {

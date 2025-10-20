@@ -1,14 +1,13 @@
 import type { JSONSchema } from "../draft_07.ts";
-import type { CfProperty, CfHandler, CfHandlerKind } from "../types.ts";
+import type {
+  CfProperty,
+  CfHandler,
+  CfHandlerKind,
+  SuperSchema,
+  JSONPointer,
+} from "../types.ts";
 
-type JSONPointer = string;
-
-export type CfSchema = {
-  typeName: string;
-  description: string;
-  primaryIdentifier: JSONPointer[];
-  sourceUrl?: string;
-  documentationUrl?: string;
+export interface CfSchema extends SuperSchema {
   replacementStrategy?: "create_then_delete" | "delete_then_create";
   taggable?: boolean;
   tagging?: {
@@ -24,6 +23,7 @@ export type CfSchema = {
   properties: Record<string, CfProperty>;
   readOnlyProperties?: JSONPointer[];
   writeOnlyProperties?: JSONPointer[];
+  primaryIdentifier: JSONPointer[];
   conditionalCreateOnlyProperties?: JSONPointer[];
   nonPublicProperties?: JSONPointer[];
   nonPublicDefinitions?: JSONPointer[];
@@ -36,6 +36,6 @@ export type CfSchema = {
     mappings: Record<string, JSONPointer>;
   };
   propertyTransform?: Record<string, string>;
-};
+}
 
 export type CfDb = Record<string, CfSchema>;

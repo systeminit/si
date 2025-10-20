@@ -14,18 +14,17 @@ import {
 import { makeModule } from "../../generic/index.ts";
 import { HetznerSchema } from "../schema.ts";
 import { hetznerProviderConfig } from "./../provider.ts";
+import { CfProperty } from "../../types.ts";
 
 export function generateCredentialModule(specs: ExpandedPkgSpec[]) {
   const credential: HetznerSchema = {
     typeName: "Hetzner::Credential::ApiToken",
     description: "A Hetzner cloud credential connection",
-    properties: {
-      HetznerApiToken: { type: "string" },
-    },
     requiredProperties: new Set([]),
-    primaryIdentifier: [],
   };
-
+  const properties: Record<string, CfProperty> = {
+    HetznerApiToken: { type: "string" },
+  };
   const onlyProperties: OnlyProperties = {
     createOnly: [],
     readOnly: [],
@@ -33,7 +32,11 @@ export function generateCredentialModule(specs: ExpandedPkgSpec[]) {
     primaryIdentifier: [],
   };
 
-  const credentialSpec = createCredentialSpec(credential, onlyProperties);
+  const credentialSpec = createCredentialSpec(
+    credential,
+    properties,
+    onlyProperties,
+  );
   specs.push(credentialSpec);
 
   return specs;
@@ -41,6 +44,7 @@ export function generateCredentialModule(specs: ExpandedPkgSpec[]) {
 
 function createCredentialSpec(
   credential: HetznerSchema,
+  properties: Record<string, CfProperty>,
   onlyProperties: OnlyProperties,
 ): ExpandedPkgSpec {
   const spec = makeModule(
@@ -48,7 +52,7 @@ function createCredentialSpec(
     credential.description,
     onlyProperties,
     hetznerProviderConfig,
-    credential.properties,
+    properties,
     {},
   );
 
@@ -61,7 +65,7 @@ function createCredentialSpec(
   // Create the secret definition manually since it needs special handling
   const secretDefinition = createDefaultPropFromJsonSchema(
     "secret_definition",
-    credential.properties,
+    properties,
     credential,
     onlyProperties,
     hetznerProviderConfig.functions.createDocLink,

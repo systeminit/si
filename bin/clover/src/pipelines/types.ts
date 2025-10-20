@@ -1,10 +1,7 @@
 import type { JSONSchema } from "./draft_07.ts";
-import type { HetznerSchema } from "./hetzner/schema.ts";
-import type { AzureSchema } from "./azure/schema.ts";
 import type { Extend } from "../extend.ts";
 import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
 import { FuncSpecInfo } from "../spec/funcs.ts";
-import type { CfSchema } from "./aws/schema.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import { ExpandedPropSpec, ExpandedPropSpecFor } from "../spec/props.ts";
 import { Provider } from "../types.ts";
@@ -98,7 +95,15 @@ export type CfHandler = {
 
 export type { CfDb, CfSchema } from "./aws/schema.ts";
 
-export type SuperSchema = HetznerSchema | CfSchema | AzureSchema;
+export type JSONPointer = string;
+
+export interface SuperSchema {
+  typeName: string;
+  description: string;
+  sourceUrl?: string;
+  documentationUrl?: string;
+  handlers?: { [key in CfHandlerKind]?: CfHandler };
+}
 
 export type CategoryFn = ({ typeName }: SuperSchema) => string;
 
