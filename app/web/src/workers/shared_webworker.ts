@@ -426,7 +426,10 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
-  async niflheim(workspaceId: string, changeSetId: string): Promise<boolean> {
+  async niflheim(
+    workspaceId: string,
+    changeSetId: string,
+  ): Promise<-1 | 0 | 1> {
     return await withLeader(
       async (remote) => await remote.niflheim(workspaceId, changeSetId),
     );

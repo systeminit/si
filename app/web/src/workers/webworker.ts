@@ -2353,17 +2353,31 @@ const sleep = async (ms: number) => {
 
 type AxiosFn<T> = () => Promise<AxiosResponse<T>>;
 const ONE_MIN = 1000 * 60;
+const MAX_RETRY = 4;
 const retry = async <T>(
   fn: AxiosFn<T>,
   retryNum?: number,
-): Promise<AxiosResponse<T>> => {
-  const r = await fn();
-  if (r.status >= 500) {
-    retryNum = retryNum ? retryNum + 1 : 1;
-    const ms = retryNum ** 2 * 2000;
-    await sleep(Math.min(ms, ONE_MIN));
-    return retry(fn, retryNum);
-  } else return r;
+): Promise<AxiosResponse<T> | undefined> => {
+  let r;
+  try {
+    r = await fn();
+  } catch (err) {
+    // only handling axios errors
+    if (!(Axios.isAxiosError(err) && err.response)) return r;
+
+    if ((retryNum ?? 0) >= MAX_RETRY) {
+      return err.response;
+    }
+    // dont retry on 404s, those are being handled with `IndexUpdate` messages
+    if (err.response.status >= 500) {
+      retryNum = retryNum ? retryNum + 1 : 1;
+      const ms = retryNum ** 2 * 2000;
+      await sleep(Math.min(ms, ONE_MIN));
+      return retry(fn, retryNum);
+    }
+    return err.response;
+  }
+  return r;
 };
 
 type DeploymentBulkResponse = {
@@ -2462,6 +2476,11 @@ const vanaheim = async (
       return req;
     });
 
+    if (!req || req?.status >= 500) {
+      frigg.setAttribute("indexFailure", true);
+      frigg.setAttribute("http.status_code", req?.status ?? 500);
+      return false;
+    }
     frigg.setAttribute("status", req.status);
     if (req.status === STATUS_INDEX_IN_PROGRESS) {
       debug("‼️ DEPLOYMENT INDEX NOT READY");
@@ -2555,13 +2574,16 @@ const niflheim = async (
   db: Database,
   workspaceId: string,
   changeSetId: ChangeSetId,
-): Promise<boolean> => {
+): Promise<-1 | 0 | 1> => {
+  // NOTE, we are using this integer return type because we can't handle exceptions over the thread boundary
   return await tracer.startActiveSpan("niflheim", async (span: Span) => {
     span.setAttributes({ workspaceId, changeSetId });
     const sdf = getSdfClientForWorkspace(workspaceId, span);
     if (!sdf) {
       span.end();
-      return false;
+      // don't make this a -1, b/c if the user can't open this workspace for auth reasons
+      // they shouldn't get past this step...
+      return 0;
     }
 
     // build connections list based on data we have in the DB
@@ -2583,14 +2605,22 @@ const niflheim = async (
       });
       return req;
     });
+    if (!req || req?.status >= 500) {
+      frigg.setAttribute("indexFailure", true);
+      // could be any 5XX, but, we'll go with this for now
+      frigg.setAttribute("http.status_code", req?.status ?? 500);
+      frigg.end();
+      span.end();
+      return -1;
+    }
 
     // Check for 202 status - user needs to go to lobby
     frigg.setAttribute("status", req.status);
-    if (req.status === STATUS_INDEX_IN_PROGRESS) {
+    if (req.status === STATUS_INDEX_IN_PROGRESS || req.status === 404) {
       debug("‼️ INDEX NOT READY", changeSetId);
       frigg.end();
       span.end();
-      return false;
+      return 0;
     }
 
     // Use index checksum for validation - this is more reliable than snapshot addresses
@@ -2718,7 +2748,7 @@ const niflheim = async (
     }
 
     span.end();
-    return true;
+    return 1;
   });
 };
 

@@ -390,6 +390,8 @@ const atomUpdated: UpdateFn = (
   }
 };
 
+export const indexFailures = reactive(new Set<string>());
+
 const lobbyExit: LobbyExitFn = async (
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
@@ -780,13 +782,6 @@ const fetchOpenChangeSets = async (
   return resp.data;
 };
 
-const jitter = (seconds = 15, jitter = 0.2) => {
-  const max = seconds * (1 + jitter) * 1000;
-  const min = seconds * (1 - jitter) * 1000;
-
-  return Math.floor(Math.random() * (max - min)) + min;
-};
-
 export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
   await waitForInitCompletion();
   const start = performance.now();
@@ -814,20 +809,8 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
       continue;
     }
 
-    // if an MV index responds with a 202, re-add it to the queue
     const run = async () => {
-      const success = await niflheim(workspaceId, changeSet.id, force);
-      if (!success) {
-        niflheimQueue.add(async () => {
-          const p = new Promise<void>((resolve) => {
-            setTimeout(() => {
-              resolve();
-            }, jitter());
-          });
-          await p;
-          await run();
-        });
-      }
+      await niflheim(workspaceId, changeSet.id, force);
     };
     niflheimQueue.add(run);
   }
@@ -852,7 +835,7 @@ export const niflheim = async (
   changeSetId: ChangeSetId,
   force = false,
   lobbyOnFailure = true,
-): Promise<boolean> => {
+): Promise<-1 | 0 | 1> => {
   await waitForInitCompletion();
   const start = performance.now();
   const changeSetExists = await db.changeSetExists(workspaceId, changeSetId);
@@ -863,17 +846,23 @@ export const niflheim = async (
     // eslint-disable-next-line no-console
     console.log("❄️ DONE ❄️", changeSetId, performance.now() - start);
 
+    // clear this status
+    indexFailures.delete(changeSetId);
     // If niflheim returned false (202 response), navigate to lobby
     // Index is being rebuilt and is not ready yet.
-    if (!success && lobbyOnFailure) {
+    if (success === 0 && lobbyOnFailure) {
       muspelheimStatuses.value[changeSetId] = false;
-    } else if (success) {
+    } else if (success === 1 || success === -1) {
+      // add a failure state for this change set
+      if (success === -1) indexFailures.add(changeSetId);
+      // we could not retrieve the index, because it failed to build for various reasons
+      // so we shouldn't block them in the lobby b/c this is never going to load.
       muspelheimStatuses.value[changeSetId] = true;
     }
     return success;
   }
 
-  return true;
+  return 1;
 };
 
 export const vanaheim = async (workspaceId: WorkspacePk): Promise<boolean> => {

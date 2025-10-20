@@ -127,6 +127,23 @@
         />
         <Onboarding v-else @completed="onboardingCompleted = true" />
       </template>
+      <main
+        v-else-if="indexFailedToLoad"
+        :class="
+          clsx(
+            'grow min-h-0 m-sm border flex flex-row items-center justify-center',
+            themeClasses('border-neutral-400', 'border-neutral-600'),
+          )
+        "
+      >
+        <EmptyState
+          icon="logo-si"
+          text="Unable to Load Change Set Data"
+          secondaryText="We failed to load the data associated with this change set. This is our problem, and we have been alerted. You may select another change set."
+          finalLinkText="Click here to see your other workspaces"
+          @final="bumpToWorkspaces"
+        />
+      </main>
       <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
            min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
       <main v-else class="grow min-h-0">
@@ -645,6 +662,13 @@ watch(
     }
   },
 );
+
+const indexFailedToLoad = computed(() => {
+  // NOTE: this represents a 5XX error that was retried 5 times
+  // if we get here its likely because the index could not be retrieved, or even built
+  // don't trap people into the lobby, but give them an error page for only one index!
+  return heimdall.indexFailures.has(props.changeSetId);
+});
 
 const hiddenAt = ref<Date | undefined>(undefined);
 
