@@ -3091,6 +3091,520 @@ Management functions endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Management Func Job not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+# [workspace_management](#system-initiative-api-workspace_management)
+
+Workspace management endpoints
+
+## List workspaces
+
+<a id="opIdlist_workspaces"></a>
+
+> Request format
+
+`GET /management/workspaces`
+
+> Example responses
+
+> 200 Response
+
+```json
+[
+  {
+    "approvalsEnabled": true,
+    "creatorUser": {},
+    "creatorUserId": "string",
+    "description": "string",
+    "displayName": "string",
+    "id": "string",
+    "instanceEnvType": "string",
+    "instanceUrl": "string",
+    "isDefault": true,
+    "quarantinedAt": "string",
+    "role": "string"
+  }
+]
+```
+
+<h3 id="list-workspaces-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Workspaces Listed successfully|Inline|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+<h3 id="list-workspaces-responseschema">Response Schema</h3>
+
+Status Code **200**
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|[[Workspace](#schemaworkspace)]|false|none|none|
+|» approvalsEnabled|boolean|true|none|none|
+|» creatorUser|any|false|none|none|
+
+*oneOf*
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|»» *anonymous*|null|false|none|none|
+
+*xor*
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|»» *anonymous*|[CreatorUser](#schemacreatoruser)|false|none|none|
+|»»» firstName|string,null|false|none|none|
+|»»» lastName|string,null|false|none|none|
+
+*continued*
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» creatorUserId|string|true|none|none|
+|» description|string,null|false|none|none|
+|» displayName|string|true|none|none|
+|» id|string|true|none|none|
+|» instanceEnvType|string|true|none|none|
+|» instanceUrl|string,null|false|none|none|
+|» isDefault|boolean|true|none|none|
+|» quarantinedAt|string,null|false|none|none|
+|» role|string,null|false|none|none|
+
+## Create a new workspace
+
+<a id="opIdcreate_workspace"></a>
+
+> Request format
+
+`POST /management/workspaces`
+
+> Body parameter
+
+```json
+{
+  "description": "Production environment for customer deployments",
+  "displayName": "My Production Workspace",
+  "instanceUrl": "https://app.systeminit.com",
+  "isDefault": false
+}
+```
+
+<h3 id="create-a-new-workspace-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|body|body|[CreateWorkspaceRequest](#schemacreateworkspacerequest)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "approvalsEnabled": true,
+  "creatorUser": {},
+  "creatorUserId": "string",
+  "description": "string",
+  "displayName": "string",
+  "id": "string",
+  "instanceEnvType": "string",
+  "instanceUrl": "string",
+  "isDefault": true,
+  "quarantinedAt": "string",
+  "role": "string"
+}
+```
+
+<h3 id="create-a-new-workspace-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Workspace successfully created|[Workspace](#schemaworkspace)|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|Bad Request - Validation error (invalid URL, display name, or description format)|None|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Get the details of a workspace
+
+<a id="opIdget_workspace"></a>
+
+> Request format
+
+`GET /management/workspaces/{workspace_id}`
+
+<h3 id="get-the-details-of-a-workspace-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "approvalsEnabled": true,
+  "creatorUser": {},
+  "creatorUserId": "string",
+  "description": "string",
+  "displayName": "string",
+  "id": "string",
+  "instanceEnvType": "string",
+  "instanceUrl": "string",
+  "isDefault": true,
+  "quarantinedAt": "string",
+  "role": "string"
+}
+```
+
+<h3 id="get-the-details-of-a-workspace-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Workspace retrieved successfully|[Workspace](#schemaworkspace)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|403|[Forbidden](https://tools.ietf.org/html/rfc7231#section-6.5.3)|Forbidden - User is not a member of this workspace|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found or has been deleted|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Delete a workspace - please note, this is a soft delete and workspaces can be recovered
+
+<a id="opIddelete_workspace"></a>
+
+> Request format
+
+`DELETE /management/workspaces/{workspace_id}`
+
+<h3 id="delete-a-workspace---please-note,-this-is-a-soft-delete-and-workspaces-can-be-recovered-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+
+> Example responses
+
+> 500 Response
+
+```json
+{
+  "message": "Invalid request data",
+  "statusCode": 422,
+  "code": 4001
+}
+```
+
+<h3 id="delete-a-workspace---please-note,-this-is-a-soft-delete-and-workspaces-can-be-recovered-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|204|[No Content](https://tools.ietf.org/html/rfc7231#section-6.3.5)|Workspace deleted successfully|None|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|403|[Forbidden](https://tools.ietf.org/html/rfc7231#section-6.5.3)|Forbidden - User must be workspace owner to delete workspace|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Update the details of a workspace
+
+<a id="opIdupdate_workspace"></a>
+
+> Request format
+
+`PATCH /management/workspaces/{workspace_id}`
+
+> Body parameter
+
+```json
+{
+  "description": "Updated description for the workspace",
+  "displayName": "Updated Workspace Name",
+  "instanceUrl": "https://app.systeminit.com"
+}
+```
+
+<h3 id="update-the-details-of-a-workspace-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|body|body|[UpdateWorkspaceRequest](#schemaupdateworkspacerequest)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "approvalsEnabled": true,
+  "creatorUser": {},
+  "creatorUserId": "string",
+  "description": "string",
+  "displayName": "string",
+  "id": "string",
+  "instanceEnvType": "string",
+  "instanceUrl": "string",
+  "isDefault": true,
+  "quarantinedAt": "string",
+  "role": "string"
+}
+```
+
+<h3 id="update-the-details-of-a-workspace-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Workspace successfully updated|[Workspace](#schemaworkspace)|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|Bad Request - Validation error (invalid URL, display name, or description format)|None|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|403|[Forbidden](https://tools.ietf.org/html/rfc7231#section-6.5.3)|Forbidden - User must be workspace owner to update workspace|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## List all members of a workspace
+
+<a id="opIdlist_members"></a>
+
+> Request format
+
+`GET /management/workspaces/{workspace_id}/members`
+
+<h3 id="list-all-members-of-a-workspace-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+[
+  {
+    "email": "user@example.com",
+    "nickname": "John Doe",
+    "role": "OWNER",
+    "signupAt": "string",
+    "userId": "01GW0KXH4YJBWC7BTBAZ6ZR7EA"
+  }
+]
+```
+
+<h3 id="list-all-members-of-a-workspace-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Members listed successfully|Inline|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|403|[Forbidden](https://tools.ietf.org/html/rfc7231#section-6.5.3)|Forbidden - User is not a member of this workspace|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found or has been deleted|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+<h3 id="list-all-members-of-a-workspace-responseschema">Response Schema</h3>
+
+Status Code **200**
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|[[Member](#schemamember)]|false|none|none|
+|» email|string|true|none|none|
+|» nickname|string|true|none|none|
+|» role|string|true|none|none|
+|» signupAt|string,null|false|none|none|
+|» userId|string|true|none|none|
+
+## Invite a new member to the workspace
+
+<a id="opIdinvite_member"></a>
+
+> Request format
+
+`POST /management/workspaces/{workspace_id}/members`
+
+> Body parameter
+
+```json
+{
+  "email": "newuser@example.com"
+}
+```
+
+<h3 id="invite-a-new-member-to-the-workspace-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|body|body|[InviteMemberRequest](#schemainvitememberrequest)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+[
+  {
+    "email": "user@example.com",
+    "nickname": "John Doe",
+    "role": "OWNER",
+    "signupAt": "string",
+    "userId": "01GW0KXH4YJBWC7BTBAZ6ZR7EA"
+  }
+]
+```
+
+<h3 id="invite-a-new-member-to-the-workspace-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Member invited successfully|Inline|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|Bad Request - Invalid email format|None|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|403|[Forbidden](https://tools.ietf.org/html/rfc7231#section-6.5.3)|Forbidden - User must be workspace owner or approver to invite members|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found or has been deleted|None|
+|409|[Conflict](https://tools.ietf.org/html/rfc7231#section-6.5.8)|Conflict - User already invited, suspended, or other conflict|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+<h3 id="invite-a-new-member-to-the-workspace-responseschema">Response Schema</h3>
+
+Status Code **200**
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|[[Member](#schemamember)]|false|none|none|
+|» email|string|true|none|none|
+|» nickname|string|true|none|none|
+|» role|string|true|none|none|
+|» signupAt|string,null|false|none|none|
+|» userId|string|true|none|none|
+
+## Remove a member from the workspace
+
+<a id="opIdremove_member"></a>
+
+> Request format
+
+`DELETE /management/workspaces/{workspace_id}/members`
+
+> Body parameter
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+<h3 id="remove-a-member-from-the-workspace-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|body|body|[RemoveMemberRequest](#schemaremovememberrequest)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+[
+  {
+    "email": "user@example.com",
+    "nickname": "John Doe",
+    "role": "OWNER",
+    "signupAt": "string",
+    "userId": "01GW0KXH4YJBWC7BTBAZ6ZR7EA"
+  }
+]
+```
+
+<h3 id="remove-a-member-from-the-workspace-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Member removed successfully|Inline|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|Bad Request - Invalid email format|None|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|403|[Forbidden](https://tools.ietf.org/html/rfc7231#section-6.5.3)|Forbidden - User must be workspace owner or approver to remove members|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found, has been deleted, or user not found in workspace|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+<h3 id="remove-a-member-from-the-workspace-responseschema">Response Schema</h3>
+
+Status Code **200**
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|[[Member](#schemamember)]|false|none|none|
+|» email|string|true|none|none|
+|» nickname|string|true|none|none|
+|» role|string|true|none|none|
+|» signupAt|string,null|false|none|none|
+|» userId|string|true|none|none|
+
+## Update a member's role in the workspace
+
+<a id="opIdupdate_member_role"></a>
+
+> Request format
+
+`POST /management/workspaces/{workspace_id}/update_member_access`
+
+> Body parameter
+
+```json
+{
+  "role": "EDITOR",
+  "userId": "01GW0KXH4YJBWC7BTBAZ6ZR7EA"
+}
+```
+
+<h3 id="update-a-member's-role-in-the-workspace-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|body|body|[UpdateMemberRoleRequest](#schemaupdatememberrolerequest)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+[
+  {
+    "email": "user@example.com",
+    "nickname": "John Doe",
+    "role": "OWNER",
+    "signupAt": "string",
+    "userId": "01GW0KXH4YJBWC7BTBAZ6ZR7EA"
+  }
+]
+```
+
+<h3 id="update-a-member's-role-in-the-workspace-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Member role updated successfully|Inline|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|Bad Request - Invalid userId or role format|None|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|403|[Forbidden](https://tools.ietf.org/html/rfc7231#section-6.5.3)|Forbidden - User must be workspace owner to update member roles|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found or has been deleted|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+<h3 id="update-a-member's-role-in-the-workspace-responseschema">Response Schema</h3>
+
+Status Code **200**
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|[[Member](#schemamember)]|false|none|none|
+|» email|string|true|none|none|
+|» nickname|string|true|none|none|
+|» role|string|true|none|none|
+|» signupAt|string,null|false|none|none|
+|» userId|string|true|none|none|
+
 # [search](#system-initiative-api-search)
 
 ## Complex search for components
@@ -4181,6 +4695,54 @@ xor
 |---|---|---|---|---|
 |funcId|string|true|none|none|
 
+## [CreateWorkspaceRequest](#tocS_CreateWorkspaceRequest)
+
+<a id="schemacreateworkspacerequest"></a>
+<a id="schema_CreateWorkspaceRequest"></a>
+<a id="tocScreateworkspacerequest"></a>
+<a id="tocscreateworkspacerequest"></a>
+
+```json
+{
+  "description": "Production environment for customer deployments",
+  "displayName": "My Production Workspace",
+  "instanceUrl": "https://app.systeminit.com",
+  "isDefault": false
+}
+
+```
+
+### [Properties](#createworkspacerequest-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|description|string|true|none|none|
+|displayName|string|true|none|none|
+|instanceUrl|string|true|none|none|
+|isDefault|boolean|false|none|none|
+
+## [CreatorUser](#tocS_CreatorUser)
+
+<a id="schemacreatoruser"></a>
+<a id="schema_CreatorUser"></a>
+<a id="tocScreatoruser"></a>
+<a id="tocscreatoruser"></a>
+
+```json
+{
+  "firstName": "string",
+  "lastName": "string"
+}
+
+```
+
+### [Properties](#creatoruser-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|firstName|string,null|false|none|none|
+|lastName|string,null|false|none|none|
+
 ## [DeleteChangeSetV1Response](#tocS_DeleteChangeSetV1Response)
 
 <a id="schemadeletechangesetv1response"></a>
@@ -5213,6 +5775,26 @@ continued
 |» definition|[SecretDefinitionV1](#schemasecretdefinitionv1)|true|none|none|
 |» secrets|[[SecretV1](#schemasecretv1)]|true|none|none|
 
+## [InviteMemberRequest](#tocS_InviteMemberRequest)
+
+<a id="schemainvitememberrequest"></a>
+<a id="schema_InviteMemberRequest"></a>
+<a id="tocSinvitememberrequest"></a>
+<a id="tocsinvitememberrequest"></a>
+
+```json
+{
+  "email": "newuser@example.com"
+}
+
+```
+
+### [Properties](#invitememberrequest-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|email|string|true|none|none|
+
 ## [ListChangeSetV1Response](#tocS_ListChangeSetV1Response)
 
 <a id="schemalistchangesetv1response"></a>
@@ -5481,6 +6063,34 @@ xor
 |componentId|string|true|none|none|
 |componentName|string|true|none|none|
 
+## [Member](#tocS_Member)
+
+<a id="schemamember"></a>
+<a id="schema_Member"></a>
+<a id="tocSmember"></a>
+<a id="tocsmember"></a>
+
+```json
+{
+  "email": "user@example.com",
+  "nickname": "John Doe",
+  "role": "OWNER",
+  "signupAt": "string",
+  "userId": "01GW0KXH4YJBWC7BTBAZ6ZR7EA"
+}
+
+```
+
+### [Properties](#member-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|email|string|true|none|none|
+|nickname|string|true|none|none|
+|role|string|true|none|none|
+|signupAt|string,null|false|none|none|
+|userId|string|true|none|none|
+
 ## [MergeStatusV1Response](#tocS_MergeStatusV1Response)
 
 <a id="schemamergestatusv1response"></a>
@@ -5713,6 +6323,26 @@ Component details in action response
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |success|boolean|true|none|none|
+
+## [RemoveMemberRequest](#tocS_RemoveMemberRequest)
+
+<a id="schemaremovememberrequest"></a>
+<a id="schema_RemoveMemberRequest"></a>
+<a id="tocSremovememberrequest"></a>
+<a id="tocsremovememberrequest"></a>
+
+```json
+{
+  "email": "user@example.com"
+}
+
+```
+
+### [Properties](#removememberrequest-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|email|string|true|none|none|
 
 ## [RequestApprovalChangeSetV1Response](#tocS_RequestApprovalChangeSetV1Response)
 
@@ -6469,6 +7099,28 @@ xor
 |---|---|---|---|---|
 |success|boolean|true|none|none|
 
+## [UpdateMemberRoleRequest](#tocS_UpdateMemberRoleRequest)
+
+<a id="schemaupdatememberrolerequest"></a>
+<a id="schema_UpdateMemberRoleRequest"></a>
+<a id="tocSupdatememberrolerequest"></a>
+<a id="tocsupdatememberrolerequest"></a>
+
+```json
+{
+  "role": "EDITOR",
+  "userId": "01GW0KXH4YJBWC7BTBAZ6ZR7EA"
+}
+
+```
+
+### [Properties](#updatememberrolerequest-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|role|string|true|none|none|
+|userId|string|true|none|none|
+
 ## [UpdateSchemaVariantV1Request](#tocS_UpdateSchemaVariantV1Request)
 
 <a id="schemaupdateschemavariantv1request"></a>
@@ -6555,6 +7207,30 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |secret|[SecretV1](#schemasecretv1)|true|none|none|
+
+## [UpdateWorkspaceRequest](#tocS_UpdateWorkspaceRequest)
+
+<a id="schemaupdateworkspacerequest"></a>
+<a id="schema_UpdateWorkspaceRequest"></a>
+<a id="tocSupdateworkspacerequest"></a>
+<a id="tocsupdateworkspacerequest"></a>
+
+```json
+{
+  "description": "Updated description for the workspace",
+  "displayName": "Updated Workspace Name",
+  "instanceUrl": "https://app.systeminit.com"
+}
+
+```
+
+### [Properties](#updateworkspacerequest-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|description|string,null|false|none|none|
+|displayName|string,null|false|none|none|
+|instanceUrl|string,null|false|none|none|
 
 ## [UpgradeComponentV1Response](#tocS_UpgradeComponentV1Response)
 
@@ -6673,4 +7349,81 @@ xor
 |userEmail|string|true|none|none|
 |userId|string|true|none|none|
 |workspaceId|string|true|none|none|
+
+## [Workspace](#tocS_Workspace)
+
+<a id="schemaworkspace"></a>
+<a id="schema_Workspace"></a>
+<a id="tocSworkspace"></a>
+<a id="tocsworkspace"></a>
+
+```json
+{
+  "approvalsEnabled": true,
+  "creatorUser": {},
+  "creatorUserId": "string",
+  "description": "string",
+  "displayName": "string",
+  "id": "string",
+  "instanceEnvType": "string",
+  "instanceUrl": "string",
+  "isDefault": true,
+  "quarantinedAt": "string",
+  "role": "string"
+}
+
+```
+
+### [Properties](#workspace-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|approvalsEnabled|boolean|true|none|none|
+|creatorUser|any|false|none|none|
+
+oneOf
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|null|false|none|none|
+
+xor
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|[CreatorUser](#schemacreatoruser)|false|none|none|
+
+continued
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|creatorUserId|string|true|none|none|
+|description|string,null|false|none|none|
+|displayName|string|true|none|none|
+|id|string|true|none|none|
+|instanceEnvType|string|true|none|none|
+|instanceUrl|string,null|false|none|none|
+|isDefault|boolean|true|none|none|
+|quarantinedAt|string,null|false|none|none|
+|role|string,null|false|none|none|
+
+## [WorkspaceManagementRequestPath](#tocS_WorkspaceManagementRequestPath)
+
+<a id="schemaworkspacemanagementrequestpath"></a>
+<a id="schema_WorkspaceManagementRequestPath"></a>
+<a id="tocSworkspacemanagementrequestpath"></a>
+<a id="tocsworkspacemanagementrequestpath"></a>
+
+```json
+{
+  "workspace_id": "string"
+}
+
+```
+
+### [Properties](#workspacemanagementrequestpath-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|workspace_id|string|true|none|none|
 
