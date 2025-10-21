@@ -633,6 +633,7 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
     const { changeSetId, workspaceId, toIndexChecksum } = { ...msg.atom };
 
     span.setAttributes({
+      userPk,
       changeSetId,
       workspaceId,
       toIndexChecksum,
@@ -959,6 +960,7 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
     }
 
     const data = {
+      userPk,
       kind: msg.patch.kind,
       fromChecksum: msg.patch.fromChecksum,
       toChecksum: msg.patch.toChecksum,
@@ -1131,6 +1133,7 @@ const handleDeploymentPatchMessage = async (
 ) => {
   await tracer.startActiveSpan("DeploymentPatchBatch", async (span) => {
     span.setAttributes({
+      userPk,
       patchKind: "workspace",
       numRawPatches: data.patches.length,
       rawPatches: JSON.stringify(data.patches),
@@ -1239,6 +1242,7 @@ const handleWorkspacePatchMessage = async (
         data.meta;
 
       span.setAttributes({
+        userPk,
         patchKind: "workspace",
         batchId,
         numRawPatches: data.patches.length,
@@ -1795,6 +1799,7 @@ const mjolnirBulk = async (
     }
 
     span.setAttributes({
+      userPk,
       workspaceId,
       changeSetId,
       indexChecksum,
@@ -1918,7 +1923,7 @@ const deploymentMjolnir = async (
       span.end();
       return;
     }
-    span.setAttributes({ workspaceId, kind, id });
+    span.setAttributes({ workspaceId, kind, id, userPk });
     try {
       req = await sdf<AtomWithData>({
         method: "get",
@@ -2014,7 +2019,14 @@ const mjolnirJob = async (
       span.end();
       return;
     }
-    span.setAttributes({ workspaceId, changeSetId, kind, id, checksum });
+    span.setAttributes({
+      workspaceId,
+      changeSetId,
+      kind,
+      id,
+      checksum,
+      userPk,
+    });
     try {
       req = await sdf<IndexObjectMeta>({
         method: "get",
@@ -2153,7 +2165,7 @@ const pruneAtomsForClosedChangeSet = async (
   changeSetId: ChangeSetId,
 ) => {
   await tracer.startActiveSpan("pruneClosedChangeSet", async (span) => {
-    span.setAttributes({ workspaceId, changeSetId });
+    span.setAttributes({ workspaceId, changeSetId, userPk });
     db.exec({
       sql: `
         DELETE FROM changesets WHERE change_set_id = ?;
@@ -2407,6 +2419,7 @@ const deploymentBulk = async (
     }
 
     span.setAttributes({
+      userPk,
       workspaceId,
       numHammers: hammerObjs.length,
     });
@@ -2457,7 +2470,7 @@ const vanaheim = async (
   workspaceId: string,
 ): Promise<boolean> => {
   return await tracer.startActiveSpan("vanaheim", async (span: Span) => {
-    span.setAttributes({ workspaceId });
+    span.setAttributes({ workspaceId, userPk });
     const sdf = getSdfClientForWorkspace(workspaceId, span);
     if (!sdf) {
       span.end();
@@ -2467,7 +2480,7 @@ const vanaheim = async (
     const pattern = DEPLOYMENT_INDEX_URL(workspaceId);
     const [url, desc] = describePattern(pattern);
     const frigg = tracer.startSpan(`GET ${desc}`);
-    frigg.setAttributes({ workspaceId });
+    frigg.setAttributes({ workspaceId, userPk });
     const req = await retry<IndexObjectMeta>(async () => {
       const req = await sdf<IndexObjectMeta>({
         method: "get",
@@ -2577,7 +2590,7 @@ const niflheim = async (
 ): Promise<-1 | 0 | 1> => {
   // NOTE, we are using this integer return type because we can't handle exceptions over the thread boundary
   return await tracer.startActiveSpan("niflheim", async (span: Span) => {
-    span.setAttributes({ workspaceId, changeSetId });
+    span.setAttributes({ workspaceId, changeSetId, userPk });
     const sdf = getSdfClientForWorkspace(workspaceId, span);
     if (!sdf) {
       span.end();
@@ -2597,7 +2610,7 @@ const niflheim = async (
 
     const [url, desc] = describePattern(pattern);
     const frigg = tracer.startSpan(`GET ${desc}`);
-    frigg.setAttributes({ workspaceId, changeSetId });
+    frigg.setAttributes({ workspaceId, changeSetId, userPk });
     const req = await retry<IndexObjectMeta>(async () => {
       const req = await sdf<IndexObjectMeta>({
         method: "get",
@@ -3445,6 +3458,7 @@ const getReferences = (
 
   const span = tracer.startSpan("getReferences");
   span.setAttributes({
+    userPk,
     workspaceId,
     changeSetId,
     kind,
@@ -4144,6 +4158,7 @@ const forceLeaderElectionBroadcastChannel = new BroadcastChannel(
  */
 const assertNever = (_foo: never) => {};
 
+let userPk: string | undefined;
 const dbInterface: TabDBInterface = {
   receiveInterest(interest: Record<string, number>) {
     receiveInterest(interest);
@@ -4297,6 +4312,7 @@ const dbInterface: TabDBInterface = {
             log("🌈 bifrost incoming", data);
           }
 
+          span.setAttributes({ userPk });
           if (!("kind" in data)) span.setAttribute("kindMissing", "no kind");
           else {
             span.setAttributes({
@@ -4431,7 +4447,8 @@ const dbInterface: TabDBInterface = {
     return hasTheLock;
   },
 
-  async initBifrost(gotLockPort: MessagePort) {
+  async initBifrost(gotLockPort: MessagePort, _userPk: string) {
+    userPk = _userPk;
     debug("waiting for lock in webworker");
     if (abortController) {
       abortController.abort();

@@ -280,7 +280,7 @@ export interface TabDBInterface {
   initSocket(workspaceId: string): Promise<void>;
   receiveInterest(interest: Record<string, number>): void;
   receiveBroadcast(message: BroadcastMessage): Promise<void>;
-  initBifrost(gotLockPort: MessagePort): Promise<string>;
+  initBifrost(gotLockPort: MessagePort, userPk: string): Promise<string>;
   bifrostClose(): void;
   bifrostReconnect(): void;
   linkNewChangeset(
