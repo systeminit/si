@@ -2,6 +2,42 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## October 13th to 19th 2025
+
+### ✨ Added
+
+- Added ability to **control management functions via overlays**.
+- Added support for **moving a list of components to a view** via the Public
+  API.
+- Added support for **`useWorkingCopy`** in `create_component` requests via the
+  Public API.
+
+### 🔄 Changed
+
+- Updated **Hetzner Cloud server and SSH key assets** for better
+  interoperability.
+- Updated **MCP server** to use the new Search API for template generation and
+  component upgrade tools.
+- When adding **actions or management functions** to schemas (via the Public
+  API) not owned by you, they are now **attached as overlay functions**.
+- Persisted **Deployment MVs in SQLite** for better stability.
+- Changed the **Web App** to use DeploymentMVs for schema updates when module
+  indexes change.
+- Enhanced **error messages** to make diagnosing PG connection closures easier.
+
+### 🐞 Fixed
+
+- Fixed an issue where the **rebaser retried fetching missing snapshots**.
+- Fixed a confusing UX quirk where the **Workspace Token** was used for two
+  different purposes.
+- Fixed an issue where the **Public API** didn’t trigger an MV build when
+  unlocking a schema.
+- Fixed an issue where **pinning a component** didn’t work correctly.
+- Fixed an issue where the **MCP tool mistakenly generated a template** when
+  listing components.
+- Fixed a vulnerability where **Workspace Integrations** could be accessed by
+  another user without permission.
+
 ## October 6th to 12th 2025
 
 ### ✨ Added
