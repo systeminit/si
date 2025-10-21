@@ -36,8 +36,10 @@
       <template v-else>
         <div class="flex-none flex flex-row items-start gap-xs">
           <DropdownMenuButton
+            ref="viewsDropdownRef"
             class="rounded min-w-[128px] h-[2.5rem]"
-            :options="viewListOptions"
+            :options="filteredViewListOptions"
+            :search="viewListOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD"
             :modelValue="selectedViewId"
             minWidthToAnchor
             placeholder="All Views"
@@ -567,6 +569,7 @@ import {
   themeClasses,
   TruncateWithTooltip,
   VormInput,
+  DEFAULT_DROPDOWN_SEARCH_THRESHOLD,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
@@ -837,6 +840,20 @@ const viewListOptions = computed(() => {
   return list
     .map((l) => ({ value: l.id, label: l.name }))
     .sort((a, b) => a.label.localeCompare(b.label));
+});
+const viewsDropdownRef = ref<InstanceType<typeof DropdownMenuButton>>();
+const filteredViewListOptions = computed(() => {
+  const searchString = viewsDropdownRef.value?.searchString;
+
+  if (!searchString || searchString === "") {
+    return viewListOptions.value;
+  }
+
+  return viewListOptions.value.filter(
+    (option) =>
+      option.label.toLocaleLowerCase().includes(searchString) ||
+      option.value.toLocaleLowerCase().includes(searchString),
+  );
 });
 
 const defaultView = computed(() =>
