@@ -673,7 +673,6 @@ impl<'a> ManagementOperator<'a> {
         component_id: ComponentId,
         managed_schema_id: SchemaId,
     ) -> ManagementResult<()> {
-        let cycle_check_guard = self.ctx.workspace_snapshot()?.enable_cycle_check().await;
         Component::add_manages_edge_to_component(
             self.ctx,
             self.manager_component_id,
@@ -681,7 +680,6 @@ impl<'a> ManagementOperator<'a> {
             EdgeWeightKind::Manages,
         )
         .await?;
-        drop(cycle_check_guard);
 
         let edge = SummaryDiagramManagementEdge::new(
             self.manager_schema_id,
