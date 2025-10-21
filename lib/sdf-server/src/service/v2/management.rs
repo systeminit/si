@@ -136,7 +136,8 @@ impl IntoResponse for ManagementApiError {
             ManagementApiError::ManagementPrototype(
                 dal::management::prototype::ManagementPrototypeError::FuncExecutionFailure(message),
             ) => (StatusCode::BAD_REQUEST, message),
-            ManagementApiError::Component(dal::ComponentError::NotFound(_)) => {
+            ManagementApiError::Component(dal::ComponentError::NotFound(_))
+            | ManagementApiError::Component(dal::ComponentError::SchemaVariantNotFound(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),

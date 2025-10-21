@@ -698,6 +698,7 @@ const showResourceInput = ref(false);
 const MGMT_RUN_KEY = "latestMgmtFuncRuns";
 
 const funcRunQuery = useQuery({
+  enabled: () => componentExists.value,
   queryKey: [ctx.changeSetId, MGMT_RUN_KEY],
   queryFn: async () =>
     api
@@ -712,11 +713,11 @@ const funcRuns = computed<FuncRun[]>(() => {
   return funcRunQuery.data.value.data;
 });
 
-// The latest funcrun for this each mgmt prototype of this component, keyed bu the prototypeId
+// The latest funcrun for this each mgmt prototype of this component, keyed by the prototypeId
 const latestFuncRuns = computed(() => {
   const runs = {} as Record<string, FuncRun>;
 
-  if (!componentId.value) return runs;
+  if (!componentId.value || !componentExists.value) return runs;
 
   for (const funcRun of funcRuns.value) {
     if (funcRun.functionKind !== "Management") continue;
