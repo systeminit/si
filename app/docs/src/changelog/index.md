@@ -81,6 +81,8 @@ All notable changes to System Initiative will be documented in this file.
 - Fixed an issue where **autosubscribe could create graph cycles**.
 - Fixed unnecessary **workspace snapshot loading** to improve performance.
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/gGQEAA-dBjg?si=QUd8IWgfE1ACa7-9" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## September 29th to October 5th 2025
 
 ### ✨ Added
