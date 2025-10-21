@@ -83,7 +83,7 @@
     "tailwindcss": "^3.2.2",
     "typescript": "^5.0.4",
     "unplugin-icons": "^0.17.4",
-    "vite": "^5.4.20",
+    "vite": "^5.4.21",
     "vite-svg-loader": "^3.4.0",
     "vue-tsc": "^1.8.27"
   }

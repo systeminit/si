@@ -148,7 +148,7 @@
     "eslint": "^8.57.1",
     "graphology-types": "^0.24.7",
     "unplugin-icons": "^0.17.4",
-    "vite": "^5.4.20",
+    "vite": "^5.4.21",
     "vite-plugin-checker": "^0.6.4",
     "vite-svg-loader": "^3.4.0",
     "vitest": "^3.2.4",
