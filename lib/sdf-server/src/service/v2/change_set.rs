@@ -13,6 +13,7 @@ use axum::{
     },
 };
 use dal::{
+    ChangeSetError,
     ChangeSetId,
     DalContext,
     SchemaError,
@@ -154,13 +155,14 @@ impl IntoResponse for Error {
                         .to_string(),
                 ),
             ),
+            Self::DalWrapper(DalWrapperError::ChangeSet(ChangeSetError::DvuRootsNotEmpty(_)))
+            | Self::DvuRootsNotEmpty(_)
+            | Error::ChangeSet(dal::ChangeSetError::CantRenameHeadChangeSet) => {
+                (StatusCode::PRECONDITION_FAILED, None)
+            }
             Self::ChangeSetApply(_) => (StatusCode::CONFLICT, None),
-            Self::DvuRootsNotEmpty(_) => (StatusCode::PRECONDITION_FAILED, None),
             Self::Transactions(dal::TransactionsError::BadWorkspaceAndChangeSet) => {
                 (StatusCode::FORBIDDEN, None)
-            }
-            Error::ChangeSet(dal::ChangeSetError::CantRenameHeadChangeSet) => {
-                (StatusCode::PRECONDITION_FAILED, None)
             }
             _ => (ApiError::DEFAULT_ERROR_STATUS_CODE, None),
         };

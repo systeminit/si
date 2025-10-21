@@ -81,7 +81,7 @@ export const useApplyChangeSet = (ctx: Context) => {
       const actionsKey = makeKeyForHead(EntityKind.ActionViewList).value;
       queryClient.setQueryData(actionsKey, req.data);
     }
-    return { success: api.ok(req) };
+    return { success: api.ok(req), req };
   };
 
   return { performApply, applyInFlight };

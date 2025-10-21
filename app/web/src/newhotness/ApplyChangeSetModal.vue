@@ -116,6 +116,7 @@ import {
 import { keyEmitter } from "./logic_composables/emitters";
 import ActionCard from "./ActionCard.vue";
 import ApprovalFlow from "./ApprovalFlow.vue";
+import ToastApplyFailed from "./nav/ToastApplyFailed.vue";
 import { reset } from "./logic_composables/navigation_stack";
 import { useApplyChangeSet } from "./logic_composables/change_set";
 import ToastApplyingChanges from "./nav/ToastApplyingChanges.vue";
@@ -297,6 +298,34 @@ async function applyNotDebounced() {
       query: route.query,
     });
     reset();
+  } else {
+    if (result.req.status === 412) {
+      toast(
+        {
+          component: ToastApplyFailed,
+          props: {
+            precondition: true,
+          },
+        },
+        {
+          position: POSITION.TOP_CENTER,
+          timeout: 5000,
+        },
+      );
+    } else {
+      toast(
+        {
+          component: ToastApplyFailed,
+          props: {
+            precondition: false,
+          },
+        },
+        {
+          position: POSITION.TOP_CENTER,
+          timeout: 5000,
+        },
+      );
+    }
   }
 }
 

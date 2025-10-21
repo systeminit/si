@@ -4265,7 +4265,12 @@ const dbInterface: TabDBInterface = {
       return;
     }
 
-    debug("Initializing websocket for workspaceId", workspaceId);
+    debug(
+      "Initializing websocket for workspaceId",
+      workspaceId,
+      "and user",
+      userPk,
+    );
 
     try {
       const token = bearerTokens[workspaceId];
