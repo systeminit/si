@@ -157,10 +157,10 @@ const showCachedAppNotification = () => {
   cachedAppEmitter.emit(SHOW_CACHED_APP_NOTIFICATION_EVENT);
 };
 
-const initBifrost = (messagePort: MessagePort) => {
-  tabDb.initBifrost(Comlink.proxy(messagePort)).then((result) => {
+const initBifrost = (messagePort: MessagePort, userPk: string) => {
+  tabDb.initBifrost(Comlink.proxy(messagePort), userPk).then((result) => {
     if (typeof result === "string" && result === FORCE_LEADER_ELECTION) {
-      initBifrost(messagePort);
+      initBifrost(messagePort, userPk);
     }
   });
 };
@@ -169,6 +169,7 @@ export const init = async (
   workspaceId: WorkspacePk,
   bearerToken: string,
   _queryClient: QueryClient,
+  userPk: string,
 ) => {
   if (!ranInit.value) {
     // eslint-disable-next-line no-console
@@ -186,7 +187,7 @@ export const init = async (
       lockAcquiredBroadcastChannel.postMessage(tabDbId);
     };
 
-    initBifrost(port2);
+    initBifrost(port2, userPk);
 
     ranInit.value = true;
     queryClient = _queryClient;

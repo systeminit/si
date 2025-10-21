@@ -208,7 +208,10 @@ import {
   startWindowResizeEmitter,
   windowResizeEmitter,
 } from "./logic_composables/emitters";
-import { tokensByWorkspacePk } from "./logic_composables/tokens";
+import {
+  getUserPkFromToken,
+  tokensByWorkspacePk,
+} from "./logic_composables/tokens";
 import ComponentPage from "./ComponentDetails.vue";
 import NavbarPanelLeft from "./nav/NavbarPanelLeft.vue";
 import { useChangeSets } from "./logic_composables/change_set";
@@ -626,8 +629,8 @@ onBeforeMount(async () => {
     return;
   }
 
-  // Activate the norse stack, which is explicitly NOT flagged for the job-specific UI.
-  await heimdall.init(thisWorkspacePk, workspaceAuthToken, queryClient);
+  const userPk = getUserPkFromToken(workspaceAuthToken);
+  await heimdall.init(thisWorkspacePk, workspaceAuthToken, queryClient, userPk);
   watch(
     [connectionShouldBeEnabled, heimdall.initCompleted],
     async () => {
