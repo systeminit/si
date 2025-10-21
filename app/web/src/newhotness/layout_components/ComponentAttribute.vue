@@ -188,22 +188,33 @@
         </ul>
         <div
           v-if="isBuildable"
-          class="grid grid-cols-2 items-center gap-xs relative"
+          class="grid grid-cols-2 items-center gap-2xs relative"
         >
           <template
             v-if="attributeTree.prop?.kind === 'map' && !props.forceReadOnly"
           >
-            <keyForm.Field name="key">
+            <keyForm.Field
+              name="key"
+              :validators="{
+                onChange: keyValidator,
+                onBlur: keyValidator,
+              }"
+            >
               <template #default="{ field }">
                 <input
                   :class="
                     clsx(
                       'block ml-auto border w-full h-lg font-mono text-sm order-2',
                       'focus:outline-none focus:shadow-none focus:ring-0',
-                      themeClasses(
-                        'text-black bg-white border-neutral-400 disabled:bg-neutral-200 focus:border-action-500',
-                        'text-white bg-black border-neutral-600 disabled:bg-neutral-900 focus:border-action-300',
-                      ),
+                      field.state.meta.errors.length > 0
+                        ? themeClasses(
+                            'text-black bg-white !border-destructive-600 disabled:bg-neutral-200',
+                            'text-white bg-black !border-destructive-400 disabled:bg-neutral-900',
+                          )
+                        : themeClasses(
+                            'text-black bg-white border-neutral-400 disabled:bg-neutral-200 focus:border-action-500',
+                            'text-white bg-black border-neutral-600 disabled:bg-neutral-900 focus:border-action-300',
+                          ),
                     )
                   "
                   type="text"
@@ -212,11 +223,27 @@
                   :value="field.state.value"
                   :disabled="wForm.bifrosting.value"
                   @input="
-                    (e) =>
+                    (e) => 
                       field.handleChange((e.target as HTMLInputElement).value)
                   "
-                  @keypress.enter.stop.prevent="saveKeyIfFormValid"
+                  @keydown.enter.stop.prevent="saveKeyIfFormValid"
                 />
+                <template v-if="field.state.meta.errors.length > 0">
+                  <div class="order-3" />
+                  <div
+                    :class="
+                      clsx(
+                        'text-sm mb-xs order-4',
+                        themeClasses(
+                          'text-destructive-600',
+                          'text-destructive-200',
+                        ),
+                      )
+                    "
+                  >
+                    {{ field.state.meta.errors[0] }}
+                  </div>
+                </template>
               </template>
             </keyForm.Field>
           </template>
@@ -224,8 +251,7 @@
             <NewButton
               v-if="
                 !attributeTree.attributeValue.externalSources?.length &&
-                !props.forceReadOnly &&
-                props.attributeTree.prop?.kind !== 'map'
+                !props.forceReadOnly
               "
               ref="addButtonRef"
               :class="
@@ -241,7 +267,7 @@
               :disabled="addButtonBifrosting"
               loadingIcon="loader"
               :tabIndex="0"
-              @click="add"
+              @click="onAddButtonClick"
               @keydown.tab.stop.prevent="onAddButtonTab"
             >
               + add "{{ displayName }}" item
@@ -378,41 +404,85 @@ const emptyChildValue = (): NewChildValue => {
 const wForm = useWatchedForm<{ key: string }>(
   `component.av.key.${props.attributeTree.prop?.id}`,
 );
-const keyData = ref({ key: "" });
+const keyData = computed<{ key: string }>(() => {
+  return { key: "" };
+});
 const keyForm = wForm.newForm({
   data: keyData,
-  onSubmit: async ({ value }) => {
-    emit("setKey", props.attributeTree, value.key, emptyChildValue());
+  onSubmit: async () => {
+    // DO NOT SUBMIT THIS FORM, instead use saveKeyIfFormValid
   },
-  watchFn: () => props.attributeTree.children.length,
+  validators: {
+    onSubmit: ({ value }) => {
+      if (value.key.trim().length === 0) {
+        return "Key name is required";
+      } else if (existingKeys.value.includes(keyForm.state.values.key)) {
+        return "That key name is already in use";
+      }
+      return undefined;
+    },
+  },
+  watchFn: () => {
+    return props.attributeTree.children.length;
+  },
+});
+const keyValidator = ({ value }: { value: string }) => {
+  if (value.trim().length === 0) {
+    return "Key name is required";
+  } else if (existingKeys.value.includes(value)) {
+    return "That key name is already in use";
+  }
+  return undefined;
+};
+
+const existingKeys = computed(() => {
+  if (props.attributeTree.prop?.kind === "map") {
+    return props.attributeTree.children.map(
+      (child) => child.attributeValue.key as string,
+    );
+  } else {
+    return [];
+  }
 });
 
 // map (all except the first, see below) and object keys come through this FN
 const saveKeyIfFormValid = async () => {
-  if (keyForm.fieldInfo.key.instance?.state.meta.isDirty) {
-    if (!keyForm.baseStore.state.isSubmitted) {
-      await saveKey();
-    }
+  if (
+    keyForm.fieldInfo.key.instance?.state.meta.isDirty &&
+    !keyForm.baseStore.state.isSubmitted
+  ) {
+    add(keyForm.state.values.key);
+  } else {
+    keyForm.validateAllFields("blur");
   }
-};
-
-const saveKey = async () => {
-  await keyForm.handleSubmit();
-  // The keyForm has a watchFn that automatically handles bifrosting reset
-  // when props.attributeTree.children.length changes
 };
 
 const addApi = useApi();
 const add = (keyName?: string) => {
   // when adding a map key (for the first time), you're doing it from the child, which gives you the key name
   if (props.attributeTree.prop?.kind === "map") {
-    if (!keyName) throw new Error("Expected key name");
+    if (
+      !keyName ||
+      keyName.trim().length === 0 ||
+      existingKeys.value.includes(keyName)
+    ) {
+      keyForm.validateAllFields("blur");
+      return;
+    }
     emit("setKey", props.attributeTree, keyName, emptyChildValue());
+    wForm.reset(keyForm);
     return;
   }
 
   // when adding a net-new array, you're doing it from within this component (keyName does not apply)
   emit("add", addApi, props.attributeTree, emptyChildValue());
+};
+const onAddButtonClick = () => {
+  if (props.attributeTree.prop?.kind === "map") {
+    add(keyForm.state.values.key);
+  } else {
+    add();
+  }
 };
 
 // NOTE: we never need to unset this, because this whole node will

@@ -1349,7 +1349,12 @@ const onMouseDown = (e: MouseDetails["mousedown"]) => {
     // Save the value if it has changed when clicking outside
     if (!readOnly.value && selectedIndex.value === 0) {
       const newValue = valueForm.state.values.value;
-      if (newValue !== attrData.value.value) {
+      // The newValue has to be different AND this input
+      // can't be for an array or map!
+      if (
+        newValue !== attrData.value.value &&
+        !["array", "map"].includes(kindAsString.value)
+      ) {
         connectingComponentId.value = undefined;
         selectedConnectionData.value = undefined;
         valueForm.handleSubmit();
