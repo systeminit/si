@@ -3286,10 +3286,14 @@ dependencies = [
  "serde",
  "serde_json",
  "si-data-nats",
+ "si-data-pg",
  "si-events",
+ "si-layer-cache",
+ "si-runtime",
  "si-settings",
  "si-std",
  "si-tls",
+ "snapshot-eviction",
  "telemetry",
  "telemetry-nats",
  "thiserror 2.0.12",
@@ -8635,6 +8639,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "snapshot-eviction"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "si-data-nats",
+ "si-data-pg",
+ "si-events",
+ "si-layer-cache",
+ "telemetry",
+ "telemetry-utils",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
