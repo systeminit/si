@@ -463,12 +463,28 @@ impl ChangeSet {
         ctx: &DalContext,
         workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> ChangeSetResult<()> {
+        let old_snapshot_address = self.workspace_snapshot_address;
+
+        // Update change set pointer
         ctx.txns()
             .await?
             .pg()
             .query_none(
                 "UPDATE change_set_pointers SET workspace_snapshot_address = $2, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
                 &[&self.id, &workspace_snapshot_address],
+            )
+            .await?;
+
+        // Record when old snapshot was last used
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "INSERT INTO snapshot_last_used (snapshot_id, last_used_at, created_at)
+                 VALUES ($1, CLOCK_TIMESTAMP(), CLOCK_TIMESTAMP())
+                 ON CONFLICT (snapshot_id)
+                 DO UPDATE SET last_used_at = CLOCK_TIMESTAMP()",
+                &[&old_snapshot_address.to_string()],
             )
             .await?;
 
