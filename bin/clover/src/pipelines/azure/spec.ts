@@ -2,13 +2,12 @@ import assert from "node:assert";
 import logger from "../../logger.ts";
 import { CfHandler, CfHandlerKind } from "../types.ts";
 import {
-  AzureOperationData,
-  AzureSchema,
-  isAzureObjectProperty,
-  AzureProperty,
+  AZURE_HTTP_METHODS,
   AzureOpenApiDocument,
   AzureOpenApiOperation,
-  AZURE_HTTP_METHODS,
+  AzureProperty,
+  AzureSchema,
+  isAzureObjectProperty,
 } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
@@ -23,6 +22,13 @@ const IGNORE_RESOURCE_TYPES = new Set<string>([
   "Azure::Portal::UserSettings",
 ]);
 
+const VERB_TO_HANDLERS: Record<string, CfHandlerKind[]> = {
+  get: ["read"],
+  list: ["list"],
+  put: ["create", "update"],
+  delete: ["delete"],
+};
+
 export function parseAzureSpec(
   openApiDoc: AzureOpenApiDocument,
 ): ExpandedPkgSpec[] {
@@ -33,8 +39,14 @@ export function parseAzureSpec(
     return [];
   }
 
-  const resourceOperations: Record<string, AzureOperationData[]> = {};
+  const defaultHandler = { permissions: [], timeoutInMinutes: 60 };
+  const resourceOperations: Record<string, {
+    getOperation?: AzureOpenApiOperation;
+    putOperation?: AzureOpenApiOperation;
+    handlers: { [key in CfHandlerKind]?: CfHandler };
+  }> = {};
 
+  // Collect all operations for each resource type
   for (const [path, methods] of Object.entries(openApiDoc.paths)) {
     const resourceType = extractResourceTypeFromPath(path);
 
@@ -44,38 +56,55 @@ export function parseAzureSpec(
     if (resourceType.endsWith("Operations")) continue;
     if (IGNORE_RESOURCE_TYPES.has(resourceType)) continue;
 
+    let resource = resourceOperations[resourceType];
+    if (!resource) {
+      resource = { handlers: {} };
+      resourceOperations[resourceType] = resource;
+    }
+
     for (const method of AZURE_HTTP_METHODS) {
       const openApiOperation = methods?.[method];
       if (!openApiOperation) continue;
 
-      if (!resourceOperations[resourceType]) {
-        resourceOperations[resourceType] = [];
-      }
+      const verb = method === "get" && isListOperation(openApiOperation)
+        ? "list"
+        : method;
 
-      resourceOperations[resourceType].push({
-        method,
-        path,
-        openApiOperation,
-        apiVersion: undefined,
-      });
+      const handlerKinds = VERB_TO_HANDLERS[verb];
+      if (handlerKinds) {
+        handlerKinds.forEach((kind) => resource.handlers[kind] = defaultHandler);
+        if (verb === "get") resource.getOperation = openApiOperation;
+        if (verb === "put") resource.putOperation = openApiOperation;
+      }
     }
   }
 
-  Object.entries(resourceOperations).forEach(([resourceType, operations]) => {
-    const spec = mergeAzureResourceOperations(
+  // Build specs from collected operations
+  for (const [resourceType, resource] of Object.entries(resourceOperations)) {
+    if (!resource.getOperation) {
+      logger.debug(`No GET operation found for ${resourceType}`);
+      continue;
+    }
+    if (!resource.putOperation) {
+      // readonly schema! Skipping.
+      logger.debug(`No PUT operation found for ${resourceType}`);
+      continue;
+    }
+
+    const spec = buildDomainAndResourceValue(
       resourceType,
-      operations,
+      resource.getOperation,
+      resource.putOperation,
+      resource.handlers,
       openApiDoc.info.version,
     );
     if (spec) {
       specs.push(spec);
     }
-  });
+  }
 
   logger.debug(
-    `Generated ${specs.length} schemas from ${
-      Object.keys(resourceOperations).length
-    } resource types`,
+    `Generated ${specs.length} schemas`,
   );
 
   return specs;
@@ -190,71 +219,13 @@ export function normalizeAzureProperty(prop: JSONSchema): AzureProperty {
   return prop as AzureProperty;
 }
 
-function buildHandlersFromOperations(operations: AzureOperationData[]) {
-  const result: {
-    handlers: { [key in CfHandlerKind]?: CfHandler };
-    getOperation?: AzureOpenApiOperation;
-    putOperation?: AzureOpenApiOperation;
-    // patchOperation?: AzureOpenApiOperation;
-    deleteOperation?: AzureOpenApiOperation;
-  } = { handlers: {} };
-
-  const defaultHandler = { permissions: [], timeoutInMinutes: 60 };
-
-  operations.forEach(({ method, openApiOperation }) => {
-    const op = openApiOperation;
-    const methodLower = method.toLowerCase();
-
-    // If there's no schema or it's not an object, we can't merge its properties
-    switch (methodLower) {
-      case "get": {
-        const isList = op.operationId?.includes("List");
-        result.handlers[isList ? "list" : "read"] = defaultHandler;
-        if (!isList) {
-          result.getOperation = op;
-        }
-        break;
-      }
-      case "put": {
-        result.putOperation = op;
-        result.handlers["create"] = defaultHandler;
-        result.handlers["update"] = defaultHandler;
-        break;
-      }
-      // case "patch": {
-      //   result.patchOperation = op;
-      //   result.handlers["update"] = defaultHandler;
-      //   break;
-      // }
-      case "delete": {
-        result.deleteOperation = op;
-        result.handlers["delete"] = defaultHandler;
-        break;
-      }
-    }
-  });
-
-  return result;
-}
-
-function mergeAzureResourceOperations(
+function buildDomainAndResourceValue(
   resourceType: string,
-  operations: AzureOperationData[],
+  getOperation: AzureOpenApiOperation,
+  putOperation: AzureOpenApiOperation,
+  handlers: { [key in CfHandlerKind]?: CfHandler },
   apiVersion: string,
 ): ExpandedPkgSpec | null {
-  const { handlers, getOperation, putOperation } =
-    buildHandlersFromOperations(operations);
-
-  if (!getOperation) {
-    logger.debug(`No GET operation found for ${resourceType}`);
-    return null;
-  }
-  if (!putOperation) {
-    // readonly schema! Skipping.
-    logger.debug(`No PUT operation found for ${resourceType}`);
-    return null;
-  }
-
   // Grab resourceValue properties from the GET response
   const { properties: resourceValueProperties } =
     extractPropertiesFromResponseBody(getOperation);
@@ -278,8 +249,7 @@ function mergeAzureResourceOperations(
     return null;
   }
 
-  const description =
-    getOperation.description ||
+  const description = getOperation.description ||
     (getOperation.summary as string) ||
     `Azure ${resourceType} resource`;
 
@@ -312,8 +282,9 @@ function extractPropertiesFromRequestBody(
   operation: AzureOpenApiOperation | null,
 ) {
   const bodyParams = operation?.parameters?.filter((p) => p.in === "body");
-  if (!bodyParams || bodyParams.length == 0)
+  if (!bodyParams || bodyParams.length == 0) {
     return { properties: {}, required: [] };
+  }
   assert(bodyParams.length <= 1, "Expected at most one body parameter");
 
   const { schema } = bodyParams[0];
@@ -399,11 +370,41 @@ function removeReadOnlyProperty(
 
 function extractResourceTypeFromPath(path: string): string | null {
   // Form: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/applicationGateways/{applicationGatewayName}
-  const match = path.match(/\/providers\/([^/]+)\/([^/{]+)\/\{[^/}]+\}$/);
+  // Or list form: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/applicationGateways
+  const match = path.match(/\/providers\/([^/]+)\/([^/{]+)(?:\/\{[^/}]+\})?$/);
   if (!match) return null;
   const [_, providerNamespace, resourceType] = match;
   const serviceName = providerNamespace.split(".").pop() || providerNamespace;
-  const capitalizedResource =
-    resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
+  const capitalizedResource = resourceType.charAt(0).toUpperCase() +
+    resourceType.slice(1);
   return `Azure::${serviceName}::${capitalizedResource}`;
+}
+
+// 1. pageables are always list ops
+// 2. responses that are arrays are list ops
+// 3. reponses that have a value object that is an array is a list op
+function isListOperation(
+  operation: AzureOpenApiOperation,
+): boolean {
+  if (operation["x-ms-pageable"] !== undefined) {
+    return true;
+  }
+
+  const schema = operation?.responses?.["200"]?.schema;
+  if (!schema || typeof schema !== "object") return false;
+  if ("type" in schema && schema.type === "array") {
+    return true;
+  }
+
+  if (schema.properties?.value) {
+    const valueSchema = schema.properties.value;
+    if (
+      typeof valueSchema === "object" && "type" in valueSchema &&
+      valueSchema.type === "array"
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }

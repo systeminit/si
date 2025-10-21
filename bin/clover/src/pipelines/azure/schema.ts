@@ -22,13 +22,18 @@ interface OperationExt {
   responses?: {
     [K in string]?: AzureOpenApiResponse;
   };
+  "x-ms-pageable"?: {
+    nextLinkName: string;
+  };
 }
 /// Adds "schema" to responses in OpenAPI.Operation
-type AzureOpenApiResponse = NonNullable<
-  OpenAPI.Operation["responses"]
->[string] & {
-  schema?: JSONSchema;
-};
+type AzureOpenApiResponse =
+  & NonNullable<
+    OpenAPI.Operation["responses"]
+  >[string]
+  & {
+    schema?: JSONSchema;
+  };
 
 /// Remove { $ref } from schema (which is what happens when you call SwaggerParser.Dereference)
 type Dereference<T> = DereferenceChildren<Exclude<T, { $ref: string }>>;
@@ -40,8 +45,7 @@ type DereferenceChildren<T> = {
 export type PropertySet = Set<string>;
 
 export interface AzureOperationData {
-  method: string;
-  path: string;
+  verb: "list" | AzureHttpMethod;
   openApiOperation: AzureOpenApiOperation;
   apiVersion?: string;
 }
@@ -134,8 +138,9 @@ function flattenAllOfProperties({
   if (Array.isArray(allOf)) {
     const merged: Exclude<JSONSchema, boolean>["properties"] = {};
     for (const part of allOf) {
-      if (typeof part !== "object" || part === null)
+      if (typeof part !== "object" || part === null) {
         throw new Error("Schema object does not contain child object");
+      }
       const flattened = flattenAllOfProperties(part);
       if (flattened.properties) {
         Object.assign(merged, flattened.properties);
