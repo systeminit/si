@@ -8,6 +8,7 @@ use color_eyre::{
 };
 use dal::{
     ChangeSet,
+    ChangeSetId,
     ComponentId,
     DalContext,
     Func,
@@ -125,6 +126,16 @@ impl ChangeSetTestHelpers {
     pub async fn apply_change_set_to_base_approvals(ctx: &mut DalContext) -> Result<()> {
         ChangeSet::prepare_for_apply(ctx).await?;
         Self::apply_change_set_to_base_approvals_without_prepare_step(ctx).await?;
+        Ok(())
+    }
+
+    /// Switch to the [`ChangeSet`] corresponding to the provided ID.
+    pub async fn switch_to_change_set(
+        ctx: &mut DalContext,
+        change_set_id: ChangeSetId,
+    ) -> Result<()> {
+        ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
+            .await?;
         Ok(())
     }
 
