@@ -748,9 +748,7 @@ const toast = useToast();
 const bulkChangeSet = useApi();
 const startBulkEdit = async () => {
   if (ctx.onHead.value) {
-    const call = bulkChangeSet.endpoint<{ changeSet: ChangeSet }>(
-      routes.CreateChangeSet,
-    );
+    const call = bulkChangeSet.endpoint<ChangeSet>(routes.CreateChangeSet);
     const { req } = await call.post({
       name: `Bulk Edit by ${ctx.user?.name}`,
     });
@@ -767,11 +765,11 @@ const startBulkEdit = async () => {
         name: "new-hotness",
         params: {
           workspacePk: ctx.workspacePk.value,
-          changeSetId: req.data.changeSet.id,
+          changeSetId: req.data.id,
         },
         query,
       },
-      req.data.changeSet.id,
+      req.data.id,
     );
     return;
   }
