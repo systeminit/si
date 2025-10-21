@@ -217,6 +217,13 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             ComponentsError::Attribute(
                 dal::attribute::attributes::AttributesError::CannotUpdateCreateOnlyProperty(_),
             ) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
+            ComponentsError::Attribute(
+                dal::attribute::attributes::AttributesError::AttributeValue(
+                    dal::attribute::value::AttributeValueError::Prop(err),
+                ),
+            ) if matches!(**err, dal::prop::PropError::ChildPropNotFoundByName(_, _)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
             ComponentsError::Component(dal::ComponentError::NotFound(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
