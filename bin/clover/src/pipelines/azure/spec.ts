@@ -16,11 +16,12 @@ import { makeModule } from "../generic/index.ts";
 import { AZURE_PROVIDER_CONFIG } from "./provider.ts";
 import { OnlyProperties } from "../../spec/props.ts";
 
-const IGNORE_RESOURCE_TYPES = new Set<string>([
-  // These don't have an id property in the GET response; TODO look into this
-  "Azure::Portal::Consoles",
-  "Azure::Portal::UserSettings",
-]);
+/// Maximum resource depth (including the top level resource)
+const MAX_RESOURCE_DEPTH = 3;
+
+/// Add schemas (e.g. Azure::Portal::UserSettings) to ignore them until it's fixed
+/// Make sure you also add a comment explaining why--all schemas should be supported!
+const IGNORE_SCHEMA_NAMES = new Set<string>([]);
 
 const VERB_TO_HANDLERS: Record<string, CfHandlerKind[]> = {
   get: ["read"],
@@ -51,18 +52,20 @@ export function parseAzureSpec(
 
   // Collect all operations for each resource type
   for (const [path, methods] of Object.entries(openApiDoc.paths)) {
-    const resourceType = extractResourceTypeFromPath(path);
-
+    const resourceType = parseEndpointPath(path);
     if (!resourceType) continue;
-    if (resourceType.includes("Reminder: Need renaming")) continue; // lol
-    // these are the supplemental actions endpoints. Skipping for now
-    if (resourceType.endsWith("Operations")) continue;
-    if (IGNORE_RESOURCE_TYPES.has(resourceType)) continue;
+    const { schemaName } = resourceType;
 
-    let resource = resourceOperations[resourceType];
+    if (!schemaName) continue;
+    if (schemaName.includes("Reminder: Need renaming")) continue; // lol
+    // these are the supplemental actions endpoints. Skipping for now
+    if (schemaName.endsWith("Operations")) continue;
+    if (IGNORE_SCHEMA_NAMES.has(schemaName)) continue;
+
+    let resource = resourceOperations[schemaName];
     if (!resource) {
       resource = { handlers: {} };
-      resourceOperations[resourceType] = resource;
+      resourceOperations[schemaName] = resource;
     }
 
     for (const method of AZURE_HTTP_METHODS) {
@@ -447,6 +450,39 @@ function defaultAnyTypeTo(prop: NormalizedAzureSchema, type: string) {
   return isAnyType;
 }
 
+function stubResourceReferences(
+  prop: NormalizedAzureSchema | undefined,
+  /// The number of levels to keep the full property structure before stubbing
+  resourceDepth: number,
+) {
+  if (!prop) return;
+
+  // Increase resource depth if this is a resource, and possibly stub it
+  if (
+    prop.properties &&
+    "id" in prop.properties &&
+    "properties" in prop.properties
+  ) {
+    resourceDepth += 1;
+
+    // Stub the resource if we're at max depth
+    if (resourceDepth > MAX_RESOURCE_DEPTH) {
+      prop.properties = { id: prop.properties.id };
+      return;
+    }
+  }
+
+  for (const childProp of Object.values(prop.properties ?? {})) {
+    stubResourceReferences(childProp, resourceDepth);
+  }
+  for (const childProp of Object.values(prop.patternProperties ?? {})) {
+    stubResourceReferences(childProp, resourceDepth);
+  }
+  // Don't count array/map items as depth; an array counts the same as a singleton for stubbing
+  stubResourceReferences(prop.items, resourceDepth);
+  stubResourceReferences(prop.additionalProperties, resourceDepth);
+}
+
 function buildDomainAndResourceValue(
   resourceType: string,
   getOperation: AzureOpenApiOperation,
@@ -460,6 +496,9 @@ function buildDomainAndResourceValue(
   if (Object.keys(resourceValueProperties).length === 0) {
     logger.debug(`No properties found in GET response for ${resourceType}`);
     return null;
+  }
+  for (const prop of Object.values(resourceValueProperties)) {
+    stubResourceReferences(prop, 0);
   }
   if (!("id" in resourceValueProperties)) {
     throw new Error(
@@ -629,16 +668,40 @@ function removeReadOnlyProperty(
   return property;
 }
 
-function extractResourceTypeFromPath(path: string): string | null {
-  // Form: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/applicationGateways/{applicationGatewayName}
-  // Or list form: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/applicationGateways
-  const match = path.match(/\/providers\/([^/]+)\/([^/{]+)(?:\/\{[^/}]+\})?$/);
-  if (!match) return null;
-  const [_, providerNamespace, resourceType] = match;
+function parseEndpointPath(path: string) {
+  // Form:         /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/applicationGateways/{applicationGatewayName}
+  // Or list form: /subscriptions/{subscriptionId}/providers/Microsoft.Network/applicationGateways
+  // TODO support non-{resourceGroupName} get/put/delete and {resourceGroupName} list paths
+  const match = path.match(
+    /\/subscriptions\/\{([^/}]+)\}(?:\/resourceGroups\/\{([^/}]+)\})?\/providers\/([^/]+)\/([^/{]+)(?:\/\{([^/}]+)\})?$/,
+  );
+  if (!match) return undefined;
+  const [
+    _,
+    subscriptionIdParam,
+    resourceGroupParam,
+    providerNamespace,
+    resourceType,
+    resourceNameParam,
+  ] = match;
+
+  // If the endpoint has {resourceName} it must also have {resourceGroup}. The list endpoint
+  // (no {resourceName} must *not* have {resourceGroup} in it.
+  if (!!resourceGroupParam !== !!resourceNameParam) return undefined;
+
   const serviceName = providerNamespace.split(".").pop() || providerNamespace;
   const capitalizedResource =
     resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
-  return `Azure::${serviceName}::${capitalizedResource}`;
+  const schemaName = `Azure::${serviceName}::${capitalizedResource}`;
+
+  return {
+    schemaName,
+    providerNamespace,
+    resourceType,
+    subscriptionIdParam,
+    resourceGroupParam,
+    resourceNameParam,
+  };
 }
 
 // 1. pageables are always list ops
