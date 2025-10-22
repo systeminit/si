@@ -389,6 +389,26 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem
+          v-if="useFeatureFlagsStore().COMPONENT_HISTORY_FUNCS"
+        >
+          <template #header><span class="text-sm">History</span></template>
+          <ComponentHistory
+            :componentId="component.id"
+            :enabled="componentExists"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem
+          v-if="useFeatureFlagsStore().COMPONENT_HISTORY_FUNCS"
+        >
+          <template #header
+            ><span class="text-sm">Function Runs</span></template
+          >
+          <ComponentFuncRunList
+            :componentId="component.id"
+            :enabled="componentExists"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem
           v-if="useFeatureFlagsStore().SQLITE_TOOLS"
           expandable
         >
@@ -456,6 +476,8 @@ import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
 import CodePanel from "./CodePanel.vue";
 import DiffPanel from "./DiffPanel.vue";
+import ComponentHistory from "./ComponentHistory.vue";
+import ComponentFuncRunList from "./ComponentFuncRunList.vue";
 import ComponentDebugPanel from "./ComponentDebugPanel.vue";
 import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
@@ -517,7 +539,7 @@ const componentExistsInIndexQuery = useQuery<boolean>({
 });
 
 const componentExists = computed(
-  () => componentExistsInIndexQuery.data.value ?? false,
+  () => !!component.value || (componentExistsInIndexQuery.data.value ?? false),
 );
 
 const attributeTreeQuery = useQuery<AttributeTree | undefined>({
@@ -769,6 +791,19 @@ const specialCaseManagementExecutionStatus = computed(() => {
     specialCaseManagementFuncJobState.value?.state,
   );
 });
+
+// When absolutely anything in the component changes, invalidate the audit logs query for that component.
+watch(
+  component,
+  (newComponent) => {
+    if (newComponent) {
+      queryClient.invalidateQueries({
+        queryKey: key(EntityKind.AuditLogsForComponent, newComponent.id).value,
+      });
+    }
+  },
+  { deep: true },
+);
 
 const onBackspace = () => {
   if (!component.value?.toDelete) {

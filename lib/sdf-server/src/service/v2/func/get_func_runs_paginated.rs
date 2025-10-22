@@ -105,6 +105,7 @@ async fn get_func_run_view_without_logs(
 pub struct PaginationParams {
     limit: Option<u32>,
     cursor: Option<FuncRunId>,
+    component_id: Option<dal::ComponentId>,
 }
 
 #[derive(Debug, Serialize)]
@@ -119,6 +120,7 @@ pub struct GetFuncRunsPaginatedResponse {
 /// This endpoint supports cursor-based pagination:
 /// - `limit` parameter controls how many items to return per page (default: 50, max: 100)
 /// - `cursor` parameter should be the ID of the last item from the previous page
+/// - `component_id` parameter filters results to a specific component (optional)
 ///
 /// Results are ordered by creation time (newest first).
 pub async fn get_func_runs_paginated(
@@ -135,12 +137,31 @@ pub async fn get_func_runs_paginated(
     let limit = params.limit.unwrap_or(50).min(100);
 
     // Query the database with pagination parameters
-    let func_runs = ctx
-        .layer_db()
-        .func_run()
-        .read_many_for_workspace_paginated(workspace_pk, change_set_id, limit as i64, params.cursor)
-        .await?
-        .unwrap_or_default();
+    let func_runs = if let Some(component_id) = params.component_id {
+        // Component-specific query
+        ctx.layer_db()
+            .func_run()
+            .read_many_for_component_paginated(
+                workspace_pk,
+                change_set_id,
+                component_id,
+                limit as i64,
+                params.cursor,
+            )
+            .await?
+            .unwrap_or_default()
+    } else {
+        ctx.layer_db()
+            .func_run()
+            .read_many_for_workspace_paginated(
+                workspace_pk,
+                change_set_id,
+                limit as i64,
+                params.cursor,
+            )
+            .await?
+            .unwrap_or_default()
+    };
 
     // Determine the next cursor (if we have at least `limit` results)
     let next_cursor = if func_runs.len() == limit as usize {

@@ -345,8 +345,11 @@
       <div class="right flex flex-col p-xs">
         <CollapsingFlexItem open headerTextSize="sm">
           <template #header>Component History</template>
-          <template v-if="selectedComponentId">
-            <ComponentHistory :componentId="selectedComponentId" />
+          <template v-if="selectedComponentId && selectedComponent">
+            <ComponentHistory
+              :componentId="selectedComponentId"
+              :enabled="!!selectedComponent"
+            />
           </template>
           <EmptyState
             v-else
