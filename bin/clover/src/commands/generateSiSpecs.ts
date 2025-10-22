@@ -18,6 +18,7 @@ import "../pipelines/dummy/spec.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
+const MAX_SPEC_SIZE_MB = 20;
 
 export async function generateSiSpecs(options: PipelineOptions) {
   const specs: ExpandedPkgSpec[] = [];
@@ -35,18 +36,15 @@ export async function generateSiSpecs(options: PipelineOptions) {
     const specJson = JSON.stringify(unexpandPackageSpec(spec), null, 2);
     const name = spec.name;
 
-    try {
-      logger.debug(`Writing ${name}.json`);
-      const blob = new Blob([specJson]);
-      if (blob.size > 4 * 1024 * 1024) {
-        logger.warn(`${spec.name} is bigger than 4MBs. Skipping.`);
-        continue;
-      }
-      await Deno.writeFile(`${SI_SPEC_DIR}/${name}.json`, blob.stream());
-    } catch (e) {
-      console.log(`Error writing to file: ${name}: ${e}`);
-      continue;
+    logger.debug(`Writing ${name}.json`);
+    const blob = new Blob([specJson]);
+    if (blob.size > MAX_SPEC_SIZE_MB * 1024 * 1024) {
+      // TODO throw an error, once we've got Azure specs under control
+      console.warn(
+        `${spec.name} is bigger than ${MAX_SPEC_SIZE_MB}MBs. Skipping.`,
+      );
     }
+    await Deno.writeFile(`${SI_SPEC_DIR}/${name}.json`, blob.stream());
 
     imported += 1;
   }

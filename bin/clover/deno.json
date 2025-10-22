@@ -2,7 +2,7 @@
   "workspace": [],
   "tasks": {
     "updateSchema": "../../lib/jsr-systeminit/cf-db/update-schema.sh",
-    "run": "deno run --allow-all main.ts",
+    "run": "deno run --allow-all main.ts"
   },
   "imports": {
     "@apidevtools/json-schema-ref-parser": "npm:@apidevtools/json-schema-ref-parser@^11.9.3",
@@ -24,5 +24,9 @@
     "@sideway/address": "npm:@sideway/address@4.1.5",
     "@sideway/pinpoint": "npm:@sideway/pinpoint@2.0.0",
     "@hapi/hoek": "npm:@hapi/hoek@9.3.0"
-  }
+  },
+  "exclude": [
+    "si-specs",
+    "src/provider-schemas"
+  ]
 }
