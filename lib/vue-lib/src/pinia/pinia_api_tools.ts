@@ -489,6 +489,9 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
             // TODO maybe use Axios.isAxiosError instead, but don't want to change behavior right now
             if (err.response) {
               apiRequestStatus.error = (err as AxiosError).response;
+              span.setAttributes({
+                "http.status_code": apiRequestStatus.error?.status,
+              });
             } else {
               // if error was not http error or had no response body
               // we still want some kind of fallback message to show
@@ -507,7 +510,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           completed.resolve({
             error: err,
           });
-          span.setAttributes({ "http.status_code": err.response.status });
           span.end();
           return await completed.promise;
         }
