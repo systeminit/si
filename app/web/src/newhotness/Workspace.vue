@@ -646,6 +646,14 @@ onBeforeMount(async () => {
   if (!workspaceAuthToken) {
     tokenFail.value = true;
     tokenFailStatus.value = 500;
+    // we don't have a token for this workspace, this is a dead end
+    // push the user to the auth flow for this workspace.
+    const url = `${
+      import.meta.env.VITE_AUTH_API_URL
+    }/workspaces/${thisWorkspacePk}/go?redirect=${encodeURIComponent(
+      window.location.pathname,
+    )}`;
+    window.location.href = url;
     return;
   }
 
