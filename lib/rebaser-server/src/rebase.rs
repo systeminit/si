@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
     DalContext,
@@ -103,7 +101,6 @@ pub(crate) async fn perform_rebase(
     request: &EnqueueUpdatesRequest,
     server_tracker: &TaskTracker,
     features: Features,
-    snapshot_eviction_grace_period: Duration,
 ) -> RebaseResult<RebaseBatchAddressKind> {
     let start = Instant::now();
     let workspace = get_workspace(ctx).await?;
@@ -147,20 +144,17 @@ pub(crate) async fn perform_rebase(
         }
     }
 
+    // Spawn fire-and-forget task to evict old snapshot from memory caches
+    // This provides immediate memory pressure relief across all service instances
+    // PostgreSQL deletion is handled separately by forklift's polling eviction
     {
         let ctx_clone = ctx.clone();
-        let grace_period = snapshot_eviction_grace_period;
+        let old_snapshot_addr = to_rebase_workspace_snapshot_address;
         server_tracker.spawn(async move {
-            if let Err(err) = evict_unused_snapshot(
-                &ctx_clone,
-                &to_rebase_workspace_snapshot_address,
-                grace_period,
-            )
-            .await
-            {
-                error!(?err, "eviction error");
+            if let Err(err) = evict_unused_snapshot_from_memory(&ctx_clone, &old_snapshot_addr) {
+                // Log but don't fail - this is best-effort memory management
+                debug!(?err, %old_snapshot_addr, "memory eviction failed");
             }
-            // TODO: RebaseBatch eviction?
         });
     }
 
@@ -514,32 +508,20 @@ pub(crate) async fn send_updates_to_edda_legacy_snapshot(
     Ok(())
 }
 
-pub(crate) async fn evict_unused_snapshot(
+/// Evict a snapshot from memory and disk caches across all service instances.
+///
+/// This is a fire-and-forget operation for memory pressure relief. It does NOT
+/// delete from PostgreSQL - that is handled by forklift's polling-based eviction.
+pub(crate) fn evict_unused_snapshot_from_memory(
     ctx: &DalContext,
     workspace_snapshot_address: &WorkspaceSnapshotAddress,
-    grace_period: Duration,
 ) -> RebaseResult<()> {
-    let in_use =
-        ChangeSet::workspace_snapshot_address_in_use(ctx, workspace_snapshot_address).await?;
-    let is_recent =
-        ChangeSet::snapshot_is_recently_created(ctx, workspace_snapshot_address, grace_period)
-            .await?;
-
-    trace!(
-        ?in_use,
-        ?is_recent,
-        %workspace_snapshot_address,
-        ?grace_period,
-        "Checking snapshot for potential eviction",
-    );
-    if !in_use && !is_recent {
-        ctx.layer_db().workspace_snapshot().evict(
-            workspace_snapshot_address,
-            ctx.events_tenancy(),
-            ctx.events_actor(),
-        )?;
-    }
-
+    ctx.layer_db().workspace_snapshot().evict_memory_only(
+        workspace_snapshot_address,
+        ctx.events_tenancy(),
+        ctx.events_actor(),
+    )?;
+    // Ignore the PersisterStatusReader - this is fire-and-forget
     Ok(())
 }
 

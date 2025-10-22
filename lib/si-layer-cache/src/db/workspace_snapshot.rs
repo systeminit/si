@@ -176,6 +176,38 @@ where
         Ok(reader)
     }
 
+    #[instrument(
+        name = "workspace_snapshot.evict_memory_only",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace_snapshot.address = %key,
+        )
+    )]
+    pub fn evict_memory_only(
+        &self,
+        key: &WorkspaceSnapshotAddress,
+        tenancy: Tenancy,
+        actor: Actor,
+    ) -> LayerDbResult<PersisterStatusReader> {
+        let cache_key = key.to_string();
+        self.cache.remove_from_memory(&cache_key);
+
+        let event = LayeredEvent::new(
+            LayeredEventKind::SnapshotEvict,
+            Arc::new(DBNAME.to_string()),
+            cache_key.into(),
+            Arc::new(Vec::new()),
+            Arc::new("workspace_snapshot".to_string()),
+            None,
+            tenancy,
+            actor,
+        );
+        let reader = self.persister_client.evict_memory_only_event(event)?;
+
+        Ok(reader)
+    }
+
     /// Used for when we want to get the exact bytes we're storing for this
     /// snapshot, useful when converting an out of date snapshot into a new one
     #[instrument(

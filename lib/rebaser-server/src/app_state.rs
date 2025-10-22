@@ -35,7 +35,6 @@ pub(crate) struct AppState {
     pub(crate) token: CancellationToken,
     pub(crate) server_tracker: TaskTracker,
     pub(crate) features: Features,
-    pub(crate) snapshot_eviction_grace_period: Duration,
 }
 
 impl AppState {
@@ -53,7 +52,6 @@ impl AppState {
         token: CancellationToken,
         server_tracker: TaskTracker,
         features: Features,
-        snapshot_eviction_grace_period: Duration,
     ) -> Self {
         Self {
             metadata,
@@ -67,7 +65,6 @@ impl AppState {
             token,
             server_tracker,
             features,
-            snapshot_eviction_grace_period,
         }
     }
 }

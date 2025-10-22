@@ -55,6 +55,7 @@ use crate::{
 pub enum PersistMessage {
     Write((LayeredEvent, PersisterStatusWriter)),
     Evict((LayeredEvent, PersisterStatusWriter)),
+    EvictMemoryOnly((LayeredEvent, PersisterStatusWriter)),
 }
 
 #[derive(Debug)]
@@ -124,6 +125,17 @@ impl PersisterClient {
         let (status_write, status_read) = self.get_status_channels();
         self.tx
             .send(PersistMessage::Evict((event, status_write)))
+            .map_err(Box::new)?;
+        Ok(status_read)
+    }
+
+    pub fn evict_memory_only_event(
+        &self,
+        event: LayeredEvent,
+    ) -> LayerDbResult<PersisterStatusReader> {
+        let (status_write, status_read) = self.get_status_channels();
+        self.tx
+            .send(PersistMessage::EvictMemoryOnly((event, status_write)))
             .map_err(Box::new)?;
         Ok(status_read)
     }
@@ -344,6 +356,47 @@ impl PersisterTask {
                     }
                 });
             }
+            PersistMessage::EvictMemoryOnly((event, status_tx)) => {
+                let task =
+                    PersistEventTask::new(self.pg_pool.clone(), self.layered_event_client.clone());
+                let retry_queue_command_tx = self.retry_queue_command_tx.clone();
+                let cache_name = event.payload.db_name.to_string();
+
+                metric!(
+                    counter.layer_cache_persister_evict_memory_only_attempted = 1,
+                    cache_name = &cache_name
+                );
+
+                self.tracker.spawn(async move {
+                    match task.try_evict_memory_only(event.clone()).await {
+                        Ok(_) => {
+                            metric!(
+                                counter.layer_cache_persister_evict_memory_only_success = 1,
+                                cache_name = &cache_name
+                            );
+                            status_tx.send(PersistStatus::Finished)
+                        }
+                        Err(err) => {
+                            // Check if error is retryable and enqueue if so
+                            if crate::retry_queue::is_retryable_error(&err) {
+                                metric!(
+                                    counter.layer_cache_persister_evict_memory_only_failed_retryable = 1,
+                                    cache_name = &cache_name
+                                );
+                                let _ = retry_queue_command_tx
+                                    .send(crate::retry_queue::RetryQueueMessage::Enqueue(event));
+                            } else {
+                                metric!(
+                                    counter.layer_cache_persister_evict_memory_only_failed_permanent = 1,
+                                    cache_name = &cache_name
+                                );
+                                error!(error = ?err, "persister evict memory only task failed with non-retryable error");
+                            }
+                            status_tx.send(PersistStatus::Error(err));
+                        }
+                    }
+                });
+            }
         }
     }
 
@@ -501,6 +554,40 @@ impl PersistEventTask {
         info!(
             metrics = true,
             histogram.layer_cache_persister_evict_duration_seconds = duration,
+            cache_name = &cache_name,
+            status = status
+        );
+
+        result
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub async fn try_evict_memory_only(&self, event: LayeredEvent) -> LayerDbResult<()> {
+        let start = std::time::Instant::now();
+        let cache_name = event.payload.db_name.to_string();
+        let event = Arc::new(event);
+
+        // Only publish to NATS, skip PostgreSQL deletion
+        let nats_join = self.layered_event_client.publish(event.clone()).await?;
+        let result = nats_join.await.map_err(|e| {
+            info!(
+                metrics = true,
+                counter.layer_cache_persister_nats_error = 1,
+                cache_name = &cache_name,
+                operation = "evict_memory_only"
+            );
+            LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                kind: PersisterTaskErrorKind::Evict,
+                pg_error: None,
+                nats_error: Some(e.to_string()),
+            })
+        })?;
+
+        let duration = start.elapsed().as_secs_f64();
+        let status = if result.is_ok() { "success" } else { "error" };
+        info!(
+            metrics = true,
+            histogram.layer_cache_persister_evict_memory_only_duration_seconds = duration,
             cache_name = &cache_name,
             status = status
         );

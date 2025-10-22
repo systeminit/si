@@ -15,6 +15,35 @@ pub struct SnapshotEvictor {
 }
 ```
 
+## Eviction Paths
+
+The system has two distinct eviction paths:
+
+### Memory-Only Eviction (Rebaser)
+
+When a change set is rebased to a new snapshot, the rebaser immediately triggers
+memory-only eviction of the old snapshot:
+
+1. Removes snapshot from local in-memory foyer cache
+2. Publishes NATS eviction event to invalidate all service instances' caches
+3. Does NOT delete from PostgreSQL
+
+This is fire-and-forget with debug-level error logging. Failures don't impact
+rebase success. The goal is immediate memory pressure relief across the cluster.
+
+### Full Eviction (Forklift)
+
+Forklift's polling-based eviction is the **only** path that deletes from
+PostgreSQL:
+
+1. Polls for eviction candidates using grace period (5 minutes default)
+2. Deletes from PostgreSQL durable storage
+3. Publishes NATS eviction event
+4. Removes from tracking table
+
+This controlled approach with grace periods prevents race conditions where
+in-flight transactions might reference recently-evicted snapshots.
+
 ## Integration with Forklift
 
 Runs as tokio task spawned in forklift's try_run method:
