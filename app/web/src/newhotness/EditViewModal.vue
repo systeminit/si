@@ -210,7 +210,7 @@ const nameForm = wForm.newForm({
   },
   validators: {
     onSubmit: ({ value }) =>
-      value.name.length === 0 ? "View name is required" : undefined,
+      value.name.trim().length === 0 ? "View name is required" : undefined,
   },
   watchFn: () => nameOnOpen.value,
 });

@@ -850,6 +850,8 @@ const isSetByConnection = computed(
   () => props.externalSources && props.externalSources.length > 0,
 );
 
+const kindAsString = computed(() => `${props.prop?.widgetKind}`.toLowerCase());
+
 const isPendingValue = computed(
   () =>
     props.externalSources &&
@@ -1349,7 +1351,12 @@ const onMouseDown = (e: MouseDetails["mousedown"]) => {
     // Save the value if it has changed when clicking outside
     if (!readOnly.value && selectedIndex.value === 0) {
       const newValue = valueForm.state.values.value;
-      if (newValue !== attrData.value.value) {
+      // The newValue has to be different AND this input
+      // can't be for an array or map!
+      if (
+        newValue !== attrData.value.value &&
+        !["array", "map"].includes(kindAsString.value)
+      ) {
         connectingComponentId.value = undefined;
         selectedConnectionData.value = undefined;
         valueForm.handleSubmit();
@@ -1606,6 +1613,17 @@ const filteredConnections = computed(() => {
     }
   }
 
+  // For arrays and maps, when showing all possible connections
+  // we need to filter out any possible connections that don't match kind
+  if (
+    !output[0]?.showAllButton &&
+    (kindAsString.value === "array" || kindAsString.value === "map")
+  ) {
+    return output.filter(
+      (item) => item.possibleConnection?.kind === kindAsString.value,
+    );
+  }
+
   return output;
 });
 
@@ -1669,8 +1687,6 @@ const readOnly = computed(
     props.component.toDelete ||
     props.forceReadOnly,
 );
-
-const kindAsString = computed(() => `${props.prop?.widgetKind}`.toLowerCase());
 
 const inputHtmlTag = computed(() => {
   if (
