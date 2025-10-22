@@ -1,7 +1,10 @@
 import { Context } from "../../../context.ts";
 import * as generator from "../../../generators.ts";
+import { getLogger } from "../../../logger.ts";
 import { Project } from "../../../project.ts";
 import type { AbsoluteFilePath } from "../../../project.ts";
+
+const logger = getLogger();
 
 export async function callSchemaActionGenerate(
   ctx: Context,
@@ -9,17 +12,14 @@ export async function callSchemaActionGenerate(
   schemaName: string,
   actionName: string,
 ): Promise<GeneratorResult> {
-  const logger = ctx.logger;
-
   logger.info("Generating action function {actionName} for {schemaName}", {
     schemaName,
     actionName,
   });
 
-  await generator.generateSchemaActionBase(ctx, project, schemaName);
+  await generator.generateSchemaActionBase(project, schemaName);
 
   const paths = await generator.generateSchemaAction(
-    ctx,
     project,
     schemaName,
     actionName,

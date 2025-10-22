@@ -1,7 +1,10 @@
 import { Context } from "../../../context.ts";
 import * as generator from "../../../generators.ts";
+import { getLogger } from "../../../logger.ts";
 import { Project } from "../../../project.ts";
 import type { AbsoluteFilePath } from "../../../project.ts";
+
+const logger = getLogger();
 
 export async function callSchemaCodegenGenerate(
   ctx: Context,
@@ -16,10 +19,9 @@ export async function callSchemaCodegenGenerate(
     codegenName,
   });
 
-  await generator.generateSchemaCodegenBase(ctx, project, schemaName);
+  await generator.generateSchemaCodegenBase(project, schemaName);
 
   const paths = await generator.generateSchemaCodegen(
-    ctx,
     project,
     schemaName,
     codegenName,

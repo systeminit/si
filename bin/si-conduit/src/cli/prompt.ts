@@ -27,6 +27,8 @@
 import { Input } from "@cliffy/prompt";
 import type { InputOptions } from "@cliffy/prompt/input";
 import { Project } from "../project.ts";
+import { isInteractive } from "../logger.ts";
+import { ValidationError } from "@cliffy/command";
 
 /** Minimum length requirement for all prompt inputs. */
 const MIN_INPUT_LENGTH = 1 as const;
@@ -79,6 +81,10 @@ async function promptForName(
     return value;
   }
 
+  if (!isInteractive()) {
+    throw new ValidationError(`Missing required argument for ${promptMessage}`);
+  }
+
   const suggestions = await Promise.resolve(getSuggestions());
   return await Input.prompt(createPromptOptions(promptMessage, suggestions));
 }
@@ -111,7 +117,7 @@ async function promptForName(
  *
  * @see {@link Project.currentSchemaDirNames}
  */
-export async function schemaName(
+export async function schemaNameFromDirNames(
   schemaName: string | undefined,
   project: Project,
 ): Promise<string> {
@@ -120,6 +126,13 @@ export async function schemaName(
     "Schema Name",
     () => project.currentSchemaDirNames(),
   );
+}
+
+export async function schemaName(
+  schemaName: string | undefined,
+  _project: Project,
+): Promise<string> {
+  return await promptForName(schemaName, "Schema Name", () => []);
 }
 
 /**

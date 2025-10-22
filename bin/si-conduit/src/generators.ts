@@ -25,9 +25,8 @@
  * @module
  */
 
-import type { Logger } from "@logtape/logtape";
 import { SCHEMA_FILE_FORMAT_VERSION } from "./config.ts";
-import { Context } from "./context.ts";
+import * as materialize from "./materialize.ts";
 import { Project } from "./project.ts";
 import type { AbsoluteFilePath } from "./project.ts";
 
@@ -48,41 +47,8 @@ import type { AbsoluteFilePath } from "./project.ts";
  * const { formatVersionPath } = await generateSchemaBase(ctx, project, "MySchema");
  * ```
  */
-export async function generateSchemaBase(
-  ctx: Context,
-  project: Project,
-  schemaName: string,
-): Promise<{ formatVersionPath: AbsoluteFilePath }> {
-  const logger = ctx.logger;
-
-  const schemaBasePath = project.schemaBasePath(schemaName);
-
-  // Check that the schema directory doesn't exist
-  if (await schemaBasePath.exists()) {
-    logger.error("Directory already exists at {schemaBasePath}", {
-      schemaBasePath: schemaBasePath.toString(),
-    });
-    throw new DirectoryExistsError(schemaBasePath.toString());
-  }
-
-  // Create schema base directory
-  await schemaBasePath.mkdir({ recursive: true });
-  logger.info("Created schema directory: {schemaBasePath}", {
-    schemaBasePath: schemaBasePath.toString(),
-  });
-
-  // Create the format version file
-  const formatVersionFilePath = project.schemaFormatVersionPath(schemaName);
-  await ensureFileDoesNotExist(formatVersionFilePath, logger);
-  await createFileWithLogging(
-    formatVersionFilePath,
-    SCHEMA_FILE_FORMAT_VERSION.toString(),
-    logger,
-  );
-
-  return {
-    formatVersionPath: formatVersionFilePath,
-  };
+export async function generateSchemaBase(project: Project, schemaName: string) {
+  return await materialize.materializeSchemaBase(project, schemaName);
 }
 
 /**
@@ -96,21 +62,10 @@ export async function generateSchemaBase(
  * @param schemaName - Name of the schema
  */
 export async function generateSchemaActionBase(
-  ctx: Context,
   project: Project,
   schemaName: string,
 ) {
-  const logger = ctx.logger;
-
-  const actionBasePath = project.actionBasePath(schemaName);
-
-  // Create the action base directory
-  if (!(await actionBasePath.exists())) {
-    await actionBasePath.mkdir({ recursive: true });
-    logger.info("Created actions directory: {actionBasePath}", {
-      actionBasePath: actionBasePath.toString(),
-    });
-  }
+  return await materialize.materializeSchemaActionBase(project, schemaName);
 }
 
 /**
@@ -124,21 +79,10 @@ export async function generateSchemaActionBase(
  * @param schemaName - Name of the schema
  */
 export async function generateSchemaCodegenBase(
-  ctx: Context,
   project: Project,
   schemaName: string,
 ) {
-  const logger = ctx.logger;
-
-  const codegenBasePath = project.codegenBasePath(schemaName);
-
-  // Create the codegen base directory
-  if (!(await codegenBasePath.exists())) {
-    await codegenBasePath.mkdir({ recursive: true });
-    logger.info("Created code generators directory: {codegenBasePath}", {
-      codegenBasePath: codegenBasePath.toString(),
-    });
-  }
+  return await materialize.materializeSchemaCodegenBase(project, schemaName);
 }
 
 /**
@@ -152,21 +96,10 @@ export async function generateSchemaCodegenBase(
  * @param schemaName - Name of the schema
  */
 export async function generateSchemaManagementBase(
-  ctx: Context,
   project: Project,
   schemaName: string,
 ) {
-  const logger = ctx.logger;
-
-  const managementBasePath = project.managementBasePath(schemaName);
-
-  // Create the management base directory
-  if (!(await managementBasePath.exists())) {
-    await managementBasePath.mkdir({ recursive: true });
-    logger.info("Created management directory: {managementBasePath}", {
-      managementBasePath: managementBasePath.toString(),
-    });
-  }
+  return await materialize.materializeSchemaManagementBase(project, schemaName);
 }
 
 /**
@@ -180,21 +113,26 @@ export async function generateSchemaManagementBase(
  * @param schemaName - Name of the schema
  */
 export async function generateSchemaQualificationBase(
-  ctx: Context,
   project: Project,
   schemaName: string,
 ) {
-  const logger = ctx.logger;
+  return await materialize.materializeSchemaQualificationBase(
+    project,
+    schemaName,
+  );
+}
 
-  const qualificationBasePath = project.qualificationBasePath(schemaName);
+export async function generateSchemaFormatVersion(
+  project: Project,
+  schemaName: string,
+): Promise<{ formatVersionPath: AbsoluteFilePath }> {
+  const formatVersionBody = SCHEMA_FILE_FORMAT_VERSION.toString();
 
-  // Create the qualification base directory
-  if (!(await qualificationBasePath.exists())) {
-    await qualificationBasePath.mkdir({ recursive: true });
-    logger.info("Created qualifications directory: {qualificationBasePath}", {
-      qualificationBasePath: qualificationBasePath.toString(),
-    });
-  }
+  return await materialize.materializeSchemaFormatVersion(
+    project,
+    schemaName,
+    formatVersionBody,
+  );
 }
 
 /**
@@ -211,35 +149,19 @@ export async function generateSchemaQualificationBase(
  * @throws {FileExistsError} If either file already exists
  */
 export async function generateSchema(
-  ctx: Context,
   project: Project,
   schemaName: string,
 ): Promise<{ metadataPath: AbsoluteFilePath; codePath: AbsoluteFilePath }> {
-  const logger = ctx.logger;
-
-  // Create schema metadata file
-  const metadataFilePath = project.schemaMetadataPath(schemaName);
-  await ensureFileDoesNotExist(metadataFilePath, logger);
   const metadata = schemaMetadata(schemaName);
-  await createFileWithLogging(
-    metadataFilePath,
-    JSON.stringify(metadata, null, 2),
-    logger,
-  );
+  const metadataBody = JSON.stringify(metadata, null, 2);
+  const codeBody = schemaCodeTemplate(schemaName);
 
-  // Create schema func code file
-  const schemaCodeFilePath = project.schemaFuncCodePath(schemaName);
-  await ensureFileDoesNotExist(schemaCodeFilePath, logger);
-  await createFileWithLogging(
-    schemaCodeFilePath,
-    schemaCodeTemplate(schemaName),
-    logger,
+  return await materialize.materializeSchema(
+    project,
+    schemaName,
+    metadataBody,
+    codeBody,
   );
-
-  return {
-    metadataPath: metadataFilePath,
-    codePath: schemaCodeFilePath,
-  };
 }
 
 /**
@@ -257,7 +179,6 @@ export async function generateSchema(
  * @throws {FileExistsError} If either file already exists
  */
 export async function generateSchemaAction(
-  ctx: Context,
   project: Project,
   schemaName: string,
   actionName: string,
@@ -265,34 +186,17 @@ export async function generateSchemaAction(
   metadataPath: AbsoluteFilePath;
   codePath: AbsoluteFilePath;
 }> {
-  const logger = ctx.logger;
+  const metadata = actionMetadata(schemaName, actionName);
+  const metadataBody = JSON.stringify(metadata, null, 2);
+  const codeBody = actionCodeTemplate(schemaName, actionName);
 
-  // Create action func metadata file
-  const actionMetadataFilePath = project.actionFuncMetadataPath(
+  return await materialize.materializeSchemaAction(
+    project,
     schemaName,
     actionName,
+    metadataBody,
+    codeBody,
   );
-  await ensureFileDoesNotExist(actionMetadataFilePath, logger);
-  const metadata = actionMetadata(schemaName, actionName);
-  await createFileWithLogging(
-    actionMetadataFilePath,
-    JSON.stringify(metadata, null, 2),
-    logger,
-  );
-
-  // Create action func code file
-  const actionCodeFilePath = project.actionFuncCodePath(schemaName, actionName);
-  await ensureFileDoesNotExist(actionCodeFilePath, logger);
-  await createFileWithLogging(
-    actionCodeFilePath,
-    actionCodeTemplate(schemaName, actionName),
-    logger,
-  );
-
-  return {
-    metadataPath: actionMetadataFilePath,
-    codePath: actionCodeFilePath,
-  };
 }
 
 /**
@@ -310,7 +214,6 @@ export async function generateSchemaAction(
  * @throws {FileExistsError} If either file already exists
  */
 export async function generateSchemaCodegen(
-  ctx: Context,
   project: Project,
   schemaName: string,
   codegenName: string,
@@ -318,37 +221,17 @@ export async function generateSchemaCodegen(
   metadataPath: AbsoluteFilePath;
   codePath: AbsoluteFilePath;
 }> {
-  const logger = ctx.logger;
-
-  // Create codegen func metadata file
-  const codegenMetadataFilePath = project.codegenFuncMetadataPath(
-    schemaName,
-    codegenName,
-  );
-  await ensureFileDoesNotExist(codegenMetadataFilePath, logger);
   const metadata = codegenMetadata(schemaName, codegenName);
-  await createFileWithLogging(
-    codegenMetadataFilePath,
-    JSON.stringify(metadata, null, 2),
-    logger,
-  );
+  const metadataBody = JSON.stringify(metadata, null, 2);
+  const codeBody = codegenCodeTemplate(schemaName, codegenName);
 
-  // Create codegen func code file
-  const codegenCodeFilePath = project.codegenFuncCodePath(
+  return await materialize.materializeSchemaCodegen(
+    project,
     schemaName,
     codegenName,
+    metadataBody,
+    codeBody,
   );
-  await ensureFileDoesNotExist(codegenCodeFilePath, logger);
-  await createFileWithLogging(
-    codegenCodeFilePath,
-    codegenCodeTemplate(schemaName, codegenName),
-    logger,
-  );
-
-  return {
-    metadataPath: codegenMetadataFilePath,
-    codePath: codegenCodeFilePath,
-  };
 }
 
 /**
@@ -366,7 +249,6 @@ export async function generateSchemaCodegen(
  * @throws {FileExistsError} If either file already exists
  */
 export async function generateSchemaManagement(
-  ctx: Context,
   project: Project,
   schemaName: string,
   managementName: string,
@@ -374,37 +256,17 @@ export async function generateSchemaManagement(
   metadataPath: AbsoluteFilePath;
   codePath: AbsoluteFilePath;
 }> {
-  const logger = ctx.logger;
-
-  // Create management func metadata file
-  const managementMetadataFilePath = project.managementFuncMetadataPath(
-    schemaName,
-    managementName,
-  );
-  await ensureFileDoesNotExist(managementMetadataFilePath, logger);
   const metadata = managementMetadata(schemaName, managementName);
-  await createFileWithLogging(
-    managementMetadataFilePath,
-    JSON.stringify(metadata, null, 2),
-    logger,
-  );
+  const metadataBody = JSON.stringify(metadata, null, 2);
+  const codeBody = managementCodeTemplate(schemaName, managementName);
 
-  // Create management func code file
-  const managementCodeFilePath = project.managementFuncCodePath(
+  return await materialize.materializeSchemaManagement(
+    project,
     schemaName,
     managementName,
+    metadataBody,
+    codeBody,
   );
-  await ensureFileDoesNotExist(managementCodeFilePath, logger);
-  await createFileWithLogging(
-    managementCodeFilePath,
-    managementCodeTemplate(schemaName, managementName),
-    logger,
-  );
-
-  return {
-    metadataPath: managementMetadataFilePath,
-    codePath: managementCodeFilePath,
-  };
 }
 
 /**
@@ -422,7 +284,6 @@ export async function generateSchemaManagement(
  * @throws {FileExistsError} If either file already exists
  */
 export async function generateSchemaQualification(
-  ctx: Context,
   project: Project,
   schemaName: string,
   qualificationName: string,
@@ -430,37 +291,17 @@ export async function generateSchemaQualification(
   metadataPath: AbsoluteFilePath;
   codePath: AbsoluteFilePath;
 }> {
-  const logger = ctx.logger;
-
-  // Create qualification func metadata file
-  const qualificationMetadataFilePath = project.qualificationFuncMetadataPath(
-    schemaName,
-    qualificationName,
-  );
-  await ensureFileDoesNotExist(qualificationMetadataFilePath, logger);
   const metadata = createQualificationMetadata(schemaName, qualificationName);
-  await createFileWithLogging(
-    qualificationMetadataFilePath,
-    JSON.stringify(metadata, null, 2),
-    logger,
-  );
+  const metadataBody = JSON.stringify(metadata, null, 2);
+  const codeBody = qualificationCodeTemplate(schemaName, qualificationName);
 
-  // Create qualification func code file
-  const qualificationCodeFilePath = project.qualificationFuncCodePath(
+  return await materialize.materializeSchemaQualification(
+    project,
     schemaName,
     qualificationName,
+    metadataBody,
+    codeBody,
   );
-  await ensureFileDoesNotExist(qualificationCodeFilePath, logger);
-  await createFileWithLogging(
-    qualificationCodeFilePath,
-    qualificationCodeTemplate(schemaName, qualificationName),
-    logger,
-  );
-
-  return {
-    metadataPath: qualificationMetadataFilePath,
-    codePath: qualificationCodeFilePath,
-  };
 }
 
 export interface SchemaMetadata {
@@ -469,9 +310,9 @@ export interface SchemaMetadata {
   /** The category this schema belongs to */
   category: string;
   /** Optional description of the schema */
-  description: string;
+  description?: string | null;
   /** Optional documentation link for the schema */
-  documentation: string;
+  documentation?: string | null;
 }
 
 interface FunctionMetadata {
@@ -605,54 +446,4 @@ function qualificationCodeTemplate(
     message: "${schemaName} ${qualificationName} qualification is not implemented"
   }
 }`;
-}
-
-/**
- * Ensures that a file does not exist at the given path.
- * Throws FileExistsError if the file already exists.
- */
-async function ensureFileDoesNotExist(
-  filePath: AbsoluteFilePath,
-  logger: Logger,
-): Promise<void> {
-  if (await filePath.exists()) {
-    logger.error("File already exists at {filePath}", {
-      filePath: filePath.toString(),
-    });
-    throw new FileExistsError(filePath.toString());
-  }
-}
-
-/**
- * Creates a file with the given content and logs the creation.
- */
-async function createFileWithLogging(
-  filePath: AbsoluteFilePath,
-  content: string,
-  logger: Logger,
-) {
-  await filePath.writeTextFile(content);
-  logger.info("Created: {filePath}", {
-    filePath: filePath.toString(),
-  });
-}
-
-/**
- * Error thrown when attempting to create a file that already exists.
- */
-export class FileExistsError extends Error {
-  constructor(public readonly path: string) {
-    super(`File already exists at: ${path}`);
-    this.name = "FileExistsError";
-  }
-}
-
-/**
- * Error thrown when attempting to create a schema in a directory that already exists.
- */
-export class DirectoryExistsError extends Error {
-  constructor(public readonly path: string) {
-    super(`Directory already exists at: ${path}`);
-    this.name = "DirectoryExistsError";
-  }
 }
