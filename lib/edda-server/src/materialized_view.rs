@@ -31,7 +31,10 @@ use frigg::{
 use serde_json::Value;
 use si_events::{
     materialized_view::BuildPriority,
-    workspace_snapshot::Change,
+    workspace_snapshot::{
+        Change,
+        EntityKind,
+    },
 };
 use si_frontend_mv_types::{
     action::{
@@ -73,6 +76,7 @@ use si_frontend_mv_types::{
 };
 use si_id::{
     ChangeSetId,
+    EntityId,
     WorkspacePk,
 };
 use si_layer_cache::LayerDbError;
@@ -257,7 +261,8 @@ pub async fn build_mv_inner(
         }
 
         if let Some(join_result) = build_tasks.join_next().await {
-            let (kind, mv_id, build_duration, execution_result) = join_result?;
+            let (kind, mv_id, build_duration, entity_id, entity_kind, execution_result) =
+                join_result?;
             metric!(
                 counter.edda.mv_build = -1,
                 label = format!("{workspace_pk}:{change_set_id}:{kind}")
@@ -299,7 +304,7 @@ pub async fn build_mv_inner(
                     build_total_elapsed += build_duration;
                 }
                 Err(err) => {
-                    warn!(name = "mv_build_error", si.error.message = err.to_string(), kind = %kind, id = %mv_id);
+                    warn!(name = "mv_build_error", si.error.message = err.to_string(), kind = %kind.to_string(), id = %mv_id, entity_id = %entity_id, entity_kind = %entity_kind, change_set_id = %change_set_id, workspace_id = %workspace_pk);
                 }
             }
         }
@@ -316,6 +321,15 @@ pub async fn build_mv_inner(
 }
 
 pub type BuildMvTaskResult = (
+    ReferenceKind,
+    String,
+    Duration,
+    EntityId,
+    EntityKind,
+    Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>,
+);
+
+pub type DeploymentBuildMvTaskResult = (
     ReferenceKind,
     String,
     Duration,
@@ -352,7 +366,14 @@ where
     )
     .await;
 
-    (mv_kind, mv_id, start.elapsed(), result)
+    (
+        mv_kind,
+        mv_id,
+        start.elapsed(),
+        change.entity_id,
+        change.entity_kind,
+        result,
+    )
 }
 
 pub type MvBuilderResult =
@@ -418,6 +439,19 @@ where
     build_mv(op, mv_kind, build_mv_future).await
 }
 
+#[instrument(
+    name = "edda.spawn_build_mv_task_for_change_and_mv_kind",
+    level = "debug",
+    skip_all,
+    fields(
+        otel.name = Empty,
+        otel.status_code = Empty,
+        otel.status_message = Empty,
+        si.workspace.id = %workspace_pk,
+        si.change_set.id = %change_set_id_for_metrics_only,
+        si.edda.kind = %mv_kind,
+    )
+)]
 #[allow(clippy::too_many_arguments)]
 pub async fn spawn_build_mv_task_for_change_and_mv_kind(
     build_tasks: &mut JoinSet<BuildMvTaskResult>,
