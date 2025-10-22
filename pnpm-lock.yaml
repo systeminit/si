@@ -420,9 +420,6 @@ importers:
       util-browser:
         specifier: ^0.0.2
         version: 0.0.2
-      validator:
-        specifier: ^13.7.0
-        version: 13.7.0
       vanilla-picker:
         specifier: ^2.12.1
         version: 2.12.1
@@ -502,9 +499,6 @@ importers:
       '@types/tinycolor2':
         specifier: ^1.4.3
         version: 1.4.3
-      '@types/validator':
-        specifier: ^13.7.2
-        version: 13.7.10
       '@types/wicg-file-system-access':
         specifier: ^2023.10.5
         version: 2023.10.5
@@ -3727,9 +3721,6 @@ packages:
 
   '@types/uuid@9.0.1':
     resolution: {integrity: sha512-rFT3ak0/2trgvp4yYZo5iKFEPsET7vKydKF+VRCxlQ9bpheehyAJH89dAkaLEq/j/RZXJIqcgsmPJKUP1Z28HA==}
-
-  '@types/validator@13.7.10':
-    resolution: {integrity: sha512-t1yxFAR2n0+VO6hd/FJ9F2uezAZVWHLmpmlJzm1eX03+H7+HsuTAp7L8QJs+2pQCfWkP1+EXsGK9Z9v7o/qPVQ==}
 
   '@types/web-bluetooth@0.0.20':
     resolution: {integrity: sha512-g9gZnnXVq7gM7v3tJCWV/qw7w+KeOlSHAhgF9RytFyifW6AF61hdT2ucrYhPq9hLs5JIryeupHV3qGk95dH9ow==}
@@ -11391,10 +11382,6 @@ packages:
     resolution: {integrity: sha512-YuKoXDAhBYxY7SfOKxHBDoSyENFeW5VvIIQp2TGQuit8gpK6MnWaQelBKxso72DoxTZfZdcP3W90LqpSkgPzLQ==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
-  validator@13.7.0:
-    resolution: {integrity: sha512-nYXQLCBkpJ8X6ltALua9dRrZDHVYxjJ1wgskNt1lH9fzGjs3tgojGSCBjmEPwkWS1y29+DrizMTW19Pr9uB2nw==}
-    engines: {node: '>= 0.10'}
-
   vanilla-picker@2.12.1:
     resolution: {integrity: sha512-2qrEP9VYylKXbyzXKsbu2dferBTvqnlsr29XjHwFE+/MEp0VNj6oEUESLDtKZ7DWzGdSv1x/+ujqFZF+KsO3cg==}
 
@@ -15312,8 +15299,6 @@ snapshots:
   '@types/unist@3.0.3': {}
 
   '@types/uuid@9.0.1': {}
-
-  '@types/validator@13.7.10': {}
 
   '@types/web-bluetooth@0.0.20': {}
 
@@ -24558,8 +24543,6 @@ snapshots:
   validate-npm-package-name@5.0.0:
     dependencies:
       builtins: 5.0.1
-
-  validator@13.7.0: {}
 
   vanilla-picker@2.12.1:
     dependencies:
