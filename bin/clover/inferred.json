@@ -2834,6 +2834,11 @@
       "UserName"
     ]
   },
+  "Specifies the type of condition. Currently the only supported value is StringEquals.": {
+    "enum": [
+      "StringEquals"
+    ]
+  },
   "The type of preloaded data. Only Synthea preloaded data is supported.": {
     "enum": [
       "SYNTHEA"
@@ -4690,6 +4695,9 @@
     "enum": null
   },
   "An identifier for the new game server group.": {
+    "enum": null
+  },
+  "An identifier string for the external account that you are granting permissions to": {
     "enum": null
   },
   "An identifier used to update an existing Slack workspace configuration in AWS CloudFormation.": {
@@ -7641,6 +7649,9 @@
   "Specifies the interval unit.": {
     "enum": null
   },
+  "Specifies the key for the condition. Currently the only supported key is aws:PrincipalOrgID.": {
+    "enum": null
+  },
   "Specifies the launch type on which your task is running. The launch type that you specify here must match one of the launch type (compatibilities) of the target task. The FARGATE value is supported only in the Regions where AWS Fargate with Amazon ECS is supported. For more information, see AWS Fargate on Amazon ECS in the Amazon Elastic Container Service Developer Guide.": {
     "enum": null
   },
@@ -7783,6 +7794,9 @@
     "enum": null
   },
   "Specifies the value attribute of the UTCTiming field when utcTiming is set to HTTP-ISO, HTTP-HEAD or HTTP-XSDATE": {
+    "enum": null
+  },
+  "Specifies the value for the key. Currently, this must be the ID of the organization.": {
     "enum": null
   },
   "Specifies the wait interval between traffic shifts, in seconds.": {
@@ -7972,6 +7986,9 @@
     "enum": null
   },
   "Text of the error that occurred during data catalog creation or deletion.": {
+    "enum": null
+  },
+  "The 12-digit AWS account ID that you are permitting to put events to your default event bus. Specify \"*\" to permit any account to put events to your default event bus.": {
     "enum": null
   },
   "The 12-digit account ID of the AWS account that owns the domain.": {
@@ -10834,6 +10851,9 @@
     "enum": null
   },
   "The action that the principal can use on the function. For example, ``lambda:InvokeFunction`` or ``lambda:GetFunction``.": {
+    "enum": null
+  },
+  "The action that you are enabling the other account to perform.": {
     "enum": null
   },
   "The action that you want your GraphQL API to take when a request that uses Amazon Cognito user pool authentication doesn't match the Amazon Cognito user pool configuration.": {
@@ -14263,6 +14283,9 @@
     "enum": null
   },
   "The name of the error document for the website.": {
+    "enum": null
+  },
+  "The name of the event bus associated with the rule. If you omit this, the default event bus is used.": {
     "enum": null
   },
   "The name of the event bus.": {
