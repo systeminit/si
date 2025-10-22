@@ -18,10 +18,12 @@ import {
   createActionFuncSpec,
   createFunc,
   createLeafFuncSpec,
+  createManagementFuncSpec,
   strippedBase64,
 } from "../../spec/funcs.ts";
 import { PropSpecWidgetKind } from "../../bindings/PropSpecWidgetKind.ts";
 import { PropOverrideFn, SchemaOverrideFn } from "../types.ts";
+import { ManagementFuncSpec } from "../../bindings/ManagementFuncSpec.ts";
 
 /**
  * Shared utility functions for asset overrides across all providers
@@ -71,6 +73,27 @@ export function stringPropForOverride(
     throw new Error(`Prop ${propName} is not a string!`);
   }
   return prop;
+}
+
+export function attachExtraManagementFunction(
+  funcPath: string,
+  name: string,
+  uniqueId: string,
+): { func: FuncSpec; mgmtFuncSpec: ManagementFuncSpec } {
+  const funcCode = Deno.readTextFileSync(funcPath);
+  const func = createFunc(
+    name,
+    "management",
+    "management",
+    strippedBase64(funcCode),
+    uniqueId,
+    [],
+  );
+  func.data!.displayName = name;
+
+  const mgmtFuncSpec = createManagementFuncSpec(name, func.uniqueId);
+
+  return { func, mgmtFuncSpec };
 }
 
 export function attachExtraActionFunction(
