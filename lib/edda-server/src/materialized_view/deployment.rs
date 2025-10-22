@@ -29,7 +29,7 @@ use crate::{
     materialized_view::{
         BuildMvInnerReturn,
         BuildMvOp,
-        BuildMvTaskResult,
+        DeploymentBuildMvTaskResult,
         MaterializedViewError,
         MvBuilderResult,
         build_mv,
@@ -478,7 +478,7 @@ async fn build_deployment_mv_inner(
 
 /// Spawns a build task for a specific deployment MV.
 async fn spawn_deployment_mv_task(
-    build_tasks: &mut JoinSet<BuildMvTaskResult>,
+    build_tasks: &mut JoinSet<DeploymentBuildMvTaskResult>,
     ctx: &DalContext,
     frigg: &FriggStore,
     mv_kind: ReferenceKind,
@@ -568,7 +568,7 @@ async fn build_mv_for_deployment_task<F, T, E>(
     mv_kind: ReferenceKind,
     build_mv_future: F,
     maybe_deployment_mv_index: Arc<Option<FrontendObject>>,
-) -> BuildMvTaskResult
+) -> DeploymentBuildMvTaskResult
 where
     F: std::future::Future<Output = Result<T, E>> + Send + 'static,
     T: serde::Serialize
