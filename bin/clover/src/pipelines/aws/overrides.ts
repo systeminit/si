@@ -8,6 +8,7 @@ import {
   arnProp,
   arrayPropForOverride,
   attachExtraActionFunction,
+  attachExtraManagementFunction,
   attachQualificationFunction,
   objectPropForOverride,
   policyDocumentProp,
@@ -217,6 +218,30 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         );
       spec.funcs.push(startFunc);
       variant.actionFuncs.push(startActionFuncSpec);
+    },
+  ],
+  [
+    "AWS::Route53::RecordSet",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      const { func: discoverFunc, mgmtFuncSpec: discoverFuncSpec } =
+        attachExtraManagementFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/management/discover.ts",
+          "Discover on AWS",
+          "2432de7a389b82f644353e9807b27fbb42769784b095a0f14abdad07c35bdb19",
+        );
+      spec.funcs.push(discoverFunc);
+      variant.managementFuncs.push(discoverFuncSpec);
+
+      const { func: importFunc, mgmtFuncSpec: importFuncSpec } =
+        attachExtraManagementFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/management/import.ts",
+          "Import from AWS",
+          "9d01a77a07f2c30ed6a8af62b59455e9d720ae50b09e747c9f8c0e2b0306a4a4",
+        );
+      spec.funcs.push(importFunc);
+      variant.managementFuncs.push(importFuncSpec);
     },
   ],
   [
@@ -446,10 +471,9 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         const prop = propForOverride(variant.domain, propName);
 
         const currentWidgetOptions = prop.data.widgetOptions;
-        prop.data.widgetOptions =
-          currentWidgetOptions?.filter(
-            (w) => w.label !== "si_create_only_prop",
-          ) ?? null;
+        prop.data.widgetOptions = currentWidgetOptions?.filter(
+          (w) => w.label !== "si_create_only_prop",
+        ) ?? null;
 
         createOnly = createOnly?.filter((p: string) => p !== propName);
 

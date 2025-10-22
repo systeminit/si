@@ -51,12 +51,12 @@ export async function generateAwsSpecs(options: {
   specs = createRegionSuggestion(specs);
   specs = createCredentialSuggestion(specs);
 
-  // Apply provider-specific overrides
-  specs = applyAssetOverrides(specs, AWS_PROVIDER_CONFIG);
-
   // prune assets that cannot be created by cloud control and must be create
   // using cf
   specs = pruneCfAssets(specs);
+
+  // Apply provider-specific overrides
+  specs = applyAssetOverrides(specs, AWS_PROVIDER_CONFIG);
 
   // These need everything to be complete
   specs = reorderProps(specs);
