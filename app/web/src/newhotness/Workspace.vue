@@ -18,6 +18,7 @@
     >
       <!-- Left side -->
       <NavbarPanelLeft
+        v-if="!changeSetRetrievalError"
         ref="navbarPanelLeftRef"
         :workspaceId="workspacePk"
         :changeSetId="changeSetId"
@@ -69,6 +70,24 @@
       </div>
     </div>
 
+    <main
+      v-if="changeSetRetrievalError"
+      :class="
+        clsx(
+          'grow min-h-0 m-sm border flex flex-row items-center justify-center',
+          themeClasses('border-neutral-400', 'border-neutral-600'),
+        )
+      "
+    >
+      <EmptyState
+        icon="logo-si"
+        text="Initialization Error"
+        secondaryText="We were unable to fetch the change sets on this workspace. This is likely an authorization problem, please try again."
+        finalLinkText="Click here to return to your workspaces and re-enter this workspace."
+        @final="bumpToWorkspaces"
+      />
+    </main>
+
     <!-- Since lobby hides away the navbar, it's more of an overlay and stays apart from all else -->
     <Transition
       enterActiveClass="duration-300 ease-out"
@@ -79,7 +98,7 @@
       leaveToClass="transform opacity-0"
     >
       <Lobby
-        v-if="!tokenFail && lobby"
+        v-if="!tokenFail && !changeSetRetrievalError && lobby"
         :loadingSteps="_.values(muspelheimStatuses)"
       />
     </Transition>
@@ -612,6 +631,7 @@ onMounted(async () => {
   await checkOnboardingCompleteData();
 });
 
+const changeSetRetrievalError = ref(false);
 onBeforeMount(async () => {
   if (container && container.loadingGuard.value) {
     return;
@@ -646,8 +666,14 @@ onBeforeMount(async () => {
 
   // NOTE: onBeforeMount doesn't wait on promises
   // the page will load before execution finishes
-  await heimdall.muspelheim(thisWorkspacePk, true);
-  // TODO Add deployment init when we start handling deployment patches and indices
+  try {
+    changeSetRetrievalError.value = false;
+    await heimdall.muspelheim(thisWorkspacePk, true);
+  } catch (err) {
+    if (err instanceof heimdall.ChangeSetRetrievalError) {
+      changeSetRetrievalError.value = true;
+    }
+  }
 });
 
 watch(
