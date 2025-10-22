@@ -1,3 +1,4 @@
+import util from "node:util";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { PropSpecWidgetKind } from "../bindings/PropSpecWidgetKind.ts";
 import { PropSpecData } from "../bindings/PropSpecData.ts";
@@ -135,7 +136,7 @@ export function createDefaultPropFromJsonSchema(
   // Recursively create prop and all its children
   const rootProp = createPropFromJsonSchema(
     ["root", name],
-    { ...schema, properties },
+    { ...schema, type: "object", properties },
     undefined,
   );
 
@@ -471,10 +472,20 @@ export function createDefaultPropFromJsonSchema(
       }
 
       if (!cfProp.type && cfProp.description == "") {
+        logger.warn(
+          `No type + empty description for top level prop at ${propPath.join(
+            "/",
+          )}: ${util.inspect(cfProp)}`,
+        );
         return undefined;
       }
 
       if (!cfProp.type && cfProp.title) {
+        logger.warn(
+          `No type for top level prop at ${propPath.join("/")}: ${util.inspect(
+            cfProp,
+          )}`,
+        );
         return undefined;
       }
 
@@ -483,6 +494,11 @@ export function createDefaultPropFromJsonSchema(
       throw new Error(
         `no matching kind in prop with path: ${propPath.join("/")}`,
       );
+    } catch (e) {
+      console.error(
+        `Error creating prop for ${schema.typeName} at ${propPath.join("/")}`,
+      );
+      throw e;
     } finally {
       propsBeingCreated.pop();
     }

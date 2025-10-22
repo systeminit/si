@@ -1,20 +1,20 @@
 import assert from "node:assert";
+import util from "node:util";
 import logger from "../../logger.ts";
 import { CfHandler, CfHandlerKind } from "../types.ts";
 import {
-  AZURE_HTTP_METHODS,
+  AzureSchema,
+  AzureProperty,
   AzureOpenApiDocument,
   AzureOpenApiOperation,
-  AzureProperty,
-  AzureSchema,
-  isAzureObjectProperty,
+  AZURE_HTTP_METHODS,
+  NormalizedAzureSchema,
 } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { makeModule } from "../generic/index.ts";
 import { AZURE_PROVIDER_CONFIG } from "./provider.ts";
 import { OnlyProperties } from "../../spec/props.ts";
-import { assertUnreachable } from "../../assertUnreachable.ts";
 
 const IGNORE_RESOURCE_TYPES = new Set<string>([
   // These don't have an id property in the GET response; TODO look into this
@@ -35,16 +35,19 @@ export function parseAzureSpec(
   const specs: ExpandedPkgSpec[] = [];
 
   if (!openApiDoc.paths) {
-    console.warn("No paths found in Azure schema");
+    logger.warn("No paths found in Azure schema");
     return [];
   }
 
   const defaultHandler = { permissions: [], timeoutInMinutes: 60 };
-  const resourceOperations: Record<string, {
-    getOperation?: AzureOpenApiOperation;
-    putOperation?: AzureOpenApiOperation;
-    handlers: { [key in CfHandlerKind]?: CfHandler };
-  }> = {};
+  const resourceOperations: Record<
+    string,
+    {
+      getOperation?: AzureOpenApiOperation;
+      putOperation?: AzureOpenApiOperation;
+      handlers: { [key in CfHandlerKind]?: CfHandler };
+    }
+  > = {};
 
   // Collect all operations for each resource type
   for (const [path, methods] of Object.entries(openApiDoc.paths)) {
@@ -66,13 +69,14 @@ export function parseAzureSpec(
       const openApiOperation = methods?.[method];
       if (!openApiOperation) continue;
 
-      const verb = method === "get" && isListOperation(openApiOperation)
-        ? "list"
-        : method;
+      const verb =
+        method === "get" && isListOperation(openApiOperation) ? "list" : method;
 
       const handlerKinds = VERB_TO_HANDLERS[verb];
       if (handlerKinds) {
-        handlerKinds.forEach((kind) => resource.handlers[kind] = defaultHandler);
+        handlerKinds.forEach(
+          (kind) => (resource.handlers[kind] = defaultHandler),
+        );
         if (verb === "get") resource.getOperation = openApiOperation;
         if (verb === "put") resource.putOperation = openApiOperation;
       }
@@ -103,50 +107,40 @@ export function parseAzureSpec(
     }
   }
 
-  logger.debug(
-    `Generated ${specs.length} schemas`,
-  );
+  logger.debug(`Generated ${specs.length} schemas`);
 
   return specs;
 }
 
 /// Normalize a generic JSONSchema into an AzureProperty:
-/// - "true" and "false" become { type: "string" }
+/// - "true" (any) is not supported
+/// - "false" (never) yield undefined (no property)
+/// - allOf/oneOf/anyOf are flattened/merged
 /// - missing "type" is inferred from "format", "properties", or "items"
 /// - Draft 4 exclusiveMinimum/Maximum bools converted to Draft 6+
 /// - formats normalized to SI-supported ones
-export function normalizeAzureProperty(prop: JSONSchema): AzureProperty {
-  if (prop === true || prop === false) {
-    prop = { type: "string" };
-  }
+///
+/// Recursively normalizes child properties as well.
+export function normalizeAzureSchema(
+  prop: JSONSchema | undefined,
+  processing: JSONSchema[],
+): NormalizedAzureSchema | undefined {
+  if (prop === undefined) return undefined;
+  if (processing.includes(prop)) return undefined;
+  processing.push(prop);
+  try {
+    // Flatten the schema, merging allOf props and such, before we normalize type/format
+    const normalized = flattenAzureSchema(prop, {}, processing);
+    if (normalized === undefined) return undefined;
 
-  if (!prop.type) {
-    // Infer type from format if present
-    if (prop.format === "int32" || prop.format === "int64") {
-      prop = { ...prop, type: "integer" };
-    } else if (
-      prop.format === "float" ||
-      prop.format === "double" ||
-      prop.format === "decimal"
-    ) {
-      prop = { ...prop, type: "number" };
-    } else if (prop.properties) {
-      prop = { ...prop, type: "object" };
-    } else if (prop.items) {
-      prop = { ...prop, type: "array" };
-    } else if (!prop.oneOf && !prop.anyOf) {
-      prop = { ...prop, type: "string" };
-    }
-  }
-
-  if (prop.type) {
-    const normalized = { ...prop };
+    // Infer type from format / properties / items if missing
+    normalized.type ??= inferType(normalized);
 
     // Draft 4 -> Draft 6+ conversion (exclusiveMinimum/Maximum)
     for (const key of ["exclusiveMinimum", "exclusiveMaximum"] as const) {
       const baseKey = key === "exclusiveMinimum" ? "minimum" : "maximum";
       const val = normalized[key] as JSONSchema | boolean;
-      const baseVal = prop[baseKey];
+      const baseVal = normalized[baseKey];
       if (val === true && typeof baseVal === "number") {
         delete normalized[baseKey];
       } else if (val === false) {
@@ -156,6 +150,7 @@ export function normalizeAzureProperty(prop: JSONSchema): AzureProperty {
 
     // Normalize formats to SI-supported ones
     if (normalized.format) {
+      // TODO just support these or ignore later!
       const format = normalized.format as string;
       if (
         normalized.type === "integer" &&
@@ -185,38 +180,271 @@ export function normalizeAzureProperty(prop: JSONSchema): AzureProperty {
       }
     }
 
-    prop = normalized;
+    return normalized;
+  } finally {
+    processing.pop();
+  }
+}
+
+/// Infer the type for a schema from its other properties if "type" is missing
+function inferType(prop: NormalizedAzureSchema) {
+  if (prop.type) return prop.type;
+  switch (prop.format) {
+    case "int32":
+    case "int64":
+      return "integer";
+    case "float":
+    case "double":
+    case "decimal":
+      return "number";
+  }
+  if (prop.properties || prop.additionalProperties) return "object";
+  if (prop.items) return "array";
+}
+
+/// Flattens JSONSchema recursively merging allOf, oneOf and anyOf into a single schema and
+/// turning true ("any") into an empty schema, and throwing an exception for "false" (never) schemas.
+function flattenAzureSchema(
+  schemaProp: JSONSchema,
+  flattened: NormalizedAzureSchema = {},
+  normalizing: JSONSchema[],
+): NormalizedAzureSchema | undefined {
+  if (schemaProp === false) {
+    throw new Error("Boolean schema 'false' (never) not supported");
+  }
+  // "any" becomes empty schema (which matches anything)
+  if (schemaProp === true) {
+    schemaProp = {};
   }
 
-  // Handle oneOf with primitives by merging in the first non-string type
-  if (prop.oneOf) {
-    assert(!prop.type);
-    let type: "string" | "number" | "integer" | "boolean" | undefined;
-    for (const oneOf of prop.oneOf.map(normalizeAzureProperty)) {
-      switch (oneOf.type) {
-        // use string only if nothing else is available
-        case "string":
-          type ??= "string";
-          break;
-        // number/integer/boolean overrides string
-        case "number":
-        case "integer":
-        case "boolean":
-          if (!type || type === "string") type = oneOf.type;
-          break;
-        // We can't smoosh object/array together with string (or don't know how yet)
-        default:
-          if (type) throw new Error();
-          break;
+  // Pull off the stuff we're removing and children we're normalizing, so we can easily copy
+  // the remaining values
+  const {
+    oneOf,
+    anyOf,
+    allOf,
+    properties,
+    patternProperties,
+    items,
+    additionalProperties,
+    ...rest
+  } = schemaProp;
+
+  // Merge oneOf and anyOf by normalizing each alternative (so they have a type) and then
+  // merging them into the flattened type (this means { a: string } | { b: string } becomes
+  // { a?: string; b?: string }).
+  // TODO handle required here?
+  // TODO empty oneOf / anyOf (or oneOf: [ true ], which is effectively empty)
+  if (oneOf) {
+    for (const alternative of oneOf) {
+      const child = normalizeAzureSchema(alternative, normalizing);
+      if (!child) throw new Error("Cycle in oneOf or anyOf alternative");
+      unionAzureSchema(child, flattened);
+    }
+  }
+  if (anyOf) {
+    for (const alternative of anyOf) {
+      const child = normalizeAzureSchema(alternative, normalizing);
+      if (!child) throw new Error("Cycle in oneOf or anyOf alternative");
+      unionAzureSchema(child, flattened);
+    }
+  }
+
+  // Merge allOf types into the flattened type (this means { a: string } & { b: string } becomes
+  // { a: string; b: string }).
+  //
+  // We don't normalize here, because allOf children can be *partial* properties and we need
+  // to merge them together so we have all the information we can have before normalizing. We
+  // will normalize at the end after all properties have been flattened down.
+  if (allOf) {
+    for (const alternative of allOf) {
+      flattenAzureSchema(alternative, flattened, normalizing);
+    }
+  }
+
+  // Normalize child schemas (properties, items, etc.) so we can do a simple intersect after
+  const prop: NormalizedAzureSchema = rest;
+  if (properties) {
+    prop.properties = {};
+    if (Object.keys(properties).length > 0) {
+      for (const [propName, childProp] of Object.entries(properties)) {
+        const child = normalizeAzureSchema(childProp, normalizing);
+        if (!child) continue; // If the prop is part of a cycle, don't include it
+        // TODO find a better way! This fixes some Azure schemas with empty properties
+        if (propName === "properties") {
+          if (defaultAnyTypeTo(child, "object")) {
+            child.properties ??= {};
+          }
+        } else {
+          defaultAnyTypeTo(child, "string");
+        }
+        prop.properties[propName] = child;
+      }
+      // If all props were part of cycles, this prop is part of the cycle
+      if (Object.keys(prop.properties).length == 0) return undefined;
+    }
+  }
+  if (patternProperties) {
+    prop.patternProperties = {};
+    if (Object.keys(patternProperties).length > 0) {
+      for (const [propName, childProp] of Object.entries(patternProperties)) {
+        const child = normalizeAzureSchema(childProp, normalizing);
+        if (!child) continue; // If the prop is part of a cycle, don't include it
+        defaultAnyTypeTo(child, "string");
+        prop.patternProperties[propName] = child;
+      }
+      // If all props were part of cycles, this prop is part of the cycle
+      if (Object.keys(prop.patternProperties).length == 0) return undefined;
+    }
+  }
+  if (items) {
+    prop.items = normalizeAzureSchema(
+      Array.isArray(items) ? { anyOf: items } : items,
+      normalizing,
+    );
+    if (prop.items === undefined) return undefined;
+    defaultAnyTypeTo(prop.items, "string");
+  }
+  if (additionalProperties) {
+    prop.additionalProperties = normalizeAzureSchema(
+      additionalProperties,
+      normalizing,
+    );
+    if (prop.additionalProperties === undefined) return undefined;
+    defaultAnyTypeTo(prop.additionalProperties, "string");
+  }
+
+  // Finally, intersect the props together
+  intersectAzureSchema(prop, flattened);
+
+  return flattened;
+}
+
+/// Intersects two flattened schemas, merging properties and such
+function intersectAzureSchema(
+  prop: NormalizedAzureSchema,
+  intersected: NormalizedAzureSchema | undefined,
+): NormalizedAzureSchema;
+function intersectAzureSchema(
+  prop: NormalizedAzureSchema | undefined,
+  intersected: NormalizedAzureSchema,
+): NormalizedAzureSchema;
+function intersectAzureSchema(
+  prop: NormalizedAzureSchema | undefined,
+  intersected: NormalizedAzureSchema | undefined,
+): NormalizedAzureSchema {
+  if (!prop) return intersected!;
+  if (!intersected) return prop;
+
+  // *Now* merge in any remaining properties (outer properties override inner allOf properties).
+  // Pay attention to make sure properties don't conflict.
+  for (const key of Object.keys(prop) as (keyof NormalizedAzureSchema)[]) {
+    if (prop[key] === undefined) continue;
+    switch (key) {
+      // These fields get merged
+      case "properties":
+      case "patternProperties": {
+        intersected[key] ??= {};
+        for (const [propName, childProp] of Object.entries(prop[key])) {
+          intersected[key][propName] = intersectAzureSchema(
+            childProp,
+            intersected[key][propName],
+          );
+        }
+        break;
+      }
+      case "additionalProperties":
+      case "items": {
+        // If items are part of a cycle, the array is also part of a cycle
+        intersected[key] = intersectAzureSchema(prop[key], intersected[key]);
+        break;
+      }
+
+      // These fields get merged as arrays without dups
+      case "enum":
+      case "required": {
+        if (prop[key]) {
+          intersected[key] = (intersected[key] ?? []).concat(
+            prop[key].filter((v) => !intersected[key]?.includes(v)),
+          );
+        }
+        break;
+      }
+
+      // We override these fields no matter what they were before
+      case "title":
+      case "description":
+        intersected[key] = prop[key];
+        continue;
+
+      // Do not copy these, we handled them earlier
+      case "allOf":
+      case "anyOf":
+      case "oneOf":
+        break;
+
+      default: {
+        // Other fields must be identical if present in both
+        if (
+          intersected[key] !== undefined &&
+          !util.isDeepStrictEqual(intersected[key], prop[key])
+        ) {
+          throw new Error(
+            `Incompatible property ${key}: ${util.inspect(
+              intersected[key],
+            )} vs ${util.inspect(prop[key])}`,
+          );
+        }
+        intersected[key] = prop[key];
+        break;
       }
     }
-    if (type) {
-      prop = { ...prop, type };
-      delete prop.oneOf;
-    }
   }
 
-  return prop as AzureProperty;
+  return intersected;
+}
+
+const MORE_SPECIFIC_THAN_STRING = ["integer", "number", "boolean"];
+
+function unionAzureSchema(
+  prop: NormalizedAzureSchema,
+  unioned: NormalizedAzureSchema | undefined,
+): NormalizedAzureSchema;
+function unionAzureSchema(
+  prop: NormalizedAzureSchema | undefined,
+  unioned: NormalizedAzureSchema,
+): NormalizedAzureSchema;
+function unionAzureSchema(
+  prop: NormalizedAzureSchema | undefined,
+  unioned: NormalizedAzureSchema | undefined,
+) {
+  if (!prop) return unioned;
+  if (!unioned) return { ...prop };
+
+  // If there are conflicting types [number | integer | boolean, string], we pick the specific one
+  // TODO handle "format" / "minimum" / "maximum" conflicts too
+  if (
+    unioned.type === "string" &&
+    MORE_SPECIFIC_THAN_STRING.includes(prop.type as string)
+  ) {
+    unioned.type = prop.type;
+  } else if (
+    prop.type === "string" &&
+    MORE_SPECIFIC_THAN_STRING.includes(unioned.type as string)
+  ) {
+    prop.type = unioned.type;
+  }
+
+  intersectAzureSchema(prop, unioned);
+}
+
+function defaultAnyTypeTo(prop: NormalizedAzureSchema, type: string) {
+  if (prop.type !== undefined) return false;
+  const isAnyType = Object.keys(prop).every(
+    (k) => k === "type" || k === "description" || k === "readOnly",
+  );
+  if (isAnyType) prop.type = type;
+  return isAnyType;
 }
 
 function buildDomainAndResourceValue(
@@ -235,7 +463,9 @@ function buildDomainAndResourceValue(
   }
   if (!("id" in resourceValueProperties)) {
     throw new Error(
-      `No id property in GET response: ${getOperation.operationId}`,
+      `No id property in GET response: ${
+        getOperation.operationId
+      }\n\n${util.inspect(getOperation, { depth: 12 })}`,
     );
   }
 
@@ -249,7 +479,8 @@ function buildDomainAndResourceValue(
     return null;
   }
 
-  const description = getOperation.description ||
+  const description =
+    getOperation.description ||
     (getOperation.summary as string) ||
     `Azure ${resourceType} resource`;
 
@@ -268,31 +499,44 @@ function buildDomainAndResourceValue(
     writeOnly: [],
     primaryIdentifier,
   };
-  return makeModule(
-    schema,
-    description,
-    onlyProperties,
-    AZURE_PROVIDER_CONFIG,
-    domainProperties,
-    resourceValueProperties,
-  );
+  try {
+    return makeModule(
+      schema,
+      description,
+      onlyProperties,
+      AZURE_PROVIDER_CONFIG,
+      domainProperties as Record<string, AzureProperty>,
+      resourceValueProperties as Record<string, AzureProperty>,
+    );
+  } catch (e) {
+    logger.error(`Error creating spec for ${resourceType}`);
+    throw e;
+  }
 }
 
 function extractPropertiesFromRequestBody(
   operation: AzureOpenApiOperation | null,
 ) {
-  const bodyParams = operation?.parameters?.filter((p) => p.in === "body");
-  if (!bodyParams || bodyParams.length == 0) {
+  const bodyParams = operation?.parameters?.filter(
+    (p) => !("$ref" in p) && p.in === "body",
+  );
+  if (!operation || !bodyParams || bodyParams.length == 0) {
     return { properties: {}, required: [] };
   }
   assert(bodyParams.length <= 1, "Expected at most one body parameter");
 
+  assert(!("$ref" in bodyParams[0]), "Body parameter is a $ref");
   const { schema } = bodyParams[0];
-  assert(isAzureObjectProperty(schema), "Body schema is not an object");
-
+  if (!schema) return { properties: {}, required: [] };
+  assert(!("$ref" in schema), "Body parameter is a $ref");
+  const azureProp = normalizeAzureSchema(schema, []);
+  assert(
+    azureProp?.type === "object",
+    `Response schema is not an object: ${operation.operationId}`,
+  );
   return {
-    properties: schema.properties ?? {},
-    required: schema.required ?? [],
+    properties: azureProp.properties ?? {},
+    required: azureProp.required ?? [],
   };
 }
 
@@ -301,21 +545,38 @@ function extractPropertiesFromResponseBody(
 ) {
   const schema = operation?.responses?.["200"]?.schema;
   if (!schema) return { properties: {}, required: [] };
+  const azureProp = normalizeAzureSchema(schema, []);
   assert(
-    isAzureObjectProperty(schema),
+    azureProp?.type === "object",
     `Response schema is not an object: ${operation.operationId}`,
   );
 
-  return {
-    properties: schema.properties ?? {},
-    required: schema.required ?? [],
+  const result = {
+    properties: azureProp.properties ?? {},
+    required: azureProp.required ?? [],
   };
+  if (Object.keys(result.properties).length === 0) {
+    logger.debug(`No properties found in GET response for ${operation}`);
+    return result;
+  }
+  if (!("id" in result.properties)) {
+    throw new Error(
+      `No id property in GET response: ${
+        operation.operationId
+      }\n\n${util.inspect(operation, { depth: 12 })}\n\n${util.inspect(
+        azureProp,
+        { depth: 12 },
+      )}`,
+    );
+  }
+  return result;
 }
 
+/// Remove read-only properties from a record of name, property pairs
 function removeReadOnlyProperties(
-  properties: Record<string, AzureProperty>,
-  seen: Set<AzureProperty>,
-): Record<string, AzureProperty> {
+  properties: Record<string, NormalizedAzureSchema>,
+  seen: Set<NormalizedAzureSchema>,
+): Record<string, NormalizedAzureSchema> {
   return Object.fromEntries(
     Object.entries(properties)
       .map(([key, childProp]) => [key, removeReadOnlyProperty(childProp, seen)])
@@ -323,10 +584,11 @@ function removeReadOnlyProperties(
   );
 }
 
+/// Remove read-only properties from an AzureProperty
 function removeReadOnlyProperty(
-  property: AzureProperty | undefined,
-  seen: Set<AzureProperty>,
-): AzureProperty | undefined {
+  property: NormalizedAzureSchema | undefined,
+  seen: Set<NormalizedAzureSchema>,
+): NormalizedAzureSchema | undefined {
   if (!property) return undefined;
   if (seen.has(property)) return undefined;
   seen.add(property);
@@ -347,6 +609,7 @@ function removeReadOnlyProperty(
     }
     case "array": {
       // If the items are readOnly, the array is readOnly
+      assert(!Array.isArray(property.items), "Tuple arrays not supported");
       const items = removeReadOnlyProperty(property.items, seen);
       if (!items) return undefined;
       property.items = items;
@@ -359,11 +622,9 @@ function removeReadOnlyProperty(
     case "json":
       break;
     default:
-      // Probably *shouldn't* have this by now? But if it does, one side or the other is always primitive
-      if (!Array.isArray(property.type)) {
-        assertUnreachable(property.type);
-      }
-      break;
+      throw new Error(
+        `Expected basic JSON schema type, got ${util.inspect(property)}`,
+      );
   }
   return property;
 }
@@ -375,17 +636,15 @@ function extractResourceTypeFromPath(path: string): string | null {
   if (!match) return null;
   const [_, providerNamespace, resourceType] = match;
   const serviceName = providerNamespace.split(".").pop() || providerNamespace;
-  const capitalizedResource = resourceType.charAt(0).toUpperCase() +
-    resourceType.slice(1);
+  const capitalizedResource =
+    resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
   return `Azure::${serviceName}::${capitalizedResource}`;
 }
 
 // 1. pageables are always list ops
 // 2. responses that are arrays are list ops
 // 3. reponses that have a value object that is an array is a list op
-function isListOperation(
-  operation: AzureOpenApiOperation,
-): boolean {
+function isListOperation(operation: AzureOpenApiOperation): boolean {
   if (operation["x-ms-pageable"] !== undefined) {
     return true;
   }
@@ -399,7 +658,8 @@ function isListOperation(
   if (schema.properties?.value) {
     const valueSchema = schema.properties.value;
     if (
-      typeof valueSchema === "object" && "type" in valueSchema &&
+      typeof valueSchema === "object" &&
+      "type" in valueSchema &&
       valueSchema.type === "array"
     ) {
       return true;

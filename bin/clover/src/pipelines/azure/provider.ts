@@ -1,6 +1,5 @@
 import {
   FetchSchemaOptions,
-  PipelineOptions,
   PROVIDER_REGISTRY,
   ProviderConfig,
   SuperSchema,
@@ -12,9 +11,12 @@ import {
   MANAGEMENT_FUNCS,
   QUALIFICATION_FUNC_SPECS,
 } from "./funcs.ts";
-import { normalizeAzureProperty } from "./spec.ts";
 import { generateAzureSpecs } from "./pipeline.ts";
-import { AzureSchema, initAzureRestApiSpecsRepo } from "./schema.ts";
+import {
+  AzureProperty,
+  AzureSchema,
+  initAzureRestApiSpecsRepo,
+} from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
 
 async function azureFetchSchema(options: FetchSchemaOptions) {
@@ -71,14 +73,6 @@ function azureIsChildRequired(
   return schema.requiredProperties.has(childName);
 }
 
-function azureNormalizeProperty(prop: JSONSchema) {
-  return normalizeAzureProperty(prop);
-}
-
-async function azureLoadSchemas(options: PipelineOptions) {
-  return await generateAzureSpecs(options);
-}
-
 export const AZURE_PROVIDER_CONFIG: ProviderConfig = {
   name: "azure",
   isStable: false,
@@ -93,8 +87,9 @@ export const AZURE_PROVIDER_CONFIG: ProviderConfig = {
     management: MANAGEMENT_FUNCS,
     qualification: QUALIFICATION_FUNC_SPECS,
   },
-  loadSchemas: azureLoadSchemas,
-  normalizeProperty: azureNormalizeProperty,
+  loadSchemas: generateAzureSpecs,
+  // These are normalized earlier in the process
+  normalizeProperty: (prop: JSONSchema) => prop as AzureProperty,
   isChildRequired: azureIsChildRequired,
   overrides: {
     propOverrides: {},

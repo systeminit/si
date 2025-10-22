@@ -8,39 +8,51 @@ import type {
 import { JSONSchema } from "../draft_07.ts";
 import assert from "node:assert";
 import SwaggerParser from "@apidevtools/swagger-parser";
-import { OpenAPI } from "openapi-types";
+import { OpenAPIV3_1 } from "openapi-types";
 import path from "node:path";
+import { Extend } from "../../extend.ts";
 
 /// OpenAPI.Document without $ref, with some Azure-specific extensions
-export type AzureOpenApiDocument = Dereference<OpenAPI.Document<OperationExt>>;
+export type AzureOpenApiDocument =
+  OpenAPIV3_1.Document<AzureOpenApiOperationExt>;
 /// OpenAPI.Operation without $ref, with some Azure-specific extensions
-export type AzureOpenApiOperation = Dereference<
-  OpenAPI.Operation<OperationExt>
+export type AzureOpenApiOperation = Extend<
+  OpenAPIV3_1.OperationObject,
+  AzureOpenApiOperationExt
 >;
+export type AzureOpenApiResponse = Extend<
+  OpenAPIV3_1.ResponseObject,
+  HasAzureOpenApiSchema
+>;
+export type AzureOpenApiParameter = Extend<
+  OpenAPIV3_1.ParameterObject,
+  HasAzureOpenApiSchema
+>;
+export type NormalizedAzureSchema = Extend<
+  JSONSchema.Interface,
+  {
+    allOf?: readonly NormalizedAzureSchema[];
+    oneOf?: readonly NormalizedAzureSchema[];
+    anyOf?: readonly NormalizedAzureSchema[];
+    items?: NormalizedAzureSchema;
+    properties?: Record<string, NormalizedAzureSchema>;
+    patternProperties?: Record<string, NormalizedAzureSchema>;
+    additionalProperties?: NormalizedAzureSchema;
+  }
+>;
+
 /// Adds "schema" to responses in OpenAPI.Operation
-interface OperationExt {
-  responses?: {
-    [K in string]?: AzureOpenApiResponse;
-  };
+interface AzureOpenApiOperationExt {
+  parameters?: AzureOpenApiParameter[];
+  responses?: Record<string, AzureOpenApiResponse>;
   "x-ms-pageable"?: {
     nextLinkName: string;
   };
 }
-/// Adds "schema" to responses in OpenAPI.Operation
-type AzureOpenApiResponse =
-  & NonNullable<
-    OpenAPI.Operation["responses"]
-  >[string]
-  & {
-    schema?: JSONSchema;
-  };
 
-/// Remove { $ref } from schema (which is what happens when you call SwaggerParser.Dereference)
-type Dereference<T> = DereferenceChildren<Exclude<T, { $ref: string }>>;
-/// Remove { $ref } recursively from all children of a schema (used by Dereference)
-type DereferenceChildren<T> = {
-  [K in keyof T]: Dereference<T[K]>;
-};
+interface HasAzureOpenApiSchema {
+  schema?: NormalizedAzureSchema;
+}
 
 export type PropertySet = Set<string>;
 
@@ -105,15 +117,9 @@ export async function initAzureRestApiSpecsRepo(options: CommonCommandOptions) {
 export async function readAzureSwaggerSpec(filePath: string) {
   const fileUrl = new URL(`file://${filePath}`);
 
-  const swagger = (await SwaggerParser.dereference(fileUrl.href, {
-    dereference: {
-      onDereference: (_path: string, value: JSONSchema) => {
-        if (!(typeof value === "boolean")) {
-          Object.assign(value, flattenAllOfProperties(value));
-        }
-      },
-    },
-  })) as AzureOpenApiDocument;
+  const swagger = (await SwaggerParser.dereference(
+    fileUrl.href,
+  )) as AzureOpenApiDocument;
 
   const apiVersion = extractApiVersion(filePath);
   if (apiVersion) {
@@ -129,30 +135,6 @@ function extractApiVersion(filePath: string): string | null {
 
   const [, versionType, versionDate] = versionMatch;
   return versionType === "preview" ? `${versionDate}-preview` : versionDate;
-}
-
-function flattenAllOfProperties({
-  allOf,
-  ...schema
-}: Exclude<JSONSchema, boolean>): Exclude<JSONSchema, boolean> {
-  if (Array.isArray(allOf)) {
-    const merged: Exclude<JSONSchema, boolean>["properties"] = {};
-    for (const part of allOf) {
-      if (typeof part !== "object" || part === null) {
-        throw new Error("Schema object does not contain child object");
-      }
-      const flattened = flattenAllOfProperties(part);
-      if (flattened.properties) {
-        Object.assign(merged, flattened.properties);
-      }
-    }
-    if (schema.properties) {
-      Object.assign(merged, schema.properties);
-    }
-    return { ...schema, properties: merged };
-  }
-
-  return schema;
 }
 
 const EXCLUDE_SPECS = [
