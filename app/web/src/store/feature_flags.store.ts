@@ -26,6 +26,7 @@ const USER_FLAG_MAPPING = {
   DEFAULT_SUBS: "default-subs",
   INITIALIZER_ONBOARD: "initializer-onboard",
   INITIALIZER_ONBOARD_FORCE_AGENT: "initializer-onboard-force-agent",
+  COMPONENT_HISTORY_FUNCS: "component-history-funcs",
 } as const;
 const WORKSPACE_FLAG_MAPPING = {
   FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",

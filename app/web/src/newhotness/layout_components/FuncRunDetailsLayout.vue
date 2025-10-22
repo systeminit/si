@@ -112,6 +112,7 @@ import FuncRunStatusBadge from "../FuncRunStatusBadge.vue";
 import StatusBox from "./StatusBox.vue";
 import GridItemWithLiveHeader from "./GridItemWithLiveHeader.vue";
 import { FuncRun } from "../api_composables/func_run";
+import { prevPage } from "../logic_composables/navigation_stack";
 
 const props = defineProps<{
   displayName: string;
@@ -134,14 +135,24 @@ const route = useRoute();
 
 // Navigate back to explore_grid view
 const navigateBack = () => {
-  router.push({
-    name: "new-hotness",
-    params: {
-      workspacePk: route.params.workspacePk,
-      changeSetId: route.params.changeSetId,
-    },
-    query: { retainSessionState: 1 },
-  });
+  const lastPage = prevPage();
+  // if we aren't coming from new-hotness, go to where we came from
+  // usually component details
+  if (lastPage && lastPage.name !== "new-hotness") {
+    router.push({
+      name: lastPage.name,
+      params: lastPage.params,
+    });
+  } else {
+    router.push({
+      name: "new-hotness",
+      params: {
+        workspacePk: route.params.workspacePk,
+        changeSetId: route.params.changeSetId,
+      },
+      query: { retainSessionState: 1 },
+    });
+  }
 };
 
 const logText = computed(() => {

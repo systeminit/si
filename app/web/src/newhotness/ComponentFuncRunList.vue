@@ -8,52 +8,25 @@
     :hasNextPage="hasNextPage"
     :isLoading="isLoading"
     emptyStateText="No function runs yet"
-    emptyStateSecondaryText="Function history shows the output of executed functions, including logs, generated code, passed arguments, and results."
+    emptyStateSecondaryText="Function history shows the output of executed functions for this component, including logs, generated code, passed arguments, and results."
     @update:selectedFuncKind="(val) => (selectedFuncKind = val)"
     @resetFilters="resetFilters"
     @scroll="handleScroll"
-  >
-    <template #additional-filters>
-      <div
-        :class="
-          clsx(
-            'flex flex-row items-center gap-2xs border rounded',
-            themeClasses('border-neutral-400', 'border-neutral-600'),
-          )
-        "
-      >
-        <input
-          v-model="componentNameFilter"
-          type="text"
-          placeholder="Find by component name"
-          :class="
-            clsx(
-              'text-xs px-2xs py-2xs min-w-[250px] border-0',
-              themeClasses(
-                'bg-white text-neutral-600 placeholder-neutral-500',
-                'bg-black text-neutral-400 placeholder-neutral-400',
-              ),
-            )
-          "
-        />
-      </div>
-    </template>
-  </FuncRunListLayout>
+  />
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, inject } from "vue";
 import { useInfiniteQuery } from "@tanstack/vue-query";
-import { themeClasses } from "@si/vue-lib/design-system";
-import clsx from "clsx";
 import FuncRunListLayout from "./layout_components/FuncRunListLayout.vue";
 import { funcRunTypes, useApi, routes } from "./api_composables";
 import { assertIsDefined, Context } from "./types";
 import { FuncRun } from "./api_composables/func_run";
-
 // Component props
 const props = defineProps<{
+  componentId: string;
   limit?: number;
+  enabled?: boolean;
 }>();
 
 const ctx = inject<Context>("CONTEXT");
@@ -64,13 +37,13 @@ const pageSize = computed(() => props.limit || 50);
 
 // Filter state
 const selectedFuncKind = ref<string>("");
-const componentNameFilter = ref<string>("");
 
 const api = useApi();
 
 const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
   useInfiniteQuery({
-    queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
+    queryKey: [ctx.changeSetId, "paginatedFuncRuns", props.componentId],
+    enabled: computed(() => props.enabled ?? true),
     queryFn: async ({
       pageParam = undefined,
     }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
@@ -79,6 +52,7 @@ const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
       );
       const params = new URLSearchParams();
       params.append("limit", pageSize.value.toString());
+      params.append("componentId", props.componentId);
       if (pageParam) {
         params.append("cursor", pageParam);
       }
@@ -114,7 +88,7 @@ const availableFuncKinds = computed(() => {
   return Array.from(kinds).sort();
 });
 
-// Filter function runs based on selected func kind and component name
+// Filter function runs based on selected func kind
 const funcRuns = computed<FuncRun[]>(() => {
   let filtered = allFuncRuns.value;
 
@@ -125,28 +99,17 @@ const funcRuns = computed<FuncRun[]>(() => {
     );
   }
 
-  // Filter by component name if provided
-  if (componentNameFilter.value.trim()) {
-    const searchTerm = componentNameFilter.value.toLowerCase().trim();
-    filtered = filtered.filter((funcRun) => {
-      return funcRun.componentName?.toLowerCase().includes(searchTerm) || false;
-    });
-  }
-
   return filtered;
 });
 
 // Check if any filters are active
 const hasActiveFilters = computed(() => {
-  return (
-    selectedFuncKind.value !== "" || componentNameFilter.value.trim() !== ""
-  );
+  return selectedFuncKind.value !== "";
 });
 
 // Reset all filters
 const resetFilters = () => {
   selectedFuncKind.value = "";
-  componentNameFilter.value = "";
 };
 
 // Handle scroll to implement infinite loading

@@ -183,6 +183,7 @@ import { useContext } from "./logic_composables/context";
 
 const props = defineProps<{
   componentId: ComponentId;
+  enabled?: boolean;
 }>();
 
 const componentId = computed(() => props.componentId);
@@ -240,6 +241,7 @@ const auditLogsApi = useApi(ctx);
 const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
   useInfiniteQuery({
     queryKey: key(EntityKind.AuditLogsForComponent, componentId),
+    enabled: computed(() => props.enabled ?? true),
     queryFn: async ({ pageParam = pageSize }) => {
       const call = auditLogsApi.endpoint<AuditLogsForComponentResponse>(
         routes.AuditLogsForComponent,
