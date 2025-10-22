@@ -37,7 +37,7 @@ import {
   GlobalEntity,
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
-import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { ChangeSet, ChangeSetId } from "@/api/sdf/dal/change_set";
 import { assertIsDefined, Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
@@ -776,12 +776,29 @@ export const muspelheimInProgress = computed(() => {
 const fetchOpenChangeSets = async (
   workspaceId: WorkspacePk,
 ): Promise<WorkspaceMetadata> => {
-  const resp = await sdf<WorkspaceMetadata>({
-    method: "GET",
-    url: `v2/workspaces/${workspaceId}/change-sets`,
-  });
-  return resp.data;
+  try {
+    const resp = await sdf<WorkspaceMetadata>({
+      method: "GET",
+      url: `v2/workspaces/${workspaceId}/change-sets`,
+    });
+    return resp.data;
+  } catch (err) {
+    return {
+      name: "",
+      id: "",
+      defaultChangeSetId: "",
+      changeSets: [] as ChangeSet[],
+      approvers: [] as string[],
+    };
+  }
 };
+
+export class ChangeSetRetrievalError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ChangeSetRetrievalError";
+  }
+}
 
 export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
   await waitForInitCompletion();
@@ -792,7 +809,7 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
   const { changeSets: openChangeSets, defaultChangeSetId: baseChangeSetId } =
     await fetchOpenChangeSets(workspaceId);
   if (!baseChangeSetId) {
-    throw new Error("No HEAD changeset found");
+    throw new ChangeSetRetrievalError("No HEAD changeset found");
   }
 
   // Mark as pending in advance
