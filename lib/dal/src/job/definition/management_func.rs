@@ -255,6 +255,7 @@ impl ManagementFuncJob {
             geometries,
             placeholders,
             run_channel,
+            func_run_id,
         )
         .await?;
 
