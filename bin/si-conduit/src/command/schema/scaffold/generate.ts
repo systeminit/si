@@ -1,35 +1,45 @@
 import { Context } from "../../../context.ts";
 import * as generator from "../../../generators.ts";
+import { getLogger } from "../../../logger.ts";
 import type { AbsoluteFilePath } from "../../../project.ts";
 import { Project } from "../../../project.ts";
+
+const logger = getLogger();
 
 export async function callSchemaScaffoldGenerate(
   ctx: Context,
   project: Project,
   schemaName: string,
 ): Promise<SchemaScaffoldResult> {
-  const logger = ctx.logger;
-
-  logger.info("Generating scaffold for {schemaName}", {
+  logger.info("Generating scaffold for schema {schemaName}", {
     schemaName,
   });
+  logger.info("---");
+  logger.info("");
 
-  const { formatVersionPath } = await generator.generateSchemaBase(
-    ctx,
+  // Check that the schema directory doesn't exist
+  const schemaBasePath = project.schemaBasePath(schemaName);
+  if (await schemaBasePath.exists()) {
+    logger.error("Directory already exists at {schemaBasePath}", {
+      schemaBasePath: schemaBasePath.toString(),
+    });
+    throw new DirectoryExistsError(schemaBasePath.toString());
+  }
+
+  await generator.generateSchemaBase(project, schemaName);
+  const { formatVersionPath } = await generator.generateSchemaFormatVersion(
     project,
     schemaName,
   );
   const { metadataPath, codePath } = await generator.generateSchema(
-    ctx,
     project,
     schemaName,
   );
 
-  await generator.generateSchemaActionBase(ctx, project, schemaName);
+  await generator.generateSchemaActionBase(project, schemaName);
   const actionPaths = [];
   for (const actionName of Project.DEFAULT_ACTION_NAMES) {
     const paths = await generator.generateSchemaAction(
-      ctx,
       project,
       schemaName,
       actionName,
@@ -37,11 +47,10 @@ export async function callSchemaScaffoldGenerate(
     actionPaths.push(paths);
   }
 
-  await generator.generateSchemaCodegenBase(ctx, project, schemaName);
+  await generator.generateSchemaCodegenBase(project, schemaName);
   const codegenPaths = [];
   for (const codegenName of Project.DEFAULT_CODEGEN_NAMES) {
     const paths = await generator.generateSchemaCodegen(
-      ctx,
       project,
       schemaName,
       codegenName,
@@ -49,11 +58,10 @@ export async function callSchemaScaffoldGenerate(
     codegenPaths.push(paths);
   }
 
-  await generator.generateSchemaManagementBase(ctx, project, schemaName);
+  await generator.generateSchemaManagementBase(project, schemaName);
   const managementPaths = [];
   for (const managementName of Project.DEFAULT_MANAGEMENT_NAMES) {
     const paths = await generator.generateSchemaManagement(
-      ctx,
       project,
       schemaName,
       managementName,
@@ -61,11 +69,10 @@ export async function callSchemaScaffoldGenerate(
     managementPaths.push(paths);
   }
 
-  await generator.generateSchemaQualificationBase(ctx, project, schemaName);
+  await generator.generateSchemaQualificationBase(project, schemaName);
   const qualificationPaths = [];
   for (const qualificationName of Project.DEFAULT_QUALIFICATION_NAMES) {
     const paths = await generator.generateSchemaQualification(
-      ctx,
       project,
       schemaName,
       qualificationName,
@@ -73,11 +80,15 @@ export async function callSchemaScaffoldGenerate(
     qualificationPaths.push(paths);
   }
 
+  logger.info("");
+  logger.info("---");
   logger.info("Successfully generated scaffold for schema {schemaName}", {
     schemaName,
   });
 
-  ctx.analytics.trackEvent("generate_scaffold", { schemaName: schemaName });
+  ctx.analytics.trackEvent("schema_scaffold_generate", {
+    schemaName: schemaName,
+  });
 
   return {
     formatVersionPath,
@@ -113,4 +124,14 @@ export interface SchemaScaffoldResult {
     metadataPath: AbsoluteFilePath;
     codePath: AbsoluteFilePath;
   }[];
+}
+
+/**
+ * Error thrown when attempting to create a schema in a directory that already exists.
+ */
+export class DirectoryExistsError extends Error {
+  constructor(public readonly path: string) {
+    super(`Directory already exists at: ${path}`);
+    this.name = "DirectoryExistsError";
+  }
 }

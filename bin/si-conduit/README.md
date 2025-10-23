@@ -13,6 +13,7 @@ SI Conduit is a Deno-based CLI application that provides a structured workflow f
 - **Project Module** (`src/project.ts`): Project structure management and path utilities for working with schemas and their functions.
 - **Authentication** (`src/auth-api-client.ts`, `src/jwt.ts`): API authentication and JWT token handling for secure communication with System Initiative services.
 - **Generators** (`src/generators.ts`): Code generation utilities for scaffolding schemas and functions.
+- **Materialize Module** (`src/materialize.ts`): File system operations for creating and writing schema files, metadata, and function code to disk.
 
 ### Command Structure
 
@@ -27,7 +28,9 @@ si-conduit
 │   ├── qualification generate - Generate qualification functions
 │   └── scaffold generate    - Scaffold a complete schema structure
 ├── remote
-│   └── push                 - Push schemas to remote workspace
+│   └── schema
+│       ├── pull             - Pull schemas from remote workspace
+│       └── push             - Push schemas to remote workspace
 └── whoami                   - Display authenticated user information
 ```
 
@@ -273,12 +276,32 @@ si-conduit schema management generate MySchema reconcile
 si-conduit schema qualification generate MySchema validate
 ```
 
+### Pulling from Remote
+
+Pull schemas from your System Initiative workspace to your local project:
+
+```bash
+# Pull a specific schema
+si-conduit remote schema pull MySchema
+
+# Pull multiple schemas
+si-conduit remote schema pull Schema1 Schema2 Schema3
+```
+
+This command will:
+- Fetch the schema definition and metadata from your workspace
+- Download all associated functions (actions, code generators, management, qualifications)
+- Create the complete schema structure in your local project
+- Preserve the exact code and configuration from the remote workspace
+
+This command requires authentication via the `SI_API_TOKEN` environment variable.
+
 ### Pushing to Remote
 
 Push your schemas to your System Initiative workspace:
 
 ```bash
-si-conduit remote push
+si-conduit remote schema push
 ```
 
 This command requires authentication via the `SI_API_TOKEN` environment variable.

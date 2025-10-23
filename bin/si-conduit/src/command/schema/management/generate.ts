@@ -1,44 +1,45 @@
 import { Context } from "../../../context.ts";
 import * as generator from "../../../generators.ts";
+import { getLogger } from "../../../logger.ts";
 import { Project } from "../../../project.ts";
 import type { AbsoluteFilePath } from "../../../project.ts";
+
+const logger = getLogger();
 
 export async function callSchemaManagementGenerate(
   ctx: Context,
   project: Project,
   schemaName: string,
-  managementName: string,
+  name: string,
 ): Promise<GeneratorResult> {
-  const logger = ctx.logger;
+  logger.info("Generating management function {name} for schema {schemaName}", {
+    schemaName,
+    name,
+  });
+  logger.info("---");
+  logger.info("");
 
-  logger.info(
-    "Generating management function {managementName} for {schemaName}",
-    {
-      schemaName,
-      managementName,
-    },
-  );
-
-  await generator.generateSchemaManagementBase(ctx, project, schemaName);
+  await generator.generateSchemaManagementBase(project, schemaName);
 
   const paths = await generator.generateSchemaManagement(
-    ctx,
     project,
     schemaName,
-    managementName,
+    name,
   );
 
+  logger.info("");
+  logger.info("---");
   logger.info(
-    "Successfully generated management function {managementName} for schema {schemaName}",
+    "Successfully generated management function for schema {schemaName}",
     {
       schemaName,
-      managementName,
     },
   );
+  logger.info(`  - ${name}`);
 
-  ctx.analytics.trackEvent("generate_management_function", {
+  ctx.analytics.trackEvent("schema_management_generate", {
     schemaName: schemaName,
-    managementName: managementName,
+    managementName: name,
   });
 
   return paths;

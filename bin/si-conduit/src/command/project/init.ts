@@ -8,16 +8,17 @@
  */
 
 import { Context } from "../../context.ts";
+import { getLogger } from "../../logger.ts";
 import { AbsoluteDirectoryPath, Project } from "../../project.ts";
+
+const logger = getLogger();
 
 export async function callProjectInit(
   ctx: Context,
   rootPath: AbsoluteDirectoryPath,
 ) {
-  const logger = ctx.logger;
-
   logger.info("Initializing Conduit project");
-  logger.info("----------------------------");
+  logger.info("---");
   logger.info("");
 
   if (await rootPath.exists()) {
@@ -43,8 +44,10 @@ export async function callProjectInit(
     });
   }
 
+  ctx.analytics.trackEvent("project_init");
+
   logger.info("");
-  logger.info("Conduit project initialized");
-  logger.info("");
+  logger.info("---");
+  logger.info("Conduit project successfully initialized");
   logger.info(`   ${rootPath.toString()}`);
 }

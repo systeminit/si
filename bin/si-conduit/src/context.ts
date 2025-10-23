@@ -33,7 +33,12 @@
 import type { Logger } from "@logtape/logtape";
 import { Analytics } from "./analytics.ts";
 import type { UserData } from "./jwt.ts";
-import { configureLogger, getLogger, type VerbosityLevel } from "./logger.ts";
+import {
+  configureLogger,
+  getLogger,
+  isInteractive as loggerIsInteractive,
+  type VerbosityLevel,
+} from "./logger.ts";
 
 /** Event prefix for all analytics events tracked by this application. */
 const ANALYTICS_EVENT_PREFIX = "conduit";
@@ -69,9 +74,17 @@ export class Context {
   /** Analytics instance for event tracking. */
   public readonly analytics: Analytics;
 
-  private constructor(logger: Logger, analytics: Analytics) {
+  /** Whether or not the CLI is running in an interactive session. */
+  public readonly isInteractive: boolean;
+
+  private constructor(
+    logger: Logger,
+    analytics: Analytics,
+    isInteractive: boolean,
+  ) {
     this.logger = logger;
     this.analytics = analytics;
+    this.isInteractive = isInteractive;
   }
 
   /**
@@ -103,7 +116,9 @@ export class Context {
 
     const analytics = new Analytics(ANALYTICS_EVENT_PREFIX, options.userData);
 
-    this.context = new Context(logger, analytics);
+    const isInteractive = loggerIsInteractive();
+
+    this.context = new Context(logger, analytics, isInteractive);
 
     return this.context;
   }

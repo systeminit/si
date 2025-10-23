@@ -20,11 +20,13 @@ import { pushAssets } from "./cli/push-assets.ts";
 import { initializeCliContextWithAuth } from "./cli/helpers.ts";
 import { callWhoami } from "./command/whoami.ts";
 import { callProjectInit } from "./command/project/init.ts";
+import { callRemoteSchemaPull } from "./command/remote/schema/pull.ts";
 import { callSchemaActionGenerate } from "./command/schema/action/generate.ts";
 import { callSchemaCodegenGenerate } from "./command/schema/codegen/generate.ts";
 import { callSchemaManagementGenerate } from "./command/schema/management/generate.ts";
 import { callSchemaQualificationGenerate } from "./command/schema/qualification/generate.ts";
 import { callSchemaScaffoldGenerate } from "./command/schema/scaffold/generate.ts";
+import { ApiContext, apiContext } from "./api.ts";
 import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Context } from "./context.ts";
 import * as jwt from "./jwt.ts";
@@ -203,6 +205,40 @@ function buildRemoteCommand() {
     .action(function () {
       this.showHelp();
     })
+    .command("schema", buildRemoteSchemaCommand());
+}
+
+function buildRemoteSchemaCommand() {
+  return createSubCommand()
+    .description("Interacts with remote workspace schemas")
+    .action(function () {
+      this.showHelp();
+    })
+    .command(
+      "pull",
+      createSubCommand()
+        .description(
+          "Pulls schemas from your remote System Initiative workspace",
+        )
+        .arguments("[...SCHEMA_NAME:string]")
+        .action(async ({ root, apiBaseUrl, apiToken }, ...schemaNames) => {
+          const project = createProject(root);
+          const apiCtx = await createApiContext(apiBaseUrl, apiToken);
+          let finalSchemaNames;
+          if (schemaNames.length > 0) {
+            finalSchemaNames = schemaNames;
+          } else {
+            finalSchemaNames = [await prompt.schemaName(undefined, project)];
+          }
+
+          await callRemoteSchemaPull(
+            Context.instance(),
+            project,
+            apiCtx,
+            finalSchemaNames,
+          );
+        }),
+    )
     .command(
       "push",
       createSubCommand()
@@ -318,7 +354,10 @@ function buildSchemaActionCommand() {
         .arguments("[SCHEMA_NAME:string] [ACTION_NAME:string]")
         .action(async ({ root }, schemaName, actionName) => {
           const project = createProject(root);
-          const finalSchemaName = await prompt.schemaName(schemaName, project);
+          const finalSchemaName = await prompt.schemaNameFromDirNames(
+            schemaName,
+            project,
+          );
           const finalActionName = await prompt.actionName(actionName, project);
 
           await callSchemaActionGenerate(
@@ -352,7 +391,10 @@ function buildSchemaCodegenCommand() {
         .arguments("[SCHEMA_NAME:string] [CODEGEN_NAME:string]")
         .action(async ({ root }, schemaName, codegenName) => {
           const project = createProject(root);
-          const finalSchemaName = await prompt.schemaName(schemaName, project);
+          const finalSchemaName = await prompt.schemaNameFromDirNames(
+            schemaName,
+            project,
+          );
           const finalCodegenName = await prompt.codegenName(
             codegenName,
             project,
@@ -389,7 +431,10 @@ function buildSchemaManagementCommand() {
         .arguments("[SCHEMA_NAME:string] [MANAGEMENT_NAME:string]")
         .action(async ({ root }, schemaName, managementName) => {
           const project = createProject(root);
-          const finalSchemaName = await prompt.schemaName(schemaName, project);
+          const finalSchemaName = await prompt.schemaNameFromDirNames(
+            schemaName,
+            project,
+          );
           const finalManagementName = await prompt.managementName(
             managementName,
             project,
@@ -426,7 +471,10 @@ function buildSchemaQualificationCommand() {
         .arguments("[SCHEMA_NAME:string] [QUALIFICATION_NAME:string]")
         .action(async ({ root }, schemaName, qualificationName) => {
           const project = createProject(root);
-          const finalSchemaName = await prompt.schemaName(schemaName, project);
+          const finalSchemaName = await prompt.schemaNameFromDirNames(
+            schemaName,
+            project,
+          );
           const finalQualificationName = await prompt.qualificationName(
             qualificationName,
             project,
@@ -463,7 +511,10 @@ function buildSchemaScaffoldCommand() {
         .arguments("[SCHEMA_NAME:string]")
         .action(async ({ root }, schemaName) => {
           const project = createProject(root);
-          const finalSchemaName = await prompt.schemaName(schemaName, project);
+          const finalSchemaName = await prompt.schemaNameFromDirNames(
+            schemaName,
+            project,
+          );
 
           await callSchemaScaffoldGenerate(
             Context.instance(),
@@ -512,4 +563,18 @@ function createProject(rootResult?: RootPath | RootPathNotFoundError): Project {
   } else {
     return RootPath.findFromCwd().toProject();
   }
+}
+
+async function createApiContext(
+  apiBaseUrl: string,
+  apiToken?: string,
+): Promise<ApiContext> {
+  if (!apiToken) {
+    throw new ValidationError(
+      'Missing required API token; use "--api-token" option or ' +
+        '"SI_API_TOKEN" environment variable',
+    );
+  }
+
+  return await apiContext(apiBaseUrl, apiToken);
 }

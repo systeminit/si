@@ -82,15 +82,16 @@ interface JWTPayload {
  * ```
  */
 export function getUserDataFromToken(apiToken?: string): UserData | undefined {
-  if (!apiToken) {
+  if (apiToken) {
+    return tryGetUserDataFromToken(apiToken);
+  } else {
     return undefined;
   }
+}
 
+export function tryGetUserDataFromToken(apiToken: string): UserData {
   // Trim whitespace that might have been accidentally included
   const trimmedToken = apiToken.trim();
-  if (trimmedToken.length === 0) {
-    return undefined;
-  }
 
   const payload = decodeJWT(trimmedToken);
 
