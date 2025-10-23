@@ -14,6 +14,10 @@ use axum::{
 };
 use dal::{
     KeyPairError,
+    attribute::{
+        attributes::AttributesError,
+        value::AttributeValueError,
+    },
     func::authoring::FuncAuthoringError,
     prop::PropError,
     workspace_snapshot::dependent_value_root::DependentValueRootError,
@@ -64,8 +68,6 @@ pub enum Error {
     JsonptrParseError(#[from] jsonptr::ParseError),
     #[error("key pair error: {0}")]
     KeyPair(#[from] KeyPairError),
-    #[error("no value to set at path {0}")]
-    NoValueToSet(String),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("schema variant error: {0}")]
@@ -87,11 +89,13 @@ pub type Result<T> = std::result::Result<T, Error>;
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let status_code = match self {
-            Error::NoValueToSet(..) => StatusCode::BAD_REQUEST,
             Error::SchemaVariantUpgradeSkipped | Error::UpgradeSkippedDueToActions => {
                 StatusCode::NOT_MODIFIED
             }
             Error::AttributeValueNotFound(_, _) => StatusCode::NOT_FOUND,
+            Error::Attributes(AttributesError::AttributeValue(
+                AttributeValueError::SubscriptionTypeMismatch { .. },
+            )) => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

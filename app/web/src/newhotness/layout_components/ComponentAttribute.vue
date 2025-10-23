@@ -40,7 +40,7 @@
             ref="headerRef"
             :class="
               clsx(
-                'flex flex-row items-center gap-2xs w-full',
+                'flex flex-row items-center gap-2xs flex-1 min-w-0 justify-between',
                 attributeTree.isBuildable &&
                   'focus:outline-none group/attributeheader',
               )
@@ -49,113 +49,139 @@
             @keydown.enter.stop.prevent="remove"
             @keydown.delete.stop.prevent="remove"
           >
-            <div
+            <!-- displayName aligned left -->
+            <TruncateWithTooltip
               :class="
-                attributeTree.prop?.kind === 'array' ||
-                attributeTree.prop?.kind === 'map' ||
-                (stickyDepth && stickyDepth > 0)
-                  ? 'text-sm'
-                  : ''
+                clsx(
+                  'flex-1 min-w-0 max-w-fit',
+                  attributeTree.prop?.kind === 'array' ||
+                    attributeTree.prop?.kind === 'map' ||
+                    (stickyDepth && stickyDepth > 0)
+                    ? 'text-sm'
+                    : '',
+                )
               "
             >
               {{ displayName }}
-            </div>
-            <div class="flex-1" />
+            </TruncateWithTooltip>
+
+            <!-- everything else aligned right -->
             <div
-              v-if="attributeTree.attributeValue.externalSources?.length"
-              class="flex items-center gap-xs text-xs flex-shrink-0"
+              class="flex flex-row flex-1 min-w-0 max-w-fit gap-2xs items-center"
             >
-              <span
-                :class="themeClasses('text-neutral-500', 'text-neutral-400')"
+              <div
+                v-if="attributeTree.attributeValue.externalSources?.length"
+                class="flex flex-row items-center gap-2xs text-xs flex-1 min-w-0"
               >
-                Set via subscription to
-              </span>
-              <span
-                :class="
-                  themeClasses(
-                    'text-newhotness-purplelight',
-                    'text-newhotness-purpledark',
-                  )
-                "
-              >
-                {{
-                  attributeTree.attributeValue.externalSources[0]?.componentName
-                }}
-              </span>
-              <span
-                :class="themeClasses('text-neutral-600', 'text-neutral-400')"
-              >
-                {{
-                  attributeTree.attributeValue.externalSources[0]?.path
-                }}</span
-              >
+                <TruncateWithTooltip class="flex-1 min-w-0 max-w-fit">
+                  <span
+                    :class="
+                      themeClasses('text-neutral-500', 'text-neutral-400')
+                    "
+                  >
+                    Set via subscription to
+                  </span>
+                  <span
+                    :class="
+                      themeClasses(
+                        'text-newhotness-purplelight',
+                        'text-newhotness-purpledark',
+                      )
+                    "
+                  >
+                    {{
+                      attributeTree.attributeValue.externalSources[0]
+                        ?.componentName
+                    }}
+                  </span>
+                  <span
+                    :class="
+                      themeClasses('text-neutral-600', 'text-neutral-400')
+                    "
+                  >
+                    {{ attributeTree.attributeValue.externalSources[0]?.path }}
+                  </span>
+                </TruncateWithTooltip>
+                <NewButton
+                  tooltip="Remove subscription"
+                  tooltipPlacement="top"
+                  icon="x"
+                  tone="empty"
+                  :class="
+                    clsx(
+                      'active:bg-white active:text-black',
+                      themeClasses(
+                        'hover:bg-neutral-200',
+                        'hover:bg-neutral-600',
+                      ),
+                    )
+                  "
+                  @click="removeSubscription"
+                />
+              </div>
               <NewButton
-                tooltip="Remove subscription"
-                tooltipPlacement="top"
-                icon="x"
-                tone="empty"
+                v-if="
+                  attributeTree.isBuildable &&
+                  !component.toDelete &&
+                  !parentHasExternalSources &&
+                  !props.forceReadOnly &&
+                  attributeTree.prop?.kind === 'object' &&
+                  !attributeTree.attributeValue.externalSources?.length
+                "
+                ref="connectButtonRef"
+                tooltip="Create subscription"
+                :tabIndex="
+                  attributeTree.isBuildable && !component.toDelete
+                    ? 0
+                    : undefined
+                "
+                label="Connect"
                 :class="
                   clsx(
-                    'active:bg-white active:text-black',
+                    'focus:outline flex-none',
                     themeClasses(
-                      'hover:bg-neutral-200',
-                      'hover:bg-neutral-600',
+                      'focus:outline-action-500',
+                      'focus:outline-action-300',
                     ),
                   )
                 "
-                @click="removeSubscription"
+                @click.stop.prevent="createSubscription"
+                @keydown.tab.stop.prevent="onConnectButtonTab"
+              />
+              <NewButton
+                v-if="
+                  attributeTree.isBuildable &&
+                  !component.toDelete &&
+                  !parentHasExternalSources &&
+                  !props.forceReadOnly &&
+                  !attributeTree.attributeValue.externalSources?.length
+                "
+                ref="deleteButtonRef"
+                tooltip="Delete"
+                tooltipPlacement="top"
+                :tabIndex="
+                  attributeTree.isBuildable && !component.toDelete
+                    ? 0
+                    : undefined
+                "
+                icon="trash"
+                tone="destructive"
+                loadingIcon="loader"
+                loadingText=""
+                :loading="bifrostingTrash"
+                :class="
+                  clsx(
+                    'focus:outline flex-none',
+                    themeClasses(
+                      'focus:outline-action-500',
+                      'focus:outline-action-300',
+                    ),
+                  )
+                "
+                @click="remove"
+                @keydown.tab.stop.prevent="onDeleteButtonTab"
               />
             </div>
-            <NewButton
-              v-if="
-                attributeTree.isBuildable &&
-                !component.toDelete &&
-                !parentHasExternalSources &&
-                !props.forceReadOnly &&
-                attributeTree.prop?.kind === 'object' &&
-                !attributeTree.attributeValue.externalSources?.length
-              "
-              ref="connectButtonRef"
-              tooltip="Create subscription"
-              :tabIndex="
-                attributeTree.isBuildable && !component.toDelete ? 0 : undefined
-              "
-              label="Connect"
-              :class="
-                clsx(
-                  'focus:outline',
-                  themeClasses(
-                    'focus:outline-action-500',
-                    'focus:outline-action-300',
-                  ),
-                )
-              "
-              @click.stop.prevent="createSubscription"
-              @keydown.tab.stop.prevent="onConnectButtonTab"
-            />
-            <NewButton
-              v-if="
-                attributeTree.isBuildable &&
-                !component.toDelete &&
-                !parentHasExternalSources &&
-                !props.forceReadOnly &&
-                !attributeTree.attributeValue.externalSources?.length
-              "
-              ref="deleteButtonRef"
-              tooltip="Delete"
-              tooltipPlacement="top"
-              :tabIndex="
-                attributeTree.isBuildable && !component.toDelete ? 0 : undefined
-              "
-              icon="trash"
-              tone="destructive"
-              loadingIcon="loader"
-              loadingText=""
-              :loading="bifrostingTrash"
-              class="focus:outline focus:outline-action-500"
-              @click="remove"
-              @keydown.tab.stop.prevent="onDeleteButtonTab"
-            />
           </div>
         </template>
         <ul v-if="!bifrostingTrash" class="list-none">
@@ -312,7 +338,11 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
-import { themeClasses, NewButton } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  NewButton,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import {

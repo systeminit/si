@@ -55,9 +55,12 @@ const expanded = ref(false);
 const divRef = ref<HTMLElement>();
 const innerText = ref("");
 const mObserver = ref();
-
 const neededTooltipOnLoad = ref(false);
 const forceRecompute = ref(0);
+
+const windowResizeHandler = () => {
+  forceRecompute.value++;
+};
 
 onMounted(() => {
   if (divRef.value) {
@@ -74,12 +77,15 @@ onMounted(() => {
     subtree: true,
     characterData: true,
   });
+
+  window.addEventListener("resize", windowResizeHandler);
 });
 
 onBeforeUnmount(() => {
   if (mObserver.value) {
     mObserver.value.disconnect();
   }
+  window.removeEventListener("resize", windowResizeHandler);
 });
 
 const tooltipActive = computed(() => {
