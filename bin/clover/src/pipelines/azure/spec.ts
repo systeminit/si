@@ -673,7 +673,7 @@ function parseEndpointPath(path: string) {
   // Or list form: /subscriptions/{subscriptionId}/providers/Microsoft.Network/applicationGateways
   // TODO support non-{resourceGroupName} get/put/delete and {resourceGroupName} list paths
   const match = path.match(
-    /\/subscriptions\/\{([^/}]+)\}(?:\/resourceGroups\/\{([^/}]+)\})?\/providers\/([^/]+)\/([^/{]+)(?:\/\{([^/}]+)\})?$/,
+    /\/subscriptions\/\{([^/}]+)\}(?:\/resource[Gg]roups\/\{([^/}]+)\})?\/providers\/([^/]+)\/([^/{]+)(?:\/\{([^/}]+)\})?$/,
   );
   if (!match) return undefined;
   const [
