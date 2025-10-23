@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{
     Deserialize,
     Serialize,
@@ -9,11 +11,15 @@ use si_events::{
     ulid::Ulid,
 };
 use si_id::ComponentId;
+use telemetry::prelude::*;
 
 use crate::{
     EdgeWeightKindDiscriminants,
     workspace_snapshot::{
-        graph::LineageId,
+        graph::{
+            LineageId,
+            detector::Update,
+        },
         node_weight::traits::CorrectTransforms,
     },
 };
@@ -118,4 +124,77 @@ impl std::fmt::Debug for AttributePrototypeArgumentNodeWeight {
     }
 }
 
-impl CorrectTransforms for AttributePrototypeArgumentNodeWeight {}
+impl CorrectTransforms for AttributePrototypeArgumentNodeWeight {
+    fn correct_transforms(
+        &self,
+        graph: &crate::WorkspaceSnapshotGraphVCurrent,
+        mut updates: Vec<crate::workspace_snapshot::graph::detector::Update>,
+        _from_different_change_set: bool,
+    ) -> super::traits::CorrectTransformsResult<
+        Vec<crate::workspace_snapshot::graph::detector::Update>,
+    > {
+        // If we are in the current graph, don't modify the updates.
+        if graph.get_node_index_by_id_opt(self.id).is_some() {
+            return Ok(updates);
+        }
+
+        // Setup our caches needed to both determine which updates to remove and to perform the
+        // removals.
+        let mut destinations_that_do_not_exist: HashSet<Ulid> = HashSet::new();
+        let mut all_new_nodes = HashSet::new();
+        let mut indices_for_new_node_updates_for_ourself = Vec::new();
+
+        // For each update, we need to collect all destinations that do not exist in the current
+        // graph where we are the source for subscriptions. Along the way, we need to collect all
+        // new nodes as well as cache the indices for all new node updates to remove.
+        for (idx, update) in updates.iter().enumerate() {
+            match update {
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                } if source.id == self.id.into()
+                    && graph.get_node_index_by_id_opt(destination.id).is_none()
+                    && EdgeWeightKindDiscriminants::from(edge_weight.kind())
+                        == EdgeWeightKindDiscriminants::ValueSubscription =>
+                {
+                    destinations_that_do_not_exist.insert(destination.id.into());
+                }
+                Update::NewNode { node_weight } => {
+                    all_new_nodes.insert(node_weight.id());
+
+                    // This should happen one or zero times.
+                    if node_weight.id() == self.id {
+                        indices_for_new_node_updates_for_ourself.push(idx);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // If there is a difference between the sets, we need to check that there are updates to
+        // remove. If the conditional passes, there should be exactly one: the new node update for
+        // ourself.
+        if destinations_that_do_not_exist
+            .difference(&all_new_nodes)
+            .next()
+            .is_some()
+        {
+            if indices_for_new_node_updates_for_ourself.len() > 1 {
+                warn!(
+                    attribute_prototype_argument_id=%self.id,
+                    update_count=%indices_for_new_node_updates_for_ourself.len(),
+                    "unexpected multiple new node updates for ourself"
+                );
+            }
+
+            // Reverse the indices vec to remove from the back first.
+            indices_for_new_node_updates_for_ourself.reverse();
+            for idx in indices_for_new_node_updates_for_ourself {
+                updates.remove(idx);
+            }
+        }
+
+        Ok(updates)
+    }
+}
