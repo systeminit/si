@@ -1577,8 +1577,6 @@ const filteredConnections = computed(() => {
         matches = matches.filter((m) => !m.path.startsWith("/secrets/"));
       }
 
-      matches = matches.filter((m) => m.componentId !== props.component.id);
-
       const fuzzyMatches: PossibleConnection[] = [];
 
       if (filterStr.value) {
