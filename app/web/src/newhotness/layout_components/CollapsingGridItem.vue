@@ -4,7 +4,7 @@
       :class="
         clsx(
           'group/header flex flex-row items-center h-[40px]',
-          'text-lg font-bold px-xs py-xs flex-none border',
+          'text-lg px-xs py-xs flex-none border',
           themeClasses(
             'bg-neutral-300 border-neutral-400',
             'bg-neutral-800 border-neutral-600',

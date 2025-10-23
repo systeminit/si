@@ -30,7 +30,7 @@
         :sticky="
           attributeTree.prop?.kind === 'array' ||
           attributeTree.prop?.kind === 'map' ||
-          (attributeTree.prop?.kind === 'object' && isFirstChild)
+          attributeTree.prop?.kind === 'object'
         "
         :stickyTopOffset="(stickyDepth || 0) * 36"
         :stickyZIndex="10 - (stickyDepth || 0)"

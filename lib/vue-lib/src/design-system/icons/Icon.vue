@@ -36,6 +36,7 @@ import { computed, PropType } from "vue";
 import clsx from "clsx";
 import { getToneTextColorClass, Tones } from "../utils/color_utils";
 import { getIconByName, IconNames } from "./icon_set";
+import { tw } from "../../utils/tw-utils";
 
 export type IconSizes =
   | "2xs"
@@ -80,15 +81,15 @@ const computedRotate = computed(() => {
 const sizeClasses = computed(
   () =>
     ({
-      full: "w-full h-full",
-      "2xs": "w-3 h-3",
-      xs: "w-4 h-4",
-      sm: "w-5 h-5",
-      md: "w-6 h-6",
-      lg: "w-8 h-8",
-      xl: "w-9 h-9",
-      "2xl": "w-12 h-12",
-      inherit: "w-inherit h-inherit",
+      full: tw`w-full h-full`,
+      "2xs": tw`w-3 h-3`,
+      xs: tw`w-4 h-4`,
+      sm: tw`w-5 h-5`,
+      md: tw`w-6 h-6`,
+      lg: tw`w-8 h-8`,
+      xl: tw`w-9 h-9`,
+      "2xl": tw`w-12 h-12`,
+      inherit: tw`w-inherit h-inherit`,
       none: "",
     }[props.size]),
 );

@@ -5,18 +5,34 @@
     <li
       v-for="conn in props.connections"
       :key="`${conn.key}`"
-      class="py-xs pr-xs border-neutral-600 border"
+      :class="
+        clsx(
+          'py-xs pr-xs border rounded-sm',
+          themeClasses('border-neutral-300', 'border-neutral-600'),
+        )
+      "
     >
-      <div class="flex gap-2xs">
-        <div class="flex-none flex items-center justify-center">
-          <Icon name="incoming-connection" size="lg" />
+      <div class="flex flex-row gap-2xs">
+        <div class="flex-none flex items-center justify-center pl-2xs mt-[1px]">
+          <Icon
+            name="incoming-connection"
+            size="none"
+            :class="
+              clsx(
+                'w-8 h-11',
+                themeClasses('text-neutral-500', 'text-neutral-400'),
+              )
+            "
+          />
         </div>
 
-        <div class="flex-1 flex flex-col gap-2xs pl-0">
+        <div
+          class="flex-1 min-w-0 flex flex-col gap-3xs pl-0 font-mono text-xs"
+        >
           <div
             :class="
               clsx(
-                'flex gap-xs text-sm -ml-xs pl-xs',
+                'flex flex-row gap-xs -ml-xs p-2xs rounded-sm',
                 props.label === 'Incoming' &&
                   ctx.componentDetails.value[conn.componentId]?.name &&
                   clsx(
@@ -39,9 +55,9 @@
               <TruncateWithTooltip
                 :class="
                   clsx(
-                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    'flex-1 min-w-0 basis-1/3 max-w-fit px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-[#207E65]',
+                      'bg-white border-neutral-300 text-[#207E65]',
                       'bg-neutral-900 border-neutral-600 text-[#AAFEC7]',
                     ),
                   )
@@ -55,9 +71,9 @@
               <TruncateWithTooltip
                 :class="
                   clsx(
-                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    'flex-1 min-w-0 basis-1/3 max-w-fit px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-[#631AC2]',
+                      'bg-white border-neutral-300 text-[#631AC2]',
                       'bg-neutral-900 border-neutral-600 text-[#D4B4FE]',
                     ),
                   )
@@ -68,9 +84,9 @@
               <TruncateWithTooltip
                 :class="
                   clsx(
-                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    'flex-1 min-w-0 basis-1/3 max-w-fit px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-action-700',
+                      'bg-white border-neutral-300 text-action-700',
                       'bg-neutral-900 border-neutral-600 text-[#8BCDEE]',
                     ),
                   )
@@ -85,7 +101,7 @@
                   clsx(
                     'flex-shrink min-w-0 px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-action-700',
+                      'bg-white border-neutral-300 text-action-700',
                       'bg-neutral-900 border-neutral-600 text-[#8BCDEE]',
                     ),
                   )
@@ -99,7 +115,7 @@
           <div
             :class="
               clsx(
-                'flex gap-xs text-sm -ml-xs pl-xs',
+                'flex flex-row gap-xs p-2xs rounded-sm',
                 props.label === 'Outgoing' &&
                   ctx.componentDetails.value[conn.componentId]?.name &&
                   clsx(
@@ -124,7 +140,7 @@
                   clsx(
                     'flex-shrink min-w-0 px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-action-700',
+                      'bg-white border-neutral-300 text-action-700',
                       'bg-neutral-900 border-neutral-600 text-[#8BCDEE]',
                     ),
                   )
@@ -137,9 +153,9 @@
               <TruncateWithTooltip
                 :class="
                   clsx(
-                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    'flex-1 min-w-0 basis-1/3 max-w-fit px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-[#207E65]',
+                      'bg-white border-neutral-300 text-[#207E65]',
                       'bg-neutral-900 border-neutral-600 text-[#AAFEC7]',
                     ),
                   )
@@ -153,9 +169,9 @@
               <TruncateWithTooltip
                 :class="
                   clsx(
-                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    'flex-1 min-w-0 basis-1/3 max-w-fit px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-[#631AC2]',
+                      'bg-white border-neutral-300 text-[#631AC2]',
                       'bg-neutral-900 border-neutral-600 text-[#D4B4FE]',
                     ),
                   )
@@ -166,9 +182,9 @@
               <TruncateWithTooltip
                 :class="
                   clsx(
-                    'flex-shrink min-w-0 max-w-[120px] px-2xs py-2xs rounded-[2px] border',
+                    'flex-1 min-w-0 basis-1/3 max-w-fit px-2xs py-2xs rounded-[2px] border',
                     themeClasses(
-                      'bg-neutral-100 border-neutral-300 text-action-700',
+                      'bg-white border-neutral-300 text-action-700',
                       'bg-neutral-900 border-neutral-600 text-[#8BCDEE]',
                     ),
                   )
