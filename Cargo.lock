@@ -8230,24 +8230,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "si-filesystem"
-version = "0.1.0"
-dependencies = [
- "dashmap",
- "fuser",
- "log",
- "nix 0.29.0",
- "remain",
- "reqwest",
- "serde",
- "serde_json",
- "si-frontend-types",
- "si-id",
- "thiserror 2.0.12",
- "tokio",
-]
-
-[[package]]
 name = "si-firecracker"
 version = "0.1.0"
 dependencies = [
@@ -8309,18 +8291,6 @@ dependencies = [
  "si-events",
  "si-id",
  "strum",
-]
-
-[[package]]
-name = "si-fs"
-version = "0.1.0"
-dependencies = [
- "clap",
- "color-eyre",
- "env_logger 0.11.8",
- "nix 0.29.0",
- "si-filesystem",
- "tokio",
 ]
 
 [[package]]
