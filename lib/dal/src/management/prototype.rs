@@ -690,17 +690,33 @@ impl ManagementPrototype {
         manager_component_geometry: HashMap<String, ManagementGeometry>,
         managed_component_placeholders: HashMap<String, ComponentId>,
         func_run_channel: FuncRunnerValueChannel,
+        func_run_id: FuncRunId,
     ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
         let run_value = match func_run_channel.await {
             Ok(Err(FuncRunnerError::ResultFailure {
-                kind: _,
+                kind,
                 message,
                 backend: _,
-            })) => return Err(ManagementPrototypeError::FuncExecutionFailure(message)),
-            other => other.map_err(|_| ManagementPrototypeError::FuncRunnerRecvError)??,
+            })) => {
+                handle_failed_management_func(ctx, manager_component_id, id, func_run_id).await?;
+                warn!(error=true,si.error.message=?format!("kind: {kind}, message: {message}"), si.func_run.id=?func_run_id, si.manager_component_id=?manager_component_id);
+                return Err(ManagementPrototypeError::FuncExecutionFailure(format!(
+                    "kind: {kind}, message: {message}"
+                )));
+            }
+            Ok(Err(other)) => {
+                handle_failed_management_func(ctx, manager_component_id, id, func_run_id).await?;
+                warn!(error=true,si.error.message=?other, si.func_run.id=?func_run_id, si.manager_component_id=?manager_component_id);
+                return Err(ManagementPrototypeError::FuncRunner(Box::new(other)));
+            }
+            Err(err) => {
+                handle_failed_management_func(ctx, manager_component_id, id, func_run_id).await?;
+                warn!(error=true, si.error.message=?err, si.func_run.id=?func_run_id, si.manager_component_id=?manager_component_id);
+                return Err(ManagementPrototypeError::FuncRunnerRecvError);
+            }
+            Ok(Ok(success)) => success,
         };
 
-        let func_run_id = run_value.func_run_id();
         let maybe_value: Option<si_events::CasValue> =
             run_value.value().cloned().map(|value| value.into());
 
@@ -810,7 +826,7 @@ impl ManagementPrototype {
         component_id: ComponentId,
         view_id: Option<ViewId>,
     ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
-        let (geometries, placeholders, run_channel, _) =
+        let (geometries, placeholders, run_channel, func_run_id) =
             ManagementPrototype::start_execution(ctx, prototype_id, component_id, view_id).await?;
 
         ManagementPrototype::finalize_execution(
@@ -820,6 +836,7 @@ impl ManagementPrototype {
             geometries,
             placeholders,
             run_channel,
+            func_run_id,
         )
         .await
     }
@@ -1030,6 +1047,23 @@ impl ManagementPrototype {
 
         Ok(None)
     }
+}
+
+async fn handle_failed_management_func(
+    ctx: &DalContext,
+    manager_component_id: ComponentId,
+    id: ManagementPrototypeId,
+    func_run_id: FuncRunId,
+) -> Result<(), ManagementPrototypeError> {
+    FuncRunner::update_run(ctx, func_run_id, |func_run| {
+        func_run.set_action_result_state(Some(si_events::ActionResultState::Failure));
+    })
+    .await?;
+    WsEvent::management_func_executed(ctx, id, manager_component_id, func_run_id)
+        .await?
+        .publish_immediately(ctx)
+        .await?;
+    Ok(())
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
