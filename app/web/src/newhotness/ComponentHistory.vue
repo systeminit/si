@@ -13,7 +13,7 @@
         @click="handleAll('collapse')"
       />
     </div>
-    <div ref="wrapperRef" class="grid gap-xs relative">
+    <div ref="wrapperRef" class="grid gap-sm relative">
       <!-- Single continuous timeline line behind all items -->
       <div
         v-if="auditLogs.length > 0"
@@ -42,12 +42,15 @@
             clsx(
               'group/historylog',
               'p-xs border rounded-sm min-h-[2.5rem] min-w-0 break-words cursor-pointer',
-              themeClasses('border-neutral-400', 'border-neutral-600'),
+              themeClasses(
+                'border-neutral-400 hover:bg-neutral-100',
+                'border-neutral-600 hover:bg-neutral-700',
+              ),
             )
           "
           @click="toggleExpand(auditLog)"
         >
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-2xs">
             <div
               class="flex flex-row gap-xs items-center justify-between text-sm"
             >
@@ -63,7 +66,7 @@
                 {{ auditLog.title }}
               </TruncateWithTooltip>
 
-              <!-- Put the timestamp and chevron at the end. -->
+              <!-- Put the timestamp the end. -->
               <div class="flex flex-row gap-xs items-center">
                 <Timestamp
                   class="text-neutral-400"
@@ -72,23 +75,11 @@
                   enableDetailTooltip
                   refresh
                 />
-                <Icon
-                  v-tooltip="{
-                    content: shouldExpand(auditLog)
-                      ? 'Click to hide full audit log'
-                      : 'Click to see full audit log',
-                    placement: 'left',
-                  }"
-                  :class="clsx('group-hover/historylog:scale-125')"
-                  :name="
-                    shouldExpand(auditLog) ? 'chevron--down' : 'chevron--left'
-                  "
-                />
               </div>
             </div>
             <div
               v-if="auditLog.beforeValue && auditLog.afterValue"
-              class="flex flex-col gap-1 text-xs"
+              class="flex flex-col text-xs"
             >
               <div class="flex flex-row items-center gap-2xs">
                 <span class="text-neutral-500 font-bold w-14">Previous:</span>
@@ -103,7 +94,7 @@
                   {{ auditLog.beforeValue }}
                 </TruncateWithTooltip>
               </div>
-              <div class="flex flex-row items-center gap-xs">
+              <div class="flex flex-row items-center gap-2xs">
                 <span class="text-neutral-500 font-bold w-14">Now:</span>
                 <TruncateWithTooltip
                   :class="
