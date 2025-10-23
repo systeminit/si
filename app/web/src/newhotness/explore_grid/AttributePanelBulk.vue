@@ -329,6 +329,7 @@ import {
   AttributeInputContext,
   ExploreContext,
 } from "../types";
+import { AttributeErrors } from "../AttributePanel.vue";
 
 const ctx = useContext();
 const exploreContext = inject<ExploreContext>("EXPLORE_CONTEXT");
@@ -424,12 +425,15 @@ const showHistory = reactive<Record<AttributePath, boolean>>(
 );
 
 provide<AttributeInputContext>("ATTRIBUTEINPUT", { blankInput: true });
-provide(
-  "ATTRIBUTE_ERRORS",
-  computed(() => {
-    return { saveErrors: ref({}) };
-  }),
-);
+
+const saveErrors = ref<Record<string, string>>({});
+
+const errorContext = computed<AttributeErrors>(() => {
+  return {
+    saveErrors,
+  };
+});
+provide("ATTRIBUTE_ERRORS", errorContext);
 
 const setHistory = (path: AttributePath) => {
   showHistory[path] = true;
