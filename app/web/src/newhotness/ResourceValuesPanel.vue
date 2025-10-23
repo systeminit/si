@@ -75,6 +75,7 @@ import { keyEmitter } from "./logic_composables/emitters";
 import { AttrTree, makeAvTree } from "./logic_composables/attribute_tree";
 import EmptyState from "./EmptyState.vue";
 import { AttributeInputContext } from "./types";
+import { AttributeErrors } from "./AttributePanel.vue";
 
 const q = ref("");
 
@@ -84,12 +85,15 @@ const props = defineProps<{
 }>();
 
 provide<AttributeInputContext>("ATTRIBUTEINPUT", { blankInput: false });
-provide(
-  "ATTRIBUTE_ERRORS",
-  computed(() => {
-    return { saveErrors: {} };
-  }),
-);
+
+const saveErrors = ref<Record<string, string>>({});
+
+const errorContext = computed<AttributeErrors>(() => {
+  return {
+    saveErrors,
+  };
+});
+provide("ATTRIBUTE_ERRORS", errorContext);
 
 // TODO(nick): move the root computation to a shared location since this is a copy from "AttributePanel".
 const root = computed<AttrTree>(() => {
