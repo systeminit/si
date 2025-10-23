@@ -11,6 +11,8 @@
 import {
   configure,
   getConsoleSink,
+  getLogger as logtapeGetLogger,
+  Logger,
   type LogLevel,
   type LogRecord,
 } from "@logtape/logtape";
@@ -90,7 +92,7 @@ function verbosityToLogLevel(verbosity: VerbosityLevel): LogLevel {
  *
  * @internal
  */
-function isInteractive(): boolean {
+export function isInteractive(): boolean {
   return Deno.stdout.isTerminal();
 }
 
@@ -138,7 +140,9 @@ function createNonInteractiveFormatter(record: LogRecord): string {
   // LogRecord.timestamp is a number (milliseconds since epoch)
   const timestamp = new Date(record.timestamp).toISOString();
   return `[${timestamp}] ${String(record.level).toUpperCase()}: ${
-    record.message.join(" ")
+    record.message.join(
+      " ",
+    )
   }`;
 }
 
@@ -214,7 +218,6 @@ export async function configureLogger(
   });
 }
 
-/**
- * Re-export getLogger from LogTape for convenience
- */
-export { getLogger } from "@logtape/logtape";
+export function getLogger(category?: string | readonly string[]): Logger {
+  return logtapeGetLogger([APP_LOGGER_CATEGORY, ...(category ?? [])]);
+}

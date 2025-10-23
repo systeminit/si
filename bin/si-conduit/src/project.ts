@@ -78,7 +78,7 @@
  * @module
  */
 
-import { isAbsolute, join as pathJoin, normalize } from "@std/path";
+import { isAbsolute, join as pathJoin, normalize, relative } from "@std/path";
 
 /**
  * The filename for the project root marker file.
@@ -370,7 +370,10 @@ export class Project {
     actionName: string,
   ): RelativeFilePath {
     return new RelativeFilePath(
-      join(this.actionBaseRelativePath(schemaName), `${actionName}.ts`),
+      join(
+        this.actionBaseRelativePath(schemaName),
+        `${normalizeFsName(actionName)}.ts`,
+      ),
     );
   }
 
@@ -404,7 +407,7 @@ export class Project {
     return new RelativeFilePath(
       join(
         this.actionBaseRelativePath(schemaName),
-        `${actionName}.metadata.json`,
+        `${normalizeFsName(actionName)}.metadata.json`,
       ),
     );
   }
@@ -464,7 +467,10 @@ export class Project {
     codegenName: string,
   ): RelativeFilePath {
     return new RelativeFilePath(
-      join(this.codegenBaseRelativePath(schemaName), `${codegenName}.ts`),
+      join(
+        this.codegenBaseRelativePath(schemaName),
+        `${normalizeFsName(codegenName)}.ts`,
+      ),
     );
   }
 
@@ -501,7 +507,7 @@ export class Project {
     return new RelativeFilePath(
       join(
         this.codegenBaseRelativePath(schemaName),
-        `${codegenName}.metadata.json`,
+        `${normalizeFsName(codegenName)}.metadata.json`,
       ),
     );
   }
@@ -561,7 +567,10 @@ export class Project {
     managementName: string,
   ): RelativeFilePath {
     return new RelativeFilePath(
-      join(this.managementBaseRelativePath(schemaName), `${managementName}.ts`),
+      join(
+        this.managementBaseRelativePath(schemaName),
+        `${normalizeFsName(managementName)}.ts`,
+      ),
     );
   }
 
@@ -598,7 +607,7 @@ export class Project {
     return new RelativeFilePath(
       join(
         this.managementBaseRelativePath(schemaName),
-        `${managementName}.metadata.json`,
+        `${normalizeFsName(managementName)}.metadata.json`,
       ),
     );
   }
@@ -660,7 +669,7 @@ export class Project {
     return new RelativeFilePath(
       join(
         this.qualificationBaseRelativePath(schemaName),
-        `${qualificationName}.ts`,
+        `${normalizeFsName(qualificationName)}.ts`,
       ),
     );
   }
@@ -698,7 +707,7 @@ export class Project {
     return new RelativeFilePath(
       join(
         this.qualificationBaseRelativePath(schemaName),
-        `${qualificationName}.metadata.json`,
+        `${normalizeFsName(qualificationName)}.metadata.json`,
       ),
     );
   }
@@ -749,6 +758,10 @@ export class Project {
 
     return entries;
   }
+}
+
+export class RelativePathFrom {
+  constructor(public readonly rootPath: AbsoluteDirectoryPath) {}
 }
 
 /**
@@ -835,6 +848,20 @@ export class AbsolutePath {
  *   paths
  */
 export class AbsoluteDirectoryPath extends AbsolutePath {
+  public relativeTo(
+    base: AbsoluteDirectoryPath | Project,
+  ): RelativeDirectoryPath {
+    if (base instanceof Project) {
+      return new RelativeDirectoryPath(relative(base.rootPath, this.path));
+    } else {
+      return new RelativeDirectoryPath(relative(base.path, this.path));
+    }
+  }
+
+  public relativeToStr(base: AbsoluteDirectoryPath | Project): string {
+    return this.relativeTo(base).path;
+  }
+
   /**
    * Checks asynchronously if the directory exists at this path.
    *
@@ -944,6 +971,18 @@ export class AbsoluteDirectoryPath extends AbsolutePath {
  *   paths
  */
 export class AbsoluteFilePath extends AbsolutePath {
+  public relativeTo(base: AbsoluteDirectoryPath | Project): RelativeFilePath {
+    if (base instanceof Project) {
+      return new RelativeFilePath(relative(base.rootPath, this.path));
+    } else {
+      return new RelativeFilePath(relative(base.path, this.path));
+    }
+  }
+
+  public relativeToStr(base: AbsoluteDirectoryPath | Project): string {
+    return this.relativeTo(base).path;
+  }
+
   /**
    * Checks asynchronously if the file exists at this path.
    *
@@ -1326,18 +1365,21 @@ function join(...paths: StringOrRelativePath[]): string {
 /**
  * Normalizes a name for safe use in filesystem paths.
  *
- * Replaces characters that are invalid in filesystem paths with hyphens.
- * The following characters are replaced: `\ / : * ? " < > |`
+ * Replaces any character that would be URI-encoded with a hyphen, as well as
+ * the tilde character. Only these characters are kept: letters (A-Z, a-z),
+ * digits (0-9), hyphen (-), underscore (_), and period (.).
  *
  * @param name - The name to normalize
  * @returns A filesystem-safe version of the name
  *
  * @example
  * ```ts
- * normalizeFsName("My Schema: Version 1?"); // "My Schema- Version 1-"
+ * normalizeFsName("My Schema: Version 1?"); // "My-Schema--Version-1-"
  * normalizeFsName("User/Admin"); // "User-Admin"
+ * normalizeFsName("test@example.com"); // "test-example.com"
+ * normalizeFsName("file~name"); // "file-name"
  * ```
  */
 export function normalizeFsName(name: string): string {
-  return name.replace(/[\\/:*?"<>|]/g, "-");
+  return name.replace(/[^A-Za-z0-9._-]/g, "-");
 }
