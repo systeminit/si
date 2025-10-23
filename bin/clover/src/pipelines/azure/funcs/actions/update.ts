@@ -33,15 +33,35 @@ async function main(component: Input): Promise<Output> {
   const url =
     `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
 
-  const updatePayload = cleanPayload(component.properties.domain);
+  // First, GET the current resource state
+  const getCurrentResponse = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
 
+  if (!getCurrentResponse.ok) {
+    const errorText = await getCurrentResponse.text();
+    throw new Error(
+      `Failed to get current resource state: ${getCurrentResponse.status} ${getCurrentResponse.statusText} - ${errorText}`,
+    );
+  }
+
+  const currentResource = await getCurrentResponse.json();
+
+  // Merge the desired changes with the current state
+  const updatePayload = cleanPayload(component.properties.domain);
+  const mergedPayload = _.merge({}, currentResource, updatePayload);
+
+  // PUT the complete merged resource definition
   const response = await fetch(url, {
-    method: "PATCH",
+    method: "PUT",
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(updatePayload),
+    body: JSON.stringify(mergedPayload),
   });
 
   if (!response.ok) {
