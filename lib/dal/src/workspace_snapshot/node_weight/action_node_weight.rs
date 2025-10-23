@@ -14,6 +14,7 @@ use si_events::{
     ulid::Ulid,
 };
 use si_split_graph::SplitGraphNodeId;
+use telemetry::prelude::*;
 
 use super::traits::CorrectTransformsResult;
 use crate::{
@@ -128,104 +129,169 @@ impl CorrectTransforms for ActionNodeWeight {
     fn correct_transforms(
         &self,
         graph: &WorkspaceSnapshotGraphVCurrent,
-        mut updates: Vec<Update>,
+        updates: Vec<Update>,
         _from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update>> {
-        // An action's Use edge should be exclusive for both the component and
-        // the prototype. The generic exclusive edge logic assumes there can be
-        // one and only one edge of the given kind, so we have to do a custom
-        // implementation here for actions, since they should have just one use
-        // edge to a component and one use edge to a prototype. This is simpler
-        // than rewriting all the graphs to have distinct edge kinds for action
-        // prototypes and/or the components the action is for.
-
-        if graph.get_node_index_by_id_opt(self.id).is_none() {
-            return Ok(updates);
+        match graph.get_node_index_by_id_opt(self.id) {
+            Some(idx) => correct_transforms_already_exists(self, idx, graph, updates),
+            None => correct_transforms_not_yet_exists(self.id(), graph, updates),
         }
-
-        struct ActionUseTargets {
-            component: Option<NodeId>,
-            prototype: Option<NodeId>,
-        }
-
-        let mut removal_set = HashSet::new();
-        let mut new_action_use_targets = ActionUseTargets {
-            component: None,
-            prototype: None,
-        };
-
-        for update in &updates {
-            match update {
-                Update::NewEdge {
-                    source,
-                    destination,
-                    edge_weight,
-                } if source.id == self.id().into()
-                    && EdgeWeightKindDiscriminants::Use == edge_weight.kind().into() =>
-                {
-                    removal_set.remove(&destination.id);
-                    match destination.node_weight_kind {
-                        NodeWeightDiscriminants::ActionPrototype => {
-                            new_action_use_targets.prototype = Some(destination.id);
-                        }
-                        NodeWeightDiscriminants::Component => {
-                            new_action_use_targets.component = Some(destination.id);
-                        }
-                        // If there's a use to some other thing, ignore it.
-                        // Maybe some more functionality was added. What we care
-                        // about is component and prototype targets
-                        _ => {}
-                    }
-                }
-                Update::RemoveEdge {
-                    source,
-                    destination,
-                    edge_kind,
-                } if source.id == self.id().into()
-                    && EdgeWeightKindDiscriminants::Use == *edge_kind =>
-                {
-                    removal_set.insert(destination.id);
-                }
-                _ => {}
-            }
-        }
-
-        if let Some(node_idx) = graph.get_node_index_by_id_opt(self.id) {
-            updates.extend(
-                graph
-                    .edges_directed(node_idx, Outgoing)
-                    .filter(|edge_ref| {
-                        EdgeWeightKindDiscriminants::Use == edge_ref.weight().kind().into()
-                    })
-                    .filter_map(|edge_ref| {
-                        graph.get_node_weight_opt(edge_ref.target()).and_then(
-                            |destination_weight| {
-                                let should_remove = match destination_weight {
-                                    NodeWeight::ActionPrototype(_) => {
-                                        new_action_use_targets.prototype
-                                    }
-                                    NodeWeight::Component(_) => new_action_use_targets.component,
-                                    _ => None,
-                                }
-                                .map(|new_destination_id| {
-                                    new_destination_id != destination_weight.id().into()
-                                        && !removal_set.contains(&destination_weight.id().into())
-                                })
-                                .unwrap_or(false);
-
-                                should_remove.then_some(Update::RemoveEdge {
-                                    source: self.into(),
-                                    destination: destination_weight.into(),
-                                    edge_kind: EdgeWeightKindDiscriminants::Use,
-                                })
-                            },
-                        )
-                    }),
-            )
-        }
-
-        Ok(updates)
     }
+}
+
+// An action's Use edge should be exclusive for both the component and
+// the prototype. The generic exclusive edge logic assumes there can be
+// one and only one edge of the given kind, so we have to do a custom
+// implementation here for actions, since they should have just one use
+// edge to a component and one use edge to a prototype. This is simpler
+// than rewriting all the graphs to have distinct edge kinds for action
+// prototypes and/or the components the action is for.
+fn correct_transforms_already_exists(
+    action_node_weight: &ActionNodeWeight,
+    node_index: NodeIndex,
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    mut updates: Vec<Update>,
+) -> CorrectTransformsResult<Vec<Update>> {
+    struct ActionUseTargets {
+        component: Option<NodeId>,
+        prototype: Option<NodeId>,
+    }
+
+    let mut removal_set = HashSet::new();
+    let mut new_action_use_targets = ActionUseTargets {
+        component: None,
+        prototype: None,
+    };
+
+    for update in &updates {
+        match update {
+            Update::NewEdge {
+                source,
+                destination,
+                edge_weight,
+            } if source.id == action_node_weight.id().into()
+                && EdgeWeightKindDiscriminants::Use == edge_weight.kind().into() =>
+            {
+                removal_set.remove(&destination.id);
+                match destination.node_weight_kind {
+                    NodeWeightDiscriminants::ActionPrototype => {
+                        new_action_use_targets.prototype = Some(destination.id);
+                    }
+                    NodeWeightDiscriminants::Component => {
+                        new_action_use_targets.component = Some(destination.id);
+                    }
+                    // If there's a use to some other thing, ignore it.
+                    // Maybe some more functionality was added. What we care
+                    // about is component and prototype targets
+                    _ => {}
+                }
+            }
+            Update::RemoveEdge {
+                source,
+                destination,
+                edge_kind,
+            } if source.id == action_node_weight.id().into()
+                && EdgeWeightKindDiscriminants::Use == *edge_kind =>
+            {
+                removal_set.insert(destination.id);
+            }
+            _ => {}
+        }
+    }
+
+    updates.extend(
+        graph
+            .edges_directed(node_index, Outgoing)
+            .filter(|edge_ref| EdgeWeightKindDiscriminants::Use == edge_ref.weight().kind().into())
+            .filter_map(|edge_ref| {
+                graph
+                    .get_node_weight_opt(edge_ref.target())
+                    .and_then(|destination_weight| {
+                        let should_remove = match destination_weight {
+                            NodeWeight::ActionPrototype(_) => new_action_use_targets.prototype,
+                            NodeWeight::Component(_) => new_action_use_targets.component,
+                            _ => None,
+                        }
+                        .map(|new_destination_id| {
+                            new_destination_id != destination_weight.id().into()
+                                && !removal_set.contains(&destination_weight.id().into())
+                        })
+                        .unwrap_or(false);
+
+                        should_remove.then_some(Update::RemoveEdge {
+                            source: action_node_weight.into(),
+                            destination: destination_weight.into(),
+                            edge_kind: EdgeWeightKindDiscriminants::Use,
+                        })
+                    })
+            }),
+    );
+
+    Ok(updates)
+}
+
+fn correct_transforms_not_yet_exists(
+    id: Ulid,
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    mut updates: Vec<Update>,
+) -> CorrectTransformsResult<Vec<Update>> {
+    let mut destinations_that_do_not_exist: HashSet<Ulid> = HashSet::new();
+    let mut all_new_nodes = HashSet::new();
+    let mut indices_for_new_node_updates_for_ourself = Vec::new();
+
+    for (idx, update) in updates.iter().enumerate() {
+        match update {
+            Update::NewEdge {
+                source,
+                destination,
+                edge_weight,
+            } if source.id == id.into()
+                && EdgeWeightKindDiscriminants::Use == edge_weight.kind().into() =>
+            {
+                match destination.node_weight_kind {
+                    NodeWeightDiscriminants::ActionPrototype
+                    | NodeWeightDiscriminants::Component => {
+                        if graph.get_node_index_by_id_opt(destination.id).is_none() {
+                            destinations_that_do_not_exist.insert(destination.id.into());
+                        }
+                    }
+                    // If there's a use to some other thing, ignore it.
+                    // Maybe some more functionality was added. What we care
+                    // about is component and prototype targets
+                    _ => {}
+                }
+            }
+            Update::NewNode { node_weight } => {
+                all_new_nodes.insert(node_weight.id());
+
+                // This should happen one or zero times.
+                if node_weight.id() == id {
+                    indices_for_new_node_updates_for_ourself.push(idx);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // If the destinations that no longer exist will not be included, then we need to remove the
+    // update for ourself.
+    if !destinations_that_do_not_exist.is_subset(&all_new_nodes) {
+        if indices_for_new_node_updates_for_ourself.len() > 1 {
+            warn!(
+                action_id=%id,
+                update_count=%indices_for_new_node_updates_for_ourself.len(),
+                "unexpected multiple new node updates for ourself (legacy graph)"
+            );
+        }
+
+        // Reverse the indices vec to remove from the back first.
+        indices_for_new_node_updates_for_ourself.reverse();
+        for idx in indices_for_new_node_updates_for_ourself {
+            updates.remove(idx);
+        }
+    }
+
+    Ok(updates)
 }
 
 impl
@@ -238,90 +304,165 @@ impl
     fn correct_transforms(
         &self,
         graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
-        mut updates: Vec<
-            si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
-        >,
+        updates: Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
         _from_different_change_set: bool,
     ) -> split_snapshot::corrections::CorrectTransformsResult<
         Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
     > {
-        if !graph.node_exists(self.id()) {
-            return Ok(updates);
+        if graph.node_exists(self.id()) {
+            split_correct_transforms_already_exists(self.id(), graph, updates)
+        } else {
+            split_correct_transforms_not_yet_exists(self.id(), graph, updates)
         }
+    }
+}
 
-        // An action's Use edge should be exclusive for both the component and
-        // the prototype. The generic exclusive edge logic assumes there can be
-        // one and only one edge of the given kind, so we have to do a custom
-        // implementation here for actions, since they should have just one use
-        // edge to a component and one use edge to a prototype. This is simpler
-        // than rewriting all the graphs to have distinct edge kinds for action
-        // prototypes and/or the components the action is for.
+// An action's Use edge should be exclusive for both the component and
+// the prototype. The generic exclusive edge logic assumes there can be
+// one and only one edge of the given kind, so we have to do a custom
+// implementation here for actions, since they should have just one use
+// edge to a component and one use edge to a prototype. This is simpler
+// than rewriting all the graphs to have distinct edge kinds for action
+// prototypes and/or the components the action is for.
+fn split_correct_transforms_already_exists(
+    id: Ulid,
+    graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+    mut updates: Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+) -> split_snapshot::corrections::CorrectTransformsResult<
+    Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+> {
+    struct ActionUseTargets {
+        component: Option<SplitGraphNodeId>,
+        prototype: Option<SplitGraphNodeId>,
+    }
 
-        struct ActionUseTargets {
-            component: Option<SplitGraphNodeId>,
-            prototype: Option<SplitGraphNodeId>,
+    let mut new_action_use_targets = ActionUseTargets {
+        component: None,
+        prototype: None,
+    };
+
+    let mut removal_set = BTreeSet::new();
+
+    for update in &updates {
+        match update {
+            si_split_graph::Update::NewEdge { destination, .. }
+                if update.source_has_id(id)
+                    && update.is_of_custom_edge_kind(EdgeWeightKindDiscriminants::Use) =>
+            {
+                removal_set.remove(&destination.id);
+                match destination.custom_kind {
+                    Some(NodeWeightDiscriminants::ActionPrototype) => {
+                        new_action_use_targets.prototype = Some(destination.id);
+                    }
+                    Some(NodeWeightDiscriminants::Component) => {
+                        new_action_use_targets.component = Some(destination.id);
+                    }
+                    _ => {}
+                }
+            }
+            si_split_graph::Update::RemoveEdge { destination, .. }
+                if update.source_has_id(id)
+                    && update.is_of_custom_edge_kind(EdgeWeightKindDiscriminants::Use) =>
+            {
+                removal_set.insert(&destination.id);
+            }
+            _ => {}
         }
+    }
 
-        let mut new_action_use_targets = ActionUseTargets {
-            component: None,
-            prototype: None,
-        };
+    let removals: Vec<_> = graph
+        .outgoing_edges(id, EdgeWeightKindDiscriminants::Use)?
+        .filter_map(|edge_ref| {
+            graph
+                .node_weight(edge_ref.target())
+                .and_then(|destination_weight| {
+                    match destination_weight {
+                        NodeWeight::ActionPrototype(_) => new_action_use_targets.prototype,
+                        NodeWeight::Component(_) => new_action_use_targets.component,
+                        _ => None,
+                    }
+                    .is_some_and(|new_destination_id| {
+                        new_destination_id != edge_ref.target()
+                            && !removal_set.contains(&new_destination_id)
+                    })
+                    .then_some(edge_ref.triplet())
+                })
+        })
+        .collect();
 
-        let mut removal_set = BTreeSet::new();
+    for (source_id, kind, target_id) in removals {
+        updates.extend(si_split_graph::Update::remove_edge_updates(
+            graph, source_id, kind, target_id,
+        )?);
+    }
 
-        for update in &updates {
-            match update {
-                si_split_graph::Update::NewEdge { destination, .. }
-                    if update.source_has_id(self.id())
-                        && update.is_of_custom_edge_kind(EdgeWeightKindDiscriminants::Use) =>
+    Ok(updates)
+}
+
+// TODO(nick,zack): this needs to be re-tested when rolling out split graph. The legacy graph
+// implementation for the similarly named function basically needs to be ported here. At the time
+// of writing, the port was complete, but was untested due to other errors related to using split
+// graph in integration tests.
+fn split_correct_transforms_not_yet_exists(
+    id: Ulid,
+    graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+    mut updates: Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+) -> split_snapshot::corrections::CorrectTransformsResult<
+    Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+> {
+    let mut destinations_that_do_not_exist: HashSet<Ulid> = HashSet::new();
+    let mut all_new_nodes = HashSet::new();
+    let mut indices_for_new_node_updates_for_ourself = Vec::new();
+
+    for (idx, update) in updates.iter().enumerate() {
+        match update {
+            si_split_graph::Update::NewEdge { .. }
+                if update.source_has_id(id)
+                    && update.is_of_custom_edge_kind(EdgeWeightKindDiscriminants::Use) =>
+            {
+                if update
+                    .destination_is_of_custom_node_kind(NodeWeightDiscriminants::ActionPrototype)
+                    || update.destination_is_of_custom_node_kind(NodeWeightDiscriminants::Component)
                 {
-                    removal_set.remove(&destination.id);
-                    match destination.custom_kind {
-                        Some(NodeWeightDiscriminants::ActionPrototype) => {
-                            new_action_use_targets.prototype = Some(destination.id);
+                    if let Some(destination_id) = update.destination_id() {
+                        if !graph.node_exists(destination_id) {
+                            destinations_that_do_not_exist.insert(destination_id);
                         }
-                        Some(NodeWeightDiscriminants::Component) => {
-                            new_action_use_targets.component = Some(destination.id);
-                        }
-                        _ => {}
                     }
                 }
-                si_split_graph::Update::RemoveEdge { destination, .. }
-                    if update.source_has_id(self.id())
-                        && update.is_of_custom_edge_kind(EdgeWeightKindDiscriminants::Use) =>
-                {
-                    removal_set.insert(&destination.id);
-                }
-                _ => {}
             }
+            si_split_graph::Update::NewNode {
+                node_weight,
+                subgraph_root_id: _,
+            } => {
+                all_new_nodes.insert(node_weight.id());
+
+                // This should happen one or zero times.
+                if node_weight.id() == id {
+                    indices_for_new_node_updates_for_ourself.push(idx);
+                }
+            }
+            _ => {}
         }
-
-        let removals: Vec<_> = graph
-            .outgoing_edges(self.id(), EdgeWeightKindDiscriminants::Use)?
-            .filter_map(|edge_ref| {
-                graph
-                    .node_weight(edge_ref.target())
-                    .and_then(|destination_weight| {
-                        match destination_weight {
-                            NodeWeight::ActionPrototype(_) => new_action_use_targets.prototype,
-                            NodeWeight::Component(_) => new_action_use_targets.component,
-                            _ => None,
-                        }
-                        .is_some_and(|new_destination_id| {
-                            new_destination_id != edge_ref.target()
-                                && !removal_set.contains(&new_destination_id)
-                        })
-                        .then_some(edge_ref.triplet())
-                    })
-            })
-            .collect();
-
-        for (source_id, kind, target_id) in removals {
-            updates.extend(si_split_graph::Update::remove_edge_updates(
-                graph, source_id, kind, target_id,
-            )?);
-        }
-
-        Ok(updates)
     }
+
+    // If the destinations that no longer exist will not be included, then we need to remove the
+    // update for ourself.
+    if !destinations_that_do_not_exist.is_subset(&all_new_nodes) {
+        if indices_for_new_node_updates_for_ourself.len() > 1 {
+            warn!(
+                action_id=%id,
+                update_count=%indices_for_new_node_updates_for_ourself.len(),
+                "unexpected multiple new node updates for ourself (split graph)"
+            );
+        }
+
+        // Reverse the indices vec to remove from the back first.
+        indices_for_new_node_updates_for_ourself.reverse();
+        for idx in indices_for_new_node_updates_for_ourself {
+            updates.remove(idx);
+        }
+    }
+
+    Ok(updates)
 }
