@@ -1382,6 +1382,13 @@
       "EXTERNAL"
     ]
   },
+  "The launch type on which to run your service. For more information, see [Amazon ECS Launch Types](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html) in the *Amazon Elastic Container Service Developer Guide*.\n  If you want to use Managed Instances, you must use the ``capacityProviderStrategy`` request parameter": {
+    "enum": [
+      "EC2",
+      "FARGATE",
+      "EXTERNAL"
+    ]
+  },
   "The launch type that new tasks in the task set will use. For more information, see https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_types.html in the Amazon Elastic Container Service Developer Guide. ": {
     "enum": [
       "EC2",
@@ -10581,6 +10588,9 @@
     "enum": null
   },
   "The POSIX user ID used for all file system operations using this access point.": {
+    "enum": null
+  },
+  "The Pipeline Role (ARN) for the pipeline.": {
     "enum": null
   },
   "The Python version being used to execute a Python shell job.": {
