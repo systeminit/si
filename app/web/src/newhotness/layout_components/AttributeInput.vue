@@ -244,7 +244,9 @@
         <span v-if="props.validation?.message">
           {{ props.validation.message }}
         </span>
-        <span v-else-if="hasError"> `{{ errorValue }}` failed to save </span>
+        <span v-else-if="hasError">
+          {{ errorValue }}
+        </span>
       </div>
 
       <!-- socket connections incompatibility message -->
@@ -367,7 +369,7 @@
               )
             "
           >
-            `{{ errorValue }}` failed to save
+            {{ errorValue }}
           </div>
 
           <!-- raw value selection area -->
@@ -895,10 +897,10 @@ const attrData = computed<AttrData>(() => {
 const errorContext = inject<ComputedRef<AttributeErrors>>("ATTRIBUTE_ERRORS");
 assertIsDefined<ComputedRef<AttributeErrors>>(errorContext);
 
-const errorValue = computed(() => {
-  const key = `${props.component.id}-${props.path}`;
-  return errorContext.value.saveErrors.value[key];
-});
+const errorKey = computed(() => `${props.component.id}-${props.path}`);
+const errorValue = computed(
+  () => errorContext.value.saveErrors.value[errorKey.value],
+);
 const hasError = computed(() => {
   return !!errorValue.value;
 });
@@ -1255,6 +1257,9 @@ const resetEverything = () => {
   inputTouched.value = false;
   showAllPossibleConnections.value = false;
   cancelTabBehavior.value = false;
+  if (errorValue.value) {
+    delete errorContext.value.saveErrors.value[errorKey.value];
+  }
 };
 
 const openInput = () => {

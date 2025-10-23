@@ -30,7 +30,7 @@
     >
       <Icon
         :name="open ? 'chevron--down' : 'chevron--right'"
-        class="group-hover/header:scale-125"
+        class="group-hover/header:scale-125 flex-none"
       />
       <slot name="header" />
     </dt>

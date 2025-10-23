@@ -338,12 +338,22 @@ const save = async (
   value = value?.toString() ?? "";
   const payload = makeSavePayload(path, value, propKind, connectingComponentId);
 
-  const { req, newChangeSetId } =
+  const { req, newChangeSetId, errorMessage } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 
   const key = `${props.component.id}-${path}`;
   if (!saveApi.ok(req)) {
-    saveErrors.value[key] = value;
+    if (
+      req.status === 400 &&
+      errorMessage?.includes("Type mismatch on subscription")
+    ) {
+      // Bad request error due to type mismatch
+      saveErrors.value[key] = "Subscription failed due to type mismatch.";
+    } else {
+      // All other errors go here
+      saveErrors.value[key] = `\`${value}\` failed to save`;
+    }
+    removeSubscriptionMutation.mutate(path);
   } else {
     delete saveErrors.value[key];
   }
