@@ -44,8 +44,8 @@
     >
       <Icon
         :name="getAssetIcon(component.schemaCategory)"
-        size="md"
-        class="place-self-center my-auto mt-1"
+        size="sm"
+        class="place-self-center my-auto mt-[7px]"
       />
       <h2>
         <TruncateWithTooltip class="pb-xs text-sm">
@@ -113,7 +113,11 @@
           <div v-else class="text-sm">Resource</div>
         </template>
         <template v-else-if="rowContent === 'diff'">
-          <Icon name="tilde" class="text-warning-500" size="sm" />
+          <Icon
+            name="tilde-circle"
+            :class="themeClasses('text-warning-500', 'text-warning-300')"
+            size="sm"
+          />
           <div class="text-sm">Diff</div>
           <TextPill
             v-if="component.diffStatus === 'Added'"
@@ -154,7 +158,7 @@
       <template v-if="!props.hideConnections">
         <hr :class="themeClasses('border-neutral-400', 'border-neutral-600')" />
         <li>
-          <Icon name="output-connection" size="sm" />
+          <Icon name="input-connection" size="sm" />
           <div class="text-sm">Incoming</div>
           <PillCounter
             :count="component.inputCount"
@@ -163,7 +167,7 @@
           />
         </li>
         <li>
-          <Icon name="input-connection" size="sm" />
+          <Icon name="output-connection" size="sm" />
           <div class="text-sm">Outgoing</div>
           <PillCounter :count="outgoing" size="sm" class="ml-auto" />
         </li>

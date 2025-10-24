@@ -41,7 +41,7 @@
         />
       </div>
       <div class="scrollable grow">
-        <ConnectionsPanel :component="selectedComponent!" noEmptyState />
+        <ConnectionsPanel :component="selectedComponent!" inMap />
       </div>
     </div>
 

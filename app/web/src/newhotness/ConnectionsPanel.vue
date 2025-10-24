@@ -3,7 +3,7 @@
     v-if="incoming.length > 0 || outgoing.length > 0"
     :class="
       clsx(
-        'border rounded pb-sm',
+        inMap && 'border rounded pb-sm',
         themeClasses(
           'border-neutral-400 bg-white',
           'border-neutral-600 bg-neutral-900',
@@ -18,10 +18,9 @@
       <ConnectionLayout label="Outgoing" :connections="outgoing" />
     </template>
   </div>
-  <!-- TODO(Wendy) - separate empty states for input and output connections? -->
   <EmptyState
-    v-else-if="!noEmptyState"
-    icon="input-connection"
+    v-else-if="!inMap"
+    icon="output-connection"
     text="No connections yet"
   />
 </template>
@@ -42,7 +41,7 @@ import EmptyState from "./EmptyState.vue";
 const props = defineProps<{
   component: ComponentInList | BifrostComponent;
   connections?: IncomingConnections;
-  noEmptyState?: boolean;
+  inMap?: boolean;
 }>();
 
 const connectionsGetter = useConnections();
