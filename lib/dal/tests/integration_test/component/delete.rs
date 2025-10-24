@@ -199,6 +199,13 @@ async fn delete_multiple_components(ctx: &mut DalContext) -> Result<()> {
     )
     .await?;
 
+    // Remove any pending actions before applying to base to prevent
+    // component_still_on_head from getting a resource via Create action
+    let action_ids = Action::all_ids(ctx).await?;
+    for action_id in action_ids {
+        Action::remove_by_id(ctx, action_id).await?;
+    }
+
     ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
 
     ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
