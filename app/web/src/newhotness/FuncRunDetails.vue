@@ -7,6 +7,7 @@
     :funcRun="funcRun"
     :status="funcRunStatus(funcRun, managementFuncJobState?.state) || ''"
     :logText="logText"
+    :logsTooLarge="logsTooLarge"
     :errorHint="
       successWithFailedOperations
         ? 'The management function ran successfully, but some component operations failed.'
@@ -280,6 +281,10 @@ const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
 });
 
 const funcRunLogs = computed(() => funcRunLogsQuery.value);
+
+const logsTooLarge = computed(
+  () => (funcRunLogs.value?.logs.length ?? 0) > 175,
+);
 
 // Format logs as text for CodeViewer
 const logText = computed<string>(() => {

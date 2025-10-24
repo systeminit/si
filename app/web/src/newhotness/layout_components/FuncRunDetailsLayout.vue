@@ -80,14 +80,19 @@
         :live="!!isLive && funcRun?.state === 'Running'"
         disableCollapse
       >
-        <CodeViewer
-          v-if="logText"
-          ref="logsContainer"
-          :code="logText"
-          language="log"
-          allowCopy
-          forceLineNumbers
-        />
+        <template v-if="logText">
+          <pre v-if="logsTooLarge">
+            {{ logText }}
+          </pre>
+          <CodeViewer
+            v-else
+            ref="logsContainer"
+            :code="logText"
+            language="log"
+            allowCopy
+            forceLineNumbers
+          />
+        </template>
         <div v-else class="text-neutral-400 italic text-xs p-xs">
           No logs available
         </div>
@@ -120,6 +125,7 @@ const props = defineProps<{
   noLogs?: boolean;
   status: string;
   logText: string;
+  logsTooLarge: boolean;
   isLive?: boolean;
   errorHint?: string;
   errorMessageRaw?: string;
