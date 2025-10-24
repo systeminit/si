@@ -2546,10 +2546,12 @@ impl Component {
 
         let queued_for_old_component = Action::find_for_component_id(ctx, old_component_id).await?;
         let available_for_new_component =
-            ActionPrototype::for_variant(ctx, new_schema_variant_id).await?;
+            ActionPrototype::list_for_schema_and_variant_id(ctx, new_schema_variant_id).await?;
         for existing_queued in queued_for_old_component {
             let action = Action::get_by_id(ctx, existing_queued).await?;
             let action_prototype_id = Action::prototype_id(ctx, existing_queued).await?;
+            let existing_queued_prototype =
+                ActionPrototype::get_by_id(ctx, action_prototype_id).await?;
             // what do we do about the various states?
             // maybe you shouldn't upgrade a component if an action
             // is dispatched or running for the current?
@@ -2563,8 +2565,14 @@ impl Component {
                             ActionPrototype::func_id(ctx, available_action_prototype.id()).await?;
                         let available_func = Func::get_by_id(ctx, available_func_id).await?;
 
-                        if available_func.name == queued_func.name
-                            && available_func.kind == queued_func.kind
+                        // check if the create/update/refresh/delete action
+                        // should be replaced by an overlay
+                        // otherwise enqueue the same func with the same name and kind
+                        if (available_func.kind == queued_func.kind
+                            && existing_queued_prototype.kind == available_action_prototype.kind
+                            && existing_queued_prototype.kind != ActionKind::Manual)
+                            || (available_func.name == queued_func.name
+                                && available_func.kind == queued_func.kind)
                         {
                             Action::new(
                                 ctx,

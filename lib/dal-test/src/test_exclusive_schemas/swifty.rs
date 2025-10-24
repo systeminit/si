@@ -168,6 +168,7 @@ pub(crate) async fn migrate_test_exclusive_schema_swifty(
                 .action_func(
                     ActionFuncSpec::builder()
                         .kind(ActionKind::Create)
+                        .name(Some("test:createActionSwifty".to_string()))
                         .func_unique_id(&create_action_func.unique_id)
                         .build()?,
                 )
