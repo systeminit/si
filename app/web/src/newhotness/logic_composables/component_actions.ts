@@ -17,6 +17,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import {
   bifrost,
+  bifrostExists,
   useMakeArgs,
   useMakeArgsForHead,
   useMakeKey,
@@ -74,12 +75,12 @@ export const useComponentActions = (
     EntityKind.ComponentInList,
     component.value?.id,
   );
-  const componentOnHeadRaw = useQuery<ComponentInList | null>({
+  const componentOnHeadRaw = useQuery({
     enabled: computed(() => ctx.queriesEnabled.value && !!component.value),
     queryKey: queryKeyForComponentOnHead,
     queryFn: async () => {
       if (!component.value) return null;
-      return await bifrost<ComponentInList>(
+      return await bifrostExists(
         makeArgsForHead(EntityKind.ComponentInList, component.value.id),
       );
     },
