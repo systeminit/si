@@ -305,15 +305,66 @@ impl WorkspaceSnapshotGraphV4 {
         self.get_node_index_by_id(node_id)
     }
 
-    fn add_edge_inner(
+    fn check_would_create_cycle(
+        &self,
+        from_node_index: NodeIndex,
+        to_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        // If there is already an edge from a to b, it's impossible to create a new cycle
+        if self
+            .graph
+            .find_edge(from_node_index, to_node_index)
+            .is_some()
+        {
+            return Ok(());
+        }
+
+        if algo::has_path_connecting(&self.graph, to_node_index, from_node_index, None) {
+            return Err(WorkspaceSnapshotGraphError::CreateGraphCycle);
+        }
+
+        Ok(())
+    }
+
+    pub fn add_edge_with_cycle_check(
         &mut self,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
-        cycle_check: bool,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        if cycle_check {
-            self.add_temp_edge_cycle_check(from_node_index, edge_weight.clone(), to_node_index)?;
+        self.check_would_create_cycle(from_node_index, to_node_index)?;
+        self.add_edge(from_node_index, edge_weight, to_node_index)
+    }
+
+    pub fn add_edge_between_ids(
+        &mut self,
+        from_node_id: Ulid,
+        edge_weight: EdgeWeight,
+        to_node_id: Ulid,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let from_node_index = *self
+            .node_index_by_id
+            .get(&from_node_id)
+            .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWithIdNotFound(from_node_id))?;
+        let to_node_index = *self
+            .node_index_by_id
+            .get(&to_node_id)
+            .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWithIdNotFound(to_node_id))?;
+
+        self.add_edge_with_cycle_check(from_node_index, edge_weight, to_node_index)
+    }
+
+    pub fn add_edge(
+        &mut self,
+        from_node_index: NodeIndex,
+        edge_weight: EdgeWeight,
+        to_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        // Temporarily add the edge to the existing tree to see if it would create a cycle.
+        // Configured to run only in tests because it has a major perf impact otherwise
+        #[cfg(test)]
+        {
+            self.check_would_create_cycle(from_node_index, to_node_index)?;
         }
 
         self.touch_node(from_node_index);
@@ -335,88 +386,6 @@ impl WorkspaceSnapshotGraphV4 {
         }
 
         Ok(())
-    }
-
-    fn add_temp_edge_cycle_check(
-        &mut self,
-        from_node_index: NodeIndex,
-        edge_weight: EdgeWeight,
-        to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        let temp_edge = self
-            .graph
-            .add_edge(from_node_index, to_node_index, edge_weight.clone());
-
-        let would_create_a_cycle = !self.is_acyclic_directed();
-        self.graph.remove_edge(temp_edge);
-
-        if would_create_a_cycle {
-            // if you want to find out how the two nodes are already connected,
-            // this will give you that info..
-
-            // let paths: Vec<Vec<NodeIndex>> = petgraph::algo::all_simple_paths(
-            //     &self.graph,
-            //     to_node_index,
-            //     from_node_index,
-            //     0,
-            //     None,
-            // )
-            // .collect();
-
-            // for path in paths {
-            //     for node_index in path {
-            //         let node_weight = self.get_node_weight(node_index).expect("should exist");
-            //         dbg!(node_weight);
-            //     }
-            // }
-
-            Err(WorkspaceSnapshotGraphError::CreateGraphCycle)
-        } else {
-            Ok(())
-        }
-    }
-
-    pub fn add_edge_with_cycle_check(
-        &mut self,
-        from_node_index: NodeIndex,
-        edge_weight: EdgeWeight,
-        to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        self.add_edge_inner(from_node_index, edge_weight, to_node_index, true)
-    }
-
-    pub fn add_edge_between_ids(
-        &mut self,
-        from_node_id: Ulid,
-        edge_weight: EdgeWeight,
-        to_node_id: Ulid,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        let from_node_index = *self
-            .node_index_by_id
-            .get(&from_node_id)
-            .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWithIdNotFound(from_node_id))?;
-        let to_node_index = *self
-            .node_index_by_id
-            .get(&to_node_id)
-            .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWithIdNotFound(to_node_id))?;
-
-        self.add_edge_inner(from_node_index, edge_weight, to_node_index, true)
-    }
-
-    pub fn add_edge(
-        &mut self,
-        from_node_index: NodeIndex,
-        edge_weight: EdgeWeight,
-        to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        // Temporarily add the edge to the existing tree to see if it would create a cycle.
-        // Configured to run only in tests because it has a major perf impact otherwise
-        #[cfg(test)]
-        {
-            self.add_temp_edge_cycle_check(from_node_index, edge_weight.clone(), to_node_index)?;
-        }
-
-        self.add_edge_inner(from_node_index, edge_weight, to_node_index, false)
     }
 
     pub fn remove_node_id(&mut self, id: impl Into<Ulid>) {
@@ -1819,12 +1788,7 @@ impl WorkspaceSnapshotGraphV4 {
                             ensure_only_one_default_use_edge(self, source_idx, destination_idx)?;
                         }
 
-                        self.add_edge_inner(
-                            source_idx,
-                            edge_weight.clone(),
-                            destination_idx,
-                            false,
-                        )?;
+                        self.add_edge(source_idx, edge_weight.clone(), destination_idx)?;
                     }
                 }
                 Update::RemoveEdge {
@@ -1959,11 +1923,10 @@ fn ensure_only_one_default_use_edge(
 
     for target_idx in existing_default_targets {
         graph.remove_edge(source_idx, target_idx, EdgeWeightKindDiscriminants::Use)?;
-        graph.add_edge_inner(
+        graph.add_edge(
             source_idx,
             EdgeWeight::new(EdgeWeightKind::new_use()),
             target_idx,
-            false,
         )?;
     }
 
