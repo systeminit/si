@@ -563,6 +563,43 @@ impl ActionPrototype {
         Ok(prototypes)
     }
 
+    /// Find the all action prototypes for a given variant. If a prototype is one of the
+    /// unique ones (`ActionKind::Create`, `ActionKind::Update`,
+    /// `ActionKind::Refresh`, `ActionKind::Destroy`), then look first for the
+    /// version defined at the schema level, and only look for the variant level
+    /// if no schema level prototype is found. For `ActionKind::Manual`, find
+    /// prototype at both levels.
+    /// Return all valid prototypes for the variant
+    pub async fn list_for_schema_and_variant_id(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> ActionPrototypeResult<Vec<Self>> {
+        let mut prototypes = vec![];
+        // grab all the different kinds, handling overlays if needed
+        let create_actions =
+            Self::find_by_kind_for_schema_or_variant(ctx, ActionKind::Create, schema_variant_id)
+                .await?;
+        prototypes.extend(create_actions);
+        let update_actions =
+            Self::find_by_kind_for_schema_or_variant(ctx, ActionKind::Update, schema_variant_id)
+                .await?;
+        prototypes.extend(update_actions);
+
+        let refresh_actions =
+            Self::find_by_kind_for_schema_or_variant(ctx, ActionKind::Refresh, schema_variant_id)
+                .await?;
+        prototypes.extend(refresh_actions);
+        let destroy_actions =
+            Self::find_by_kind_for_schema_or_variant(ctx, ActionKind::Destroy, schema_variant_id)
+                .await?;
+        prototypes.extend(destroy_actions);
+        let manual_actions =
+            Self::find_by_kind_for_schema_or_variant(ctx, ActionKind::Manual, schema_variant_id)
+                .await?;
+        prototypes.extend(manual_actions);
+        Ok(prototypes)
+    }
+
     pub async fn run(
         ctx: &DalContext,
         id: ActionPrototypeId,

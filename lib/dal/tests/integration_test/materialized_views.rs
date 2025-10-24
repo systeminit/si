@@ -57,11 +57,12 @@ async fn actions(ctx: &DalContext) -> Result<()> {
     let schema_variant_id = Component::schema_variant_id(ctx, component.id()).await?;
 
     // Gather what we need for the assertions after the component has been created.
-    let create_action_prototype = ActionPrototype::for_variant(ctx, schema_variant_id)
-        .await?
-        .into_iter()
-        .find(|ap| ap.kind == dal::action::prototype::ActionKind::Create)
-        .ok_or_eyre("could not find action prototype")?;
+    let create_action_prototype =
+        ActionPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id)
+            .await?
+            .into_iter()
+            .find(|ap| ap.kind == dal::action::prototype::ActionKind::Create)
+            .ok_or_eyre("could not find action prototype")?;
     let func_id = ActionPrototype::func_id(ctx, create_action_prototype.id()).await?;
     let func = Func::get_by_id(ctx, func_id).await?;
     let create_action_id =

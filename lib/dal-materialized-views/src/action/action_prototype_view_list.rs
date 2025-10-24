@@ -22,7 +22,7 @@ pub async fn assemble(
     let ctx = &ctx;
 
     let action_prototypes_for_variant =
-        ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+        ActionPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id).await?;
     let mut action_prototypes = Vec::with_capacity(action_prototypes_for_variant.len());
 
     for action_prototype in action_prototypes_for_variant {

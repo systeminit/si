@@ -30,12 +30,15 @@ use dal_test::{
         PropEditorTestView,
         attribute::value,
         change_set,
+        component,
         create_component_for_default_schema_name_in_default_view,
+        schema,
         schema::variant::{
             self,
             SchemaVariantKey,
         },
     },
+    prelude::ChangeSetTestHelpers,
     test,
 };
 use itertools::Itertools;
@@ -394,6 +397,86 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) -> Resu
     //
     assert_eq!(variant_one, component.schema_variant(ctx).await);
     assert_eq!(ComponentType::Component, component.get_type(ctx).await);
+
+    Ok(())
+}
+
+#[test]
+async fn upgrade_component_attaches_overlay_func(ctx: &mut DalContext) -> Result<()> {
+    let swifty = component::create(ctx, "swifty", "swifty").await?;
+    let actions = dal_materialized_views::action::action_view_list::assemble(ctx.clone()).await?;
+    // ensure there's one create action
+    assert!(actions.actions.len() == 1);
+    let initial_create_action = actions.actions.first().expect("has exactly one action");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let schema_id = schema::id(ctx, "swifty").await?;
+    let default_variant_id = Schema::default_variant_id(ctx, schema_id).await?;
+
+    let actions_pre_overlay = dal_materialized_views::action::action_prototype_view_list::assemble(
+        ctx.clone(),
+        default_variant_id,
+    )
+    .await?;
+    assert!(
+        actions_pre_overlay
+            .action_prototypes
+            .iter()
+            .any(|action| action.name == initial_create_action.name
+                && action.kind == initial_create_action.kind)
+    );
+
+    // Now create an action overlay
+    schema::create_overlay_action_func(
+        ctx,
+        "swifty",
+        "OVERLAY",
+        "function main() {}",
+        ActionKind::Create,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // now list actions for the variant, should see the new one now!
+    let actions_post_overlay =
+        dal_materialized_views::action::action_prototype_view_list::assemble(
+            ctx.clone(),
+            default_variant_id,
+        )
+        .await?;
+    assert!(
+        actions_post_overlay
+            .action_prototypes
+            .iter()
+            .any(|action| action.name == "OVERLAY")
+    );
+    // should NOT see the variant scoped create function
+    assert!(
+        !actions_post_overlay
+            .action_prototypes
+            .iter()
+            .any(|action| action.name == initial_create_action.name)
+    );
+    // now unlock the variant so we have an upgrade available
+    let unlocked =
+        VariantAuthoringClient::create_unlocked_variant_copy(ctx, default_variant_id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // now upgrade the component
+    Component::upgrade_to_new_variant(ctx, swifty, unlocked.id()).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // see the new create action is now enqueued
+    let actions_post_upgrade =
+        dal_materialized_views::action::action_view_list::assemble(ctx.clone()).await?;
+    assert!(actions_post_upgrade.actions.len() == 1);
+    assert!(
+        actions_post_upgrade
+            .actions
+            .iter()
+            .any(|action| action.name == "OVERLAY" && action.kind == ActionKind::Create.into())
+    );
 
     Ok(())
 }

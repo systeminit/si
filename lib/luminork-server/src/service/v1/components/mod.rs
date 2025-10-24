@@ -285,7 +285,9 @@ pub async fn get_component_functions(
     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
     let mut action_functions = Vec::new();
-    for action_prototype in ActionPrototype::for_variant(ctx, schema_variant_id).await? {
+    for action_prototype in
+        ActionPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id).await?
+    {
         let func_id = ActionPrototype::func_id(ctx, action_prototype.id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
 

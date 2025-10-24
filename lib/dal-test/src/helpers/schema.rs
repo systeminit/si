@@ -3,6 +3,7 @@ use dal::{
     FuncId,
     Schema,
     SchemaId,
+    action::prototype::ActionKind,
     func::authoring::FuncAuthoringClient,
 };
 
@@ -50,7 +51,7 @@ impl SchemaKey for &str {
     }
 }
 
-/// Create a management func overaly for the given schema
+/// Create a management func overlay for the given schema
 pub async fn create_overlay_management_func(
     ctx: &DalContext,
     schema: impl SchemaKey,
@@ -60,6 +61,26 @@ pub async fn create_overlay_management_func(
     let schema_id = SchemaKey::id(ctx, schema).await?;
     let func =
         FuncAuthoringClient::create_new_management_func(ctx, Some(name.into()), schema_id).await?;
+    FuncAuthoringClient::save_code(ctx, func.id, code.into()).await?;
+    Ok(func.id)
+}
+
+/// Create an action func overlay for the given schema
+pub async fn create_overlay_action_func(
+    ctx: &DalContext,
+    schema: impl SchemaKey,
+    name: impl Into<String>,
+    code: impl Into<String>,
+    kind: ActionKind,
+) -> Result<FuncId> {
+    let schema_id = SchemaKey::id(ctx, schema).await?;
+    let func = FuncAuthoringClient::create_new_action_func_overlay(
+        ctx,
+        Some(name.into()),
+        kind,
+        schema_id,
+    )
+    .await?;
     FuncAuthoringClient::save_code(ctx, func.id, code.into()).await?;
     Ok(func.id)
 }
