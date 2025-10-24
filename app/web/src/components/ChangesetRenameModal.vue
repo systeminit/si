@@ -18,7 +18,7 @@
       />
       <ErrorMessage
         v-if="apiErrorMessage"
-        class="rounded-md text-md px-xs py-xs"
+        class="rounded-md text-md p-xs"
         icon="x-circle"
         variant="block"
       >

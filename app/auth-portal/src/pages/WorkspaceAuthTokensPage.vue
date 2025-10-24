@@ -79,7 +79,7 @@
       <Modal ref="tokenDisplayModalRef" size="lg" title="Token Generated">
         <ErrorMessage
           v-if="tokenCopied"
-          class="rounded-md text-md px-xs py-xs"
+          class="rounded-md text-md p-xs"
           icon="check-circle"
           tone="success"
           variant="block"
@@ -90,7 +90,7 @@
         </ErrorMessage>
         <ErrorMessage
           v-else
-          class="rounded-md text-md px-xs py-xs"
+          class="rounded-md text-md p-xs"
           icon="alert-circle"
           tone="info"
           variant="block"

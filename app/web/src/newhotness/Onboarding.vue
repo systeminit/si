@@ -101,7 +101,7 @@
                 </div>
                 <!-- Secret Values -->
                 <ErrorMessage
-                  class="rounded-md text-md px-xs py-xs bg-action-900 mt-xs"
+                  class="rounded-md text-md p-xs bg-action-900 mt-xs"
                   tone="action"
                   variant="block"
                   noIcon
@@ -252,7 +252,7 @@
                   Copy this API token to use as part of the AI Agent setup
                 </span>
                 <ErrorMessage
-                  class="rounded-md text-md px-xs py-xs bg-action-900 my-xs"
+                  class="rounded-md text-md p-xs bg-action-900 my-xs"
                   icon="alert-circle"
                   tone="action"
                   variant="block"
@@ -267,7 +267,7 @@
                 />
                 <ErrorMessage
                   v-if="!isSkippable && !hasUsedAiAgent"
-                  class="rounded-md text-md px-xs py-xs bg-newhotness-warningdark my-xs"
+                  class="rounded-md text-md p-xs bg-newhotness-warningdark my-xs"
                   icon="loader"
                   tone="warning"
                   variant="block"

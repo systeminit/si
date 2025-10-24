@@ -34,7 +34,11 @@
 import * as _ from "lodash-es";
 import { computed, PropType } from "vue";
 import clsx from "clsx";
-import { getToneTextColorClass, Tones } from "../utils/color_utils";
+import {
+  getIconToneColorClass,
+  getToneTextColorClass,
+  Tones,
+} from "../utils/color_utils";
 import { getIconByName, IconNames } from "./icon_set";
 import { tw } from "../../utils/tw-utils";
 
@@ -58,6 +62,9 @@ const props = defineProps({
   tone: {
     type: String as PropType<Tones>,
   },
+  useNewIconTones: {
+    type: Boolean,
+  },
 });
 
 const iconSvgRaw = computed(() => {
@@ -69,7 +76,12 @@ const iconSvgRaw = computed(() => {
 });
 
 const toneColorClass = computed(() => {
-  return props.tone ? getToneTextColorClass(props.tone) : undefined;
+  if (props.tone) {
+    return props.useNewIconTones
+      ? getIconToneColorClass(props.tone)
+      : getToneTextColorClass(props.tone);
+  }
+  return undefined;
 });
 
 const computedRotate = computed(() => {

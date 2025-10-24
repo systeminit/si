@@ -8,7 +8,7 @@
       <div
         :class="
           clsx(
-            'flex flex-row items-center gap-sm flex-wrap border-l border-r border-b py-2xs -mx-2xs pl-xs pr-2xs',
+            'flex flex-row items-center gap-xs justify-between flex-wrap border-b py-2xs -mx-2xs px-xs',
             themeClasses('border-neutral-400', 'border-neutral-600'),
           )
         "

@@ -33,13 +33,17 @@
     <header
       :class="
         clsx(
-          'p-xs pr-sm',
+          'p-xs pr-md',
           !component.toDelete && [
             isHovering
               ? themeClasses('bg-neutral-300', 'bg-neutral-600')
               : themeClasses('bg-neutral-200', 'bg-neutral-800'),
           ],
+          noIconShowing && '!grid-cols-[20px_minmax(0,_1fr)]',
         )
+      "
+      :style="
+        noIconShowing ? `grid-template-areas: 'logo h2' 'logo h3';` : undefined
       "
     >
       <Icon
@@ -48,16 +52,33 @@
         class="place-self-center my-auto mt-[7px]"
       />
       <h2>
-        <TruncateWithTooltip class="pb-xs text-sm">
+        <TruncateWithTooltip
+          class="pb-xs text-sm"
+          :reverse="featureFlagsStore.REVERSE_TRUNCATION"
+        >
           {{ component.name }}
         </TruncateWithTooltip>
       </h2>
       <h3>
-        <TruncateWithTooltip class="pb-xs text-xs">
+        <TruncateWithTooltip
+          class="pb-xs text-xs"
+          :reverse="featureFlagsStore.REVERSE_TRUNCATION"
+        >
           {{ component.schemaName }}
         </TruncateWithTooltip>
       </h3>
-      <Icon v-if="component.toDelete" name="trash" size="md" />
+      <Icon
+        v-if="component.toDelete"
+        v-tooltip="'This component is set for deletion'"
+        name="trash"
+        size="sm"
+        :class="
+          clsx(
+            themeClasses('text-destructive-600', 'text-destructive-300'),
+            'mt-[7px]',
+          )
+        "
+      />
       <Icon
         v-else-if="component.hasSocketConnections"
         v-tooltip="'Incompatibility found'"
@@ -73,10 +94,11 @@
       />
       <Icon
         v-else-if="canBeUpgraded"
+        v-tooltip="'This component can be upgraded'"
         name="bolt-outline"
-        size="md"
+        size="sm"
         :class="
-          clsx(themeClasses('text-success-500', 'text-success-400'), 'mt-[5px]')
+          clsx(themeClasses('text-success-500', 'text-success-400'), 'mt-[7px]')
         "
       />
     </header>
@@ -217,6 +239,7 @@ import clsx from "clsx";
 import { computed, inject, ref, watch } from "vue";
 import { ComponentInList } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { getAssetIcon } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
 import ComponentTileQualificationStatus from "../ComponentTileQualificationStatus.vue";
@@ -232,6 +255,8 @@ const props = defineProps<{
   hasRunningActions?: boolean;
   pendingActionCounts?: Record<string, { count: number; hasFailed: boolean }>;
 }>();
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const isHovering = ref(false);
 const showSelectionCheckbox = computed(
@@ -304,6 +329,13 @@ const toggleSelection = (event: MouseEvent) => {
     emit("select", event);
   }
 };
+
+const noIconShowing = computed(
+  () =>
+    !props.component.toDelete &&
+    !props.component.hasSocketConnections &&
+    !canBeUpgraded.value,
+);
 
 watch(
   () => [explore.focusedComponentIdx, gridTile],

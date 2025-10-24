@@ -3,6 +3,7 @@
     :name="iconName"
     :tone="tone !== 'inherit' ? iconTone : undefined"
     :size="size"
+    :useNewIconTones="type === 'qualification' || type === 'management'"
   />
 </template>
 

@@ -8,8 +8,8 @@
       )
     "
   >
-    <Icon
-      :name="row.collapsed ? 'chevron--right' : 'chevron--down'"
+    <CollapseExpandChevron
+      :open="!row.collapsed"
       @click="emit('clickCollapse', row.title, !row.collapsed)"
     />
     <Icon
@@ -46,9 +46,8 @@
       )
     "
   >
-    <Icon
-      class="cursor-pointer hover:scale-125"
-      :name="row.collapsed ? 'chevron--right' : 'chevron--down'"
+    <CollapseExpandChevron
+      :open="!row.collapsed"
       @click="emit('clickCollapse', row.subKey, !row.collapsed)"
     />
     <Icon :name="getAssetIcon(row.schemaCategory)" size="md" />
@@ -122,7 +121,7 @@
     "
     @click="emit('clickCollapse', row.title, !row.collapsed)"
   >
-    <Icon :name="row.collapsed ? 'chevron--right' : 'chevron--down'" />
+    <CollapseExpandChevron :open="!row.collapsed" />
     <span class="select-none">
       {{ row.title }}
     </span>
@@ -334,6 +333,7 @@ import {
   Tones,
   TruncateWithTooltip,
   NewButton,
+  CollapseExpandChevron,
 } from "@si/vue-lib/design-system";
 import { tw } from "@si/vue-lib";
 import { useQuery } from "@tanstack/vue-query";
