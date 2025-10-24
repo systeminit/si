@@ -18,7 +18,6 @@ rust_library(
         "//third-party/rust:chrono",
         "//third-party/rust:derive_builder",
         "//third-party/rust:futures",
-        "//third-party/rust:once_cell",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",

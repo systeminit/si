@@ -7,7 +7,6 @@ rust_library(
         "//lib/nats-std:nats-std",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-id:si-id",
-        "//third-party/rust:rand",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
