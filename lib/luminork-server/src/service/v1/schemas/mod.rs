@@ -75,6 +75,7 @@ pub mod find_schema;
 pub mod get_default_variant;
 pub mod get_schema;
 pub mod get_variant;
+pub mod install_schema;
 pub mod list_schemas;
 pub mod search_schemas;
 pub mod unlock_schema;
@@ -229,6 +230,7 @@ pub fn routes() -> Router<AppState> {
             Router::new()
                 .route("/", get(get_schema::get_schema))
                 .route("/unlock", post(unlock_schema::unlock_schema))
+                .route("/install", post(install_schema::install_schema))
                 .nest(
                     "/variant",
                     Router::new()
