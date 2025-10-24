@@ -588,3 +588,47 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
         .collect_vec();
     assert_eq!(components.len(), 2);
 }
+
+#[test]
+async fn update_pointer_tracks_last_used(ctx: &mut DalContext) {
+    // Create change set with initial snapshot
+    let mut change_set = ChangeSet::fork_head(ctx, "test-tracking")
+        .await
+        .expect("could not fork head");
+    let old_snapshot = change_set.workspace_snapshot_address;
+
+    // Create a new snapshot to update to
+    let new_snapshot_address = ctx
+        .workspace_snapshot()
+        .expect("could not get workspace snapshot")
+        .write(ctx)
+        .await
+        .expect("could not write snapshot");
+
+    // Update pointer
+    change_set
+        .update_pointer(ctx, new_snapshot_address)
+        .await
+        .expect("could not update pointer");
+
+    // Verify old snapshot tracked in snapshot_last_used
+    let row = ctx
+        .txns()
+        .await
+        .expect("could not get txns")
+        .pg()
+        .query_opt(
+            "SELECT snapshot_id, last_used_at FROM snapshot_last_used WHERE snapshot_id = $1",
+            &[&old_snapshot.to_string()],
+        )
+        .await
+        .expect("could not query snapshot_last_used");
+
+    assert!(row.is_some(), "Old snapshot should be tracked");
+
+    let row = row.unwrap();
+    let snapshot_id: String = row
+        .try_get("snapshot_id")
+        .expect("could not get snapshot_id");
+    assert_eq!(snapshot_id, old_snapshot.to_string());
+}

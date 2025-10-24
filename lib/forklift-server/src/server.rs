@@ -14,6 +14,12 @@ use si_data_nats::{
     NatsClient,
     jetstream,
 };
+use si_data_pg::{
+    PgPool,
+    PgPoolConfig,
+};
+use si_layer_cache::event::LayeredEventClient;
+use snapshot_eviction::SnapshotEvictor;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -37,8 +43,14 @@ pub enum ServerError {
     Join(#[from] JoinError),
     #[error("naxum error: {0}")]
     Naxum(#[source] io::Error),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data_pg::PgPoolError),
     #[error("si data nats error: {0}")]
     SiDataNats(#[from] si_data_nats::Error),
+    #[error("ulid decode error: {0}")]
+    UlidDecode(#[from] ulid::DecodeError),
+    #[error("snapshot eviction error: {0}")]
+    SnapshotEviction(#[from] snapshot_eviction::SnapshotEvictionError),
 }
 
 type Result<T> = std::result::Result<T, ServerError>;
@@ -73,6 +85,7 @@ pub struct Server {
     // TODO(nick): remove option once this is working.
     inner_audit_logs: Option<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>>,
     inner_billing_events: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
+    snapshot_evictor: SnapshotEvictor,
 }
 
 impl fmt::Debug for Server {
@@ -90,7 +103,7 @@ impl Server {
     pub async fn from_config(config: Config, token: CancellationToken) -> Result<Self> {
         let nats = Self::connect_to_nats(&config).await?;
         let connection_metadata = nats.metadata_clone();
-        let jetstream_context = jetstream::new(nats);
+        let jetstream_context = jetstream::new(nats.clone());
 
         let audit_bag = if config.enable_audit_logs_app() {
             let insert_concurrency_limit = config.audit().insert_concurrency_limit;
@@ -100,6 +113,19 @@ impl Server {
             None
         };
 
+        // Initialize pools for eviction task
+        let si_db_pool = Self::create_si_db_pool(&config.snapshot_eviction().si_db).await?;
+        let layer_cache_pool =
+            Self::create_layer_cache_pool(&config.snapshot_eviction().layer_cache_pg).await?;
+
+        // Create LayeredEventClient for eviction
+        let layered_event_client =
+            Self::create_layered_event_client(&nats, config.instance_id(), &jetstream_context)?;
+
+        // Validate and clamp eviction config
+        let mut eviction_config = config.snapshot_eviction().clone();
+        eviction_config.validate_and_clamp();
+
         Self::from_services(
             connection_metadata,
             jetstream_context,
@@ -107,12 +133,17 @@ impl Server {
             config.concurrency_limit(),
             audit_bag,
             config.data_warehouse_stream_name(),
+            si_db_pool,
+            layer_cache_pool,
+            layered_event_client,
+            eviction_config,
             token,
         )
         .await
     }
 
     /// Creates a forklift server with a running naxum task with running services.
+    #[allow(clippy::too_many_arguments)]
     #[instrument(name = "forklift.init.from_services", level = "info", skip_all)]
     pub async fn from_services(
         connection_metadata: Arc<ConnectionMetadata>,
@@ -121,6 +152,10 @@ impl Server {
         concurrency_limit: usize,
         audit_bag: Option<(AuditDatabaseContext, usize)>,
         data_warehouse_stream_name: Option<&str>,
+        si_db_pool: PgPool,
+        layer_cache_pool: PgPool,
+        layered_event_client: LayeredEventClient,
+        snapshot_eviction_config: snapshot_eviction::SnapshotEvictionConfig,
         token: CancellationToken,
     ) -> Result<Self> {
         let metadata = Arc::new(ServerMetadata {
@@ -154,10 +189,19 @@ impl Server {
         )
         .await?;
 
+        // Create snapshot evictor
+        let snapshot_evictor = SnapshotEvictor::new(
+            si_db_pool,
+            layer_cache_pool,
+            layered_event_client,
+            snapshot_eviction_config,
+        );
+
         Ok(Self {
             metadata,
             inner_audit_logs,
             inner_billing_events,
+            snapshot_evictor,
             shutdown_token: token,
         })
     }
@@ -172,25 +216,101 @@ impl Server {
 
     /// Fallibly awaits the inner naxum task(s).
     pub async fn try_run(self) -> Result<()> {
-        match self.inner_audit_logs {
+        // Extract fields to avoid partial move issues
+        let snapshot_evictor = self.snapshot_evictor;
+        let inner_audit_logs = self.inner_audit_logs;
+        let inner_billing_events = self.inner_billing_events;
+        let shutdown_token = self.shutdown_token;
+
+        // Spawn snapshot eviction background task
+        let eviction_shutdown = shutdown_token.clone();
+        let eviction_task =
+            tokio::spawn(async move { snapshot_evictor.run(eviction_shutdown).await });
+
+        info!("Snapshot eviction task spawned");
+
+        // Run existing app tasks
+        let result = match inner_audit_logs {
             Some(inner_audit_logs) => {
-                info!("running two apps: audit logs and billing events");
-                let (inner_audit_logs_result, inner_billing_events_result) = futures::join!(
+                info!("running three apps: audit logs, billing events, and snapshot eviction");
+                let (eviction_result, audit_result, billing_result) = futures::join!(
+                    eviction_task,
                     tokio::spawn(inner_audit_logs),
-                    tokio::spawn(self.inner_billing_events)
+                    tokio::spawn(inner_billing_events)
                 );
-                inner_audit_logs_result?.map_err(ServerError::Naxum)?;
-                inner_billing_events_result?.map_err(ServerError::Naxum)?;
+
+                // Check eviction task
+                eviction_result??;
+
+                // Check existing tasks
+                audit_result?.map_err(ServerError::Naxum)?;
+                billing_result?.map_err(ServerError::Naxum)?;
+                Ok(())
             }
             None => {
-                info!("running one app: billing events");
-                self.inner_billing_events
-                    .await
-                    .map_err(ServerError::Naxum)?;
+                info!("running two apps: billing events and snapshot eviction");
+                let (eviction_result, billing_result) =
+                    futures::join!(eviction_task, tokio::spawn(inner_billing_events));
+
+                // Check eviction task
+                eviction_result??;
+
+                // Check billing task
+                billing_result?.map_err(ServerError::Naxum)?;
+                Ok(())
             }
-        }
+        };
+
         info!("forklift main loop shutdown complete");
-        Ok(())
+        result
+    }
+
+    #[instrument(name = "forklift.init.create_si_db_pool", level = "info", skip_all)]
+    async fn create_si_db_pool(config: &PgPoolConfig) -> Result<PgPool> {
+        let mut pool_config = config.clone();
+        // Minimal pool for single eviction task
+        pool_config.pool_max_size = 2;
+
+        let pool = PgPool::new(&pool_config).await?;
+        debug!("si-db pool initialized for eviction (pool_max_size=2)");
+        Ok(pool)
+    }
+
+    #[instrument(
+        name = "forklift.init.create_layer_cache_pool",
+        level = "info",
+        skip_all
+    )]
+    async fn create_layer_cache_pool(config: &PgPoolConfig) -> Result<PgPool> {
+        let mut pool_config = config.clone();
+        // Minimal pool for single eviction task
+        pool_config.pool_max_size = 2;
+
+        let pool = PgPool::new(&pool_config).await?;
+        debug!("layer-cache pool initialized for eviction (pool_max_size=2)");
+        Ok(pool)
+    }
+
+    #[instrument(
+        name = "forklift.init.create_layered_event_client",
+        level = "info",
+        skip_all
+    )]
+    fn create_layered_event_client(
+        nats: &NatsClient,
+        instance_id: &str,
+        jetstream_context: &jetstream::Context,
+    ) -> Result<LayeredEventClient> {
+        let instance_id_ulid = ulid::Ulid::from_string(instance_id)?;
+
+        let client = LayeredEventClient::new(
+            nats.metadata().subject_prefix().map(|s| s.to_owned()),
+            instance_id_ulid,
+            jetstream_context.clone(),
+        );
+
+        debug!("LayeredEventClient created for snapshot eviction");
+        Ok(client)
     }
 
     #[instrument(name = "forklift.init.connect_to_nats", level = "info", skip_all)]

@@ -112,7 +112,6 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         token: server_token,
         server_tracker,
         features,
-        snapshot_eviction_grace_period,
     } = state;
     let subject_prefix = nats.metadata().subject_prefix();
 
@@ -173,7 +172,6 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         tasks_token.clone(),
         server_tracker,
         features,
-        snapshot_eviction_grace_period,
     );
 
     let dvu_task_result = tracker.spawn(dvu_task.try_run());

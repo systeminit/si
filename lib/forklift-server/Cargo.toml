@@ -22,10 +22,14 @@ remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+si-runtime = { path = "../../lib/si-runtime-rs" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
+snapshot-eviction = { path = "../../lib/snapshot-eviction" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }

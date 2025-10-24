@@ -463,12 +463,28 @@ impl ChangeSet {
         ctx: &DalContext,
         workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> ChangeSetResult<()> {
+        let old_snapshot_address = self.workspace_snapshot_address;
+
+        // Update change set pointer
         ctx.txns()
             .await?
             .pg()
             .query_none(
                 "UPDATE change_set_pointers SET workspace_snapshot_address = $2, updated_at = CLOCK_TIMESTAMP() WHERE id = $1",
                 &[&self.id, &workspace_snapshot_address],
+            )
+            .await?;
+
+        // Record when old snapshot was last used
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "INSERT INTO snapshot_last_used (snapshot_id, last_used_at, created_at)
+                 VALUES ($1, CLOCK_TIMESTAMP(), CLOCK_TIMESTAMP())
+                 ON CONFLICT (snapshot_id)
+                 DO UPDATE SET last_used_at = CLOCK_TIMESTAMP()",
+                &[&old_snapshot_address.to_string()],
             )
             .await?;
 
@@ -1112,82 +1128,6 @@ impl ChangeSet {
             HistoryActor::SystemInit => return Err(ChangeSetError::InvalidUserSystemInit),
         };
         Ok(user_id)
-    }
-
-    #[instrument(
-        name = "change_set.workspace_snapshot_in_use",
-        level = "debug",
-        skip_all,
-        fields(
-            si.workspace_snapshot_address = %workspace_snapshot_address,
-            si.workspace.id = Empty,
-        ),
-    )]
-    pub async fn workspace_snapshot_address_in_use(
-        ctx: &DalContext,
-        workspace_snapshot_address: &WorkspaceSnapshotAddress,
-    ) -> ChangeSetResult<bool> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                "SELECT count(id) AS count FROM change_set_pointers WHERE workspace_snapshot_address = $1",
-                &[&workspace_snapshot_address],
-            )
-            .await?;
-
-        let count: i64 = row.get("count");
-        if count > 0 { Ok(true) } else { Ok(false) }
-    }
-
-    /// Checks if a workspace snapshot was created within the specified grace period.
-    /// Returns true if the snapshot is recent (within grace period), false otherwise.
-    #[instrument(
-        name = "change_set.snapshot_is_recently_created",
-        level = "debug",
-        skip_all,
-        fields(
-            si.workspace_snapshot_address = %workspace_snapshot_address,
-            si.grace_period_secs = grace_period.as_secs(),
-        ),
-    )]
-    pub async fn snapshot_is_recently_created(
-        ctx: &DalContext,
-        workspace_snapshot_address: &WorkspaceSnapshotAddress,
-        grace_period: std::time::Duration,
-    ) -> ChangeSetResult<bool> {
-        // Query the workspace_snapshots table in si_layer_db
-        // PostgreSQL performs the age comparison directly
-        let key = workspace_snapshot_address.to_string();
-        let grace_period_secs = grace_period.as_secs_f64();
-
-        let row = ctx
-            .layer_db()
-            .workspace_snapshot()
-            .cache
-            .pg()
-            .query_opt(
-                "SELECT (CLOCK_TIMESTAMP() - created_at) < make_interval(secs => $2) AS is_recent FROM workspace_snapshots WHERE key = $1",
-                &[&key, &grace_period_secs],
-            )
-            .await?;
-
-        match row {
-            Some(row) => {
-                let is_recent: bool = row.get("is_recent");
-                Ok(is_recent)
-            }
-            None => {
-                // If we can't find the snapshot in the table, assume it's not recent
-                // (it may have already been evicted or never existed)
-                debug!(
-                    %workspace_snapshot_address,
-                    "Snapshot not found in workspace_snapshots table",
-                );
-                Ok(false)
-            }
-        }
     }
 
     /// Walk the graph of change sets up to the change set that has no "base

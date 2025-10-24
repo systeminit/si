@@ -818,7 +818,6 @@ pub async fn rebaser_server(
         config.quiescent_period(),
         shutdown_token,
         config.features(),
-        config.snapshot_eviction_grace_period(),
     )
     .await
     .wrap_err("failed to create Rebaser server")?;
@@ -863,7 +862,28 @@ pub async fn forklift_server(
         .wrap_err("failed to build forklift server config")?;
 
     let connection_metadata = Arc::new(nats.metadata().to_owned());
-    let jetstream_context = jetstream::new(nats);
+    let jetstream_context = jetstream::new(nats.clone());
+
+    // Initialize pools for eviction task (using same pattern as forklift from_config)
+    let si_db_pool = si_data_pg::PgPool::new(&config.snapshot_eviction().si_db)
+        .await
+        .wrap_err("failed to create si-db pool for eviction")?;
+    let layer_cache_pool = si_data_pg::PgPool::new(&config.snapshot_eviction().layer_cache_pg)
+        .await
+        .wrap_err("failed to create layer-cache pool for eviction")?;
+
+    // Create LayeredEventClient (following forklift pattern)
+    let instance_id_ulid = ulid::Ulid::from_string(config.instance_id())
+        .wrap_err("failed to parse instance_id as ULID")?;
+    let layered_event_client = si_layer_cache::event::LayeredEventClient::new(
+        nats.metadata().subject_prefix().map(|s| s.to_owned()),
+        instance_id_ulid,
+        jetstream_context.clone(),
+    );
+
+    // Validate and clamp eviction config
+    let mut eviction_config = config.snapshot_eviction().clone();
+    eviction_config.validate_and_clamp();
 
     let server = forklift_server::Server::from_services(
         connection_metadata,
@@ -875,6 +895,10 @@ pub async fn forklift_server(
             config.audit().insert_concurrency_limit,
         )),
         None,
+        si_db_pool,
+        layer_cache_pool,
+        layered_event_client,
+        eviction_config,
         token,
     )
     .await

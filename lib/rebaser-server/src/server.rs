@@ -172,7 +172,6 @@ impl Server {
             config.quiescent_period(),
             shutdown_token,
             config.features(),
-            config.snapshot_eviction_grace_period(),
         )
         .await
     }
@@ -186,7 +185,6 @@ impl Server {
         quiescent_period: Duration,
         shutdown_token: CancellationToken,
         features: Features,
-        snapshot_eviction_grace_period: Duration,
     ) -> Result<Self> {
         let metadata = Arc::new(ServerMetadata {
             instance_id: instance_id.into(),
@@ -229,7 +227,6 @@ impl Server {
             shutdown_token.clone(),
             server_tracker.clone(),
             features,
-            snapshot_eviction_grace_period,
         );
 
         let app = ServiceBuilder::new()

@@ -148,7 +148,7 @@ async fn test_backoff_increases_on_failure() {
         .unwrap();
 
     // Mark as failed with retryable error - use PgPoolError since we can easily construct it
-    let io_error = std::io::Error::new(std::io::ErrorKind::Other, "test error");
+    let io_error = std::io::Error::other("test error");
     let pg_pool_error = si_data_pg::PgPoolError::CreateCertificate(io_error);
     let error = si_layer_cache::LayerDbError::PgPool(pg_pool_error);
     queue_tx

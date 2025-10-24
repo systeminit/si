@@ -106,6 +106,7 @@ members = [
   "lib/si-std",
   "lib/si-test-macros",
   "lib/si-tls",
+  "lib/snapshot-eviction",
   "lib/telemetry-application-rs",
   "lib/telemetry-http-rs",
   "lib/telemetry-nats-rs",

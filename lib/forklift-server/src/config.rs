@@ -15,6 +15,7 @@ pub(crate) use si_settings::StandardConfig;
 pub use si_settings::StandardConfigFile;
 use si_std::CanonicalFileError;
 use si_tls::CertificateSource;
+use snapshot_eviction::SnapshotEvictionConfig;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -63,6 +64,9 @@ pub struct Config {
 
     #[builder(default)]
     audit: AuditDatabaseConfig,
+
+    #[builder(default)]
+    snapshot_eviction: SnapshotEvictionConfig,
 }
 
 impl StandardConfig for Config {
@@ -105,6 +109,11 @@ impl Config {
     pub fn audit(&self) -> &AuditDatabaseConfig {
         &self.audit
     }
+
+    /// Gets a reference to the snapshot eviction config.
+    pub fn snapshot_eviction(&self) -> &SnapshotEvictionConfig {
+        &self.snapshot_eviction
+    }
 }
 
 #[allow(missing_docs)]
@@ -122,6 +131,8 @@ pub struct ConfigFile {
     pub enable_audit_logs_app: bool,
     #[serde(default)]
     pub audit: AuditDatabaseConfig,
+    #[serde(default)]
+    pub snapshot_eviction: SnapshotEvictionConfig,
 }
 
 impl Default for ConfigFile {
@@ -133,6 +144,7 @@ impl Default for ConfigFile {
             data_warehouse_stream_name: default_data_warehouse_stream_name(),
             enable_audit_logs_app: default_enable_audit_logs_app(),
             audit: Default::default(),
+            snapshot_eviction: Default::default(),
         }
     }
 }
@@ -154,6 +166,7 @@ impl TryFrom<ConfigFile> for Config {
             data_warehouse_stream_name: value.data_warehouse_stream_name,
             enable_audit_logs_app: value.enable_audit_logs_app,
             audit: value.audit,
+            snapshot_eviction: value.snapshot_eviction,
         })
     }
 }
@@ -203,6 +216,14 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.enable_audit_logs_app = true;
 
+    // Configure snapshot eviction database connections for development
+    config.snapshot_eviction.si_db.certificate =
+        Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
+    config.snapshot_eviction.si_db.dbname = "si".to_string();
+    config.snapshot_eviction.layer_cache_pg.certificate =
+        Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
+    config.snapshot_eviction.layer_cache_pg.dbname = si_layer_cache::pg::DBNAME.to_string();
+
     Ok(())
 }
 
@@ -220,6 +241,14 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     config.audit.pg.certificate = Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
     config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.enable_audit_logs_app = true;
+
+    // Configure snapshot eviction database connections for development
+    config.snapshot_eviction.si_db.certificate =
+        Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
+    config.snapshot_eviction.si_db.dbname = "si".to_string();
+    config.snapshot_eviction.layer_cache_pg.certificate =
+        Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
+    config.snapshot_eviction.layer_cache_pg.dbname = si_layer_cache::pg::DBNAME.to_string();
 
     Ok(())
 }

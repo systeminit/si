@@ -1,0 +1,21 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "snapshot-eviction",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-data-pg:si-data-pg",
+        "//lib/si-events-rs:si-events",
+        "//lib/si-layer-cache:si-layer-cache",
+        "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-utils-rs:telemetry-utils",
+        "//third-party/rust:chrono",
+        "//third-party/rust:serde",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)
