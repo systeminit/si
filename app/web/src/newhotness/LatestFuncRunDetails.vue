@@ -6,6 +6,7 @@
     noLogs
     :status="''"
     :logText="''"
+    :logsTooLarge="false"
     :errorHint="''"
     :errorMessageRaw="''"
   >
