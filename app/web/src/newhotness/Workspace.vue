@@ -1110,7 +1110,7 @@ body.light .scrollable {
   grid-row-gap: 2px;
   grid-column-gap: 0.5rem;
   // 32px is the icon size
-  grid-template-columns: 20px minmax(0, 1fr) 32px;
+  grid-template-columns: 20px minmax(0, 1fr) 20px;
   grid-template-rows: 16px 16px;
   grid-template-areas:
     "logo h2 spinner"

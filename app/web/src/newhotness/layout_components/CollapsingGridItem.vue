@@ -4,7 +4,8 @@
       :class="
         clsx(
           'group/header flex flex-row items-center h-[40px]',
-          'text-lg px-xs py-xs flex-none border',
+          'text-lg p-xs flex-none',
+          funcRunScreen ? 'border' : 'border-y',
           themeClasses(
             'bg-neutral-300 border-neutral-400',
             'bg-neutral-800 border-neutral-600',
@@ -17,11 +18,10 @@
       "
       @click="toggleOpen"
     >
-      <Icon
+      <CollapseExpandChevron
         v-if="!disableCollapse"
-        class="group-hover/header:scale-125 mr-xs"
-        :name="openState.open.value ? 'chevron-down' : 'chevron-right'"
-        size="sm"
+        :open="openState.open.value"
+        class="mr-xs"
       />
       <slot name="header" />
       <div class="ml-auto" />
@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts" setup>
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import { CollapseExpandChevron, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useToggle } from "../logic_composables/toggle_containers";
 

@@ -43,7 +43,7 @@ import Socket from "./custom-icons/socket.svg?raw";
 import OutputSocket from "./custom-icons/output-socket.svg?raw";
 import InputSocket from "./custom-icons/input-socket.svg?raw";
 
-import QuestionMarkCircle from "~icons/heroicons-solid/question-mark-circle";
+import CarbonHelp from "~icons/carbon/help";
 import Play from "~icons/ion/play-sharp";
 
 import Arrow from "~icons/heroicons-solid/arrow-up";
@@ -54,7 +54,7 @@ import Sparkles from "~icons/heroicons/sparkles-solid";
 import Gear from "~icons/heroicons-solid/cog-8-tooth";
 import Save from "~icons/heroicons-solid/save";
 import Download from "~icons/heroicons-solid/download";
-import Trash from "~icons/heroicons-solid/trash";
+import CarbonTrashCan from "~icons/carbon/trash-can";
 import TrashRestore from "~icons/material-symbols/restore-from-trash";
 import Eraser from "~icons/solar/eraser-bold";
 
@@ -387,7 +387,7 @@ export const ICONS = Object.freeze({
   "plus-hex-outline": PlusHexOutline,
   "plus-minus": IcBaselinePlusMinusAlt,
   "plus-square": PlusSquare,
-  "question-circle": QuestionMarkCircle,
+  "question-circle": CarbonHelp,
   "question-hex-outline": QuestionHexOutline,
   "read-only": PencilOff,
   refresh: Refresh,
@@ -421,7 +421,7 @@ export const ICONS = Object.freeze({
   "tilde-hex-outline": TildeHexOutline,
   "tilde-square": TildeSquare,
   tools: Tools,
-  trash: Trash,
+  trash: CarbonTrashCan,
   "trash-restore": TrashRestore,
   "tree-parents": TreeParents,
   triangle: MdiTriangle,

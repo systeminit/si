@@ -15,6 +15,7 @@ export { default as LoadingMessage } from "./general/LoadingMessage.vue";
 export { default as PillCounter } from "./general/PillCounter.vue";
 export { default as TextPill } from "./general/TextPill.vue";
 export { default as Toggle } from "./general/Toggle.vue";
+export { default as CollapseExpandChevron } from "./general/CollapseExpandChevron.vue";
 
 export { default as RichText } from "./general/RichText.vue";
 export { default as Timestamp } from "./general/Timestamp.vue";

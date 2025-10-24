@@ -28,10 +28,7 @@
       "
       @click="() => (open = !open)"
     >
-      <Icon
-        :name="open ? 'chevron--down' : 'chevron--right'"
-        class="group-hover/header:scale-125 flex-none"
-      />
+      <CollapseExpandChevron :open="open" />
       <slot name="header" />
     </dt>
     <dd v-if="open" class="p-2xs">
@@ -42,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import { CollapseExpandChevron, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { ref } from "vue";
 

@@ -12,13 +12,14 @@
             ],
       )
     "
+    :dir="reverse && tooltip.content ? 'rtl' : undefined"
     @click="toggleExpand"
   >
     <template v-if="expandableStringArray && !lineClamp">
       <template v-if="expanded">
-        <TruncateWithTooltip v-for="s in expandableStringArray" :key="s">{{
-          s
-        }}</TruncateWithTooltip>
+        <TruncateWithTooltip v-for="s in expandableStringArray" :key="s">
+          {{ s }}
+        </TruncateWithTooltip>
       </template>
       <template v-else>{{ expandableStringArray.join(", ") }}</template>
     </template>
@@ -49,6 +50,7 @@ const props = defineProps({
   expandOnClick: { type: Boolean },
   expandableStringArray: { type: Array<string> },
   lineClamp: { type: Number as PropType<LineClamps> }, // not compatible with the other features
+  reverse: { type: Boolean }, // not compatible with the other features
 });
 
 const expanded = ref(false);

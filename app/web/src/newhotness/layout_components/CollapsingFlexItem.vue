@@ -43,12 +43,7 @@
       "
       @click="toggleOpen"
     >
-      <Icon
-        v-if="!disableCollapse"
-        class="group-hover/header:scale-125"
-        :name="showOpen ? 'chevron-down' : 'chevron-right'"
-        size="sm"
-      />
+      <CollapseExpandChevron v-if="!disableCollapse" :open="showOpen" />
       <slot name="header" />
       <div v-if="$slots.headerIcons || showExpandButton" class="ml-auto" />
       <slot name="headerIcons" />
@@ -101,9 +96,9 @@
 import {
   themeClasses,
   Modal,
-  Icon,
   SpacingSizes,
   NewButton,
+  CollapseExpandChevron,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, onMounted, ref } from "vue";

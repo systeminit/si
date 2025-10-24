@@ -138,7 +138,7 @@ export const DEBUG_ONBOARDING_START = OnboardingStep.INITIALIZE;
                   <ErrorMessage
                     :class="
                       clsx(
-                        'rounded-sm px-xs py-xs',
+                        'rounded-sm p-xs',
                         themeClasses('bg-action-200', 'bg-action-900'),
                       )
                     "
@@ -483,7 +483,7 @@ export const DEBUG_ONBOARDING_START = OnboardingStep.INITIALIZE;
                     <ErrorMessage
                       :class="
                         clsx(
-                          'rounded-sm px-xs py-xs my-xs border',
+                          'rounded-sm p-xs my-xs border',
                           themeClasses(
                             'bg-warning-100 border-warning-600',
                             'bg-newhotness-warningdark border-warning-500',
