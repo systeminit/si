@@ -218,6 +218,7 @@ pub use crate::api_types::func_run::v1::{
         schemas::get_default_variant::get_default_variant,
         schemas::create_schema::create_schema,
         schemas::unlock_schema::unlock_schema,
+        schemas::install_schema::install_schema,
         schemas::create_action::create_variant_action,
         schemas::search_schemas::search_schemas,
         schemas::create_authentication::create_variant_authentication,
