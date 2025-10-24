@@ -19,7 +19,7 @@ chrono = { workspace = true }
 clap = { workspace = true }
 convert_case = { workspace = true }
 dal = { path = "../../lib/dal" }
-dal-materialized-views = { path = "../../lib/dal-materialized-views"}
+dal-materialized-views = { path = "../../lib/dal-materialized-views" }
 derive_builder = { workspace = true }
 derive_more = { workspace = true }
 edda-client = { path = "../../lib/edda-client" }
