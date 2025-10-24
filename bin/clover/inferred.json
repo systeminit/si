@@ -11592,6 +11592,9 @@
   "The delimiter used for separating items in the CSV file being imported.": {
     "enum": null
   },
+  "The deployment ID of the pipeline, used to trigger new image pipeline executions.": {
+    "enum": null
+  },
   "The deployment strategy ID.": {
     "enum": null
   },
