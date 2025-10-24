@@ -8,6 +8,9 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+buck2_build = []
+
 [dependencies]
 async-trait = { workspace = true }
 audit-database = { path = "../../lib/audit-database" }
@@ -87,9 +90,6 @@ ulid = { workspace = true }
 url = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
 y-sync = { workspace = true }
-
-[features]
-buck2_build = []
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }

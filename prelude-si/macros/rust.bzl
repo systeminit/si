@@ -230,6 +230,13 @@ def rust_library(
         actual = ":{}".format(name),
     )
 
+    if toml_srcs:
+        _toml_format_check(
+            name = "check-format-toml",
+            srcs = toml_srcs,
+            visibility = visibility,
+        )
+
     if not rule_exists("test-unit"):
         native.rust_test(
             name = "test-unit",

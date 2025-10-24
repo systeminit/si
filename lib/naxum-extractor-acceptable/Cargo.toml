@@ -10,7 +10,7 @@ publish.workspace = true
 
 [dependencies]
 acceptable = { path = "../../lib/acceptable" }
-async-nats = { workspace = true }                           # NOTE: left with vanilla tracing for potential future extraction
+async-nats = { workspace = true }              # NOTE: left with vanilla tracing for potential future extraction
 nats-std = { path = "../../lib/nats-std" }
 naxum = { path = "../../lib/naxum" }
-tracing = { workspace = true }                              # NOTE: left with vanilla tracing for potential future extraction
+tracing = { workspace = true }                 # NOTE: left with vanilla tracing for potential future extraction
