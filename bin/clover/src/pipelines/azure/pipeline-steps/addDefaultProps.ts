@@ -12,6 +12,7 @@ import { AzureSchema } from "../schema.ts";
 export interface PropUsageMap {
   createOnly: string[];
   updatable: string[];
+  discriminators: Record<string, string[]> | undefined;
 }
 
 export function addDefaultProps(
@@ -143,7 +144,11 @@ export function addDefaultProps(
       const propUsageMap: PropUsageMap = {
         createOnly: [],
         updatable: [],
+        discriminators: {},
       };
+
+      const azureSchema = schemaVariant.superSchema as AzureSchema;
+      propUsageMap.discriminators = azureSchema.discriminators;
 
       const queue: ExpandedPropSpec[] = _.cloneDeep(domain.entries);
 

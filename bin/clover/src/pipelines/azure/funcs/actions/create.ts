@@ -62,9 +62,11 @@ async function main(component: Input): Promise<Output> {
   const providerNamespace = `Microsoft.${parts[1]}`;
   const resourceTypeName = parts[2].toLowerCase();
 
-  const resourceId = `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/${providerNamespace}/${resourceTypeName}/${resourceName}`;
+  const resourceId =
+    `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/${providerNamespace}/${resourceTypeName}/${resourceName}`;
   const token = await getAzureToken(tenantId, clientId, clientSecret);
-  const url = `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
+  const url =
+    `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
 
   const createPayload = cleanPayload(domain);
 
@@ -109,6 +111,39 @@ function cleanPayload(domain) {
   delete payload.resourceGroup;
   delete payload.name;
   delete payload.extra;
+
+  // Merge discriminator subtypes into parent
+  // propUsageMap.discriminators maps discriminator property names to their subtype names
+  // e.g., { "kind": ["AzurePowerShellScript", "AzureCliScript"] }
+  for (
+    const [discriminatorProp, subtypes] of Object.entries(
+      propUsageMap.discriminators || {},
+    )
+  ) {
+    // Find which subtype is filled in
+    const filledSubtypes = subtypes.filter((subtype) => payload[subtype]);
+
+    if (filledSubtypes.length > 1) {
+      throw new Error(
+        `Multiple discriminator subtypes filled for "${discriminatorProp}": ${
+          filledSubtypes.join(", ")
+        }. Only one should be filled.`,
+      );
+    }
+
+    const subtypeName = filledSubtypes[0];
+    const subtypeValue = payload[subtypeName];
+
+    if (
+      subtypeValue && typeof subtypeValue === "object" &&
+      !Array.isArray(subtypeValue)
+    ) {
+      // Merge subtype properties into parent (subtype values take precedence)
+      Object.assign(payload, subtypeValue);
+      // Remove the subtype wrapper
+      delete payload[subtypeName];
+    }
+  }
 
   // Only check top-level properties - once a property is included, keep all its descendants
   const propsToVisit = _.keys(payload).map((k: string) => [k]);

@@ -3,11 +3,14 @@ import util from "node:util";
 import logger from "../../logger.ts";
 import { CfHandler, CfHandlerKind } from "../types.ts";
 import {
-  AzureSchema,
-  AzureProperty,
+  AZURE_HTTP_METHODS,
+  AzureDefinitions,
   AzureOpenApiDocument,
   AzureOpenApiOperation,
-  AZURE_HTTP_METHODS,
+  AzureProperty,
+  AzureSchema,
+  AzureSchemaDefinition,
+  AzureSchemaProperty,
   NormalizedAzureSchema,
 } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
@@ -72,8 +75,9 @@ export function parseAzureSpec(
       const openApiOperation = methods?.[method];
       if (!openApiOperation) continue;
 
-      const verb =
-        method === "get" && isListOperation(openApiOperation) ? "list" : method;
+      const verb = method === "get" && isListOperation(openApiOperation)
+        ? "list"
+        : method;
 
       const handlerKinds = VERB_TO_HANDLERS[verb];
       if (handlerKinds) {
@@ -104,6 +108,7 @@ export function parseAzureSpec(
       resource.putOperation,
       resource.handlers,
       openApiDoc.info.version,
+      openApiDoc.definitions,
     );
     if (spec) {
       specs.push(spec);
@@ -393,9 +398,11 @@ function intersectAzureSchema(
           !util.isDeepStrictEqual(intersected[key], prop[key])
         ) {
           throw new Error(
-            `Incompatible property ${key}: ${util.inspect(
-              intersected[key],
-            )} vs ${util.inspect(prop[key])}`,
+            `Incompatible property ${key}: ${
+              util.inspect(
+                intersected[key],
+              )
+            } vs ${util.inspect(prop[key])}`,
           );
         }
         intersected[key] = prop[key];
@@ -489,6 +496,7 @@ function buildDomainAndResourceValue(
   putOperation: AzureOpenApiOperation,
   handlers: { [key in CfHandlerKind]?: CfHandler },
   apiVersion: string,
+  definitions: AzureDefinitions | undefined,
 ): ExpandedPkgSpec | null {
   // Grab resourceValue properties from the GET response
   const { properties: resourceValueProperties } =
@@ -502,15 +510,18 @@ function buildDomainAndResourceValue(
   }
   if (!("id" in resourceValueProperties)) {
     throw new Error(
-      `No id property in GET response: ${
-        getOperation.operationId
-      }\n\n${util.inspect(getOperation, { depth: 12 })}`,
+      `No id property in GET response: ${getOperation.operationId}\n\n${
+        util.inspect(getOperation, { depth: 12 })
+      }`,
     );
   }
 
   // Grab domain properties from the PUT request
-  let { properties: domainProperties, required: requiredProperties } =
-    extractPropertiesFromRequestBody(putOperation);
+  let {
+    properties: domainProperties,
+    required: requiredProperties,
+    discriminators,
+  } = extractPropertiesFromRequestBody(putOperation, definitions);
   // Remove readonly properties from the domain
   domainProperties = removeReadOnlyProperties(domainProperties, new Set());
   if (Object.keys(domainProperties).length === 0) {
@@ -518,8 +529,7 @@ function buildDomainAndResourceValue(
     return null;
   }
 
-  const description =
-    getOperation.description ||
+  const description = getOperation.description ||
     (getOperation.summary as string) ||
     `Azure ${resourceType} resource`;
 
@@ -530,6 +540,7 @@ function buildDomainAndResourceValue(
     requiredProperties: new Set(requiredProperties),
     handlers,
     apiVersion,
+    discriminators,
   };
   // TODO figure out readOnly and writeOnly properties based on which tree they appear in
   const onlyProperties: OnlyProperties = {
@@ -555,27 +566,39 @@ function buildDomainAndResourceValue(
 
 function extractPropertiesFromRequestBody(
   operation: AzureOpenApiOperation | null,
+  definitions: AzureDefinitions | undefined,
 ) {
   const bodyParams = operation?.parameters?.filter(
     (p) => !("$ref" in p) && p.in === "body",
   );
   if (!operation || !bodyParams || bodyParams.length == 0) {
-    return { properties: {}, required: [] };
+    return { properties: {}, required: [], discriminators: undefined };
   }
   assert(bodyParams.length <= 1, "Expected at most one body parameter");
 
   assert(!("$ref" in bodyParams[0]), "Body parameter is a $ref");
   const { schema } = bodyParams[0];
-  if (!schema) return { properties: {}, required: [] };
+  if (!schema) {
+    return { properties: {}, required: [], discriminators: undefined };
+  }
   assert(!("$ref" in schema), "Body parameter is a $ref");
-  const azureProp = normalizeAzureSchema(schema, []);
+
+  // Apply discriminators first (adds subtypes as properties), then normalize
+  const withDiscriminators = applyDiscriminators(schema, definitions, [], []);
+
+  // Extract discriminator metadata before normalization
+  const discriminators = withDiscriminators?.discriminators;
+
+  const azureProp = normalizeAzureSchema(withDiscriminators, []);
   assert(
     azureProp?.type === "object",
     `Response schema is not an object: ${operation.operationId}`,
   );
+
   return {
     properties: azureProp.properties ?? {},
     required: azureProp.required ?? [],
+    discriminators,
   };
 }
 
@@ -584,6 +607,8 @@ function extractPropertiesFromResponseBody(
 ) {
   const schema = operation?.responses?.["200"]?.schema;
   if (!schema) return { properties: {}, required: [] };
+
+  // Apply discriminators first (adds subtypes as properties), then normalize
   const azureProp = normalizeAzureSchema(schema, []);
   assert(
     azureProp?.type === "object",
@@ -600,15 +625,105 @@ function extractPropertiesFromResponseBody(
   }
   if (!("id" in result.properties)) {
     throw new Error(
-      `No id property in GET response: ${
-        operation.operationId
-      }\n\n${util.inspect(operation, { depth: 12 })}\n\n${util.inspect(
-        azureProp,
-        { depth: 12 },
-      )}`,
+      `No id property in GET response: ${operation.operationId}\n\n${
+        util.inspect(operation, { depth: 12 })
+      }\n\n${
+        util.inspect(
+          azureProp,
+          { depth: 12 },
+        )
+      }`,
     );
   }
   return result;
+}
+
+/// Applies discriminator handling by finding subtypes and adding them as new sub-objects.
+/// Recursively processes the schema tree to find and expand all discriminated types.
+function applyDiscriminators(
+  schema: AzureSchemaDefinition,
+  definitions: AzureDefinitions | undefined,
+  processing: AzureSchemaDefinition[],
+  discriminatorMap: Array<[string, AzureSchemaDefinition]>,
+): AzureSchemaDefinition | undefined {
+  if (!definitions || typeof schema !== "object") {
+    return schema;
+  }
+  if (processing.includes(schema)) return schema;
+  processing.push(schema);
+
+  try {
+    // Build discriminator map
+    if (discriminatorMap.length === 0) {
+      for (const [defName, defSchema] of Object.entries(definitions)) {
+        if (defSchema["x-ms-discriminator-value"]) {
+          discriminatorMap.push([defName, defSchema]);
+        }
+      }
+    }
+
+    const subtypeEntries: Array<[string, JSONSchema]> = [];
+
+    // Check if this schema has a discriminator and find its subtypes
+    if (schema.discriminator) {
+      // Get the discriminator property name (e.g., "kind")
+      const discriminatorProp = schema.discriminator;
+
+      // Get the enum values from the discriminator property
+      const discriminatorField = schema.properties?.[discriminatorProp];
+      const enumValues = discriminatorField?.enum;
+
+      if (enumValues) {
+        // Filter discriminatorMap to only include subtypes whose x-ms-discriminator-value
+        // matches one of the enum values
+        for (const [defName, defSchema] of discriminatorMap) {
+          const discriminatorValue = defSchema["x-ms-discriminator-value"];
+          if (discriminatorValue && enumValues.includes(discriminatorValue)) {
+            subtypeEntries.push([defName, defSchema]);
+          }
+        }
+      }
+    }
+
+    // Now recurse into properties
+    if (schema.properties) {
+      const newProps: Record<string, AzureSchemaProperty> = {};
+      for (const [key, prop] of Object.entries(schema.properties)) {
+        newProps[key] = applyDiscriminators(
+          prop as JSONSchema,
+          definitions,
+          processing,
+          discriminatorMap,
+        ) ??
+          prop;
+      }
+      schema = { ...schema, properties: newProps };
+    }
+
+    // If we found subtypes, add them as separate properties so the user can fill in one
+    if (subtypeEntries.length > 0 && schema.discriminator) {
+      const discriminatorProp = schema.discriminator;
+      const newProperties = { ...schema.properties };
+      const subtypeNames: string[] = [];
+
+      for (const [defName, subtype] of subtypeEntries) {
+        newProperties[defName] = subtype;
+        subtypeNames.push(defName);
+      }
+
+      return {
+        ...schema,
+        properties: newProperties,
+        discriminators: {
+          [discriminatorProp]: subtypeNames,
+        },
+      };
+    }
+
+    return schema;
+  } finally {
+    processing.pop();
+  }
 }
 
 /// Remove read-only properties from a record of name, property pairs
@@ -690,8 +805,8 @@ function parseEndpointPath(path: string) {
   if (!!resourceGroupParam !== !!resourceNameParam) return undefined;
 
   const serviceName = providerNamespace.split(".").pop() || providerNamespace;
-  const capitalizedResource =
-    resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
+  const capitalizedResource = resourceType.charAt(0).toUpperCase() +
+    resourceType.slice(1);
   const schemaName = `Azure::${serviceName}::${capitalizedResource}`;
 
   return {
