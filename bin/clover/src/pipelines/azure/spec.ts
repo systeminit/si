@@ -3,10 +3,12 @@ import util from "node:util";
 import logger from "../../logger.ts";
 import { CfHandler, CfHandlerKind } from "../types.ts";
 import {
-  AzureSchema,
-  AzureProperty,
+  AzureDefinitions,
   AzureOpenApiDocument,
   AzureOpenApiOperation,
+  AzureProperty,
+  AzureSchema,
+  AzureSchemaDefinition,
   NormalizedAzureSchema,
 } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
@@ -22,8 +24,11 @@ const MAX_RESOURCE_DEPTH = 3;
 /// Make sure you also add a comment explaining why--all schemas should be supported!
 const IGNORE_RESOURCE_TYPES = new Set<string>([
   // GET endpoint returns an array
-  "Microsoft.PowerBI/privateLinkServicesForPowerBI"
-
+  "Microsoft.PowerBI/privateLinkServicesForPowerBI",
+  // Discriminator subtypes have properties with no type field (fluentdConfigUrl has description but no type)
+  "Azure::ServiceFabricMesh::Applications",
+  // Discriminator subtypes have properties with no type field (jobStageDetails has no type and no allOf)
+  "Azure::DataBox::Jobs",
 ]);
 
 export function parseAzureSpec(
@@ -50,10 +55,13 @@ export function parseAzureSpec(
   for (const [path, methods] of Object.entries(openApiDoc.paths)) {
     const pathInfo = parseEndpointPath(path);
     if (!pathInfo || !methods) continue;
-    const resourceType = `${pathInfo.resourceProvider}/${pathInfo.resourceType}`;
+    const resourceType =
+      `${pathInfo.resourceProvider}/${pathInfo.resourceType}`;
 
     // Presently we only support Microsoft. providers
-    if (!pathInfo.resourceProvider.toLowerCase().startsWith("microsoft.")) continue;
+    if (!pathInfo.resourceProvider.toLowerCase().startsWith("microsoft.")) {
+      continue;
+    }
     // Ignore certain problematic resource types (temporarily until we fix them)
     if (IGNORE_RESOURCE_TYPES.has(resourceType)) continue;
 
@@ -100,6 +108,7 @@ export function parseAzureSpec(
       resource.putOperation,
       resource.handlers,
       openApiDoc.info.version,
+      openApiDoc.definitions,
     );
     if (spec) {
       specs.push(spec);
@@ -121,15 +130,23 @@ export function parseAzureSpec(
 ///
 /// Recursively normalizes child properties as well.
 export function normalizeAzureSchema(
-  prop: JSONSchema | undefined,
-  processing: JSONSchema[],
+  prop: AzureSchemaDefinition | undefined,
+  processing: AzureSchemaDefinition[],
+  definitions?: AzureDefinitions,
+  discriminatorCollector?: Record<string, Record<string, string>>,
 ): NormalizedAzureSchema | undefined {
   if (prop === undefined) return undefined;
   if (processing.includes(prop)) return undefined;
   processing.push(prop);
   try {
     // Flatten the schema, merging allOf props and such, before we normalize type/format
-    const normalized = flattenAzureSchema(prop, {}, processing);
+    const normalized = flattenAzureSchema(
+      prop,
+      {},
+      processing,
+      definitions,
+      discriminatorCollector,
+    );
     if (normalized === undefined) return undefined;
 
     // Infer type from format / properties / items if missing
@@ -179,6 +196,13 @@ export function normalizeAzureSchema(
       }
     }
 
+    // At the root level, attach collected discriminators
+    if (
+      discriminatorCollector && Object.keys(discriminatorCollector).length > 0
+    ) {
+      normalized.discriminators = discriminatorCollector;
+    }
+
     return normalized;
   } finally {
     processing.pop();
@@ -201,12 +225,151 @@ function inferType(prop: NormalizedAzureSchema) {
   if (prop.items) return "array";
 }
 
+/// Helper to check if a definition has a property (direct or in allOf)
+function defHasProperty(
+  defSchema: AzureSchemaDefinition,
+  propName: string,
+): boolean {
+  // Boolean schemas (true/false) don't have properties or allOf
+  // TODO: we should not need this check. It implies that we need to be doing
+  // normalization for these sooner
+  if (typeof defSchema === "boolean") return false;
+
+  const hasDirectProp = !!defSchema.properties?.[propName];
+  const hasAllOfProp =
+    defSchema.allOf?.some((s: AzureSchemaDefinition) =>
+      !!s.properties?.[propName]
+    ) ?? false;
+  return hasDirectProp || hasAllOfProp;
+}
+
+/// Expands discriminators by finding matching subtypes and adding them as properties.
+/// Returns expanded properties and discriminator metadata, or undefined if no discriminators found.
+function expandDiscriminators(
+  schemaProp: AzureSchemaDefinition | undefined,
+  definitions: AzureDefinitions | undefined,
+): {
+  expandedProperties: Record<string, JSONSchema>;
+  discriminators: Record<string, Record<string, string>>;
+} | undefined {
+  const discriminator = schemaProp?.discriminator;
+  const properties = schemaProp?.properties;
+
+  if (!discriminator || !definitions || !properties) {
+    return undefined;
+  }
+
+  const discriminatorProp = discriminator;
+  const discriminatorField = properties[discriminatorProp];
+  const enumValues = discriminatorField?.enum;
+
+  // Find matching subtypes and their enum values
+  // Maps definition name -> [schema, enum value]
+  const subtypes: Map<string, [AzureSchemaDefinition, string]> = new Map();
+
+  if (!enumValues) {
+    // No enum - filter by checking if definition has the discriminator property
+    for (const [defName, defSchema] of Object.entries(definitions)) {
+      if (defHasProperty(defSchema, discriminatorProp)) {
+        // Without enum values, use definition name as the discriminator value
+        subtypes.set(defName, [defSchema, defName]);
+      }
+    }
+  } else {
+    // Has enum - for each enum value, find matching definition
+    for (const enumValue of enumValues) {
+      const enumStr = String(enumValue);
+
+      // Check for x-ms-discriminator-value match (direct or in allOf)
+      let found = false;
+      for (const [defName, defSchema] of Object.entries(definitions)) {
+        // Boolean schemas don't have discriminator values or allOf
+        // TODO: we should not need this check. It implies that we need to be doing
+        // normalization for these sooner
+        if (typeof defSchema === "boolean") continue;
+
+        const hasDirectMatch =
+          defSchema["x-ms-discriminator-value"] === enumStr;
+        const hasAllOfMatch = defSchema.allOf?.some((
+          s: AzureSchemaDefinition,
+        ) => s["x-ms-discriminator-value"] === enumStr);
+
+        if (hasDirectMatch || hasAllOfMatch) {
+          subtypes.set(defName, [defSchema, enumStr]);
+          found = true;
+          break;
+        }
+      }
+
+      // Check for exact definition name match
+      // Also verify it has the discriminator property (direct or in allOf)
+      if (!found && definitions[enumStr]) {
+        const defSchema = definitions[enumStr];
+        if (defHasProperty(defSchema, discriminatorProp)) {
+          subtypes.set(enumStr, [defSchema, enumStr]);
+          found = true;
+        }
+      }
+
+      // If still not found, that's okay - enum might have sentinel values like "Unknown"
+    }
+  }
+
+  if (subtypes.size === 0) {
+    return undefined;
+  }
+
+  // Create an object for the discriminator field and add subtypes as properties
+  // within that object.
+  const expandedProperties: Record<string, JSONSchema> = { ...properties };
+
+  // Replace the discriminator field with an object containing the subtypes
+  const discriminatorObject: JSONSchema = {
+    type: "object",
+    properties: {},
+  };
+
+  const discriminatorMap: Record<string, string> = {};
+
+  for (const [defName, [subtype, enumValue]] of subtypes.entries()) {
+    // TODO: we should not need this check. It implies that we need to be doing
+    // normalization for these sooner
+    if (typeof subtype === "boolean") continue;
+
+    // TODO: We really should walk through these recursive cases as some of
+    // these allOfs are likely desirable
+    // Store the subtype's properties directly, but remove allOf to prevent circular references
+    const subtypeSchema: JSONSchema = {
+      type: "object",
+      description: subtype.description,
+      properties: subtype.properties,
+      required: subtype.required,
+    };
+
+    discriminatorObject.properties![defName] = subtypeSchema;
+    discriminatorMap[defName] = enumValue;
+  }
+
+  expandedProperties[discriminatorProp] = discriminatorObject;
+
+  const discriminators = {
+    [discriminatorProp]: discriminatorMap,
+  };
+
+  return {
+    expandedProperties,
+    discriminators,
+  };
+}
+
 /// Flattens JSONSchema recursively merging allOf, oneOf and anyOf into a single schema and
 /// turning true ("any") into an empty schema, and throwing an exception for "false" (never) schemas.
 function flattenAzureSchema(
-  schemaProp: JSONSchema,
+  schemaProp: AzureSchemaDefinition,
   flattened: NormalizedAzureSchema = {},
-  normalizing: JSONSchema[],
+  normalizing: AzureSchemaDefinition[],
+  definitions?: AzureDefinitions,
+  discriminatorCollector?: Record<string, Record<string, string>>,
 ): NormalizedAzureSchema | undefined {
   if (schemaProp === false) {
     throw new Error("Boolean schema 'false' (never) not supported");
@@ -226,8 +389,11 @@ function flattenAzureSchema(
     patternProperties,
     items,
     additionalProperties,
+    discriminator,
     ...rest
   } = schemaProp;
+
+  let expandedProperties = properties;
 
   // Merge oneOf and anyOf by normalizing each alternative (so they have a type) and then
   // merging them into the flattened type (this means { a: string } | { b: string } becomes
@@ -236,14 +402,24 @@ function flattenAzureSchema(
   // TODO empty oneOf / anyOf (or oneOf: [ true ], which is effectively empty)
   if (oneOf) {
     for (const alternative of oneOf) {
-      const child = normalizeAzureSchema(alternative, normalizing);
+      const child = normalizeAzureSchema(
+        alternative,
+        normalizing,
+        definitions,
+        discriminatorCollector,
+      );
       if (!child) throw new Error("Cycle in oneOf or anyOf alternative");
       unionAzureSchema(child, flattened);
     }
   }
   if (anyOf) {
     for (const alternative of anyOf) {
-      const child = normalizeAzureSchema(alternative, normalizing);
+      const child = normalizeAzureSchema(
+        alternative,
+        normalizing,
+        definitions,
+        discriminatorCollector,
+      );
       if (!child) throw new Error("Cycle in oneOf or anyOf alternative");
       unionAzureSchema(child, flattened);
     }
@@ -257,17 +433,55 @@ function flattenAzureSchema(
   // will normalize at the end after all properties have been flattened down.
   if (allOf) {
     for (const alternative of allOf) {
-      flattenAzureSchema(alternative, flattened, normalizing);
+      flattenAzureSchema(
+        alternative,
+        flattened,
+        normalizing,
+        definitions,
+        discriminatorCollector,
+      );
+    }
+  }
+
+  // Expand discriminators AFTER allOf processing to prevent allOf from overwriting expanded properties
+  if (discriminator) {
+    if (!definitions) {
+      console.warn(
+        `Schema has discriminator but no definitions!`,
+        discriminator,
+      );
+    }
+
+    const expansion = expandDiscriminators(
+      schemaProp,
+      definitions,
+    );
+    if (expansion) {
+      expandedProperties = expansion.expandedProperties;
+
+      // Add discriminators to collector
+      if (discriminatorCollector) {
+        for (
+          const [key, subtypeMap] of Object.entries(expansion.discriminators)
+        ) {
+          discriminatorCollector[key] = subtypeMap;
+        }
+      }
     }
   }
 
   // Normalize child schemas (properties, items, etc.) so we can do a simple intersect after
   const prop: NormalizedAzureSchema = rest;
-  if (properties) {
+  if (expandedProperties) {
     prop.properties = {};
-    if (Object.keys(properties).length > 0) {
-      for (const [propName, childProp] of Object.entries(properties)) {
-        const child = normalizeAzureSchema(childProp, normalizing);
+    if (Object.keys(expandedProperties).length > 0) {
+      for (const [propName, childProp] of Object.entries(expandedProperties)) {
+        const child = normalizeAzureSchema(
+          childProp,
+          normalizing,
+          definitions,
+          discriminatorCollector,
+        );
         if (!child) continue; // If the prop is part of a cycle, don't include it
         // TODO find a better way! This fixes some Azure schemas with empty properties
         if (propName === "properties") {
@@ -283,11 +497,17 @@ function flattenAzureSchema(
       if (Object.keys(prop.properties).length == 0) return undefined;
     }
   }
+
   if (patternProperties) {
     prop.patternProperties = {};
     if (Object.keys(patternProperties).length > 0) {
       for (const [propName, childProp] of Object.entries(patternProperties)) {
-        const child = normalizeAzureSchema(childProp, normalizing);
+        const child = normalizeAzureSchema(
+          childProp,
+          normalizing,
+          definitions,
+          discriminatorCollector,
+        );
         if (!child) continue; // If the prop is part of a cycle, don't include it
         defaultAnyTypeTo(child, "string");
         prop.patternProperties[propName] = child;
@@ -300,6 +520,8 @@ function flattenAzureSchema(
     prop.items = normalizeAzureSchema(
       Array.isArray(items) ? { anyOf: items } : items,
       normalizing,
+      definitions,
+      discriminatorCollector,
     );
     if (prop.items === undefined) return undefined;
     defaultAnyTypeTo(prop.items, "string");
@@ -308,6 +530,8 @@ function flattenAzureSchema(
     prop.additionalProperties = normalizeAzureSchema(
       additionalProperties,
       normalizing,
+      definitions,
+      discriminatorCollector,
     );
     if (prop.additionalProperties === undefined) return undefined;
     defaultAnyTypeTo(prop.additionalProperties, "string");
@@ -389,9 +613,11 @@ function intersectAzureSchema(
           !util.isDeepStrictEqual(intersected[key], prop[key])
         ) {
           throw new Error(
-            `Incompatible property ${key}: ${util.inspect(
-              intersected[key],
-            )} vs ${util.inspect(prop[key])}`,
+            `Incompatible property ${key}: ${
+              util.inspect(
+                intersected[key],
+              )
+            } vs ${util.inspect(prop[key])}`,
           );
         }
         intersected[key] = prop[key];
@@ -485,10 +711,18 @@ function buildDomainAndResourceValue(
   putOperation: AzureOpenApiOperation,
   handlers: { [key in CfHandlerKind]?: CfHandler },
   apiVersion: string,
+  definitions: AzureDefinitions | undefined,
 ): ExpandedPkgSpec | null {
+  // Create a shared discriminator collector for both GET and PUT
+  const discriminatorCollector: Record<string, Record<string, string>> = {};
+
   // Grab resourceValue properties from the GET response
   const { properties: resourceValueProperties } =
-    extractPropertiesFromResponseBody(getOperation);
+    extractPropertiesFromResponseBody(
+      getOperation,
+      definitions,
+      discriminatorCollector,
+    );
   if (Object.keys(resourceValueProperties).length === 0) {
     logger.debug(`No properties found in GET response for ${resourceType}`);
     return null;
@@ -498,15 +732,26 @@ function buildDomainAndResourceValue(
   }
   if (!("id" in resourceValueProperties)) {
     throw new Error(
-      `No id property in GET response: ${
-        getOperation.operationId
-      }\n\n${util.inspect(getOperation, { depth: 12 })}`,
+      `No id property in GET response: ${getOperation.operationId}\n\n${
+        util.inspect(getOperation, { depth: 12 })
+      }`,
     );
   }
 
   // Grab domain properties from the PUT request
-  let { properties: domainProperties, required: requiredProperties } =
-    extractPropertiesFromRequestBody(putOperation);
+  let {
+    properties: domainProperties,
+    required: requiredProperties,
+  } = extractPropertiesFromRequestBody(
+    putOperation,
+    definitions,
+    discriminatorCollector,
+  );
+
+  // Get discriminators from the shared collector
+  const discriminators = Object.keys(discriminatorCollector).length > 0
+    ? discriminatorCollector
+    : undefined;
   // Remove readonly properties from the domain
   domainProperties = removeReadOnlyProperties(domainProperties, new Set());
   if (Object.keys(domainProperties).length === 0) {
@@ -514,8 +759,7 @@ function buildDomainAndResourceValue(
     return null;
   }
 
-  const description =
-    getOperation.description ||
+  const description = getOperation.description ||
     (getOperation.summary as string) ||
     `Azure ${resourceType} resource`;
 
@@ -526,6 +770,7 @@ function buildDomainAndResourceValue(
     requiredProperties: new Set(requiredProperties),
     handlers,
     apiVersion,
+    discriminators,
   };
   // TODO figure out readOnly and writeOnly properties based on which tree they appear in
   const onlyProperties: OnlyProperties = {
@@ -551,6 +796,8 @@ function buildDomainAndResourceValue(
 
 function extractPropertiesFromRequestBody(
   operation: AzureOpenApiOperation | null,
+  definitions: AzureDefinitions | undefined,
+  discriminatorCollector: Record<string, Record<string, string>>,
 ) {
   const bodyParams = operation?.parameters?.filter(
     (p) => !("$ref" in p) && p.in === "body",
@@ -562,13 +809,23 @@ function extractPropertiesFromRequestBody(
 
   assert(!("$ref" in bodyParams[0]), "Body parameter is a $ref");
   const { schema } = bodyParams[0];
-  if (!schema) return { properties: {}, required: [] };
+  if (!schema) {
+    return { properties: {}, required: [] };
+  }
   assert(!("$ref" in schema), "Body parameter is a $ref");
-  const azureProp = normalizeAzureSchema(schema, []);
+
+  // Normalize the schema (discriminators will be collected during flattening)
+  const azureProp = normalizeAzureSchema(
+    schema,
+    [],
+    definitions,
+    discriminatorCollector,
+  );
   assert(
     azureProp?.type === "object",
     `Response schema is not an object: ${operation.operationId}`,
   );
+
   return {
     properties: azureProp.properties ?? {},
     required: azureProp.required ?? [],
@@ -577,10 +834,19 @@ function extractPropertiesFromRequestBody(
 
 function extractPropertiesFromResponseBody(
   operation: AzureOpenApiOperation | null,
+  definitions: AzureDefinitions | undefined,
+  discriminatorCollector: Record<string, Record<string, string>>,
 ) {
   const schema = operation?.responses?.["200"]?.schema;
   if (!schema) return { properties: {}, required: [] };
-  const azureProp = normalizeAzureSchema(schema, []);
+
+  // Normalize the schema (discriminators will be collected during flattening)
+  const azureProp = normalizeAzureSchema(
+    schema,
+    [],
+    definitions,
+    discriminatorCollector,
+  );
   assert(
     azureProp?.type === "object",
     `Response schema is not an object: ${operation.operationId}`,
@@ -596,12 +862,14 @@ function extractPropertiesFromResponseBody(
   }
   if (!("id" in result.properties)) {
     throw new Error(
-      `No id property in GET response: ${
-        operation.operationId
-      }\n\n${util.inspect(operation, { depth: 12 })}\n\n${util.inspect(
-        azureProp,
-        { depth: 12 },
-      )}`,
+      `No id property in GET response: ${operation.operationId}\n\n${
+        util.inspect(operation, { depth: 12 })
+      }\n\n${
+        util.inspect(
+          azureProp,
+          { depth: 12 },
+        )
+      }`,
     );
   }
   return result;

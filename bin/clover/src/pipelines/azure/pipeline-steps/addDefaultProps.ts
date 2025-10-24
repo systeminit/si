@@ -2,6 +2,7 @@ import _ from "lodash";
 import { ExpandedPkgSpec } from "../../../spec/pkgs.ts";
 import {
   addPropSuggestSource,
+  bfsPropTree,
   createObjectProp,
   createScalarProp,
   ExpandedPropSpec,
@@ -12,6 +13,14 @@ import { AzureSchema } from "../schema.ts";
 export interface PropUsageMap {
   createOnly: string[];
   updatable: string[];
+  // Maps discriminator property -> subtype definition name -> enum value
+  // e.g., { "kind": { "AzurePowerShellScript": "AzurePowerShell", "AzureCliScript": "AzureCLI" } }
+  discriminators: Record<string, Record<string, string>> | undefined;
+  // Maps discriminator property -> subtype definition name -> list of properties defined by that subtype
+  // e.g., { "kind": { "AzurePowerShellScript": ["properties"], "AzureCliScript": ["properties"] } }
+  discriminatorSubtypeProps:
+    | Record<string, Record<string, string[]>>
+    | undefined;
 }
 
 export function addDefaultProps(
@@ -143,7 +152,49 @@ export function addDefaultProps(
       const propUsageMap: PropUsageMap = {
         createOnly: [],
         updatable: [],
+        discriminators: {},
+        discriminatorSubtypeProps: {},
       };
+
+      const azureSchema = schemaVariant.superSchema as AzureSchema;
+      propUsageMap.discriminators = azureSchema.discriminators;
+
+      // Derive discriminatorSubtypeProps by walking the domain schema structure
+      const discriminatorSubtypePropsMap: Record<
+        string,
+        Record<string, string[]>
+      > = {};
+
+      if (azureSchema.discriminators) {
+        for (
+          const [discriminatorProp, subtypeMap] of Object.entries(
+            azureSchema.discriminators,
+          )
+        ) {
+          const domainProp = findPropByName(domain, discriminatorProp);
+
+          if (domainProp && domainProp.kind === "object") {
+            discriminatorSubtypePropsMap[discriminatorProp] = {};
+
+            for (const subtypeName of Object.keys(subtypeMap)) {
+              const subtypeProp = domainProp.entries.find((e) =>
+                e.name === subtypeName
+              );
+
+              if (subtypeProp && subtypeProp.kind === "object") {
+                const allPropNames: string[] = [];
+                bfsPropTree(subtypeProp.entries, (prop) => {
+                  allPropNames.push(prop.name);
+                });
+                discriminatorSubtypePropsMap[discriminatorProp][subtypeName] =
+                  allPropNames;
+              }
+            }
+          }
+        }
+      }
+
+      propUsageMap.discriminatorSubtypeProps = discriminatorSubtypePropsMap;
 
       const queue: ExpandedPropSpec[] = _.cloneDeep(domain.entries);
 
