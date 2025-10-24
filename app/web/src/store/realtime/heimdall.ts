@@ -43,6 +43,7 @@ import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
 import { WorkspaceMetadata, WorkspacePk } from "@/api/sdf/dal/workspace";
+import { memoizeDebounce } from "@/newhotness/util";
 import {
   cachedAppEmitter,
   SHOW_CACHED_APP_NOTIFICATION_EVENT,
@@ -230,6 +231,10 @@ export const showInterest = async (
   await db.showInterest(workspaceId, changeSetId);
 };
 
+const bustDebugCallCachec = memoizeDebounce((id: string) => {
+  queryClient?.invalidateQueries({ queryKey: ["component-debug", id] });
+}, 1000);
+
 const bustTanStackCache: BustCacheFn = (
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
@@ -243,6 +248,9 @@ const bustTanStackCache: BustCacheFn = (
   } else {
     const queryKey = [workspaceId, changeSetId, kind, id];
     queryClient?.invalidateQueries({ queryKey });
+  }
+  if ([EntityKind.Component, EntityKind.AttributeTree].includes(kind)) {
+    bustDebugCallCachec(id);
   }
   if (!noBroadcast) {
     db.broadcastMessage({
