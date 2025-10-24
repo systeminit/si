@@ -12,9 +12,32 @@ import { OpenAPIV3_1 } from "openapi-types";
 import path from "node:path";
 import { Extend } from "../../extend.ts";
 
+/// Azure schema property
+export type AzureSchemaProperty = JSONSchema.Interface & AzureSchemaExtensions;
+
+/// Azure-specific schema extensions
+export type AzureSchemaExtensions = {
+  "x-ms-discriminator-value"?: string;
+  discriminator?: string;
+  properties?: Record<string, AzureSchemaProperty>;
+  // We keep track of these so we can add them to the PropUsageMap later
+  discriminators?: Record<string, string[]>;
+};
+
+/// Azure schema definition
+export type AzureSchemaDefinition = JSONSchema & AzureSchemaExtensions;
+
+/// Azure definitions object
+export type AzureDefinitions = Record<string, AzureSchemaDefinition>;
+
 /// OpenAPI.Document without $ref, with some Azure-specific extensions
 export type AzureOpenApiDocument =
-  OpenAPIV3_1.Document<AzureOpenApiOperationExt>;
+  & OpenAPIV3_1.Document<
+    AzureOpenApiOperationExt
+  >
+  & {
+    definitions?: AzureDefinitions;
+  };
 /// OpenAPI.Operation without $ref, with some Azure-specific extensions
 export type AzureOpenApiOperation = Extend<
   OpenAPIV3_1.OperationObject,
@@ -65,6 +88,7 @@ export interface AzureOperationData {
 export interface AzureSchema extends SuperSchema {
   requiredProperties: Set<string>;
   apiVersion?: string;
+  discriminators?: Record<string, string[]>;
 }
 
 export const AZURE_HTTP_METHODS = [

@@ -97,6 +97,39 @@ function cleanPayload(domain) {
   delete payload.name;
   delete payload.extra;
 
+  // Merge discriminator subtypes into parent
+  // propUsageMap.discriminators maps discriminator property names to their subtype names
+  // e.g., { "kind": ["AzurePowerShellScript", "AzureCliScript"] }
+  for (
+    const [discriminatorProp, subtypes] of Object.entries(
+      propUsageMap.discriminators || {},
+    )
+  ) {
+    // Find which subtype is filled in
+    const filledSubtypes = subtypes.filter((subtype) => payload[subtype]);
+
+    if (filledSubtypes.length > 1) {
+      throw new Error(
+        `Multiple discriminator subtypes filled for "${discriminatorProp}": ${
+          filledSubtypes.join(", ")
+        }. Only one should be filled.`,
+      );
+    }
+
+    const subtypeName = filledSubtypes[0];
+    const subtypeValue = payload[subtypeName];
+
+    if (
+      subtypeValue && typeof subtypeValue === "object" &&
+      !Array.isArray(subtypeValue)
+    ) {
+      // Merge subtype properties into parent (subtype values take precedence)
+      Object.assign(payload, subtypeValue);
+      // Remove the subtype wrapper
+      delete payload[subtypeName];
+    }
+  }
+
   // Only check top-level properties - once a property is included, keep all its descendants
   const propsToVisit = _.keys(payload).map((k: string) => [k]);
 
