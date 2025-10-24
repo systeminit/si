@@ -812,6 +812,8 @@ impl WorkspaceSnapshotGraphV4 {
             old_root_indexes = self
                 .graph
                 .externals(Incoming)
+                // NOTE(nick,jacob): HEY YOU! Comment this out if you want to leave behind all
+                // nodes involved in cycles after cleanup. Good for debugging with snapshot surfer.
                 .filter(|node_id| *node_id != self.root_index)
                 .collect();
             if old_root_indexes.is_empty() {

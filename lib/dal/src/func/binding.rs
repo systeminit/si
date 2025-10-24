@@ -169,6 +169,22 @@ pub enum FuncBindingError {
 impl FuncBindingError {
     pub fn is_create_graph_cycle(&self) -> bool {
         match self {
+            Self::AttributePrototype(err) => matches!(
+                err.as_ref(),
+                AttributePrototypeError::WorkspaceSnapshot(
+                    WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                        WorkspaceSnapshotGraphError::CreateGraphCycle,
+                    ) | WorkspaceSnapshotError::SplitGraph(SplitGraphError::WouldCreateGraphCycle),
+                )
+            ),
+            Self::AttributePrototypeArgument(err) => matches!(
+                err.as_ref(),
+                AttributePrototypeArgumentError::WorkspaceSnapshot(
+                    WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                        WorkspaceSnapshotGraphError::CreateGraphCycle,
+                    ) | WorkspaceSnapshotError::SplitGraph(SplitGraphError::WouldCreateGraphCycle),
+                )
+            ),
             Self::SchemaVariant(err) => match err.as_ref() {
                 SchemaVariantError::AttributePrototypeArgument(err) => matches!(
                     err.as_ref(),
@@ -182,14 +198,6 @@ impl FuncBindingError {
                 ),
                 _ => false,
             },
-            Self::AttributePrototypeArgument(err) => matches!(
-                err.as_ref(),
-                AttributePrototypeArgumentError::WorkspaceSnapshot(
-                    WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                        WorkspaceSnapshotGraphError::CreateGraphCycle,
-                    ) | WorkspaceSnapshotError::SplitGraph(SplitGraphError::WouldCreateGraphCycle),
-                )
-            ),
             _ => false,
         }
     }
