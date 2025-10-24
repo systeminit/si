@@ -31,6 +31,7 @@ use si_pool_noodle::{
         LocalUdsSocketStrategy,
     },
 };
+use si_service_endpoints::ServiceEndpointsConfig;
 pub use si_settings::{
     StandardConfig,
     StandardConfigFile,
@@ -80,11 +81,12 @@ impl ConfigError {
 
 type Result<T> = std::result::Result<T, ConfigError>;
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Serialize)]
 pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
+    #[serde(skip_serializing)]
     cyclone_spec: CycloneSpec,
 
     #[builder(default = "VeritechCryptoConfig::default()")]
@@ -110,6 +112,9 @@ pub struct Config {
 
     #[builder(default = "default_heartbeat_app_publish_timeout_duration()")]
     heartbeat_app_publish_timeout_duration: Duration,
+
+    #[builder(default = "default_service_endpoints_config()")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl StandardConfig for Config {
@@ -177,6 +182,12 @@ impl Config {
     pub fn heartbeat_app_publish_timeout_duration(&self) -> Duration {
         self.heartbeat_app_publish_timeout_duration
     }
+
+    /// Gets a reference to the config's service endpoints configuration.
+    #[must_use]
+    pub fn service_endpoints(&self) -> &ServiceEndpointsConfig {
+        &self.service_endpoints
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -200,6 +211,8 @@ pub struct ConfigFile {
     heartbeat_app_sleep_secs: u64,
     #[serde(default = "default_heartbeat_app_publish_timeout_secs")]
     heartbeat_app_publish_timeout_secs: u64,
+    #[serde(default = "default_service_endpoints_config")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl Default for ConfigFile {
@@ -221,6 +234,7 @@ impl ConfigFile {
             heartbeat_app: default_heartbeat_app(),
             heartbeat_app_sleep_secs: default_heartbeat_app_sleep_secs(),
             heartbeat_app_publish_timeout_secs: default_heartbeat_app_publish_timeout_secs(),
+            service_endpoints: default_service_endpoints_config(),
         }
     }
 
@@ -236,6 +250,7 @@ impl ConfigFile {
             heartbeat_app: default_heartbeat_app(),
             heartbeat_app_sleep_secs: default_heartbeat_app_sleep_secs(),
             heartbeat_app_publish_timeout_secs: default_heartbeat_app_publish_timeout_secs(),
+            service_endpoints: default_service_endpoints_config(),
         }
     }
 }
@@ -265,6 +280,7 @@ impl TryFrom<ConfigFile> for Config {
         config.heartbeat_app_publish_timeout_duration(Duration::from_secs(
             value.heartbeat_app_publish_timeout_secs,
         ));
+        config.service_endpoints(value.service_endpoints);
 
         config.build().map_err(Into::into)
     }
@@ -652,6 +668,10 @@ fn default_heartbeat_app_publish_timeout_secs() -> u64 {
 
 fn default_create_firecracker_setup_scripts() -> bool {
     true
+}
+
+fn default_service_endpoints_config() -> ServiceEndpointsConfig {
+    ServiceEndpointsConfig::new(0)
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

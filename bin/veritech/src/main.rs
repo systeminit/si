@@ -29,6 +29,8 @@ fn main() -> Result<()> {
 async fn async_main(args: args::Args) -> Result<()> {
     let main_tracker = TaskTracker::new();
     let main_token = CancellationToken::new();
+    let endpoints_tracker = TaskTracker::new();
+    let endpoints_token = CancellationToken::new();
     let telemetry_tracker = TaskTracker::new();
     let telemetry_token = CancellationToken::new();
 
@@ -71,6 +73,17 @@ async fn async_main(args: args::Args) -> Result<()> {
     let config = load_config_with_provider(args, provider).await?;
     debug!(?config, "computed configuration");
 
+    let endpoints_server = if config.service_endpoints().enabled {
+        let endpoints = veritech_server::DefaultServiceEndpoints::from_config("veritech", &config)?;
+        Some(veritech_server::EndpointsServer::new(
+            std::sync::Arc::new(endpoints),
+            config.service_endpoints().clone(),
+            endpoints_token.clone(),
+        ))
+    } else {
+        None
+    };
+
     let (server, maybe_heartbeat_app) = Server::from_config(config, main_token.clone()).await?;
 
     if let Some(mut heartbeat_app) = maybe_heartbeat_app {
@@ -81,8 +94,17 @@ async fn async_main(args: args::Args) -> Result<()> {
         server.run().await
     });
 
+    if let Some(endpoints_server) = endpoints_server {
+        endpoints_tracker.spawn(async move {
+            if let Err(err) = endpoints_server.run().await {
+                error!(error = ?err, "error running veritech endpoints server");
+            }
+        });
+    }
+
     shutdown::graceful()
         .group(main_tracker, main_token)
+        .group(endpoints_tracker, endpoints_token)
         .group(telemetry_tracker, telemetry_token)
         .telemetry_guard(telemetry_shutdown.into_future())
         .timeout(graceful_shutdown_timeout)
