@@ -102,6 +102,7 @@
       </GridItemWithLiveHeader>
     </template>
   </FuncRunDetailsLayout>
+  <DelayedLoader v-else-if="funcRunQuery.isLoading" :size="'full'" />
   <h1 v-else class="text-">Func Run {{ funcRunId }} not found</h1>
 </template>
 
@@ -117,6 +118,7 @@ import {
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
+import DelayedLoader from "@/newhotness/layout_components/DelayedLoader.vue";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
 import GridItemWithLiveHeader from "./layout_components/GridItemWithLiveHeader.vue";
 import { assertIsDefined, Context } from "./types";
@@ -195,7 +197,7 @@ const navigateToComponent = () => {
 const api = useApi();
 const pollInterval = ref<number | false>(0); // initial calls
 
-const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
+const funcRunQuery = useQuery<Omit<FuncRun, "logs"> | undefined>({
   queryKey: computed(() => [ctx.changeSetId.value, "funcRun", props.funcRunId]),
   queryFn: async () => {
     const call = api.endpoint<funcRunTypes.FuncRunResponse>(routes.FuncRun, {
@@ -217,7 +219,7 @@ const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
   refetchInterval: () => pollInterval.value,
 });
 
-const funcRun = computed(() => funcRunQuery.value);
+const funcRun = computed(() => funcRunQuery.data.value);
 
 const managementFuncJobStateComposable = useManagementFuncJobState(funcRun);
 const managementFuncJobState = computed(
