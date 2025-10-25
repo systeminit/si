@@ -66,6 +66,7 @@ use crate::{
     FuncBackendResponseType,
     FuncError,
     FuncId,
+    SchemaError,
     SchemaVariant,
     SchemaVariantError,
     SchemaVariantId,
@@ -146,6 +147,10 @@ pub enum FuncAuthoringError {
     FuncBinding(#[from] Box<FuncBindingError>),
     #[error("func named \"{0}\" already exists in this change set")]
     FuncNameExists(String),
+    #[error("func named \"{0}\" already exists in this schema ({1})")]
+    FuncNameExistsOnSchema(String, SchemaId),
+    #[error("func named \"{0}\" already exists in this schema variant ({1})")]
+    FuncNameExistsOnVariant(String, SchemaVariantId),
     #[error("Function options are incompatible with variant")]
     FuncOptionsAndVariantMismatch,
     #[error("func run value sender is gone without sending a value")]
@@ -172,6 +177,8 @@ pub enum FuncAuthoringError {
     OutputSocket(#[from] Box<OutputSocketError>),
     #[error("prop error: {0}")]
     Prop(#[from] Box<PropError>),
+    #[error("schema variant error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("tokio task join error: {0}")]
