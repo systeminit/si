@@ -1,1 +1,0 @@
-../../../../../../app/web/src/assets/static/editor_typescript.txt

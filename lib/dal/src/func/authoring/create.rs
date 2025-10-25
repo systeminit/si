@@ -10,10 +10,13 @@ use super::{
     FuncAuthoringResult,
 };
 use crate::{
+    Component,
     DalContext,
     Func,
     FuncBackendKind,
     FuncBackendResponseType,
+    Schema,
+    SchemaVariant,
     SchemaVariantId,
     action::prototype::{
         ActionKind,
@@ -58,6 +61,20 @@ pub(crate) async fn create_management_func(
     name: Option<String>,
     parent: ManagementPrototypeParent,
 ) -> FuncAuthoringResult<Func> {
+    let name = name.unwrap_or(generate_name());
+
+    match &parent {
+        // An overlay can have any name
+        ManagementPrototypeParent::Schemas(schema_ids) => {
+            for schema_id in schema_ids {
+                fail_if_func_name_already_used_on_schema(ctx, &name, *schema_id).await?;
+            }
+        }
+        ManagementPrototypeParent::SchemaVariant(variant_id) => {
+            fail_if_func_name_already_used_on_variant(ctx, &name, *variant_id).await?
+        }
+    }
+
     let func = create_func_stub(
         ctx,
         name.clone(),
@@ -99,12 +116,14 @@ pub(crate) async fn create_action_func_overlay(
     action_kind: ActionKind,
     schema_id: SchemaId,
 ) -> FuncAuthoringResult<Func> {
+    let name = name.unwrap_or(generate_name());
+    fail_if_func_name_already_used_on_schema(ctx, &name, schema_id).await?;
     // need to see if there's already an action func of this particular kind for the schema variant
     // before doing anything else
 
     let func = create_func_stub(
         ctx,
-        name.clone(),
+        name,
         FuncBackendKind::JsAction,
         FuncBackendResponseType::Action,
         DEFAULT_ACTION_CODE,
@@ -137,6 +156,9 @@ pub(crate) async fn create_action_func(
     action_kind: ActionKind,
     schema_variant_id: SchemaVariantId,
 ) -> FuncAuthoringResult<Func> {
+    let name = name.unwrap_or(generate_name());
+    fail_if_func_name_already_used_on_variant(ctx, &name, schema_variant_id).await?;
+
     // need to see if there's already an action func of this particular kind for the schema variant
     // before doing anything else
 
@@ -152,7 +174,7 @@ pub(crate) async fn create_action_func(
 
     let func = create_func_stub(
         ctx,
-        name.clone(),
+        name,
         FuncBackendKind::JsAction,
         FuncBackendResponseType::Action,
         DEFAULT_ACTION_CODE,
@@ -178,6 +200,9 @@ pub(crate) async fn create_leaf_func(
     eventual_parent: EventualParent,
     inputs: &[LeafInputLocation],
 ) -> FuncAuthoringResult<Func> {
+    let name = name.unwrap_or(generate_name());
+    fail_if_name_already_used_on_eventual_parent(ctx, &name, &eventual_parent).await?;
+
     let (code, handler, backend_kind, backend_response_type) = match leaf_kind {
         LeafKind::CodeGeneration => (
             DEFAULT_CODE_GENERATION_CODE,
@@ -219,6 +244,12 @@ pub(crate) async fn create_attribute_func(
     argument_bindings: Vec<AttributeArgumentBinding>,
     is_transformation: bool,
 ) -> FuncAuthoringResult<Func> {
+    let name = name.unwrap_or(generate_name());
+
+    if let Some(eventual_parent) = &eventual_parent {
+        fail_if_name_already_used_on_eventual_parent(ctx, &name, eventual_parent).await?;
+    }
+
     let (code, handler, backend_kind, backend_response_type) = (
         DEFAULT_ATTRIBUTE_CODE,
         DEFAULT_CODE_HANDLER,
@@ -261,6 +292,9 @@ pub(crate) async fn create_authentication_func(
     name: Option<String>,
     schema_variant_id: SchemaVariantId,
 ) -> FuncAuthoringResult<Func> {
+    let name = name.unwrap_or(generate_name());
+    fail_if_func_name_already_used_on_variant(ctx, &name, schema_variant_id).await?;
+
     let func = create_func_stub(
         ctx,
         name,
@@ -278,18 +312,13 @@ pub(crate) async fn create_authentication_func(
 
 async fn create_func_stub(
     ctx: &DalContext,
-    name: Option<String>,
+    name: String,
     backend_kind: FuncBackendKind,
     backend_response_type: FuncBackendResponseType,
     code: &str,
     handler: &str,
     is_transformation: bool,
 ) -> FuncAuthoringResult<Func> {
-    let name = name.unwrap_or(generate_name());
-    if Func::find_id_by_name(ctx, &name).await?.is_some() {
-        return Err(FuncAuthoringError::FuncNameExists(name));
-    }
-
     let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);
 
     let func = Func::new(
@@ -309,4 +338,69 @@ async fn create_func_stub(
     .await?;
 
     Ok(func)
+}
+
+async fn fail_if_func_name_already_used_on_variant(
+    ctx: &DalContext,
+    name: impl AsRef<str>,
+    schema_variant_id: SchemaVariantId,
+) -> FuncAuthoringResult<()> {
+    if SchemaVariant::all_funcs_without_intrinsics(ctx, schema_variant_id)
+        .await?
+        .iter()
+        .any(|f| f.name == name.as_ref())
+    {
+        return Err(FuncAuthoringError::FuncNameExistsOnVariant(
+            name.as_ref().to_string(),
+            schema_variant_id,
+        ));
+    }
+
+    Ok(())
+}
+
+async fn fail_if_func_name_already_used_on_schema(
+    ctx: &DalContext,
+    name: impl AsRef<str>,
+    schema_id: SchemaId,
+) -> FuncAuthoringResult<()> {
+    let func_ids = Schema::all_overlay_func_ids(ctx, schema_id).await?;
+
+    for func_id in func_ids {
+        let func = Func::get_by_id(ctx, func_id).await?;
+
+        if func.name == name.as_ref() {
+            return Err(FuncAuthoringError::FuncNameExistsOnSchema(
+                name.as_ref().to_string(),
+                schema_id,
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+async fn fail_if_name_already_used_on_eventual_parent(
+    ctx: &DalContext,
+    name: impl AsRef<str>,
+    eventual_parent: &EventualParent,
+) -> FuncAuthoringResult<()> {
+    // Check if name is already used on the same variant, if applicable
+    match eventual_parent {
+        EventualParent::SchemaVariant(variant_id) => {
+            fail_if_func_name_already_used_on_variant(ctx, &name, *variant_id).await?
+        }
+        EventualParent::Component(component_id) => {
+            let variant_id = Component::schema_variant_id(ctx, *component_id).await?;
+            fail_if_func_name_already_used_on_variant(ctx, &name, variant_id).await?;
+        }
+
+        EventualParent::Schemas(schema_ids) => {
+            for schema_id in schema_ids {
+                fail_if_func_name_already_used_on_schema(ctx, &name, *schema_id).await?;
+            }
+        }
+    }
+
+    Ok(())
 }
