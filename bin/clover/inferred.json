@@ -1925,6 +1925,12 @@
       "custom-oracle-ee-cdb"
     ]
   },
+  "The format of the exported capacity manager data. Choose 'csv' for comma-separated values or 'parquet' for optimized columnar storage format.": {
+    "enum": [
+      "csv",
+      "parquet"
+    ]
+  },
   "Specify how the HTTP validation token will be served when requesting the CloudFront managed ACM certificate.\n  +  For ``cloudfront``, CloudFront will automatically serve the validation token. Choose this mode if you can point the domain's DNS to CloudFront immediately.\n  +  For ``self-hosted``, you serve the validation token from your existing infrastructure. Choose this mode when you need to maintain current traffic flow while your certificate is being issued. You can place the validation token at the well-known path on your existing web server, wait for ACM to validate and issue the certificate, and then update your DNS to point to CloudFront.": {
     "enum": [
       "cloudfront",
@@ -13698,6 +13704,9 @@
   "The name of the Amazon S3 bucket to which the policy applies.": {
     "enum": null
   },
+  "The name of the Amazon S3 bucket where the capacity manager data export will be stored. The bucket must exist and be accessible by EC2 Capacity Manager service.": {
+    "enum": null
+  },
   "The name of the Amazon S3 stage that was created while setting up an Amazon S3 stage in the\nSnowﬂake account. This is written in the following format: < Database>< Schema><Stage Name>.": {
     "enum": null
   },
@@ -15831,6 +15840,9 @@
   "The prefix for delivery S3 bucket.": {
     "enum": null
   },
+  "The prefix for the S3 bucket location where exported files will be placed. If not specified, files will be placed in the root of the bucket.": {
+    "enum": null
+  },
   "The prefix for the delivery S3 bucket.": {
     "enum": null
   },
@@ -16246,6 +16258,9 @@
     "enum": null
   },
   "The scale specification for the container service.": {
+    "enum": null
+  },
+  "The schedule for the capacity manager data export. Currently supports hourly exports that provide periodic snapshots of capacity manager data.": {
     "enum": null
   },
   "The schedule in `at( )` or `cron( )` format.": {
