@@ -2,6 +2,51 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## October 20th to 26th 2025
+
+### ✨ Added
+
+- 🚀 **Initial release of `si-conduit`**, a new tool for authoring schemas via
+  files on disk.
+- Added ability to **delete function attachments** via the Public API.
+- Added ability to **search in the views dropdown list** in the web app.
+- Added ability to **view full history and function executions** for a component
+  via the Component Details page.
+- Added support to **manage System Initiative workspaces** via the Public API.
+- Added ability to **subscribe to another prop on the same component**.
+
+### 🔄 Changed
+
+- Enhanced **cache-busting logic** for Deployment MVs in the web app.
+- Enhanced **Auth API workspace routes** to be fully managed by API tokens.
+- Increased the **module upload size limit** in SDF.
+- Removed the need for **cycle checks** in management edge creation.
+- Retired **`si-fs`** as an active product.
+
+### 🐞 Fixed
+
+- Fixed the **MCP `validateCredentials` tool** to remove token-specific
+  information.
+- Fixed issues with **explore controls and context menu** in the web app.
+- Fixed a bug in the **create template modal** in the web app.
+- Fixed an issue where **index retrieval errors** in the web app resulted in 500
+  errors to users.
+- Fixed an issue where the web app now **alerts users when a change set can’t
+  merge** due to DVU still in progress.
+- Fixed a bug where **old schema versions** appeared in the Add Component modal.
+- Fixed an issue where **management function runs** tried to load for invalid
+  components.
+- Fixed navigation issues when **bulk editing on HEAD**.
+- Fixed malformed user input handling in the **Attributes Panel**.
+- Fixed an issue in the **Auth Portal** where users could navigate to a
+  workspace without a valid token.
+- Fixed an issue where **failing to fetch change sets** caused users to get
+  stuck in the lobby.
+- Fixed error handling in the **Attributes Panel** for greater stability.
+- Fixed issues preventing **incomplete subscriptions** in the product.
+- Fixed an issue where **failed functions** didn’t send an update event to
+  indicate failure.
+
 ## October 13th to 19th 2025
 
 ### ✨ Added
@@ -37,6 +82,8 @@ All notable changes to System Initiative will be documented in this file.
   listing components.
 - Fixed a vulnerability where **Workspace Integrations** could be accessed by
   another user without permission.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/bQIthgGT3KY?si=xaa7UJf6Uv6zQe5s" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## October 6th to 12th 2025
 
