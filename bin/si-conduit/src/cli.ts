@@ -16,7 +16,6 @@ import {
   RootPathNotFoundError,
   RootPathType,
 } from "./cli/root-path.ts";
-import { pushAssets } from "./cli/push-assets.ts";
 import { initializeCliContextWithAuth } from "./cli/helpers.ts";
 import { callWhoami } from "./command/whoami.ts";
 import { callProjectInit } from "./command/project/init.ts";
@@ -31,6 +30,7 @@ import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Context } from "./context.ts";
 import * as jwt from "./jwt.ts";
 import { Project } from "./project.ts";
+import { callRemoteSchemaPush } from "./command/remote/schema/push.ts";
 
 /** Current version of the SI Conduit CLI */
 const VERSION = "0.1.0";
@@ -252,7 +252,7 @@ function buildRemoteSchemaCommand() {
           const ctx = Context.instance();
           const cliContext = await initializeCliContextWithAuth({ ctx });
 
-          await pushAssets(cliContext, project, skipConfirmation);
+          await callRemoteSchemaPush(cliContext, project, skipConfirmation);
         }),
     );
 }
