@@ -1678,6 +1678,47 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Installs a schema - if there's an installed schema, it will return that schema detail
+
+<a id="opIdinstall_schema"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/install`
+
+<h3 id="installs-a-schema---if-there's-an-installed-schema,-it-will-return-that-schema-detail-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "defaultVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "name": "AWS::EC2::Instance",
+  "schemaId": "string",
+  "variantIds": [
+    "01H9ZQD35JPMBGHH69BT0Q79VZ",
+    "01H9ZQD35JPMBGHH69BT0Q79VY"
+  ]
+}
+```
+
+<h3 id="installs-a-schema---if-there's-an-installed-schema,-it-will-return-that-schema-detail-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema installed successfully|[GetSchemaV1Response](#schemagetschemav1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Unlocks a schema - if there's already an unlocked variant, then we return that
 
 <a id="opIdunlock_schema"></a>

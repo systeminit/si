@@ -8072,6 +8072,48 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Installs a schema - if there\'s an installed schema, it will return that schema detail
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        installSchema: async (workspaceId: string, changeSetId: string, schemaId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('installSchema', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('installSchema', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('installSchema', 'schemaId', schemaId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/install`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary List all schemas (paginated endpoint)
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -8515,6 +8557,21 @@ export const SchemasApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Installs a schema - if there\'s an installed schema, it will return that schema detail
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async installSchema(workspaceId: string, changeSetId: string, schemaId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSchemaV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.installSchema(workspaceId, changeSetId, schemaId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.installSchema']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary List all schemas (paginated endpoint)
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -8738,6 +8795,16 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Installs a schema - if there\'s an installed schema, it will return that schema detail
+         * @param {SchemasApiInstallSchemaRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        installSchema(requestParameters: SchemasApiInstallSchemaRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaV1Response> {
+            return localVarFp.installSchema(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary List all schemas (paginated endpoint)
          * @param {SchemasApiListSchemasRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -8934,6 +9001,16 @@ export interface SchemasApiInterface {
      * @memberof SchemasApiInterface
      */
     getVariant(requestParameters: SchemasApiGetVariantRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaVariantV1Response>;
+
+    /**
+     * 
+     * @summary Installs a schema - if there\'s an installed schema, it will return that schema detail
+     * @param {SchemasApiInstallSchemaRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    installSchema(requestParameters: SchemasApiInstallSchemaRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaV1Response>;
 
     /**
      * 
@@ -9552,6 +9629,34 @@ export interface SchemasApiGetVariantRequest {
 }
 
 /**
+ * Request parameters for installSchema operation in SchemasApi.
+ * @export
+ * @interface SchemasApiInstallSchemaRequest
+ */
+export interface SchemasApiInstallSchemaRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiInstallSchema
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiInstallSchema
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiInstallSchema
+     */
+    readonly schemaId: string
+}
+
+/**
  * Request parameters for listSchemas operation in SchemasApi.
  * @export
  * @interface SchemasApiListSchemasRequest
@@ -9869,6 +9974,18 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
      */
     public getVariant(requestParameters: SchemasApiGetVariantRequest, options?: RawAxiosRequestConfig) {
         return SchemasApiFp(this.configuration).getVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Installs a schema - if there\'s an installed schema, it will return that schema detail
+     * @param {SchemasApiInstallSchemaRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public installSchema(requestParameters: SchemasApiInstallSchemaRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).installSchema(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
