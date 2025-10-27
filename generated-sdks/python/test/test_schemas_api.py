@@ -131,6 +131,13 @@ class TestSchemasApi(unittest.TestCase):
         """
         pass
 
+    def test_install_schema(self) -> None:
+        """Test case for install_schema
+
+        Installs a schema - if there's an installed schema, it will return that schema detail
+        """
+        pass
+
     def test_list_schemas(self) -> None:
         """Test case for list_schemas
 
