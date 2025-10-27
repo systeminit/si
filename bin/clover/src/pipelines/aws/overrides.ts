@@ -242,6 +242,68 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         );
       spec.funcs.push(importFunc);
       variant.managementFuncs.push(importFuncSpec);
+      
+      const { func: createDeploymentFunc, actionFuncSpec: createActionFuncSpec } =
+        attachExtraActionFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/actions/create.ts",
+          "Create Route53 RecordSet",
+          "create",
+          "2ebacb3b5a978529f2d047f43e812187d11a06b692a933decc8d4c31d81e4424",
+        );
+      spec.funcs.push(createDeploymentFunc);
+      variant.actionFuncs.push(createActionFuncSpec);
+      
+      const { func: refreshDeploymentFunc, actionFuncSpec: refreshActionFuncSpec } =
+        attachExtraActionFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/actions/refresh.ts",
+          "Refresh Route53 RecordSet",
+          "refresh",
+          "a2c37fc391c835788c5138b94ac91d3b7b60f7882e6713ad5c69bb52e62b8594",
+        );
+      spec.funcs.push(refreshDeploymentFunc);
+      variant.actionFuncs.push(refreshActionFuncSpec);
+    },
+  ],
+  [
+    "AWS::CertificateManager::Certificate",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+      
+      const { func: createDeploymentFunc, actionFuncSpec: createActionFuncSpec } =
+        attachExtraActionFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::CertificateManager::Certificate/actions/create.ts",
+          "Create ACM Certificate",
+          "create",
+          "af05d87120cfb700256c527d2bbf598b00db64b9afed4f1f95f74e317cb010b8",
+        );
+      spec.funcs.push(createDeploymentFunc);
+      variant.actionFuncs.push(createActionFuncSpec);
+      
+      const { func: refreshDeploymentFunc, actionFuncSpec: refreshActionFuncSpec } =
+        attachExtraActionFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::CertificateManager::Certificate/actions/refresh.ts",
+          "Refresh ACM Certificate",
+          "refresh",
+          "edc4c3ffcccf276adf6f9e44695c65a7b8a632c9e68bb0e3f2061274c1e442a3",
+        );
+      spec.funcs.push(refreshDeploymentFunc);
+      variant.actionFuncs.push(refreshActionFuncSpec);
+    },
+  ],
+  [
+    "AWS::ECS::Service",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      const { func: forceNewDeploymentFunc, actionFuncSpec: forceNewDeploymentActionFuncSpec } =
+        attachExtraActionFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::ECS::Service/actions/forceNewDeployment.ts",
+          "Force New Deployment",
+          "other",
+          "c676a418fba5b9b4c69444165db7a3fbc7ef19f1f018d4d8c0b3a2ff935d64b5",
+        );
+      spec.funcs.push(forceNewDeploymentFunc);
+      variant.actionFuncs.push(forceNewDeploymentActionFuncSpec);
     },
   ],
   [
