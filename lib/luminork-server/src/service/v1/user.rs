@@ -68,14 +68,14 @@ impl IntoResponse for UserError {
     ),
     tag = "user",
     responses(
-        (status = 200, description = "Flag set successfully"),
+        (status = 204, description = "Flag set successfully"),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
 pub async fn set_ai_agent_executed(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
-) -> UserResult<()> {
+) -> UserResult<StatusCode> {
     let HistoryActor::User(user_pk) = ctx.history_actor() else {
         return Err(UserError::MissingUser);
     };
@@ -96,5 +96,5 @@ pub async fn set_ai_agent_executed(
 
     ctx.commit().await?;
 
-    Ok(())
+    Ok(StatusCode::NO_CONTENT)
 }
