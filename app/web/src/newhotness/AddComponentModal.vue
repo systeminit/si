@@ -244,6 +244,7 @@ import {
   CachedDefaultVariant,
 } from "@/workers/types/entity_kind_types";
 import { getKind, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useFzf } from "./logic_composables/fzf";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -521,14 +522,22 @@ type UISchemaKey = {
   schemaId: string;
   schemaVariantId?: string;
 };
-
+const ffStore = useFeatureFlagsStore();
 const defaultSchemaKey = makeKey(EntityKind.CachedDefaultVariant);
 const defaultSchemas = useQuery({
   queryKey: defaultSchemaKey,
-  queryFn: async () =>
-    await getKind<CachedDefaultVariant>(
+  queryFn: async () => {
+    const schemas = await getKind<CachedDefaultVariant>(
       makeArgs(EntityKind.CachedDefaultVariant),
-    ),
+    );
+
+    if (ffStore.AZURE_SCHEMAS) return schemas;
+
+    return schemas.filter((s) => {
+      const name = s.displayName.toLocaleLowerCase();
+      return !(name.startsWith("azure") || name.startsWith("microsoft"));
+    });
+  },
 });
 
 const installedVariantsKey = makeKey(EntityKind.SchemaVariant);

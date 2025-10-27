@@ -28,6 +28,7 @@ const USER_FLAG_MAPPING = {
   INITIALIZER_ONBOARD_FORCE_AGENT: "initializer-onboard-force-agent",
   COMPONENT_HISTORY_FUNCS: "component-history-funcs",
   REVERSE_TRUNCATION: "reverse-truncation",
+  AZURE_SCHEMAS: "ms-azure-schemas",
 } as const;
 const WORKSPACE_FLAG_MAPPING = {
   FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",
