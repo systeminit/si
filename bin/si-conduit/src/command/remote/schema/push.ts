@@ -1,10 +1,15 @@
 import { ChangeSetsApi, SchemasApi, FuncsApi } from "@systeminit/api-client";
-import { AuthenticatedCliContext } from "./helpers.ts";
 import { AxiosError } from "axios";
-import { Context } from "../context.ts";
-import { unknownValueToErrorMessage } from "../helpers.ts";
-import { SCHEMA_FILE_FORMAT_VERSION } from "../config.ts";
-import { AbsoluteDirectoryPath, Project } from "../project.ts";
+import { Context } from "../../../context.ts";
+import { AuthenticatedCliContext } from "../../../cli/helpers.ts";
+import { unknownValueToErrorMessage } from "../../../helpers.ts";
+import { SCHEMA_FILE_FORMAT_VERSION } from "../../../config.ts";
+import {
+  AbsoluteDirectoryPath,
+  normalizeFsName,
+  Project
+} from "../../../project.ts";
+
 
 async function parseActions(
   ctx: Context,
@@ -14,6 +19,8 @@ async function parseActions(
   const logger = ctx.logger;
   const validActionKinds = ["create", "destroy", "refresh", "update"];
   const actionFiles = [];
+
+  logger.debug(`reading ${funcBasePath.toString()}...`);
 
   // Read the file list from the actions folder
   try {
@@ -132,6 +139,8 @@ async function parseSimpleFuncDirectory(
   const logger = ctx.logger;
   const files = [] as string[];
 
+  logger.debug(`reading ${funcBasePath.toString()}...`);
+
   // Read the file list from the actions folder
   try {
     const entries = Deno.readDir(funcBasePath.toString());
@@ -245,7 +254,7 @@ function allSchemaFuncsWithKind(schema: Schema) {
   ];
 }
 
-export async function pushAssets(
+export async function callRemoteSchemaPush(
   cliContext: AuthenticatedCliContext,
   project: Project,
   skipConfirmation?: boolean,
@@ -269,9 +278,15 @@ export async function pushAssets(
         continue;
       }
 
-      readSchemas += 1;
-
       const schemaDirName = entry.name;
+
+      const normalizedDirName = normalizeFsName(entry.name);
+      if (schemaDirName !== normalizedDirName) {
+        logger.error(`Error reading ${schemaDirName}: Unsupported characters in the directory name. It should be ${normalizedDirName}. Skipping...`);
+        continue;
+      }
+
+      readSchemas += 1;
 
       const versionFilePath = project.schemaFormatVersionPath(schemaDirName);
 
@@ -342,32 +357,42 @@ export async function pushAssets(
         const qualifications = await parseSimpleFuncDirectory(
           ctx,
           schemaName,
-          project.qualificationBasePath(schemaName),
+          project.qualificationBasePath(schemaDirName),
         );
+
+        logger.debug(`loaded ${qualifications.length} qualifications for ${schemaName}`);
 
         const actions = await parseActions(
           ctx,
           schemaName,
-          project.actionBasePath(schemaName),
+          project.actionBasePath(schemaDirName),
         );
+
+        logger.debug(`loaded ${actions.length} actions for ${schemaName}`);
 
         const codeGenerators = await parseSimpleFuncDirectory(
           ctx,
           schemaName,
-          project.codegenBasePath(schemaName),
+          project.codegenBasePath(schemaDirName),
         );
+
+        logger.debug(`loaded ${codeGenerators.length} code generators for ${schemaName}`);
 
         const managementFuncs = await parseSimpleFuncDirectory(
           ctx,
           schemaName,
-          project.managementBasePath(schemaName),
+          project.managementBasePath(schemaDirName),
         );
+
+        logger.debug(`loaded ${managementFuncs.length} management funcs for ${schemaName}`);
 
         const authFuncs = await parseSimpleFuncDirectory(
           ctx,
           schemaName,
-          project.authBasePath(schemaName),
+          project.authBasePath(schemaDirName),
         );
+
+        logger.debug(`authFuncs ${codeGenerators.length} auth funcs for ${schemaName}`);
 
         const schema = {
           name: schemaName,
