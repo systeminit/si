@@ -129,10 +129,18 @@
       v-if="'children' in filtered.tree && filtered.tree.children.length > 0"
       defaultOpen
     >
-      <template #header><span class="text-sm">domain</span></template>
+      <template #header>
+        <span class="text-sm">domain</span>
+        <NewButton
+          class="ml-auto"
+          :label="allClosed ? 'Expand children' : 'Collapse children'"
+          @click.stop.prevent="toggleAll"
+        />
+      </template>
       <ComponentAttribute
         v-for="(child, index) in filtered.tree.children"
         :key="child.id"
+        ref="layoutChildren"
         :component="component"
         :attributeTree="child"
         :stickyDepth="0"
@@ -173,6 +181,7 @@ import {
   reactive,
   Ref,
   ref,
+  useTemplateRef,
   watch,
 } from "vue";
 import { Fzf } from "fzf";
@@ -183,6 +192,7 @@ import {
   themeClasses,
   TruncateWithTooltip,
   TextPill,
+  NewButton,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import * as _ from "lodash-es";
@@ -229,6 +239,24 @@ const props = defineProps<{
   importFuncRun?: FuncRun;
 }>();
 
+const layoutRefs =
+  useTemplateRef<InstanceType<typeof AttributeChildLayout>[]>("layoutChildren");
+
+const allClosed = ref(false);
+const toggleAll = () => {
+  allClosed.value = !allClosed.value;
+  layoutRefs.value?.forEach((el) => {
+    if (allClosed.value) el?.close();
+    else el?.open();
+  });
+};
+const openAll = () => {
+  allClosed.value = false;
+  layoutRefs.value?.forEach((el) => {
+    el?.open();
+  });
+};
+
 const root = computed<AttrTree>(() => {
   const empty = {
     componentId: "",
@@ -268,6 +296,9 @@ const filtered = reactive<{ tree: AttrTree | object }>({
 watch(
   () => [q.value, domain.value],
   () => {
+    if (allClosed.value) {
+      openAll();
+    }
     if (!q.value) {
       filtered.tree = domain.value ?? {};
       return;

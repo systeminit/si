@@ -16,7 +16,7 @@
           'group/header',
           'px-2xs py-xs flex flex-row items-center gap-2xs cursor-pointer h-lg',
           sticky && 'sticky',
-          open && 'border-b',
+          _open && 'border-b',
           themeClasses(
             'bg-white border-neutral-300 hover:bg-neutral-100',
             'bg-neutral-800 border-neutral-600 hover:bg-neutral-700',
@@ -26,12 +26,12 @@
       :style="
         sticky ? { top: `${stickyTopOffset}px`, zIndex: stickyZIndex } : {}
       "
-      @click="() => (open = !open)"
+      @click="() => (_open = !_open)"
     >
-      <CollapseExpandChevron :open="open" />
+      <CollapseExpandChevron :open="_open" />
       <slot name="header" />
     </dt>
-    <dd v-if="open" class="p-2xs">
+    <dd v-if="_open" class="p-2xs">
       <slot />
       <!-- the children are, so far, another list or a button that would create a list -->
     </dd>
@@ -58,5 +58,18 @@ const props = withDefaults(
   },
 );
 
-const open = ref<boolean>(props.defaultOpen);
+const close = () => {
+  _open.value = false;
+};
+
+const open = () => {
+  _open.value = true;
+};
+
+defineExpose({
+  close,
+  open,
+});
+
+const _open = ref<boolean>(props.defaultOpen);
 </script>

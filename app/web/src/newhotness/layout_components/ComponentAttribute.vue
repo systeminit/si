@@ -27,6 +27,7 @@
   >
     <template v-if="showingChildren">
       <AttributeChildLayout
+        ref="childLayout"
         :sticky="
           attributeTree.prop?.kind === 'array' ||
           attributeTree.prop?.kind === 'map' ||
@@ -188,6 +189,7 @@
           <ComponentAttribute
             v-for="(child, index) in attributeTree.children"
             :key="child.id"
+            ref="componentAttributes"
             :component="component"
             :attributeTree="child"
             :parentHasExternalSources="
@@ -337,7 +339,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, useTemplateRef } from "vue";
 import {
   themeClasses,
   NewButton,
@@ -371,6 +373,14 @@ const props = defineProps<{
   stickyDepth?: number;
   isFirstChild?: boolean;
 }>();
+
+interface HasOpenAndClose {
+  close: () => void;
+  open: () => void;
+}
+const childLayout =
+  useTemplateRef<InstanceType<typeof AttributeChildLayout>>("childLayout");
+const componentAttributes = useTemplateRef("componentAttributes");
 
 const hasChildren = computed(() => {
   if (!props.attributeTree.prop) return false;
@@ -682,4 +692,27 @@ const onConnectButtonTab = (e: KeyboardEvent) => {
 const onDeleteButtonTab = (e: KeyboardEvent) => {
   handleTab(e, deleteButtonRef.value?.mainElRef);
 };
+
+const close = () => {
+  childLayout.value?.close();
+  (componentAttributes.value as (HasOpenAndClose | undefined)[])?.forEach(
+    (el) => {
+      el?.close();
+    },
+  );
+};
+
+const open = () => {
+  childLayout.value?.open();
+  (componentAttributes.value as (HasOpenAndClose | undefined)[])?.forEach(
+    (el) => {
+      el?.open();
+    },
+  );
+};
+
+defineExpose({
+  close,
+  open,
+});
 </script>
