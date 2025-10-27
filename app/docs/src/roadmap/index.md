@@ -5,7 +5,7 @@ outline:
 
 # Road map
 
-Updated October 10, 2025.
+Updated October 27, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
@@ -15,18 +15,22 @@ Want to influence the road map?
 We are expanding our list of supported providers, starting with Azure and Google
 Cloud. These new providers will be available in Q4 2025.
 
-- Hetzner Cloud is now in public beta
-- Azure is in development
+- Hetzner Cloud (in public beta)
+- Azure (in testing)
 
-## AI Authoring (In public beta)
+## Local Schema Authoring (In development)
+
+We’re introducing a new authoring CLI that lets users define and edit schemas
+locally from their preferred IDE or text editor. Users can author and refine
+asset schemas and functions on disk, then push changes to their System
+Initiative workspace or pull remote updates locally for review and application
+within the workspace model.
+
+## AI Authoring (Generally Available)
 
 We are adding the ability for our AI Agent to author schemas and functions. This
 will allow users to create their own customizations to schemas using natural
-language. This will be available in Q4 2025.
-
-Our AI Agent now has the ability to author schemas and functions. This is
-currently in public beta. We expect this to be generally available in the next
-few weeks.
+language. This is generally available as of October 2025.
 
 ## Job-specific interface (Generally Available)
 
@@ -185,4 +189,3 @@ changes without additional development work.
 If there is something specific you want or need from these assets, or if you
 require support for something outside of AWS, chat with us on
 [Discord](https://discord.com/invite/q6H2ZyFh) anytime.
- 
