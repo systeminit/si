@@ -172,14 +172,9 @@ impl CorrectTransforms for AttributePrototypeArgumentNodeWeight {
             }
         }
 
-        // If there is a difference between the sets, we need to check that there are updates to
-        // remove. If the conditional passes, there should be exactly one: the new node update for
-        // ourself.
-        if destinations_that_do_not_exist
-            .difference(&all_new_nodes)
-            .next()
-            .is_some()
-        {
+        // If the destinations that no longer exist will not be included, then we need to remove the
+        // update for ourself.
+        if !destinations_that_do_not_exist.is_subset(&all_new_nodes) {
             if indices_for_new_node_updates_for_ourself.len() > 1 {
                 warn!(
                     attribute_prototype_argument_id=%self.id,

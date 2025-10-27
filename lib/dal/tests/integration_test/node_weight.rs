@@ -1,3 +1,4 @@
+mod action;
 mod action_prototype;
 mod attribute_prototype_argument;
 mod attribute_value;
