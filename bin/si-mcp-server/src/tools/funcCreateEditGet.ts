@@ -981,7 +981,152 @@ export function funcCreateEditGetTool(server: McpServer) {
         const siFuncsApi = new FuncsApi(apiConfig);
 
         let hints, touchedFuncId, touchedFuncCode, touchedName: string;
+
         try {
+          // Work with overlay functions
+          if (functionType === "action" || functionType === "management") {
+            // Overlay functions
+
+            // first ensure that the schema for this function is installed
+            await siSchemasApi.installSchema({
+              workspaceId: WORKSPACE_ID,
+              changeSetId,
+              schemaId,
+            });
+
+            // then get the default variant
+            const responseGetDefaultVariant = await siSchemasApi.getDefaultVariant({
+              workspaceId: WORKSPACE_ID,
+              changeSetId,
+              schemaId,
+            });
+            const isBuiltIn = responseGetDefaultVariant.data.installedFromUpstream
+
+            if (isBuiltIn) {
+              if (funcId) {
+                // EDIT
+                // Fetch the existing function
+                const responseGetFunc = await siFuncsApi.getFunc({
+                  workspaceId: WORKSPACE_ID,
+                  changeSetId,
+                  funcId,
+                });
+
+                // Check if it's locked = overlay functions are unlocked if not yet applied
+                if (responseGetFunc.data.isLocked) {
+                  return errorResponse({
+                    message: "Cannot edit locked functions on builtin schemas."
+                  });
+                }
+
+                // If no updates provuded, just return current information
+                if (functionCode === undefined && description === undefined && name === undefined) {
+                  return successResponse({
+                    funcId: funcId,
+                    name: responseGetFunc.data.displayName,
+                    functionCode: responseGetFunc.data.code,
+                  });
+                }
+
+                // Edit the overlay function directly (no unlock required)
+                const updateFuncV1Request = {
+                  code: functionCode ?? responseGetFunc.data.code,
+                  description: description ?? responseGetFunc.data.description,
+                  displayName: name ?? responseGetFunc.data.displayName,
+                };
+
+                await siFuncsApi.updateFunc({
+                  workspaceId: WORKSPACE_ID,
+                  changeSetId,
+                  funcId,
+                  updateFuncV1Request,
+                });
+
+                return successResponse({
+                  funcId: funcId,
+                  name: responseGetFunc.data.displayName || responseGetFunc.data.name,
+                  functionCode: updateFuncV1Request.code,
+                }, "Updated overlay function. Changes will be preserved on schema upgrades.");
+
+              } else {
+                // CREATE
+
+                if (!name) {
+                  return errorResponse({
+                    message: "Name is required for creating action functions."
+                  });
+                }
+                
+                // Get the default schema variant ID
+                const schemaVariantId = responseGetDefaultVariant.data.variantId;
+                
+                if (functionType === "action") {
+                  if (!actionKind) {
+                    return errorResponse({
+                      message: "Action kind is required for creating action functions."
+                    });
+                  } else if (actionKind !== "Manual") {
+                    let canMakeAction = true;
+
+                    responseGetDefaultVariant.data.variantFuncs.forEach((func) => {
+                      if (func.funcKind.kind === "action" && func.funcKind.actionKind === actionKind) {
+                        canMakeAction = false;
+                      }
+                    })
+                    if (!canMakeAction) {
+                      return errorResponse({
+                        message: "An action of the same kind already exists and only one of each kind is allowed, except for Manual action functions."
+                      }, "Tell the user that they can't make more of one of this kind of action and ask if they want to create a new Manual action.")
+                    }
+                  }
+
+                  // Create an action function
+                  const code = functionCode ?? DEFAULT_ACTION_FUNCTION;
+                  const responseCreate = await siSchemasApi.createVariantAction({
+                    workspaceId: WORKSPACE_ID,
+                    changeSetId,
+                    schemaId,
+                    schemaVariantId,
+                    createVariantActionFuncV1Request: {
+                      name,
+                      description,
+                      code,
+                      kind: actionKind!,
+                    },
+                  });
+
+                  return successResponse({
+                    funcId: responseCreate.data.funcId,
+                    name: name,
+                    functionCode: code,
+                  }, "Created overlay action function on a builtin schema. Changes will be preserved when the schema is upgraded.");
+
+                } else if (functionType === "management") {
+                  // Create a management function
+                  const code = functionCode ?? DEFAULT_MANAGEMENT_FUNCTION;
+                  const responseCreate = await siSchemasApi.createVariantManagement({
+                    workspaceId: WORKSPACE_ID,
+                    changeSetId,
+                    schemaId,
+                    schemaVariantId,
+                    createVariantManagementFuncV1Request: {
+                      name,
+                      description,
+                      code,
+                    },
+                  });
+
+                  return successResponse({
+                    funcId: responseCreate.data.funcId,
+                    name: name,
+                    functionCode: code,
+                  }, "Created overlay management function on a builtin schema. Changes will be preserved when the schema is upgraded.");
+                }
+              }
+            }
+          }
+
+          // None Overlay functions
           if (funcId) {
             // update an existing function or get information about it
 
