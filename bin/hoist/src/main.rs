@@ -1,5 +1,8 @@
 use std::{
-    collections::HashMap,
+    collections::{
+        HashMap,
+        HashSet,
+    },
     fs::{
         self,
         DirEntry,
@@ -389,7 +392,7 @@ async fn diff_summaries_with_module_index(
                         total_added.fetch_add(1, Ordering::SeqCst);
                         let provider = metadata
                             .name()
-                            .split("::")
+                            .split(|c: char| !c.is_alphanumeric())
                             .next()
                             .unwrap_or("Unknown")
                             .to_string();
@@ -425,7 +428,7 @@ async fn diff_summaries_with_module_index(
 
                 let provider = metadata
                     .name()
-                    .split("::")
+                    .split(|c: char| !c.is_alphanumeric())
                     .next()
                     .unwrap_or("Unknown")
                     .to_string();
@@ -462,65 +465,55 @@ async fn diff_summaries_with_module_index(
     let new_modules = new_modules.lock().await;
     let changed_modules = changed_modules.lock().await;
 
+    // Collect all unique providers from both new and changed modules
+    let mut all_providers = HashSet::new();
+    all_providers.extend(new_modules.keys());
+    all_providers.extend(changed_modules.keys());
+    let mut providers: Vec<_> = all_providers.into_iter().collect();
+    providers.sort();
+
     if markdown {
-        // Print new modules organized by provider
-        if !new_modules.is_empty() {
-            let mut providers: Vec<_> = new_modules.keys().collect();
-            providers.sort();
+        // Print modules organized by provider, showing both new and changed for each
+        for provider in providers {
+            let new = new_modules.get(provider);
+            let changed = changed_modules.get(provider);
 
-            for provider in providers {
-                let modules = &new_modules[provider];
-                println!("\n<details>");
-                println!(
-                    "<summary>📦 {} - {} new asset(s)</summary>\n",
-                    provider,
-                    modules.len()
-                );
-                println!("```");
+            let new_count = new.map(|v| v.len()).unwrap_or(0);
+            let changed_count = changed.map(|v| v.len()).unwrap_or(0);
+
+            println!("\n<details>");
+            println!(
+                "<summary>{provider} - {new_count} new, {changed_count} changed asset(s)</summary>\n",
+            );
+            println!("```");
+
+            if let Some(modules) = new {
                 for module in modules {
                     println!("{module}");
                 }
-                println!("```");
-                println!("</details>");
             }
-        }
 
-        // Print changed modules organized by provider
-        if !changed_modules.is_empty() {
-            let mut providers: Vec<_> = changed_modules.keys().collect();
-            providers.sort();
-
-            for provider in providers {
-                let modules = &changed_modules[provider];
-                println!("\n<details>");
-                println!(
-                    "<summary>🔀 {} - {} changed asset(s)</summary>\n",
-                    provider,
-                    modules.len()
-                );
-                println!("```");
+            if let Some(modules) = changed {
                 for module in modules {
                     println!("{module}");
                 }
-                println!("```");
-                println!("</details>");
             }
+
+            println!("```");
+            println!("</details>");
         }
     } else {
         // Print plain text output organized by provider
-        let mut providers: Vec<_> = new_modules.keys().collect();
-        providers.sort();
         for provider in providers {
-            for module in &new_modules[provider] {
-                println!("{module}");
+            if let Some(modules) = new_modules.get(provider) {
+                for module in modules {
+                    println!("{module}");
+                }
             }
-        }
-
-        let mut providers: Vec<_> = changed_modules.keys().collect();
-        providers.sort();
-        for provider in providers {
-            for module in &changed_modules[provider] {
-                println!("{module}");
+            if let Some(modules) = changed_modules.get(provider) {
+                for module in modules {
+                    println!("{module}");
+                }
             }
         }
     }
