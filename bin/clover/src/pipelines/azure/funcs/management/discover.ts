@@ -50,18 +50,6 @@ async function main({
     };
   }
 
-  // Convert Azure::Service::Resource to Microsoft.Service/resources format
-  const parts = resourceType.split("::");
-  if (parts.length !== 3 || parts[0] !== "Azure") {
-    return {
-      status: "error",
-      message: `Invalid Azure resource type format: ${resourceType}`,
-    };
-  }
-
-  const providerNamespace = `Microsoft.${parts[1]}`;
-  const resourceTypeName = parts[2];
-
   // Parse PropUsageMap to get updatable properties
   let updatableProperties: Set<string>;
   let createOnlyProperties: Set<string>;
@@ -102,7 +90,7 @@ async function main({
   }
 
   const listUrl =
-    `https://management.azure.com/subscriptions/${subscriptionId}/providers/${providerNamespace}/${resourceTypeName}?api-version=${apiVersion}`;
+    `https://management.azure.com/subscriptions/${subscriptionId}/providers/${resourceType}?api-version=${apiVersion}`;
 
   // Handle pagination with nextLink
   let resources: any[] = [];

@@ -56,26 +56,10 @@ interface HasAzureOpenApiSchema {
 
 export type PropertySet = Set<string>;
 
-export interface AzureOperationData {
-  verb: "list" | AzureHttpMethod;
-  openApiOperation: AzureOpenApiOperation;
-  apiVersion?: string;
-}
-
 export interface AzureSchema extends SuperSchema {
   requiredProperties: Set<string>;
   apiVersion?: string;
 }
-
-export const AZURE_HTTP_METHODS = [
-  "get",
-  "put",
-  "patch",
-  "delete",
-  "post",
-  "head",
-] as const;
-export type AzureHttpMethod = (typeof AZURE_HTTP_METHODS)[number];
 
 export type AzureProperty = CfProperty & AzurePropExtensions;
 export type AzureObjectProperty = CfObjectProperty & AzurePropExtensions;

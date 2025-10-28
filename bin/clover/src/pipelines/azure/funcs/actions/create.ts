@@ -50,19 +50,7 @@ async function main(component: Input): Promise<Output> {
     };
   }
 
-  // Convert Azure::Service::Resource to Microsoft.Service/resources format
-  const parts = resourceType.split("::");
-  if (parts.length !== 3 || parts[0] !== "Azure") {
-    return {
-      status: "error",
-      message: `Invalid Azure resource type format: ${resourceType}`,
-    };
-  }
-
-  const providerNamespace = `Microsoft.${parts[1]}`;
-  const resourceTypeName = parts[2].toLowerCase();
-
-  const resourceId = `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/${providerNamespace}/${resourceTypeName}/${resourceName}`;
+  const resourceId = `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/${resourceType}/${resourceName}`;
   const token = await getAzureToken(tenantId, clientId, clientSecret);
   const url = `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
 

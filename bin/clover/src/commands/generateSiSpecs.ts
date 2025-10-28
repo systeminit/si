@@ -34,14 +34,14 @@ export async function generateSiSpecs(options: PipelineOptions) {
   let imported = 0;
   for (const spec of specs) {
     const specJson = JSON.stringify(unexpandPackageSpec(spec), null, 2);
-    const name = spec.name;
+    const name = spec.name.replaceAll("/", ".");
 
     logger.debug(`Writing ${name}.json`);
     const blob = new Blob([specJson]);
     if (blob.size > MAX_SPEC_SIZE_MB * 1024 * 1024) {
       // TODO throw an error, once we've got Azure specs under control
       console.warn(
-        `${spec.name} is bigger than ${MAX_SPEC_SIZE_MB}MBs. Skipping.`,
+        `${spec.name} is bigger than ${MAX_SPEC_SIZE_MB}MBs. Generating anyway ...`,
       );
     }
     await Deno.writeFile(`${SI_SPEC_DIR}/${name}.json`, blob.stream());

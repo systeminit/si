@@ -7,7 +7,6 @@ import {
   AzureProperty,
   AzureOpenApiDocument,
   AzureOpenApiOperation,
-  AZURE_HTTP_METHODS,
   NormalizedAzureSchema,
 } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
@@ -21,14 +20,11 @@ const MAX_RESOURCE_DEPTH = 3;
 
 /// Add schemas (e.g. Azure::Portal::UserSettings) to ignore them until it's fixed
 /// Make sure you also add a comment explaining why--all schemas should be supported!
-const IGNORE_SCHEMA_NAMES = new Set<string>([]);
+const IGNORE_RESOURCE_TYPES = new Set<string>([
+  // GET endpoint returns an array
+  "Microsoft.PowerBI/privateLinkServicesForPowerBI"
 
-const VERB_TO_HANDLERS: Record<string, CfHandlerKind[]> = {
-  get: ["read"],
-  list: ["list"],
-  put: ["create", "update"],
-  delete: ["delete"],
-};
+]);
 
 export function parseAzureSpec(
   openApiDoc: AzureOpenApiDocument,
@@ -52,36 +48,36 @@ export function parseAzureSpec(
 
   // Collect all operations for each resource type
   for (const [path, methods] of Object.entries(openApiDoc.paths)) {
-    const resourceType = parseEndpointPath(path);
-    if (!resourceType) continue;
-    const { schemaName } = resourceType;
+    const pathInfo = parseEndpointPath(path);
+    if (!pathInfo || !methods) continue;
+    const resourceType = `${pathInfo.resourceProvider}/${pathInfo.resourceType}`;
 
-    if (!schemaName) continue;
-    if (schemaName.includes("Reminder: Need renaming")) continue; // lol
-    // these are the supplemental actions endpoints. Skipping for now
-    if (schemaName.endsWith("Operations")) continue;
-    if (IGNORE_SCHEMA_NAMES.has(schemaName)) continue;
+    // Presently we only support Microsoft. providers
+    if (!pathInfo.resourceProvider.toLowerCase().startsWith("microsoft.")) continue;
+    // Ignore certain problematic resource types (temporarily until we fix them)
+    if (IGNORE_RESOURCE_TYPES.has(resourceType)) continue;
 
-    let resource = resourceOperations[schemaName];
-    if (!resource) {
-      resource = { handlers: {} };
-      resourceOperations[schemaName] = resource;
-    }
+    resourceOperations[resourceType] ??= { handlers: {} };
+    const resource = resourceOperations[resourceType];
 
-    for (const method of AZURE_HTTP_METHODS) {
-      const openApiOperation = methods?.[method];
-      if (!openApiOperation) continue;
-
-      const verb =
-        method === "get" && isListOperation(openApiOperation) ? "list" : method;
-
-      const handlerKinds = VERB_TO_HANDLERS[verb];
-      if (handlerKinds) {
-        handlerKinds.forEach(
-          (kind) => (resource.handlers[kind] = defaultHandler),
-        );
-        if (verb === "get") resource.getOperation = openApiOperation;
-        if (verb === "put") resource.putOperation = openApiOperation;
+    if (pathInfo.resourceNameParam) {
+      // If it has a /providers/<provider>/<resource-type>/{resourceName}, it's a CRUD op
+      if (methods.get) {
+        resource.getOperation = methods.get;
+        resource.handlers.read = defaultHandler;
+      }
+      if (methods.put) {
+        resource.putOperation = methods.put;
+        resource.handlers.create = defaultHandler;
+        resource.handlers.update = defaultHandler;
+      }
+      if (methods.delete) {
+        resource.handlers.delete = defaultHandler;
+      }
+    } else {
+      // It may be a list operation if you don't have to pass in the name
+      if (methods.get && isListOperation(methods.get)) {
+        resource.handlers.list = defaultHandler;
       }
     }
   }
@@ -680,7 +676,7 @@ function parseEndpointPath(path: string) {
     _,
     subscriptionIdParam,
     resourceGroupParam,
-    providerNamespace,
+    resourceProvider,
     resourceType,
     resourceNameParam,
   ] = match;
@@ -689,14 +685,8 @@ function parseEndpointPath(path: string) {
   // (no {resourceName} must *not* have {resourceGroup} in it.
   if (!!resourceGroupParam !== !!resourceNameParam) return undefined;
 
-  const serviceName = providerNamespace.split(".").pop() || providerNamespace;
-  const capitalizedResource =
-    resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
-  const schemaName = `Azure::${serviceName}::${capitalizedResource}`;
-
   return {
-    schemaName,
-    providerNamespace,
+    resourceProvider,
     resourceType,
     subscriptionIdParam,
     resourceGroupParam,
@@ -712,7 +702,7 @@ function isListOperation(operation: AzureOpenApiOperation): boolean {
     return true;
   }
 
-  const schema = operation?.responses?.["200"]?.schema;
+  const schema = operation.responses?.["200"]?.schema;
   if (!schema || typeof schema !== "object") return false;
   if ("type" in schema && schema.type === "array") {
     return true;

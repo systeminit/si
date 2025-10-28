@@ -39,27 +39,15 @@ async function azureFetchSchema(options: FetchSchemaOptions) {
 }
 
 function createDocLink(
-  { typeName }: SuperSchema,
+  { typeName: resourceType }: SuperSchema,
   _defName: string | undefined,
   _propName?: string,
 ): string {
-  const parts = typeName.split("::");
-  const service = parts[1]?.toLowerCase();
-  const resourceType = parts[2]?.toLowerCase();
-
-  if (service && resourceType) {
-    return `https://learn.microsoft.com/en-us/rest/api/${service}/${resourceType}`;
-  }
-
-  return `https://learn.microsoft.com/en-us/azure`;
+  return `https://learn.microsoft.com/en-us/rest/api/${resourceType}`;
 }
 
 function azureCategory(schema: SuperSchema): string {
-  const parts = schema.typeName.split("::");
-  if (parts.length >= 2) {
-    return `${parts[0]}::${parts[1]}`;
-  }
-  return schema.typeName;
+  return schema.typeName.split("/", 1)[0];
 }
 
 function azureIsChildRequired(
@@ -75,7 +63,7 @@ function azureIsChildRequired(
 
 export const AZURE_PROVIDER_CONFIG: ProviderConfig = {
   name: "azure",
-  isStable: false,
+  isStable: true,
   fetchSchema: azureFetchSchema,
   functions: {
     createDocLink,
