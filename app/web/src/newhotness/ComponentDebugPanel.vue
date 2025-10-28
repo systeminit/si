@@ -41,25 +41,25 @@
             :class="
               clsx(
                 'space-y-2xs text-xs',
-                '[&_div]:flex [&_div]:flex-row [&_div]:gap-xs [&_div]:flex-wrap [&_h3]:font-semibold [&_p]:font-mono [&_p]:text-2xs [&_p]:break-all',
+                '[&_div]:flex [&_div]:flex-row [&_div]:items-center [&_div]:gap-xs [&_div]:flex-wrap [&_h3]:font-semibold',
               )
             "
           >
             <div>
               <h3>Name:</h3>
-              <p>{{ componentData.name }}</p>
+              <CopyableTextBlock :text="componentData.name" tiny />
             </div>
             <div>
               <h3>Schema ID:</h3>
-              <p>{{ componentData.schemaId }}</p>
+              <CopyableTextBlock :text="componentData.schemaId" tiny />
             </div>
             <div>
               <h3>Schema Variant ID:</h3>
-              <p>{{ componentData.schemaVariantId }}</p>
+              <CopyableTextBlock :text="componentData.schemaVariantId" tiny />
             </div>
             <div v-if="componentData.parentId">
               <h3>Parent ID:</h3>
-              <p>{{ componentData.parentId }}</p>
+              <CopyableTextBlock :text="componentData.parentId" tiny />
             </div>
           </div>
         </div>
@@ -426,6 +426,7 @@ import clsx from "clsx";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { routes, useApi } from "./api_composables";
 import EmptyState from "./EmptyState.vue";
+import CopyableTextBlock from "./CopyableTextBlock.vue";
 
 interface ComponentDebugView {
   name: string;
