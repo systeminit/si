@@ -286,7 +286,7 @@ impl PersisterTask {
                 );
 
                 self.tracker.spawn(async move {
-                    match task.try_write_layers(event.clone()).await {
+                    match task.try_write_layers(event.clone(), false).await {
                         Ok(_) => {
                             metric!(
                                 counter.layer_cache_persister_write_success = 1,
@@ -414,7 +414,7 @@ impl PersisterTask {
             let start = std::time::Instant::now();
 
             // Attempt the retry
-            let result = task.try_write_layers(event).await;
+            let result = task.try_write_layers(event, true).await;
 
             let duration = start.elapsed().as_secs_f64();
             metric!(
@@ -604,7 +604,7 @@ impl PersistEventTask {
 
     #[instrument(level = "debug", skip_all)]
     pub async fn write_layers(self, event: LayeredEvent, status_tx: PersisterStatusWriter) {
-        match self.try_write_layers(event).await {
+        match self.try_write_layers(event, false).await {
             Ok(_) => status_tx.send(PersistStatus::Finished),
             Err(err) => {
                 error!(error = ?err, "persister write task failed");
@@ -614,64 +614,76 @@ impl PersistEventTask {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn try_write_layers(&self, event: LayeredEvent) -> LayerDbResult<()> {
+    pub async fn try_write_layers(&self, event: LayeredEvent, is_retry: bool) -> LayerDbResult<()> {
         let start = std::time::Instant::now();
         let cache_name = event.payload.db_name.to_string();
         let event = Arc::new(event);
 
         // Write to nats
-        let nats_join = self.layered_event_client.publish(event.clone()).await?;
+        let nats_join = if is_retry {
+            None
+        } else {
+            Some(self.layered_event_client.publish(event.clone()).await?)
+        };
 
         // Write to pg
         let pg_self = self.clone();
         let pg_event = event.clone();
         let pg_join = tokio::task::spawn(async move { pg_self.write_to_pg(pg_event).await });
 
-        let result = match join![pg_join, nats_join] {
-            (Ok(Ok(_)), Ok(Ok(_))) => Ok(()),
-            (pg_res, nats_res) => {
-                let kind = PersisterTaskErrorKind::Write;
-                let pg_error = match pg_res {
-                    Ok(Err(e)) => Some(e.to_string()),
-                    Err(e) => Some(e.to_string()),
-                    _ => None,
-                };
-                let nats_error = match nats_res {
-                    Ok(Err(e)) => Some(e.to_string()),
-                    Err(e) => Some(e.to_string()),
-                    _ => None,
-                };
+        // Wait for PostgreSQL write
+        let pg_result = pg_join.await;
+        let pg_error = match &pg_result {
+            Ok(Ok(_)) => None,
+            Ok(Err(e)) => Some(e.to_string()),
+            Err(e) => Some(e.to_string()),
+        };
 
-                // Track which component failed
-                if pg_error.is_some() && nats_error.is_some() {
-                    info!(
-                        metrics = true,
-                        counter.layer_cache_persister_both_error = 1,
-                        cache_name = &cache_name,
-                        operation = "write"
-                    );
-                } else if pg_error.is_some() {
-                    info!(
-                        metrics = true,
-                        counter.layer_cache_persister_pg_error = 1,
-                        cache_name = &cache_name,
-                        operation = "write"
-                    );
-                } else if nats_error.is_some() {
-                    info!(
-                        metrics = true,
-                        counter.layer_cache_persister_nats_error = 1,
-                        cache_name = &cache_name,
-                        operation = "write"
-                    );
-                }
-
-                Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                    kind,
-                    pg_error,
-                    nats_error,
-                }))
+        // Wait for NATS publish if this was an initial attempt
+        let nats_error = if let Some(nats_handle) = nats_join {
+            match nats_handle.await {
+                Ok(Ok(_)) => None,
+                Ok(Err(e)) => Some(e.to_string()),
+                Err(e) => Some(e.to_string()),
             }
+        } else {
+            None
+        };
+
+        let result = if pg_error.is_some() || nats_error.is_some() {
+            let kind = PersisterTaskErrorKind::Write;
+
+            // Track which component failed
+            if pg_error.is_some() && nats_error.is_some() {
+                info!(
+                    metrics = true,
+                    counter.layer_cache_persister_both_error = 1,
+                    cache_name = &cache_name,
+                    operation = "write"
+                );
+            } else if pg_error.is_some() {
+                info!(
+                    metrics = true,
+                    counter.layer_cache_persister_pg_error = 1,
+                    cache_name = &cache_name,
+                    operation = "write"
+                );
+            } else if nats_error.is_some() {
+                info!(
+                    metrics = true,
+                    counter.layer_cache_persister_nats_error = 1,
+                    cache_name = &cache_name,
+                    operation = "write"
+                );
+            }
+
+            Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                kind,
+                pg_error,
+                nats_error,
+            }))
+        } else {
+            Ok(())
         };
 
         let duration = start.elapsed().as_secs_f64();
