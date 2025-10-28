@@ -90,8 +90,7 @@ async function runTests() {
           result?.isError ||
           result?.structuredContent?.status === "failure"
         ) {
-          const errorMsg =
-            result.structuredContent?.errorMessage ||
+          const errorMsg = result.structuredContent?.errorMessage ||
             "Tool returned error response";
           throw new Error(errorMsg);
         }

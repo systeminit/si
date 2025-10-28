@@ -12,7 +12,8 @@ import {
 
 const name = "change-set-update-status";
 const title = "Apply a change set";
-const description = `<description>Apply a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Apply a change set. If the change set requires approval, you should be told that it's waiting for approval on the web application and you should review the changes on that page before merging. You may *never* update the status of the HEAD change set.</usage>`;
+const description =
+  `<description>Apply a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Apply a change set. If the change set requires approval, you should be told that it's waiting for approval on the web application and you should review the changes on that page before merging. You may *never* update the status of the HEAD change set.</usage>`;
 
 const UpdateChangeSetInputSchemaRaw = {
   changeSetId: z.string().describe("the ID of the change set to apply"),

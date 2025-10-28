@@ -5,16 +5,17 @@ import { ChangeSetsApi, FuncsApi } from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
+  findHeadChangeSet,
   generateDescription,
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
-import { ChangeSetItem } from "../data/changeSets.ts";
 import { decodeBase64 } from "@std/encoding/base64";
 
 const name = "func-run-get";
 const title = "Get a function run information";
-const description = `<description>Get the information about a function exeuction run. Returns the state of the function run, the componentId and componentName it was for, the schemaName, and the function name, description, kind, arguments, and result - if asked, it will also return the logs and the executed source code. On failure, returns error details</description><usage>Use this tool when the user asks you to work with or troubleshoot a function run - for example, when an action, qualification, or other kind of function as failed.</usage>`;
+const description =
+  `<description>Get the information about a function exeuction run. Returns the state of the function run, the componentId and componentName it was for, the schemaName, and the function name, description, kind, arguments, and result - if asked, it will also return the logs and the executed source code. On failure, returns error details</description><usage>Use this tool when the user asks you to work with or troubleshoot a function run - for example, when an action, qualification, or other kind of function as failed.</usage>`;
 
 const GetFuncRunInputSchemaRaw = {
   changeSetId: z
@@ -163,26 +164,11 @@ export function funcRunGetTool(server: McpServer) {
       return await withAnalytics(name, async () => {
         if (!changeSetId) {
           const changeSetsApi = new ChangeSetsApi(apiConfig);
-          try {
-            const changeSetList = await changeSetsApi.listChangeSets({
-              workspaceId: WORKSPACE_ID,
-            });
-            const head = (
-              changeSetList.data.changeSets as ChangeSetItem[]
-            ).find((cs) => cs.isHead);
-            if (!head) {
-              return errorResponse({
-                message:
-                  "No HEAD change set found; this is a bug! Tell the user we are sorry.",
-              });
-            }
-            changeSetId = head.id;
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
-            return errorResponse({
-              message: `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${errorMessage}`,
-            });
+          const headChangeSet = await findHeadChangeSet(changeSetsApi, false);
+          if (headChangeSet.changeSetId) {
+            changeSetId = headChangeSet.changeSetId;
+          } else {
+            return errorResponse(headChangeSet);
           }
         }
 
@@ -200,8 +186,7 @@ export function funcRunGetTool(server: McpServer) {
             componentId: response.data.funcRun.componentId,
             componentName: response.data.funcRun.componentName,
             schemaName: response.data.funcRun.schemaName,
-            functionName:
-              response.data.funcRun.functionDisplayName ||
+            functionName: response.data.funcRun.functionDisplayName ||
               response.data.funcRun.functionName,
             functionKind: response.data.funcRun
               .functionKind as FuncRunResult["functionKind"],

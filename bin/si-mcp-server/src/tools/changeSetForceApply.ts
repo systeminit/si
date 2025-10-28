@@ -12,7 +12,8 @@ import {
 
 const name = "change-set-force-apply";
 const title = "Force apply a change set";
-const description = `<description>Force apply a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Force apply a change set. This tool will avoid *all* workspace approval flows and apply directly to HEAD. You may *never* force apply the HEAD change set.</usage>`;
+const description =
+  `<description>Force apply a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Force apply a change set. This tool will avoid *all* workspace approval flows and apply directly to HEAD. You may *never* force apply the HEAD change set.</usage>`;
 
 const ForceApplyChangeSetInputSchemaRaw = {
   changeSetId: z.string().describe("the ID of the change set to force apply"),

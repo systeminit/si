@@ -10,16 +10,17 @@ import {
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
+  findHeadChangeSet,
   generateDescription,
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
 import { ActionList, ActionSchema } from "../data/actions.ts";
-import { ChangeSet } from "../data/changeSets.ts";
 
 const name = "action-list";
 const title = "List actions";
-const description = `<description>Lists all actions. Returns an array of actions with actionId, componentId, Name, kind, and state. On failure, returns error details</description><usage>Use this tool when the user asks what actions are present.</usage>`;
+const description =
+  `<description>Lists all actions. Returns an array of actions with actionId, componentId, Name, kind, and state. On failure, returns error details</description><usage>Use this tool when the user asks what actions are present.</usage>`;
 
 const ListActionsInputSchemaRaw = {
   changeSetId: z
@@ -62,24 +63,11 @@ export function actionListTool(server: McpServer) {
       return await withAnalytics(name, async () => {
         if (!changeSetId) {
           const changeSetsApi = new ChangeSetsApi(apiConfig);
-          try {
-            const changeSetList = await changeSetsApi.listChangeSets({
-              workspaceId: WORKSPACE_ID,
-            });
-            const changeSets = changeSetList.data.changeSets as ChangeSet[];
-            const head = changeSets.find((cs) => cs.isHead);
-            if (!head) {
-              return errorResponse({
-                message: "Could not find HEAD change set",
-              });
-            }
-            changeSetId = head.id;
-          } catch (error) {
-            return errorResponse({
-              message: `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-            });
+          const headChangeSet = await findHeadChangeSet(changeSetsApi, false);
+          if (headChangeSet.changeSetId) {
+            changeSetId = headChangeSet.changeSetId;
+          } else {
+            return errorResponse(headChangeSet);
           }
         }
         const siApi = new ActionsApi(apiConfig);
@@ -113,12 +101,14 @@ export function actionListTool(server: McpServer) {
                   compSchemaName = schema.data.name;
                 } catch (error) {
                   return errorResponse({
-                    message: `Error getting schema for extra details while listing actions; bug! ${error}`,
+                    message:
+                      `Error getting schema for extra details while listing actions; bug! ${error}`,
                   });
                 }
               } catch (error) {
                 return errorResponse({
-                  message: `Error getting component for extra details while listing actions; bug! ${error}`,
+                  message:
+                    `Error getting component for extra details while listing actions; bug! ${error}`,
                 });
               }
             }
