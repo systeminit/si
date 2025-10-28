@@ -53,8 +53,9 @@ async function main({
   // Parse PropUsageMap to get updatable properties
   let updatableProperties: Set<string>;
   let createOnlyProperties: Set<string>;
+  let propUsageMap;
   try {
-    const propUsageMap = JSON.parse(propUsageMapJson);
+    propUsageMap = JSON.parse(propUsageMapJson);
     updatableProperties = new Set(propUsageMap.updatable || []);
     createOnlyProperties = new Set(propUsageMap.createOnly || []);
   } catch (e) {
@@ -64,6 +65,7 @@ async function main({
     );
     updatableProperties = new Set();
     createOnlyProperties = new Set();
+    propUsageMap = {};
   }
 
   console.log(`Discovering ${resourceType} resources...`);
@@ -152,6 +154,9 @@ async function main({
 
     const fullResource = await resourceResponse.json();
 
+    // Transform Azure flat structure to SI nested structure
+    const transformedResource = transformAzureToSI(fullResource, propUsageMap);
+
     // Build domain by only including updatable properties from the resource
     // CreateOnly properties are immutable on existing resources, so we don't copy them
     const domainProperties: Record<string, any> = {
@@ -160,7 +165,7 @@ async function main({
     };
 
     // Copy updatable properties from the resource
-    for (const [key, value] of Object.entries(fullResource)) {
+    for (const [key, value] of Object.entries(transformedResource)) {
       if (updatableProperties.has(key) && value != null) {
         domainProperties[key] = value;
       }
@@ -177,7 +182,7 @@ async function main({
           apiVersion: apiVersion,
         },
       },
-      resource: fullResource,
+      resource: transformedResource,
     };
 
     // Apply refinement filter
@@ -249,4 +254,51 @@ async function getAzureToken(
 
   const data = await response.json();
   return data.access_token;
+}
+
+function transformAzureToSI(azureResource, propUsageMap) {
+  const transformed = _.cloneDeep(azureResource);
+
+  // Transform discriminators from flat to nested structure
+  for (
+    const [discriminatorProp, subtypeMap] of Object.entries(
+      propUsageMap.discriminators || {},
+    )
+  ) {
+    const discriminatorValue = transformed[discriminatorProp];
+
+    if (!discriminatorValue || typeof discriminatorValue !== "string") {
+      continue;
+    }
+
+    // Reverse lookup: find which subtype has this enum value
+    const subtypeName = Object.entries(subtypeMap).find(
+      ([_, enumValue]) => enumValue === discriminatorValue,
+    )?.[0];
+
+    if (!subtypeName) {
+      continue;
+    }
+
+    // Get the properties that belong to this subtype
+    const subtypeProps =
+      propUsageMap.discriminatorSubtypeProps?.[discriminatorProp]
+        ?.[subtypeName] || [];
+
+    // Create nested structure
+    const subtypeObject = {};
+    for (const propName of subtypeProps) {
+      if (propName in transformed) {
+        subtypeObject[propName] = transformed[propName];
+        delete transformed[propName];
+      }
+    }
+
+    // Replace flat discriminator with nested structure
+    transformed[discriminatorProp] = {
+      [subtypeName]: subtypeObject,
+    };
+  }
+
+  return transformed;
 }

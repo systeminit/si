@@ -44,8 +44,9 @@ async function main({
   // Parse PropUsageMap to get updatable properties
   let updatableProperties: Set<string>;
   let createOnlyProperties: Set<string>;
+  let propUsageMap;
   try {
-    const propUsageMap = JSON.parse(propUsageMapJson);
+    propUsageMap = JSON.parse(propUsageMapJson);
     updatableProperties = new Set(propUsageMap.updatable || []);
     createOnlyProperties = new Set(propUsageMap.createOnly || []);
   } catch (e) {
@@ -55,6 +56,7 @@ async function main({
     );
     updatableProperties = new Set();
     createOnlyProperties = new Set();
+    propUsageMap = {};
   }
 
   console.log(`Importing Azure resource: ${resourceId}`);
@@ -81,6 +83,9 @@ async function main({
 
   const resource = await response.json();
 
+  // Transform Azure flat structure to SI nested structure
+  const transformedResource = transformAzureToSI(resource, propUsageMap);
+
   // Build domain properties by only including writable properties from the resource
   const resourceDomainProperties: Record<string, any> = {
     subscriptionId: _.get(
@@ -92,7 +97,7 @@ async function main({
   };
 
   // Copy updatable properties from the resource
-  for (const [key, value] of Object.entries(resource)) {
+  for (const [key, value] of Object.entries(transformedResource)) {
     if (updatableProperties.has(key) && value != null) {
       resourceDomainProperties[key] = value;
     }
@@ -120,7 +125,7 @@ async function main({
   // Only set resource if there's no existing payload
   let needsRefresh = true;
   if (!resourcePayload) {
-    properties.resource = resource;
+    properties.resource = transformedResource;
     needsRefresh = false;
   }
 
@@ -160,7 +165,7 @@ async function main({
 
   return {
     status: "ok",
-    message: `Imported ${resourceType}: ${resource.name}`,
+    message: `Imported ${resourceType}: ${transformedResource.name}`,
     ops,
   };
 }
@@ -193,4 +198,51 @@ async function getAzureToken(
 
   const data = await response.json();
   return data.access_token;
+}
+
+function transformAzureToSI(azureResource, propUsageMap) {
+  const transformed = _.cloneDeep(azureResource);
+
+  // Transform discriminators from flat to nested structure
+  for (
+    const [discriminatorProp, subtypeMap] of Object.entries(
+      propUsageMap.discriminators || {},
+    )
+  ) {
+    const discriminatorValue = transformed[discriminatorProp];
+
+    if (!discriminatorValue || typeof discriminatorValue !== "string") {
+      continue;
+    }
+
+    // Reverse lookup: find which subtype has this enum value
+    const subtypeName = Object.entries(subtypeMap).find(
+      ([_, enumValue]) => enumValue === discriminatorValue,
+    )?.[0];
+
+    if (!subtypeName) {
+      continue;
+    }
+
+    // Get the properties that belong to this subtype
+    const subtypeProps =
+      propUsageMap.discriminatorSubtypeProps?.[discriminatorProp]
+        ?.[subtypeName] || [];
+
+    // Create nested structure
+    const subtypeObject = {};
+    for (const propName of subtypeProps) {
+      if (propName in transformed) {
+        subtypeObject[propName] = transformed[propName];
+        delete transformed[propName];
+      }
+    }
+
+    // Replace flat discriminator with nested structure
+    transformed[discriminatorProp] = {
+      [subtypeName]: subtypeObject,
+    };
+  }
+
+  return transformed;
 }

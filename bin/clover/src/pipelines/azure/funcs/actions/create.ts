@@ -50,9 +50,11 @@ async function main(component: Input): Promise<Output> {
     };
   }
 
-  const resourceId = `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/${resourceType}/${resourceName}`;
+  const resourceId =
+    `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/${resourceType}/${resourceName}`;
   const token = await getAzureToken(tenantId, clientId, clientSecret);
-  const url = `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
+  const url =
+    `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
 
   const createPayload = cleanPayload(domain);
 
@@ -97,6 +99,57 @@ function cleanPayload(domain) {
   delete payload.resourceGroup;
   delete payload.name;
   delete payload.extra;
+
+  // Merge discriminator subtypes into parent
+  // propUsageMap.discriminators maps discriminator property -> subtype name -> enum value
+  // e.g., { "kind": { "AzurePowerShellScript": "AzurePowerShell", "AzureCliScript": "AzureCLI" } }
+  for (
+    const [discriminatorProp, subtypeMap] of Object.entries(
+      propUsageMap.discriminators || {},
+    )
+  ) {
+    const discriminatorObject = payload[discriminatorProp];
+
+    if (!discriminatorObject || typeof discriminatorObject !== "object") {
+      continue;
+    }
+
+    // Find which subtype is filled in
+    const filledSubtypes = Object.keys(subtypeMap).filter((subtype) =>
+      discriminatorObject[subtype]
+    );
+
+    if (filledSubtypes.length > 1) {
+      throw new Error(
+        `Multiple discriminator subtypes filled for "${discriminatorProp}": ${
+          filledSubtypes.join(", ")
+        }. Only one should be filled.`,
+      );
+    }
+
+    if (filledSubtypes.length === 0) {
+      // No subtype filled in, remove the discriminator property
+      delete payload[discriminatorProp];
+      continue;
+    }
+
+    const subtypeName = filledSubtypes[0];
+    const subtypeValue = discriminatorObject[subtypeName];
+
+    if (
+      subtypeValue && typeof subtypeValue === "object" &&
+      !Array.isArray(subtypeValue)
+    ) {
+      // Merge subtype properties into parent (subtype values take precedence)
+      Object.assign(payload, subtypeValue);
+
+      // Set the discriminator property to the enum value from the map
+      payload[discriminatorProp] = subtypeMap[subtypeName];
+    } else {
+      // If no subtype data, remove the discriminator property
+      delete payload[discriminatorProp];
+    }
+  }
 
   // Only check top-level properties - once a property is included, keep all its descendants
   const propsToVisit = _.keys(payload).map((k: string) => [k]);

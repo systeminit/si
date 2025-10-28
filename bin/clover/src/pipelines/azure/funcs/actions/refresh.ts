@@ -13,6 +13,22 @@ async function main(component: Input): Promise<Output> {
     ["domain", "extra", "apiVersion"],
     "2023-01-01",
   );
+  const propUsageMapJson = _.get(
+    component.properties,
+    ["domain", "extra", "PropUsageMap"],
+    "{}",
+  );
+
+  let propUsageMap;
+  try {
+    propUsageMap = JSON.parse(propUsageMapJson);
+  } catch (e) {
+    console.warn(
+      "Failed to parse PropUsageMap, discriminators may not work:",
+      e,
+    );
+    propUsageMap = {};
+  }
 
   if (!resourceId) {
     return {
@@ -49,10 +65,13 @@ async function main(component: Input): Promise<Output> {
 
   const result = await response.json();
 
+  // Transform Azure flat structure to SI nested structure
+  const transformedResult = transformAzureToSI(result, propUsageMap);
+
   return {
     status: "ok",
-    payload: result,
-    resourceId: result.id,
+    payload: transformedResult,
+    resourceId: transformedResult.id,
   };
 }
 
@@ -84,4 +103,51 @@ async function getAzureToken(
 
   const data = await response.json();
   return data.access_token;
+}
+
+function transformAzureToSI(azureResource, propUsageMap) {
+  const transformed = _.cloneDeep(azureResource);
+
+  // Transform discriminators from flat to nested structure
+  for (
+    const [discriminatorProp, subtypeMap] of Object.entries(
+      propUsageMap.discriminators || {},
+    )
+  ) {
+    const discriminatorValue = transformed[discriminatorProp];
+
+    if (!discriminatorValue || typeof discriminatorValue !== "string") {
+      continue;
+    }
+
+    // Reverse lookup: find which subtype has this enum value
+    const subtypeName = Object.entries(subtypeMap).find(
+      ([_, enumValue]) => enumValue === discriminatorValue,
+    )?.[0];
+
+    if (!subtypeName) {
+      continue;
+    }
+
+    // Get the properties that belong to this subtype
+    const subtypeProps =
+      propUsageMap.discriminatorSubtypeProps?.[discriminatorProp]
+        ?.[subtypeName] || [];
+
+    // Create nested structure
+    const subtypeObject = {};
+    for (const propName of subtypeProps) {
+      if (propName in transformed) {
+        subtypeObject[propName] = transformed[propName];
+        delete transformed[propName];
+      }
+    }
+
+    // Replace flat discriminator with nested structure
+    transformed[discriminatorProp] = {
+      [subtypeName]: subtypeObject,
+    };
+  }
+
+  return transformed;
 }
