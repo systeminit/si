@@ -6,7 +6,6 @@ import type {
   SuperSchema,
 } from "../types.ts";
 import { JSONSchema } from "../draft_07.ts";
-import assert from "node:assert";
 import SwaggerParser from "@apidevtools/swagger-parser";
 import { OpenAPIV3_1 } from "openapi-types";
 import path from "node:path";
@@ -154,61 +153,129 @@ const EXCLUDE_SPECS = [
   "/azure-rest-api-specs/specification/workloads/resource-manager/Microsoft.Workloads/stable/2023-04-01/monitors.json",
   "/azure-rest-api-specs/specification/securityinsights/resource-manager/Microsoft.SecurityInsights/stable/2025-09-01/ContentTemplates.json",
   "/azure-rest-api-specs/specification/securityinsights/resource-manager/Microsoft.SecurityInsights/stable/2025-09-01/ContentPackages.json",
+  // Missing example file reference
+  "/azure-rest-api-specs/specification/eventhub/resource-manager/Microsoft.EventHub/preview/2018-01-01-preview/operations-preview.json",
+  // Unsupported int32 number format
+  "/azure-rest-api-specs/specification/azurearcdata/resource-manager/Microsoft.AzureArcData/preview/2025-06-01-preview/azurearcdata.json",
+  // Unsupported duration-constant format (all servicefabricmanagedclusters versions)
+  "/azure-rest-api-specs/specification/servicefabricmanagedclusters",
 ];
+
+interface SpecMetadata {
+  provider: string;
+  version: string;
+  isStable: boolean;
+}
 
 /**
  * Find all the latest Azure OpenAPI spec files
+ * Walks through all version directories and deduplicates by keeping the latest version per API
  */
 export async function* findLatestAzureOpenApiSpecFiles(specsRepo: string) {
   const specsRoot = path.join(specsRepo, "specification");
-  for await (const specDir of findLatestAzureOpenApiSpecDirs(specsRoot)) {
-    // Read the spec
-    let foundFiles = false;
+
+  // Collect all spec files with metadata
+  const specMap: Record<string, {
+    path: string;
+    metadata: SpecMetadata;
+  }> = {};
+
+  for await (const specDir of findAllAzureOpenApiSpecDirs(specsRoot)) {
     for await (const spec of Deno.readDir(specDir)) {
       if (spec.isFile && spec.name.endsWith(".json")) {
-        foundFiles = true;
         const specPath = path.join(specDir, spec.name);
-        if (!EXCLUDE_SPECS.some((s) => specPath.endsWith(s))) {
-          yield specPath;
+
+        if (
+          EXCLUDE_SPECS.some((s) =>
+            specPath.endsWith(s) || specPath.includes(s)
+          )
+        ) continue;
+
+        const metadata = parseSpecPath(specPath);
+        if (!metadata) continue;
+
+        const key = `${metadata.provider}/${spec.name}`;
+        const existing = specMap[key];
+
+        // keep the latest version
+        if (!existing || shouldReplace(existing.metadata, metadata)) {
+          specMap[key] = {
+            path: specPath,
+            metadata,
+          };
         }
       }
     }
-    assert(foundFiles, `No spec files found in ${specDir}`);
+  }
+
+  for (const spec of Object.values(specMap)) {
+    yield spec.path;
   }
 }
 
-async function* findLatestAzureOpenApiSpecDirs(
+/**
+ * Find all Azure OpenAPI spec version directories (both stable and preview)
+ */
+async function* findAllAzureOpenApiSpecDirs(
   dir: string,
 ): AsyncGenerator<string> {
-  // Now find the latest stable (or preview if no stable) version in each service directory
-  let latest: { parent: "stable" | "preview"; version: string } | undefined;
   for await (const entry of Deno.readDir(dir)) {
     if (entry.isDirectory) {
       const entryPath = path.join(dir, entry.name);
-      // If it's a "stable" or "preview" directory, look for the latest version and yield its specs
+
+      // If it's a version directory (stable or preview), yield all version subdirectories
       if (entry.name === "stable" || entry.name === "preview") {
-        // Pick the directory with the latest version
         for await (const version of Deno.readDir(entryPath)) {
           if (version.isDirectory) {
-            if (
-              !latest ||
-              (latest.parent === entry.name && version.name > latest.version) ||
-              (latest.parent === "preview" && entry.name === "stable")
-            ) {
-              latest = { parent: entry.name, version: version.name };
-            }
+            yield path.join(entryPath, version.name);
           }
         }
-
-        if (entry.name === "stable") {
-          assert(latest, `No latest version in ${entryPath}`);
-        }
       } else {
-        yield* findLatestAzureOpenApiSpecDirs(entryPath);
+        // Recursively search subdirectories
+        yield* findAllAzureOpenApiSpecDirs(entryPath);
       }
     }
   }
-  if (latest) {
-    yield path.join(dir, latest.parent, latest.version);
+}
+
+/**
+ * Parse the spec file path to extract provider, version, and stability
+ * Expected patterns:
+ *   - .../Microsoft.{Provider}/{stable|preview}/{version}/{filename}.json
+ *   - .../Microsoft.{Provider}/{SubCategory}/{stable|preview}/{version}/{filename}.json
+ */
+function parseSpecPath(specPath: string): SpecMetadata | null {
+  // Match both patterns: with and without subcategory
+  const match = specPath.match(
+    /\/(Microsoft\.[^/]+)\/(?:[^/]+\/)?(stable|preview)\/([^/]+)\//,
+  );
+  if (!match) return null;
+
+  return {
+    provider: match[1],
+    version: match[3],
+    isStable: match[2] === "stable",
+  };
+}
+
+/**
+ * Determine if candidate spec should replace the existing one
+ * ALWAYS prefers stable over preview, regardless of version
+ */
+function shouldReplace(
+  existing: SpecMetadata,
+  candidate: SpecMetadata,
+): boolean {
+  // If existing is stable and candidate is preview, never replace
+  if (existing.isStable && !candidate.isStable) {
+    return false;
   }
+
+  // If existing is preview and candidate is stable, always replace
+  if (!existing.isStable && candidate.isStable) {
+    return true;
+  }
+
+  // Both have same stability, compare versions
+  return candidate.version > existing.version;
 }
