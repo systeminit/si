@@ -79,6 +79,9 @@
  */
 
 import { isAbsolute, join as pathJoin, normalize, relative } from "@std/path";
+import { getLogger } from "./logger.ts";
+
+const logger = getLogger();
 
 /**
  * The filename for the project root marker file.
@@ -1089,14 +1092,25 @@ export class AbsoluteFilePath extends AbsolutePath {
   }
 
   /**
-   * Writes text content to the file at this path.
+   * Writes text content to the file at this path using an atomic operation.
    *
    * This method writes a string to the file, creating it if it doesn't exist or
    * overwriting it if it does. The content is encoded as UTF-8 by default.
    *
+   * **Atomic Write Safety**: To ensure data integrity, this method uses a
+   * write-then-rename strategy:
+   * 1. Creates a temporary file with a random suffix in the same directory
+   * 2. Writes the content to the temporary file
+   * 3. Atomically renames the temporary file to the target filename
+   *
+   * This approach ensures that the target file is never partially written, even
+   * if the process is interrupted. Other processes will either see the old
+   * content or the new content, never a corrupted intermediate state.
+   *
    * @param data - The text content to write
-   * @param options - Optional write options
+   * @param options - Optional write options (applied to the temporary file)
    * @throws {Deno.errors.NotFound} If parent directory doesn't exist
+   * @throws {Deno.errors.PermissionDenied} If write permission is denied
    *
    * @example Writing action code
    * ```ts
@@ -1108,14 +1122,26 @@ export class AbsoluteFilePath extends AbsolutePath {
    * await actionPath.writeTextFile(code);
    * ```
    *
-   * @example Appending to a file
+   * @example Writing metadata safely
    * ```ts
-   * const logPath = project.schemaFuncCodePath("MySchema");
-   * await logPath.writeTextFile("// Additional comment\n", { append: true });
+   * const metadataPath = project.schemaMetadataPath("MySchema");
+   * const metadata = JSON.stringify({ name: "MySchema", version: "1.0.0" }, null, 2);
+   * // Atomic write ensures metadata is never corrupted
+   * await metadataPath.writeTextFile(metadata);
    * ```
    */
   public async writeTextFile(data: string, options?: Deno.WriteFileOptions) {
-    await Deno.writeTextFile(this.path, data, options);
+    const tmpFile = `${this.path}.tmp-${randomId()}`;
+
+    // Create and write tmp file in same directory as destination
+    logger.trace("Writing to tmp file {tmpFile}", { tmpFile });
+    await Deno.writeTextFile(tmpFile, data, options);
+    // Atomically move tmp file to destination file
+    logger.trace("Moving tmp file {tmpFile} to {dst}", {
+      tmpFile,
+      dst: this.path,
+    });
+    await Deno.rename(tmpFile, this.path);
   }
 
   /**
@@ -1409,4 +1435,34 @@ function join(...paths: StringOrRelativePath[]): string {
  */
 export function normalizeFsName(name: string): string {
   return name.replace(/[^A-Za-z0-9._-]/g, "-");
+}
+
+/**
+ * Generates a random identifier string for temporary file naming.
+ *
+ * Creates a 6-character hexadecimal string by generating a random number and
+ * converting it to base-16. This is used internally by `writeTextFile()` to
+ * create unique temporary file names during atomic write operations.
+ *
+ * The generated IDs are not cryptographically secure and should not be used
+ * for security-sensitive purposes. They are suitable for creating temporary
+ * file names where collisions are unlikely but not catastrophic.
+ *
+ * @returns A 6-character hexadecimal string (e.g., "a3f2c1", "9b4e7d")
+ *
+ * @example
+ * ```ts
+ * const id1 = randomId(); // "a3f2c1"
+ * const id2 = randomId(); // "7e9d4b"
+ * const tmpFile = `config.json.tmp-${randomId()}`; // "config.json.tmp-c8a5f2"
+ * ```
+ *
+ * @internal
+ *
+ * Implementation thanks to Deno standard library.
+ * @see {@link https://github.com/denoland/std/blob/16a70e9dac98256e0bb5714a0b9887e654fcef40/fs/_utils.ts#L58-L66}
+ */
+function randomId(): string {
+  const n = (Math.random() * 0xfffff * 1_000_000).toString(16);
+  return "".concat(n.slice(0, 6));
 }

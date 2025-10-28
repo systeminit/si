@@ -9,7 +9,12 @@ import { Context } from "../../../context.ts";
 import { FunctionMetadata, SchemaMetadata } from "../../../generators.ts";
 import * as materialize from "../../../materialize.ts";
 import { getLogger } from "../../../logger.ts";
-import { AbsoluteFilePath, Project } from "../../../project.ts";
+import {
+  AbsoluteDirectoryPath,
+  AbsoluteFilePath,
+  normalizeFsName,
+  Project,
+} from "../../../project.ts";
 
 const logger = getLogger();
 
@@ -139,19 +144,26 @@ async function pullSchemaByName(
       project,
       schemaName,
       formatVersionBody,
+      { overwrite: true },
     );
   const { metadataPath, codePath } = await materialize.materializeSchema(
     project,
     schemaName,
     metadataBody,
     codeBody,
+    { overwrite: true },
   );
 
   // Render all action funcs
+  // First, get list of existing local actions before pulling
+  const actionBasePath = project.actionBasePath(schemaName);
+  const existingActionNames = await listFunctionNamesInDir(actionBasePath);
+
   if (data.func.actionIds.length > 0) {
     await materialize.materializeSchemaActionBase(project, schemaName);
   }
   const actionPaths = [];
+  const pulledActionNames = [];
   for (const funcId of data.func.actionIds) {
     const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
       funcId,
@@ -165,15 +177,42 @@ async function pullSchemaByName(
       metadata.name,
       metadataBody,
       codeBody,
+      { overwrite: true },
     );
     actionPaths.push(paths);
+    pulledActionNames.push(normalizeFsName(metadata.name));
+  }
+
+  // Delete actions that exist locally but weren't in the remote data
+  const deletedActionPaths = [];
+  for (const localActionName of existingActionNames) {
+    if (!pulledActionNames.includes(localActionName)) {
+      const metadataPath = project.actionFuncMetadataPath(
+        schemaName,
+        localActionName,
+      );
+      const codePath = project.actionFuncCodePath(schemaName, localActionName);
+
+      await deleteFunctionFiles(project, metadataPath, codePath);
+      deletedActionPaths.push({ metadataPath, codePath });
+    }
+  }
+
+  // Clean up actions directory if it's now empty
+  if (existingActionNames.length > 0 && pulledActionNames.length === 0) {
+    await deleteIfEmpty(actionBasePath);
   }
 
   // Render all codegen funcs
+  // First, get list of existing local codegens before pulling
+  const codegenBasePath = project.codegenBasePath(schemaName);
+  const existingCodegenNames = await listFunctionNamesInDir(codegenBasePath);
+
   if (data.func.codegenIds.length > 0) {
     await materialize.materializeSchemaCodegenBase(project, schemaName);
   }
   const codegenPaths = [];
+  const pulledCodegenNames = [];
   for (const funcId of data.func.codegenIds) {
     const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
       funcId,
@@ -187,15 +226,47 @@ async function pullSchemaByName(
       metadata.name,
       metadataBody,
       codeBody,
+      { overwrite: true },
     );
     codegenPaths.push(paths);
+    pulledCodegenNames.push(normalizeFsName(metadata.name));
+  }
+
+  // Delete codegens that exist locally but weren't in the remote data
+  const deletedCodegenPaths = [];
+  for (const localCodegenName of existingCodegenNames) {
+    if (!pulledCodegenNames.includes(localCodegenName)) {
+      const metadataPath = project.codegenFuncMetadataPath(
+        schemaName,
+        localCodegenName,
+      );
+      const codePath = project.codegenFuncCodePath(
+        schemaName,
+        localCodegenName,
+      );
+
+      await deleteFunctionFiles(project, metadataPath, codePath);
+      deletedCodegenPaths.push({ metadataPath, codePath });
+    }
+  }
+
+  // Clean up codegens directory if it's now empty
+  if (existingCodegenNames.length > 0 && pulledCodegenNames.length === 0) {
+    await deleteIfEmpty(codegenBasePath);
   }
 
   // Render all management funcs
+  // First, get list of existing local management functions before pulling
+  const managementBasePath = project.managementBasePath(schemaName);
+  const existingManagementNames = await listFunctionNamesInDir(
+    managementBasePath,
+  );
+
   if (data.func.managementIds.length > 0) {
     await materialize.materializeSchemaManagementBase(project, schemaName);
   }
   const managementPaths = [];
+  const pulledManagementNames = [];
   for (const funcId of data.func.managementIds) {
     const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
       funcId,
@@ -209,15 +280,50 @@ async function pullSchemaByName(
       metadata.name,
       metadataBody,
       codeBody,
+      { overwrite: true },
     );
     managementPaths.push(paths);
+    pulledManagementNames.push(normalizeFsName(metadata.name));
+  }
+
+  // Delete management functions that exist locally but weren't in the remote data
+  const deletedManagementPaths = [];
+  for (const localManagementName of existingManagementNames) {
+    if (!pulledManagementNames.includes(localManagementName)) {
+      const metadataPath = project.managementFuncMetadataPath(
+        schemaName,
+        localManagementName,
+      );
+      const codePath = project.managementFuncCodePath(
+        schemaName,
+        localManagementName,
+      );
+
+      await deleteFunctionFiles(project, metadataPath, codePath);
+      deletedManagementPaths.push({ metadataPath, codePath });
+    }
+  }
+
+  // Clean up management directory if it's now empty
+  if (
+    existingManagementNames.length > 0 &&
+    pulledManagementNames.length === 0
+  ) {
+    await deleteIfEmpty(managementBasePath);
   }
 
   // Render all qualification funcs
+  // First, get list of existing local qualifications before pulling
+  const qualificationBasePath = project.qualificationBasePath(schemaName);
+  const existingQualificationNames = await listFunctionNamesInDir(
+    qualificationBasePath,
+  );
+
   if (data.func.qualificationIds.length > 0) {
     await materialize.materializeSchemaQualificationBase(project, schemaName);
   }
   const qualificationPaths = [];
+  const pulledQualificationNames = [];
   for (const funcId of data.func.qualificationIds) {
     const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
       funcId,
@@ -231,8 +337,36 @@ async function pullSchemaByName(
       metadata.name,
       metadataBody,
       codeBody,
+      { overwrite: true },
     );
     qualificationPaths.push(paths);
+    pulledQualificationNames.push(normalizeFsName(metadata.name));
+  }
+
+  // Delete qualifications that exist locally but weren't in the remote data
+  const deletedQualificationPaths = [];
+  for (const localQualificationName of existingQualificationNames) {
+    if (!pulledQualificationNames.includes(localQualificationName)) {
+      const metadataPath = project.qualificationFuncMetadataPath(
+        schemaName,
+        localQualificationName,
+      );
+      const codePath = project.qualificationFuncCodePath(
+        schemaName,
+        localQualificationName,
+      );
+
+      await deleteFunctionFiles(project, metadataPath, codePath);
+      deletedQualificationPaths.push({ metadataPath, codePath });
+    }
+  }
+
+  // Clean up qualifications directory if it's now empty
+  if (
+    existingQualificationNames.length > 0 &&
+    pulledQualificationNames.length === 0
+  ) {
+    await deleteIfEmpty(qualificationBasePath);
   }
 
   return {
@@ -243,6 +377,10 @@ async function pullSchemaByName(
     codegenPaths,
     managementPaths,
     qualificationPaths,
+    deletedActionPaths,
+    deletedCodegenPaths,
+    deletedManagementPaths,
+    deletedQualificationPaths,
   };
 }
 
@@ -322,6 +460,77 @@ async function getSchemaAndVariantBySchemaName(
   };
 }
 
+/**
+ * Lists function names in a directory by finding all .ts files and extracting
+ * their base names.
+ *
+ * Returns an empty array if the directory doesn't exist.
+ */
+async function listFunctionNamesInDir(
+  dirPath: AbsoluteDirectoryPath,
+): Promise<string[]> {
+  try {
+    const entries = [];
+    for await (const dirEntry of Deno.readDir(dirPath.path)) {
+      if (dirEntry.isFile && dirEntry.name.endsWith(".ts")) {
+        // Extract base name without .ts extension
+        const baseName = dirEntry.name.slice(0, -3);
+        entries.push(baseName);
+      }
+    }
+    return entries;
+  } catch (err) {
+    if (err instanceof Deno.errors.NotFound) {
+      return [];
+    }
+    throw err;
+  }
+}
+
+/**
+ * Deletes both the metadata and code files for a function.
+ */
+async function deleteFunctionFiles(
+  project: Project,
+  metadataPath: AbsoluteFilePath,
+  codePath: AbsoluteFilePath,
+): Promise<void> {
+  if (await metadataPath.exists()) {
+    await Deno.remove(metadataPath.path);
+    logger.info("  - Deleted: {path}", {
+      path: metadataPath.relativeToStr(project),
+    });
+  }
+  if (await codePath.exists()) {
+    await Deno.remove(codePath.path);
+    logger.info("  - Deleted: {path}", {
+      path: codePath.relativeToStr(project),
+    });
+  }
+}
+
+/**
+ * Removes a directory if it exists and is empty.
+ */
+async function deleteIfEmpty(dirPath: AbsoluteDirectoryPath): Promise<void> {
+  try {
+    // Try to remove the directory - this will only succeed if it's empty
+    await Deno.remove(dirPath.path);
+  } catch (err) {
+    // Ignore errors (directory not empty, doesn't exist, etc.)
+    // NotFound means directory doesn't exist (fine)
+    // Other errors (like directory not empty) are also fine - we just skip
+    // removal
+    if (!(err instanceof Deno.errors.NotFound)) {
+      // Directory exists but couldn't be removed (likely not empty), which is
+      // expected
+      logger.trace("Directory {dirPath} not removed (likely not empty)", {
+        dirPath: dirPath.path,
+      });
+    }
+  }
+}
+
 function schemaMetadata(data: SchemaAndVariantData): SchemaMetadata {
   return {
     name: data.schema.name,
@@ -389,6 +598,22 @@ export interface PullFullSchemaResult {
     codePath: AbsoluteFilePath;
   }[];
   qualificationPaths: {
+    metadataPath: AbsoluteFilePath;
+    codePath: AbsoluteFilePath;
+  }[];
+  deletedActionPaths: {
+    metadataPath: AbsoluteFilePath;
+    codePath: AbsoluteFilePath;
+  }[];
+  deletedCodegenPaths: {
+    metadataPath: AbsoluteFilePath;
+    codePath: AbsoluteFilePath;
+  }[];
+  deletedManagementPaths: {
+    metadataPath: AbsoluteFilePath;
+    codePath: AbsoluteFilePath;
+  }[];
+  deletedQualificationPaths: {
     metadataPath: AbsoluteFilePath;
     codePath: AbsoluteFilePath;
   }[];

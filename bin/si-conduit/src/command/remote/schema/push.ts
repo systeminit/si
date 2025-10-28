@@ -1,4 +1,4 @@
-import { ChangeSetsApi, SchemasApi, FuncsApi } from "@systeminit/api-client";
+import { ChangeSetsApi, FuncsApi, SchemasApi } from "@systeminit/api-client";
 import { AxiosError } from "axios";
 import { Context } from "../../../context.ts";
 import { AuthenticatedCliContext } from "../../../cli/helpers.ts";
@@ -7,9 +7,8 @@ import { SCHEMA_FILE_FORMAT_VERSION } from "../../../config.ts";
 import {
   AbsoluteDirectoryPath,
   normalizeFsName,
-  Project
+  Project,
 } from "../../../project.ts";
-
 
 async function parseActions(
   ctx: Context,
@@ -243,7 +242,7 @@ function allSchemaFuncsWithKind(schema: Schema) {
     funcs.map((func) => ({
       kind,
       funcData: func,
-    }))
+    }));
 
   return [
     ...addKind("Qualification", schema.qualifications),
@@ -282,7 +281,9 @@ export async function callRemoteSchemaPush(
 
       const normalizedDirName = normalizeFsName(entry.name);
       if (schemaDirName !== normalizedDirName) {
-        logger.error(`Error reading ${schemaDirName}: Unsupported characters in the directory name. It should be ${normalizedDirName}. Skipping...`);
+        logger.error(
+          `Error reading ${schemaDirName}: Unsupported characters in the directory name. It should be ${normalizedDirName}. Skipping...`,
+        );
         continue;
       }
 
@@ -360,7 +361,9 @@ export async function callRemoteSchemaPush(
           project.qualificationBasePath(schemaDirName),
         );
 
-        logger.debug(`loaded ${qualifications.length} qualifications for ${schemaName}`);
+        logger.debug(
+          `loaded ${qualifications.length} qualifications for ${schemaName}`,
+        );
 
         const actions = await parseActions(
           ctx,
@@ -376,7 +379,9 @@ export async function callRemoteSchemaPush(
           project.codegenBasePath(schemaDirName),
         );
 
-        logger.debug(`loaded ${codeGenerators.length} code generators for ${schemaName}`);
+        logger.debug(
+          `loaded ${codeGenerators.length} code generators for ${schemaName}`,
+        );
 
         const managementFuncs = await parseSimpleFuncDirectory(
           ctx,
@@ -384,7 +389,9 @@ export async function callRemoteSchemaPush(
           project.managementBasePath(schemaDirName),
         );
 
-        logger.debug(`loaded ${managementFuncs.length} management funcs for ${schemaName}`);
+        logger.debug(
+          `loaded ${managementFuncs.length} management funcs for ${schemaName}`,
+        );
 
         const authFuncs = await parseSimpleFuncDirectory(
           ctx,
@@ -392,7 +399,9 @@ export async function callRemoteSchemaPush(
           project.authBasePath(schemaDirName),
         );
 
-        logger.debug(`authFuncs ${codeGenerators.length} auth funcs for ${schemaName}`);
+        logger.debug(
+          `authFuncs ${codeGenerators.length} auth funcs for ${schemaName}`,
+        );
 
         const schema = {
           name: schemaName,
@@ -413,11 +422,13 @@ export async function callRemoteSchemaPush(
           const { kind } = func;
           if (existingNames[funcName]) {
             throw new Error(
-              `Duplicate function name "${funcName}" found in asset "${schemaName}": ${existingNames[funcName]} and ${kind}`,
+              `Duplicate function name "${funcName}" found in asset "${schemaName}": ${
+                existingNames[funcName]
+              } and ${kind}`,
             );
           }
           existingNames[funcName] = kind;
-        })
+        });
 
         schemas.push(schema);
       } catch (error) {
@@ -527,16 +538,16 @@ export async function callRemoteSchemaPush(
       // These two records will only be filled out if the schema already exists
       // But we create it here to create a single code path when dealing with funcs
       const funcsToUnbindById = {} as Record<string, {
-        kind: string,
-        name: string,
+        kind: string;
+        name: string;
       }>;
       const existingFuncDataByName = {} as Record<string, {
-        id: string,
-        name: string,
-        displayName?: string | null,
-        description?: string | null,
-        code: string,
-        funcKind: string,
+        id: string;
+        name: string;
+        displayName?: string | null;
+        description?: string | null;
+        code: string;
+        funcKind: string;
       }>;
 
       if (existingSchemaId) {
@@ -591,7 +602,6 @@ export async function callRemoteSchemaPush(
             funcKind: existingFunc.funcKind.kind,
           };
         }
-
       } else {
         logger.info(`creating schema ${name}...`);
 
@@ -618,7 +628,6 @@ export async function callRemoteSchemaPush(
         schemaVariantId,
       };
 
-
       let createdFuncs = 0;
       let modifiedFuncs = 0;
       let skippedFuncs = 0;
@@ -636,7 +645,9 @@ export async function callRemoteSchemaPush(
             logger.debug(`${existingFunc.name} is unchanged. Skipping...`);
             skippedFuncs += 1;
           } else {
-            logger.debug(`${existingFunc.name} is changed. Unlocking and updating...`);
+            logger.debug(
+              `${existingFunc.name} is changed. Unlocking and updating...`,
+            );
             modifiedFuncs += 1;
 
             const unlockFuncResult = await siFuncsApi.unlockFunc({
@@ -644,9 +655,9 @@ export async function callRemoteSchemaPush(
               changeSetId,
               funcId: existingFunc.id,
               unlockFuncV1Request: {
-                schemaVariantId
-              }
-            })
+                schemaVariantId,
+              },
+            });
 
             const unlockedFuncId = unlockFuncResult.data.unlockedFuncId;
 
@@ -664,7 +675,9 @@ export async function callRemoteSchemaPush(
           switch (filesystemFuncKind) {
             case "Action":
               if (!("kind" in filesystemFunc)) {
-                logger.error(`Action must have a 'kind' field, ${filesystemFunc.name} is missing it`);
+                logger.error(
+                  `Action must have a 'kind' field, ${filesystemFunc.name} is missing it`,
+                );
                 break;
               }
 
@@ -698,7 +711,9 @@ export async function callRemoteSchemaPush(
               });
               break;
             default:
-              logger.error(`Unknown func kind for func "${filesystemFunc.name}": ${filesystemFuncKind}`);
+              logger.error(
+                `Unknown func kind for func "${filesystemFunc.name}": ${filesystemFuncKind}`,
+              );
           }
         }
       }
@@ -707,14 +722,16 @@ export async function callRemoteSchemaPush(
 
       // TODO unbinding should happen before creating and updating any funcs, so we don't get conflicts with existing actions
       // loop over funcIdsToUnbind, using both the keys and the values
-      for (const [funcId, { kind, name }] of Object.entries(funcsToUnbindById)) {
+      for (
+        const [funcId, { kind, name }] of Object.entries(funcsToUnbindById)
+      ) {
         logger.debug(`${name} was removed. Detaching...`);
         detachedFuncs += 1;
 
         const detachPayload = {
           ...baseVariantPayload,
           funcId,
-        }
+        };
 
         switch (kind) {
           case "Action":
@@ -733,14 +750,17 @@ export async function callRemoteSchemaPush(
             await siSchemasApi.detachAuthenticationFuncBinding(detachPayload);
             break;
           default:
-            console.error(`Unknown unknown func kind for func ${funcId}: ${kind}`);
+            console.error(
+              `Unknown unknown func kind for func ${funcId}: ${kind}`,
+            );
         }
       }
 
-      logger.info(`func summary: ${createdFuncs} created, ${modifiedFuncs} modified, ${detachedFuncs} detached, ${skippedFuncs} unchanged`);
+      logger.info(
+        `func summary: ${createdFuncs} created, ${modifiedFuncs} modified, ${detachedFuncs} detached, ${skippedFuncs} unchanged`,
+      );
 
       pushedSchemas += 1;
-
     }
 
     const changeSetUrl =

@@ -215,10 +215,13 @@ export async function materializeSchemaFormatVersion(
   project: Project,
   schemaName: string,
   formatVersionBody: string,
+  options?: { overwrite?: boolean },
 ): Promise<{ formatVersionPath: AbsoluteFilePath }> {
   // Create the format version file
   const formatVersionFilePath = project.schemaFormatVersionPath(schemaName);
-  await ensureFileDoesNotExist(formatVersionFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(formatVersionFilePath);
+  }
   await createFileWithLogging(
     project,
     formatVersionFilePath,
@@ -269,15 +272,20 @@ export async function materializeSchema(
   schemaName: string,
   metadataBody: string,
   codeBody: string,
+  options?: { overwrite?: boolean },
 ): Promise<{ metadataPath: AbsoluteFilePath; codePath: AbsoluteFilePath }> {
   // Create schema metadata file
   const metadataFilePath = project.schemaMetadataPath(schemaName);
-  await ensureFileDoesNotExist(metadataFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(metadataFilePath);
+  }
   await createFileWithLogging(project, metadataFilePath, metadataBody);
 
   // Create schema func code file
   const schemaCodeFilePath = project.schemaFuncCodePath(schemaName);
-  await ensureFileDoesNotExist(schemaCodeFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(schemaCodeFilePath);
+  }
   await createFileWithLogging(project, schemaCodeFilePath, codeBody);
 
   return {
@@ -327,6 +335,7 @@ export async function materializeSchemaAction(
   actionName: string,
   metadataBody: string,
   codeBody: string,
+  options?: { overwrite?: boolean },
 ): Promise<{
   metadataPath: AbsoluteFilePath;
   codePath: AbsoluteFilePath;
@@ -336,12 +345,16 @@ export async function materializeSchemaAction(
     schemaName,
     actionName,
   );
-  await ensureFileDoesNotExist(actionMetadataFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(actionMetadataFilePath);
+  }
   await createFileWithLogging(project, actionMetadataFilePath, metadataBody);
 
   // Create action func code file
   const actionCodeFilePath = project.actionFuncCodePath(schemaName, actionName);
-  await ensureFileDoesNotExist(actionCodeFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(actionCodeFilePath);
+  }
   await createFileWithLogging(project, actionCodeFilePath, codeBody);
 
   return {
@@ -391,6 +404,7 @@ export async function materializeSchemaCodegen(
   codegenName: string,
   metadataBody: string,
   codeBody: string,
+  options?: { overwrite?: boolean },
 ): Promise<{
   metadataPath: AbsoluteFilePath;
   codePath: AbsoluteFilePath;
@@ -400,7 +414,9 @@ export async function materializeSchemaCodegen(
     schemaName,
     codegenName,
   );
-  await ensureFileDoesNotExist(codegenMetadataFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(codegenMetadataFilePath);
+  }
   await createFileWithLogging(project, codegenMetadataFilePath, metadataBody);
 
   // Create codegen func code file
@@ -408,7 +424,9 @@ export async function materializeSchemaCodegen(
     schemaName,
     codegenName,
   );
-  await ensureFileDoesNotExist(codegenCodeFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(codegenCodeFilePath);
+  }
   await createFileWithLogging(project, codegenCodeFilePath, codeBody);
 
   return {
@@ -458,6 +476,7 @@ export async function materializeSchemaManagement(
   managementName: string,
   metadataBody: string,
   codeBody: string,
+  options?: { overwrite?: boolean },
 ): Promise<{
   metadataPath: AbsoluteFilePath;
   codePath: AbsoluteFilePath;
@@ -467,7 +486,9 @@ export async function materializeSchemaManagement(
     schemaName,
     managementName,
   );
-  await ensureFileDoesNotExist(managementMetadataFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(managementMetadataFilePath);
+  }
   await createFileWithLogging(
     project,
     managementMetadataFilePath,
@@ -479,7 +500,9 @@ export async function materializeSchemaManagement(
     schemaName,
     managementName,
   );
-  await ensureFileDoesNotExist(managementCodeFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(managementCodeFilePath);
+  }
   await createFileWithLogging(project, managementCodeFilePath, codeBody);
 
   return {
@@ -529,6 +552,7 @@ export async function materializeSchemaQualification(
   qualificationName: string,
   metadataBody: string,
   codeBody: string,
+  options?: { overwrite?: boolean },
 ): Promise<{
   metadataPath: AbsoluteFilePath;
   codePath: AbsoluteFilePath;
@@ -538,7 +562,9 @@ export async function materializeSchemaQualification(
     schemaName,
     qualificationName,
   );
-  await ensureFileDoesNotExist(qualificationMetadataFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(qualificationMetadataFilePath);
+  }
   await createFileWithLogging(
     project,
     qualificationMetadataFilePath,
@@ -550,7 +576,9 @@ export async function materializeSchemaQualification(
     schemaName,
     qualificationName,
   );
-  await ensureFileDoesNotExist(qualificationCodeFilePath);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(qualificationCodeFilePath);
+  }
   await createFileWithLogging(project, qualificationCodeFilePath, codeBody);
 
   return {
@@ -575,15 +603,32 @@ export async function ensureFileDoesNotExist(
 }
 
 /**
- * Creates a file with the given content and logs the creation.
+ * Creates or updates a file with the given content and logs the creation.
+ *
+ * Skips writing if the file already exists with identical content.
  */
 export async function createFileWithLogging(
   project: Project,
   filePath: AbsoluteFilePath,
   content: string,
 ) {
+  const alreadyExists = await filePath.exists();
+
+  // If file exists, check if contents would change
+  if (alreadyExists) {
+    const existingContent = await filePath.readTextFile();
+    if (existingContent === content) {
+      // Contents are identical, skip writing
+      logger.info(`  - Skipped (unchanged): {filePath}`, {
+        filePath: filePath.relativeToStr(project),
+      });
+      return;
+    }
+  }
+
   await filePath.writeTextFile(content);
-  logger.info("  - Created: {filePath}", {
+  const verb = alreadyExists ? "Updated" : "Created";
+  logger.info(`  - ${verb}: {filePath}`, {
     filePath: filePath.relativeToStr(project),
   });
 }
