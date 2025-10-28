@@ -12087,6 +12087,9 @@
   "The display order of the status.": {
     "enum": null
   },
+  "The display settings of the Custom Line Item.": {
+    "enum": null
+  },
   "The dissimilarity threshold for splitting chunks.": {
     "enum": null
   },
@@ -17851,6 +17854,9 @@
     "enum": null
   },
   "Timeout": {
+    "enum": null
+  },
+  "Timeout duration for a preview contact in seconds": {
     "enum": null
   },
   "TimeoutMinutes": {
