@@ -1,0 +1,202 @@
+/**
+ * Context Module - Global Application Context Management
+ *
+ * This module provides a singleton context that manages global application
+ * state including logging and analytics services. The context must be
+ * initialized once at application startup using {@link Context.init} before
+ * accessing it via {@link Context.instance}.
+ *
+ * The singleton pattern is used here to ensure consistent logging and analytics
+ * configuration across all commands and modules without explicit dependency
+ * passing through every function call.
+ *
+ * @example
+ * ```ts
+ * import { Context } from "./context.ts";
+ *
+ * // Initialize once at startup
+ * await Context.init({
+ *   verbose: 2,
+ *   noColor: false,
+ * });
+ *
+ * // Access anywhere in the application
+ * const ctx = Context.instance();
+ * ctx.logger.info("Application started");
+ * ctx.analytics.trackEvent("app-started");
+ * ```
+ *
+ * @module
+ */
+
+import type { Logger } from "@logtape/logtape";
+import type { Configuration } from "@systeminit/api-client";
+import { Analytics } from "./analytics.ts";
+import {
+  configureLogger,
+  getLogger,
+  isInteractive as loggerIsInteractive,
+  type VerbosityLevel,
+} from "./logger.ts";
+
+/** Event prefix for all analytics events tracked by this application. */
+const ANALYTICS_EVENT_PREFIX = "tmpl";
+
+/**
+ * Options for initializing the application context.
+ */
+export interface ContextOptions {
+  /** Disable colored output in logs and prompts. */
+  noColor?: boolean;
+  /** Verbosity level for logging (0=errors only, 4=trace). */
+  verbose?: number;
+}
+
+/**
+ * Global application context managing logging and analytics services.
+ *
+ * This singleton class provides centralized access to logger and analytics
+ * instances that are configured once at application startup. It uses the
+ * singleton pattern to avoid passing dependencies through every function call.
+ */
+export class Context {
+  private static context: Context;
+
+  /** Logger instance for application logging. */
+  public readonly logger: Logger;
+
+  /** Analytics instance for event tracking. */
+  public readonly analytics: Analytics;
+
+  /** Whether or not the CLI is running in an interactive session. */
+  public readonly isInteractive: boolean;
+
+  /** System Initiative API client configuration (if initialized). */
+  public readonly apiConfig?: Configuration;
+
+  /** Workspace ID extracted from API token (if initialized). */
+  public readonly workspaceId?: string;
+
+  /** User ID extracted from API token (if initialized). */
+  public readonly userId?: string;
+
+  private constructor(
+    logger: Logger,
+    analytics: Analytics,
+    isInteractive: boolean,
+    apiConfig?: Configuration,
+    workspaceId?: string,
+    userId?: string,
+  ) {
+    this.logger = logger;
+    this.analytics = analytics;
+    this.isInteractive = isInteractive;
+    this.apiConfig = apiConfig;
+    this.workspaceId = workspaceId;
+    this.userId = userId;
+  }
+
+  /**
+   * Initializes the global application context.
+   *
+   * This method must be called once at application startup before any calls to
+   * {@link instance}. It configures the logger and analytics services based on
+   * the provided options.
+   *
+   * @param options - Configuration options for logging and analytics
+   * @returns A promise resolving to the initialized Context instance
+   *
+   * @example
+   * ```ts
+   * // Initialize with defaults
+   * await Context.init({});
+   *
+   * // Initialize with custom verbosity
+   * await Context.init({
+   *   verbose: 3,
+   * });
+   * ```
+   */
+  public static async init(options: ContextOptions): Promise<Context> {
+    const verbosity = (options.verbose ?? 0) as VerbosityLevel;
+    await configureLogger(verbosity, options.noColor);
+    const logger = getLogger();
+
+    const analytics = new Analytics(ANALYTICS_EVENT_PREFIX);
+
+    const isInteractive = loggerIsInteractive();
+
+    // Conditionally initialize SI client if API token is present
+    let apiConfig: Configuration | undefined;
+    let workspaceId: string | undefined;
+    let userId: string | undefined;
+
+    if (Deno.env.get("SI_API_TOKEN")) {
+      try {
+        const siClient = await import("./si_client.ts");
+        apiConfig = siClient.apiConfig;
+        workspaceId = siClient.WORKSPACE_ID;
+        userId = siClient.USER_ID;
+      } catch (error) {
+        // If si_client initialization fails, it will exit the process
+        // This catch is here for any unexpected errors
+        logger.error(`Failed to initialize SI client: ${error}`);
+      }
+    }
+
+    this.context = new Context(
+      logger,
+      analytics,
+      isInteractive,
+      apiConfig,
+      workspaceId,
+      userId,
+    );
+
+    return this.context;
+  }
+
+  /**
+   * Returns the global context instance.
+   *
+   * This method provides access to the singleton context instance. It will
+   * throw {@link ContextNotInitializedError} if called before {@link init}.
+   *
+   * @returns The initialized Context instance
+   * @throws {ContextNotInitializedError} If context has not been initialized
+   *
+   * @example
+   * ```ts
+   * const ctx = Context.instance();
+   * ctx.logger.info("Processing command");
+   * ctx.analytics.trackEvent("command-executed");
+   * ```
+   */
+  public static instance(): Context {
+    if (this.context) {
+      return this.context;
+    } else {
+      throw new ContextNotInitializedError();
+    }
+  }
+
+  public static isInitialized(): boolean {
+    if (this.context) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+/**
+ * Error thrown when attempting to access Context before initialization.
+ */
+export class ContextNotInitializedError extends Error {
+  constructor() {
+    super(
+      "Context has not been initialized. Call Context.init() before accessing Context.instance().",
+    );
+    this.name = "ContextNotInitializedError";
+  }
+}
