@@ -401,7 +401,39 @@ async fn duplicate_action_kinds_causes_error(ctx: &mut DalContext) {
 }
 
 #[test]
-async fn duplicate_func_name_causes_error(ctx: &mut DalContext) {
+async fn duplicate_func_name_in_different_schema_variants_is_ok(ctx: &mut DalContext) {
+    let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "katy perry")
+        .await
+        .expect("could not create unlocked copy");
+
+    let schema_variant_2_id = create_unlocked_variant_copy_for_schema_name(ctx, "pirate")
+        .await
+        .expect("could not create unlocked copy 2");
+
+    let func_name = "Paul's Test Func".to_string();
+
+    FuncAuthoringClient::create_new_action_func(
+        ctx,
+        Some(func_name.clone()),
+        ActionKind::Create,
+        schema_variant_id,
+    )
+    .await
+    .expect("unable to create func");
+
+    FuncAuthoringClient::create_new_leaf_func(
+        ctx,
+        Some(func_name.clone()),
+        LeafKind::CodeGeneration,
+        EventualParent::SchemaVariant(schema_variant_2_id),
+        &[LeafInputLocation::Domain],
+    )
+    .await
+    .expect("unable to create second func");
+}
+
+#[test]
+async fn duplicate_func_name_in_same_schema_causes_error(ctx: &mut DalContext) {
     let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "katy perry")
         .await
         .expect("could not create unlocked copy");
@@ -425,7 +457,7 @@ async fn duplicate_func_name_causes_error(ctx: &mut DalContext) {
     )
     .await;
 
-    if let Err(FuncAuthoringError::FuncNameExists(errored_func_name)) = func {
+    if let Err(FuncAuthoringError::FuncNameExistsOnVariant(errored_func_name, _)) = func {
         assert_eq!(func_name, errored_func_name)
     } else {
         panic!("Test should fail if we don't get this func exists in change set error")
