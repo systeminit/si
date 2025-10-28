@@ -608,6 +608,10 @@ You can combine this with the `DEBUG` environment variable for `lang-js` for eve
 DEBUG=* SI_TEST_LOG=info buck2 run <CRATE>:test-integration -- <PATTERN> -- --nocapture
 ```
 
+# Generating Clover Schemas
+
+See the [README in `bin/clover`](bin/clover/README.md) for more information.
+
 # Preparing Your Pull Request
 
 This section contains information related to preparing changes for a pull request.
