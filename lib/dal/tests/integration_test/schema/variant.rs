@@ -256,6 +256,40 @@ async fn list_user_facing_works(ctx: &DalContext) {
         .expect("could not list user facing schema variants");
 }
 
+#[test]
+async fn find_schema_case_insensitive(ctx: &DalContext) {
+    let schema_name = "AWS::VpcLattice::Service";
+    let schema = Schema::new(ctx, schema_name)
+        .await
+        .expect("could not create schema");
+
+    assert_eq!(schema_name, schema.name());
+
+    let found_schema = Schema::get_by_name_opt(ctx, "aws::vpclattice::service")
+        .await
+        .expect("could not search for schema")
+        .expect("schema not found with lowercase name");
+
+    assert_eq!(schema.id(), found_schema.id());
+    assert_eq!(schema.name(), found_schema.name());
+
+    let found_schema_upper = Schema::get_by_name_opt(ctx, "AWS::VPCLattice::Service")
+        .await
+        .expect("could not search for schema")
+        .expect("schema not found with mixed case name");
+
+    assert_eq!(schema.id(), found_schema_upper.id());
+    assert_eq!(schema.name(), found_schema_upper.name());
+
+    let found_schema_mixed = Schema::get_by_name_opt(ctx, "AWS::VPCLATTICE::SERVICE")
+        .await
+        .expect("could not search for schema")
+        .expect("schema not found with upper case name");
+
+    assert_eq!(schema.id(), found_schema_mixed.id());
+    assert_eq!(schema.name(), found_schema_mixed.name());
+}
+
 fn prepare_for_assertion(expected: &[&str], all_funcs: &[Func]) -> (Vec<String>, Vec<String>) {
     let expected = expected.iter().map(|s| s.to_string()).collect();
 
