@@ -422,7 +422,7 @@ impl CachedModule {
                 SELECT DISTINCT ON (schema_id)
                     {CACHED_MODULE_GET_FIELDS}
                 FROM cached_modules
-                WHERE schema_name = $1
+                WHERE LOWER(schema_name) = LOWER($1)
                 ORDER BY schema_id, created_at DESC
             "
         );

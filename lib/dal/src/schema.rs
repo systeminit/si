@@ -579,7 +579,7 @@ impl Schema {
                     .get_content_node_weight_of_kind(ContentAddressDiscriminants::Schema)?
             };
             let schema = Self::get_by_id(ctx, schema_node_weight.id().into()).await?;
-            if schema.name == name.as_ref() {
+            if schema.name.eq_ignore_ascii_case(name.as_ref()) {
                 return Ok(Some(schema));
             }
         }
