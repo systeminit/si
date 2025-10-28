@@ -1,6 +1,8 @@
 # Testing the SI MCP Server
 
-This directory contains a testing setup for the System Initiative MCP Server using mcp-jest. The tests make **real API calls** to System Initiative using your credentials.
+This directory contains a testing setup for the System Initiative MCP Server
+using mcp-jest. The tests make **real API calls** to System Initiative using
+your credentials.
 
 ## Files Created
 
@@ -47,7 +49,7 @@ The tests verify:
 ## Environment Variables
 
 - `SI_API_TOKEN` - Your System Initiative API token (**required**)
-- `SI_BASE_URL` - API base URL (defaults to https://api.systeminit.com)  
+- `SI_BASE_URL` - API base URL (defaults to https://api.systeminit.com)
 - `SI_WORKSPACE_ID` - Workspace ID (extracted from token if not provided)
 
 ## Configuring Tests
@@ -60,18 +62,18 @@ const TEST_CONFIG = {
     "validate-credentials": {},
     "component-list": {},
     "change-set-list": {},
-    
+
     // Add tools with arguments:
     "change-set-create": {
       args: { changeSetName: "Test Change Set" },
     },
     "component-create": {
-      args: { 
+      args: {
         schemaVariantId: "your-schema-variant-id",
-        componentName: "Test Component"
-      }
+        componentName: "Test Component",
+      },
     },
-  }
+  },
 };
 ```
 

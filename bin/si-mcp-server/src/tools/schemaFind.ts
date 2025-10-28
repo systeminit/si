@@ -5,11 +5,11 @@ import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
+  findHeadChangeSet,
   generateDescription,
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
-import { ChangeSetItem } from "../data/changeSets.ts";
 import { isValid } from "ulid";
 
 const name = "schema-find";
@@ -83,50 +83,15 @@ export function schemaFindTool(server: McpServer) {
       return await withAnalytics(name, async () => {
         if (!changeSetId) {
           const changeSetsApi = new ChangeSetsApi(apiConfig);
-          try {
-            const changeSetList = await changeSetsApi.listChangeSets({
-              workspaceId: WORKSPACE_ID,
-            });
-            const head = (
-              changeSetList.data.changeSets as ChangeSetItem[]
-            ).find((cs) => cs.isHead);
-            if (!head) {
-              return errorResponse({
-                message:
-                  "No HEAD change set found; this is a bug! Tell the user we are sorry.",
-              });
-            }
-            changeSetId = head.id;
-          } catch (error) {
-            const errorMessage = error instanceof Error
-              ? error.message
-              : String(error);
-            return errorResponse({
-              message:
-                `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${errorMessage}`,
-            });
+          const headChangeSet = await findHeadChangeSet(changeSetsApi, false);
+          if (headChangeSet.changeSetId) {
+            changeSetId = headChangeSet.changeSetId;
+          } else {
+            return errorResponse(headChangeSet);
           }
         }
         const siApi = new SchemasApi(apiConfig);
         try {
-          if (schemaNameOrId.startsWith("AWS::IAM")) {
-            switch (schemaNameOrId) {
-              case "AWS::IAM::User":
-              case "AWS::IAM::Role":
-              case "AWS::IAM::Group":
-              case "AWS::IAM::ManagedPolicy":
-              case "AWS::IAM::UserPolicy":
-              case "AWS::IAM::RolePolicy":
-              case "AWS::IAM::InstanceProfile":
-                break;
-              default:
-                return errorResponse({
-                  message:
-                    "AWS::IAM schema not found. Use one of AWS::IAM::User, AWS::IAM::Role, AWS::IAM::RolePolicy, AWS::IAM::UserPolicy, AWS::IAM::ManagedPolicy, AWS::IAM::InstanceProfile, or AWS::IAM::Group.",
-                });
-            }
-          }
-
           let schemaId = "";
           if (!isValid(schemaNameOrId)) {
             try {

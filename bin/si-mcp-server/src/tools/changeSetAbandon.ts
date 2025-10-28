@@ -12,7 +12,8 @@ import {
 
 const name = "change-set-abandon";
 const title = "Abandon a change set";
-const description = `<description>Abandon a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Abandon a change set. You may *never* abandon the HEAD change set.</usage>`;
+const description =
+  `<description>Abandon a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Abandon a change set. You may *never* abandon the HEAD change set.</usage>`;
 
 const AbandonChangeSetInputSchemaRaw = {
   changeSetId: z.string().describe("the ID of the change set to abandon"),

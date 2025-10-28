@@ -31,7 +31,6 @@ import { templateListTool } from "./tools/templateList.ts";
 import { changeSetAbandonTool } from "./tools/changeSetAbandon.ts";
 import { changeSetForceApplyTool } from "./tools/changeSetForceApply.ts";
 
-
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "si-server",

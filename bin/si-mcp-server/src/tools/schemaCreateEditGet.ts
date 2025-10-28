@@ -1,6 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { SchemasApi, FuncsApi, SchemaVariantFunc } from "@systeminit/api-client";
+import {
+  FuncsApi,
+  SchemasApi,
+  SchemaVariantFunc,
+} from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
@@ -31,15 +35,21 @@ const schemaCreateEditGetInputSchemaRaw = {
     .describe(
       "The change set to create, edit, or get a schema in; schemas cannot be manipulated on HEAD.",
     ),
-  name: z.string().min(1).optional().describe("The name of the schema. A name is required for creating a new schema."),
+  name: z.string().min(1).optional().describe(
+    "The name of the schema. A name is required for creating a new schema.",
+  ),
   description: z.string().optional().describe("The description of the schema."),
-  schemaId: z.string().optional().describe("The id of the schema you want to edit. If none is given, create a new schema. If only a change set id and schema id are given, just get information about the schema."),
+  schemaId: z.string().optional().describe(
+    "The id of the schema you want to edit. If none is given, create a new schema. If only a change set id and schema id are given, just get information about the schema.",
+  ),
   link: z
     .string()
     .optional()
     .describe("A link to documentation about the thing the schema represents."),
   category: z.string().optional().describe("The category of the schema"),
-  color: z.string().optional().describe("The schema's color. Must be a hex color, convert any color words into a hex value."),
+  color: z.string().optional().describe(
+    "The schema's color. Must be a hex color, convert any color words into a hex value.",
+  ),
   definitionFunction: z
     .string()
     .optional()
@@ -164,7 +174,9 @@ const schemaCreateEditGetOutputSchemaRaw = {
           kind: z.literal("action").describe("the function kind"),
         }),
         z.object({
-          managementFuncKind: z.string().describe("the management function kind"),
+          managementFuncKind: z.string().describe(
+            "the management function kind",
+          ),
           kind: z.literal("management").describe("the function kind"),
         }),
         z.object({
@@ -175,8 +187,12 @@ const schemaCreateEditGetOutputSchemaRaw = {
     })).describe("the functions attached to the schema"),
   }),
 };
-const schemaCreateEditGetOutputSchema = z.object(schemaCreateEditGetOutputSchemaRaw);
-type SchemaCreateEditGetOutputData = z.infer<typeof schemaCreateEditGetOutputSchema>["data"];
+const schemaCreateEditGetOutputSchema = z.object(
+  schemaCreateEditGetOutputSchemaRaw,
+);
+type SchemaCreateEditGetOutputData = z.infer<
+  typeof schemaCreateEditGetOutputSchema
+>["data"];
 
 export function schemaCreateEditGetTool(server: McpServer) {
   server.registerTool(
@@ -191,12 +207,23 @@ export function schemaCreateEditGetTool(server: McpServer) {
       inputSchema: schemaCreateEditGetInputSchemaRaw,
       outputSchema: schemaCreateEditGetOutputSchemaRaw,
     },
-    async ({ changeSetId, definitionFunction, schemaId, ...createOrEditSchemaV1Request }) => {
+    async (
+      {
+        changeSetId,
+        definitionFunction,
+        schemaId,
+        ...createOrEditSchemaV1Request
+      },
+    ) => {
       return await withAnalytics(toolName, async () => {
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
 
-        let hints, touchedSchemaId, touchedDefinitionFunction, touchedName: string, touchedFunctions;
+        let hints,
+          touchedSchemaId,
+          touchedDefinitionFunction,
+          touchedName: string,
+          touchedFunctions;
 
         try {
           if (schemaId) {
@@ -230,15 +257,23 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // populate data to return from the tool
             touchedSchemaId = schemaId;
-            touchedDefinitionFunction = definitionFunction ?? responseGetFunc.data.code;
-            touchedName = createOrEditSchemaV1Request.name ?? responseGetVariant.data.displayName;
+            touchedDefinitionFunction = definitionFunction ??
+              responseGetFunc.data.code;
+            touchedName = createOrEditSchemaV1Request.name ??
+              responseGetVariant.data.displayName;
             touchedFunctions = responseGetVariant.data.variantFuncs;
 
             // information gathering complete, now only move onto updating if we have new data
-            if (definitionFunction || Object.values(createOrEditSchemaV1Request).some(value => value != undefined)) {
+            if (
+              definitionFunction ||
+              Object.values(createOrEditSchemaV1Request).some((value) =>
+                value != undefined
+              )
+            ) {
               // if this schema is a builtin, we need to warn the user accordingly
               if (responseGetVariant.data.installedFromUpstream) {
-                hints = "Warn the user that because this schema was created by System Initiative that they will lose their customizations to it if they upgrade the schema. Repeat this warning every time the user edits any builtin schema.";
+                hints =
+                  "Warn the user that because this schema was created by System Initiative that they will lose their customizations to it if they upgrade the schema. Repeat this warning every time the user edits any builtin schema.";
               }
 
               // so that we can build the final request with the current data as the default
@@ -275,11 +310,12 @@ export function schemaCreateEditGetTool(server: McpServer) {
             if (!name) {
               return errorResponse({
                 message: "A name is required to make a new schema.",
-                hints: "Ask the user to give this new schema a name."
+                hints: "Ask the user to give this new schema a name.",
               });
             }
 
-            const code = definitionFunction ?? DEFAULT_SCHEMA_DEFINITION_FUNCTION;
+            const code = definitionFunction ??
+              DEFAULT_SCHEMA_DEFINITION_FUNCTION;
 
             // next we call the endpoint to create a new schema
             const responseCreate = await siSchemasApi.createSchema({

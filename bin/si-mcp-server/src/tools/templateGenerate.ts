@@ -11,9 +11,9 @@ import {
 } from "./commonBehavior.ts";
 
 const name = "template-generate";
-const title = "Generate a template from user provided or searched for componentIds";
-const description =
-  `
+const title =
+  "Generate a template from user provided or searched for componentIds";
+const description = `
   <important>
   Do not use the component-list tool, *always* prefer this tools search functionality.
   </important>
@@ -83,7 +83,7 @@ const TemplateGenerateInputSchemaRaw = {
 
     </documentation>
 
-    `
+    `,
   ),
   templateName: z.string().describe(
     "the name of the template that will be generated",
@@ -178,16 +178,23 @@ export function templateGenerateTool(server: McpServer) {
               q: searchQuery,
             });
 
-            templateComponentIds = searchResponse.data.components.map((component) => component.id);
+            templateComponentIds = searchResponse.data.components.map((
+              component,
+            ) => component.id);
 
             if (templateComponentIds.length < 1) {
-              return errorResponse("No components found for the provided search query.");
+              return errorResponse(
+                "No components found for the provided search query.",
+              );
             }
-
           } else if (hasListOfIds && searchQuery) {
-            return errorResponse("You cannot use both a list of componentIds and a search query.")
+            return errorResponse(
+              "You cannot use both a list of componentIds and a search query.",
+            );
           } else {
-            return errorResponse("You must provide either a list of componentIds or a search query.");
+            return errorResponse(
+              "You must provide either a list of componentIds or a search query.",
+            );
           }
 
           const response = await siComponentsApi.generateTemplate({

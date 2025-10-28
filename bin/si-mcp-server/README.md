@@ -1,6 +1,8 @@
 # System Initiative MCP Server
 
-A Model Context Protocol (MCP) server that provides Claude Code with direct access to System Initiative's API for managing infrastructure components, change sets, schemas, and actions.
+A Model Context Protocol (MCP) server that provides Claude Code with direct
+access to System Initiative's API for managing infrastructure components, change
+sets, schemas, and actions.
 
 ## Development Setup
 
@@ -31,7 +33,7 @@ deno task inspector
 This opens a browser interface where you can:
 
 - Test individual tools with parameters
-- Inspect tool schemas and validate responses  
+- Inspect tool schemas and validate responses
 - Debug authentication and connection issues
 - View real-time tool execution
 
@@ -52,13 +54,13 @@ claude mcp list
 
 ## Available Tasks
 
-| Task | Command | Description |
-|------|---------|-------------|
-| `dev` | `deno task dev` | Run with auto-reload for development |
-| `inspector` | `deno task inspector` | Start MCP Inspector for testing |
-| `build` | `deno task build` | Compile to standalone binary |
-| `docker:build` | `deno task docker:build` | Build Docker image |
-| `docker:run` | `deno task docker:run` | Run Docker container |
+| Task           | Command                  | Description                          |
+| -------------- | ------------------------ | ------------------------------------ |
+| `dev`          | `deno task dev`          | Run with auto-reload for development |
+| `inspector`    | `deno task inspector`    | Start MCP Inspector for testing      |
+| `build`        | `deno task build`        | Compile to standalone binary         |
+| `docker:build` | `deno task docker:build` | Build Docker image                   |
+| `docker:run`   | `deno task docker:run`   | Run Docker container                 |
 
 ## Adding New Tools
 

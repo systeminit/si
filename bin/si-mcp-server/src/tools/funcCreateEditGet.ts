@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { validateFunctionCode } from "../validators/funcValidator.ts";
-import { SchemasApi, FuncsApi } from "@systeminit/api-client";
+import { FuncsApi, SchemasApi } from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
@@ -11,7 +11,8 @@ import {
 } from "./commonBehavior.ts";
 
 const toolName = "func-create-edit-get";
-const title = "Create, update, or get information about a function for an existing schema.";
+const title =
+  "Create, update, or get information about a function for an existing schema.";
 const description = `
 <description>
 Create, update, or get information about an existing function for an existing schema following the usage workflow.
@@ -50,18 +51,21 @@ const DEFAULT_QUALIFICATION_FUNCTION = `function main() {
     return { result: "success", message: "All good!" };
 }`;
 
-const DEFAULT_CODEGEN_FUNCTION = `async function main(component: Input): Promise<Output> {
+const DEFAULT_CODEGEN_FUNCTION =
+  `async function main(component: Input): Promise<Output> {
   return {
     format: "json",
     code: JSON.stringify(component),
   };
 }`;
 
-const DEFAULT_MANAGEMENT_FUNCTION = `async function main({ thisComponent, components }: Input): Promise<Output> {
+const DEFAULT_MANAGEMENT_FUNCTION =
+  `async function main({ thisComponent, components }: Input): Promise<Output> {
   throw new Error("unimplemented!");
 }`;
 
-const DEFAULT_ACTION_FUNCTION = `async function main(component: Input): Promise<Output> {
+const DEFAULT_ACTION_FUNCTION =
+  `async function main(component: Input): Promise<Output> {
   throw new Error("unimplemented!");
 }`;
 
@@ -911,7 +915,7 @@ const functionCodeDescribe = [
       status: "ok",
     };
   }
-  </action-manual-example>`
+  </action-manual-example>`,
 ];
 
 const funcCreateEditGetInputSchemaRaw = {
@@ -921,15 +925,25 @@ const funcCreateEditGetInputSchemaRaw = {
       "The change set to create, update, get information about a function in; functions cannot be manipulated on HEAD",
     ),
   schemaId: z.string().describe("The schema id the function is for."),
-  funcId: z.string().optional().describe("The id of the function to edit or get information about. If none is given, create a new function."),
-  name: z.string().min(1).optional().describe("The name of the function. Required for creating a new function."),
+  funcId: z.string().optional().describe(
+    "The id of the function to edit or get information about. If none is given, create a new function.",
+  ),
+  name: z.string().min(1).optional().describe(
+    "The name of the function. Required for creating a new function.",
+  ),
   description: z.string().optional().describe("A description for the function"),
-  functionType: z.enum(["qualification", "codegen", "management", "action"]).optional().describe("The type of the function. Required for creating a new function."),
+  functionType: z.enum(["qualification", "codegen", "management", "action"])
+    .optional().describe(
+      "The type of the function. Required for creating a new function.",
+    ),
   functionCode: z
     .string()
     .optional()
     .describe(functionCodeDescribe.join(" ")),
-  actionKind: z.enum(["Create", "Destroy", "Refresh", "Update", "Manual"]).optional().describe("The kind of action function. Only required for new functions of the action type."),
+  actionKind: z.enum(["Create", "Destroy", "Refresh", "Update", "Manual"])
+    .optional().describe(
+      "The kind of action function. Only required for new functions of the action type.",
+    ),
 };
 
 const funcCreateEditGetOutputSchemaRaw = {
@@ -946,8 +960,12 @@ const funcCreateEditGetOutputSchemaRaw = {
     functionCode: z.string().describe("the function code"),
   }),
 };
-const funcCreateEditGetOutputSchema = z.object(funcCreateEditGetOutputSchemaRaw);
-type FuncCreateEditGetOutputData = z.infer<typeof funcCreateEditGetOutputSchema>["data"];
+const funcCreateEditGetOutputSchema = z.object(
+  funcCreateEditGetOutputSchemaRaw,
+);
+type FuncCreateEditGetOutputData = z.infer<
+  typeof funcCreateEditGetOutputSchema
+>["data"];
 
 export function funcCreateEditGetTool(server: McpServer) {
   server.registerTool(
@@ -962,14 +980,29 @@ export function funcCreateEditGetTool(server: McpServer) {
       inputSchema: funcCreateEditGetInputSchemaRaw,
       outputSchema: funcCreateEditGetOutputSchemaRaw,
     },
-    async ({ changeSetId, schemaId, funcId, functionCode, functionType, actionKind, name, description}) => {
+    async (
+      {
+        changeSetId,
+        schemaId,
+        funcId,
+        functionCode,
+        functionType,
+        actionKind,
+        name,
+        description,
+      },
+    ) => {
       return await withAnalytics(toolName, async () => {
         if (functionType) {
-          const validationIssues = validateFunctionCode(functionType, functionCode, actionKind);
+          const validationIssues = validateFunctionCode(
+            functionType,
+            functionCode,
+            actionKind,
+          );
           if (validationIssues.length > 0) {
             return errorResponse({
               message: "Function code failed validation. Upsert aborted.",
-              hints: validationIssues.map(i => `• ${i.message}`).join("\n"),
+              hints: validationIssues.map((i) => `• ${i.message}`).join("\n"),
             });
           }
         } else if (!funcId) {
@@ -995,12 +1028,14 @@ export function funcCreateEditGetTool(server: McpServer) {
             });
 
             // then get the default variant
-            const responseGetDefaultVariant = await siSchemasApi.getDefaultVariant({
-              workspaceId: WORKSPACE_ID,
-              changeSetId,
-              schemaId,
-            });
-            const isBuiltIn = responseGetDefaultVariant.data.installedFromUpstream
+            const responseGetDefaultVariant = await siSchemasApi
+              .getDefaultVariant({
+                workspaceId: WORKSPACE_ID,
+                changeSetId,
+                schemaId,
+              });
+            const isBuiltIn =
+              responseGetDefaultVariant.data.installedFromUpstream;
 
             if (isBuiltIn) {
               if (funcId) {
@@ -1015,12 +1050,15 @@ export function funcCreateEditGetTool(server: McpServer) {
                 // Check if it's locked = overlay functions are unlocked if not yet applied
                 if (responseGetFunc.data.isLocked) {
                   return errorResponse({
-                    message: "Cannot edit locked functions on builtin schemas."
+                    message: "Cannot edit locked functions on builtin schemas.",
                   });
                 }
 
                 // If no updates provuded, just return current information
-                if (functionCode === undefined && description === undefined && name === undefined) {
+                if (
+                  functionCode === undefined && description === undefined &&
+                  name === undefined
+                ) {
                   return successResponse({
                     funcId: funcId,
                     name: responseGetFunc.data.displayName,
@@ -1042,85 +1080,107 @@ export function funcCreateEditGetTool(server: McpServer) {
                   updateFuncV1Request,
                 });
 
-                return successResponse({
-                  funcId: funcId,
-                  name: responseGetFunc.data.displayName || responseGetFunc.data.name,
-                  functionCode: updateFuncV1Request.code,
-                }, "Updated overlay function. Changes will be preserved on schema upgrades.");
-
+                return successResponse(
+                  {
+                    funcId: funcId,
+                    name: responseGetFunc.data.displayName ||
+                      responseGetFunc.data.name,
+                    functionCode: updateFuncV1Request.code,
+                  },
+                  "Updated overlay function. Changes will be preserved on schema upgrades.",
+                );
               } else {
                 // CREATE
 
                 if (!name) {
                   return errorResponse({
-                    message: "Name is required for creating action functions."
+                    message: "Name is required for creating action functions.",
                   });
                 }
-                
+
                 // Get the default schema variant ID
-                const schemaVariantId = responseGetDefaultVariant.data.variantId;
-                
+                const schemaVariantId =
+                  responseGetDefaultVariant.data.variantId;
+
                 if (functionType === "action") {
                   if (!actionKind) {
                     return errorResponse({
-                      message: "Action kind is required for creating action functions."
+                      message:
+                        "Action kind is required for creating action functions.",
                     });
                   } else if (actionKind !== "Manual") {
                     let canMakeAction = true;
 
-                    responseGetDefaultVariant.data.variantFuncs.forEach((func) => {
-                      if (func.funcKind.kind === "action" && func.funcKind.actionKind === actionKind) {
-                        canMakeAction = false;
-                      }
-                    })
+                    responseGetDefaultVariant.data.variantFuncs.forEach(
+                      (func) => {
+                        if (
+                          func.funcKind.kind === "action" &&
+                          func.funcKind.actionKind === actionKind
+                        ) {
+                          canMakeAction = false;
+                        }
+                      },
+                    );
                     if (!canMakeAction) {
-                      return errorResponse({
-                        message: "An action of the same kind already exists and only one of each kind is allowed, except for Manual action functions."
-                      }, "Tell the user that they can't make more of one of this kind of action and ask if they want to create a new Manual action.")
+                      return errorResponse(
+                        {
+                          message:
+                            "An action of the same kind already exists and only one of each kind is allowed, except for Manual action functions.",
+                        },
+                        "Tell the user that they can't make more of one of this kind of action and ask if they want to create a new Manual action.",
+                      );
                     }
                   }
 
                   // Create an action function
                   const code = functionCode ?? DEFAULT_ACTION_FUNCTION;
-                  const responseCreate = await siSchemasApi.createVariantAction({
-                    workspaceId: WORKSPACE_ID,
-                    changeSetId,
-                    schemaId,
-                    schemaVariantId,
-                    createVariantActionFuncV1Request: {
-                      name,
-                      description,
-                      code,
-                      kind: actionKind!,
+                  const responseCreate = await siSchemasApi.createVariantAction(
+                    {
+                      workspaceId: WORKSPACE_ID,
+                      changeSetId,
+                      schemaId,
+                      schemaVariantId,
+                      createVariantActionFuncV1Request: {
+                        name,
+                        description,
+                        code,
+                        kind: actionKind!,
+                      },
                     },
-                  });
+                  );
 
-                  return successResponse({
-                    funcId: responseCreate.data.funcId,
-                    name: name,
-                    functionCode: code,
-                  }, "Created overlay action function on a builtin schema. Changes will be preserved when the schema is upgraded.");
-
+                  return successResponse(
+                    {
+                      funcId: responseCreate.data.funcId,
+                      name: name,
+                      functionCode: code,
+                    },
+                    "Created overlay action function on a builtin schema. Changes will be preserved when the schema is upgraded.",
+                  );
                 } else if (functionType === "management") {
                   // Create a management function
                   const code = functionCode ?? DEFAULT_MANAGEMENT_FUNCTION;
-                  const responseCreate = await siSchemasApi.createVariantManagement({
-                    workspaceId: WORKSPACE_ID,
-                    changeSetId,
-                    schemaId,
-                    schemaVariantId,
-                    createVariantManagementFuncV1Request: {
-                      name,
-                      description,
-                      code,
-                    },
-                  });
+                  const responseCreate = await siSchemasApi
+                    .createVariantManagement({
+                      workspaceId: WORKSPACE_ID,
+                      changeSetId,
+                      schemaId,
+                      schemaVariantId,
+                      createVariantManagementFuncV1Request: {
+                        name,
+                        description,
+                        code,
+                      },
+                    });
 
-                  return successResponse({
-                    funcId: responseCreate.data.funcId,
-                    name: name,
-                    functionCode: code,
-                  }, "Created overlay management function on a builtin schema. Changes will be preserved when the schema is upgraded.");
+                  return successResponse(
+                    {
+                      funcId: responseCreate.data.funcId,
+                      name: name,
+                      functionCode: code,
+                    },
+                    "Created overlay management function on a builtin schema. Changes will be preserved when the schema is upgraded.",
+                  );
                 }
               }
             }
@@ -1151,7 +1211,7 @@ export function funcCreateEditGetTool(server: McpServer) {
               funcId,
               unlockFuncV1Request: {
                 schemaVariantId: responseUnlockSchema.data.unlockedVariantId,
-              }
+              },
             });
 
             // fill the update request body with our new data or existing data if it didn't change
@@ -1159,7 +1219,7 @@ export function funcCreateEditGetTool(server: McpServer) {
               code: functionCode ?? responseGetFunc.data.code,
               description: description ?? responseGetFunc.data.description,
               displayName: name ?? responseGetFunc.data.displayName,
-            }
+            };
 
             // populate data to return from the tool
             touchedFuncId = responseUnlockFunc.data.unlockedFuncId;
@@ -1167,7 +1227,10 @@ export function funcCreateEditGetTool(server: McpServer) {
             touchedName = updateFuncV1Request.displayName as string;
 
             // information gathering complete, now only move onto updating if we have new data
-            if (functionCode !== undefined || description !== undefined || name !== undefined) {
+            if (
+              functionCode !== undefined || description !== undefined ||
+              name !== undefined
+            ) {
               // finally hit the luminork API endpoint with the update
               await siFuncsApi.updateFunc({
                 workspaceId: WORKSPACE_ID,
@@ -1182,17 +1245,20 @@ export function funcCreateEditGetTool(server: McpServer) {
             // first run checks to make sure we have the required data
             if (!schemaId) {
               return errorResponse({
-                message: "You cannot create a function without specifying the schemaId of the schema you want the function created on."
+                message:
+                  "You cannot create a function without specifying the schemaId of the schema you want the function created on.",
               });
             }
             if (!name) {
               return errorResponse({
-                message: "You cannot create a function without giving it a name."
+                message:
+                  "You cannot create a function without giving it a name.",
               });
             }
             if (!functionType) {
               return errorResponse({
-                message: "You cannot create a function without specifying which type of function you want to create. This tool can create qualification, codegen, management, and action functions."
+                message:
+                  "You cannot create a function without specifying which type of function you want to create. This tool can create qualification, codegen, management, and action functions.",
               });
             }
 
@@ -1219,7 +1285,8 @@ export function funcCreateEditGetTool(server: McpServer) {
 
             // issue a warning if the schema this function is being created on is a builtin
             if (responseGetVariant.data.installedFromUpstream) {
-              hints = "Warn the user that because this function was created on a schema created by System Initiative that they will lose their customizations (like this function) if they upgrade the schema. Repeat this warning any time the user edits a function on a builtin schema.";
+              hints =
+                "Warn the user that because this function was created on a schema created by System Initiative that they will lose their customizations (like this function) if they upgrade the schema. Repeat this warning any time the user edits a function on a builtin schema.";
             }
 
             // use the correct funciton create endpoint based on the type of function
@@ -1257,22 +1324,29 @@ export function funcCreateEditGetTool(server: McpServer) {
             } else if (functionType === "action") {
               if (!actionKind) {
                 return errorResponse({
-                  message: "Action kind is required for action functions."
+                  message: "Action kind is required for action functions.",
                 });
-              }
-              else if (actionKind !== "Manual") {
+              } else if (actionKind !== "Manual") {
                 // Before attempting to create this action, check if an action of the same type already exists.
                 let canMakeAction = true;
+                // deno-lint-ignore no-explicit-any
                 responseGetVariant.data.variantFuncs.forEach((func: any) => {
-                  if (func.funcKind.kind === "action" && func.funcKind.actionKind === actionKind) {
+                  if (
+                    func.funcKind.kind === "action" &&
+                    func.funcKind.actionKind === actionKind
+                  ) {
                     canMakeAction = false;
                   }
                 });
 
                 if (!canMakeAction) {
-                  return errorResponse({
-                    message: "An action of the same kind already exists and only one action of each kind is allowed, except for Manual.",
-                  }, "Existing actions cannot be edited by this tool. *Do not* offer the option to edit the existing action function. Tell the user that they can't make more than one of this kind of action and ask if they want to make a manual action.");
+                  return errorResponse(
+                    {
+                      message:
+                        "An action of the same kind already exists and only one action of each kind is allowed, except for Manual.",
+                    },
+                    "Existing actions cannot be edited by this tool. *Do not* offer the option to edit the existing action function. Tell the user that they can't make more than one of this kind of action and ask if they want to make a manual action.",
+                  );
                 }
               }
               code = functionCode ?? DEFAULT_ACTION_FUNCTION;
@@ -1287,7 +1361,8 @@ export function funcCreateEditGetTool(server: McpServer) {
               });
             } else {
               return errorResponse({
-                message: "Currently the agent can only create qualification, codegen, management, and action functions."
+                message:
+                  "Currently the agent can only create qualification, codegen, management, and action functions.",
               });
             }
             // populate data to return from the tool

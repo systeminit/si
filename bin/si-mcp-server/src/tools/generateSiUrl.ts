@@ -6,10 +6,10 @@ import { ComponentsApi } from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
+  findHeadChangeSet,
   generateDescription,
   successResponse,
 } from "./commonBehavior.ts";
-import { ChangeSet } from "../data/changeSets.ts";
 
 const description =
   `<description>Generates a URL for a component details page, the change set review screen, the change set map view or the default link for the workspace.</description><usage>Use this tool to generate a url to a component details page, change set review screen, the change set map view or the default change set page in the System Initiative web application. You should never try and create a component to match the users request. You should never offer to link the user to another component and you should never try and find a matching component in a different change set once a change set has been specified.</usage>`;
@@ -82,25 +82,11 @@ export function generateSiUrlTool(server: McpServer) {
     }): Promise<CallToolResult> => {
       if (!changeSetId) {
         const changeSetsApi = new ChangeSetsApi(apiConfig);
-        try {
-          const changeSetList = await changeSetsApi.listChangeSets({
-            workspaceId: WORKSPACE_ID,
-          });
-          const changeSets = changeSetList.data.changeSets as ChangeSet[];
-          const head = changeSets.find((cs) => cs.isHead);
-          if (!head) {
-            return errorResponse({
-              message: "Could not find HEAD change set",
-            });
-          }
-          changeSetId = head.id;
-        } catch (error) {
-          return errorResponse({
-            message:
-              `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-          });
+        const headChangeSet = await findHeadChangeSet(changeSetsApi, false);
+        if (headChangeSet.changeSetId) {
+          changeSetId = headChangeSet.changeSetId;
+        } else {
+          return errorResponse(headChangeSet);
         }
       }
 

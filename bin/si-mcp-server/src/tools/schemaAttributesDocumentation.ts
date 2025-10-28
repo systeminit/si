@@ -3,27 +3,31 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import {
   errorResponse,
+  findHeadChangeSet,
   generateDescription,
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
 import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
-import { ChangeSetItem } from "../data/changeSets.ts";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   buildAttributeDocsIndex,
   formatDocumentation,
 } from "../data/schemaAttributes.ts";
+import { isValid } from "ulid";
 
 const name = "schema-attributes-documentation";
 const title = "Schema Attributes Documentation";
 const description =
-  `<description>Look up the documentation for Schema Attributes - you can look up many at once for a single schema. Returns an object with the schemaName and an array of documentation and path attribute objects. (if any). On failure, returns error details. Only supports AWS schemas.</description><usage>Use this tool to understand how to use a particular attribute, or what values it accepts. Use attribute paths that mirror those returned from the schema-attributes-list tool. In addition, you can ask for the documentation for paths *earlier* than those returned by the attributes-list tool - for example, the tool might return '/domain/Tags/[array]/Key', but the user wants documentation for '/domain/Tags' - both are valid.</usage>`;
+  `<description>Look up the documentation for Schema Attributes - you can look up many at once for a single schema. Returns an object with the schemaName and an array of documentation and path attribute objects. (if any). On failure, returns error details.</description><usage>Use this tool to understand how to use a particular attribute, or what values it accepts. Use attribute paths that mirror those returned from the schema-attributes-list tool. In addition, you can ask for the documentation for paths *earlier* than those returned by the attributes-list tool - for example, the tool might return '/domain/Tags/[array]/Key', but the user wants documentation for '/domain/Tags' - both are valid.</usage>`;
 
 const DocumentSchemaAttributesInputSchemaRaw = {
-  schemaName: z
-    .string()
-    .describe("The schema name to retrieve attribute documentation for"),
+  schemaNameOrId: z.string().describe(
+    "The Schema Name or Schema ID to retrieve attribute documentation for.",
+  ),
+  changeSetId: z.string().optional().describe(
+    "The change set to retrieve attribute documentation in. If none is provided, the HEAD change set is used.",
+  ),
   schemaAttributePaths: z
     .array(
       z
@@ -92,75 +96,48 @@ export function schemaAttributesDocumentationTool(server: McpServer) {
       inputSchema: DocumentSchemaAttributesInputSchemaRaw,
       outputSchema: DocumentSchemaAttributesOutputSchemaRaw,
     },
-    async ({ schemaName, schemaAttributePaths }): Promise<CallToolResult> => {
+    async (
+      { schemaNameOrId, changeSetId, schemaAttributePaths },
+    ): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
         let responseData: DocumentSchemaAttributesOutput["data"];
 
-        let changeSetId = "";
-        const changeSetsApi = new ChangeSetsApi(apiConfig);
-        try {
-          const changeSetList = await changeSetsApi.listChangeSets({
-            workspaceId: WORKSPACE_ID,
-          });
-          const head = (changeSetList.data.changeSets as ChangeSetItem[]).find(
-            (cs) => cs.isHead,
-          );
-          if (!head) {
-            return errorResponse({
-              message:
-                "No HEAD change set found; this is a bug! Tell the user we are sorry.",
-            });
+        if (!changeSetId) {
+          const changeSetsApi = new ChangeSetsApi(apiConfig);
+          const headChangeSet = await findHeadChangeSet(changeSetsApi, false);
+          if (headChangeSet.changeSetId) {
+            changeSetId = headChangeSet.changeSetId;
+          } else {
+            return errorResponse(headChangeSet);
           }
-          changeSetId = head.id;
-        } catch (error) {
-          const errorMessage = error instanceof Error
-            ? error.message
-            : String(error);
-          return errorResponse({
-            message:
-              `We could not find the HEAD change set; this is a bug! Tell the user we are sorry: ${errorMessage}`,
-          });
         }
 
-        const siApi = new SchemasApi(apiConfig);
+        const siSchemasApi = new SchemasApi(apiConfig);
         try {
-          if (schemaName.startsWith("AWS::IAM")) {
-            switch (schemaName) {
-              case "AWS::IAM::User":
-              case "AWS::IAM::Role":
-              case "AWS::IAM::Group":
-              case "AWS::IAM::ManagedPolicy":
-              case "AWS::IAM::UserPolicy":
-              case "AWS::IAM::RolePolicy":
-              case "AWS::IAM::InstanceProfile":
-                break;
-              default:
-                return errorResponse({
-                  message:
-                    "AWS::IAM schema not found. Use one of AWS::IAM::User, AWS::IAM::Role, AWS::IAM::RolePolicy, AWS::IAM::UserPolicy, AWS::IAM::ManagedPolicy, AWS::IAM::InstanceProfile, or AWS::IAM::Group.",
-                });
+          let schemaId, schemaName;
+          if (!isValid(schemaNameOrId)) {
+            schemaName = schemaNameOrId;
+            try {
+              const response = await siSchemasApi.findSchema({
+                workspaceId: WORKSPACE_ID,
+                changeSetId: changeSetId!,
+                schema: schemaNameOrId,
+              });
+              schemaId = response.data.schemaId;
+            } catch (error) {
+              const errorMessage = error instanceof Error
+                ? error.message
+                : String(error);
+              return errorResponse({
+                message:
+                  `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
+              });
             }
+          } else {
+            schemaId = schemaNameOrId;
           }
 
-          let schemaId = "";
-          try {
-            const response = await siApi.findSchema({
-              workspaceId: WORKSPACE_ID,
-              changeSetId: changeSetId!,
-              schema: schemaName,
-            });
-            schemaId = response.data.schemaId;
-          } catch (error) {
-            const errorMessage = error instanceof Error
-              ? error.message
-              : String(error);
-            return errorResponse({
-              message:
-                `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
-            });
-          }
-
-          const response = await siApi.getDefaultVariant({
+          const response = await siSchemasApi.getDefaultVariant({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId!,
             schemaId: schemaId,
@@ -188,6 +165,10 @@ export function schemaAttributesDocumentationTool(server: McpServer) {
               return { schemaAttributePath, documentation };
             },
           );
+
+          if (!schemaName) {
+            schemaName = response.data.displayName as string;
+          }
 
           responseData = {
             schemaName,

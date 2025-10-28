@@ -2,6 +2,8 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ZodTypeAny } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { analytics } from "../analytics.ts";
+import { WORKSPACE_ID } from "../si_client.ts";
+import { ChangeSetItem } from "../data/changeSets.ts";
 
 export async function withAnalytics<T extends { isError?: boolean }>(
   toolName: string,
@@ -38,9 +40,11 @@ export function successResponse(
     status: "success",
     data: rawResponse,
   };
-  let textResponse = `<response>${JSON.stringify(
-    structuredResponse,
-  )}</response>`;
+  let textResponse = `<response>${
+    JSON.stringify(
+      structuredResponse,
+    )
+  }</response>`;
   if (hints) {
     textResponse += `\n<hints>${hints}</hints>`;
   }
@@ -61,11 +65,9 @@ export function errorResponse(error: any, hints?: string): CallToolResult {
   if (error.response) {
     structuredContent = {
       status: "failure",
-      errorMessage: `Error Status: ${
-        error.response.status
-      }\nError Data: ${JSON.stringify(error.response.data)}\nMessage:${
-        error.message
-      }`,
+      errorMessage: `Error Status: ${error.response.status}\nError Data: ${
+        JSON.stringify(error.response.data)
+      }\nMessage:${error.message}`,
     };
     textResponse = `<response>${JSON.stringify(structuredContent)}</response>`;
   } else if (error.request) {
@@ -96,4 +98,34 @@ export function errorResponse(error: any, hints?: string): CallToolResult {
     structuredContent,
     isError: true,
   };
+}
+
+// deno-lint-ignore no-explicit-any
+export async function findHeadChangeSet(changeSetsApi: any, onlyHead: boolean) {
+  try {
+    const changeSetList = await changeSetsApi.listChangeSets({
+      workspaceId: WORKSPACE_ID,
+    });
+    const head = (changeSetList.data.changeSets as ChangeSetItem[]).find(
+      (cs) => cs.isHead,
+    );
+    if (!head) {
+      return {
+        message:
+          "No HEAD change set found; this is a bug! Tell the user we are sorry.",
+      };
+    }
+    return {
+      changeSetId: head.id,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      message: onlyHead
+        ? `We could not find the HEAD change set; this is a bug! Tell the user we are sorry: ${errorMessage}`
+        : `No change set id was provided, and we could not find HEAD; this is a bug! Tell the user we are sorry: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+    };
+  }
 }

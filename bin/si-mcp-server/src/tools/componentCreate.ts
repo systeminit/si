@@ -23,7 +23,9 @@ const CreateComponentInputSchemaRaw = {
   schemaName: z.string().describe("the schema name of the component to create"),
   componentName: z.string().describe("the name of the component to create"),
   attributes: AttributesSchema,
-  useWorkingCopy: z.boolean().optional().describe("Set this boolean to true in order to create a component using the current working copy of the schema. If the user has been editing the schema of this component, use the working copy. Do not mention schema variants or locked/unlocked to the user. Instead, refer to the unlocked schema variant as the current working copy of the schema."),
+  useWorkingCopy: z.boolean().optional().describe(
+    "Set this boolean to true in order to create a component using the current working copy of the schema. If the user has been editing the schema of this component, use the working copy. Do not mention schema variants or locked/unlocked to the user. Instead, refer to the unlocked schema variant as the current working copy of the schema.",
+  ),
 };
 
 const CreateComponentOutputSchemaRaw = {
