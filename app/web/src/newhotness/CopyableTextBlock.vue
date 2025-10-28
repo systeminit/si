@@ -12,7 +12,7 @@
         clsx(
           'flex flex-row gap-sm items-center justify-between border rounded-sm cursor-pointer select-none',
           !expandable && 'h-full',
-          prompt ? 'p-sm' : 'p-xs',
+          tiny ? 'px-2xs' : [prompt ? 'p-sm' : 'p-xs'],
           themeClasses(
             'bg-neutral-100 border-neutral-400',
             'bg-neutral-900 border-neutral-600',
@@ -46,16 +46,23 @@
       <div
         :class="
           clsx(
-            'flex-grow text-sm',
+            'flex-grow',
+            tiny ? 'text-2xs' : 'text-sm',
             breakWords && 'break-all',
             !prompt &&
-              'overflow-hidden text-ellipsis whitespace-nowrap py-2xs font-mono',
+              'overflow-hidden text-ellipsis whitespace-nowrap font-mono',
+            !tiny && !prompt && 'py-2xs',
           )
         "
       >
         {{ text }}
       </div>
-      <Icon v-tooltip="'Copy'" name="copy" class="flex-none" size="sm" />
+      <Icon
+        v-tooltip="'Copy'"
+        name="copy"
+        class="flex-none"
+        :size="tiny ? '2xs' : 'sm'"
+      />
     </div>
     <div
       v-if="expandable && expanded"
@@ -84,6 +91,7 @@ defineProps({
   prompt: Boolean,
   expandable: Boolean,
   breakWords: Boolean,
+  tiny: Boolean,
 });
 
 const expanded = ref(false);
