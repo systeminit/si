@@ -9,7 +9,7 @@
  *
  * - Creating directory structures for schemas and their functions
  * - Writing schema metadata and code files to disk
- * - Writing function (action, codegen, management, qualification) files
+ * - Writing function (action, auth, codegen, management, qualification) files
  * - Ensuring files don't already exist before creation
  * - Logging file creation operations
  *
@@ -87,6 +87,37 @@ export async function materializeSchemaActionBase(
     await actionBasePath.mkdir({ recursive: true });
     logger.info("  - Created actions directory: {actionBasePath}", {
       actionBasePath: actionBasePath.relativeToStr(project),
+    });
+  }
+}
+
+/**
+ * Creates the authentication directory for a schema if it doesn't already
+ * exist.
+ *
+ * This creates the `schemas/<schema-name>/auth/` directory where authentication
+ * function files will be stored.
+ *
+ * @param project - The project instance containing path configuration
+ * @param schemaName - The name of the schema
+ *
+ * @example
+ * ```ts
+ * await materializeSchemaAuthBase(project, "MyAwsResource");
+ * // Creates: schemas/MyAwsResource/auth/
+ * ```
+ */
+export async function materializeSchemaAuthBase(
+  project: Project,
+  schemaName: string,
+) {
+  const authBasePath = project.authBasePath(schemaName);
+
+  // Create the auth base directory
+  if (!(await authBasePath.exists())) {
+    await authBasePath.mkdir({ recursive: true });
+    logger.info("  - Created authentication directory: {authBasePath}", {
+      authBasePath: authBasePath.relativeToStr(project),
     });
   }
 }
@@ -197,8 +228,10 @@ export async function materializeSchemaQualificationBase(
  * @param schemaName - The name of the schema
  * @param formatVersionBody - The format version content (typically a version
  * number)
+ * @param options - Optional configuration including overwrite flag
  * @returns An object containing the path to the created format version file
- * @throws {FileExistsError} If the format version file already exists
+ * @throws {FileExistsError} If the format version file already exists and
+ * overwrite is not enabled
  *
  * @example
  * ```ts
@@ -244,8 +277,10 @@ export async function materializeSchemaFormatVersion(
  * @param schemaName - The name of the schema
  * @param metadataBody - The JSON metadata content for the schema
  * @param codeBody - The TypeScript code for the schema's asset function
+ * @param options - Optional configuration including overwrite flag
  * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists
+ * @throws {FileExistsError} If either file already exists and overwrite is not
+ * enabled
  *
  * @example
  * ```ts
@@ -306,8 +341,10 @@ export async function materializeSchema(
  * @param actionName - The name of the action (e.g., "create", "destroy")
  * @param metadataBody - The JSON metadata content for the action
  * @param codeBody - The TypeScript code for the action function
+ * @param options - Optional configuration including overwrite flag
  * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists
+ * @throws {FileExistsError} If either file already exists and overwrite is not
+ * enabled
  *
  * @example
  * ```ts
@@ -364,6 +401,79 @@ export async function materializeSchemaAction(
 }
 
 /**
+ * Materializes an authentication function for a schema.
+ *
+ * Creates both the authentication metadata JSON file and the authentication
+ * TypeScript code file. Authentication functions handle credential validation
+ * and authentication flows for resources.
+ *
+ * @param project - The project instance containing path configuration
+ * @param schemaName - The name of the schema
+ * @param authName - The name of the authentication function
+ * @param metadataBody - The JSON metadata content for the authentication
+ * function
+ * @param codeBody - The TypeScript code for the authentication function
+ * @param options - Optional configuration including overwrite flag
+ * @returns An object containing paths to the created metadata and code files
+ * @throws {FileExistsError} If either file already exists and overwrite is not
+ * enabled
+ *
+ * @example
+ * ```ts
+ * const metadata = JSON.stringify({
+ *   name: "oauth",
+ *   displayName: "OAuth Authentication"
+ * });
+ * const code = "export default async function() { ... }";
+ *
+ * const result = await materializeSchemaAuth(
+ *   project,
+ *   "MyAwsResource",
+ *   "oauth",
+ *   metadata,
+ *   code,
+ *   { overwrite: true }
+ * );
+ * // Creates:
+ * //   schemas/MyAwsResource/auth/oauth.metadata.json
+ * //   schemas/MyAwsResource/auth/oauth.ts
+ * ```
+ */
+export async function materializeSchemaAuth(
+  project: Project,
+  schemaName: string,
+  authName: string,
+  metadataBody: string,
+  codeBody: string,
+  options?: { overwrite?: boolean },
+): Promise<{
+  metadataPath: AbsoluteFilePath;
+  codePath: AbsoluteFilePath;
+}> {
+  // Create auth func metadata file
+  const authMetadataFilePath = project.authFuncMetadataPath(
+    schemaName,
+    authName,
+  );
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(authMetadataFilePath);
+  }
+  await createFileWithLogging(project, authMetadataFilePath, metadataBody);
+
+  // Create auth func code file
+  const authCodeFilePath = project.authFuncCodePath(schemaName, authName);
+  if (!options?.overwrite) {
+    await ensureFileDoesNotExist(authCodeFilePath);
+  }
+  await createFileWithLogging(project, authCodeFilePath, codeBody);
+
+  return {
+    metadataPath: authMetadataFilePath,
+    codePath: authCodeFilePath,
+  };
+}
+
+/**
  * Materializes a code generation function for a schema.
  *
  * Creates both the codegen metadata JSON file and the codegen TypeScript code
@@ -375,8 +485,10 @@ export async function materializeSchemaAction(
  * @param codegenName - The name of the code generator
  * @param metadataBody - The JSON metadata content for the code generator
  * @param codeBody - The TypeScript code for the code generator function
+ * @param options - Optional configuration including overwrite flag
  * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists
+ * @throws {FileExistsError} If either file already exists and overwrite is not
+ * enabled
  *
  * @example
  * ```ts
@@ -447,8 +559,10 @@ export async function materializeSchemaCodegen(
  * @param managementName - The name of the management function
  * @param metadataBody - The JSON metadata content for the management function
  * @param codeBody - The TypeScript code for the management function
+ * @param options - Optional configuration including overwrite flag
  * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists
+ * @throws {FileExistsError} If either file already exists and overwrite is not
+ * enabled
  *
  * @example
  * ```ts
@@ -523,8 +637,10 @@ export async function materializeSchemaManagement(
  * @param qualificationName - The name of the qualification function
  * @param metadataBody - The JSON metadata content for the qualification
  * @param codeBody - The TypeScript code for the qualification function
+ * @param options - Optional configuration including overwrite flag
  * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists
+ * @throws {FileExistsError} If either file already exists and overwrite is not
+ * enabled
  *
  * @example
  * ```ts

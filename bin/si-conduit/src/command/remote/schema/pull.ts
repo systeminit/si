@@ -94,6 +94,7 @@ type SchemaAndVariantData = {
   func: {
     schemaId: string;
     actionIds: string[];
+    authIds: string[];
     codegenIds: string[];
     managementIds: string[];
     qualificationIds: string[];
@@ -201,6 +202,56 @@ async function pullSchemaByName(
   // Clean up actions directory if it's now empty
   if (existingActionNames.length > 0 && pulledActionNames.length === 0) {
     await deleteIfEmpty(actionBasePath);
+  }
+
+  // Render all auth funcs
+  // First, get list of existing local authentication functions before pulling
+  const authBasePath = project.authBasePath(schemaName);
+  const existingAuthNames = await listFunctionNamesInDir(authBasePath);
+
+  if (data.func.authIds.length > 0) {
+    await materialize.materializeSchemaAuthBase(project, schemaName);
+  }
+  const authPaths = [];
+  const pulledAuthNames = [];
+  for (const funcId of data.func.authIds) {
+    const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
+      funcId,
+      ...changeSetCoord,
+    });
+    const metadataBody = JSON.stringify(metadata, null, 2);
+
+    const paths = await materialize.materializeSchemaAuth(
+      project,
+      schemaName,
+      metadata.name,
+      metadataBody,
+      codeBody,
+      { overwrite: true },
+    );
+    authPaths.push(paths);
+    pulledAuthNames.push(normalizeFsName(metadata.name));
+  }
+
+  // Delete authentication functions that exist locally but weren't in the
+  // remote data
+  const deletedAuthPaths = [];
+  for (const localAuthName of existingAuthNames) {
+    if (!pulledAuthNames.includes(localAuthName)) {
+      const metadataPath = project.authFuncMetadataPath(
+        schemaName,
+        localAuthName,
+      );
+      const codePath = project.authFuncCodePath(schemaName, localAuthName);
+
+      await deleteFunctionFiles(project, metadataPath, codePath);
+      deletedAuthPaths.push({ metadataPath, codePath });
+    }
+  }
+
+  // Clean up authentication directory if it's now empty
+  if (existingAuthNames.length > 0 && pulledAuthNames.length === 0) {
+    await deleteIfEmpty(authBasePath);
   }
 
   // Render all codegen funcs
@@ -374,6 +425,7 @@ async function pullSchemaByName(
     metadataPath,
     codePath,
     actionPaths,
+    authPaths,
     codegenPaths,
     managementPaths,
     qualificationPaths,
@@ -453,6 +505,7 @@ async function getSchemaAndVariantBySchemaName(
     func: {
       schemaId: variant.assetFuncId,
       actionIds: funcs.actionIds(),
+      authIds: funcs.authIds(),
       codegenIds: funcs.codegenIds(),
       managementIds: funcs.managementIds(),
       qualificationIds: funcs.qualificationIds(),
@@ -551,6 +604,24 @@ class SchemaVariantFuncs {
     return this.actionFuncs().map((func) => func.id);
   }
 
+  /**
+   * Returns all authentication functions for the schema variant.
+   */
+  public authFuncs(): SchemaVariantFunc[] {
+    return this.funcs.filter(
+      (svf) =>
+        svf.funcKind.kind === "other" &&
+        svf.funcKind.funcKind === "Authentication",
+    );
+  }
+
+  /**
+   * Returns the IDs of all authentication functions.
+   */
+  public authIds(): string[] {
+    return this.authFuncs().map((func) => func.id);
+  }
+
   public codegenFuncs(): SchemaVariantFunc[] {
     return this.funcs.filter(
       (svf) =>
@@ -584,11 +655,18 @@ class SchemaVariantFuncs {
   }
 }
 
+/**
+ * Result of pulling a complete schema including all functions and their paths.
+ */
 export interface PullFullSchemaResult {
   formatVersionPath: AbsoluteFilePath;
   metadataPath: AbsoluteFilePath;
   codePath: AbsoluteFilePath;
   actionPaths: { metadataPath: AbsoluteFilePath; codePath: AbsoluteFilePath }[];
+  authPaths: {
+    metadataPath: AbsoluteFilePath;
+    codePath: AbsoluteFilePath;
+  }[];
   codegenPaths: {
     metadataPath: AbsoluteFilePath;
     codePath: AbsoluteFilePath;
