@@ -92,7 +92,10 @@ fn add_edges(
 #[cfg(test)]
 mod test {
     use std::{
-        collections::HashSet,
+        collections::{
+            BTreeMap,
+            HashSet,
+        },
         str::FromStr,
     };
 
@@ -107,6 +110,7 @@ mod test {
         merkle_tree_hash::MerkleTreeHash,
         ulid::Ulid,
     };
+    use si_split_graph::CustomNodeWeight;
 
     use super::{
         add_edges,
@@ -377,7 +381,80 @@ mod test {
     }
 
     #[test]
-    fn cyclic_failure() {
+    fn cycle_deletion() {
+        let mut graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let nodes = ["A", "B", "C", "D", "E"];
+        let edges = [
+            ("", "A"),
+            ("A", "B"),
+            ("B", "C"),
+            ("C", "E"),
+            // Anchor E so B can be deleted but E is still on the graph
+            ("A", "E"),
+            // This cycles
+            ("E", "B"),
+        ];
+
+        let mut id_map: BTreeMap<&str, Ulid> = BTreeMap::new();
+        for node in nodes {
+            let id = Ulid::new();
+            graph
+                .add_or_replace_node(NodeWeight::new_prop(
+                    id,
+                    id,
+                    crate::PropKind::Object,
+                    node,
+                    ContentHash::new(node.as_bytes()),
+                ))
+                .expect("foo");
+            id_map.insert(node, id);
+        }
+
+        fn get_node_index(
+            graph: &WorkspaceSnapshotGraphVCurrent,
+            id_map: &BTreeMap<&str, Ulid>,
+            node: &str,
+        ) -> NodeIndex {
+            if node.is_empty() {
+                graph.root()
+            } else {
+                id_map
+                    .get(node)
+                    .and_then(|id| graph.get_node_index_by_id_opt(*id))
+                    .unwrap()
+            }
+        }
+
+        for (from, to) in edges {
+            let from_node_index = get_node_index(&graph, &id_map, from);
+            let to_node_index = get_node_index(&graph, &id_map, to);
+
+            graph
+                .add_edge(
+                    from_node_index,
+                    EdgeWeight::new(EdgeWeightKind::new_use()),
+                    to_node_index,
+                )
+                .expect("add edge");
+        }
+
+        graph.cleanup_and_merkle_tree_hash().expect("hash it");
+
+        let mut graph2 = graph.clone();
+        graph2.remove_node(get_node_index(&graph, &id_map, "B"));
+
+        graph2
+            .cleanup_and_merkle_tree_hash()
+            .expect("hash it again");
+
+        dbg!(id_map);
+        dbg!(graph.detect_updates(&graph2));
+    }
+
+    #[test]
+    fn cycle_hashing() {
         let mut graph = WorkspaceSnapshotGraphVCurrent::new_for_unit_tests()
             .expect("Unable to create WorkspaceSnapshotGraph");
 
@@ -447,22 +524,70 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
-        let pre_cycle_root_index = graph.root();
+        assert!(graph.is_acyclic_directed());
+        graph.cleanup_and_merkle_tree_hash().expect("mrkl");
+
+        let mut graph_with_cycle = graph.clone();
 
         // This should cause a cycle.
-        graph
+        graph_with_cycle
             .add_edge(
                 graph
                     .get_node_index_by_id(schema_variant_id)
                     .expect("Unable to find NodeIndex"),
                 EdgeWeight::new(EdgeWeightKind::new_use()),
-                graph
-                    .get_node_index_by_id(component_id)
-                    .expect("Unable to find NodeIndex"),
+                graph.root(),
             )
-            .expect_err("Created a cycle");
+            .expect("add cycle edge");
 
-        assert_eq!(pre_cycle_root_index, graph.root(),);
+        graph_with_cycle
+            .cleanup_and_merkle_tree_hash()
+            .expect("mrkl2");
+        assert!(!graph_with_cycle.is_acyclic_directed());
+
+        let schema_variant_node_pre_new_node = graph_with_cycle
+            .get_node_weight_by_id(schema_variant_id)
+            .expect("must exist")
+            .clone();
+
+        let mut graph_2_with_cycle = graph_with_cycle.clone();
+        let new_node_id = graph_with_cycle
+            .generate_ulid()
+            .expect("Unable to generate Ulid");
+        let new_component_idx = graph_2_with_cycle
+            .add_or_replace_node(NodeWeight::new_content(
+                new_node_id,
+                Ulid::new(),
+                ContentAddress::Component(ContentHash::new(
+                    ComponentId::generate().to_string().as_bytes(),
+                )),
+            ))
+            .expect("Unable to add component");
+
+        graph_2_with_cycle
+            .add_edge(
+                graph.root(),
+                EdgeWeight::new(EdgeWeightKind::new_use()),
+                new_component_idx,
+            )
+            .expect("add cycle edge");
+
+        graph_2_with_cycle
+            .recalculate_entire_merkle_tree_hash_based_on_touched_nodes()
+            .expect("recalc merkle");
+
+        let schema_variant_node_post_new_node = graph_2_with_cycle
+            .get_node_weight_by_id(schema_variant_id)
+            .expect("must exist")
+            .clone();
+
+        assert_eq!(
+            schema_variant_node_pre_new_node.merkle_tree_hash(),
+            schema_variant_node_post_new_node.merkle_tree_hash()
+        );
+
+        dbg!(graph.detect_updates(&graph_with_cycle));
+        dbg!(graph_with_cycle.detect_updates(&graph_2_with_cycle));
     }
 
     #[test]

@@ -360,13 +360,6 @@ impl WorkspaceSnapshotGraphV4 {
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        // Temporarily add the edge to the existing tree to see if it would create a cycle.
-        // Configured to run only in tests because it has a major perf impact otherwise
-        #[cfg(test)]
-        {
-            self.check_would_create_cycle(from_node_index, to_node_index)?;
-        }
-
         self.touch_node(from_node_index);
 
         let discrim: EdgeWeightKindDiscriminants = edge_weight.kind().into();
