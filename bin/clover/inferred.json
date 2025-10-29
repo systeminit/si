@@ -4452,6 +4452,9 @@
   "ARN of the StorageConfiguration resource to use for individual participant recording.": {
     "enum": null
   },
+  "ARN of the VPC Lattice resource configuration": {
+    "enum": null
+  },
   "ARN of the attached pricing plan": {
     "enum": null
   },
@@ -6918,6 +6921,9 @@
   "Port": {
     "enum": null
   },
+  "Port to connect to on the target VPC Lattice resource": {
+    "enum": null
+  },
   "Post-pass time needed after the contact.": {
     "enum": null
   },
@@ -7615,6 +7621,9 @@
     "enum": null
   },
   "Specifies the duration, in seconds, that the ReceiveMessage action call waits until a message is in the queue in order to include it in the response, rather than returning an empty response if a message isn't yet available. You can specify an integer from 1 to 20. Short polling is used as the default or when you specify 0 for this property. For more information, see [Consuming messages using long polling](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html#sqs-long-polling) in the *Developer Guide*.": {
+    "enum": null
+  },
+  "Specifies the egress type for the connector.": {
     "enum": null
   },
   "Specifies the encryption key id": {
@@ -9925,6 +9934,9 @@
     "enum": null
   },
   "The ID of the VPC in the security group vpc association.": {
+    "enum": null
+  },
+  "The ID of the VPC in which the NAT gateway is located.": {
     "enum": null
   },
   "The ID of the VPC in which the endpoint will be used.": {
@@ -12285,6 +12297,9 @@
   "The execution role of the lifecycle policy.": {
     "enum": null
   },
+  "The execution role to use for deleting the image, as well as underlying resources.": {
+    "enum": null
+  },
   "The exponential factor to increase the rate of rollout for a job.": {
     "enum": null
   },
@@ -12676,6 +12691,9 @@
     "enum": null
   },
   "The identifier of the kms-key-long to use for Amazon EBS encryption. If ``KmsKeyId`` is specified, the encrypted state must be ``true``.\n If you omit this property and your account is enabled for encryption by default, or *Encrypted* is set to ``true``, then the volume is encrypted using the default key specified for your account. If your account does not have a default key, then the volume is encrypted using the aws-managed-key.\n Alternatively, if you want to specify a different key, you can specify one of the following:\n  +  Key ID. For example, 1234abcd-12ab-34cd-56ef-1234567890ab.\n  +  Key alias. Specify the alias for the key, prefixed with ``alias/``. For example, for a key with the alias ``my_cmk``, use ``alias/my_cmk``. Or to specify the aws-managed-key, use ``alias/aws/ebs``.\n  +  Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/1234abcd-12ab-34cd-56ef-1234567890ab.\n  +  Alias ARN. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.": {
+    "enum": null
+  },
+  "The identifier of the project in which the connection should be created. If ": {
     "enum": null
   },
   "The identifier of the project in which to create the environment profile.": {
