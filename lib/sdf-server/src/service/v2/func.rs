@@ -96,6 +96,8 @@ pub enum FuncAPIError {
     MissingFuncId,
     #[error("no input location given")]
     MissingInputLocationForAttributeFunc,
+    #[error("no input locations given for leaf func")]
+    MissingInputLocationForLeafFunc,
     #[error("no output location given")]
     MissingOutputLocationForAttributeFunc,
     #[error("missing prototype id")]

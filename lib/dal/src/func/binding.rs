@@ -14,6 +14,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_frontend_types::LeafBindingPrototype;
 use si_id::ManagementPrototypeId;
 use si_split_graph::SplitGraphError;
 use strum::{
@@ -70,6 +71,7 @@ use crate::{
     },
     management::prototype::ManagementPrototypeError,
     prop::PropError,
+    schema::leaf::LeafPrototypeError,
     socket::{
         input::InputSocketError,
         output::OutputSocketError,
@@ -134,6 +136,8 @@ pub enum FuncBindingError {
     InvalidAttributePrototypeDestination(AttributeFuncDestination),
     #[error("invalid intrinsic binding")]
     InvalidIntrinsicBinding,
+    #[error("leaf prototype error: {0}")]
+    LeafPrototypeError(#[from] Box<LeafPrototypeError>),
     #[error("malformed input for binding: {0:?}")]
     MalformedInput(AttributeBindingMalformedInput),
     #[error("management prototype error: {0}")]
@@ -144,6 +148,8 @@ pub enum FuncBindingError {
     NoInputLocationGiven(AttributePrototypeId, FuncArgumentId),
     #[error("no output location given for func: {0}")]
     NoOutputLocationGiven(FuncId),
+    #[error("no schemas specified as eventual parent of func")]
+    NoSchemas,
     #[error("output socket error: {0}")]
     OutputSocket(#[from] Box<OutputSocketError>),
     #[error("prop error: {0}")]
@@ -364,7 +370,8 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
                     schema_variant_id: (&code_gen.eventual_parent).into(),
                     component_id: (&code_gen.eventual_parent).into(),
                     func_id: Some(code_gen.func_id),
-                    attribute_prototype_id: Some(code_gen.attribute_prototype_id),
+                    attribute_prototype_id: code_gen.leaf_binding_prototype.into(),
+                    leaf_prototype_id: code_gen.leaf_binding_prototype.into(),
                     inputs: code_gen
                         .inputs
                         .into_iter()
@@ -377,7 +384,8 @@ impl From<FuncBinding> for si_frontend_types::FuncBinding {
                     schema_variant_id: (&qualification.eventual_parent).into(),
                     component_id: (&qualification.eventual_parent).into(),
                     func_id: Some(qualification.func_id),
-                    attribute_prototype_id: Some(qualification.attribute_prototype_id),
+                    attribute_prototype_id: qualification.leaf_binding_prototype.into(),
+                    leaf_prototype_id: qualification.leaf_binding_prototype.into(),
                     inputs: qualification
                         .inputs
                         .into_iter()
@@ -442,7 +450,7 @@ impl FuncBinding {
                 LeafBinding::port_binding_to_new_func(
                     ctx,
                     new_func_id,
-                    code_gen.attribute_prototype_id,
+                    code_gen.leaf_binding_prototype,
                     LeafKind::CodeGeneration,
                     code_gen.eventual_parent.clone(),
                     &code_gen.inputs,
@@ -453,7 +461,7 @@ impl FuncBinding {
                 LeafBinding::port_binding_to_new_func(
                     ctx,
                     new_func_id,
-                    qualification.attribute_prototype_id,
+                    qualification.leaf_binding_prototype,
                     LeafKind::Qualification,
                     qualification.eventual_parent.clone(),
                     &qualification.inputs,
@@ -681,8 +689,16 @@ impl FuncBinding {
                         .await?;
                 }
                 FuncBinding::CodeGeneration(binding) | FuncBinding::Qualification(binding) => {
-                    LeafBinding::delete_leaf_func_binding(ctx, binding.attribute_prototype_id)
-                        .await?;
+                    match binding.leaf_binding_prototype {
+                        LeafBindingPrototype::Attribute(attribute_prototype_id) => {
+                            LeafBinding::delete_leaf_func_binding(ctx, attribute_prototype_id)
+                                .await?;
+                        }
+                        LeafBindingPrototype::Overlay(leaf_prototype_id) => {
+                            LeafBinding::delete_leaf_overlay_func_binding(ctx, leaf_prototype_id)
+                                .await?;
+                        }
+                    }
                 }
                 FuncBinding::Management(mgmt) => {
                     ManagementBinding::delete_management_binding(ctx, mgmt.management_prototype_id)

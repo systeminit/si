@@ -191,6 +191,51 @@ pub(crate) async fn create_action_func(
 }
 
 #[instrument(
+    name = "func.authoring.create_func.create.leaf_overlay",
+    level = "debug",
+    skip(ctx)
+)]
+pub(crate) async fn create_leaf_overlay_func(
+    ctx: &DalContext,
+    name: Option<String>,
+    leaf_kind: LeafKind,
+    schema_id: SchemaId,
+    inputs: &[LeafInputLocation],
+) -> FuncAuthoringResult<Func> {
+    let eventual_parent = EventualParent::Schemas(vec![schema_id]);
+    let name = name.unwrap_or(generate_name());
+    fail_if_name_already_used_on_eventual_parent(ctx, &name, &eventual_parent).await?;
+
+    let (code, handler, backend_kind, backend_response_type) = match leaf_kind {
+        LeafKind::CodeGeneration => (
+            DEFAULT_CODE_GENERATION_CODE,
+            DEFAULT_CODE_HANDLER,
+            FuncBackendKind::JsAttribute,
+            FuncBackendResponseType::CodeGeneration,
+        ),
+        LeafKind::Qualification => (
+            DEFAULT_QUALIFICATION_CODE,
+            DEFAULT_CODE_HANDLER,
+            FuncBackendKind::JsAttribute,
+            FuncBackendResponseType::Qualification,
+        ),
+    };
+    let func = create_func_stub(
+        ctx,
+        name,
+        backend_kind,
+        backend_response_type,
+        code,
+        handler,
+        false,
+    )
+    .await?;
+
+    LeafBinding::create_leaf_func_binding(ctx, func.id, eventual_parent, leaf_kind, inputs).await?;
+    Ok(func)
+}
+
+#[instrument(
     name = "func.authoring.create_func.create.leaf",
     level = "debug",
     skip(ctx)

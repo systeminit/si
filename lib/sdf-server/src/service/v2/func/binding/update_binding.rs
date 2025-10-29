@@ -22,7 +22,6 @@ use dal::{
             attribute::AttributeBinding,
             leaf::LeafBinding,
         },
-        leaf::LeafInputLocation,
     },
 };
 use si_frontend_types::{
@@ -124,27 +123,24 @@ pub async fn update_leaf_func_bindings(
     bindings: Vec<FuncBinding>,
 ) -> FuncAPIResult<()> {
     for binding in bindings {
-        let (attribute_prototype_id, inputs) = binding
+        let inputs: Vec<_> = binding
             .leaf_inputs()
+            .ok_or(FuncAPIError::MissingInputLocationForLeafFunc)?
+            .iter()
+            .copied()
+            .map(Into::into)
+            .collect();
+
+        let leaf_binding_proto = binding
+            .leaf_binding_prototype()
             .ok_or(FuncAPIError::MissingPrototypeId)?;
-        let inputs: Vec<LeafInputLocation> = inputs.into_iter().map(|input| input.into()).collect();
 
         match binding {
             FuncBinding::CodeGeneration { .. } => {
-                LeafBinding::update_leaf_func_binding(
-                    ctx,
-                    attribute_prototype_id.into_raw_id().into(),
-                    &inputs,
-                )
-                .await?;
+                LeafBinding::update_leaf_func_binding(ctx, leaf_binding_proto, &inputs).await?;
             }
             FuncBinding::Qualification { .. } => {
-                LeafBinding::update_leaf_func_binding(
-                    ctx,
-                    attribute_prototype_id.into_raw_id().into(),
-                    &inputs,
-                )
-                .await?;
+                LeafBinding::update_leaf_func_binding(ctx, leaf_binding_proto, &inputs).await?;
             }
 
             _ => return Err(FuncAPIError::WrongFunctionKindForBinding),

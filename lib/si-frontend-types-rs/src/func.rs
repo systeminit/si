@@ -19,7 +19,10 @@ use si_events::{
     SchemaVariantId,
     Timestamp,
 };
-use si_id::SchemaId;
+use si_id::{
+    LeafPrototypeId,
+    SchemaId,
+};
 use strum::{
     AsRefStr,
     Display,
@@ -135,7 +138,7 @@ pub enum FuncBinding {
         component_id: Option<ComponentId>,
         func_id: Option<FuncId>,
         attribute_prototype_id: Option<AttributePrototypeId>,
-
+        leaf_prototype_id: Option<LeafPrototypeId>,
         // thing that can be updated
         inputs: Vec<LeafInputLocation>,
     },
@@ -153,25 +156,35 @@ pub enum FuncBinding {
         component_id: Option<ComponentId>,
         func_id: Option<FuncId>,
         attribute_prototype_id: Option<AttributePrototypeId>,
-
+        leaf_prototype_id: Option<LeafPrototypeId>,
         // thing that can be updated
         inputs: Vec<LeafInputLocation>,
     },
 }
 
 impl FuncBinding {
-    pub fn leaf_inputs(&self) -> Option<(AttributePrototypeId, Vec<LeafInputLocation>)> {
+    pub fn leaf_inputs(&self) -> Option<&[LeafInputLocation]> {
+        match self {
+            FuncBinding::CodeGeneration { inputs, .. }
+            | FuncBinding::Qualification { inputs, .. } => Some(inputs),
+            _ => None,
+        }
+    }
+
+    pub fn leaf_binding_prototype(&self) -> Option<LeafBindingPrototype> {
         match self {
             FuncBinding::CodeGeneration {
                 attribute_prototype_id,
-                inputs,
+                leaf_prototype_id,
                 ..
-            } => attribute_prototype_id.map(|id| (id, inputs.clone())),
-            FuncBinding::Qualification {
+            }
+            | FuncBinding::Qualification {
                 attribute_prototype_id,
-                inputs,
+                leaf_prototype_id,
                 ..
-            } => attribute_prototype_id.map(|id| (id, inputs.clone())),
+            } => leaf_prototype_id
+                .map(LeafBindingPrototype::Overlay)
+                .or(attribute_prototype_id.map(LeafBindingPrototype::Attribute)),
             _ => None,
         }
     }
@@ -196,6 +209,30 @@ impl FuncBinding {
             FuncBinding::Qualification {
                 schema_variant_id, ..
             } => *schema_variant_id,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LeafBindingPrototype {
+    Attribute(AttributePrototypeId),
+    Overlay(LeafPrototypeId),
+}
+
+impl From<LeafBindingPrototype> for Option<AttributePrototypeId> {
+    fn from(value: LeafBindingPrototype) -> Self {
+        match value {
+            LeafBindingPrototype::Attribute(attribute_prototype_id) => Some(attribute_prototype_id),
+            LeafBindingPrototype::Overlay(_) => None,
+        }
+    }
+}
+
+impl From<LeafBindingPrototype> for Option<LeafPrototypeId> {
+    fn from(value: LeafBindingPrototype) -> Self {
+        match value {
+            LeafBindingPrototype::Attribute(_) => None,
+            LeafBindingPrototype::Overlay(leaf_prototype_id) => Some(leaf_prototype_id),
         }
     }
 }

@@ -182,7 +182,7 @@ async fn for_qualification(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(
         LeafBinding {
             func_id,
-            attribute_prototype_id: binding.attribute_prototype_id,
+            leaf_binding_prototype: binding.leaf_binding_prototype,
             eventual_parent: EventualParent::SchemaVariant(schema_variant_id),
             inputs: vec![LeafInputLocation::Secrets],
             leaf_kind: LeafKind::Qualification
@@ -205,7 +205,7 @@ async fn for_code_generation(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(
         LeafBinding {
             func_id,
-            attribute_prototype_id: binding.attribute_prototype_id,
+            leaf_binding_prototype: binding.leaf_binding_prototype,
             eventual_parent: EventualParent::SchemaVariant(schema_variant_id),
             inputs: vec![LeafInputLocation::Domain],
             leaf_kind: LeafKind::CodeGeneration
@@ -627,7 +627,7 @@ async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(
         LeafBinding {
             func_id,
-            attribute_prototype_id: binding.attribute_prototype_id,
+            leaf_binding_prototype: binding.leaf_binding_prototype,
             eventual_parent: EventualParent::SchemaVariant(schema_variant_id),
             inputs: vec![LeafInputLocation::Domain],
             leaf_kind: LeafKind::CodeGeneration
@@ -637,7 +637,7 @@ async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) -> Result<()> {
     let _cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
     let result = LeafBinding::update_leaf_func_binding(
         ctx,
-        binding.attribute_prototype_id,
+        binding.leaf_binding_prototype,
         &[LeafInputLocation::Domain, LeafInputLocation::Code],
     )
     .await;
@@ -917,6 +917,7 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) -
                     inputs,
                     func_id,
                     attribute_prototype_id,
+                    ..
                 } => {
                     assert!(schema_variant_id.is_some());
                     assert!(component_id.is_none());

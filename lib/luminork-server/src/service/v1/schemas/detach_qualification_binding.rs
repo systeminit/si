@@ -18,6 +18,7 @@ use sdf_extract::{
     change_set::ChangeSetDalContext,
 };
 use si_events::audit_log::AuditLogKind;
+use si_frontend_types::LeafBindingPrototype;
 use utoipa::{
     self,
 };
@@ -71,7 +72,15 @@ pub async fn detach_qualification_func_binding(
     for binding in bindings {
         if let FuncBinding::Qualification(qual) = binding {
             if qual.leaf_kind == LeafKind::Qualification {
-                LeafBinding::delete_leaf_func_binding(ctx, qual.attribute_prototype_id).await?;
+                match qual.leaf_binding_prototype {
+                    LeafBindingPrototype::Attribute(attribute_prototype_id) => {
+                        LeafBinding::delete_leaf_func_binding(ctx, attribute_prototype_id).await?;
+                    }
+                    LeafBindingPrototype::Overlay(leaf_prototype_id) => {
+                        LeafBinding::delete_leaf_overlay_func_binding(ctx, leaf_prototype_id)
+                            .await?;
+                    }
+                }
 
                 tracker.track(
                     ctx,
@@ -79,7 +88,7 @@ pub async fn detach_qualification_func_binding(
                     serde_json::json!({
                         "func_id": func.id,
                         "schema_variant_id": schema_variant_id,
-                        "attribute_prototype_id": qual.attribute_prototype_id,
+                        "leaf_binding_prototype": qual.leaf_binding_prototype,
                     }),
                 );
 

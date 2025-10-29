@@ -53,7 +53,10 @@ use crate::{
         ContentTypes,
     },
     workspace_snapshot::{
-        content_address::ContentAddress,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
         node_weight::{
             NodeWeight,
             NodeWeightError,
@@ -125,13 +128,13 @@ impl LeafPrototype {
         ctx: &DalContext,
         schema_id: SchemaId,
         kind: LeafKind,
-        inputs: Vec<LeafInputLocation>,
+        inputs: &[LeafInputLocation],
         func_id: FuncId,
     ) -> LeafPrototypeResult<Self> {
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
 
-        let attribute_paths: Vec<AttributePath> = inputs.into_iter().map(Into::into).collect();
+        let attribute_paths: Vec<AttributePath> = inputs.iter().copied().map(Into::into).collect();
 
         let (content_hash, _) = ctx.layer_db().cas().write(
             Arc::new(crate::layer_db_types::ContentTypes::AttributePaths(
@@ -224,6 +227,33 @@ impl LeafPrototype {
             .into())
     }
 
+    pub async fn schemas(
+        ctx: &DalContext,
+        leaf_prototype_id: LeafPrototypeId,
+    ) -> LeafPrototypeResult<Vec<SchemaId>> {
+        let snap = ctx.workspace_snapshot()?;
+        let mut result = vec![];
+
+        for schema_id in snap
+            .incoming_sources_for_edge_weight_kind(
+                leaf_prototype_id,
+                EdgeWeightKindDiscriminants::LeafPrototype,
+            )
+            .await?
+        {
+            let NodeWeight::Content(content_inner) = snap.get_node_weight(schema_id).await? else {
+                continue;
+            };
+
+            if content_inner.content_address_discriminants() == ContentAddressDiscriminants::Schema
+            {
+                result.push(schema_id.into());
+            }
+        }
+
+        Ok(result)
+    }
+
     pub async fn for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -239,6 +269,43 @@ impl LeafPrototype {
         {
             let prototype = LeafPrototype::get_by_id(ctx, leaf_prototype_id.into()).await?;
             result.push(prototype);
+        }
+
+        Ok(result)
+    }
+
+    pub async fn attach_to_schema(
+        &self,
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> LeafPrototypeResult<()> {
+        Schema::add_edge_to_leaf_prototype(
+            ctx,
+            schema_id,
+            self.id(),
+            EdgeWeightKind::LeafPrototype,
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn for_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> LeafPrototypeResult<Vec<LeafPrototype>> {
+        let snap = ctx.workspace_snapshot()?;
+        let mut result = vec![];
+
+        for incoming_source in snap
+            .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
+            .await?
+        {
+            let weight = snap.get_node_weight(incoming_source).await?;
+            if let NodeWeight::LeafPrototype(_) = weight {
+                let proto = LeafPrototype::get_by_id(ctx, incoming_source.into()).await?;
+                result.push(proto);
+            }
         }
 
         Ok(result)
@@ -388,6 +455,38 @@ impl LeafPrototype {
             input_attribute_value_ids,
             value_id: output_map_id,
         })
+    }
+
+    pub async fn remove(ctx: &DalContext, id: LeafPrototypeId) -> LeafPrototypeResult<()> {
+        ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
+        Ok(())
+    }
+
+    pub async fn update_inputs(
+        ctx: &DalContext,
+        id: LeafPrototypeId,
+        new_inputs: &[LeafInputLocation],
+    ) -> LeafPrototypeResult<()> {
+        let snap = ctx.workspace_snapshot()?;
+
+        let attribute_paths: Vec<AttributePath> =
+            new_inputs.iter().copied().map(Into::into).collect();
+
+        let (content_hash, _) = ctx.layer_db().cas().write(
+            Arc::new(crate::layer_db_types::ContentTypes::AttributePaths(
+                attribute_paths.clone().into(),
+            )),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
+
+        let mut weight = snap.get_node_weight(id).await?;
+        weight.new_content_hash(content_hash)?;
+
+        snap.add_or_replace_node(weight).await?;
+
+        Ok(())
     }
 
     implement_add_edge_to!(
