@@ -122,6 +122,22 @@ export async function generateSchemaQualificationBase(
   );
 }
 
+/**
+ * Generates the authentication functions directory for a schema.
+ *
+ * Creates the authentication directory if it doesn't already exist. This
+ * directory will contain authentication function files.
+ *
+ * @param project - Project instance containing path utilities
+ * @param schemaName - Name of the schema
+ */
+export async function generateSchemaAuthBase(
+  project: Project,
+  schemaName: string,
+) {
+  return await materialize.materializeSchemaAuthBase(project, schemaName);
+}
+
 export async function generateSchemaFormatVersion(
   project: Project,
   schemaName: string,
@@ -304,6 +320,40 @@ export async function generateSchemaQualification(
   );
 }
 
+/**
+ * Generates an authentication function for a schema.
+ *
+ * Creates both the TypeScript code file and metadata JSON file for an
+ * authentication function. Authentication functions handle credential validation
+ * and authentication flows for resources.
+ *
+ * @param project - Project instance containing path utilities
+ * @param schemaName - Name of the schema
+ * @param authName - Name of the authentication function
+ * @returns Object containing paths to the created metadata and code files
+ * @throws {FileExistsError} If either file already exists
+ */
+export async function generateSchemaAuth(
+  project: Project,
+  schemaName: string,
+  authName: string,
+): Promise<{
+  metadataPath: AbsoluteFilePath;
+  codePath: AbsoluteFilePath;
+}> {
+  const metadata = authMetadata(schemaName, authName);
+  const metadataBody = JSON.stringify(metadata, null, 2);
+  const codeBody = authCodeTemplate(schemaName, authName);
+
+  return await materialize.materializeSchemaAuth(
+    project,
+    schemaName,
+    authName,
+    metadataBody,
+    codeBody,
+  );
+}
+
 export interface SchemaMetadata {
   /** The name of the schema */
   name: string;
@@ -385,6 +435,16 @@ function createQualificationMetadata(
   };
 }
 
+function authMetadata(schemaName: string, authName: string): FunctionMetadata {
+  const name = `${schemaName}-auth-${authName}`;
+
+  return {
+    name,
+    displayName: name,
+    description: "optional description",
+  };
+}
+
 function schemaCodeTemplate(_schemaName: string): string {
   return `function main() {
   return new AssetBuilder().build();
@@ -445,5 +505,13 @@ function qualificationCodeTemplate(
     result: "failure",
     message: "${schemaName} ${qualificationName} qualification is not implemented"
   }
+}`;
+}
+
+function authCodeTemplate(schemaName: string, authName: string): string {
+  return `function main(input: Input) {
+  throw new Error(
+    "${schemaName} ${authName} authentication function unimplemented!"
+  );
 }`;
 }

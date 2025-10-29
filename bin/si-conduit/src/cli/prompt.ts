@@ -42,8 +42,9 @@ const MIN_INPUT_LENGTH = 1 as const;
  *
  * @param message - The prompt message to display to the user
  * @param suggestions - Array of suggestion strings for autocomplete (typically
- *   derived from existing project entities or default naming conventions)
- * @returns Input options configuration object compatible with Cliffy's Input prompt
+ * derived from existing project entities or default naming conventions)
+ * @returns Input options configuration object compatible with Cliffy's Input
+ * prompt
  *
  * @internal
  */
@@ -59,7 +60,8 @@ function createPromptOptions(
 }
 
 /**
- * Generic prompt helper that handles the common pattern of prompting for a name.
+ * Generic prompt helper that handles the common pattern of prompting for a
+ * name.
  *
  * This internal helper reduces code duplication across all prompt functions by
  * implementing the flexible input strategy: if a value is provided, return it
@@ -67,7 +69,8 @@ function createPromptOptions(
  *
  * @param value - Optional value from command arguments
  * @param promptMessage - The message to display in the prompt
- * @param getSuggestions - Function that returns suggestions (can be sync or async)
+ * @param getSuggestions - Function that returns suggestions (can be sync or
+ * async)
  * @returns A promise resolving to the value (either provided or prompted)
  *
  * @internal
@@ -182,12 +185,12 @@ export async function actionName(
  * prompt with autocomplete suggestions based on default codegen function
  * naming conventions.
  *
- * @param codegenName - Optional codegen name from command arguments. If provided,
- *   this value is returned as-is without prompting the user
+ * @param codegenName - Optional codegen name from command arguments. If
+ * provided, this value is returned as-is without prompting the user
  * @param project - Project instance used to retrieve default codegen function
- *   names for autocomplete suggestions
+ * names for autocomplete suggestions
  * @returns A promise resolving to the codegen name (either the provided value
- *   or the user's prompted input)
+ * or the user's prompted input)
  *
  * @example
  * ```ts
@@ -222,11 +225,11 @@ export async function codegenName(
  * naming conventions.
  *
  * @param managementName - Optional management name from command arguments. If
- *   provided, this value is returned as-is without prompting the user
- * @param project - Project instance used to retrieve default management function
- *   names for autocomplete suggestions
- * @returns A promise resolving to the management name (either the provided value
- *   or the user's prompted input)
+ * provided, this value is returned as-is without prompting the user
+ * @param project - Project instance used to retrieve default management
+ * function names for autocomplete suggestions
+ * @returns A promise resolving to the management name (either the provided
+ * value or the user's prompted input)
  *
  * @example
  * ```ts
@@ -255,17 +258,18 @@ export async function managementName(
 /**
  * Prompts the user for a qualification name if not provided.
  *
- * This function implements a flexible input strategy: if a qualification name is
- * provided, it returns immediately. Otherwise, it presents an interactive
+ * This function implements a flexible input strategy: if a qualification name
+ * is provided, it returns immediately. Otherwise, it presents an interactive
  * prompt with autocomplete suggestions based on default qualification function
  * naming conventions.
  *
- * @param qualificationName - Optional qualification name from command arguments.
- *   If provided, this value is returned as-is without prompting the user
- * @param project - Project instance used to retrieve default qualification function
- *   names for autocomplete suggestions
- * @returns A promise resolving to the qualification name (either the provided value
- *   or the user's prompted input)
+ * @param qualificationName - Optional qualification name from command
+ * arguments. If provided, this value is returned as-is without prompting the
+ * user
+ * @param project - Project instance used to retrieve default qualification
+ * function names for autocomplete suggestions
+ * @returns A promise resolving to the qualification name (either the provided
+ * value or the user's prompted input)
  *
  * @example
  * ```ts
@@ -288,5 +292,40 @@ export async function qualificationName(
     qualificationName,
     "Qualification Function Name",
     () => Project.DEFAULT_QUALIFICATION_NAMES,
+  );
+}
+
+/**
+ * Prompts the user for an authentication name if not provided.
+ *
+ * This function implements a flexible input strategy: if an authentication name
+ * is provided, it returns immediately. Otherwise, it presents an interactive
+ * prompt for the authentication function name.
+ *
+ * @param authName - Optional authentication name from command arguments.
+ *   If provided, this value is returned as-is without prompting the user
+ * @param project - Project instance
+ * @returns A promise resolving to the authentication name (either the provided
+ *   value or the user's prompted input)
+ *
+ * @example
+ * ```ts
+ * // With argument - no prompt shown
+ * const name1 = await authName("oauth", project);
+ * // Returns: "oauth"
+ *
+ * // Without argument - interactive prompt
+ * const name2 = await authName(undefined, project);
+ * // User sees: "Authentication Function Name: _"
+ * ```
+ */
+export async function authName(
+  authName: string | undefined,
+  _project: Project,
+): Promise<string> {
+  return await promptForName(
+    authName,
+    "Authentication Function Name",
+    () => [],
   );
 }
