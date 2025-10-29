@@ -29,6 +29,7 @@ const USER_FLAG_MAPPING = {
   COMPONENT_HISTORY_FUNCS: "component-history-funcs",
   REVERSE_TRUNCATION: "reverse-truncation",
   AZURE_SCHEMAS: "ms-azure-schemas",
+  VIEWS_BUTTON: "views-button-component-details",
 } as const;
 const WORKSPACE_FLAG_MAPPING = {
   FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",

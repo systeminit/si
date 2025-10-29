@@ -37,7 +37,7 @@
         <div class="flex-none flex flex-row items-start gap-xs">
           <DropdownMenuButton
             ref="viewsDropdownRef"
-            class="rounded min-w-[128px] h-[2.5rem]"
+            class="rounded min-w-[128px] h-[38px] pl-xs"
             :options="filteredViewListOptions"
             :search="viewListOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD"
             :modelValue="selectedViewId"
@@ -527,6 +527,7 @@
     <!-- For the edit view modals, upon delete, change back to "All Views" -->
     <EditViewModal
       ref="editViewModalRef"
+      :views="viewListQuery.data.value ?? []"
       @deleted="() => (selectedViewId = '')"
     />
     <ComponentContextMenu
@@ -2432,7 +2433,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
       mapRef.value?.onU(e);
     }
   },
-  // v: undefined,
+  // v: undefined, - USED FOR VIEWS BUTTON IN ComponentDetails
   // w: undefined,
   // x: undefined,
   // y: undefined,

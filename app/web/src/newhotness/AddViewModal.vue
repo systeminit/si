@@ -23,10 +23,8 @@
         <nameForm.Field
           name="name"
           :validators="{
-            onChange: ({ value }) =>
-              value.trim().length === 0 ? 'View name is required' : undefined,
-            onBlur: ({ value }) =>
-              value.trim().length === 0 ? 'View name is required' : undefined,
+            onChange: viewNameValidator,
+            onBlur: viewNameValidator,
           }"
         >
           <template #default="{ field }">
@@ -66,15 +64,23 @@
 
     <div class="flex gap-sm mt-sm">
       <NewButton label="Cancel" @click="() => modalRef?.close()" />
-      <NewButton
-        class="flex-grow"
-        icon="plus"
-        label="Create"
-        tone="action"
-        :loading="wForm.bifrosting.value"
-        :disabled="wForm.bifrosting.value"
-        @click="() => nameForm.handleSubmit()"
-      />
+      <nameForm.Field name="name">
+        <template #default="{ field }">
+          <NewButton
+            class="flex-grow"
+            icon="plus"
+            label="Create"
+            tone="action"
+            :loading="wForm.bifrosting.value"
+            :disabled="
+              wForm.bifrosting.value ||
+              field.state.meta.errors.length > 0 ||
+              field.state.value === ''
+            "
+            @click="() => nameForm.handleSubmit()"
+          />
+        </template>
+      </nameForm.Field>
     </div>
   </Modal>
 </template>
@@ -108,6 +114,18 @@ const formData = computed<{ name: string }>(() => {
   return { name: "" };
 });
 
+const existingViewNames = computed(
+  () => props.views?.map((view) => view.name) ?? [],
+);
+const viewNameValidator = ({ value }: { value: string }) => {
+  if (value.trim().length === 0) {
+    return "Name is required";
+  } else if (existingViewNames.value.includes(value)) {
+    return "That view name is already in use";
+  }
+  return undefined;
+};
+
 const nameForm = wForm.newForm({
   data: formData,
   onSubmit: async ({ value }) => {
@@ -132,15 +150,15 @@ const nameForm = wForm.newForm({
     }
   },
   validators: {
-    onSubmit: ({ value }) =>
-      value.name.trim().length === 0 ? "Name is required" : undefined,
+    onSubmit: ({ value }) => viewNameValidator({ value: value.name }),
   },
   watchFn: () => props.views?.length ?? 0,
 });
 
 const open = () => {
   modalRef.value?.open();
-  nameForm.reset();
+  wForm.reset(nameForm);
+  nameForm.state.values.name = "";
 };
 defineExpose({ open, isOpen: modalRef.value?.isOpen });
 </script>

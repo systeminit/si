@@ -50,7 +50,6 @@ import {
   SchemaVariant,
 } from "@/workers/types/entity_kind_types";
 import CreateTemplateModal from "@/newhotness/CreateTemplateModal.vue";
-import { ViewId } from "@/api/sdf/dal/views";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
@@ -60,7 +59,10 @@ import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 import { useComponentActions } from "./logic_composables/component_actions";
 import DuplicateComponentsModal from "./DuplicateComponentsModal.vue";
-import { useComponentsAndViews } from "./logic_composables/view";
+import {
+  availableViewListOptionsForComponentIds,
+  useComponentsAndViews,
+} from "./logic_composables/view";
 
 const featureFlagsStore = useFeatureFlagsStore();
 
@@ -133,70 +135,13 @@ const managementFunctions = computed(
 
 // ================================================================================================
 // HANDLE VIEW MENU OPTIONS
-interface AvailableViewListOptions {
-  addToView: { label: string; value: string }[];
-  removeFromView: { label: string; value: string }[];
-}
-
-const availableViewListOptions = computed(() => {
-  const unprocessedOptions = props.viewListOptions ?? [];
-  unprocessedOptions.sort((a, b) =>
-    a.label.toLowerCase().localeCompare(b.label.toLowerCase()),
-  );
-  const options: AvailableViewListOptions = {
-    addToView: [],
-    removeFromView: [],
-  };
-  for (const unprocessedOption of unprocessedOptions) {
-    const viewId = unprocessedOption.value;
-    const componentsInView =
-      componentsAndViews.componentsInViews.value[viewId] ?? new Set();
-    if (showViewInAddToViewMenuOptions(componentsInView))
-      options.addToView.push(unprocessedOption);
-    if (showViewInRemoveFromViewMenuOptions(componentsInView, viewId))
-      options.removeFromView.push(unprocessedOption);
-  }
-  return options;
-});
-
-const showViewInAddToViewMenuOptions = (
-  componentIdsInView: Set<ComponentId>,
-) => {
-  // If there's nothing in the view, you always add to it.
-  if (componentIdsInView.size < 1) return true;
-
-  // For the selected components, if at least one of them is not in the view, we can add to it.
-  for (const componentId of componentIds.value) {
-    if (!componentIdsInView.has(componentId)) {
-      return true;
-    }
-  }
-
-  // If all of the components are in the view, we cannot add any of them to it.
-  return false;
-};
-const showViewInRemoveFromViewMenuOptions = (
-  componentIdsInView: Set<ComponentId>,
-  viewId: ViewId,
-) => {
-  // If there's nothing in the view, there's nothing to remove from it.
-  if (componentIdsInView.size < 1) return false;
-
-  // For the selected components, only show the option if all of them are in the view and that view
-  // isn't the final view for any of the components.
-  for (const componentId of componentIds.value) {
-    const soleViewIdForCurrentComponent =
-      componentsAndViews.componentsInOnlyOneView.value[componentId];
-    if (
-      !componentIdsInView.has(componentId) ||
-      soleViewIdForCurrentComponent === viewId
-    )
-      return false;
-  }
-
-  // If we don't hit the exit clause, then we are good to include this option.
-  return true;
-};
+const availableViewListOptions = computed(() =>
+  availableViewListOptionsForComponentIds(
+    componentIds.value,
+    props.viewListOptions ?? [],
+    componentsAndViews,
+  ),
+);
 
 const removeFromViewTooltip = computed(() => {
   if (availableViewListOptions.value.removeFromView.length > 0)
