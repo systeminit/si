@@ -33,6 +33,7 @@ const IGNORE_RESOURCE_TYPES = new Set<string>([
 
 export function parseAzureSpec(
   openApiDoc: AzureOpenApiDocument,
+  resourceTypesFilter?: Set<string>,
 ): ExpandedPkgSpec[] {
   const specs: ExpandedPkgSpec[] = [];
 
@@ -64,6 +65,11 @@ export function parseAzureSpec(
     }
     // Ignore certain problematic resource types (temporarily until we fix them)
     if (IGNORE_RESOURCE_TYPES.has(resourceType)) continue;
+
+    // Skip resource types not in the filter (if filter is provided)
+    if (resourceTypesFilter && !resourceTypesFilter.has(resourceType)) {
+      continue;
+    }
 
     resourceOperations[resourceType] ??= { handlers: {} };
     const resource = resourceOperations[resourceType];
@@ -932,7 +938,7 @@ function removeReadOnlyProperty(
   return property;
 }
 
-function parseEndpointPath(path: string) {
+export function parseEndpointPath(path: string) {
   // Form:         /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/applicationGateways/{applicationGatewayName}
   // Or list form: /subscriptions/{subscriptionId}/providers/Microsoft.Network/applicationGateways
   // TODO support non-{resourceGroupName} get/put/delete and {resourceGroupName} list paths
