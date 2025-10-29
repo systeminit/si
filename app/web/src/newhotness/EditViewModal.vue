@@ -23,10 +23,8 @@
         <nameForm.Field
           name="name"
           :validators="{
-            onChange: ({ value }) =>
-              value.trim().length === 0 ? 'View name is required' : undefined,
-            onBlur: ({ value }) =>
-              value.trim().length === 0 ? 'View name is required' : undefined,
+            onChange: viewNameValidator,
+            onBlur: viewNameValidator,
           }"
         >
           <template #default="{ field }">
@@ -74,13 +72,21 @@
       />
       <div class="flex gap-sm ml-auto">
         <NewButton label="Cancel" pill="ESC" @click="() => modalRef?.close()" />
-        <NewButton
-          label="Done"
-          tone="action"
-          :loading="wForm.bifrosting.value"
-          :disabled="wForm.bifrosting.value"
-          @click="() => nameForm.handleSubmit()"
-        />
+        <nameForm.Field name="name">
+          <template #default="{ field }">
+            <NewButton
+              label="Done"
+              tone="action"
+              :loading="wForm.bifrosting.value"
+              :disabled="
+                wForm.bifrosting.value ||
+                field.state.meta.errors.length > 0 ||
+                field.state.value === ''
+              "
+              @click="() => nameForm.handleSubmit()"
+            />
+          </template>
+        </nameForm.Field>
       </div>
     </div>
   </Modal>
@@ -98,7 +104,11 @@ import clsx from "clsx";
 import { useRoute } from "vue-router";
 import { useQuery } from "@tanstack/vue-query";
 import { ViewId } from "@/api/sdf/dal/views";
-import { ComponentInList, EntityKind } from "@/workers/types/entity_kind_types";
+import {
+  ComponentInList,
+  EntityKind,
+  View,
+} from "@/workers/types/entity_kind_types";
 import { Listable } from "@/workers/types/dbinterface";
 import {
   bifrostList,
@@ -107,6 +117,10 @@ import {
 } from "@/store/realtime/heimdall";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import { useApi, routes } from "./api_composables";
+
+const props = defineProps<{
+  views: View[] | undefined;
+}>();
 
 const viewId = ref<ViewId>("");
 const isDefaultView = ref<boolean>(false);
@@ -178,6 +192,21 @@ const formData = computed<{ name: string }>(() => {
   return { name: "" };
 });
 
+const existingViewNames = computed(
+  () =>
+    props.views
+      ?.map((view) => view.name)
+      .filter((name) => name !== nameOnOpen.value) ?? [],
+);
+const viewNameValidator = ({ value }: { value: string }) => {
+  if (value.trim().length === 0) {
+    return "Name is required";
+  } else if (existingViewNames.value.includes(value)) {
+    return "That view name is already in use";
+  }
+  return undefined;
+};
+
 const nameForm = wForm.newForm({
   data: formData,
   onSubmit: async ({ value }) => {
@@ -209,8 +238,7 @@ const nameForm = wForm.newForm({
     }
   },
   validators: {
-    onSubmit: ({ value }) =>
-      value.name.trim().length === 0 ? "View name is required" : undefined,
+    onSubmit: ({ value }) => viewNameValidator({ value: value.name }),
   },
   watchFn: () => nameOnOpen.value,
 });
