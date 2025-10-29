@@ -438,6 +438,73 @@ export class Project {
   }
 
   /**
+   * Returns the relative path to an auth function's code file.
+   *
+   * @param schemaName - The name of the schema
+   * @param authName - The name of the auth function
+   * @returns A RelativePath to the auth function's TypeScript file
+   */
+  authFuncCodeRelativePath(
+    schemaName: string,
+    authName: string,
+  ): RelativeFilePath {
+    return new RelativeFilePath(
+      join(
+        this.authBaseRelativePath(schemaName),
+        `${normalizeFsName(authName)}.ts`,
+      ),
+    );
+  }
+
+  /**
+   * Returns the absolute path to an auth function's code file.
+   *
+   * @param schemaName - The name of the schema
+   * @param authName - The name of the auth function
+   * @returns An AbsolutePath to the auth function's TypeScript file
+   */
+  authFuncCodePath(schemaName: string, authName: string): AbsoluteFilePath {
+    return new AbsoluteFilePath(
+      join(this.rootPath, this.authFuncCodeRelativePath(schemaName, authName)),
+    );
+  }
+
+  /**
+   * Returns the relative path to an auth function's metadata file.
+   *
+   * @param schemaName - The name of the schema
+   * @param authName - The name of the auth function
+   * @returns A RelativePath to the auth function's metadata JSON file
+   */
+  authFuncMetadataRelativePath(
+    schemaName: string,
+    authName: string,
+  ): RelativeFilePath {
+    return new RelativeFilePath(
+      join(
+        this.authBaseRelativePath(schemaName),
+        `${normalizeFsName(authName)}.metadata.json`,
+      ),
+    );
+  }
+
+  /**
+   * Returns the absolute path to an auth function's metadata file.
+   *
+   * @param schemaName - The name of the schema
+   * @param authName - The name of the auth function
+   * @returns An AbsolutePath to the auth function's metadata JSON file
+   */
+  authFuncMetadataPath(schemaName: string, authName: string): AbsoluteFilePath {
+    return new AbsoluteFilePath(
+      join(
+        this.rootPath,
+        this.authFuncMetadataRelativePath(schemaName, authName),
+      ),
+    );
+  }
+
+  /**
    * Returns the relative path to a schema's code generators directory.
    *
    * @param schemaName - The name of the schema
@@ -790,10 +857,6 @@ export class Project {
   }
 }
 
-export class RelativePathFrom {
-  constructor(public readonly rootPath: AbsoluteDirectoryPath) {}
-}
-
 /**
  * Represents an absolute file system path.
  *
@@ -878,6 +941,35 @@ export class AbsolutePath {
  *   paths
  */
 export class AbsoluteDirectoryPath extends AbsolutePath {
+  /**
+   * Computes the relative path from a base directory or project root to this
+   * directory.
+   *
+   * This method calculates the relative path needed to navigate from the base
+   * location to this directory. It's useful for displaying user-friendly paths,
+   * generating portable configuration, or computing relative imports.
+   *
+   * @param base - The base directory or Project instance to compute relative to
+   * @returns A RelativeDirectoryPath from the base to this directory
+   *
+   * @example Computing relative path from project root
+   * ```ts
+   * const project = new Project("/home/user/my-project");
+   * const schemaDir = project.schemaBasePath("MySchema");
+   *
+   * const relPath = schemaDir.relativeTo(project);
+   * console.log(relPath.toString()); // "schemas/MySchema"
+   * ```
+   *
+   * @example Computing relative path between directories
+   * ```ts
+   * const schemasDir = project.schemasBasePath();
+   * const schemaDir = project.schemaBasePath("MySchema");
+   *
+   * const relPath = schemaDir.relativeTo(schemasDir);
+   * console.log(relPath.toString()); // "MySchema"
+   * ```
+   */
   public relativeTo(
     base: AbsoluteDirectoryPath | Project,
   ): RelativeDirectoryPath {
@@ -888,6 +980,27 @@ export class AbsoluteDirectoryPath extends AbsolutePath {
     }
   }
 
+  /**
+   * Computes the relative path from a base directory or project root to this
+   * directory and returns it as a string.
+   *
+   * This is a convenience method that combines `relativeTo()` and `toString()`.
+   * It's useful when you need the relative path as a plain string for logging,
+   * display, or passing to APIs that expect string paths.
+   *
+   * @param base - The base directory or Project instance to compute relative to
+   * @returns The relative path as a string
+   *
+   * @example
+   * ```ts
+   * const project = new Project("/home/user/my-project");
+   * const actionsDir = project.actionBasePath("MySchema");
+   *
+   * const relPath = actionsDir.relativeToStr(project);
+   * console.log(`Actions located at: ${relPath}`);
+   * // Output: Actions located at: schemas/MySchema/actions
+   * ```
+   */
   public relativeToStr(base: AbsoluteDirectoryPath | Project): string {
     return this.relativeTo(base).path;
   }
@@ -1001,6 +1114,34 @@ export class AbsoluteDirectoryPath extends AbsolutePath {
  *   paths
  */
 export class AbsoluteFilePath extends AbsolutePath {
+  /**
+   * Computes the relative path from a base directory or project root to this
+   * file.
+   *
+   * This method calculates the relative path needed to navigate from the base
+   * location to this file. It's useful for displaying user-friendly file paths,
+   * generating portable configuration, or computing relative imports.
+   *
+   * @param base - The base directory or Project instance to compute relative to
+   * @returns A RelativeFilePath from the base to this file
+   *
+   * @example Computing relative path from project root
+   * ```ts
+   * const project = new Project("/home/user/my-project");
+   * const schemaFile = project.schemaFuncCodePath("MySchema");
+   *
+   * const relPath = schemaFile.relativeTo(project);
+   * console.log(relPath.toString()); // "schemas/MySchema/schema.ts"
+   * ```
+   *
+   * @example Computing relative path for display
+   * ```ts
+   * const metadataPath = project.schemaMetadataPath("MySchema");
+   * const relPath = metadataPath.relativeTo(project);
+   * console.log(`Loading metadata from ${relPath}`);
+   * // Output: Loading metadata from schemas/MySchema/schema.metadata.json
+   * ```
+   */
   public relativeTo(base: AbsoluteDirectoryPath | Project): RelativeFilePath {
     if (base instanceof Project) {
       return new RelativeFilePath(relative(base.rootPath, this.path));
@@ -1009,6 +1150,27 @@ export class AbsoluteFilePath extends AbsolutePath {
     }
   }
 
+  /**
+   * Computes the relative path from a base directory or project root to this
+   * file and returns it as a string.
+   *
+   * This is a convenience method that combines `relativeTo()` and `toString()`.
+   * It's useful when you need the relative path as a plain string for logging,
+   * display, or passing to APIs that expect string paths.
+   *
+   * @param base - The base directory or Project instance to compute relative to
+   * @returns The relative path as a string
+   *
+   * @example
+   * ```ts
+   * const project = new Project("/home/user/my-project");
+   * const actionFile = project.actionFuncCodePath("MySchema", "create");
+   *
+   * const relPath = actionFile.relativeToStr(project);
+   * console.log(`Reading action from: ${relPath}`);
+   * // Output: Reading action from: schemas/MySchema/actions/create.ts
+   * ```
+   */
   public relativeToStr(base: AbsoluteDirectoryPath | Project): string {
     return this.relativeTo(base).path;
   }
