@@ -15,7 +15,7 @@ import { isValid } from "ulid";
 const name = "schema-find";
 const title = "Find component schemas";
 const description =
-  `<description>Finds component schemas by name or Schema ID. Returns the Schema ID, Name, Description, and external documentation Link. On failure, returns error details. When looking for AWS Schemas, you can use the AWS Cloudformation Resource name (examples: AWS::EC2::Instance, AWS::Bedrock::Agent, or AWS::ControlTower::EnabledBaseline)</description><usage>Use this tool to find if a schema exists in System Initiative, to look up the Schema Name or Schema ID if you need it, or to display high level information about the schema.</usage>`;
+  `<description>Finds component schemas by name or Schema ID. Returns the Schema ID, Name, Description, and external documentation Link. On failure, returns error details. When looking for AWS Schemas, you can use the AWS Cloudformation Resource name (examples: AWS::EC2::Instance, AWS::Bedrock::Agent, or AWS::ControlTower::EnabledBaseline). When looking for Azure Schemas, you can use the Azure ARM Resource name (examples: Microsoft.Compute/sshKeys, Microsoft.Compute/virtualMachineScaleSets,  Microsoft.Cdn/profiles or Microsoft.KeyVault/vaults)</description><usage>Use this tool to find if a schema exists in System Initiative, to look up the Schema Name or Schema ID if you need it, or to display high level information about the schema.</usage>`;
 
 const FindSchemaInputSchemaRaw = {
   changeSetId: z
