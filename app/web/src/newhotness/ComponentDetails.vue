@@ -490,6 +490,7 @@ import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 import { useManagementFuncJobState } from "./logic_composables/management";
 import { useComponentActions } from "./logic_composables/component_actions";
+import { prevPage } from "./logic_composables/navigation_stack";
 import { openWorkspaceMigrationDocumentation } from "./util";
 import { useContext } from "./logic_composables/context";
 
@@ -622,13 +623,25 @@ const mgmtRef = ref<typeof CollapsingFlexItem>();
 const router = useRouter();
 
 const close = () => {
-  const params = router.currentRoute?.value.params ?? {};
-  delete params.componentId;
-  router.push({
-    name: "new-hotness",
-    params,
-    query: { retainSessionState: 1 },
-  });
+  const lastPage = prevPage();
+
+  // If we have a previous page and it's the explore view, go back to it with full context
+  if (lastPage && lastPage.name === "new-hotness") {
+    router.push({
+      name: lastPage.name,
+      params: lastPage.params,
+      query: lastPage.query,
+    });
+  } else {
+    // Fallback to default navigation if no history
+    const params = router.currentRoute?.value.params ?? {};
+    delete params.componentId;
+    router.push({
+      name: "new-hotness",
+      params,
+      query: { retainSessionState: 1 },
+    });
+  }
 };
 
 const navigateToMap = () => {
