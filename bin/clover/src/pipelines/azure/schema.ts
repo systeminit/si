@@ -10,6 +10,7 @@ import SwaggerParser from "@apidevtools/swagger-parser";
 import { OpenAPIV3_1 } from "openapi-types";
 import path from "node:path";
 import { Extend } from "../../extend.ts";
+import { parseEndpointPath } from "./spec.ts";
 
 /// Azure schema property
 export type AzureSchemaProperty = JSONSchema.Interface & AzureSchemaExtensions;
@@ -159,6 +160,8 @@ const EXCLUDE_SPECS = [
   "/azure-rest-api-specs/specification/azurearcdata/resource-manager/Microsoft.AzureArcData/preview/2025-06-01-preview/azurearcdata.json",
   // Unsupported duration-constant format (all servicefabricmanagedclusters versions)
   "/azure-rest-api-specs/specification/servicefabricmanagedclusters",
+  // Unsupported time format
+  "/azure-rest-api-specs/specification/computeschedule/resource-manager/Microsoft.ComputeSchedule/preview/2025-04-15-preview/computeschedule.json",
 ];
 
 interface SpecMetadata {
@@ -168,14 +171,14 @@ interface SpecMetadata {
 }
 
 /**
- * Find all the latest Azure OpenAPI spec files
- * Walks through all version directories and deduplicates by keeping the latest version per API
+ * Find all the latest Azure OpenAPI spec files with the resource types to extract from each
+ * Parses each spec to extract resource types, then deduplicates by keeping the latest version per resource type
  */
 export async function* findLatestAzureOpenApiSpecFiles(specsRepo: string) {
   const specsRoot = path.join(specsRepo, "specification");
 
-  // Collect all spec files with metadata
-  const specMap: Record<string, {
+  // keep the latest version for each resource type
+  const resourceTypeMap: Record<string, {
     path: string;
     metadata: SpecMetadata;
   }> = {};
@@ -194,23 +197,78 @@ export async function* findLatestAzureOpenApiSpecFiles(specsRepo: string) {
         const metadata = parseSpecPath(specPath);
         if (!metadata) continue;
 
-        const key = `${metadata.provider}/${spec.name}`;
-        const existing = specMap[key];
+        // extract resource types
+        let resourceTypes: string[];
+        try {
+          resourceTypes = await extractResourceTypesFromSpec(specPath);
+        } catch (e) {
+          console.warn(`Failed to parse ${specPath}: ${e}`);
+          continue;
+        }
 
-        // keep the latest version
-        if (!existing || shouldReplace(existing.metadata, metadata)) {
-          specMap[key] = {
-            path: specPath,
-            metadata,
-          };
+        // track the latest version
+        for (const resourceType of resourceTypes) {
+          const existing = resourceTypeMap[resourceType];
+
+          if (!existing || shouldReplace(existing.metadata, metadata)) {
+            resourceTypeMap[resourceType] = {
+              path: specPath,
+              metadata,
+            };
+          }
         }
       }
     }
   }
 
-  for (const spec of Object.values(specMap)) {
-    yield spec.path;
+  // Group resource types by spec path
+  const specPathToResourceTypes: Record<string, Set<string>> = {};
+  for (
+    const [resourceType, { path: specPath }] of Object.entries(resourceTypeMap)
+  ) {
+    if (!specPathToResourceTypes[specPath]) {
+      specPathToResourceTypes[specPath] = new Set();
+    }
+    specPathToResourceTypes[specPath].add(resourceType);
   }
+
+  // Yield each spec path with the resource types that should be extracted from it
+  for (
+    const [specPath, resourceTypes] of Object.entries(specPathToResourceTypes)
+  ) {
+    yield { specPath, resourceTypes };
+  }
+}
+
+/**
+ * Extract resource types from an OpenAPI spec by parsing its paths
+ * Returns resource types in the format "Provider/resourceType" (e.g., "Microsoft.Insights/autoscalesettings")
+ */
+async function extractResourceTypesFromSpec(
+  specPath: string,
+): Promise<string[]> {
+  const fileUrl = new URL(`file://${specPath}`);
+
+  // Parse the spec (but don't dereference, just get the paths)
+  const spec = await SwaggerParser.parse(fileUrl.href) as AzureOpenApiDocument;
+
+  if (!spec.paths) return [];
+
+  const resourceTypes = new Set<string>();
+
+  for (const path of Object.keys(spec.paths)) {
+    const pathInfo = parseEndpointPath(path);
+    if (!pathInfo) continue;
+
+    // only include Microsoft providers
+    if (pathInfo.resourceProvider.toLowerCase().startsWith("microsoft.")) {
+      resourceTypes.add(
+        `${pathInfo.resourceProvider}/${pathInfo.resourceType}`,
+      );
+    }
+  }
+
+  return Array.from(resourceTypes);
 }
 
 /**

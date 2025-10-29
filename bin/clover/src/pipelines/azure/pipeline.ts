@@ -46,10 +46,14 @@ async function getLatestAzureSpecs(options: PipelineOptions) {
 
   const specs: ExpandedPkgSpec[] = [];
   let processed = 0;
-  for await (const specPath of findLatestAzureOpenApiSpecFiles(specsRepo)) {
+  for await (
+    const { specPath, resourceTypes } of findLatestAzureOpenApiSpecFiles(
+      specsRepo,
+    )
+  ) {
     try {
       const openApiSpec = await readAzureSwaggerSpec(specPath);
-      const schemas = parseAzureSpec(openApiSpec);
+      const schemas = parseAzureSpec(openApiSpec, resourceTypes);
       specs.push(...schemas);
     } catch (e) {
       console.error(`Failed to process ${specPath}: ${e}`);
