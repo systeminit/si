@@ -608,7 +608,13 @@
                     :virtualItemIndex="virtualItem.index"
                     :virtualItemSize="virtualItem.size"
                     :virtualItemStart="virtualItem.start"
+                    :filteredSchemaName="filteredSchemaName"
+                    :filteredComponentName="filteredComponentName"
                     @selectConnection="(index) => selectConnection(index)"
+                    @filter-component="(name) => (filteredComponentName = name)"
+                    @clear-component="() => (filteredComponentName = '')"
+                    @filter-schema="(name) => (filteredSchemaName = name)"
+                    @clear-schema="() => (filteredSchemaName = '')"
                   />
                   <div
                     v-else
@@ -1554,6 +1560,8 @@ const categorizedPossibleConn = computed(() => {
   return categories;
 });
 
+const filteredSchemaName = ref("");
+const filteredComponentName = ref("");
 const filteredConnections = computed(() => {
   const output: UIConnectionRow[] = [];
 
@@ -1562,6 +1570,18 @@ const filteredConnections = computed(() => {
       matches: PossibleConnection[],
       array: UIConnectionRow[],
     ) => {
+      if (filteredSchemaName.value) {
+        matches = matches.filter(
+          (m) => m.schemaName === filteredSchemaName.value,
+        );
+      }
+
+      if (filteredComponentName.value) {
+        matches = matches.filter(
+          (m) => m.componentName === filteredComponentName.value,
+        );
+      }
+
       // Node(victor): We know that secret props on secret defining schemas live on /secrets/kind name
       // This MAY match other secret props on random schemas, but we check the types match. Ideally the MVs at some
       // point should tells us what props are the secret props on the secret defining schemas. But this solves

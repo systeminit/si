@@ -26,21 +26,31 @@
     >
       <TruncateWithTooltip
         :class="
-          themeClasses(
-            'text-newhotness-greenlight',
-            'text-newhotness-greendark',
+          clsx(
+            themeClasses(
+              'text-newhotness-greenlight',
+              'text-newhotness-greendark',
+            ),
+            filteredSchemaName === connection.schemaName ? 'underline' : '',
           )
         "
+        @click.right.stop.prevent="onSchema"
       >
         {{ connection.schemaName }}
       </TruncateWithTooltip>
       <TruncateWithTooltip
         :class="
-          themeClasses(
-            'text-newhotness-purplelight',
-            'text-newhotness-purpledark',
+          clsx(
+            themeClasses(
+              'text-newhotness-purplelight',
+              'text-newhotness-purpledark',
+            ),
+            filteredComponentName === connection.componentName
+              ? 'underline'
+              : '',
           )
         "
+        @click.right.stop.prevent="onComponent"
       >
         {{ connection.componentName }}
       </TruncateWithTooltip>
@@ -87,16 +97,36 @@ import { themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { UIPotentialConnection } from "./AttributeInput.vue";
 
-defineProps<{
+const props = defineProps<{
   connection?: UIPotentialConnection;
   isConnectionSelected: boolean;
   virtualItemSize: number;
   virtualItemIndex: number;
   virtualItemStart: number;
+  filteredSchemaName?: string;
+  filteredComponentName?: string;
 }>();
+
+const onSchema = () => {
+  if (!props.connection) return;
+  if (props.filteredSchemaName !== props.connection.schemaName)
+    emit("filterSchema", props.connection.schemaName);
+  else emit("clearSchema");
+};
+
+const onComponent = () => {
+  if (!props.connection) return;
+  if (props.filteredComponentName !== props.connection.componentName)
+    emit("filterComponent", props.connection.componentName);
+  else emit("clearComponent");
+};
 
 const emit = defineEmits<{
   (e: "selectConnection", index: number): void;
+  (e: "filterSchema", name: string): void;
+  (e: "clearSchema"): void;
+  (e: "filterComponent", name: string): void;
+  (e: "clearComponent"): void;
 }>();
 </script>
 
