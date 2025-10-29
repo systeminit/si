@@ -141,7 +141,11 @@ function extractApiVersion(filePath: string): string | null {
   if (!versionMatch) return null;
 
   const [, versionType, versionDate] = versionMatch;
-  return versionType === "preview" ? `${versionDate}-preview` : versionDate;
+  // If it's a preview version and doesn't already end with -preview, append it
+  if (versionType === "preview" && !versionDate.endsWith("-preview")) {
+    return `${versionDate}-preview`;
+  }
+  return versionDate;
 }
 
 const EXCLUDE_SPECS = [
