@@ -1,4 +1,10 @@
-import { ChangeSetsApi, FuncsApi, SchemasApi } from "@systeminit/api-client";
+import {
+  ChangeSetsApi,
+  FindSchemaV1Response,
+  FuncsApi,
+  GetFuncV1Response,
+  SchemasApi,
+} from "@systeminit/api-client";
 import { AxiosError } from "axios";
 import { Context } from "../../../context.ts";
 import { AuthenticatedCliContext } from "../../../cli/helpers.ts";
@@ -263,14 +269,23 @@ export async function callRemoteSchemaPush(
 
   const { instanceUrl: workspaceUrlPrefix, id: workspaceId } = workspace;
 
-  const schemas = [] as Schema[];
+  const siFuncsApi = new FuncsApi(apiConfiguration);
+  const changeSetsApi = new ChangeSetsApi(apiConfiguration);
+  const siSchemasApi = new SchemasApi(apiConfiguration);
 
-  let readSchemas = 0; // This is the total number of read schema directories, including failures
+  const schemasFromFilesystem = [] as Schema[];
+
+  // ==================================
   // Read schemas from the local folder
+  // ==================================
+  logger.info("reading schemas from filesystem...");
+  let readSchemas = 0; // This is the total number of read schema directories, including failures
   try {
     const schemasBasePath = project.schemasBasePath().toString();
 
     const entries = Deno.readDir(schemasBasePath);
+
+    const existingLocalSchemaNames = {} as Record<string, string>;
 
     for await (const entry of entries) {
       if (!entry.isDirectory) {
@@ -315,6 +330,9 @@ export async function callRemoteSchemaPush(
         logger.error(msg);
         continue;
       }
+      logger.debug(
+        `found valid version file in ${schemaDirName}. reading schema...`,
+      );
 
       const schemaCodePath = project.schemaFuncCodePath(schemaDirName);
       try {
@@ -338,7 +356,7 @@ export async function callRemoteSchemaPush(
 
           category = metadata.category || "";
           description = metadata.description || "";
-          link = metadata.link;
+          link = metadata.documentation ?? null;
         } catch (error) {
           const msg = error instanceof Deno.errors.NotFound
             ? `metadata.json file not found on the ${schemaDirName} directory`
@@ -346,6 +364,16 @@ export async function callRemoteSchemaPush(
           logger.error(msg);
           continue;
         }
+
+        if (existingLocalSchemaNames[schemaName]) {
+          throw new Error(
+            `Duplicate schema name "${schemaName}" found in asset "${schemaDirName}" and "${
+              existingLocalSchemaNames[schemaName]
+            }".`,
+          );
+        }
+        existingLocalSchemaNames[schemaName] = schemaDirName;
+        logger.info(`reading schema ${schemaName}`);
 
         if (category === "") {
           // Try to get the category from the asset name
@@ -416,21 +444,21 @@ export async function callRemoteSchemaPush(
           authFuncs,
         };
 
-        const existingNames = {} as Record<string, string>;
+        const existingFuncNames = {} as Record<string, string>;
         allSchemaFuncsWithKind(schema).forEach((func) => {
           const { name: funcName } = func.funcData;
           const { kind } = func;
-          if (existingNames[funcName]) {
+          if (existingFuncNames[funcName]) {
             throw new Error(
               `Duplicate function name "${funcName}" found in asset "${schemaName}": ${
-                existingNames[funcName]
+                existingFuncNames[funcName]
               } and ${kind}`,
             );
           }
-          existingNames[funcName] = kind;
+          existingFuncNames[funcName] = kind;
         });
 
-        schemas.push(schema);
+        schemasFromFilesystem.push(schema);
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
           logger.error(
@@ -446,24 +474,239 @@ export async function callRemoteSchemaPush(
       `Error reading assets directory: ${unknownValueToErrorMessage(error)}`,
     );
   }
+  const failedSchemaDirectories = readSchemas - schemasFromFilesystem.length;
 
-  const failedSchemaDirectories = readSchemas - schemas.length;
+  // ==================================
+  // Pre check: Compare schema and funcs to head
+  // ==================================
+  const changeSets = (await changeSetsApi.listChangeSets({ workspaceId }))
+    .data.changeSets as { id: string; isHead: boolean }[]; // Mocking this type since the client lib does not have it right now
 
-  // Confirmation prompt
+  const headChangesetId = changeSets.find((cs) => cs.isHead)?.id;
+
+  if (!headChangesetId) {
+    throw new Error("No head changeset found");
+  }
+
+  logger.info(`comparing filesystem assets to HEAD changeset...`);
+
+  const schemasToPush = [] as {
+    schemaPayload: Schema;
+    existingSchemaData?: {
+      schemaId: string;
+      variantDataChanged: boolean;
+      funcsToUnbind: {
+        id: string;
+        kind: string;
+        name: string;
+      }[];
+      updatableFuncIdsByName: Record<string, string>;
+    };
+  }[];
+
+  for (const filesystemSchema of schemasFromFilesystem) {
+    const existingSchema = await tryFindSchema(
+      siSchemasApi,
+      workspaceId,
+      headChangesetId,
+      filesystemSchema.name,
+    );
+
+    if (!existingSchema) {
+      logger.info(
+        `${filesystemSchema.name}: schema is new. enqueueing for push...`,
+      );
+      schemasToPush.push({ schemaPayload: filesystemSchema });
+      continue;
+    }
+
+    logger.debug(
+      `schema ${filesystemSchema.name} already exists. checking if it needs an update...`,
+    );
+
+    const existingVariant = (await siSchemasApi.getDefaultVariant({
+      workspaceId,
+      changeSetId: headChangesetId,
+      schemaId: existingSchema.schemaId,
+    })).data;
+
+    const existingVariantCode = (await siFuncsApi.getFunc({
+      workspaceId,
+      changeSetId: headChangesetId,
+      funcId: existingVariant.assetFuncId,
+    })).data.code;
+
+    const variantDataChanged = !schemaContentsMatch(filesystemSchema, {
+      name: existingSchema.schemaName,
+      category: existingVariant.category,
+      description: existingVariant.description,
+      link: existingVariant.link,
+      code: existingVariantCode,
+    });
+
+    logger.info(
+      `${filesystemSchema.name}: schema fields ${
+        variantDataChanged ? "" : "un"
+      }changed. Checking funcs... `,
+    );
+
+    // Go through the functions to see what needs to be done
+    const existingFuncByName = {} as Record<string, {
+      id: string;
+      data: GetFuncV1Response;
+    }>;
+    const funcsToUnbindByName = {} as Record<string, {
+      id: string;
+      name: string;
+      kind: string;
+    }>;
+    for (let { id: existingFuncId } of existingVariant.variantFuncs) {
+      const existingFunc = (await siFuncsApi.getFunc({
+        workspaceId,
+        changeSetId: headChangesetId,
+        funcId: existingFuncId,
+      })).data;
+
+      existingFuncByName[existingFunc.name] = {
+        id: existingFuncId,
+        data: existingFunc,
+      };
+
+      funcsToUnbindByName[existingFunc.name] = {
+        id: existingFuncId,
+        name: existingFunc.name,
+        kind: existingFunc.kind,
+      };
+    }
+
+    logger.trace(
+      `- found ${Object.keys(existingFuncByName).length} existing funcs`,
+    );
+
+    // Compare existing functions to the filesystem data
+    const actions = [] as ActionArray;
+    const qualifications = [] as SimpleFuncArray;
+    const codeGenerators = [] as SimpleFuncArray;
+    const managementFuncs = [] as SimpleFuncArray;
+    const authFuncs = [] as SimpleFuncArray;
+
+    const updatableFuncIdsByName = {} as Record<string, string>;
+
+    let createdFuncs = 0;
+    let modifiedFuncs = 0;
+    let skippedFuncs = 0;
+
+    for (
+      const filesystemFuncAndKind of allSchemaFuncsWithKind(filesystemSchema)
+    ) {
+      const filesystemFunc = filesystemFuncAndKind.funcData;
+      const filesystemFuncKind = filesystemFuncAndKind.kind;
+
+      const existingFunc = existingFuncByName[filesystemFunc.name];
+
+      if (existingFunc && filesystemFuncKind === existingFunc.data.kind) {
+        // If we'll update or skip, don't unbind
+        delete funcsToUnbindByName[filesystemFunc.name];
+
+        if (funcContentsMatch(filesystemFunc, existingFunc.data)) {
+          skippedFuncs++;
+          logger.trace(
+            `- skipping unchanged ${filesystemFuncKind} function: ${filesystemFunc.name}`,
+          );
+          continue;
+        }
+
+        modifiedFuncs++;
+        logger.debug(
+          `- updating ${filesystemFuncKind} function: ${filesystemFunc.name}`,
+        );
+        updatableFuncIdsByName[filesystemFunc.name] = existingFunc.id;
+      } else {
+        createdFuncs++;
+        logger.debug(
+          `- creating ${filesystemFuncKind} function: ${filesystemFunc.name}`,
+        );
+      }
+
+      switch (filesystemFuncKind) {
+        case "Qualification":
+          qualifications.push(filesystemFunc);
+          break;
+        case "Action":
+          if (!("kind" in filesystemFunc)) {
+            logger.error(
+              `Action must have a 'kind' field, ${filesystemFunc.name} is missing it`,
+            );
+            continue;
+          }
+          actions.push(filesystemFunc);
+          break;
+        case "CodeGeneration":
+          codeGenerators.push(filesystemFunc);
+          break;
+        case "Management":
+          managementFuncs.push(filesystemFunc);
+          break;
+        case "Authentication":
+          authFuncs.push(filesystemFunc);
+          break;
+      }
+    }
+
+    let detachedFuncs = 0;
+    for (const [funcName, { kind }] of Object.entries(funcsToUnbindByName)) {
+      detachedFuncs++;
+      logger.debug(`- removing ${kind} function: ${funcName}`);
+    }
+
+    const functionsModified = createdFuncs > 0 || modifiedFuncs > 0 ||
+      detachedFuncs > 0;
+
+    if (!variantDataChanged && !functionsModified) {
+      logger.info(`- no changes to push. skipping...`);
+      continue;
+    }
+
+    logger.info(
+      `- func summary: ${createdFuncs} created, ${modifiedFuncs} modified, ${detachedFuncs} detached, ${skippedFuncs} unchanged`,
+    );
+
+    const schemaToPush = {
+      schemaPayload: {
+        ...filesystemSchema,
+        actions,
+        qualifications,
+        codeGenerators,
+        managementFuncs,
+        authFuncs,
+      },
+      existingSchemaData: {
+        schemaId: existingSchema.schemaId,
+        variantDataChanged,
+        funcsToUnbind: Object.values(funcsToUnbindByName),
+        updatableFuncIdsByName,
+      },
+    };
+
+    schemasToPush.push(schemaToPush);
+  }
+
+  // ==================================
+  // Confirmation prompt (and dry run logic, eventually)
+  // ==================================
+  if (schemasToPush.length === 0) {
+    console.log("No assets to push. terminating.");
+    return;
+  }
+
   if (!skipConfirmation) {
     const failureMsg = failedSchemaDirectories > 0
       ? ` Failed to read ${failedSchemaDirectories} asset description(s).`
       : "";
 
-    const emptyMsg = schemas.length === 0 ? " Aborting." : "";
-
     console.log(
-      `Found ${schemas.length} asset(s) to push.${failureMsg}${emptyMsg}`,
+      `Found ${schemasToPush.length} asset(s) to push.${failureMsg}`,
     );
-
-    if (schemas.length === 0) {
-      return;
-    }
 
     let confirmed = false;
     while (!confirmed) {
@@ -478,7 +721,7 @@ export async function callRemoteSchemaPush(
 
       if (input === "l") {
         console.log("\nAssets to be pushed:");
-        schemas.forEach((schema) => console.log(`  - ${schema.name}`));
+        schemasToPush.forEach((schema) => console.log(`  - ${schema.name}`));
         console.log();
       } else if (input === "y") {
         confirmed = true;
@@ -488,10 +731,10 @@ export async function callRemoteSchemaPush(
     }
   }
 
-  // TODO We should read the schema from head and see what we need to do before creating the changeset, so we can avoid changesets with no real diffs
+  // ==================================
   // Create schemas on the server
-  const changeSetsApi = new ChangeSetsApi(apiConfiguration);
-
+  // ==================================
+  logger.info("creating changeset and pushing schema changes...");
   const changeSetName = "Conduit Push " + new Date().toISOString();
 
   const createChangeSetResponse = await changeSetsApi.createChangeSet({
@@ -503,104 +746,48 @@ export async function callRemoteSchemaPush(
 
   let pushedSchemas = 0;
   try {
-    const siSchemasApi = new SchemasApi(apiConfiguration);
-    const siFuncsApi = new FuncsApi(apiConfiguration);
+    for (const schemaData of schemasToPush) {
+      const { code, name, category, description, link } =
+        schemaData.schemaPayload;
 
-    for (const schema of schemas) {
-      const { code, name, category, description } = schema;
-
-      let existingSchemaId = undefined;
-      try {
-        const response = await siSchemasApi.findSchema({
-          workspaceId,
-          changeSetId,
-          schema: name,
-        });
-
-        existingSchemaId = response.data.schemaId;
-      } catch (error) {
-        // Swallow error if it's a schema not found error, as we will create the schema
-        if (!(error instanceof AxiosError)) {
-          throw error;
-        }
-
-        // TypeScript does not believe the typecheck above
-        const axiosError = error as AxiosError;
-
-        if (axiosError.status !== 404) {
-          throw error;
-        }
-      }
+      const existingSchemaData = schemaData.existingSchemaData;
 
       let schemaId;
       let schemaVariantId;
 
-      // These two records will only be filled out if the schema already exists
-      // But we create it here to create a single code path when dealing with funcs
-      const funcsToUnbindById = {} as Record<string, {
-        kind: string;
-        name: string;
-      }>;
-      const existingFuncDataByName = {} as Record<string, {
-        id: string;
-        name: string;
-        displayName?: string | null;
-        description?: string | null;
-        code: string;
-        funcKind: string;
-      }>;
+      const updatableFuncIdsByName =
+        existingSchemaData?.updatableFuncIdsByName ??
+          {} as Record<string, string>;
+      const funcsToUnbind = existingSchemaData?.funcsToUnbind ?? [];
 
-      if (existingSchemaId) {
+      if (existingSchemaData) {
         logger.info(
-          `existing schema ${name} (${existingSchemaId}), unlocking and updating...`,
+          `existing schema ${name} (${existingSchemaData.schemaId}), unlocking and updating...`,
         );
 
         const unlockSchemaResponse = await siSchemasApi.unlockSchema({
           workspaceId,
           changeSetId,
-          schemaId: existingSchemaId,
+          schemaId: existingSchemaData.schemaId,
         });
 
-        schemaId = existingSchemaId;
+        schemaId = existingSchemaData.schemaId;
         schemaVariantId = unlockSchemaResponse.data.unlockedVariantId;
 
-        // TODO add optional fields (link)
-        const unlockedVariantData = (await siSchemasApi.updateSchemaVariant({
-          workspaceId,
-          changeSetId,
-          schemaId: existingSchemaId,
-          schemaVariantId,
-          updateSchemaVariantV1Request: {
-            name,
-            code,
-            category,
-            description,
-          },
-        })).data;
-
-        // Gather all the funcs that are currently bound to this schema
-        logger.debug(`gathering funcs...`);
-        for (const existingFunc of unlockedVariantData.variantFuncs) {
-          const funcRequest = await siFuncsApi.getFunc({
+        if (existingSchemaData.variantDataChanged) {
+          await siSchemasApi.updateSchemaVariant({
             workspaceId,
             changeSetId,
-            funcId: existingFunc.id,
+            schemaId,
+            schemaVariantId,
+            updateSchemaVariantV1Request: {
+              name,
+              code,
+              category,
+              description,
+              link,
+            },
           });
-
-          const loadedFuncData = funcRequest.data;
-          funcsToUnbindById[existingFunc.id] = {
-            kind: loadedFuncData.kind,
-            name: loadedFuncData.name,
-          };
-
-          existingFuncDataByName[loadedFuncData.name] = {
-            id: existingFunc.id,
-            name: loadedFuncData.name,
-            displayName: loadedFuncData.displayName,
-            description: loadedFuncData.description,
-            code: loadedFuncData.code,
-            funcKind: existingFunc.funcKind.kind,
-          };
         }
       } else {
         logger.info(`creating schema ${name}...`);
@@ -614,6 +801,7 @@ export async function callRemoteSchemaPush(
             category,
             color: "#000000",
             description,
+            link,
           },
         });
 
@@ -628,49 +816,69 @@ export async function callRemoteSchemaPush(
         schemaVariantId,
       };
 
-      let createdFuncs = 0;
-      let modifiedFuncs = 0;
-      let skippedFuncs = 0;
+      for (const { id: funcId, kind, name } of funcsToUnbind) {
+        logger.trace(`${kind} "${name}": detaching`);
 
-      for (const filesystemFuncAndKind of allSchemaFuncsWithKind(schema)) {
+        const detachPayload = {
+          ...baseVariantPayload,
+          funcId,
+        };
+
+        switch (kind) {
+          case "Action":
+            await siSchemasApi.detachActionFuncBinding(detachPayload);
+            break;
+          case "Qualification":
+            await siSchemasApi.detachQualificationFuncBinding(detachPayload);
+            break;
+          case "CodeGeneration":
+            await siSchemasApi.detachCodegenFuncBinding(detachPayload);
+            break;
+          case "Management":
+            await siSchemasApi.detachManagementFuncBinding(detachPayload);
+            break;
+          case "Authentication":
+            await siSchemasApi.detachAuthenticationFuncBinding(detachPayload);
+            break;
+          default:
+            console.error(`Unknown func kind for func ${funcId}: ${kind}`);
+        }
+      }
+
+      for (
+        const filesystemFuncAndKind of allSchemaFuncsWithKind(
+          schemaData.schemaPayload,
+        )
+      ) {
         const filesystemFunc = filesystemFuncAndKind.funcData;
         const filesystemFuncKind = filesystemFuncAndKind.kind;
+        const funcName = filesystemFunc.name;
 
-        const existingFunc = existingFuncDataByName[filesystemFunc.name];
-        if (existingFunc) {
-          logger.debug(`found ${filesystemFuncKind} ${filesystemFunc.name}...`);
-          delete funcsToUnbindById[existingFunc.id];
+        const existingFuncId = updatableFuncIdsByName[funcName];
+        if (existingFuncId) {
+          logger.trace(
+            `${filesystemFuncKind} "${funcName}": unlocking and updating`,
+          );
 
-          if (funcContentsMatch(existingFunc, filesystemFunc)) {
-            logger.debug(`${existingFunc.name} is unchanged. Skipping...`);
-            skippedFuncs += 1;
-          } else {
-            logger.debug(
-              `${existingFunc.name} is changed. Unlocking and updating...`,
-            );
-            modifiedFuncs += 1;
+          const unlockedFuncId = (await siFuncsApi.unlockFunc({
+            workspaceId,
+            changeSetId,
+            funcId: existingFuncId,
+            unlockFuncV1Request: {
+              schemaVariantId,
+            },
+          })).data.unlockedFuncId;
 
-            const unlockFuncResult = await siFuncsApi.unlockFunc({
-              workspaceId,
-              changeSetId,
-              funcId: existingFunc.id,
-              unlockFuncV1Request: {
-                schemaVariantId,
-              },
-            });
-
-            const unlockedFuncId = unlockFuncResult.data.unlockedFuncId;
-
-            await siFuncsApi.updateFunc({
-              workspaceId,
-              changeSetId,
-              funcId: unlockedFuncId,
-              updateFuncV1Request: filesystemFunc,
-            });
-          }
+          await siFuncsApi.updateFunc({
+            workspaceId,
+            changeSetId,
+            funcId: unlockedFuncId,
+            updateFuncV1Request: filesystemFunc,
+          });
         } else {
-          logger.debug(`${filesystemFunc.name} is new. Creating...`);
-          createdFuncs += 1;
+          logger.trace(
+            `${filesystemFuncKind} "${filesystemFunc.name}": creating`,
+          );
 
           switch (filesystemFuncKind) {
             case "Action":
@@ -718,48 +926,6 @@ export async function callRemoteSchemaPush(
         }
       }
 
-      let detachedFuncs = 0;
-
-      // TODO unbinding should happen before creating and updating any funcs, so we don't get conflicts with existing actions
-      // loop over funcIdsToUnbind, using both the keys and the values
-      for (
-        const [funcId, { kind, name }] of Object.entries(funcsToUnbindById)
-      ) {
-        logger.debug(`${name} was removed. Detaching...`);
-        detachedFuncs += 1;
-
-        const detachPayload = {
-          ...baseVariantPayload,
-          funcId,
-        };
-
-        switch (kind) {
-          case "Action":
-            await siSchemasApi.detachActionFuncBinding(detachPayload);
-            break;
-          case "Qualification":
-            await siSchemasApi.detachQualificationFuncBinding(detachPayload);
-            break;
-          case "CodeGeneration":
-            await siSchemasApi.detachCodegenFuncBinding(detachPayload);
-            break;
-          case "Management":
-            await siSchemasApi.detachManagementFuncBinding(detachPayload);
-            break;
-          case "Authentication":
-            await siSchemasApi.detachAuthenticationFuncBinding(detachPayload);
-            break;
-          default:
-            console.error(
-              `Unknown unknown func kind for func ${funcId}: ${kind}`,
-            );
-        }
-      }
-
-      logger.info(
-        `func summary: ${createdFuncs} created, ${modifiedFuncs} modified, ${detachedFuncs} detached, ${skippedFuncs} unchanged`,
-      );
-
       pushedSchemas += 1;
     }
 
@@ -768,7 +934,7 @@ export async function callRemoteSchemaPush(
 
     ctx.analytics.trackEvent("push_assets", {
       pushedSchemasCount: pushedSchemas,
-      pushedSchemaNames: schemas.map((schema) => schema.name),
+      pushedSchemaNames: schemasFromFilesystem.map((schema) => schema.name),
       workspaceId,
       changeSetId,
       changeSetUrl,
@@ -807,3 +973,51 @@ const funcContentsMatch = (funcA: FuncData, funcB: FuncData) =>
   funcA.displayName === funcB.displayName &&
   funcA.code === funcB.code &&
   funcA.description === funcB.description;
+
+/// Hides away the ugliness caused by find schema returning a 404 error when the schema doesn't exist
+async function tryFindSchema(
+  siSchemasApi: SchemasApi,
+  workspaceId: string,
+  changeSetId: string,
+  schemaName: string,
+): Promise<FindSchemaV1Response | undefined> {
+  try {
+    const response = await siSchemasApi.findSchema({
+      workspaceId,
+      changeSetId,
+      schema: schemaName,
+    });
+
+    return response.data;
+  } catch (error) {
+    // Swallow error if it's a schema not found error
+    if (!(error instanceof AxiosError)) {
+      throw error;
+    }
+
+    // TypeScript does not believe the typecheck above
+    const axiosError = error as AxiosError;
+
+    if (axiosError.status !== 404) {
+      throw error;
+    }
+  }
+
+  // If we got here, the error is an axios 404
+  return undefined;
+}
+
+interface SchemaData {
+  name: string;
+  category: string;
+  description?: string | null;
+  link?: string | null;
+  code: string;
+}
+const schemaContentsMatch = (schemaA: SchemaData, schemaB: SchemaData) =>
+  schemaA.name === schemaB.name &&
+  schemaA.category === schemaB.category &&
+  // Since the API allows these to be undefined or null, we normalize both to undefined
+  (schemaA.description ?? undefined) === (schemaB.description ?? undefined) &&
+  (schemaA.link ?? undefined) === (schemaB.link ?? undefined) &&
+  schemaA.code === schemaB.code;

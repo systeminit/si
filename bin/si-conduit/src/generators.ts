@@ -379,7 +379,7 @@ function schemaMetadata(schemaName: string): SchemaMetadata {
     name: schemaName,
     category: "",
     description: "optional",
-    documentation: "optional, should be a link",
+    documentation: null, // "optional, should be a link",
   };
 }
 
