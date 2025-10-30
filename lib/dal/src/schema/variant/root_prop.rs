@@ -15,12 +15,10 @@ use crate::{
     PropKind,
     SchemaVariant,
     SchemaVariantId,
+    func::leaf::LeafKind,
     prop::PropPath,
     property_editor::schema::WidgetKind,
-    schema::variant::{
-        SchemaVariantResult,
-        leaves::LeafKind,
-    },
+    schema::variant::SchemaVariantResult,
 };
 
 pub mod component_type;

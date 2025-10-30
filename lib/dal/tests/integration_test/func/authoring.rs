@@ -13,10 +13,10 @@ use dal::{
             EventualParent,
             FuncBinding,
         },
-    },
-    schema::variant::leaves::{
-        LeafInputLocation,
-        LeafKind,
+        leaf::{
+            LeafInputLocation,
+            LeafKind,
+        },
     },
 };
 use dal_test::{

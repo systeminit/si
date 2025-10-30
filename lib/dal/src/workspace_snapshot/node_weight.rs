@@ -13,6 +13,7 @@ use finished_dependent_value_root_node_weight::FinishedDependentValueRootNodeWei
 pub use func_argument_node_weight::FuncArgumentNodeWeight;
 pub use func_node_weight::FuncNodeWeight;
 pub use input_socket_node_weight::InputSocketNodeWeight;
+use leaf_prototype_node_weight::LeafPrototypeNodeWeight;
 pub use management_prototype_node_weight::ManagementPrototypeNodeWeight;
 pub use ordering_node_weight::OrderingNodeWeight;
 pub use prop_node_weight::PropNodeWeight;
@@ -94,6 +95,7 @@ pub mod func_argument_node_weight;
 pub mod func_node_weight;
 pub mod geometry_node_weight;
 pub mod input_socket_node_weight;
+pub mod leaf_prototype_node_weight;
 pub mod management_prototype_node_weight;
 pub mod ordering_node_weight;
 pub mod prop_node_weight;
@@ -172,6 +174,7 @@ pub enum NodeWeight {
     DiagramObject(DiagramObjectNodeWeight),
     ApprovalRequirementDefinition(ApprovalRequirementDefinitionNodeWeight),
     Reason(ReasonNodeWeight),
+    LeafPrototype(LeafPrototypeNodeWeight),
 }
 
 #[test]
@@ -271,6 +274,7 @@ impl NodeWeight {
             NodeWeight::DiagramObject(weight) => weight.content_hash(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.content_hash(),
             NodeWeight::Reason(weight) => weight.content_hash(),
+            NodeWeight::LeafPrototype(weight) => weight.content_hash(),
         }
     }
 
@@ -298,6 +302,8 @@ impl NodeWeight {
             NodeWeight::DiagramObject(weight) => weight.content_store_hashes(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.content_store_hashes(),
             NodeWeight::Reason(weight) => weight.content_store_hashes(),
+
+            NodeWeight::LeafPrototype(weight) => weight.content_store_hashes(),
         }
     }
 
@@ -324,7 +330,8 @@ impl NodeWeight {
             | NodeWeight::SchemaVariant(_)
             | NodeWeight::DiagramObject(_)
             | NodeWeight::ApprovalRequirementDefinition(_)
-            | NodeWeight::Reason(_) => None,
+            | NodeWeight::Reason(_)
+            | NodeWeight::LeafPrototype(_) => None,
         }
     }
 
@@ -352,6 +359,7 @@ impl NodeWeight {
             NodeWeight::DiagramObject(weight) => weight.id(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.id(),
             NodeWeight::Reason(weight) => weight.id(),
+            NodeWeight::LeafPrototype(weight) => weight.id(),
         }
     }
 
@@ -379,6 +387,7 @@ impl NodeWeight {
             NodeWeight::DiagramObject(weight) => weight.lineage_id(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.lineage_id(),
             NodeWeight::Reason(weight) => weight.lineage_id(),
+            NodeWeight::LeafPrototype(weight) => weight.lineage_id(),
         }
     }
 
@@ -435,6 +444,9 @@ impl NodeWeight {
             }
             NodeWeight::Reason(reason_node_weight) => {
                 reason_node_weight.set_id(id.into());
+            }
+            NodeWeight::LeafPrototype(leaf_proto_weight) => {
+                leaf_proto_weight.set_id(id.into());
             }
         }
     }
@@ -499,6 +511,9 @@ impl NodeWeight {
             NodeWeight::Reason(reason_node_weight) => {
                 reason_node_weight.set_lineage_id(lineage_id);
             }
+            NodeWeight::LeafPrototype(leaf_proto_weight) => {
+                leaf_proto_weight.set_lineage_id(lineage_id);
+            }
         }
     }
 
@@ -531,6 +546,7 @@ impl NodeWeight {
             NodeWeight::DiagramObject(weight) => weight.merkle_tree_hash(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.merkle_tree_hash(),
             NodeWeight::Reason(weight) => weight.merkle_tree_hash(),
+            NodeWeight::LeafPrototype(weight) => weight.merkle_tree_hash(),
         }
     }
 
@@ -576,6 +592,10 @@ impl NodeWeight {
                 traits::SiVersionedNodeWeight::inner_mut(w).new_content_hash(content_hash);
                 Ok(())
             }
+            NodeWeight::LeafPrototype(w) => {
+                traits::SiVersionedNodeWeight::inner_mut(w).new_content_hash(content_hash);
+                Ok(())
+            }
         }
     }
 
@@ -606,6 +626,7 @@ impl NodeWeight {
             NodeWeight::DiagramObject(weight) => weight.node_hash(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.node_hash(),
             NodeWeight::Reason(weight) => weight.node_hash(),
+            NodeWeight::LeafPrototype(weight) => weight.node_hash(),
         }
     }
 
@@ -635,6 +656,7 @@ impl NodeWeight {
                 weight.set_merkle_tree_hash(new_hash)
             }
             NodeWeight::Reason(weight) => weight.set_merkle_tree_hash(new_hash),
+            NodeWeight::LeafPrototype(weight) => weight.set_merkle_tree_hash(new_hash),
         }
     }
 
@@ -664,7 +686,8 @@ impl NodeWeight {
             | NodeWeight::DiagramObject(_)
             | NodeWeight::SchemaVariant(_)
             | NodeWeight::ApprovalRequirementDefinition(_)
-            | NodeWeight::Reason(_) => Err(NodeWeightError::CannotSetOrderOnKind),
+            | NodeWeight::Reason(_)
+            | NodeWeight::LeafPrototype(_) => Err(NodeWeightError::CannotSetOrderOnKind),
         }
     }
 
@@ -702,6 +725,7 @@ impl NodeWeight {
             NodeWeight::DiagramObject(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Reason(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::LeafPrototype(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 
@@ -840,6 +864,16 @@ impl NodeWeight {
             NodeWeight::Prop(inner) => Ok(inner),
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Prop,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_leaf_prototype_node_weight(&self) -> NodeWeightResult<LeafPrototypeNodeWeight> {
+        match self {
+            NodeWeight::LeafPrototype(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::LeafPrototype,
                 other.into(),
             )),
         }
@@ -1301,6 +1335,11 @@ impl CorrectTransforms for NodeWeight {
                 updates,
                 from_different_change_set,
             ),
+            NodeWeight::LeafPrototype(weight) => weight.correct_transforms(
+                workspace_snapshot_graph,
+                updates,
+                from_different_change_set,
+            ),
         }?;
 
         Ok(self.correct_exclusive_outgoing_edges(workspace_snapshot_graph, updates))
@@ -1332,6 +1371,7 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
             NodeWeight::DiagramObject(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::Reason(weight) => weight.exclusive_outgoing_edges(),
+            NodeWeight::LeafPrototype(weight) => weight.exclusive_outgoing_edges(),
         }
     }
 }
@@ -1440,6 +1480,8 @@ impl From<&NodeWeight> for EntityKind {
                 ContentAddressDiscriminants::DeprecatedActionRunner => {
                     EntityKind::DeprecatedActionRunner
                 }
+                // This is not a content node so should never be encountered here
+                ContentAddressDiscriminants::AttributePaths => EntityKind::LeafPrototype,
             },
             NodeWeight::DependentValueRoot(_) => EntityKind::DependentValueRoot,
             NodeWeight::Func(_) => EntityKind::Func,
@@ -1458,6 +1500,7 @@ impl From<&NodeWeight> for EntityKind {
                 EntityKind::ApprovalRequirementDefinition
             }
             NodeWeight::Reason(_) => EntityKind::Reason,
+            NodeWeight::LeafPrototype(_) => EntityKind::LeafPrototype,
         }
     }
 }

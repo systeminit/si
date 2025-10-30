@@ -15,18 +15,20 @@ use dal::{
     SchemaVariant,
     WorkspacePk,
     WsEvent,
-    func::binding::{
-        AttributeArgumentBinding,
-        EventualParent,
-        action::ActionBinding,
-        attribute::AttributeBinding,
-        authentication::AuthBinding,
-        leaf::LeafBinding,
-        management::ManagementBinding,
-    },
-    schema::variant::leaves::{
-        LeafInputLocation,
-        LeafKind,
+    func::{
+        binding::{
+            AttributeArgumentBinding,
+            EventualParent,
+            action::ActionBinding,
+            attribute::AttributeBinding,
+            authentication::AuthBinding,
+            leaf::LeafBinding,
+            management::ManagementBinding,
+        },
+        leaf::{
+            LeafInputLocation,
+            LeafKind,
+        },
     },
 };
 use si_events::audit_log::AuditLogKind;

@@ -132,6 +132,7 @@ use crate::{
         argument::FuncArgumentError,
         binding::FuncBindingError,
         intrinsics::IntrinsicFunc,
+        leaf::LeafKind,
     },
     implement_add_edge_to,
     layer_db_types::{
@@ -152,7 +153,6 @@ use crate::{
     },
     schema::variant::{
         SchemaVariantError,
-        leaves::LeafKind,
         root_prop::component_type::ComponentType,
     },
     socket::{

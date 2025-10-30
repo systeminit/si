@@ -98,6 +98,11 @@ use crate::{
             FuncArgumentError,
         },
         intrinsics::IntrinsicFunc,
+        leaf::{
+            LeafInput,
+            LeafInputLocation,
+            LeafKind,
+        },
     },
     implement_add_edge_to,
     layer_db_types::{
@@ -117,14 +122,7 @@ use crate::{
         PropError,
         PropPath,
     },
-    schema::variant::{
-        leaves::{
-            LeafInput,
-            LeafInputLocation,
-            LeafKind,
-        },
-        root_prop::RootProp,
-    },
+    schema::variant::root_prop::RootProp,
     socket::{
         input::InputSocketError,
         output::OutputSocketError,
@@ -2393,7 +2391,8 @@ impl SchemaVariant {
                 | EdgeWeightKindDiscriminants::ApprovalRequirementDefinition
                 | EdgeWeightKindDiscriminants::ValueSubscription
                 | EdgeWeightKindDiscriminants::DefaultSubscriptionSource
-                | EdgeWeightKindDiscriminants::Reason => {}
+                | EdgeWeightKindDiscriminants::Reason
+                | EdgeWeightKindDiscriminants::LeafPrototype => {}
             }
         }
 

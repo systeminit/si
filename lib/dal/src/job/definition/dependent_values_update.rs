@@ -1,8 +1,8 @@
 use std::{
     collections::{
-        HashMap,
-        HashSet,
-        hash_map::Entry,
+        BTreeMap,
+        BTreeSet,
+        btree_map,
     },
     sync::Arc,
 };
@@ -29,6 +29,7 @@ use tokio::{
 use ulid::Ulid;
 
 use crate::{
+    AttributePrototype,
     AttributeValue,
     AttributeValueId,
     ChangeSet,
@@ -46,9 +47,16 @@ use crate::{
     WsEvent,
     WsEventError,
     action::ActionError,
-    attribute::value::{
-        AttributeValueError,
-        dependent_value_graph::DependentValueGraph,
+    attribute::{
+        prototype::AttributePrototypeError,
+        value::{
+            AttributeValueError,
+            PrototypeExecution,
+            dependent_value_graph::{
+                DependentValue,
+                DependentValueGraph,
+            },
+        },
     },
     job::consumer::{
         DalJob,
@@ -57,6 +65,10 @@ use crate::{
         JobConsumerResult,
     },
     prop::PropError,
+    schema::leaf::{
+        LeafPrototype,
+        LeafPrototypeError,
+    },
     status::{
         StatusMessageState,
         StatusUpdate,
@@ -73,6 +85,8 @@ use crate::{
 pub enum DependentValueUpdateError {
     #[error("action error: {0}")]
     Action(#[from] Box<ActionError>),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
@@ -85,6 +99,8 @@ pub enum DependentValueUpdateError {
     DependentValuesUpdateAuditLog(#[from] Box<DependentValueUpdateAuditLogError>),
     #[error("func error: {0}")]
     FuncError(#[from] Box<crate::FuncError>),
+    #[error("leaf prototype error: {0}")]
+    LeafPrototype(#[from] Box<LeafPrototypeError>),
     #[error("prop error: {0}")]
     Prop(#[from] Box<PropError>),
     #[error("schema variant error: {0}")]
@@ -179,6 +195,12 @@ impl From<WsEventError> for DependentValueUpdateError {
     }
 }
 
+impl From<LeafPrototypeError> for DependentValueUpdateError {
+    fn from(value: LeafPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
 pub type DependentValueUpdateResult<T> = Result<T, DependentValueUpdateError>;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -257,9 +279,9 @@ impl JobConsumer for DependentValuesUpdate {
 }
 
 struct StatusUpdateTracker {
-    values_by_component: HashMap<ComponentId, HashSet<AttributeValueId>>,
-    components_by_value: HashMap<AttributeValueId, ComponentId>,
-    active_components: HashSet<ComponentId>,
+    values_by_component: BTreeMap<ComponentId, BTreeSet<AttributeValueId>>,
+    components_by_value: BTreeMap<AttributeValueId, ComponentId>,
+    active_components: BTreeSet<ComponentId>,
 }
 
 impl StatusUpdateTracker {
@@ -268,9 +290,9 @@ impl StatusUpdateTracker {
         value_ids: Vec<AttributeValueId>,
     ) -> DependentValueUpdateResult<Self> {
         let mut tracker = Self {
-            values_by_component: HashMap::new(),
-            components_by_value: HashMap::new(),
-            active_components: HashSet::new(),
+            values_by_component: BTreeMap::new(),
+            components_by_value: BTreeMap::new(),
+            active_components: BTreeSet::new(),
         };
 
         for value_id in value_ids {
@@ -278,7 +300,7 @@ impl StatusUpdateTracker {
             tracker
                 .values_by_component
                 .entry(component_id)
-                .and_modify(|values: &mut HashSet<AttributeValueId>| {
+                .and_modify(|values: &mut BTreeSet<AttributeValueId>| {
                     values.insert(value_id);
                 })
                 .or_default();
@@ -292,15 +314,15 @@ impl StatusUpdateTracker {
         self.active_components.len()
     }
 
-    fn would_start_component(&self, value_id: AttributeValueId) -> bool {
+    fn would_start_component(&self, value: impl Into<AttributeValueId>) -> bool {
         self.components_by_value
-            .get(&value_id)
+            .get(&(value.into()))
             .is_some_and(|component_id| !self.active_components.contains(component_id))
     }
 
-    fn start_value(&mut self, value_id: AttributeValueId) -> Option<ComponentId> {
+    fn start_value(&mut self, value: impl Into<AttributeValueId>) -> Option<ComponentId> {
         self.components_by_value
-            .get(&value_id)
+            .get(&(value.into()))
             .and_then(|component_id| {
                 self.active_components
                     .insert(*component_id)
@@ -308,17 +330,18 @@ impl StatusUpdateTracker {
             })
     }
 
-    fn finish_value(&mut self, value_id: AttributeValueId) -> Option<ComponentId> {
+    fn finish_value(&mut self, value: impl Into<AttributeValueId>) -> Option<ComponentId> {
+        let value = value.into();
         self.components_by_value
-            .get(&value_id)
+            .get(&value)
             .and_then(
                 |component_id| match self.values_by_component.entry(*component_id) {
-                    Entry::Occupied(mut values_entry) => {
+                    btree_map::Entry::Occupied(mut values_entry) => {
                         let values = values_entry.get_mut();
-                        values.remove(&value_id);
+                        values.remove(&value);
                         values.is_empty().then_some(*component_id)
                     }
-                    Entry::Vacant(_) => None,
+                    btree_map::Entry::Vacant(_) => None,
                 },
             )
     }
@@ -336,14 +359,22 @@ impl StatusUpdateTracker {
     fn get_status_update(
         &mut self,
         state: StatusMessageState,
-        value_id: AttributeValueId,
+        value: impl Into<AttributeValueId>,
     ) -> Option<StatusUpdate> {
+        let value = value.into();
         match state {
-            StatusMessageState::StatusFinished => self.finish_value(value_id),
-            StatusMessageState::StatusStarted => self.start_value(value_id),
+            StatusMessageState::StatusFinished => self.finish_value(value),
+            StatusMessageState::StatusStarted => self.start_value(value),
         }
         .map(|component_id| StatusUpdate::new_dvu(state, component_id))
     }
+}
+
+#[remain::sorted]
+enum RemoveOrCycle {
+    CycleOnSelf,
+    RemoveAndLog(AttributeValueId),
+    RemoveButIgnore,
 }
 
 impl DependentValuesUpdate {
@@ -358,8 +389,8 @@ impl DependentValuesUpdate {
             .await?
             .is_head(ctx)
             .await?;
-        let mut unfinished_values: HashSet<Ulid> = HashSet::new();
-        let mut finished_values: HashSet<Ulid> = HashSet::new();
+        let mut unfinished_values: BTreeSet<Ulid> = BTreeSet::new();
+        let mut finished_values: BTreeSet<Ulid> = BTreeSet::new();
 
         roots.iter().for_each(|root| match root {
             DependentValueRoot::Finished(ulid) => {
@@ -387,31 +418,39 @@ impl DependentValuesUpdate {
         );
 
         // Remove the first set of independent_values since they should already have had their functions executed
-        for value_id in dependency_graph.independent_values() {
-            if !dependency_graph.values_needs_to_execute_from_prototype_function(value_id)
-                || (finished_values.contains(&value_id.into())
-                    && !unfinished_values.contains(&value_id.into()))
+        for independent_value in dependency_graph.independent_values() {
+            let av_id = independent_value.attribute_value_id();
+            if !dependency_graph.values_needs_to_execute_from_prototype_function(independent_value)
+                || (finished_values.contains(&av_id.into())
+                    && !unfinished_values.contains(&av_id.into()))
             {
-                dependency_graph.remove_value(value_id);
+                dependency_graph.remove_value(independent_value);
             }
         }
-        let all_value_ids = dependency_graph.all_value_ids();
+        let all_value_ids: Vec<_> = dependency_graph.all_value_ids().collect();
 
-        let mut tracker = StatusUpdateTracker::new_for_values(ctx, all_value_ids).await?;
+        let mut tracker = StatusUpdateTracker::new_for_values(
+            ctx,
+            all_value_ids
+                .iter()
+                .map(|v| v.attribute_value_id())
+                .collect(),
+        )
+        .await?;
 
-        let mut spawned_ids = HashSet::new();
-        let mut task_id_to_av_id = HashMap::new();
+        let mut spawned_ids = BTreeSet::new();
+        let mut task_id_to_av_id = BTreeMap::new();
         let mut update_join_set = JoinSet::new();
-        let mut independent_value_ids: HashSet<AttributeValueId> =
+        let mut independent_values: BTreeSet<DependentValue> =
             dependency_graph.independent_values().into_iter().collect();
-        let mut would_start_ids = HashSet::new();
+        let mut would_start_ids = BTreeSet::new();
 
         loop {
-            if independent_value_ids.is_empty() && task_id_to_av_id.is_empty() {
+            if independent_values.is_empty() && task_id_to_av_id.is_empty() {
                 break;
             }
 
-            if independent_value_ids
+            if independent_values
                 .difference(&would_start_ids)
                 .next()
                 .is_none()
@@ -420,57 +459,85 @@ impl DependentValuesUpdate {
                     break;
                 }
             } else {
-                for attribute_value_id in &independent_value_ids {
-                    let attribute_value_id = *attribute_value_id;
+                for &independent_value in &independent_values {
                     let parent_span = span.clone();
-                    if !spawned_ids.contains(&attribute_value_id)
-                        && !would_start_ids.contains(&attribute_value_id)
+                    if !spawned_ids.contains(&independent_value)
+                        && !would_start_ids.contains(&independent_value)
                     {
                         let id = Ulid::new();
 
-                        if tracker.would_start_component(attribute_value_id)
+                        if tracker.would_start_component(independent_value)
                             && tracker.active_components_count() >= concurrency_limit
                         {
-                            would_start_ids.insert(attribute_value_id);
+                            would_start_ids.insert(independent_value);
                             continue;
                         }
 
                         let status_update = tracker.get_status_update(
                             StatusMessageState::StatusStarted,
-                            attribute_value_id,
+                            independent_value,
                         );
 
-                        let before_value = AttributeValue::get_by_id(ctx, attribute_value_id)
-                            .await?
-                            .unprocessed_value(ctx)
-                            .await?;
+                        let before_value = match get_before_value(
+                            ctx,
+                            independent_value,
+                            self.set_value_lock.clone(),
+                        )
+                        .await
+                        {
+                            Ok(value) => value,
+                            Err(err) => {
+                                execution_error(
+                                    ctx,
+                                    err.to_string(),
+                                    independent_value.attribute_value_id(),
+                                )
+                                .await;
+
+                                dependency_graph.cycle_on_self(independent_value);
+                                spawned_ids.insert(independent_value);
+
+                                // Couldn't get the before value? skip!
+                                continue;
+                            }
+                        };
 
                         metric!(counter.dvu.function_execution = 1);
-
                         update_join_set.spawn(values_from_prototype_function_execution(
                             id,
                             parent_span,
                             ctx.clone(),
-                            attribute_value_id,
+                            independent_value,
                             before_value,
                             self.set_value_lock.clone(),
                             status_update,
                         ));
-                        task_id_to_av_id.insert(id, attribute_value_id);
-                        spawned_ids.insert(attribute_value_id);
+                        task_id_to_av_id.insert(id, independent_value);
+                        spawned_ids.insert(independent_value);
                     }
                 }
             }
 
             // Wait for a task to finish
             if let Some(join_result) = update_join_set.join_next().await {
-                let (task_id, execution_result, before_value) = join_result?;
+                let DependentProtoExecution {
+                    task_id,
+                    result: execution_result,
+                    before_value,
+                } = join_result?;
 
                 metric!(counter.dvu.function_execution = -1);
 
-                if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
+                if let Some(finished_value) = task_id_to_av_id.remove(&task_id) {
                     match execution_result {
-                        Ok((execution_values, func, input_attribute_value_ids)) => {
+                        Ok(proto_execution) => {
+                            let PrototypeExecution {
+                                func_run_value: execution_values,
+                                func,
+                                input_attribute_value_ids,
+                                value_id: executed_value_id,
+                            } = proto_execution;
+
                             // Lock the graph for writing inside this job. The
                             // lock will be released when this guard is dropped
                             // at the end of the scope.
@@ -487,72 +554,28 @@ impl DependentValuesUpdate {
 
                             let write_guard = self.set_value_lock.write().await;
 
-                            // Only set values if their functions are actually
-                            // "dependent". Other values may have been
-                            // introduced to the attribute value graph because
-                            // of child-parent prop dependencies, but these
-                            // values themselves do not need to change (they are
-                            // always Objects, Maps, or Arrays set by
-                            // setObject/setArray/setMap and are not updated in
-                            // the dependent value execution). If we forced
-                            // these container values to update here, we might
-                            // touch child properties unnecessarily.
-                            match AttributeValue::is_set_by_dependent_function(
+                            let remove_or_cycle = set_attribute_value_after_func_execution(
                                 ctx,
-                                finished_value_id,
+                                finished_value,
+                                is_on_head,
+                                before_value,
+                                execution_values,
+                                func.clone(),
+                                input_attribute_value_ids,
+                                executed_value_id,
+                                value_is_changed,
+                                after_value,
                             )
-                            .await
-                            {
-                                Ok(true) => match AttributeValue::set_values_from_func_run_value(
-                                    ctx,
-                                    finished_value_id,
-                                    execution_values,
-                                    func.clone(),
-                                )
-                                .await
-                                {
-                                    Ok(_) => {
-                                        // Remove the value, so that any values that depend on it will
-                                        // become independent values (once all other dependencies are removed)
-                                        dependency_graph.remove_value(finished_value_id);
+                            .await;
 
-                                        if value_is_changed {
-                                            // if we're not on head, and the value is different after processing,
-                                            // let's see if we should enqueue an update function
-                                            if !is_on_head {
-                                                Component::enqueue_update_action_if_applicable(
-                                                    ctx,
-                                                    finished_value_id,
-                                                )
-                                                .await?;
-                                            }
+                            drop(write_guard);
 
-                                            // Publish the audit log for the updated dependent value.
-                                            audit_log::write(
-                                                ctx,
-                                                finished_value_id,
-                                                input_attribute_value_ids,
-                                                func,
-                                                before_value,
-                                                after_value,
-                                            )
-                                            .await?;
-                                        }
-
-                                        drop(write_guard);
-                                    }
-                                    Err(err) => {
-                                        execution_error(ctx, err.to_string(), finished_value_id)
-                                            .await;
-                                        dependency_graph.cycle_on_self(finished_value_id);
-                                    }
-                                },
-                                Ok(false) => {
-                                    dependency_graph.remove_value(finished_value_id);
+                            match remove_or_cycle {
+                                RemoveOrCycle::RemoveButIgnore | RemoveOrCycle::RemoveAndLog(_) => {
+                                    dependency_graph.remove_value(finished_value)
                                 }
-                                Err(err) => {
-                                    execution_error(ctx, err.to_string(), finished_value_id).await;
-                                    dependency_graph.cycle_on_self(finished_value_id);
+                                RemoveOrCycle::CycleOnSelf => {
+                                    dependency_graph.cycle_on_self(finished_value)
                                 }
                             }
                         }
@@ -563,38 +586,43 @@ impl DependentValuesUpdate {
                             // the function for this value, nor will we execute anything in the
                             // dependency graph connected to this value
                             let read_guard = self.set_value_lock.read().await;
-                            execution_error(ctx, err.to_string(), finished_value_id).await;
+                            execution_error(
+                                ctx,
+                                err.to_string(),
+                                finished_value.attribute_value_id(),
+                            )
+                            .await;
                             drop(read_guard);
-                            dependency_graph.cycle_on_self(finished_value_id);
+                            dependency_graph.cycle_on_self(finished_value);
                         }
                     }
 
                     if let Some(status_update) = tracker
-                        .get_status_update(StatusMessageState::StatusFinished, finished_value_id)
+                        .get_status_update(StatusMessageState::StatusFinished, finished_value)
                     {
                         if let Err(err) = send_status_update(ctx, status_update).await {
-                            error!(si.error.message = ?err, "status update finished event send failed for AttributeValue {finished_value_id}");
+                            error!(si.error.message = ?err, "status update finished event send failed for AttributeValue {finished_value:?}");
                         }
                     }
                 }
             }
 
-            independent_value_ids = dependency_graph.independent_values().into_iter().collect();
+            independent_values = dependency_graph.independent_values().into_iter().collect();
         }
 
         let mut added_unfinished = false;
-        for value_id in &independent_value_ids {
-            if spawned_ids.contains(value_id) {
+        for value in &independent_values {
+            if spawned_ids.contains(value) {
                 DependentValueRoot::add_dependent_value_root(
                     ctx,
-                    DependentValueRoot::Finished(value_id.into()),
+                    DependentValueRoot::Finished(value.attribute_value_id().into()),
                 )
                 .await?;
             } else {
                 added_unfinished = true;
                 DependentValueRoot::add_dependent_value_root(
                     ctx,
-                    DependentValueRoot::Unfinished(value_id.into()),
+                    DependentValueRoot::Unfinished(value.attribute_value_id().into()),
                 )
                 .await?;
             }
@@ -607,7 +635,7 @@ impl DependentValuesUpdate {
         //
         // We also want to ensure that we don't add a set of only finished
         // values.
-        if independent_value_ids.is_empty() || !added_unfinished {
+        if independent_values.is_empty() || !added_unfinished {
             for status_update in tracker.finish_remaining() {
                 if let Err(err) = send_status_update(ctx, status_update).await {
                     error!(si.error.message = ?err, "status update finished event send for leftover component failed");
@@ -621,6 +649,188 @@ impl DependentValuesUpdate {
         ctx.commit().await?;
         Ok(JobCompletionState::Done)
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn set_attribute_value_after_func_execution(
+    ctx: &mut DalContext,
+    finished_value: DependentValue,
+    is_on_head: bool,
+    before_value: Option<serde_json::Value>,
+    execution_values: FuncRunValue,
+    func: Func,
+    input_attribute_value_ids: Vec<AttributeValueId>,
+    executed_value_id: AttributeValueId,
+    value_is_changed: bool,
+    after_value: Option<serde_json::Value>,
+) -> RemoveOrCycle {
+    let remove_or_cycle = match finished_value {
+        DependentValue::AttributeValue(_) => {
+            set_normal_attribute_value_after_func_execution(
+                ctx,
+                execution_values,
+                func.clone(),
+                executed_value_id,
+            )
+            .await
+        }
+        DependentValue::OverlayDestination { .. } => {
+            set_leaf_prototype_value_after_func_execution(
+                ctx,
+                execution_values,
+                func.clone(),
+                executed_value_id,
+            )
+            .await
+        }
+    };
+
+    if let RemoveOrCycle::RemoveAndLog(av_id) = &remove_or_cycle {
+        if value_is_changed {
+            // if we're not on head, and the value is different after
+            // processing, let's see if we should enqueue an update
+            // function. If either of these calls fail, keep going,
+            // failures here should not prevent finishing the DVU.
+            if !is_on_head {
+                if let Err(err) =
+                    Component::enqueue_update_action_if_applicable(ctx, executed_value_id).await
+                {
+                    execution_error(ctx, err.to_string(), executed_value_id).await;
+                }
+            }
+
+            // Publish the audit log for the updated dependent value.
+            if let Err(err) = audit_log::write(
+                ctx,
+                *av_id,
+                input_attribute_value_ids,
+                func,
+                before_value,
+                after_value,
+                matches!(finished_value, DependentValue::OverlayDestination { .. }),
+            )
+            .await
+            {
+                execution_error(ctx, err.to_string(), executed_value_id).await;
+            }
+        }
+    }
+
+    remove_or_cycle
+}
+
+async fn set_normal_attribute_value_after_func_execution(
+    ctx: &mut DalContext,
+    execution_values: FuncRunValue,
+    func: Func,
+    executed_value_id: AttributeValueId,
+) -> RemoveOrCycle {
+    match AttributeValue::is_set_by_dependent_function(ctx, executed_value_id).await {
+        Ok(true) => match AttributeValue::set_values_from_func_run_value(
+            ctx,
+            executed_value_id,
+            execution_values,
+            func,
+        )
+        .await
+        {
+            Ok(_) => RemoveOrCycle::RemoveAndLog(executed_value_id),
+            Err(err) => {
+                execution_error(ctx, err.to_string(), executed_value_id).await;
+                RemoveOrCycle::CycleOnSelf
+            }
+        },
+        Ok(false) => RemoveOrCycle::RemoveButIgnore,
+        Err(err) => {
+            execution_error(ctx, err.to_string(), executed_value_id).await;
+            RemoveOrCycle::CycleOnSelf
+        }
+    }
+}
+
+async fn set_leaf_prototype_value_after_func_execution(
+    ctx: &mut DalContext,
+    execution_values: FuncRunValue,
+    func: Func,
+    executed_value_id: AttributeValueId,
+) -> RemoveOrCycle {
+    let leaf_result_av_id =
+        match AttributeValue::map_child_opt(ctx, executed_value_id, &func.name).await {
+            Ok(None) => match insert_map_child(ctx, executed_value_id, func.name.clone()).await {
+                Ok(map_child_av_id) => map_child_av_id,
+                Err(err) => {
+                    execution_error(ctx, err.to_string(), executed_value_id).await;
+                    return RemoveOrCycle::CycleOnSelf;
+                }
+            },
+            Ok(Some(map_child_av_id)) => map_child_av_id,
+            Err(err) => {
+                execution_error(ctx, err.to_string(), executed_value_id).await;
+                return RemoveOrCycle::CycleOnSelf;
+            }
+        };
+
+    if let Err(err) =
+        set_leaf_values_and_ensure_prototype(ctx, execution_values, leaf_result_av_id, func).await
+    {
+        execution_error(ctx, err.to_string(), executed_value_id).await;
+        return RemoveOrCycle::CycleOnSelf;
+    }
+
+    RemoveOrCycle::RemoveAndLog(leaf_result_av_id)
+}
+
+async fn insert_map_child(
+    ctx: &DalContext,
+    map_parent_id: AttributeValueId,
+    key: String,
+) -> DependentValueUpdateResult<AttributeValueId> {
+    let element_prop_id = AttributeValue::element_prop_id_for_id(ctx, map_parent_id).await?;
+
+    let new_attribute_value =
+        AttributeValue::new(ctx, element_prop_id, None, Some(map_parent_id), Some(key)).await?;
+
+    Ok(new_attribute_value.id())
+}
+
+async fn set_leaf_values_and_ensure_prototype(
+    ctx: &DalContext,
+    execution_values: FuncRunValue,
+    map_child_value_id: AttributeValueId,
+    func: Func,
+) -> DependentValueUpdateResult<()> {
+    let new_proto_required = match AttributeValue::component_prototype_id(ctx, map_child_value_id)
+        .await
+        .map_err(Box::new)?
+    {
+        Some(existing_prototype_id) => {
+            let existing_func_id = AttributePrototype::func_id(ctx, existing_prototype_id)
+                .await
+                .map_err(Box::new)?;
+            func.id != existing_func_id
+        }
+        None => true,
+    };
+
+    if new_proto_required {
+        let new_prototype = AttributePrototype::new(ctx, func.id)
+            .await
+            .map_err(Box::new)?;
+        AttributeValue::set_component_prototype_id(
+            ctx,
+            map_child_value_id,
+            new_prototype.id,
+            func.name.clone().into(),
+        )
+        .await
+        .map_err(Box::new)?;
+    }
+
+    AttributeValue::set_values_from_func_run_value(ctx, map_child_value_id, execution_values, func)
+        .await
+        .map_err(Box::new)?;
+
+    Ok(())
 }
 
 async fn execution_error(
@@ -658,11 +868,12 @@ async fn execution_error_detail(
     ))
 }
 
-type PrototypeFunctionExecutionResult = (
-    Ulid,
-    DependentValueUpdateResult<(FuncRunValue, Func, Vec<AttributeValueId>)>,
-    Option<serde_json::Value>,
-);
+#[derive(Debug)]
+struct DependentProtoExecution {
+    task_id: Ulid,
+    result: DependentValueUpdateResult<PrototypeExecution>,
+    before_value: Option<serde_json::Value>,
+}
 
 /// Wrapper around `AttributeValue.values_from_prototype_function_execution(&ctx)` to get it to
 /// play more nicely with being spawned into a `JoinSet`.
@@ -672,30 +883,55 @@ type PrototypeFunctionExecutionResult = (
     parent = &parent_span,
     skip_all,
     fields(
-        si.attribute_value.id = %attribute_value_id,
+        si.attribute_value.id = %value.attribute_value_id(),
     ),
 )]
 async fn values_from_prototype_function_execution(
     task_id: Ulid,
     parent_span: Span,
     ctx: DalContext,
-    attribute_value_id: AttributeValueId,
+    value: DependentValue,
     before_value: Option<serde_json::Value>,
     set_value_lock: Arc<RwLock<()>>,
     status_update: Option<StatusUpdate>,
-) -> PrototypeFunctionExecutionResult {
+) -> DependentProtoExecution {
     if let Some(status_update) = status_update {
         if let Err(err) = send_status_update(&ctx, status_update).await {
-            return (task_id, Err(err), before_value.clone());
+            return DependentProtoExecution {
+                task_id,
+                result: Err(err),
+                before_value,
+            };
         }
     }
 
-    let result =
-        AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock)
-            .await
-            .map_err(Into::into);
+    let result = match value {
+        DependentValue::AttributeValue(attribute_value_id) => {
+            AttributeValue::execute_prototype_function(&ctx, attribute_value_id, set_value_lock)
+                .await
+                .map_err(Into::into)
+        }
+        DependentValue::OverlayDestination {
+            leaf_prototype_id,
+            destination_map_id,
+            root_attribute_value_id,
+            ..
+        } => LeafPrototype::execute(
+            &ctx,
+            leaf_prototype_id,
+            destination_map_id,
+            root_attribute_value_id,
+            set_value_lock,
+        )
+        .await
+        .map_err(Into::into),
+    };
 
-    (task_id, result, before_value)
+    DependentProtoExecution {
+        task_id,
+        result,
+        before_value,
+    }
 }
 
 async fn send_status_update(
@@ -730,6 +966,53 @@ fn is_value_changed(
     } else {
         before_value != unprocessed_execution_value
     }
+}
+
+async fn get_before_value(
+    ctx: &DalContext,
+    value: DependentValue,
+    set_value_lock: Arc<RwLock<()>>,
+) -> DependentValueUpdateResult<Option<serde_json::Value>> {
+    let guard = set_value_lock.read().await;
+
+    let before_value = match value {
+        DependentValue::AttributeValue(attribute_value_id) => {
+            AttributeValue::get_by_id(ctx, attribute_value_id)
+                .await
+                .map_err(Box::new)?
+                .unprocessed_value(ctx)
+                .await
+                .map_err(Box::new)?
+        }
+        DependentValue::OverlayDestination {
+            leaf_prototype_id,
+            destination_map_id,
+            ..
+        } => {
+            let func_id = LeafPrototype::func_id(ctx, leaf_prototype_id)
+                .await
+                .map_err(Box::new)?;
+
+            let func = Func::get_by_id(ctx, func_id).await.map_err(Box::new)?;
+
+            match AttributeValue::map_child_opt(ctx, destination_map_id, &func.name)
+                .await
+                .map_err(Box::new)?
+            {
+                Some(value_id) => AttributeValue::get_by_id(ctx, value_id)
+                    .await
+                    .map_err(Box::new)?
+                    .unprocessed_value(ctx)
+                    .await
+                    .map_err(Box::new)?,
+                None => None,
+            }
+        }
+    };
+
+    drop(guard);
+
+    Ok(before_value)
 }
 
 pub mod audit_log {
@@ -824,6 +1107,7 @@ pub mod audit_log {
         func: Func,
         before_value: Option<serde_json::Value>,
         after_value: Option<serde_json::Value>,
+        is_leaf_overlay: bool,
     ) -> Result<(), DependentValueUpdateAuditLogError> {
         // Metadata for who "owns" the attribute value.
         let component_id = AttributeValue::component_id(ctx, finished_value_id).await?;
@@ -904,6 +1188,7 @@ pub mod audit_log {
                             .to_string(),
                         before_value,
                         after_value,
+                        is_leaf_overlay,
                     },
                     prop.name,
                 )

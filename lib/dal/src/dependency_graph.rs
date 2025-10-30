@@ -1,24 +1,20 @@
 use std::collections::{
-    HashMap,
-    HashSet,
+    BTreeMap,
+    BTreeSet,
     VecDeque,
-    hash_map::Entry,
+    btree_map::Entry,
 };
 
 use itertools::Itertools;
 use petgraph::prelude::*;
 
 #[derive(Debug, Clone)]
-pub struct DependencyGraph<
-    T: Copy + std::cmp::Ord + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash,
-> {
+pub struct DependencyGraph<T: Copy + std::cmp::Ord + std::cmp::Eq + std::cmp::PartialEq> {
     graph: StableDiGraph<T, ()>,
-    id_to_index_map: HashMap<T, NodeIndex>,
+    id_to_index_map: BTreeMap<T, NodeIndex>,
 }
 
-impl<T: Copy + std::cmp::Eq + std::cmp::Ord + std::cmp::PartialEq + std::hash::Hash> Default
-    for DependencyGraph<T>
-{
+impl<T: Copy + std::cmp::Eq + std::cmp::Ord + std::cmp::PartialEq> Default for DependencyGraph<T> {
     fn default() -> Self {
         Self {
             graph: Default::default(),
@@ -27,12 +23,10 @@ impl<T: Copy + std::cmp::Eq + std::cmp::Ord + std::cmp::PartialEq + std::hash::H
     }
 }
 
-impl<T: Copy + std::cmp::Ord + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash>
-    DependencyGraph<T>
-{
+impl<T: Copy + std::cmp::Ord + std::cmp::Eq + std::cmp::PartialEq> DependencyGraph<T> {
     pub fn new() -> Self {
         Self {
-            id_to_index_map: HashMap::new(),
+            id_to_index_map: BTreeMap::new(),
             graph: StableGraph::new(),
         }
     }
@@ -73,7 +67,7 @@ impl<T: Copy + std::cmp::Ord + std::cmp::Eq + std::cmp::PartialEq + std::hash::H
 
     pub fn all_parents_of(&self, id: T) -> Vec<T> {
         let mut result = vec![];
-        let mut seen_list = HashSet::new();
+        let mut seen_list = BTreeSet::new();
         let mut work_queue = VecDeque::from([id]);
 
         while let Some(current_id) = work_queue.pop_front() {
@@ -139,11 +133,11 @@ impl<T: Copy + std::cmp::Ord + std::cmp::Eq + std::cmp::PartialEq + std::hash::H
         &self.graph
     }
 
-    pub fn id_to_index_map(&self) -> &HashMap<T, NodeIndex> {
+    pub fn id_to_index_map(&self) -> &BTreeMap<T, NodeIndex> {
         &self.id_to_index_map
     }
 
-    pub fn all_ids(&self) -> Vec<T> {
-        self.graph.node_weights().copied().collect()
+    pub fn all_ids(&self) -> impl Iterator<Item = T> {
+        self.graph.node_weights().copied()
     }
 }

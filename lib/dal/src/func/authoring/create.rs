@@ -22,22 +22,24 @@ use crate::{
         ActionKind,
         ActionPrototype,
     },
-    func::binding::{
-        AttributeArgumentBinding,
-        AttributeFuncDestination,
-        EventualParent,
-        action::ActionBinding,
-        attribute::AttributeBinding,
-        authentication::AuthBinding,
-        leaf::LeafBinding,
-        management::ManagementBinding,
+    func::{
+        binding::{
+            AttributeArgumentBinding,
+            AttributeFuncDestination,
+            EventualParent,
+            action::ActionBinding,
+            attribute::AttributeBinding,
+            authentication::AuthBinding,
+            leaf::LeafBinding,
+            management::ManagementBinding,
+        },
+        leaf::{
+            LeafInputLocation,
+            LeafKind,
+        },
     },
     generate_name,
     management::prototype::ManagementPrototypeParent,
-    schema::variant::leaves::{
-        LeafInputLocation,
-        LeafKind,
-    },
 };
 
 static DEFAULT_CODE_HANDLER: &str = "main";

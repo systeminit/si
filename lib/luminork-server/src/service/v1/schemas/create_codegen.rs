@@ -8,10 +8,10 @@ use dal::{
     func::{
         authoring::FuncAuthoringClient,
         binding::EventualParent,
-    },
-    schema::variant::leaves::{
-        LeafInputLocation,
-        LeafKind,
+        leaf::{
+            LeafInputLocation,
+            LeafKind,
+        },
     },
 };
 use sdf_extract::{

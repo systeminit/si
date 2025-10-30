@@ -163,6 +163,7 @@ impl ContentNodeWeight {
                     "Content".to_string(),
                 ));
             }
+            ContentAddress::AttributePaths(_) => ContentAddress::AttributePaths(content_hash),
         };
 
         self.content_address = new_address;

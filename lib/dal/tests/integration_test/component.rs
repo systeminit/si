@@ -6,7 +6,10 @@ use dal::{
     Schema,
     SchemaVariant,
     Ulid,
-    attribute::value::DependentValueGraph,
+    attribute::value::{
+        DependentValueGraph,
+        dependent_value_graph::DependentValue,
+    },
     diagram::{
         Diagram,
         view::View,
@@ -289,14 +292,18 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
     .await?;
 
     assert!(
-        update_graph.contains_value(naming_and_necessity_value_id),
+        update_graph.contains_value(DependentValue::AttributeValue(
+            naming_and_necessity_value_id
+        )),
         "update graph has the value we aren't setting but which depends on the value we are setting"
     );
 
     assert!(
         update_graph
-            .direct_dependencies_of(naming_and_necessity_value_id)
-            .contains(&rigid_designator_value_id),
+            .direct_dependencies_of(DependentValue::AttributeValue(
+                naming_and_necessity_value_id
+            ))
+            .contains(&DependentValue::AttributeValue(rigid_designator_value_id)),
         "update graph declares that `naming_and_necessity` value depends on `rigid_designator` value"
     );
 
@@ -436,7 +443,9 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) -> R
     .await?;
 
     assert!(
-        update_graph.contains_value(naming_and_necessity_value_id),
+        update_graph.contains_value(DependentValue::AttributeValue(
+            naming_and_necessity_value_id
+        )),
         "update graph has the value we aren't setting but which depends on the value we are setting"
     );
 
