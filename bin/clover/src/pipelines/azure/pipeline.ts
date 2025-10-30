@@ -3,7 +3,6 @@ import { PipelineOptions } from "../types.ts";
 import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { getExistingSpecs } from "../../specUpdates.ts";
 import { generateIntrinsicFuncs } from "../generic/generateIntrinsicFuncs.ts";
-// import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggestionsAcrossAssets.ts";
 import { reorderProps } from "../generic/reorderProps.ts";
 import { updateSchemaIdsForExistingSpecs } from "../generic/updateSchemaIdsForExistingSpecs.ts";
 import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
@@ -15,6 +14,7 @@ import {
   readAzureSwaggerSpec,
 } from "./schema.ts";
 import { parseAzureSpec } from "./spec.ts";
+import { createSuggestionsForIds } from "./pipeline-steps/createSuggestionsAcrossAssets.ts";
 
 export async function generateAzureSpecs(
   options: PipelineOptions,
@@ -28,7 +28,7 @@ export async function generateAzureSpecs(
   specs = addDefaultProps(specs);
   specs = generateDefaultFuncsFromConfig(specs, azureConfig);
   specs = generateIntrinsicFuncs(specs);
-  // specs = createSuggestionsForPrimaryIdentifiers(specs);
+  specs = createSuggestionsForIds(specs);
 
   // Apply provider-specific overrides
   specs = applyAssetOverrides(specs, azureConfig);
