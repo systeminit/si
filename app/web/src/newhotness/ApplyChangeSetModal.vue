@@ -87,6 +87,7 @@
             loadingText="Applying Changes"
             :loading="applyInFlight"
             :disabled="!allowedToApplyWithApprovalsDisabled"
+            disabledWhileLoading
             pill="Cmd + Enter"
             @click="debouncedApply"
           />
