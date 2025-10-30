@@ -73,6 +73,7 @@
                 }
               : null
           "
+          :data-readonly="readOnly"
           :class="
             clsx(
               'w-full h-lg p-xs ml-auto text-sm border font-mono flex flex-row items-center gap-3xs',
@@ -1733,12 +1734,23 @@ const selectedConnection = computed(
     filteredConnections.value[selectedIndex.value - 1 - filteredOptions.length],
 );
 
-const readOnly = computed(
-  () =>
-    !!(props.prop?.createOnly && props.component.hasResource) ||
+const readOnly = computed(() => {
+  // Allow editing create-only properties if the component doesn't exist on HEAD yet
+  const componentExistsOnHead =
+    "diffStatus" in props.component
+      ? props.component.diffStatus !== "Added"
+      : true; // If no diffStatus, assume it exists on HEAD (conservative approach)
+
+  return (
+    !!(
+      props.prop?.createOnly &&
+      props.component.hasResource &&
+      componentExistsOnHead
+    ) ||
     props.component.toDelete ||
-    props.forceReadOnly,
-);
+    props.forceReadOnly
+  );
+});
 
 const inputHtmlTag = computed(() => {
   if (
