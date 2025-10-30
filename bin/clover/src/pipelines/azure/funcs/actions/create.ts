@@ -16,47 +16,16 @@ async function main(component: Input): Promise<Output> {
   }
 
   const domain = component.properties.domain;
-  const subscriptionId = domain?.subscriptionId;
-  const resourceGroup = domain?.resourceGroup;
-  const resourceName = domain?.name;
-  const resourceType = _.get(domain, ["extra", "AzureResourceType"], "");
   const apiVersion = _.get(domain, ["extra", "apiVersion"], "2023-01-01");
 
-  if (!subscriptionId) {
-    return {
-      status: "error",
-      message: "subscriptionId is required",
-    };
-  }
-
-  if (!resourceGroup) {
-    return {
-      status: "error",
-      message: "resourceGroup is required",
-    };
-  }
-
-  if (!resourceName) {
-    return {
-      status: "error",
-      message: "name is required",
-    };
-  }
-
-  if (!resourceType) {
-    return {
-      status: "error",
-      message: "AzureResourceType not found in domain.extra",
-    };
-  }
-
-  const resourceId =
-    `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/${resourceType}/${resourceName}`;
+  const resourceId = createResourceId(domain);
   const token = await getAzureToken(tenantId, clientId, clientSecret);
   const url =
     `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
 
   const createPayload = cleanPayload(domain);
+
+  console.log(`PUT ${url} with payload:\n${JSON.stringify(createPayload, null, 2)}`);
 
   const response = await fetch(url, {
     method: "PUT",
@@ -95,9 +64,12 @@ function cleanPayload(domain) {
   const payload = _.cloneDeep(domain);
 
   // Remove metadata fields that are used for URL construction only
-  delete payload.subscriptionId;
-  delete payload.resourceGroup;
-  delete payload.name;
+  if (domain.extra?.resourceId) {
+    for (const key of domain.extra.resourceId.matchAll(/{([^}]+)}/g)) {
+      const paramName = key[1];
+      delete payload[paramName];
+    }
+  }
   delete payload.extra;
 
   // Merge discriminator subtypes into parent
@@ -186,6 +158,23 @@ function cleanPayload(domain) {
   }
 
   return extLib.removeEmpty(payload);
+}
+
+// Pulls resource ID from the domain
+function createResourceId(domain: Input["properties"]["domain"]): string {
+  const path = domain.extra?.resourceId;
+  if (!path) {
+    throw new Error("domain.extra.resourcePath is empty");
+  }
+  // Replace each instance of {paramName} with the corresponding domain property
+  return path.replace(/{([^}]+)}/g, (_, paramName) => {
+    const value = domain[paramName];
+    if (!value) {
+      throw new Error(`Domain property "${paramName}" is required`);
+    }
+    delete domain[paramName];
+    return value;
+  });
 }
 
 async function getAzureToken(

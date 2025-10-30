@@ -41,14 +41,27 @@ export type AzureOpenApiOperation = Extend<
   OpenAPIV3_1.OperationObject,
   AzureOpenApiOperationExt
 >;
+interface AzureOpenApiOperationExt {
+  parameters?: AzureOpenApiParameter[];
+  responses?: Record<string, AzureOpenApiResponse>;
+  "x-ms-pageable"?: {
+    nextLinkName: string;
+  }
+}
 export type AzureOpenApiResponse = Extend<
   OpenAPIV3_1.ResponseObject,
-  HasAzureOpenApiSchema
+  {
+    schema?: NormalizedAzureSchema
+  }
 >;
 export type AzureOpenApiParameter = Extend<
   OpenAPIV3_1.ParameterObject,
-  HasAzureOpenApiSchema
+  {
+    type: string;
+    schema?: NormalizedAzureSchema;
+  }
 >;
+
 export type NormalizedAzureSchema = Extend<
   JSONSchema.Interface,
   {
@@ -63,25 +76,11 @@ export type NormalizedAzureSchema = Extend<
   }
 >;
 
-/// Adds "schema" to responses in OpenAPI.Operation
-interface AzureOpenApiOperationExt {
-  parameters?: AzureOpenApiParameter[];
-  responses?: Record<string, AzureOpenApiResponse>;
-  "x-ms-pageable"?: {
-    nextLinkName: string;
-  };
-}
-
-interface HasAzureOpenApiSchema {
-  schema?: NormalizedAzureSchema;
-}
-
-export type PropertySet = Set<string>;
-
 export interface AzureSchema extends SuperSchema {
   requiredProperties: Set<string>;
-  apiVersion?: string;
+  apiVersion: string;
   discriminators?: Record<string, Record<string, string>>;
+  resourceId: string,
 }
 
 export type AzureProperty = CfProperty & AzurePropExtensions;
@@ -155,7 +154,6 @@ const EXCLUDE_SPECS = [
   "/azure-rest-api-specs/specification/machinelearningservices/resource-manager/Microsoft.MachineLearningServices/stable/2025-09-01/machineLearningServices.json",
   "/azure-rest-api-specs/specification/managementgroups/resource-manager/Microsoft.Management/ManagementGroups/stable/2023-04-01/management.json",
   "/azure-rest-api-specs/specification/securityinsights/resource-manager/Microsoft.SecurityInsights/stable/2025-09-01/Metadata.json",
-  "/azure-rest-api-specs/specification/workloads/resource-manager/Microsoft.Workloads/stable/2023-04-01/monitors.json",
   "/azure-rest-api-specs/specification/securityinsights/resource-manager/Microsoft.SecurityInsights/stable/2025-09-01/ContentTemplates.json",
   "/azure-rest-api-specs/specification/securityinsights/resource-manager/Microsoft.SecurityInsights/stable/2025-09-01/ContentPackages.json",
   // Missing example file reference
@@ -166,6 +164,7 @@ const EXCLUDE_SPECS = [
   "/azure-rest-api-specs/specification/servicefabricmanagedclusters",
   // Unsupported time format
   "/azure-rest-api-specs/specification/computeschedule/resource-manager/Microsoft.ComputeSchedule/preview/2025-04-15-preview/computeschedule.json",
+  // "/azure-rest-api-specs/specification/workloads/resource-manager/Microsoft.Workloads/stable/2023-04-01/monitors.json",
 ];
 
 interface SpecMetadata {
@@ -265,10 +264,9 @@ async function extractResourceTypesFromSpec(
     if (!pathInfo) continue;
 
     // only include Microsoft providers
-    if (pathInfo.resourceProvider.toLowerCase().startsWith("microsoft.")) {
-      resourceTypes.add(
-        `${pathInfo.resourceProvider}/${pathInfo.resourceType}`,
-      );
+    // TODO should not need to do this, we check it later
+    if (pathInfo.resourceType.toLowerCase().startsWith("microsoft.")) {
+      resourceTypes.add(pathInfo.resourceType);
     }
   }
 

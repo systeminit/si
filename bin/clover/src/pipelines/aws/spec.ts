@@ -118,11 +118,25 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
   );
 }
 
-export function parseSchema(rawSchema: unknown): ExpandedPkgSpec[] {
-  const cfDb = rawSchema as CfDb;
+// List of schemas we ignore. If you add something here, add a reason: eventually we should
+// support all schemas.
+const IGNORE_SCHEMAS = new Set([
+  // /KeySchema: oneOf array without title
+  "AWS::DynamoDB::Table",
+  // Unsupported string regexp pattern
+  "AWS::KinesisAnalyticsV2::Application",
+  "AWS::SMSVOICE::PhoneNumber",
+  "AWS::SMSVOICE::Pool",
+  // Unsupported number format: int32
+  "AWS::MediaConnect::Flow",
+]);
+
+export function parseSchema(cfDb: CfDb): ExpandedPkgSpec[] {
   const specs: ExpandedPkgSpec[] = [];
 
   for (const cfSchema of Object.values(cfDb)) {
+    if (IGNORE_SCHEMAS.has(cfSchema.typeName)) continue;
+
     const [metaCategory, category, name] = cfSchema.typeName.split("::");
 
     if (!["AWS", "Alexa"].includes(metaCategory) || !category || !name) {
@@ -155,7 +169,7 @@ export function parseSchema(rawSchema: unknown): ExpandedPkgSpec[] {
       specs.push(spec);
     } catch (error) {
       console.log(`Error processing ${cfSchema.typeName}: ${error}`);
-      continue;
+      throw error;
     }
   }
 

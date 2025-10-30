@@ -8,6 +8,7 @@
  * @module cfDb
  */
 
+import util from "node:util";
 import type {
   JSONSchema,
 } from "./draft_07.ts";
@@ -134,7 +135,7 @@ function normalizeAnyOfAndOneOfTypes(
 
     for (let ofMember of prop.oneOf) {
       if (!mergedProp.properties) {
-        throw new Error("unexpected oneOf");
+        throw new Error(`unexpected oneOf: ${util.inspect(prop, { depth: 3 })}`);
       }
 
       ofMember = normalizePropertyType(ofMember);
@@ -145,7 +146,7 @@ function normalizeAnyOfAndOneOfTypes(
         }
       } else if (ofMember.type === "array" && ofMember.items) {
         const title = ofMember.title ?? prop.title;
-        if (!title) { throw new Error("oneOf array without title"); }
+        if (!title) { throw new Error(`oneOf array without title: ${util.inspect(prop, { depth: 3 })}`); }
 
         // we don't support this yet; throw an exception if it happens so we can decide
         if (Array.isArray(ofMember.items)) throw new Error("unexpected array as item type");
@@ -166,9 +167,8 @@ function normalizeAnyOfAndOneOfTypes(
           type: "string",
         }
       } else {
-        console.log(ofMember);
         throw new Error(
-          `attempted to process oneOf as not an object or array: ${ofMember}`,
+          `attempted to process oneOf as not an object or array: ${util.inspect(prop, { depth: 3 })}`,
         );
       }
     }
@@ -195,8 +195,7 @@ function normalizeAnyOfAndOneOfTypes(
       isObject = true;
 
       if (!ofMember.title) {
-        console.log(prop);
-        throw new Error("anyOf of objects without title");
+        throw new Error(`anyOf of objects without title: ${util.inspect(prop, { depth: 3 })}`);
       }
 
       if (ofMember.properties) {
@@ -209,8 +208,7 @@ function normalizeAnyOfAndOneOfTypes(
         isObject = true;
 
         if (!ofMember.title) {
-          console.log(prop);
-          throw new Error("anyOf of objects without title");
+          throw new Error(`anyOf of objects without title: ${util.inspect(prop, { depth: 3 })}`);
         }
 
         properties[ofMember.title] = ofMember;
