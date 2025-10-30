@@ -9,6 +9,7 @@ use dal::{
     ChangeSetId,
     Component,
     ComponentId,
+    DalContext,
     Func,
     Schema,
     SchemaId,
@@ -36,6 +37,7 @@ use si_frontend_mv_types::{
     schema_variant::SchemaVariant as SchemaVariantMv,
 };
 use si_frontend_types::SchemaVariant as FrontendVariant;
+use telemetry::prelude::*;
 
 use super::{
     ViewError,
@@ -109,21 +111,8 @@ pub async fn create_component(
             // since this module might have just been installed, or
             // installed by another user
             let variant_id = Schema::get_or_install_default_variant(&ctx, schema_id).await?;
-            let variant = SchemaVariant::get_by_id(&ctx, variant_id).await?;
-
-            let front_end_variant = variant.into_frontend_type(&ctx, schema_id).await?;
-            WsEvent::module_imported(&ctx, vec![front_end_variant.clone()])
-                .await?
-                .publish_on_commit(&ctx)
-                .await?;
-            for func_id in front_end_variant.func_ids.iter() {
-                let func = Func::get_by_id(&ctx, *func_id).await?;
-                let front_end_func = func.into_frontend_type(&ctx).await?;
-                WsEvent::func_updated(&ctx, front_end_func, None)
-                    .await?
-                    .publish_on_commit(&ctx)
-                    .await?;
-            }
+            let front_end_variant =
+                send_ws_events_for_installed_module(&ctx, schema_id, variant_id).await?;
 
             (variant_id, Some(front_end_variant))
         }
@@ -215,4 +204,33 @@ pub async fn create_component(
             installed_variant,
         },
     ))
+}
+
+#[instrument(
+    name = "component.new.send_ws_events_for_installed_modules",
+    level = "info",
+    skip(ctx)
+)]
+async fn send_ws_events_for_installed_module(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+    variant_id: SchemaVariantId,
+) -> ViewResult<si_frontend_types::SchemaVariant> {
+    let variant = SchemaVariant::get_by_id(ctx, variant_id).await?;
+    let front_end_variant = variant.into_frontend_type(ctx, schema_id).await?;
+    WsEvent::module_imported(ctx, vec![front_end_variant.clone()])
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
+
+    for func_id in front_end_variant.func_ids.iter() {
+        let func = Func::get_by_id(ctx, *func_id).await?;
+        let front_end_func = func.into_frontend_type(ctx).await?;
+        WsEvent::func_updated(ctx, front_end_func, None)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+    }
+
+    Ok(front_end_variant)
 }
