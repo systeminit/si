@@ -21,6 +21,7 @@ import { callWhoami } from "./command/whoami.ts";
 import { callProjectInit } from "./command/project/init.ts";
 import { callRemoteSchemaPull } from "./command/remote/schema/pull.ts";
 import { callSchemaActionGenerate } from "./command/schema/action/generate.ts";
+import { callSchemaAuthGenerate } from "./command/schema/authentication/generate.ts";
 import { callSchemaCodegenGenerate } from "./command/schema/codegen/generate.ts";
 import { callSchemaManagementGenerate } from "./command/schema/management/generate.ts";
 import { callSchemaQualificationGenerate } from "./command/schema/qualification/generate.ts";
@@ -187,6 +188,7 @@ function buildSchemaCommand() {
       this.showHelp();
     })
     .command("action", buildSchemaActionCommand())
+    .command("authentication", buildSchemaAuthenticationCommand())
     .command("codegen", buildSchemaCodegenCommand())
     .command("management", buildSchemaManagementCommand())
     .command("qualification", buildSchemaQualificationCommand())
@@ -366,6 +368,43 @@ function buildSchemaActionCommand() {
             project,
             finalSchemaName,
             finalActionName,
+          );
+        }),
+    );
+}
+
+/**
+ * Builds the schema authentication subcommands.
+ *
+ * @returns A SubCommand configured for authentication operations
+ * @internal
+ */
+function buildSchemaAuthenticationCommand() {
+  return createSubCommand()
+    .description("Generates authentication functions for schemas")
+    .action(function () {
+      this.showHelp();
+    })
+    .command(
+      "generate",
+      createSubCommand()
+        .description(
+          "Generates authentication functions for credential validation",
+        )
+        .arguments("[SCHEMA_NAME:string] [AUTH_NAME:string]")
+        .action(async ({ root }, schemaName, authName) => {
+          const project = createProject(root);
+          const finalSchemaName = await prompt.schemaNameFromDirNames(
+            schemaName,
+            project,
+          );
+          const finalAuthName = await prompt.authName(authName, project);
+
+          await callSchemaAuthGenerate(
+            Context.instance(),
+            project,
+            finalSchemaName,
+            finalAuthName,
           );
         }),
     );
