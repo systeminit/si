@@ -434,7 +434,7 @@
             v-if="!isSecret"
             :class="
               clsx(
-                'flex flex-row items-center border border-transparent',
+                'flex flex-row gap-sm items-center border border-transparent',
                 'px-xs py-2xs h-[30px]',
                 // Don't show cursor pointer or hover effects for connected arrays/maps
                 (props.isArray || props.isMap) && isSetByConnection
@@ -458,7 +458,7 @@
             <TruncateWithTooltip
               :class="
                 clsx(
-                  'grow font-mono',
+                  'flex-1 min-w-0 max-w-fit font-mono',
                   !field.state.value &&
                     !isArray && [
                       'italic',
@@ -487,11 +487,40 @@
                 clsx(
                   'text-xs flex-none',
                   themeClasses('text-neutral-900', 'text-neutral-200'),
+                  !value && 'ml-auto',
                 )
               "
             >
               <TextPill variant="key2">{{ selectKeyString }}</TextPill>
               to select
+            </div>
+            <div
+              v-if="value"
+              class="ml-auto pl-sm flex flex-row items-end gap-xs flex-1 min-w-0 max-w-fit"
+            >
+              <span
+                :class="
+                  clsx(
+                    'font-bold whitespace-nowrap flex-none',
+                    themeClasses('text-neutral-600', 'text-neutral-400'),
+                  )
+                "
+              >
+                Previous value:
+              </span>
+              <TruncateWithTooltip
+                :class="
+                  clsx(
+                    'flex-1 font-mono',
+                    !value &&
+                      !isArray && [
+                        'italic',
+                        themeClasses('text-neutral-600', 'text-neutral-400'),
+                      ],
+                  )
+                "
+                >{{ value }}
+              </TruncateWithTooltip>
             </div>
           </div>
 
@@ -1271,8 +1300,8 @@ const resetEverything = () => {
 const openInput = () => {
   if (readOnly.value || inputOpen.value) return;
 
+  emit("selected");
   if (props.disableInputWindow) {
-    emit("selected");
     return;
   }
 

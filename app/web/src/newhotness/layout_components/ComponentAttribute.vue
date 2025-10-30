@@ -17,6 +17,7 @@
     :isDefaultSource="false"
     :forceReadOnly="false"
     :hasSocketConnection="hasSocketConnections"
+    @selected="focused"
     @close="closeSubscriptionInput"
     @save="(...args) => emit('save', ...args)"
     @handleTab="handleTab"
@@ -210,6 +211,7 @@
             "
             @add="(...args) => emit('add', ...args)"
             @set-key="(...args) => emit('setKey', ...args)"
+            @focused="(path) => focused(path)"
           />
         </ul>
         <div
@@ -323,6 +325,7 @@
         :forceReadOnly="props.forceReadOnly || parentHasExternalSources"
         :hasSocketConnection="hasSocketConnections"
         :isDefaultSource="attributeTree.attributeValue.isDefaultSource"
+        @selected="focused"
         @save="(...args) => emit('save', ...args)"
         @delete="(...args) => emit('delete', ...args)"
         @set-default-subscription-source="
@@ -554,6 +557,11 @@ const possibleConnectionsQuery = useQuery({
   },
 });
 
+const focused = (path?: string) => {
+  if (!path) path = props.attributeTree.attributeValue.path;
+  emit("focused", path);
+};
+
 const createSubscription = (event: Event) => {
   // Prevent any event propagation that might close the input
   event.stopPropagation();
@@ -565,6 +573,7 @@ const createSubscription = (event: Event) => {
   nextTick(() => {
     setTimeout(() => {
       subscriptionInputRef.value?.openInput();
+      focused();
     }, 50);
   });
 };
@@ -627,6 +636,7 @@ const emit = defineEmits<{
     key: string,
     value: NewChildValue,
   ): void;
+  (e: "focused", path: string): void;
 }>();
 
 const showingChildren = computed(

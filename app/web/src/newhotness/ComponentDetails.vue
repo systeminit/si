@@ -263,6 +263,7 @@
                 ? specialCaseManagementFuncRun
                 : undefined
             "
+            @focused="(path) => focused(path)"
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem
@@ -335,7 +336,7 @@
             :attributeTree="attributeTree"
           />
         </CollapsingFlexItem>
-        <CollapsingFlexItem expandable>
+        <CollapsingFlexItem ref="connectionsFlex" expandable>
           <template #header
             ><span class="text-sm">Subscriptions</span></template
           >
@@ -348,6 +349,7 @@
           </template>
           <ConnectionsPanel
             v-if="componentConnections && component"
+            ref="connectionsPanel"
             :component="component"
             :connections="componentConnections ?? undefined"
           />
@@ -458,7 +460,16 @@ import {
   TruncateWithTooltip,
   NewButton,
 } from "@si/vue-lib/design-system";
-import { computed, ref, onMounted, onBeforeUnmount, inject, watch } from "vue";
+import {
+  computed,
+  ref,
+  onMounted,
+  onBeforeUnmount,
+  inject,
+  watch,
+  useTemplateRef,
+  nextTick,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import {
@@ -627,6 +638,16 @@ const componentConnectionsQuery = useQuery<IncomingConnections | null>({
 const componentConnections = computed(
   () => componentConnectionsQuery.data.value,
 );
+
+const connectionsPanel =
+  useTemplateRef<typeof ConnectionsPanel>("connectionsPanel");
+const connectionsFlex =
+  useTemplateRef<typeof CollapsingFlexItem>("connectionsFlex");
+const focused = async (path: string) => {
+  if (connectionsFlex.value) connectionsFlex.value.openState.open.value = true;
+  await nextTick();
+  connectionsPanel.value?.highlight(path);
+};
 
 const docs = ref("");
 const docLink = ref("");

@@ -9,6 +9,12 @@
         clsx(
           'py-xs pr-xs border rounded-sm',
           themeClasses('border-neutral-300', 'border-neutral-600'),
+          props.label === 'Incoming' &&
+            highlightedPath === conn.self &&
+            themeClasses(
+              'border-neutral-500 bg-neutral-300',
+              'border-neutral-400 bg-neutral-700',
+            ),
         )
       "
     >
@@ -222,6 +228,7 @@ const ctx = useContext();
 const props = defineProps<{
   label: string;
   connections: SimpleConnection[];
+  highlightedPath?: string;
 }>();
 
 const router = useRouter();

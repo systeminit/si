@@ -145,6 +145,7 @@
         "
         @add="add"
         @set-key="setKey"
+        @focused="(path) => emit('focused', path)"
       />
     </AttributeChildLayout>
     <AttributeChildLayout v-if="secrets && secrets.children.length > 0">
@@ -832,6 +833,10 @@ const nameForm = wForm.newForm({
   },
   watchFn: () => props.component.name,
 });
+
+const emit = defineEmits<{
+  (e: "focused", path: string): void;
+}>();
 
 defineExpose({
   focusSearch,
