@@ -29,6 +29,8 @@ const IGNORE_RESOURCE_TYPES = new Set<string>([
   "Azure::ServiceFabricMesh::Applications",
   // Discriminator subtypes have properties with no type field (jobStageDetails has no type and no allOf)
   "Azure::DataBox::Jobs",
+  // Read-only resource with circular schema references causing infinite recursion
+  "Microsoft.DataProtection/operationStatus",
 ]);
 
 export function parseAzureSpec(
@@ -47,7 +49,7 @@ export function parseAzureSpec(
     string,
     {
       getOperation?: AzureOpenApiOperation;
-      putOperation?: AzureOpenApiOperation;
+      putOperation: AzureOpenApiOperation | null;
       handlers: { [key in CfHandlerKind]?: CfHandler };
     }
   > = {};
@@ -71,7 +73,7 @@ export function parseAzureSpec(
       continue;
     }
 
-    resourceOperations[resourceType] ??= { handlers: {} };
+    resourceOperations[resourceType] ??= { putOperation: null, handlers: {} };
     const resource = resourceOperations[resourceType];
 
     if (pathInfo.resourceNameParam) {
@@ -100,11 +102,6 @@ export function parseAzureSpec(
   for (const [resourceType, resource] of Object.entries(resourceOperations)) {
     if (!resource.getOperation) {
       logger.debug(`No GET operation found for ${resourceType}`);
-      continue;
-    }
-    if (!resource.putOperation) {
-      // readonly schema! Skipping.
-      logger.debug(`No PUT operation found for ${resourceType}`);
       continue;
     }
 
@@ -714,11 +711,12 @@ function stubResourceReferences(
 function buildDomainAndResourceValue(
   resourceType: string,
   getOperation: AzureOpenApiOperation,
-  putOperation: AzureOpenApiOperation,
+  putOperation: AzureOpenApiOperation | null,
   handlers: { [key in CfHandlerKind]?: CfHandler },
   apiVersion: string,
   definitions: AzureDefinitions | undefined,
 ): ExpandedPkgSpec | null {
+  const isReadOnly = !putOperation;
   // Create a shared discriminator collector for both GET and PUT
   const discriminatorCollector: Record<string, Record<string, string>> = {};
 
@@ -733,15 +731,12 @@ function buildDomainAndResourceValue(
     logger.debug(`No properties found in GET response for ${resourceType}`);
     return null;
   }
-  for (const prop of Object.values(resourceValueProperties)) {
-    stubResourceReferences(prop, 0);
-  }
-  if (!("id" in resourceValueProperties)) {
-    throw new Error(
-      `No id property in GET response: ${getOperation.operationId}\n\n${
-        util.inspect(getOperation, { depth: 12 })
-      }`,
-    );
+
+  // Only stub resource references for writable resources
+  if (!isReadOnly) {
+    for (const prop of Object.values(resourceValueProperties)) {
+      stubResourceReferences(prop, 0);
+    }
   }
 
   // Grab domain properties from the PUT request
@@ -758,12 +753,9 @@ function buildDomainAndResourceValue(
   const discriminators = Object.keys(discriminatorCollector).length > 0
     ? discriminatorCollector
     : undefined;
+
   // Remove readonly properties from the domain
   domainProperties = removeReadOnlyProperties(domainProperties, new Set());
-  if (Object.keys(domainProperties).length === 0) {
-    logger.debug(`No properties found in GET response for ${resourceType}`);
-    return null;
-  }
 
   const description = getOperation.description ||
     (getOperation.summary as string) ||
@@ -865,18 +857,6 @@ function extractPropertiesFromResponseBody(
   if (Object.keys(result.properties).length === 0) {
     logger.debug(`No properties found in GET response for ${operation}`);
     return result;
-  }
-  if (!("id" in result.properties)) {
-    throw new Error(
-      `No id property in GET response: ${operation.operationId}\n\n${
-        util.inspect(operation, { depth: 12 })
-      }\n\n${
-        util.inspect(
-          azureProp,
-          { depth: 12 },
-        )
-      }`,
-    );
   }
   return result;
 }
