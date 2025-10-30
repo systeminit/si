@@ -41,6 +41,7 @@ async function main(component: Input): Promise<Output> {
   const url =
     `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
 
+  console.log(`GET ${url}`);
   const response = await fetch(url, {
     method: "GET",
     headers: {

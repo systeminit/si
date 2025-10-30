@@ -17,21 +17,55 @@ import { makeModule } from "../generic/index.ts";
 import { AZURE_PROVIDER_CONFIG } from "./provider.ts";
 import { OnlyProperties } from "../../spec/props.ts";
 
-/// Maximum resource depth (including the top level resource)
-const MAX_RESOURCE_DEPTH = 3;
+/// Maximum depth of full resource property expansion (below this, resources will are assumed
+/// to be references and will just have "id")
+const MAX_EXPANDED_RESOURCE_DEPTH = 3;
 
-/// Add schemas (e.g. Azure::Portal::UserSettings) to ignore them until it's fixed
-/// Make sure you also add a comment explaining why--all schemas should be supported!
+/// resource types (e.g. Microsoft.ServiceFabricMesh/applications) to ignore them until it's fixed
+/// Make sure you also add a comment explaining why--all resource types should either be supported,
+/// or ignored for a specific reason detected by heuristic!
 const IGNORE_RESOURCE_TYPES = new Set<string>([
   // GET endpoint returns an array
   "Microsoft.PowerBI/privateLinkServicesForPowerBI",
+
   // Discriminator subtypes have properties with no type field (fluentdConfigUrl has description but no type)
-  "Azure::ServiceFabricMesh::Applications",
+  "Microsoft.ServiceFabricMesh/applications",
+
   // Discriminator subtypes have properties with no type field (jobStageDetails has no type and no allOf)
-  "Azure::DataBox::Jobs",
+  "Microsoft.DataBox/jobs",
+
   // Read-only resource with circular schema references causing infinite recursion
   "Microsoft.DataProtection/operationStatus",
+
+  // Crashes the JS interpreter
+  "Microsoft.Media/videoAnalyzers/pipelineTopologies",
+  "Microsoft.DataProtection/backupVaults/backupInstances",
+  "Microsoft.DataProtection/backupVaults/backupPolicies",
+
+  // Discriminator with no definitions
+  "Microsoft.DataMigration/services/serviceTasks",
+  "Microsoft.DataMigration/services/projects",
+
+  // Unsupported format: url
+  "Microsoft.MachineLearningServices/workspaces/connections",
+  "Microsoft.MachineLearningServices/workspaces/endpoints",
+
+  // Incompatible property x-ms-client-name: 'JobBaseProperties' vs 'LabelingJobProperties'
+  "Microsoft.MachineLearningServices/workspaces/labelingJobs",
+
+  // No id property in get response
+  "Microsoft.Insights/components/exportconfiguration",
+  "Microsoft.Insights/components/favorites",
+  "Microsoft.Insights/components/ProactiveDetectionConfigs",
+  "Microsoft.HDInsight/clusters/extensions",
 ]);
+
+interface ResourceSpec {
+  resourceType: string;
+  get?: { path: string, operation: AzureOpenApiOperation };
+  put?: { path: string, operation: AzureOpenApiOperation };
+  handlers: { [key in CfHandlerKind]?: CfHandler };
+}
 
 export function parseAzureSpec(
   openApiDoc: AzureOpenApiDocument,
@@ -40,81 +74,65 @@ export function parseAzureSpec(
   const specs: ExpandedPkgSpec[] = [];
 
   if (!openApiDoc.paths) {
-    logger.warn("No paths found in Azure schema");
-    return [];
+    throw new Error("No paths found in Azure schema");
   }
 
   const defaultHandler = { permissions: [], timeoutInMinutes: 60 };
-  const resourceOperations: Record<
-    string,
-    {
-      getOperation?: AzureOpenApiOperation;
-      putOperation: AzureOpenApiOperation | null;
-      handlers: { [key in CfHandlerKind]?: CfHandler };
-    }
-  > = {};
+  const resourceOperations: Record<string, ResourceSpec> = {};
 
   // Collect all operations for each resource type
   for (const [path, methods] of Object.entries(openApiDoc.paths)) {
+    if (!methods) continue;
+
     const pathInfo = parseEndpointPath(path);
-    if (!pathInfo || !methods) continue;
-    const resourceType =
-      `${pathInfo.resourceProvider}/${pathInfo.resourceType}`;
+    if (!pathInfo) continue;
+    resourceOperations[pathInfo.resourceType] ??= { resourceType: pathInfo.resourceType, handlers: {} };
+    const resource = resourceOperations[pathInfo.resourceType];
 
-    // Presently we only support Microsoft. providers
-    if (!pathInfo.resourceProvider.toLowerCase().startsWith("microsoft.")) {
-      continue;
-    }
-    // Ignore certain problematic resource types (temporarily until we fix them)
-    if (IGNORE_RESOURCE_TYPES.has(resourceType)) continue;
-
-    // Skip resource types not in the filter (if filter is provided)
-    if (resourceTypesFilter && !resourceTypesFilter.has(resourceType)) {
-      continue;
-    }
-
-    resourceOperations[resourceType] ??= { putOperation: null, handlers: {} };
-    const resource = resourceOperations[resourceType];
-
-    if (pathInfo.resourceNameParam) {
-      // If it has a /providers/<provider>/<resource-type>/{resourceName}, it's a CRUD op
+    // CRUD operation: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines/{vmName}[/extensions/{vmExtensionName}]...
+    if (pathInfo.isCrudPath) {
       if (methods.get) {
-        resource.getOperation = methods.get;
+        resource.get = { path, operation: methods.get };
         resource.handlers.read = defaultHandler;
       }
       if (methods.put) {
-        resource.putOperation = methods.put;
+        resource.put = { path, operation: methods.put };
         resource.handlers.create = defaultHandler;
         resource.handlers.update = defaultHandler;
       }
       if (methods.delete) {
         resource.handlers.delete = defaultHandler;
       }
-    } else {
-      // It may be a list operation if you don't have to pass in the name
-      if (methods.get && isListOperation(methods.get)) {
-        resource.handlers.list = defaultHandler;
-      }
+
+    // List operation: /subscriptions/{subscriptionId}/providers/Microsoft.Compute/virtualMachines
+    } else if (methods.get && isListOperation(methods.get)) {
+      resource.handlers.list = defaultHandler;
     }
   }
 
   // Build specs from collected operations
-  for (const [resourceType, resource] of Object.entries(resourceOperations)) {
-    if (!resource.getOperation) {
-      logger.debug(`No GET operation found for ${resourceType}`);
-      continue;
-    }
+  for (const resource of Object.values(resourceOperations)) {
+    // Presently we only support Microsoft. providers
+    if (!resource.resourceType.toLowerCase().startsWith("microsoft.")) continue;
+    // Ignore certain problematic resource types (temporarily until we fix them)
+    if (IGNORE_RESOURCE_TYPES.has(resource.resourceType)) continue;
+    // Skip resource types not in the filter (if filter is provided)
+    if (resourceTypesFilter && !resourceTypesFilter.has(resource.resourceType)) continue;
+    // Skip subresources > 2 levels deep for now
+    // TODO pick which of these to support
+    const resourceDepth = resource.resourceType.split("/").length - 1;
+    if (resourceDepth > 2) continue;
+    // We only support readonly resources if they are top-level
+    if (!resource.put && resourceDepth > 1) continue;
 
-    const spec = buildDomainAndResourceValue(
-      resourceType,
-      resource.getOperation,
-      resource.putOperation,
-      resource.handlers,
-      openApiDoc.info.version,
-      openApiDoc.definitions,
-    );
-    if (spec) {
-      specs.push(spec);
+    try {
+      const spec = buildDomainAndResourceValue(resource, openApiDoc);
+      if (spec) {
+        specs.push(spec);
+      }
+    } catch (e) {
+      logger.error(`Failed to process resource type ${resource.resourceType}`);
+      throw e;
     }
   }
 
@@ -132,418 +150,401 @@ export function parseAzureSpec(
 /// - formats normalized to SI-supported ones
 ///
 /// Recursively normalizes child properties as well.
-export function normalizeAzureSchema(
-  prop: AzureSchemaDefinition | undefined,
-  processing: AzureSchemaDefinition[],
-  definitions?: AzureDefinitions,
-  discriminatorCollector?: Record<string, Record<string, string>>,
-): NormalizedAzureSchema | undefined {
-  if (prop === undefined) return undefined;
-  if (processing.includes(prop)) return undefined;
-  processing.push(prop);
-  try {
-    // Flatten the schema, merging allOf props and such, before we normalize type/format
-    const normalized = flattenAzureSchema(
-      prop,
-      {},
-      processing,
-      definitions,
-      discriminatorCollector,
-    );
-    if (normalized === undefined) return undefined;
+export class AzureNormalizer {
+  constructor(definitions: AzureDefinitions | undefined) {
+    this.definitions = definitions;
+  }
+  normalizing: AzureSchemaDefinition[] = [];
+  definitions: AzureDefinitions | undefined;
+  discriminatorCollector: Record<string, Record<string, string>> = {};
 
-    // Infer type from format / properties / items if missing
-    normalized.type ??= inferType(normalized);
+  /// Normalize a general JSONSchema from Azure into simpler format
+  /// without nesting.
+  normalize(prop: AzureSchemaDefinition): NormalizedAzureSchema;
+  normalize(prop: AzureSchemaDefinition | undefined): NormalizedAzureSchema | undefined;
+  normalize(prop: AzureSchemaDefinition | undefined): NormalizedAzureSchema | undefined {
+    // This is only meant to be called at the top level, non-recursively
+    if (prop === undefined) return undefined;
+    assert(this.normalizing.length === 0);
+    const result = this.normalizeOrCycle(prop);
+    assert(result, "Top-level schema somehow part of a cycle");
+    if (!result) return undefined;
+    return result;
+  }
 
-    // Draft 4 -> Draft 6+ conversion (exclusiveMinimum/Maximum)
-    for (const key of ["exclusiveMinimum", "exclusiveMaximum"] as const) {
-      const baseKey = key === "exclusiveMinimum" ? "minimum" : "maximum";
-      const val = normalized[key] as JSONSchema | boolean;
-      const baseVal = normalized[baseKey];
-      if (val === true && typeof baseVal === "number") {
-        delete normalized[baseKey];
-      } else if (val === false) {
-        delete normalized[key];
+  /// Normalize a JSONSchema and merge its properties into an existing normalized schema. If
+  /// the schemas are incompatible, throws an exception.
+  intersect(prop: AzureSchemaDefinition | undefined, intersected: NormalizedAzureSchema) {
+    return intersectAzureSchema(this.normalize(prop), intersected);
+  }
+
+  /// Normalize a JSONSchema and union its properties with an existing normalized schema.
+  ///
+  /// This will try to find a normalized shape that *can* accomodate both schemas but may not
+  /// be optimal:
+  ///
+  ///   union({ foo: string; bar: string }, { foo: string; baz: string })
+  ///     === { foo: string; bar?: string; baz?: string }
+  ///
+  ///   intersect({ foo: int }, { foo: float })
+  ///     === { foo: float }
+  ///
+  /// @throws if we cannot find a common normalized shape (for example, string union object).
+  union(prop: AzureSchemaDefinition | undefined, unioned: NormalizedAzureSchema) {
+    return unionAzureSchema(this.normalize(prop), unioned);
+  }
+
+  private normalizeOrCycle(
+    prop: AzureSchemaDefinition | undefined,
+  ): NormalizedAzureSchema | undefined {
+    if (prop === undefined) return undefined;
+    if (this.normalizing.includes(prop)) return undefined;
+    this.normalizing.push(prop);
+    try {
+      // Flatten the schema, merging allOf props and such, before we normalize type/format
+      const normalized = this.flatten(prop, {});
+      if (normalized === undefined) return undefined;
+
+      // Infer type from format / properties / items if missing
+      normalized.type ??= inferType(normalized);
+
+      // Draft 4 -> Draft 6+ conversion (exclusiveMinimum/Maximum)
+      for (const key of ["exclusiveMinimum", "exclusiveMaximum"] as const) {
+        const baseKey = key === "exclusiveMinimum" ? "minimum" : "maximum";
+        const val = normalized[key] as JSONSchema | boolean;
+        const baseVal = normalized[baseKey];
+        if (val === true && typeof baseVal === "number") {
+          delete normalized[baseKey];
+        } else if (val === false) {
+          delete normalized[key];
+        }
       }
-    }
 
-    // Normalize formats to SI-supported ones
-    if (normalized.format) {
-      // TODO just support these or ignore later!
-      const format = normalized.format as string;
+      // Normalize formats to SI-supported ones
+      if (normalized.format) {
+        // TODO just support these or ignore later!
+        const format = normalized.format as string;
+        if (
+          normalized.type === "integer" &&
+          (format === "int32" || format === "int64")
+        ) {
+          normalized.format = "int64";
+        } else if (
+          normalized.type === "number" &&
+          (format === "float" || format === "double" || format === "decimal")
+        ) {
+          normalized.format = "double";
+        } else if (
+          [
+            "arm-id",
+            "uuid",
+            "email",
+            "unixtime",
+            "duration",
+            "date",
+            "date-time-rfc1123",
+            "byte",
+            "binary",
+            "password",
+          ].includes(format)
+        ) {
+          delete normalized.format;
+        }
+      }
+
+      // At the root level, attach collected discriminators
       if (
-        normalized.type === "integer" &&
-        (format === "int32" || format === "int64")
+        this.discriminatorCollector && Object.keys(this.discriminatorCollector).length > 0
       ) {
-        normalized.format = "int64";
-      } else if (
-        normalized.type === "number" &&
-        (format === "float" || format === "double" || format === "decimal")
-      ) {
-        normalized.format = "double";
-      } else if (
-        [
-          "arm-id",
-          "uuid",
-          "email",
-          "unixtime",
-          "duration",
-          "date",
-          "date-time-rfc1123",
-          "byte",
-          "binary",
-          "password",
-        ].includes(format)
-      ) {
-        delete normalized.format;
+        normalized.discriminators = this.discriminatorCollector;
       }
+
+      return normalized;
+    } finally {
+      this.normalizing.pop();
     }
 
-    // At the root level, attach collected discriminators
-    if (
-      discriminatorCollector && Object.keys(discriminatorCollector).length > 0
-    ) {
-      normalized.discriminators = discriminatorCollector;
-    }
-
-    return normalized;
-  } finally {
-    processing.pop();
-  }
-}
-
-/// Infer the type for a schema from its other properties if "type" is missing
-function inferType(prop: NormalizedAzureSchema) {
-  if (prop.type) return prop.type;
-  switch (prop.format) {
-    case "int32":
-    case "int64":
-      return "integer";
-    case "float":
-    case "double":
-    case "decimal":
-      return "number";
-  }
-  if (prop.properties || prop.additionalProperties) return "object";
-  if (prop.items) return "array";
-}
-
-/// Helper to check if a definition has a property (direct or in allOf)
-function defHasProperty(
-  defSchema: AzureSchemaDefinition,
-  propName: string,
-): boolean {
-  // Boolean schemas (true/false) don't have properties or allOf
-  // TODO: we should not need this check. It implies that we need to be doing
-  // normalization for these sooner
-  if (typeof defSchema === "boolean") return false;
-
-  const hasDirectProp = !!defSchema.properties?.[propName];
-  const hasAllOfProp =
-    defSchema.allOf?.some((s: AzureSchemaDefinition) =>
-      !!s.properties?.[propName]
-    ) ?? false;
-  return hasDirectProp || hasAllOfProp;
-}
-
-/// Expands discriminators by finding matching subtypes and adding them as properties.
-/// Returns expanded properties and discriminator metadata, or undefined if no discriminators found.
-function expandDiscriminators(
-  schemaProp: AzureSchemaDefinition | undefined,
-  definitions: AzureDefinitions | undefined,
-): {
-  expandedProperties: Record<string, JSONSchema>;
-  discriminators: Record<string, Record<string, string>>;
-} | undefined {
-  const discriminator = schemaProp?.discriminator;
-  const properties = schemaProp?.properties;
-
-  if (!discriminator || !definitions || !properties) {
-    return undefined;
-  }
-
-  const discriminatorProp = discriminator;
-  const discriminatorField = properties[discriminatorProp];
-  const enumValues = discriminatorField?.enum;
-
-  // Find matching subtypes and their enum values
-  // Maps definition name -> [schema, enum value]
-  const subtypes: Map<string, [AzureSchemaDefinition, string]> = new Map();
-
-  if (!enumValues) {
-    // No enum - filter by checking if definition has the discriminator property
-    for (const [defName, defSchema] of Object.entries(definitions)) {
-      if (defHasProperty(defSchema, discriminatorProp)) {
-        // Without enum values, use definition name as the discriminator value
-        subtypes.set(defName, [defSchema, defName]);
+    /// Infer the type for a schema from its other properties if "type" is missing
+    function inferType(prop: NormalizedAzureSchema) {
+      if (prop.type) return prop.type;
+      switch (prop.format) {
+        case "int32":
+        case "int64":
+          return "integer";
+        case "float":
+        case "double":
+        case "decimal":
+          return "number";
       }
+      if (prop.properties || prop.additionalProperties) return "object";
+      if (prop.items) return "array";
     }
-  } else {
-    // Has enum - for each enum value, find matching definition
-    for (const enumValue of enumValues) {
-      const enumStr = String(enumValue);
+  }
 
-      // Check for x-ms-discriminator-value match (direct or in allOf)
-      let found = false;
-      for (const [defName, defSchema] of Object.entries(definitions)) {
-        // Boolean schemas don't have discriminator values or allOf
-        // TODO: we should not need this check. It implies that we need to be doing
-        // normalization for these sooner
-        if (typeof defSchema === "boolean") continue;
+  /// Expands discriminators by finding matching subtypes and adding them as properties.
+  /// Returns expanded properties and discriminator metadata, or undefined if no discriminators found.
+  private expandDiscriminators(
+    discriminator: AzureSchemaDefinition["discriminator"],
+    properties: AzureSchemaDefinition["properties"]
+  ): {
+    expandedProperties: Record<string, JSONSchema>;
+    discriminators: Record<string, Record<string, string>>;
+  } | undefined {
+    if (!discriminator) return undefined;
+    if (!this.definitions) {
+      throw new Error(`Schema has discriminator but no definitions: ${discriminator}`);
+    }
+    if (!properties) return undefined;
 
-        const hasDirectMatch =
-          defSchema["x-ms-discriminator-value"] === enumStr;
-        const hasAllOfMatch = defSchema.allOf?.some((
-          s: AzureSchemaDefinition,
-        ) => s["x-ms-discriminator-value"] === enumStr);
+    const discriminatorField = properties[discriminator];
+    const enumValues = discriminatorField?.enum;
 
-        if (hasDirectMatch || hasAllOfMatch) {
-          subtypes.set(defName, [defSchema, enumStr]);
-          found = true;
-          break;
+    // Find matching subtypes and their enum values
+    // Maps definition name -> [schema, enum value]
+    const subtypes: Map<string, [AzureSchemaDefinition, string]> = new Map();
+
+    if (!enumValues) {
+      // No enum - filter by checking if definition has the discriminator property
+      for (const [defName, defSchema] of Object.entries(this.definitions)) {
+        if (defHasProperty(defSchema, discriminator)) {
+          // Without enum values, use definition name as the discriminator value
+          subtypes.set(defName, [defSchema, defName]);
         }
       }
+    } else {
+      // Has enum - for each enum value, find matching definition
+      for (const enumValue of enumValues) {
+        const enumStr = String(enumValue);
 
-      // Check for exact definition name match
-      // Also verify it has the discriminator property (direct or in allOf)
-      if (!found && definitions[enumStr]) {
-        const defSchema = definitions[enumStr];
-        if (defHasProperty(defSchema, discriminatorProp)) {
-          subtypes.set(enumStr, [defSchema, enumStr]);
-          found = true;
+        // Check for x-ms-discriminator-value match (direct or in allOf)
+        let found = false;
+        for (const [defName, defSchema] of Object.entries(this.definitions)) {
+          // Boolean schemas don't have discriminator values or allOf
+          // TODO: we should not need this check. It implies that we need to be doing
+          // normalization for these sooner
+          if (typeof defSchema === "boolean") continue;
+
+          const hasDirectMatch =
+            defSchema["x-ms-discriminator-value"] === enumStr;
+          const hasAllOfMatch = defSchema.allOf?.some((
+            s: AzureSchemaDefinition,
+          ) => s["x-ms-discriminator-value"] === enumStr);
+
+          if (hasDirectMatch || hasAllOfMatch) {
+            subtypes.set(defName, [defSchema, enumStr]);
+            found = true;
+            break;
+          }
         }
+
+        // Check for exact definition name match
+        // Also verify it has the discriminator property (direct or in allOf)
+        if (!found && this.definitions[enumStr]) {
+          const defSchema = this.definitions[enumStr];
+          if (defHasProperty(defSchema, discriminator)) {
+            subtypes.set(enumStr, [defSchema, enumStr]);
+            found = true;
+          }
+        }
+
+        // If still not found, that's okay - enum might have sentinel values like "Unknown"
       }
-
-      // If still not found, that's okay - enum might have sentinel values like "Unknown"
     }
-  }
 
-  if (subtypes.size === 0) {
-    return undefined;
-  }
+    if (subtypes.size === 0) {
+      return undefined;
+    }
 
-  // Create an object for the discriminator field and add subtypes as properties
-  // within that object.
-  const expandedProperties: Record<string, JSONSchema> = { ...properties };
+    // Create an object for the discriminator field and add subtypes as properties
+    // within that object.
+    const expandedProperties: Record<string, JSONSchema> = { ...properties };
 
-  // Replace the discriminator field with an object containing the subtypes
-  const discriminatorObject: JSONSchema = {
-    type: "object",
-    properties: {},
-  };
-
-  const discriminatorMap: Record<string, string> = {};
-
-  for (const [defName, [subtype, enumValue]] of subtypes.entries()) {
-    // TODO: we should not need this check. It implies that we need to be doing
-    // normalization for these sooner
-    if (typeof subtype === "boolean") continue;
-
-    // TODO: We really should walk through these recursive cases as some of
-    // these allOfs are likely desirable
-    // Store the subtype's properties directly, but remove allOf to prevent circular references
-    const subtypeSchema: JSONSchema = {
+    // Replace the discriminator field with an object containing the subtypes
+    const discriminatorObject: JSONSchema = {
       type: "object",
-      description: subtype.description,
-      properties: subtype.properties,
-      required: subtype.required,
+      properties: {},
     };
 
-    discriminatorObject.properties![defName] = subtypeSchema;
-    discriminatorMap[defName] = enumValue;
-  }
+    const discriminatorMap: Record<string, string> = {};
 
-  expandedProperties[discriminatorProp] = discriminatorObject;
+    for (const [defName, [subtype, enumValue]] of subtypes.entries()) {
+      // TODO: we should not need this check. It implies that we need to be doing
+      // normalization for these sooner
+      if (typeof subtype === "boolean") continue;
 
-  const discriminators = {
-    [discriminatorProp]: discriminatorMap,
-  };
+      // TODO: We really should walk through these recursive cases as some of
+      // these allOfs are likely desirable
+      // Store the subtype's properties directly, but remove allOf to prevent circular references
+      const subtypeSchema: JSONSchema = {
+        type: "object",
+        description: subtype.description,
+        properties: subtype.properties,
+        required: subtype.required,
+      };
 
-  return {
-    expandedProperties,
-    discriminators,
-  };
-}
-
-/// Flattens JSONSchema recursively merging allOf, oneOf and anyOf into a single schema and
-/// turning true ("any") into an empty schema, and throwing an exception for "false" (never) schemas.
-function flattenAzureSchema(
-  schemaProp: AzureSchemaDefinition,
-  flattened: NormalizedAzureSchema = {},
-  normalizing: AzureSchemaDefinition[],
-  definitions?: AzureDefinitions,
-  discriminatorCollector?: Record<string, Record<string, string>>,
-): NormalizedAzureSchema | undefined {
-  if (schemaProp === false) {
-    throw new Error("Boolean schema 'false' (never) not supported");
-  }
-  // "any" becomes empty schema (which matches anything)
-  if (schemaProp === true) {
-    schemaProp = {};
-  }
-
-  // Pull off the stuff we're removing and children we're normalizing, so we can easily copy
-  // the remaining values
-  const {
-    oneOf,
-    anyOf,
-    allOf,
-    properties,
-    patternProperties,
-    items,
-    additionalProperties,
-    discriminator,
-    ...rest
-  } = schemaProp;
-
-  let expandedProperties = properties;
-
-  // Merge oneOf and anyOf by normalizing each alternative (so they have a type) and then
-  // merging them into the flattened type (this means { a: string } | { b: string } becomes
-  // { a?: string; b?: string }).
-  // TODO handle required here?
-  // TODO empty oneOf / anyOf (or oneOf: [ true ], which is effectively empty)
-  if (oneOf) {
-    for (const alternative of oneOf) {
-      const child = normalizeAzureSchema(
-        alternative,
-        normalizing,
-        definitions,
-        discriminatorCollector,
-      );
-      if (!child) throw new Error("Cycle in oneOf or anyOf alternative");
-      unionAzureSchema(child, flattened);
+      discriminatorObject.properties![defName] = subtypeSchema;
+      discriminatorMap[defName] = enumValue;
     }
-  }
-  if (anyOf) {
-    for (const alternative of anyOf) {
-      const child = normalizeAzureSchema(
-        alternative,
-        normalizing,
-        definitions,
-        discriminatorCollector,
-      );
-      if (!child) throw new Error("Cycle in oneOf or anyOf alternative");
-      unionAzureSchema(child, flattened);
+
+    expandedProperties[discriminator] = discriminatorObject;
+
+    const discriminators = {
+      [discriminator]: discriminatorMap,
+    };
+
+    return {
+      expandedProperties,
+      discriminators,
+    };
+
+    /// Helper to check if a definition has a property (direct or in allOf)
+    function defHasProperty(
+      defSchema: AzureSchemaDefinition,
+      propName: string,
+    ): boolean {
+      // Boolean schemas (true/false) don't have properties or allOf
+      // TODO: we should not need this check. It implies that we need to be doing
+      // normalization for these sooner
+      if (typeof defSchema === "boolean") return false;
+
+      const hasDirectProp = !!defSchema.properties?.[propName];
+      const hasAllOfProp =
+        defSchema.allOf?.some((s: AzureSchemaDefinition) =>
+          !!s.properties?.[propName]
+        ) ?? false;
+      return hasDirectProp || hasAllOfProp;
     }
   }
 
-  // Merge allOf types into the flattened type (this means { a: string } & { b: string } becomes
-  // { a: string; b: string }).
-  //
-  // We don't normalize here, because allOf children can be *partial* properties and we need
-  // to merge them together so we have all the information we can have before normalizing. We
-  // will normalize at the end after all properties have been flattened down.
-  if (allOf) {
-    for (const alternative of allOf) {
-      flattenAzureSchema(
-        alternative,
-        flattened,
-        normalizing,
-        definitions,
-        discriminatorCollector,
-      );
+  /// Flattens JSONSchema recursively merging allOf, oneOf and anyOf into a single schema and
+  /// turning true ("any") into an empty schema, and throwing an exception for "false" (never) schemas.
+  private flatten(
+    schemaProp: AzureSchemaDefinition,
+    flattened: NormalizedAzureSchema = {},
+  ): NormalizedAzureSchema | undefined {
+    if (schemaProp === false) {
+      throw new Error("Boolean schema 'false' (never) not supported");
     }
-  }
-
-  // Expand discriminators AFTER allOf processing to prevent allOf from overwriting expanded properties
-  if (discriminator) {
-    if (!definitions) {
-      console.warn(
-        `Schema has discriminator but no definitions!`,
-        discriminator,
-      );
+    // "any" becomes empty schema (which matches anything)
+    if (schemaProp === true) {
+      schemaProp = {};
     }
 
-    const expansion = expandDiscriminators(
-      schemaProp,
-      definitions,
-    );
+    // Pull off the stuff we're removing and children we're normalizing, so we can easily copy
+    // the remaining values
+    const {
+      oneOf,
+      anyOf,
+      allOf,
+      properties,
+      patternProperties,
+      items,
+      additionalProperties,
+      discriminator,
+      ...rest
+    } = schemaProp;
+
+    let expandedProperties = properties;
+
+    // Merge oneOf and anyOf by normalizing each alternative (so they have a type) and then
+    // merging them into the flattened type (this means { a: string } | { b: string } becomes
+    // { a?: string; b?: string }).
+    // TODO handle required here?
+    // TODO empty oneOf / anyOf (or oneOf: [ true ], which is effectively empty)
+    if (oneOf) {
+      for (const alternative of oneOf) {
+        const child = this.normalizeOrCycle(alternative);
+        if (!child) throw new Error("Cycle in oneOf or anyOf alternative");
+        unionAzureSchema(child, flattened);
+      }
+    }
+    if (anyOf) {
+      for (const alternative of anyOf) {
+        const child = this.normalizeOrCycle(alternative);
+        if (!child) throw new Error("Cycle in oneOf or anyOf alternative");
+        unionAzureSchema(child, flattened);
+      }
+    }
+
+    // Merge allOf types into the flattened type (this means { a: string } & { b: string } becomes
+    // { a: string; b: string }).
+    //
+    // We don't normalize here, because allOf children can be *partial* properties and we need
+    // to merge them together so we have all the information we can have before normalizing. We
+    // will normalize at the end after all properties have been flattened down.
+    if (allOf) {
+      for (const alternative of allOf) {
+        this.flatten(alternative, flattened);
+      }
+    }
+
+    // Expand discriminators AFTER allOf processing to prevent allOf from overwriting expanded properties
+    const expansion = this.expandDiscriminators(discriminator, properties);
     if (expansion) {
       expandedProperties = expansion.expandedProperties;
 
       // Add discriminators to collector
-      if (discriminatorCollector) {
+      if (this.discriminatorCollector) {
         for (
           const [key, subtypeMap] of Object.entries(expansion.discriminators)
         ) {
-          discriminatorCollector[key] = subtypeMap;
+          this.discriminatorCollector[key] = subtypeMap;
         }
       }
     }
-  }
 
-  // Normalize child schemas (properties, items, etc.) so we can do a simple intersect after
-  const prop: NormalizedAzureSchema = rest;
-  if (expandedProperties) {
-    prop.properties = {};
-    if (Object.keys(expandedProperties).length > 0) {
-      for (const [propName, childProp] of Object.entries(expandedProperties)) {
-        const child = normalizeAzureSchema(
-          childProp,
-          normalizing,
-          definitions,
-          discriminatorCollector,
-        );
-        if (!child) continue; // If the prop is part of a cycle, don't include it
-        // TODO find a better way! This fixes some Azure schemas with empty properties
-        if (propName === "properties") {
-          if (defaultAnyTypeTo(child, "object")) {
-            child.properties ??= {};
+    // Normalize child schemas (properties, items, etc.) so we can do a simple intersect after
+    const prop: NormalizedAzureSchema = rest;
+    if (expandedProperties) {
+      prop.properties = {};
+      if (Object.keys(expandedProperties).length > 0) {
+        for (const [propName, childProp] of Object.entries(expandedProperties)) {
+          const child = this.normalizeOrCycle(childProp);
+          if (!child) continue; // If the prop is part of a cycle, don't include it
+          // TODO find a better way! This fixes some Azure schemas with empty properties
+          if (propName === "properties") {
+            if (defaultAnyTypeTo(child, "object")) {
+              child.properties ??= {};
+            }
+          } else {
+            defaultAnyTypeTo(child, "string");
           }
-        } else {
-          defaultAnyTypeTo(child, "string");
+          prop.properties[propName] = child;
         }
-        prop.properties[propName] = child;
+        // If all props were part of cycles, this prop is part of the cycle
+        if (Object.keys(prop.properties).length == 0) return undefined;
       }
-      // If all props were part of cycles, this prop is part of the cycle
-      if (Object.keys(prop.properties).length == 0) return undefined;
     }
-  }
 
-  if (patternProperties) {
-    prop.patternProperties = {};
-    if (Object.keys(patternProperties).length > 0) {
-      for (const [propName, childProp] of Object.entries(patternProperties)) {
-        const child = normalizeAzureSchema(
-          childProp,
-          normalizing,
-          definitions,
-          discriminatorCollector,
-        );
-        if (!child) continue; // If the prop is part of a cycle, don't include it
-        defaultAnyTypeTo(child, "string");
-        prop.patternProperties[propName] = child;
+    if (patternProperties) {
+      prop.patternProperties = {};
+      if (Object.keys(patternProperties).length > 0) {
+        for (const [propName, childProp] of Object.entries(patternProperties)) {
+          const child = this.normalizeOrCycle(childProp);
+          if (!child) continue; // If the prop is part of a cycle, don't include it
+          defaultAnyTypeTo(child, "string");
+          prop.patternProperties[propName] = child;
+        }
+        // If all props were part of cycles, this prop is part of the cycle
+        if (Object.keys(prop.patternProperties).length == 0) return undefined;
       }
-      // If all props were part of cycles, this prop is part of the cycle
-      if (Object.keys(prop.patternProperties).length == 0) return undefined;
     }
-  }
-  if (items) {
-    prop.items = normalizeAzureSchema(
-      Array.isArray(items) ? { anyOf: items } : items,
-      normalizing,
-      definitions,
-      discriminatorCollector,
-    );
-    if (prop.items === undefined) return undefined;
-    defaultAnyTypeTo(prop.items, "string");
-  }
-  if (additionalProperties) {
-    prop.additionalProperties = normalizeAzureSchema(
-      additionalProperties,
-      normalizing,
-      definitions,
-      discriminatorCollector,
-    );
-    if (prop.additionalProperties === undefined) return undefined;
-    defaultAnyTypeTo(prop.additionalProperties, "string");
-  }
+    if (items) {
+      prop.items = this.normalizeOrCycle(Array.isArray(items) ? { anyOf: items } : items);
+      if (prop.items === undefined) return undefined;
+      defaultAnyTypeTo(prop.items, "string");
+    }
+    if (additionalProperties) {
+      prop.additionalProperties = this.normalizeOrCycle(additionalProperties);
+      if (prop.additionalProperties === undefined) return undefined;
+      defaultAnyTypeTo(prop.additionalProperties, "string");
+    }
 
-  // Finally, intersect the props together
-  intersectAzureSchema(prop, flattened);
+    // Finally, intersect the props together
+    intersectAzureSchema(prop, flattened);
 
-  return flattened;
+    return flattened;
+  }
 }
 
 /// Intersects two flattened schemas, merging properties and such
@@ -691,7 +692,7 @@ function stubResourceReferences(
     resourceDepth += 1;
 
     // Stub the resource if we're at max depth
-    if (resourceDepth > MAX_RESOURCE_DEPTH) {
+    if (resourceDepth > MAX_EXPANDED_RESOURCE_DEPTH) {
       prop.properties = { id: prop.properties.id };
       return;
     }
@@ -709,66 +710,72 @@ function stubResourceReferences(
 }
 
 function buildDomainAndResourceValue(
-  resourceType: string,
-  getOperation: AzureOpenApiOperation,
-  putOperation: AzureOpenApiOperation | null,
-  handlers: { [key in CfHandlerKind]?: CfHandler },
-  apiVersion: string,
-  definitions: AzureDefinitions | undefined,
+  { resourceType, get, put, handlers }: ResourceSpec,
+  openApiDoc: AzureOpenApiDocument,
 ): ExpandedPkgSpec | null {
-  const isReadOnly = !putOperation;
-  // Create a shared discriminator collector for both GET and PUT
-  const discriminatorCollector: Record<string, Record<string, string>> = {};
+  if (!get) {
+    logger.debug(`No GET operation found for ${resourceType}`);
+    return null;
+  }
+
+  // Create a shared normalizer
+  const normalizer = new AzureNormalizer(openApiDoc.definitions);
 
   // Grab resourceValue properties from the GET response
-  const { properties: resourceValueProperties } =
-    extractPropertiesFromResponseBody(
-      getOperation,
-      definitions,
-      discriminatorCollector,
-    );
-  if (Object.keys(resourceValueProperties).length === 0) {
+  const resourceValue = responseSchema(get.operation, normalizer);
+  if (Object.keys(resourceValue.properties).length === 0) {
     logger.debug(`No properties found in GET response for ${resourceType}`);
     return null;
   }
 
-  // Only stub resource references for writable resources
-  if (!isReadOnly) {
-    for (const prop of Object.values(resourceValueProperties)) {
+  // Grab domain properties from the PUT request
+  const domain = put ? requestSchema(put.operation, normalizer) : undefined;
+  if (domain) {
+    // If it's a writeable resource, the result must have ID so we can update/delete
+    if (!(resourceValue.properties && "id" in resourceValue.properties)) {
+      throw new Error(
+        `No id property in GET response: ${get.operation.operationId}\n\n${
+          util.inspect(get.operation, { depth: 12 })
+        }\n\n${
+          util.inspect(
+            get.operation.responses?.["200"]?.schema,
+            { depth: 4 },
+          )
+        }`,
+      );
+    }
+
+    // Only stub resource_value references for writable resources
+    for (const prop of Object.values(resourceValue.properties)) {
       stubResourceReferences(prop, 0);
+    }
+
+    // Remove readonly properties from the domain
+    domain.properties = removeReadOnlyProperties(domain.properties ?? {}, new Set());
+    if (Object.keys(domain.properties).length === 0) {
+      logger.debug(`No properties found in PUT request for ${resourceType}`);
+      return null;
     }
   }
 
-  // Grab domain properties from the PUT request
-  let {
-    properties: domainProperties,
-    required: requiredProperties,
-  } = extractPropertiesFromRequestBody(
-    putOperation,
-    definitions,
-    discriminatorCollector,
-  );
-
   // Get discriminators from the shared collector
-  const discriminators = Object.keys(discriminatorCollector).length > 0
-    ? discriminatorCollector
+  const discriminators = Object.keys(normalizer.discriminatorCollector).length > 0
+    ? normalizer.discriminatorCollector
     : undefined;
 
-  // Remove readonly properties from the domain
-  domainProperties = removeReadOnlyProperties(domainProperties, new Set());
-
-  const description = getOperation.description ||
-    (getOperation.summary as string) ||
+  const description = get.operation.description ||
+    (get.operation.summary as string) ||
     `Azure ${resourceType} resource`;
 
   const primaryIdentifier = ["id"];
   const schema: AzureSchema = {
     typeName: resourceType,
     description,
-    requiredProperties: new Set(requiredProperties),
+    requiredProperties: new Set(domain?.required ?? []),
     handlers,
-    apiVersion,
+    apiVersion: openApiDoc.info.version,
     discriminators,
+    resourceId: (put ?? get).path,
   };
   // TODO figure out readOnly and writeOnly properties based on which tree they appear in
   const onlyProperties: OnlyProperties = {
@@ -777,74 +784,60 @@ function buildDomainAndResourceValue(
     writeOnly: [],
     primaryIdentifier,
   };
-  try {
-    return makeModule(
-      schema,
-      description,
-      onlyProperties,
-      AZURE_PROVIDER_CONFIG,
-      domainProperties as Record<string, AzureProperty>,
-      resourceValueProperties as Record<string, AzureProperty>,
-    );
-  } catch (e) {
-    logger.error(`Error creating spec for ${resourceType}`);
-    throw e;
-  }
-}
-
-function extractPropertiesFromRequestBody(
-  operation: AzureOpenApiOperation | null,
-  definitions: AzureDefinitions | undefined,
-  discriminatorCollector: Record<string, Record<string, string>>,
-) {
-  const bodyParams = operation?.parameters?.filter(
-    (p) => !("$ref" in p) && p.in === "body",
-  );
-  if (!operation || !bodyParams || bodyParams.length == 0) {
-    return { properties: {}, required: [] };
-  }
-  assert(bodyParams.length <= 1, "Expected at most one body parameter");
-
-  assert(!("$ref" in bodyParams[0]), "Body parameter is a $ref");
-  const { schema } = bodyParams[0];
-  if (!schema) {
-    return { properties: {}, required: [] };
-  }
-  assert(!("$ref" in schema), "Body parameter is a $ref");
-
-  // Normalize the schema (discriminators will be collected during flattening)
-  const azureProp = normalizeAzureSchema(
+  return makeModule(
     schema,
-    [],
-    definitions,
-    discriminatorCollector,
+    description,
+    onlyProperties,
+    AZURE_PROVIDER_CONFIG,
+    (domain?.properties ?? {}) as Record<string, AzureProperty>,
+    resourceValue.properties as Record<string, AzureProperty>,
   );
-  assert(
-    azureProp?.type === "object",
-    `Response schema is not an object: ${operation.operationId}`,
-  );
-
-  return {
-    properties: azureProp.properties ?? {},
-    required: azureProp.required ?? [],
-  };
 }
 
-function extractPropertiesFromResponseBody(
+function requestSchema(
   operation: AzureOpenApiOperation | null,
-  definitions: AzureDefinitions | undefined,
-  discriminatorCollector: Record<string, Record<string, string>>,
+  normalizer: AzureNormalizer,
+) {
+  const schema = { type: "object" } as NormalizedAzureSchema;
+
+  // Pull parameters from path and schema from body
+  // TODO query params? i.e. ApiVersion?
+  for (const param of operation?.parameters ?? []) {
+    switch (param.in) {
+      case "path": {
+        // Create the schema for the parameter itself
+        const paramSchema = normalizer.normalize(param.schema ?? {});
+        if ("type" in param) normalizer.intersect({ type: param.type }, paramSchema);
+        assert(!param.style, "Parameter style not supported");
+        if (param.description) normalizer.intersect({ description: param.description }, paramSchema);
+
+        // Add the parameter into the overall schema
+        normalizer.intersect({ properties: { [param.name]: paramSchema, } }, schema);
+        // All parameters must be required since they're in the path
+        normalizer.intersect({ required: [param.name] }, schema);
+        break;
+      }
+      case "body":
+        assert(param.schema, "Body parameter missing schema");
+        normalizer.intersect(param.schema, schema);
+        break;
+      default:
+        break;
+    }
+  }
+
+  return schema;
+}
+
+function responseSchema(
+  operation: AzureOpenApiOperation | null,
+  normalizer: AzureNormalizer,
 ) {
   const schema = operation?.responses?.["200"]?.schema;
   if (!schema) return { properties: {}, required: [] };
 
   // Normalize the schema (discriminators will be collected during flattening)
-  const azureProp = normalizeAzureSchema(
-    schema,
-    [],
-    definitions,
-    discriminatorCollector,
-  );
+  const azureProp = normalizer.normalize(schema);
   assert(
     azureProp?.type === "object",
     `Response schema is not an object: ${operation.operationId}`,
@@ -919,32 +912,51 @@ function removeReadOnlyProperty(
 }
 
 export function parseEndpointPath(path: string) {
-  // Form:         /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/applicationGateways/{applicationGatewayName}
-  // Or list form: /subscriptions/{subscriptionId}/providers/Microsoft.Network/applicationGateways
-  // TODO support non-{resourceGroupName} get/put/delete and {resourceGroupName} list paths
-  const match = path.match(
-    /\/subscriptions\/\{([^/}]+)\}(?:\/resource[Gg]roups\/\{([^/}]+)\})?\/providers\/([^/]+)\/([^/{]+)(?:\/\{([^/}]+)\})?$/,
-  );
-  if (!match) return undefined;
-  const [
-    _,
-    subscriptionIdParam,
-    resourceGroupParam,
-    resourceProvider,
-    resourceType,
-    resourceNameParam,
-  ] = match;
+  if (!path.startsWith("/")) throw new Error(`Endpoint path not absolute: ${path}`);
+  const segments = path.slice(1).split("/");
 
-  // If the endpoint has {resourceName} it must also have {resourceGroup}. The list endpoint
-  // (no {resourceName} must *not* have {resourceGroup} in it.
-  if (!!resourceGroupParam !== !!resourceNameParam) return undefined;
+  // /subscriptions/{subscriptionId}
+  if (segments.shift() !== "subscriptions") return undefined;
+  if (!segments.shift()) return undefined; // skip value
+
+  // /resourceGroups/{resourceGroupName} (optional)
+  const hasResourceGroupParam = segments[0] === "resourceGroups";
+  if (segments[0] === "resourceGroups") {
+    segments.shift();
+    if (!segments.shift()) return undefined; // skip value
+  }
+
+  // /providers/Microsoft.Compute
+  if (segments.shift() !== "providers") return undefined;
+  let resourceType = segments.shift();
+  if (!resourceType) return undefined;
+  // List operations (top level operations with no resource group param)
+  if (segments.length === 1 && !hasResourceGroupParam) {
+    return {
+      isCrudPath: false,
+      resourceType: `${resourceType}/${segments.shift()!}`,
+    };
+  }
+  // CRUD operations require resource group param
+  if (!hasResourceGroupParam) return undefined;
+
+  // /virtualMachines/{vmName}[/extensions/{vmExtensionName}...]
+  while (segments.length >= 2) {
+    resourceType = `${resourceType}/${segments.shift()!}`;
+    // Validate that the resource name segment is a parameter
+    // TODO maybe constants or substring replacements are supported? Check
+    if (!segments[0].startsWith("{")) return undefined;
+    if (!segments[0].endsWith("}")) return undefined;
+    segments.shift();
+  }
+
+  // /operation (the final segment)
+  if (segments.shift()) return undefined;
+  if (segments.length !== 0) throw new Error(`Internal error: unexpected extra segments in ${path}`);
 
   return {
-    resourceProvider,
+    isCrudPath: true,
     resourceType,
-    subscriptionIdParam,
-    resourceGroupParam,
-    resourceNameParam,
   };
 }
 

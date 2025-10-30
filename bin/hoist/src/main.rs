@@ -488,12 +488,16 @@ async fn diff_summaries_with_module_index(
             println!("```");
 
             if let Some(modules) = new {
+                let mut modules = modules.clone();
+                modules.sort();
                 for module in modules {
                     println!("{module}");
                 }
             }
 
             if let Some(modules) = changed {
+                let mut modules = modules.clone();
+                modules.sort();
                 for module in modules {
                     println!("{module}");
                 }
@@ -506,11 +510,15 @@ async fn diff_summaries_with_module_index(
         // Print plain text output organized by provider
         for provider in providers {
             if let Some(modules) = new_modules.get(provider) {
+                let mut modules = modules.clone();
+                modules.sort();
                 for module in modules {
                     println!("{module}");
                 }
             }
             if let Some(modules) = changed_modules.get(provider) {
+                let mut modules = modules.clone();
+                modules.sort();
                 for module in modules {
                     println!("{module}");
                 }

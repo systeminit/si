@@ -33,62 +33,28 @@ export function addDefaultProps(
     const [schemaVariant] = schema.variants;
     const { domain } = schemaVariant;
 
-    // add name prop if not exists
-    if (!findPropByName(domain, "name")) {
-      const nameProp = createScalarProp(
-        "name",
-        "string",
-        domain.metadata.propPath,
-        true,
-      );
-
-      nameProp.data.documentation = "The name of the Azure resource";
-      nameProp.metadata.createOnly = true;
-
-      domain.entries.push(nameProp);
-    } else {
-      // Mark existing name prop as createOnly
-      const nameProp = findPropByName(domain, "name");
-      if (nameProp) {
-        nameProp.metadata.createOnly = true;
-      }
-    }
-
-    // add resource group prop if not exists
-    if (!findPropByName(domain, "resourceGroup")) {
-      const resourceGroupProp = createScalarProp(
-        "resourceGroup",
-        "string",
-        domain.metadata.propPath,
-        false,
-      );
-
-      resourceGroupProp.data.documentation =
+    // Add suggestions to resourceGroupName
+    // TODO if resourceGroupName prop exists with a different name, support that
+    const resourceGroupNameProp = findPropByName(domain, "resourceGroupName");
+    if (resourceGroupNameProp) {
+      resourceGroupNameProp.data.documentation ??=
         "The name of the resource group where this resource will be created";
-      resourceGroupProp.data.docLink =
+      resourceGroupNameProp.data.docLink ??=
         "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal";
-      resourceGroupProp.metadata.createOnly = true;
+      resourceGroupNameProp.metadata.createOnly = true;
 
-      addPropSuggestSource(resourceGroupProp, {
+      addPropSuggestSource(resourceGroupNameProp, {
         schema: "Azure Resource Group",
         prop: "/domain/Name",
       });
-
-      domain.entries.push(resourceGroupProp);
     }
 
-    // add subscription id prop if not exists
-    if (!findPropByName(domain, "subscriptionId")) {
-      const subscriptionIdProp = createScalarProp(
-        "subscriptionId",
-        "string",
-        domain.metadata.propPath,
-        true,
-      );
-
-      subscriptionIdProp.data.documentation =
+    // Add suggestions to subscriptionId
+    const subscriptionIdProp = findPropByName(domain, "subscriptionId");
+    if (subscriptionIdProp) {
+      subscriptionIdProp.data.documentation ??=
         "The Azure subscription ID where this resource will be created";
-      subscriptionIdProp.data.docLink =
+      subscriptionIdProp.data.docLink ??=
         "https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/manage-subscription";
       subscriptionIdProp.metadata.createOnly = true;
 
@@ -96,8 +62,6 @@ export function addDefaultProps(
         schema: "Azure Subscription",
         prop: "/domain/SubscriptionId",
       });
-
-      domain.entries.push(subscriptionIdProp);
     }
 
     // Extra prop
@@ -111,6 +75,7 @@ export function addDefaultProps(
     extraProp.data.hidden = true;
 
     // Create AzureResourceType prop
+    // TODO remove this; kept because a few functions reference it right now
     {
       const resourceTypeProp = createScalarProp(
         "AzureResourceType",
@@ -123,6 +88,22 @@ export function addDefaultProps(
       resourceTypeProp.data.hidden = true;
 
       extraProp.entries.push(resourceTypeProp);
+    }
+
+    // Create AzureResourceType prop
+    {
+      const resourceIdProp = createScalarProp(
+        "resourceId",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+
+      const { resourceId } = schemaVariant.superSchema as AzureSchema;
+      resourceIdProp.data.defaultValue = resourceId;
+      resourceIdProp.data.hidden = true;
+
+      extraProp.entries.push(resourceIdProp);
     }
 
     // Create apiVersion prop

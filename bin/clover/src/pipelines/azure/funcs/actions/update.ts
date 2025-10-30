@@ -34,6 +34,7 @@ async function main(component: Input): Promise<Output> {
     `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
 
   // First, GET the current resource state
+  console.log(`GET ${url}`);
   const getCurrentResponse = await fetch(url, {
     method: "GET",
     headers: {
@@ -55,6 +56,7 @@ async function main(component: Input): Promise<Output> {
   const mergedPayload = _.merge({}, currentResource, updatePayload);
 
   // PUT the complete merged resource definition
+  console.log(`PUT ${url} with payload:\n${JSON.stringify(mergedPayload, null, 2)}`);
   const response = await fetch(url, {
     method: "PUT",
     headers: {
@@ -92,9 +94,12 @@ function cleanPayload(domain) {
   const payload = _.cloneDeep(domain);
 
   // Remove metadata fields that are used for URL construction only
-  delete payload.subscriptionId;
-  delete payload.resourceGroup;
-  delete payload.name;
+  if (domain.extra?.resourceId) {
+    for (const key of domain.extra.resourceId.matchAll(/{([^}]+)}/g)) {
+      const paramName = key[1];
+      delete payload[paramName];
+    }
+  }
   delete payload.extra;
 
   // Merge discriminator subtypes into parent
