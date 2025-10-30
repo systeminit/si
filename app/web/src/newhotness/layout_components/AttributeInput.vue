@@ -495,7 +495,7 @@
               to select
             </div>
             <div
-              v-if="value"
+              v-if="value && !isMap"
               class="ml-auto pl-sm flex flex-row items-end gap-xs flex-1 min-w-0 max-w-fit"
             >
               <span
