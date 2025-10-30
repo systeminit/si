@@ -873,8 +873,8 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   // a: used for select all in Explore, not used here
   // b: undefined,
   c: (e) => {
+    if (e.metaKey || e.ctrlKey) return; // copy
     e.preventDefault();
-    if (e.metaKey || e.ctrlKey) return;
     emit("openChangesetModal");
   },
   // d: used for duplicate in Explore, not used here
@@ -885,6 +885,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     }
   },
   f: (e) => {
+    if (e.metaKey || e.ctrlKey) return; // find
     e.preventDefault();
     if (component.value?.toDelete) {
       restoreComponent();
@@ -928,7 +929,10 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
       upgradeComponent();
     }
   },
-  v: () => {
+  v: (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      return;
+    }
     if (featureFlagsStore.VIEWS_BUTTON) {
       openViewsModal();
     }
