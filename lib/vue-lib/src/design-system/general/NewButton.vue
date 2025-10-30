@@ -20,7 +20,7 @@
           tone !== 'empty' && 'border',
           computedTextSize,
           truncateText && 'min-w-0',
-          disabled
+          disabled || (disabledWhileLoading && computedLoading)
             ? [
                 'cursor-not-allowed',
                 themeClasses(
@@ -169,6 +169,7 @@ const props = defineProps({
   linkTo: [String, Object],
   target: String,
   disabled: Boolean,
+  disabledWhileLoading: Boolean,
   loading: Boolean,
   loadingText: { type: String, default: "Loading..." },
   loadingIcon: { type: String as PropType<IconNames>, default: "loader" },
