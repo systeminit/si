@@ -63,21 +63,15 @@ function azureIsChildRequired(
   return schema.requiredProperties.has(childName);
 }
 
-// TODO(nick): move to file.
-// {
-//   "schemaName": {
-//     "propPath": ["list", "of", "override"],
-//     "propPath": "singleOverride"
+// NOTE(nick,jkeiser): here is an example of what overrides look like...
+// const AZURE_PROP_OVERRIDES: Record<
+//   string,
+//   Record<string, PropOverrideFn | PropOverrideFn[]>
+// > = {
+//   "Microsoft.Network/loadBalancers": {
+//     "properties/frontendIPConfigurations/frontendIPConfigurationsItem/properties/publicIPAddress/id": suggest("Microsoft.Network/publicIPAddresses", "id"),
 //   }
-// }
-const AZURE_PROP_OVERRIDES: Record<
-  string,
-  Record<string, PropOverrideFn | PropOverrideFn[]>
-> = {
-  "Microsoft.Network/loadBalancers": {
-    "properties/frontendIPConfigurations/frontendIPConfigurationsItem/properties/publicIPAddress/id": suggest("Microsoft.Network/publicIPAddresses", "id"),
-  }
-};
+// };
 
 export const AZURE_PROVIDER_CONFIG: ProviderConfig = {
   name: "azure",
@@ -98,7 +92,7 @@ export const AZURE_PROVIDER_CONFIG: ProviderConfig = {
   normalizeProperty: (prop: JSONSchema) => prop as AzureProperty,
   isChildRequired: azureIsChildRequired,
   overrides: {
-    propOverrides: AZURE_PROP_OVERRIDES,
+    propOverrides: {},
     schemaOverrides: new Map(),
   },
   metadata: {
