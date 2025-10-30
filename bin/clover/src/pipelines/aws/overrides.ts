@@ -77,6 +77,14 @@ export const AWS_PROP_OVERRIDES: Record<
     DataProtectionPolicy: policyDocumentProp,
   },
 
+  // AWS::Organizations
+  "AWS::Organizations::OrganizationalUnit": {
+    ParentId: [
+      suggest("AWS::Organizations::Organization", "RootId"),
+      suggest("AWS::Organizations::OrganizationalUnit", "/resource_value/Id"),
+    ],
+  },
+
   // Props that exist on resources across all of AWS
   ".*": {
     // Policy document props
@@ -242,7 +250,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         );
       spec.funcs.push(importFunc);
       variant.managementFuncs.push(importFuncSpec);
-      
+
       const { func: createDeploymentFunc, actionFuncSpec: createActionFuncSpec } =
         attachExtraActionFunction(
           "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/actions/create.ts",
@@ -252,7 +260,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         );
       spec.funcs.push(createDeploymentFunc);
       variant.actionFuncs.push(createActionFuncSpec);
-      
+
       const { func: refreshDeploymentFunc, actionFuncSpec: refreshActionFuncSpec } =
         attachExtraActionFunction(
           "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/actions/refresh.ts",
@@ -268,7 +276,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
     "AWS::CertificateManager::Certificate",
     (spec: ExpandedPkgSpec) => {
       const variant = spec.schemas[0].variants[0];
-      
+
       const { func: createDeploymentFunc, actionFuncSpec: createActionFuncSpec } =
         attachExtraActionFunction(
           "./src/pipelines/aws/funcs/overrides/AWS::CertificateManager::Certificate/actions/create.ts",
@@ -278,7 +286,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         );
       spec.funcs.push(createDeploymentFunc);
       variant.actionFuncs.push(createActionFuncSpec);
-      
+
       const { func: refreshDeploymentFunc, actionFuncSpec: refreshActionFuncSpec } =
         attachExtraActionFunction(
           "./src/pipelines/aws/funcs/overrides/AWS::CertificateManager::Certificate/actions/refresh.ts",
