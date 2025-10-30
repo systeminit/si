@@ -56,6 +56,10 @@ use std::{
     },
 };
 
+use telemetry_utils::{
+    gauge,
+    monotonic,
+};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -378,6 +382,11 @@ impl RetryQueueManager {
                     "found existing retry queue on startup"
                 );
 
+                gauge!(
+                    layer_cache_retry_queue_depth = pending_files.len(),
+                    cache_name = cache_name
+                );
+
                 let mut state = QueueState::new(retry_dir, self.config.initial_backoff);
                 state.pending_files = pending_files;
                 // Retry immediately on startup
@@ -393,7 +402,6 @@ impl RetryQueueManager {
     /// Enqueue a failed write for retry
     pub async fn enqueue(&mut self, event: LayeredEvent) -> LayerDbResult<()> {
         use telemetry::prelude::*;
-        use telemetry_utils::metric;
         use tokio::fs;
         use ulid::Ulid;
 
@@ -432,12 +440,12 @@ impl RetryQueueManager {
             "persister write failed, enqueued for retry"
         );
 
-        metric!(
-            counter.layer_cache_retry_queue_enqueued = 1,
+        monotonic!(
+            layer_cache_retry_queue_enqueued = 1,
             cache_name = cache_name
         );
-        metric!(
-            counter.layer_cache_retry_queue_depth = 1,
+        gauge!(
+            layer_cache_retry_queue_depth = queue_depth,
             cache_name = cache_name
         );
 
@@ -535,7 +543,6 @@ impl RetryQueueManager {
     /// Mark a retry attempt as successful and remove from queue
     pub async fn mark_success(&mut self, handle: RetryHandle) -> LayerDbResult<()> {
         use telemetry::prelude::*;
-        use telemetry_utils::metric;
 
         let state = match self.queues.get_mut(&handle.cache_name) {
             Some(state) => state,
@@ -568,12 +575,12 @@ impl RetryQueueManager {
             "retry successful, removed from queue"
         );
 
-        metric!(
-            counter.layer_cache_retry_queue_success = 1,
+        monotonic!(
+            layer_cache_retry_queue_success = 1,
             cache_name = &handle.cache_name
         );
-        metric!(
-            counter.layer_cache_retry_queue_depth = -1,
+        gauge!(
+            layer_cache_retry_queue_depth = queue_depth,
             cache_name = &handle.cache_name
         );
 
@@ -583,7 +590,6 @@ impl RetryQueueManager {
     /// Mark a retry attempt as failed and update backoff
     pub fn mark_failure(&mut self, handle: RetryHandle, error: &LayerDbError) {
         use telemetry::prelude::*;
-        use telemetry_utils::metric;
 
         let state = match self.queues.get_mut(&handle.cache_name) {
             Some(state) => state,
@@ -615,8 +621,14 @@ impl RetryQueueManager {
             "retry failed, will retry after backoff"
         );
 
-        metric!(
-            counter.layer_cache_retry_queue_failed = 1,
+        let queue_depth = state.pending_files.len();
+
+        monotonic!(
+            layer_cache_retry_queue_failed = 1,
+            cache_name = &handle.cache_name
+        );
+        gauge!(
+            layer_cache_retry_queue_depth = queue_depth,
             cache_name = &handle.cache_name
         );
     }
@@ -624,7 +636,6 @@ impl RetryQueueManager {
     /// Mark a retry attempt as permanently failed and remove from queue
     pub async fn mark_permanent_failure(&mut self, handle: RetryHandle) {
         use telemetry::prelude::*;
-        use telemetry_utils::metric;
 
         let state = match self.queues.get_mut(&handle.cache_name) {
             Some(state) => state,
@@ -654,12 +665,12 @@ impl RetryQueueManager {
             "retry permanently failed (non-retryable error), removed from queue"
         );
 
-        metric!(
-            counter.layer_cache_retry_queue_permanent_failure = 1,
+        monotonic!(
+            layer_cache_retry_queue_permanent_failure = 1,
             cache_name = &handle.cache_name
         );
-        metric!(
-            counter.layer_cache_retry_queue_depth = -1,
+        gauge!(
+            layer_cache_retry_queue_depth = queue_depth,
             cache_name = &handle.cache_name
         );
     }
