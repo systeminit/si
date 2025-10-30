@@ -1,5 +1,6 @@
 import {
   FetchSchemaOptions,
+  PropOverrideFn,
   PROVIDER_REGISTRY,
   ProviderConfig,
   SuperSchema,
@@ -18,6 +19,7 @@ import {
   initAzureRestApiSpecsRepo,
 } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
+import { suggest } from "../generic/overrides.ts";
 
 async function azureFetchSchema(options: FetchSchemaOptions) {
   const specsRepo = initAzureRestApiSpecsRepo(options);
@@ -61,6 +63,22 @@ function azureIsChildRequired(
   return schema.requiredProperties.has(childName);
 }
 
+// TODO(nick): move to file.
+// {
+//   "schemaName": {
+//     "propPath": ["list", "of", "override"],
+//     "propPath": "singleOverride"
+//   }
+// }
+const AZURE_PROP_OVERRIDES: Record<
+  string,
+  Record<string, PropOverrideFn | PropOverrideFn[]>
+> = {
+  "Microsoft.Network/loadBalancers": {
+    "properties/frontendIPConfigurations/frontendIPConfigurationsItem/properties/publicIPAddress/id": suggest("Microsoft.Network/publicIPAddresses", "id"),
+  }
+};
+
 export const AZURE_PROVIDER_CONFIG: ProviderConfig = {
   name: "azure",
   isStable: true,
@@ -80,7 +98,7 @@ export const AZURE_PROVIDER_CONFIG: ProviderConfig = {
   normalizeProperty: (prop: JSONSchema) => prop as AzureProperty,
   isChildRequired: azureIsChildRequired,
   overrides: {
-    propOverrides: {},
+    propOverrides: AZURE_PROP_OVERRIDES,
     schemaOverrides: new Map(),
   },
   metadata: {
