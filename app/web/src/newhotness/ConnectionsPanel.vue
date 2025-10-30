@@ -12,7 +12,11 @@
     "
   >
     <template v-if="incoming.length">
-      <ConnectionLayout label="Incoming" :connections="incoming" />
+      <ConnectionLayout
+        label="Incoming"
+        :connections="incoming"
+        :highlightedPath="highlightedPath"
+      />
     </template>
     <template v-if="outgoing.length">
       <ConnectionLayout label="Outgoing" :connections="outgoing" />
@@ -26,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import clsx from "clsx";
 import { themeClasses } from "@si/vue-lib/design-system";
 import {
@@ -50,4 +54,13 @@ const connections = computed(
 );
 const incoming = computed(() => connections.value.incoming);
 const outgoing = computed(() => connections.value.outgoing);
+
+const highlightedPath = ref("");
+const highlight = (selfPath: string) => {
+  highlightedPath.value = selfPath;
+};
+
+defineExpose({
+  highlight,
+});
 </script>
