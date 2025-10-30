@@ -149,7 +149,7 @@ export const useComponentActions = (
       !!(
         refreshActionPrototype.value &&
         component.value?.hasResource &&
-        componentExistsOnHead.value
+        (ctx.onHead.value || componentExistsOnHead.value)
       ),
   );
 
