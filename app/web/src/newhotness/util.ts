@@ -165,3 +165,22 @@ export function memoizeDebounce<F extends AnyFn>(
 
   return wrappedFn;
 }
+
+/**
+ * Escapes a string segment for use in a JSON Pointer (RFC 6901).
+ * JSON Pointers use '~' as an escape character:
+ * - '~' must be encoded as '~0'
+ * - '/' must be encoded as '~1'
+ *
+ * @param segment - The string segment to escape
+ * @returns The escaped segment safe for use in a JSON Pointer path
+ *
+ * @example
+ * escapeJsonPointerSegment("test/paul") // returns "test~1paul"
+ * escapeJsonPointerSegment("a~b") // returns "a~0b"
+ * escapeJsonPointerSegment("test/~foo") // returns "test~1~0foo"
+ */
+export function escapeJsonPointerSegment(segment: string): string {
+  // Order matters: escape ~ first, then /
+  return segment.replace(/~/g, "~0").replace(/\//g, "~1");
+}

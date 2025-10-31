@@ -330,6 +330,7 @@ import {
   ExploreContext,
 } from "../types";
 import { AttributeErrors } from "../AttributePanel.vue";
+import { escapeJsonPointerSegment } from "../util";
 
 const ctx = useContext();
 const exploreContext = inject<ExploreContext>("EXPLORE_CONTEXT");
@@ -624,8 +625,11 @@ const setKey = async (
 
   const apis = createCalls();
 
+  // Escape the key according to RFC 6901 (JSON Pointer spec)
+  // This ensures special characters like '/' and '~' are properly escaped
+  const escapedKey = escapeJsonPointerSegment(key);
   const appendPath =
-    `${attributeTree.attributeValue.path}/${key}` as AttributePath;
+    `${attributeTree.attributeValue.path}/${escapedKey}` as AttributePath;
   const calls = apis.map(async (call) => {
     const payload = {
       [appendPath]: value,
