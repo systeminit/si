@@ -209,7 +209,7 @@ import ComponentSecretAttribute from "./layout_components/ComponentSecretAttribu
 import { useWatchedForm } from "./logic_composables/watched_form";
 import { NameFormData } from "./ComponentDetails.vue";
 import EmptyState from "./EmptyState.vue";
-import { findAttributeValueInTree } from "./util";
+import { findAttributeValueInTree, escapeJsonPointerSegment } from "./util";
 import {
   arrayAttrTreeIntoTree,
   AttrTree,
@@ -392,8 +392,11 @@ const setKey = async (
     () => attributeTree.children.length > initialChildrenCount,
   );
 
+  // Escape the key according to RFC 6901 (JSON Pointer spec)
+  // This ensures special characters like '/' and '~' are properly escaped
+  const escapedKey = escapeJsonPointerSegment(key);
   const childPath =
-    `${attributeTree.attributeValue.path}/${key}` as AttributePath;
+    `${attributeTree.attributeValue.path}/${escapedKey}` as AttributePath;
   const payload = {
     [childPath]: value,
   };
