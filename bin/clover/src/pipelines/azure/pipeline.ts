@@ -15,6 +15,7 @@ import {
 } from "./schema.ts";
 import { parseAzureSpec } from "./spec.ts";
 import { createSuggestionsForIds } from "./pipeline-steps/createSuggestionsAcrossAssets.ts";
+import { removeUnneededAssets } from "./pipeline-steps/removeUnneededAssets.ts";
 
 export async function generateAzureSpecs(
   options: PipelineOptions,
@@ -25,6 +26,7 @@ export async function generateAzureSpecs(
   let specs = await getLatestAzureSpecs(options);
 
   // Apply pipeline steps
+  specs = removeUnneededAssets(specs);
   specs = addDefaultProps(specs);
   specs = generateDefaultFuncsFromConfig(specs, azureConfig);
   specs = generateIntrinsicFuncs(specs);
