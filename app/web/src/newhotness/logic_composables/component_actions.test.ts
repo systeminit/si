@@ -1,6 +1,6 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { computed, ref } from "vue";
-import { ActionKind } from "@/api/sdf/dal/action";
+import { ActionKind, ActionState } from "@/api/sdf/dal/action";
 import {
   ActionPrototypeView,
   BifrostComponent,
@@ -372,4 +372,325 @@ test("refreshEnabled returns false when no refresh action prototype exists", asy
 
   // Then: refreshEnabled should be false (schema doesn't support refresh)
   expect(refreshEnabled.value).toBe(false);
+});
+
+/**
+ * Tests for actionByPrototype change set filtering
+ *
+ * These tests validate that actionByPrototype correctly filters actions based on
+ * their originatingChangeSetId when viewing a change set (not HEAD).
+ */
+
+test("actionByPrototype shows all actions when on HEAD regardless of originatingChangeSetId", async () => {
+  // Given: User is on HEAD with actions from multiple change sets
+  mockOnHead = true;
+
+  const mockComponent = ref<BifrostComponent>({
+    id: "test-component",
+    hasResource: true,
+    schemaVariantId: { id: "test-variant" },
+  } as BifrostComponent);
+
+  const mockActionPrototypeViewList: ActionPrototypeViewList = {
+    id: "test-variant",
+    actionPrototypes: [
+      {
+        id: "create-prototype",
+        kind: ActionKind.Create,
+        name: "Create",
+      } as ActionPrototypeView,
+      {
+        id: "update-prototype",
+        kind: ActionKind.Update,
+        name: "Update",
+      } as ActionPrototypeView,
+    ],
+  };
+
+  const mockActionViewList: BifrostActionViewList = {
+    id: CONTEXT.value.changeSetId.value,
+    actions: [
+      {
+        id: "action-1",
+        prototypeId: "create-prototype",
+        componentId: "test-component",
+        name: "Create",
+        kind: ActionKind.Create,
+        state: ActionState.Queued,
+        originatingChangeSetId: "changeset-1",
+        myDependencies: [],
+        dependentOn: [],
+        holdStatusInfluencedBy: [],
+      },
+      {
+        id: "action-2",
+        prototypeId: "update-prototype",
+        componentId: "test-component",
+        name: "Update",
+        kind: ActionKind.Update,
+        state: ActionState.Queued,
+        originatingChangeSetId: "changeset-2",
+        myDependencies: [],
+        dependentOn: [],
+        holdStatusInfluencedBy: [],
+      },
+    ],
+  };
+
+  // Set up query responses
+  const ctx = CONTEXT.value;
+  mockQueryResponses.set(
+    `${ctx.workspacePk.value}|${ctx.changeSetId.value}|ActionPrototypeViewList|test-variant`,
+    mockActionPrototypeViewList,
+  );
+  mockQueryResponses.set(
+    `${ctx.workspacePk.value}|${ctx.changeSetId.value}|ActionViewList|${ctx.workspacePk.value}`,
+    mockActionViewList,
+  );
+
+  const { useComponentActions } = await import("./component_actions");
+  const { actionByPrototype } = useComponentActions(mockComponent);
+
+  // Then: Both actions should be visible on HEAD
+  expect(Object.keys(actionByPrototype.value)).toHaveLength(2);
+  expect(actionByPrototype.value["create-prototype"]).toBeDefined();
+  expect(actionByPrototype.value["update-prototype"]).toBeDefined();
+});
+
+test("actionByPrototype filters actions to only show those from current change set", async () => {
+  // Given: User is in a change set with actions from multiple change sets
+  mockOnHead = false;
+
+  const mockComponent = ref<BifrostComponent>({
+    id: "test-component",
+    hasResource: true,
+    schemaVariantId: { id: "test-variant" },
+  } as BifrostComponent);
+
+  const mockActionPrototypeViewList: ActionPrototypeViewList = {
+    id: "test-variant",
+    actionPrototypes: [
+      {
+        id: "create-prototype",
+        kind: ActionKind.Create,
+        name: "Create",
+      } as ActionPrototypeView,
+      {
+        id: "update-prototype",
+        kind: ActionKind.Update,
+        name: "Update",
+      } as ActionPrototypeView,
+    ],
+  };
+
+  const ctx = CONTEXT.value;
+  const currentChangeSetId = ctx.changeSetId.value;
+
+  const mockActionViewList: BifrostActionViewList = {
+    id: currentChangeSetId,
+    actions: [
+      {
+        id: "action-1",
+        prototypeId: "create-prototype",
+        componentId: "test-component",
+        name: "Create",
+        kind: ActionKind.Create,
+        state: ActionState.Queued,
+        originatingChangeSetId: currentChangeSetId, // From current change set
+        myDependencies: [],
+        dependentOn: [],
+        holdStatusInfluencedBy: [],
+      },
+      {
+        id: "action-2",
+        prototypeId: "update-prototype",
+        componentId: "test-component",
+        name: "Update",
+        kind: ActionKind.Update,
+        state: ActionState.Queued,
+        originatingChangeSetId: "different-changeset", // From different change set
+        myDependencies: [],
+        dependentOn: [],
+        holdStatusInfluencedBy: [],
+      },
+    ],
+  };
+
+  // Set up query responses
+  mockQueryResponses.set(
+    `${ctx.workspacePk.value}|${ctx.changeSetId.value}|ActionPrototypeViewList|test-variant`,
+    mockActionPrototypeViewList,
+  );
+  mockQueryResponses.set(
+    `${ctx.workspacePk.value}|${ctx.changeSetId.value}|ActionViewList|${ctx.workspacePk.value}`,
+    mockActionViewList,
+  );
+
+  const { useComponentActions } = await import("./component_actions");
+  const { actionByPrototype } = useComponentActions(mockComponent);
+
+  // Then: Only action from current change set should be visible
+  expect(Object.keys(actionByPrototype.value)).toHaveLength(1);
+  const createAction = actionByPrototype.value["create-prototype"];
+  expect(createAction).toBeDefined();
+  expect(createAction?.originatingChangeSetId).toBe(currentChangeSetId);
+  expect(actionByPrototype.value["update-prototype"]).toBeUndefined();
+});
+
+test("actionByPrototype shows no actions when all actions are from different change sets", async () => {
+  // Given: User is in a change set but all actions are from other change sets
+  mockOnHead = false;
+
+  const mockComponent = ref<BifrostComponent>({
+    id: "test-component",
+    hasResource: true,
+    schemaVariantId: { id: "test-variant" },
+  } as BifrostComponent);
+
+  const mockActionPrototypeViewList: ActionPrototypeViewList = {
+    id: "test-variant",
+    actionPrototypes: [
+      {
+        id: "create-prototype",
+        kind: ActionKind.Create,
+        name: "Create",
+      } as ActionPrototypeView,
+    ],
+  };
+
+  const ctx = CONTEXT.value;
+
+  const mockActionViewList: BifrostActionViewList = {
+    id: ctx.changeSetId.value,
+    actions: [
+      {
+        id: "action-1",
+        prototypeId: "create-prototype",
+        componentId: "test-component",
+        name: "Create",
+        kind: ActionKind.Create,
+        state: ActionState.Queued,
+        originatingChangeSetId: "different-changeset", // From different change set
+        myDependencies: [],
+        dependentOn: [],
+        holdStatusInfluencedBy: [],
+      },
+      {
+        id: "action-2",
+        prototypeId: "create-prototype",
+        componentId: "test-component",
+        name: "Create",
+        kind: ActionKind.Create,
+        state: ActionState.Queued,
+        originatingChangeSetId: "another-changeset", // From another different change set
+        myDependencies: [],
+        dependentOn: [],
+        holdStatusInfluencedBy: [],
+      },
+    ],
+  };
+
+  // Set up query responses
+  mockQueryResponses.set(
+    `${ctx.workspacePk.value}|${ctx.changeSetId.value}|ActionPrototypeViewList|test-variant`,
+    mockActionPrototypeViewList,
+  );
+  mockQueryResponses.set(
+    `${ctx.workspacePk.value}|${ctx.changeSetId.value}|ActionViewList|${ctx.workspacePk.value}`,
+    mockActionViewList,
+  );
+
+  const { useComponentActions } = await import("./component_actions");
+  const { actionByPrototype } = useComponentActions(mockComponent);
+
+  // Then: No actions should be visible
+  expect(Object.keys(actionByPrototype.value)).toHaveLength(0);
+});
+
+test("actionByPrototype correctly filters multiple actions for different components", async () => {
+  // Given: User is in a change set with actions for multiple components
+  mockOnHead = false;
+
+  const mockComponent = ref<BifrostComponent>({
+    id: "test-component-1",
+    hasResource: true,
+    schemaVariantId: { id: "test-variant" },
+  } as BifrostComponent);
+
+  const mockActionPrototypeViewList: ActionPrototypeViewList = {
+    id: "test-variant",
+    actionPrototypes: [
+      {
+        id: "create-prototype",
+        kind: ActionKind.Create,
+        name: "Create",
+      } as ActionPrototypeView,
+    ],
+  };
+
+  const ctx = CONTEXT.value;
+  const currentChangeSetId = ctx.changeSetId.value;
+
+  const mockActionViewList: BifrostActionViewList = {
+    id: currentChangeSetId,
+    actions: [
+      {
+        id: "action-1",
+        prototypeId: "create-prototype",
+        componentId: "test-component-1", // Current component, current change set
+        name: "Create",
+        kind: ActionKind.Create,
+        state: ActionState.Queued,
+        originatingChangeSetId: currentChangeSetId,
+        myDependencies: [],
+        dependentOn: [],
+        holdStatusInfluencedBy: [],
+      },
+      {
+        id: "action-2",
+        prototypeId: "create-prototype",
+        componentId: "test-component-2", // Different component, current change set
+        name: "Create",
+        kind: ActionKind.Create,
+        state: ActionState.Queued,
+        originatingChangeSetId: currentChangeSetId,
+        myDependencies: [],
+        dependentOn: [],
+        holdStatusInfluencedBy: [],
+      },
+      {
+        id: "action-3",
+        prototypeId: "create-prototype",
+        componentId: "test-component-1", // Current component, different change set
+        name: "Create",
+        kind: ActionKind.Create,
+        state: ActionState.Queued,
+        originatingChangeSetId: "different-changeset",
+        myDependencies: [],
+        dependentOn: [],
+        holdStatusInfluencedBy: [],
+      },
+    ],
+  };
+
+  // Set up query responses
+  mockQueryResponses.set(
+    `${ctx.workspacePk.value}|${ctx.changeSetId.value}|ActionPrototypeViewList|test-variant`,
+    mockActionPrototypeViewList,
+  );
+  mockQueryResponses.set(
+    `${ctx.workspacePk.value}|${ctx.changeSetId.value}|ActionViewList|${ctx.workspacePk.value}`,
+    mockActionViewList,
+  );
+
+  const { useComponentActions } = await import("./component_actions");
+  const { actionByPrototype } = useComponentActions(mockComponent);
+
+  // Then: Only action for current component AND current change set should be visible
+  expect(Object.keys(actionByPrototype.value)).toHaveLength(1);
+  const createAction = actionByPrototype.value["create-prototype"];
+  expect(createAction).toBeDefined();
+  expect(createAction?.id).toBe("action-1");
+  expect(createAction?.componentId).toBe("test-component-1");
+  expect(createAction?.originatingChangeSetId).toBe(currentChangeSetId);
 });

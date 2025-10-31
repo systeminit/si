@@ -104,6 +104,13 @@ export const useComponentActions = (
     const result: Record<ActionPrototypeId, ActionProposedView> = {};
     for (const action of actionViewList.data.value.actions) {
       if (action.componentId === component.value.id) {
+        // When in a change set (not HEAD), only show actions that originated in the current change set
+        if (
+          !ctx.onHead.value &&
+          action.originatingChangeSetId !== ctx.changeSetId.value
+        ) {
+          continue;
+        }
         // NOTE(nick): this assumes that there can be one action for a given prototype and component.
         // As of the time of writing, this is true, but multiple actions per prototype and component
         // aren't disallowed from the underlying graph's perspective. Theorhetically, you could
