@@ -182,7 +182,7 @@ import {
   TruncateWithTooltip,
   TextPill,
 } from "@si/vue-lib/design-system";
-import { computed, inject, nextTick, reactive, ref, watch } from "vue";
+import { computed, inject, nextTick, ref, watch } from "vue";
 import clsx from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { useRoute, useRouter } from "vue-router";
@@ -218,18 +218,7 @@ const scrollRef = ref<HTMLDivElement | undefined>();
 
 const selectedAsset = ref<UIAsset | undefined>(undefined);
 
-const scrollToSelected = () => {
-  nextTick(() => {
-    const el = document.getElementsByClassName(
-      "add-component-selected-item",
-    )[0];
-    if (el) {
-      el.scrollIntoView({ block: "center" });
-    }
-  });
-};
-
-const selectAsset = (asset: UIAsset, noScroll?: boolean) => {
+const selectAsset = (asset: UIAsset, idx?: number) => {
   if (compareKeys(selectedAsset.value?.key, asset.key)) onEnter();
   else {
     selectedAsset.value = asset;
@@ -238,10 +227,8 @@ const selectAsset = (asset: UIAsset, noScroll?: boolean) => {
     compareKeys(a.key, asset.key),
   );
 
-  // If we came here from a mouse click, do not scroll! it can make the double
-  // click "miss"
-  if (!noScroll) {
-    scrollToSelected();
+  if (idx) {
+    virtualList.value.scrollToIndex(idx);
   }
 };
 const clearSelection = () => {
@@ -426,7 +413,7 @@ const selectAssetByIndex = () => {
   if (selectionIndex.value && selectionIndex.value >= 0) {
     const asset = filteredAssetsFlat.value[selectionIndex.value];
     if (asset) {
-      selectAsset(asset);
+      selectAsset(asset, selectionIndex.value);
 
       // if you have a selected asset from this category open the category
       categoryIsOpen.value.add(asset.uiCategory.name);
@@ -574,8 +561,6 @@ const categories = computed(() => {
       }
     });
   }
-
-  console.log("WTF", categories)
 
   return Object.values(categories).sort((a, b) => {
     const n1 = a.name.toUpperCase();
@@ -747,7 +732,8 @@ const open = () => {
 const assetClick = (idx: number) => {
   const cat = categoryFromIndex(idx);
   if (cat) {
-    if (categoryIsOpen.value.has(cat.name)) categoryIsOpen.value.delete(cat.name);
+    if (categoryIsOpen.value.has(cat.name))
+      categoryIsOpen.value.delete(cat.name);
     else categoryIsOpen.value.add(cat.name);
   }
 };
