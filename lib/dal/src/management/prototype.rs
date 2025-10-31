@@ -420,7 +420,11 @@ impl ManagementPrototype {
         // TODO: (Brit) Make Management Func Kinds a real thing
         let kind = {
             if func.name.starts_with("Import from ")
-                || func.display_name == Some(("Import from AWS").to_string())
+                || func
+                    .display_name
+                    .as_ref()
+                    .map(|d| d.starts_with("Import from "))
+                    .unwrap_or(false)
             {
                 ManagementFuncKind::Import
             } else if func.name.starts_with("Discover on ")
