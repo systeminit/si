@@ -157,7 +157,7 @@ const virtualListHeight = computed(() => virtualList.value.getTotalSize());
 // Got through all the rows, save the id of the latest contentRow.
 // If it's initialId is bigger than the id we're looking for, the previous one was the target row,
 // otherwise, contentRow idx is the target.
-// This is extra  complicated sinc ewe need to skip headers and footerss
+// This is extra complicated since we need to skip headers and footers
 const getRowIndexByGridTileIndex = (idx: number) => {
   let lastValidRowIndex = 0;
 
