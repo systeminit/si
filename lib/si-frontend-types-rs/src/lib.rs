@@ -48,6 +48,7 @@ pub use crate::{
         FuncCode,
         FuncKind,
         FuncSummary,
+        LeafBindingPrototype,
         LeafInputLocation,
     },
     index::FrontEndObjectRequest,

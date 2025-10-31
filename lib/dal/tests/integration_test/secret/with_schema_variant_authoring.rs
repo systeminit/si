@@ -76,7 +76,7 @@ async fn existing_code_gen_func_using_secrets_for_new_schema_variant(ctx: &mut D
     // Add the secrets input and commit.
     inputs.push(LeafInputLocation::Secrets);
     // can't update leaf bindings without unlocking all attached things!! because this changes the func args AND the prototype args :facepalm:
-    LeafBinding::update_leaf_func_binding(ctx, bindings.attribute_prototype_id, inputs.as_slice())
+    LeafBinding::update_leaf_func_binding(ctx, bindings.leaf_binding_prototype, inputs.as_slice())
         .await
         .expect("could not update leaf binding");
 

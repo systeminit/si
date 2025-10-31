@@ -400,6 +400,23 @@ impl FuncAuthoringClient {
         Ok(func)
     }
 
+    /// Creates a new Code Gen or Qualification Overlay Func and returns it
+    #[instrument(
+        name = "func.authoring.create_new_leaf_overlay_funcy",
+        level = "info",
+        skip(ctx)
+    )]
+    pub async fn create_new_leaf_overlay_func(
+        ctx: &DalContext,
+        name: Option<String>,
+        leaf_kind: LeafKind,
+        schema_id: SchemaId,
+        inputs: &[LeafInputLocation],
+    ) -> FuncAuthoringResult<Func> {
+        let func =
+            create::create_leaf_overlay_func(ctx, name, leaf_kind, schema_id, inputs).await?;
+        Ok(func)
+    }
     /// Creates a new Code Gen or Qualification Func and returns it
     #[instrument(
         name = "func.authoring.create_new_leaf_func",

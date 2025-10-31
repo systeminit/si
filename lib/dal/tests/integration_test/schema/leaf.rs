@@ -59,7 +59,7 @@ async fn leaf_prototype_rerun(ctx: &mut DalContext) -> Result<()> {
         ctx,
         schema.id(),
         LeafKind::Qualification,
-        inputs.clone(),
+        &inputs,
         leaf_qual_func.id,
     )
     .await?;
@@ -162,7 +162,7 @@ async fn leaf_prototype_tests(ctx: &mut DalContext) -> Result<()> {
         ctx,
         schema.id(),
         LeafKind::Qualification,
-        inputs.clone(),
+        &inputs,
         leaf_qual_func.id,
     )
     .await?;

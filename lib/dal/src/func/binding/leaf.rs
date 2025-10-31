@@ -2,6 +2,8 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_frontend_types::LeafBindingPrototype;
+use si_id::LeafPrototypeId;
 use telemetry::prelude::*;
 
 use super::{
@@ -32,13 +34,14 @@ use crate::{
         },
     },
     prop::PropPath,
+    schema::leaf::LeafPrototype,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LeafBinding {
     // unique ids
     pub func_id: FuncId,
-    pub attribute_prototype_id: AttributePrototypeId,
+    pub leaf_binding_prototype: LeafBindingPrototype,
     // things needed for create
     pub eventual_parent: EventualParent,
     // thing that can be updated
@@ -53,10 +56,32 @@ impl LeafBinding {
         func_id: FuncId,
         leaf_kind: LeafKind,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
-        let inputs = Self::list_leaf_function_inputs(ctx, func_id).await?;
         let mut bindings = vec![];
+        let leaf_prototype_ids = LeafPrototype::for_func(ctx, func_id)
+            .await
+            .map_err(Box::new)?;
+        for leaf_proto in leaf_prototype_ids {
+            let inputs = leaf_proto.leaf_inputs().collect();
+            let schema_ids = LeafPrototype::schemas(ctx, leaf_proto.id())
+                .await
+                .map_err(Box::new)?;
+            let leaf_binding = LeafBinding {
+                func_id,
+                leaf_binding_prototype: LeafBindingPrototype::Overlay(leaf_proto.id()),
+                eventual_parent: EventualParent::Schemas(schema_ids),
+                inputs,
+                leaf_kind,
+            };
+
+            bindings.push(match leaf_kind {
+                LeafKind::CodeGeneration => FuncBinding::CodeGeneration(leaf_binding),
+                LeafKind::Qualification => FuncBinding::Qualification(leaf_binding),
+            });
+        }
+
         let attribute_prototype_ids =
             AttributePrototype::list_ids_for_func_id(ctx, func_id).await?;
+        let inputs = Self::list_leaf_function_inputs(ctx, func_id).await?;
 
         for attribute_prototype_id in attribute_prototype_ids {
             let eventual_parent =
@@ -66,21 +91,18 @@ impl LeafBinding {
                 // skip components for now
                 continue;
             }
+
+            let leaf_binding = LeafBinding {
+                func_id,
+                leaf_binding_prototype: LeafBindingPrototype::Attribute(attribute_prototype_id),
+                eventual_parent,
+                inputs: inputs.clone(),
+                leaf_kind,
+            };
+
             let binding = match leaf_kind {
-                LeafKind::CodeGeneration => FuncBinding::CodeGeneration(LeafBinding {
-                    func_id,
-                    attribute_prototype_id,
-                    eventual_parent,
-                    inputs: inputs.clone(),
-                    leaf_kind,
-                }),
-                LeafKind::Qualification => FuncBinding::Qualification(LeafBinding {
-                    func_id,
-                    attribute_prototype_id,
-                    eventual_parent,
-                    inputs: inputs.clone(),
-                    leaf_kind,
-                }),
+                LeafKind::CodeGeneration => FuncBinding::CodeGeneration(leaf_binding),
+                LeafKind::Qualification => FuncBinding::Qualification(leaf_binding),
             };
 
             bindings.push(binding)
@@ -137,8 +159,23 @@ impl LeafBinding {
                 // let attribute_prototype_id =
                 //     Component::upsert_leaf_function(ctx, component_id, leaf_kind, inputs, &func).await?;
             }
-            EventualParent::Schemas(_) => {
-                // zack: how to handle?
+            EventualParent::Schemas(schemas) => {
+                let mut schema_iter = schemas.iter();
+                let Some(first_schema_id) = schema_iter.next().copied() else {
+                    return Err(super::FuncBindingError::NoSchemas);
+                };
+
+                let prototype =
+                    LeafPrototype::new(ctx, first_schema_id, leaf_kind, inputs, func.id)
+                        .await
+                        .map_err(Box::new)?;
+
+                for next_schema_id in schema_iter {
+                    prototype
+                        .attach_to_schema(ctx, *next_schema_id)
+                        .await
+                        .map_err(Box::new)?;
+                }
             }
         }
 
@@ -149,13 +186,19 @@ impl LeafBinding {
     pub(crate) async fn port_binding_to_new_func(
         ctx: &DalContext,
         new_func_id: FuncId,
-        existing_prototype_id: AttributePrototypeId,
+        leaf_binding_prototype: LeafBindingPrototype,
         leaf_kind: LeafKind,
         eventual_parent: EventualParent,
         inputs: &[LeafInputLocation],
     ) -> FuncBindingResult<Vec<FuncBinding>> {
-        // remove the existing binding
-        LeafBinding::delete_leaf_func_binding(ctx, existing_prototype_id).await?;
+        match leaf_binding_prototype {
+            LeafBindingPrototype::Attribute(attribute_prototype_id) => {
+                LeafBinding::delete_leaf_func_binding(ctx, attribute_prototype_id).await?;
+            }
+            LeafBindingPrototype::Overlay(leaf_prototype_id) => {
+                LeafBinding::delete_leaf_overlay_func_binding(ctx, leaf_prototype_id).await?;
+            }
+        }
 
         // create one for the new func_id
         LeafBinding::create_leaf_func_binding(ctx, new_func_id, eventual_parent, leaf_kind, inputs)
@@ -170,78 +213,104 @@ impl LeafBinding {
     )]
     pub async fn update_leaf_func_binding(
         ctx: &DalContext,
-        attribute_prototype_id: AttributePrototypeId,
+        leaf_binding_prototype: LeafBindingPrototype,
         input_locations: &[LeafInputLocation],
     ) -> FuncBindingResult<Vec<FuncBinding>> {
-        // don't update binding if parent is locked
-        let eventual_parent =
-            AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
-        eventual_parent.error_if_locked(ctx).await?;
+        let func_id = match leaf_binding_prototype {
+            LeafBindingPrototype::Attribute(attribute_prototype_id) => {
+                let eventual_parent =
+                    AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
+                eventual_parent.error_if_locked(ctx).await?;
 
-        // find the prototype
-        let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
-        // update the input locations
-        let mut existing_args = FuncArgument::list_for_func(ctx, func_id).await?;
-        let mut inputs = vec![];
-        for location in input_locations {
-            let arg_name = location.arg_name();
-            let arg_id = match existing_args
-                .iter()
-                .find(|arg| arg.name.as_str() == arg_name)
-            {
-                Some(existing_arg) => existing_arg.id,
-                None => {
-                    let new_arg =
-                        FuncArgument::new(ctx, arg_name, location.arg_kind(), None, func_id)
+                // find the prototype
+                let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
+                // update the input locations
+                let mut existing_args = FuncArgument::list_for_func(ctx, func_id).await?;
+                let mut inputs = vec![];
+                for location in input_locations {
+                    let arg_name = location.arg_name();
+                    let arg_id = match existing_args
+                        .iter()
+                        .find(|arg| arg.name.as_str() == arg_name)
+                    {
+                        Some(existing_arg) => existing_arg.id,
+                        None => {
+                            let new_arg = FuncArgument::new(
+                                ctx,
+                                arg_name,
+                                location.arg_kind(),
+                                None,
+                                func_id,
+                            )
                             .await?;
-                    new_arg.id
+                            new_arg.id
+                        }
+                    };
+
+                    inputs.push(LeafInput {
+                        location: *location,
+                        func_argument_id: arg_id,
+                    });
+
+                    if let EventualParent::SchemaVariant(schema_variant_id) = eventual_parent {
+                        SchemaVariant::upsert_leaf_function_inputs(
+                            ctx,
+                            &inputs,
+                            attribute_prototype_id,
+                            schema_variant_id,
+                        )
+                        .await?;
+                    }
                 }
-            };
 
-            inputs.push(LeafInput {
-                location: *location,
-                func_argument_id: arg_id,
-            });
-        }
+                for existing_arg in existing_args.drain(..) {
+                    if !inputs.iter().any(
+                        |&LeafInput {
+                             func_argument_id, ..
+                         }| func_argument_id == existing_arg.id,
+                    ) {
+                        FuncArgument::remove(ctx, existing_arg.id).await?;
+                    }
+                }
 
-        for existing_arg in existing_args.drain(..) {
-            if !inputs.iter().any(
-                |&LeafInput {
-                     func_argument_id, ..
-                 }| func_argument_id == existing_arg.id,
-            ) {
-                FuncArgument::remove(ctx, existing_arg.id).await?;
+                func_id
             }
-        }
-        match AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await? {
-            EventualParent::SchemaVariant(schema_variant_id) => {
-                SchemaVariant::upsert_leaf_function_inputs(
-                    ctx,
-                    inputs.as_slice(),
-                    attribute_prototype_id,
-                    schema_variant_id,
-                )
-                .await?;
+            LeafBindingPrototype::Overlay(leaf_prototype_id) => {
+                LeafPrototype::update_inputs(ctx, leaf_prototype_id, input_locations)
+                    .await
+                    .map_err(Box::new)?;
+                LeafPrototype::func_id(ctx, leaf_prototype_id)
+                    .await
+                    .map_err(Box::new)?
             }
-            EventualParent::Component(_component_id) => {
-                // brit todo : write this func
-                // Component::upsert_leaf_function_inputs(
-                //     ctx,
-                //     inputs.as_slice(),
-                //     attribute_prototype_id,
-                //     component_id,
-                // )
-                // .await?;
-            }
-            EventualParent::Schemas(_) => {
-                // zack: todo
-            }
-        }
+        };
+
         FuncBinding::for_func_id(ctx, func_id).await
     }
 
-    /// Deletes the attribute prototype for the given [`LeafKind`], including deleting the existing prototype arguments
-    /// and the created attribute value/prop beneath the Root Prop node for the [`LeafKind`].
+    #[instrument(
+        level = "info",
+        skip(ctx),
+        name = "func.binding.leaf.delete_leaf_overlay_func_binding"
+    )]
+    pub async fn delete_leaf_overlay_func_binding(
+        ctx: &DalContext,
+        leaf_prototype_id: LeafPrototypeId,
+    ) -> FuncBindingResult<EventualParent> {
+        let schemas = LeafPrototype::schemas(ctx, leaf_prototype_id)
+            .await
+            .map_err(Box::new)?;
+        let eventual_parent = EventualParent::Schemas(schemas);
+        LeafPrototype::remove(ctx, leaf_prototype_id)
+            .await
+            .map_err(Box::new)?;
+
+        Ok(eventual_parent)
+    }
+
+    /// Deletes the attribute prototype for the given [`LeafKind`], including
+    /// deleting the existing prototype arguments and the created attribute
+    /// value/prop beneath the Root Prop node for the [`LeafKind`].
     #[instrument(
         level = "info",
         skip(ctx),

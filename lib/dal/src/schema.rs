@@ -4,6 +4,10 @@ use std::{
     sync::Arc,
 };
 
+use leaf::{
+    LeafPrototype,
+    LeafPrototypeError,
+};
 use petgraph::Outgoing;
 use serde::{
     Deserialize,
@@ -99,6 +103,8 @@ pub enum SchemaError {
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("leaf prototype error: {0}")]
+    LeafPrototype(#[from] Box<LeafPrototypeError>),
     #[error("management prototype error: {0}")]
     ManagementPrototype(#[from] Box<ManagementPrototypeError>),
     #[error("No default schema variant exists for {0}")]
@@ -286,6 +292,16 @@ impl Schema {
             .map_err(Box::new)?;
         for management_proto in management_prototypes {
             let func_id = ManagementPrototype::func_id(ctx, management_proto.id())
+                .await
+                .map_err(Box::new)?;
+            func_ids.push(func_id);
+        }
+
+        let leaf_prototypes = LeafPrototype::for_schema(ctx, schema_id)
+            .await
+            .map_err(Box::new)?;
+        for leaf_proto in leaf_prototypes {
+            let func_id = LeafPrototype::func_id(ctx, leaf_proto.id())
                 .await
                 .map_err(Box::new)?;
             func_ids.push(func_id);
