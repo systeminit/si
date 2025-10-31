@@ -5,8 +5,6 @@ rust_library(
     deps = [
         "//third-party/rust:askama",
         "//third-party/rust:serde_json",
-        "//third-party/rust:serde",
-        "//third-party/rust:thiserror",
     ],
     srcs = glob([
         "Cargo.toml",
