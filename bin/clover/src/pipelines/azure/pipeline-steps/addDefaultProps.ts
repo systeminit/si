@@ -44,8 +44,8 @@ export function addDefaultProps(
       resourceGroupNameProp.metadata.createOnly = true;
 
       addPropSuggestSource(resourceGroupNameProp, {
-        schema: "Azure Resource Group",
-        prop: "/domain/Name",
+        schema: "Microsoft.Resources/resourceGroups",
+        prop: "/domain/name",
       });
     }
 
@@ -59,8 +59,8 @@ export function addDefaultProps(
       subscriptionIdProp.metadata.createOnly = true;
 
       addPropSuggestSource(subscriptionIdProp, {
-        schema: "Azure Subscription",
-        prop: "/domain/SubscriptionId",
+        schema: "Microsoft.Resources/subscriptions",
+        prop: "/domain/subscriptionId",
       });
     }
 
@@ -202,7 +202,7 @@ export function addDefaultProps(
     // Add Azure credential to secrets
     {
       const credProp = createScalarProp(
-        "Azure Credential",
+        "Microsoft Credential",
         "string",
         extraProp.metadata.propPath,
         true,
@@ -211,7 +211,7 @@ export function addDefaultProps(
       credProp.data.widgetOptions = [
         {
           label: "secretKind",
-          value: "Azure Credential",
+          value: "Microsoft Credential",
         },
       ];
 
@@ -223,8 +223,8 @@ export function addDefaultProps(
       }
 
       addPropSuggestSource(credProp, {
-        schema: "Azure Credential",
-        prop: "/secrets/Azure Credential",
+        schema: "Microsoft Credential",
+        prop: "/secrets/Microsoft Credential",
       });
 
       schemaVariant.secrets.entries.push(credProp);
@@ -235,8 +235,8 @@ export function addDefaultProps(
       const locationProp = findPropByName(domain, "location");
       if (locationProp) {
         addPropSuggestSource(locationProp, {
-          schema: "Azure Location",
-          prop: "/domain/location",
+          schema: "Microsoft.Resources/location",
+          prop: "/domain/name",
         });
       }
     }
