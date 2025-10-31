@@ -1,14 +1,26 @@
 use dal::{
+    AttributePrototype,
     Component,
     DalContext,
+    attribute::value::debug::AttributeDebugView,
+    component::debug::ComponentDebugView,
 };
 use dal_test::{
+    Result,
     expected::{
         self,
         ExpectComponent,
         apply_change_set_to_base,
         fork_from_head_change_set,
         update_visibility_and_snapshot_to_visibility,
+    },
+    helpers::{
+        ChangeSetTestHelpers,
+        attribute::value::{
+            self,
+            AttributeValueKey,
+        },
+        component,
     },
     test,
 };
@@ -38,6 +50,61 @@ async fn deleting_a_component_deletes_component_in_other_change_sets(ctx: &mut D
             .node_exists(docker_image_1.id())
             .await
     );
+}
+
+#[test]
+async fn deleting_a_value_source_component_does_not_break_other_change_sets(
+    ctx: &mut DalContext,
+) -> Result<()> {
+    // Create two components with an inter-component subscription.
+    let component_to_erase_id = component::create(ctx, "Docker Image", "hammerfell").await?;
+    value::set(ctx, ("hammerfell", "/domain/image"), "neloth").await?;
+
+    // Apply to HEAD
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+
+    // In a new change set, create a component connected to the component_to_erase
+    let subscriber_cs = ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+    let subscriber_component_id = component::create(ctx, "Docker Image", "highrock").await?;
+    value::subscribe(
+        ctx,
+        ("highrock", "/domain/image"),
+        ("hammerfell", "/domain/image"),
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    assert_eq!(
+        "neloth",                                              // expected
+        value::get(ctx, ("highrock", "/domain/image")).await?, // actual
+    );
+
+    // Now, in a second change set, erase `component_to_erase` and apply to head
+    Component::remove(ctx, component_to_erase_id).await?;
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+
+    ChangeSetTestHelpers::switch_to_change_set(ctx, subscriber_cs.id).await?;
+
+    let subscriber_av_id = AttributeValueKey::id(ctx, ("highrock", "/domain/image")).await?;
+
+    // ensure debug view does not fail
+    let _component_debug_view = ComponentDebugView::new(ctx, subscriber_component_id).await?;
+    let debug_view = AttributeDebugView::new(ctx, subscriber_av_id, None, None).await?;
+
+    let prototype_id = debug_view.prototype_id.expect("prototype found");
+
+    let apas = AttributePrototype::list_arguments(ctx, prototype_id).await?;
+    assert!(apas.is_empty());
+
+    // Ensure we can build the component's mvs
+    dal_materialized_views::component::assemble(ctx.clone(), subscriber_component_id).await?;
+    dal_materialized_views::component::attribute_tree::assemble(
+        ctx.clone(),
+        subscriber_component_id,
+    )
+    .await?;
+
+    Ok(())
 }
 
 // TODO restore this using subscriptions!

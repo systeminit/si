@@ -168,6 +168,7 @@ impl CorrectTransforms for ComponentNodeWeight {
         let is_self = |node: &NodeInformation| node.id == self.id.into();
 
         let mut component_will_be_deleted = false;
+        let mut schema_variant_changed = false;
         let mut remove_edges = vec![];
         for update in &updates {
             match update {
@@ -216,6 +217,7 @@ impl CorrectTransforms for ComponentNodeWeight {
                     // just in case.
                     remove_edges
                         .extend(graph.outgoing_edges(component_node_idx, EdgeWeightKind::Root));
+                    schema_variant_changed = true;
                     remove_edges.extend(
                         graph.outgoing_edges(component_node_idx, EdgeWeightKind::SocketValue),
                     );
@@ -226,6 +228,12 @@ impl CorrectTransforms for ComponentNodeWeight {
         }
 
         if component_will_be_deleted {
+            // Also remove any incoming edges to the component in case there
+            // is a frame contains in another change set, or management edges
+            remove_edges.extend(graph.edges_directed(component_node_idx, Incoming));
+        }
+
+        if component_will_be_deleted || schema_variant_changed {
             // All edges incoming to the root attribute value node (for example, ValueSubscription edges)
             // must be deleted, so that the attribute value tree disappears from the graph on cleanup.
             if let Some((_, _, root_av_idx)) = graph
@@ -236,12 +244,8 @@ impl CorrectTransforms for ComponentNodeWeight {
                 )
                 .next()
             {
-                remove_edges.extend(graph.edges_directed(root_av_idx, Incoming));
+                ensure_root_attribute_value_removed(root_av_idx, graph, &mut remove_edges);
             }
-
-            // Also remove any incoming edges to the component in case there
-            // is a frame contains in another change set
-            remove_edges.extend(graph.edges_directed(component_node_idx, Incoming));
         }
 
         // Prepend any RemoveEdges so they happen *before* any NewEdge
@@ -258,6 +262,39 @@ impl CorrectTransforms for ComponentNodeWeight {
     }
 }
 
+/// If a root attribute value is being removed from the graph, ensure that any
+/// incoming ValueSubscription edges are removed *and* the
+/// AttributePrototypeArguments that are the source of those edges are also
+/// removed.
+fn ensure_root_attribute_value_removed<'a>(
+    root_attribute_value_idx: NodeIndex,
+    graph: &'a crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV4,
+    removals: &mut Vec<EdgeReference<'a, EdgeWeight>>,
+) {
+    let hanging_apas = graph
+        .incoming_edges(
+            root_attribute_value_idx,
+            EdgeWeightKindDiscriminants::ValueSubscription,
+        )
+        .map(|edge_ref| edge_ref.source());
+
+    removals.extend(all_in_and_out_edges(graph, root_attribute_value_idx));
+
+    for hanging_apa in hanging_apas {
+        removals.extend(all_in_and_out_edges(graph, hanging_apa));
+    }
+}
+
+fn all_in_and_out_edges<'a>(
+    graph: &'a crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV4,
+    pivot_node_index: NodeIndex,
+) -> impl Iterator<Item = EdgeReference<'a, EdgeWeight>> {
+    let outgoing_removals = graph.edges_directed(pivot_node_index, Outgoing);
+    let incoming_removals = graph.edges_directed(pivot_node_index, Incoming);
+
+    outgoing_removals.chain(incoming_removals)
+}
+
 /// Get the category kind (if this is a category node)
 fn category_kind(
     graph: &WorkspaceSnapshotGraphVCurrent,
@@ -272,6 +309,7 @@ fn category_kind(
 }
 
 /// Creates an Update::RemoveEdge from an EdgeReference by looking up the nodes.
+#[inline(always)]
 fn remove_edge(
     graph: &WorkspaceSnapshotGraphVCurrent,
     edge: EdgeReference<'_, EdgeWeight>,

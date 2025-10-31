@@ -252,6 +252,8 @@ pub enum AttributeValueError {
     NotFoundForComponentAndInputSocket(ComponentId, InputSocketId),
     #[error("attribute value {0} has no outgoing edge to a prop or socket")]
     OrphanedAttributeValue(AttributeValueId),
+    #[error("attribute value {0} could not be linked to a component")]
+    OrphanedAttributeValueNoComponent(AttributeValueId),
     #[error("output socket error: {0}")]
     OutputSocketError(#[from] Box<OutputSocketError>),
     #[error("parent prop of map or array not found: {0}")]
@@ -997,7 +999,7 @@ impl AttributeValue {
                 .await?
                 .first()
                 .copied()
-                .ok_or(AttributeValueError::OrphanedAttributeValue(
+                .ok_or(AttributeValueError::OrphanedAttributeValueNoComponent(
                     current_attribute_value_id,
                 ))?,
         };
