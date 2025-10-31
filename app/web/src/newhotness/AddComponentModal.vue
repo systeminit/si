@@ -423,11 +423,14 @@ const onTab = (e: KeyboardEvent) => {
   else changeFilterRight();
 };
 const selectAssetByIndex = () => {
-  if (
-    selectionIndex.value !== undefined &&
-    filteredAssetsFlat.value[selectionIndex.value]
-  ) {
-    selectAsset(filteredAssetsFlat.value[selectionIndex.value] as UIAsset);
+  if (selectionIndex.value && selectionIndex.value >= 0) {
+    const asset = filteredAssetsFlat.value[selectionIndex.value];
+    if (asset) {
+      selectAsset(asset);
+
+      // if you have a selected asset from this category open the category
+      categoryIsOpen.value.add(asset.uiCategory.name);
+    }
   }
 };
 const selectFirstInNextCategory = (currentIndex: number, direction: 1 | -1) => {
@@ -521,10 +524,11 @@ const categories = computed(() => {
       )
         return;
 
-      let category = categories[variant.category];
+      const catName = variant.category || "SI";
+      let category = categories[catName];
       if (!category) {
         category = {
-          name: variant.category,
+          name: catName,
           color: variant.color,
           icon: pickIcon(variant.category),
           assets: [],
@@ -540,17 +544,18 @@ const categories = computed(() => {
         name: variant.displayName ?? "Unknown Name",
         uiCategory: category,
       });
-      categories[variant.category] = category;
+      categories[catName] = category;
     });
   }
 
   // don't show a duplicated default schema if its already installed
   if (defaultSchemas.data.value) {
     defaultSchemas.data.value.forEach((variant) => {
-      let category = categories[variant.category];
+      const catName = variant.category || "SI";
+      let category = categories[catName];
       if (!category) {
         category = {
-          name: variant.category,
+          name: catName,
           color: variant.color,
           icon: pickIcon(variant.category),
           assets: [],
@@ -565,10 +570,12 @@ const categories = computed(() => {
           name: variant.displayName,
           uiCategory: category,
         });
-        categories[variant.category] = category;
+        categories[catName] = category;
       }
     });
   }
+
+  console.log("WTF", categories)
 
   return Object.values(categories).sort((a, b) => {
     const n1 = a.name.toUpperCase();
@@ -607,7 +614,8 @@ const fzfInstance = computed(() => {
   return useFzf(assets, (a: UIAsset) => `${a.name} ${a.uiCategory.name}`);
 });
 
-const categoryIsOpen = reactive<Set<string>>(new Set());
+// PSA: reactive(new Set()) doesn't actually work!
+const categoryIsOpen = ref<Set<string>>(new Set());
 const filteredCategories = computed(() => {
   const filteredResults: UICategory[] = [];
 
@@ -739,8 +747,8 @@ const open = () => {
 const assetClick = (idx: number) => {
   const cat = categoryFromIndex(idx);
   if (cat) {
-    if (categoryIsOpen.has(cat.name)) categoryIsOpen.delete(cat.name);
-    else categoryIsOpen.add(cat.name);
+    if (categoryIsOpen.value.has(cat.name)) categoryIsOpen.value.delete(cat.name);
+    else categoryIsOpen.value.add(cat.name);
   }
 };
 
@@ -757,9 +765,12 @@ const categoryFromIndex = (idx: number) => {
 };
 
 const openFromIndex = (idx: number) => {
+  // if searching open everything
+  if (selectedFilter.value || debouncedSearchString.value) return true;
+
   const cat = categoryFromIndex(idx);
   if (!cat) return false;
-  return categoryIsOpen.has(cat.name);
+  return categoryIsOpen.value.has(cat.name);
 };
 
 const close = () => {
@@ -879,7 +890,7 @@ const categoryAndSchemaRows = computed(() => {
       color: category.color,
     });
 
-    if (!categoryIsOpen.has(category.name)) return;
+    if (!categoryIsOpen.value.has(category.name)) return;
 
     category.assets.forEach((asset) => {
       rows.push({
