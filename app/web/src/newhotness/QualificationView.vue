@@ -1,9 +1,11 @@
 <template>
   <li class="rounded border border-neutral-600 [&>div]:p-xs">
     <div
-      class="border-b border-neutral-600 text-sm flex flex-row items-center justify-between"
+      class="border-b border-neutral-600 text-sm flex flex-row items-center justify-between gap-xs"
     >
-      <span>{{ qualification.name }}</span>
+      <TruncateWithTooltip :lineClamp="3">
+        {{ qualification.name }}
+      </TruncateWithTooltip>
       <NewButton
         v-if="qualification.avId"
         label="Rerun qualification"
@@ -64,7 +66,11 @@
 <script lang="ts" setup>
 import { computed, ref, toRef } from "vue";
 import * as _ from "lodash-es";
-import { LoadingMessage, NewButton } from "@si/vue-lib/design-system";
+import {
+  LoadingMessage,
+  NewButton,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
 import StatusMessageBox from "@/newhotness/layout_components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import {
