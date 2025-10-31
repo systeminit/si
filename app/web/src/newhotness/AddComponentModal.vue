@@ -93,6 +93,7 @@
                 <AddComponentModalListRow
                   v-for="row in virtualItems"
                   :key="row.index"
+                  :idx="row.index"
                   :style="{
                     height:
                       addComponentRowHeight(
@@ -101,10 +102,14 @@
                     transform: `translateY(${row.start}px)`,
                   }"
                   :rowData="categoryAndSchemaRows[row.index]!"
-                  :open="categoryIsOpen[row.index]"
-                  @click="
-                    categoryIsOpen[row.index] = !categoryIsOpen[row.index]
+                  :open="openFromIndex(row.index)"
+                  :selected="
+                    compareKeys(
+                      selectedAsset?.key,
+                      schemaFromIndex(row.index)?.key,
+                    )
                   "
+                  @click="() => assetClick(row.index)"
                 />
                 <!-- TODO: Fix indices for category is open -->
               </div>
@@ -169,7 +174,6 @@
 import {
   BRAND_COLOR_FILTER_HEX_CODES,
   HorizontalScrollArea,
-  Icon,
   IconNames,
   Modal,
   SiSearch,
@@ -185,7 +189,6 @@ import { useRoute, useRouter } from "vue-router";
 import { debounce } from "lodash-es";
 import { FzfResultItem } from "fzf";
 import { useVirtualizer } from "@tanstack/vue-virtual";
-import EditingPill from "@/components/EditingPill.vue";
 import {
   CategoryVariant,
   EntityKind,
@@ -475,7 +478,7 @@ type UIAsset = {
   uiCategory: UICategoryInfo;
 };
 
-type UISchemaKey = {
+export type UISchemaKey = {
   schemaId: string;
   schemaVariantId?: string;
 };
@@ -604,7 +607,7 @@ const fzfInstance = computed(() => {
   return useFzf(assets, (a: UIAsset) => `${a.name} ${a.uiCategory.name}`);
 });
 
-const categoryIsOpen = reactive<boolean[]>([]);
+const categoryIsOpen = reactive<Set<string>>(new Set());
 const filteredCategories = computed(() => {
   const filteredResults: UICategory[] = [];
 
@@ -733,6 +736,32 @@ const open = () => {
   });
 };
 
+const assetClick = (idx: number) => {
+  const cat = categoryFromIndex(idx);
+  if (cat) {
+    if (categoryIsOpen.has(cat.name)) categoryIsOpen.delete(cat.name);
+    else categoryIsOpen.add(cat.name);
+  }
+};
+
+const schemaFromIndex = (idx: number) => {
+  const maybeSchema = categoryAndSchemaRows.value[idx];
+  if (maybeSchema?.type === "schema") return maybeSchema;
+  return undefined;
+};
+
+const categoryFromIndex = (idx: number) => {
+  const maybeCategory = categoryAndSchemaRows.value[idx];
+  if (maybeCategory?.type === "category") return maybeCategory;
+  return undefined;
+};
+
+const openFromIndex = (idx: number) => {
+  const cat = categoryFromIndex(idx);
+  if (!cat) return false;
+  return categoryIsOpen.has(cat.name);
+};
+
 const close = () => {
   modalRef.value?.close();
 };
@@ -842,7 +871,7 @@ const onClick = (e: MouseEvent | undefined) => {
 const categoryAndSchemaRows = computed(() => {
   const rows: AddComponentRowData[] = [];
 
-  filteredCategories.value.forEach((category, idx) => {
+  filteredCategories.value.forEach((category) => {
     rows.push({
       type: "category",
       name: category.name,
@@ -850,13 +879,14 @@ const categoryAndSchemaRows = computed(() => {
       color: category.color,
     });
 
-    if (!categoryIsOpen[idx]) return;
+    if (!categoryIsOpen.has(category.name)) return;
 
     category.assets.forEach((asset) => {
       rows.push({
         type: "schema",
         name: asset.name,
         color: category.color,
+        key: asset.key,
       });
     });
   });
