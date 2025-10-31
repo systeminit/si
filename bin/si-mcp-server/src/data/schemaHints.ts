@@ -33,15 +33,15 @@ export function validateSchemaPrereqs(
     }
   }
 
-  if (schemaName.startsWith("Microsoft") || schemaName.startsWith("Azure")) {
-    const hasCredential = has("/secrets/Azure Credential");
+  if (schemaName.startsWith("Microsoft")) {
+    const hasCredential = has("/secrets/Microsoft Credential");
     const hasLocation = has("/domain/location");
     const hasSubscriptionDetails = has("/domain/subscriptionId");
     if (!hasLocation || !hasCredential || !hasSubscriptionDetails) {
       return errorResponse({
         response: { status: "bad prereq", data: {} },
         message:
-          "This is an Azure resource, and to import it we must have /domain/location and domain/subscriptionId set to a valid value or subscription and /secrets/Azure Credential set to a subscription.",
+          "This is an Azure / Microsoft resource, and to import it we must have /domain/location and /domain/subscriptionId set to a valid value or subscription and /secrets/Microsoft Credential set to a subscription.",
       });
     }
   }
