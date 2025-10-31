@@ -4491,6 +4491,9 @@
   "AWS KMS key ID that Kinesis Video Streams uses to encrypt stream data.": {
     "enum": null
   },
+  "AWS Key Management Service (KMS) customer managed key ID to use for the encryption configuration. This parameter is allowed if and only if sseType is set to aws:kms": {
+    "enum": null
+  },
   "AWS Region for RDS HTTP endpoint.": {
     "enum": null
   },
@@ -9234,6 +9237,9 @@
   "The Amazon Resource Name (ARN) of the type without version number.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the vector bucket.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the view for which a version is being created.": {
     "enum": null
   },
@@ -11505,6 +11511,9 @@
   "The data type of the parameter, such as ``text`` or ``aws:ec2:image``. The default is ``text``.": {
     "enum": null
   },
+  "The data type of the vectors to be inserted into the vector index.": {
+    "enum": null
+  },
   "The data type.": {
     "enum": null
   },
@@ -12063,6 +12072,9 @@
   "The dimensions details for the vector configuration used on the Bedrock embeddings model.": {
     "enum": null
   },
+  "The dimensions of the vectors to be inserted into the vector index.": {
+    "enum": null
+  },
   "The dimensions to evaluate": {
     "enum": null
   },
@@ -12103,6 +12115,9 @@
     "enum": null
   },
   "The dissimilarity threshold for splitting chunks.": {
+    "enum": null
+  },
+  "The distance metric to be used for similarity search.": {
     "enum": null
   },
   "The dollar value that triggers a notification if the threshold is exceeded. ": {
@@ -14904,6 +14919,18 @@
   "The name of the variable.": {
     "enum": null
   },
+  "The name of the vector bucket": {
+    "enum": null
+  },
+  "The name of the vector bucket that contains the vector index.": {
+    "enum": null
+  },
+  "The name of the vector bucket.": {
+    "enum": null
+  },
+  "The name of the vector index to create.": {
+    "enum": null
+  },
   "The name of the vector store.": {
     "enum": null
   },
@@ -16327,6 +16354,9 @@
     "enum": null
   },
   "The sender ID string to request.": {
+    "enum": null
+  },
+  "The server-side encryption type to use for the encryption configuration of the vector bucket. By default, if you don't specify, all new vectors in Amazon S3 vector buckets use server-side encryption with Amazon S3 managed keys (SSE-S3), specifically AES256.": {
     "enum": null
   },
   "The service principal for the AWS service to which this role is attached.": {
