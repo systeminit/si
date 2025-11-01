@@ -2396,6 +2396,18 @@ impl Component {
             Component::root_attribute_value_id(ctx, original_component_id).await?;
         let original_subscriber_apas = AttributeValue::subscribers(ctx, original_root_id).await?;
 
+        // Save which attribute values are marked as default subscription sources
+        let mut original_default_sub_source_paths = vec![];
+        let mut av_work_queue = VecDeque::from([original_root_id]);
+        while let Some(av_id) = av_work_queue.pop_front() {
+            if AttributeValue::is_default_subscription_source(ctx, av_id).await? {
+                if let Some(path) = AttributeValue::get_path_for_id(ctx, av_id).await? {
+                    original_default_sub_source_paths.push(path);
+                }
+            }
+            av_work_queue.extend(AttributeValue::child_av_ids(ctx, av_id).await?);
+        }
+
         let geometry_ids = Geometry::list_ids_by_component(ctx, original_component_id).await?;
 
         // ================================================================================
@@ -2525,6 +2537,19 @@ impl Component {
                 },
             )
             .await?;
+        }
+
+        // Restore default subscription source markings
+        if !original_default_sub_source_paths.is_empty() {
+            let mut new_av_work_queue = VecDeque::from([finalized_root_id]);
+            while let Some(new_av_id) = new_av_work_queue.pop_front() {
+                if let Some(new_path) = AttributeValue::get_path_for_id(ctx, new_av_id).await? {
+                    if original_default_sub_source_paths.contains(&new_path) {
+                        AttributeValue::set_as_default_subscription_source(ctx, new_av_id).await?;
+                    }
+                }
+                new_av_work_queue.extend(AttributeValue::child_av_ids(ctx, new_av_id).await?);
+            }
         }
 
         ctx.workspace_snapshot()?

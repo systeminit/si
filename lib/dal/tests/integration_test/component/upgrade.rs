@@ -762,3 +762,132 @@ async fn update_schema_variant_description(
     .await?;
     Ok(SchemaVariant::get_by_id(ctx, variant.id).await?.into())
 }
+
+#[test]
+async fn upgrade_component_preserves_default_subscription_source(
+    ctx: &mut DalContext,
+) -> Result<()> {
+    let variant_code = r#"
+    function main() {
+        const outputProp = new PropBuilder()
+            .setKind("string")
+            .setName("outputValue")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+            .build();
+        return new AssetBuilder()
+            .addProp(outputProp)
+            .build();
+     }"#;
+
+    let variant_zero = VariantAuthoringClient::create_schema_and_variant_from_code(
+        ctx,
+        "defaultSubSource",
+        None,
+        None,
+        "Integration Tests",
+        "#00b0b0",
+        variant_code,
+    )
+    .await?;
+
+    let my_asset_schema = variant_zero.schema(ctx).await?;
+
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        my_asset_schema.name.clone(),
+        "source component",
+    )
+    .await?;
+
+    // Get the attribute value for the outputValue prop
+    let output_path = &["root", "domain", "outputValue"];
+    let output_av_id = component
+        .attribute_values_for_prop(ctx, output_path)
+        .await?
+        .pop()
+        .expect("there should be one value id");
+
+    // Mark it as a default subscription source
+    AttributeValue::set_as_default_subscription_source(ctx, output_av_id).await?;
+
+    // Verify it's marked as a default subscription source
+    assert!(
+        AttributeValue::is_default_subscription_source(ctx, output_av_id).await?,
+        "attribute value should be marked as default subscription source before upgrade"
+    );
+
+    // Update the variant (add a new prop so we can test the upgrade happened)
+    let updated_variant_code = r#"
+    function main() {
+        const outputProp = new PropBuilder()
+            .setKind("string")
+            .setName("outputValue")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+            .build();
+        const newProp = new PropBuilder()
+            .setKind("string")
+            .setName("newProp")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+            .build();
+        return new AssetBuilder()
+            .addProp(outputProp)
+            .addProp(newProp)
+            .build();
+     }"#;
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        variant_zero.id(),
+        my_asset_schema.name.clone(),
+        variant_zero.display_name(),
+        variant_zero.category(),
+        variant_zero.description(),
+        variant_zero.link(),
+        variant_zero.get_color(ctx).await?,
+        variant_zero.component_type(),
+        Some(updated_variant_code.to_string()),
+    )
+    .await?;
+
+    // Regenerate the variant to create a new version
+    let variant_one = VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id()).await?;
+
+    // Verify a new variant was created
+    assert_ne!(variant_one, variant_zero.id());
+
+    // The component should be auto-upgraded
+    let upgraded_component = Component::get_by_id(ctx, component.id()).await?;
+    assert_eq!(
+        upgraded_component.schema_variant(ctx).await?.id(),
+        variant_one
+    );
+
+    // Get the new attribute value for the outputValue prop after upgrade
+    let new_output_av_id = upgraded_component
+        .attribute_values_for_prop(ctx, output_path)
+        .await?
+        .pop()
+        .expect("there should be one value id");
+
+    // Verify the new attribute value is still marked as a default subscription source
+    assert!(
+        AttributeValue::is_default_subscription_source(ctx, new_output_av_id).await?,
+        "attribute value should still be marked as default subscription source after upgrade"
+    );
+
+    // Verify the newProp exists (confirming the upgrade happened)
+    let new_prop_path = &["root", "domain", "newProp"];
+    let new_prop_av_id = upgraded_component
+        .attribute_values_for_prop(ctx, new_prop_path)
+        .await?
+        .pop()
+        .expect("newProp should exist after upgrade");
+
+    // Verify the newProp is NOT marked as a default subscription source
+    assert!(
+        !AttributeValue::is_default_subscription_source(ctx, new_prop_av_id).await?,
+        "newProp should not be marked as default subscription source"
+    );
+
+    Ok(())
+}
