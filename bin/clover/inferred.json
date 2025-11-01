@@ -15738,6 +15738,9 @@
   "The permission set that the assignemt will be assigned": {
     "enum": null
   },
+  "The permission set that the assignment will be assigned": {
+    "enum": null
+  },
   "The phone number associated with the Amazon Connect instance, in E.164 format. If you do not specify a source phone number, you must specify a queue.": {
     "enum": null
   },
@@ -17176,6 +17179,9 @@
     "enum": null
   },
   "The type of resource synchronization service that is to be configured, for example, CFN_STACK_SYNC.": {
+    "enum": null
+  },
+  "The type of resource to be provisioned to, only aws account now": {
     "enum": null
   },
   "The type of resource to be provsioned to, only aws account now": {
