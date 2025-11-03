@@ -10,6 +10,7 @@ export const BRAND_COLOR_FILTER_HEX_CODES = {
   "Google Cloud": "#EF6255",
   "Open AI": "#FFBE19",
   AWS: "#FF9900",
+  MS: "rgb(0, 120, 212)",
   Azure: "#104581",
   CoreOS: "#E9659C",
   Custom: "#E5E5E5",
