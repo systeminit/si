@@ -721,7 +721,7 @@ export async function callRemoteSchemaPush(
 
       if (input === "l") {
         console.log("\nAssets to be pushed:");
-        schemasToPush.forEach((schema) => console.log(`  - ${schema.name}`));
+        schemasToPush.forEach((schema) => console.log(`  - ${schema.schemaPayload.name}`));
         console.log();
       } else if (input === "y") {
         confirmed = true;
