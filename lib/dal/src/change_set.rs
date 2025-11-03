@@ -306,34 +306,10 @@ impl ChangeSet {
         name: impl AsRef<str>,
         base_change_set_id: Option<ChangeSetId>,
         workspace_snapshot_address: WorkspaceSnapshotAddress,
-        snapshot_kind: WorkspaceSnapshotSelectorDiscriminants,
     ) -> ChangeSetResult<Self> {
         let id: Ulid = Ulid::new();
         let change_set_id: ChangeSetId = id.into();
         let workspace_id = ctx.tenancy().workspace_pk_opt();
-
-        // Originally, we did this write to ensure that new change sets were
-        // marked as seen in the vector clocks. We no longer use vector clocks,
-        // but this double write is still relied on, at least in our test
-        // harness, to prevent eviction of snapshots in a data race. We should
-        // fix this race instead of requiring this write.
-        let workspace_snapshot_address = match snapshot_kind {
-            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
-                let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address)
-                    .await
-                    .map_err(Box::new)?;
-
-                workspace_snapshot.write(ctx).await.map_err(Box::new)?
-            }
-
-            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
-                let workspace_snapshot = SplitSnapshot::find(ctx, workspace_snapshot_address)
-                    .await
-                    .map_err(Box::new)?;
-
-                workspace_snapshot.write(ctx).await.map_err(Box::new)?
-            }
-        };
 
         let name = name.as_ref();
         let row = ctx
@@ -364,14 +340,8 @@ impl ChangeSet {
 
         let head = workspace.default_change_set(ctx).await?;
 
-        let change_set = ChangeSet::new(
-            ctx,
-            name,
-            Some(head.id),
-            head.workspace_snapshot_address,
-            workspace.snapshot_kind(),
-        )
-        .await?;
+        let change_set =
+            ChangeSet::new(ctx, name, Some(head.id), head.workspace_snapshot_address).await?;
 
         Ok(change_set)
     }

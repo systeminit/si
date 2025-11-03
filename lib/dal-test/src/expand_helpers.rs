@@ -56,17 +56,12 @@ pub async fn create_change_set_and_update_ctx(
     let base_change_set = ChangeSet::get_by_id(ctx, base_change_set_id)
         .await
         .expect("could not find change set");
-    let workspace = ctx
-        .get_workspace_or_builtin()
-        .await
-        .expect("could not get workspace");
     let workspace_snapshot_address = base_change_set.workspace_snapshot_address;
     let change_set = ChangeSet::new(
         ctx,
         generate_fake_name().expect("could not generate fake name"),
         Some(base_change_set_id),
         workspace_snapshot_address,
-        workspace.snapshot_kind(),
     )
     .await
     .expect("could not create change set");
