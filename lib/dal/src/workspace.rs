@@ -333,14 +333,8 @@ impl Workspace {
             // 'reset' the workspace snapshot so that we remigrate all builtins on each startup
             let new_snapshot = WorkspaceSnapshot::initial(ctx).await?;
             let new_snap_address = new_snapshot.write(ctx).await?;
-            let new_change_set = ChangeSet::new(
-                ctx,
-                DEFAULT_CHANGE_SET_NAME,
-                None,
-                new_snap_address,
-                WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
-            )
-            .await?;
+            let new_change_set =
+                ChangeSet::new(ctx, DEFAULT_CHANGE_SET_NAME, None, new_snap_address).await?;
             found_builtin
                 .update_default_change_set_id(ctx, new_change_set.id)
                 .await?;
@@ -361,7 +355,6 @@ impl Workspace {
             DEFAULT_CHANGE_SET_NAME,
             None,
             workspace_snapshot.id().await,
-            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
         )
         .await?;
         let change_set_id = change_set.id;
@@ -539,7 +532,6 @@ impl Workspace {
             DEFAULT_CHANGE_SET_NAME,
             None,
             workspace_snapshot_address,
-            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
         )
         .await?;
 
@@ -598,7 +590,6 @@ impl Workspace {
             DEFAULT_CHANGE_SET_NAME,
             None,
             workspace_snapshot_address,
-            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot,
         )
         .await?;
 
@@ -728,7 +719,6 @@ impl Workspace {
             DEFAULT_CHANGE_SET_NAME,
             Some(builtin.default_change_set_id),
             workspace_snapshot.id().await,
-            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
         )
         .await?;
         let change_set_id = change_set.id;
@@ -888,8 +878,6 @@ impl Workspace {
             metadata,
         } = workspace_data.into_latest();
 
-        let workspace = ctx.get_workspace().await?;
-
         // ABANDON PREVIOUS CHANGESETS
         for mut change_set in ChangeSet::list_active(ctx).await? {
             change_set.abandon(ctx).await?;
@@ -936,7 +924,6 @@ impl Workspace {
                     change_set_data.name.clone(),
                     actual_base_changeset,
                     new_snap_address,
-                    workspace.snapshot_kind(),
                 )
                 .await?;
 
