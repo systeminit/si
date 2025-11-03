@@ -44,15 +44,17 @@ pub async fn assemble(
     let mut variant_func_ids = SchemaVariant::all_func_ids(&ctx, id).await?;
     let schema_id = SchemaVariant::schema_id(&ctx, id).await?;
     let overlay_func_ids = Schema::all_overlay_func_ids(&ctx, schema_id).await?;
-    variant_func_ids.extend(overlay_func_ids);
 
     let func_details = build_func_details(
         &ctx,
         schema_id,
         schema_variant.id(),
-        variant_func_ids.clone(),
+        &variant_func_ids,
+        &overlay_func_ids,
     )
     .await?;
+
+    variant_func_ids.extend(overlay_func_ids);
 
     let domain_props = {
         let domain = Prop::find_prop_by_path(&ctx, id, &RootPropChild::Domain.prop_path()).await?;
@@ -88,7 +90,8 @@ pub async fn build_func_details(
     ctx: &DalContext,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    variant_func_ids: Vec<FuncId>,
+    variant_func_ids: &[FuncId],
+    overlay_func_ids: &[FuncId],
 ) -> crate::Result<Vec<LuminorkSchemaVariantFunc>> {
     let mut variant_action_prototypes =
         ActionPrototype::for_variant(ctx, schema_variant_id).await?;
@@ -114,14 +117,30 @@ pub async fn build_func_details(
         index.insert(func_id, FuncKindVariant::Management(convert_kind(kind)));
     }
 
-    let mut func_details = Vec::with_capacity(variant_func_ids.len());
+    let mut func_details = Vec::with_capacity(variant_func_ids.len() + overlay_func_ids.len());
 
-    for func_id in variant_func_ids {
+    let mut func_ids_and_overlay_flag =
+        Vec::with_capacity(variant_func_ids.len() + overlay_func_ids.len());
+    func_ids_and_overlay_flag.extend(
+        variant_func_ids
+            .iter()
+            .copied()
+            .map(|id| (id, false /* not overlay */)),
+    );
+    func_ids_and_overlay_flag.extend(
+        overlay_func_ids
+            .iter()
+            .copied()
+            .map(|id| (id, true /* overlay */)),
+    );
+
+    for (func_id, is_overlay) in func_ids_and_overlay_flag {
         if let Some(kind) = index.remove(&func_id) {
             // We already know it's Action/Management
             func_details.push(LuminorkSchemaVariantFunc {
                 id: func_id,
                 func_kind: kind,
+                is_overlay,
             });
         } else {
             // We are defaulting to other now
@@ -130,6 +149,7 @@ pub async fn build_func_details(
                 func_details.push(LuminorkSchemaVariantFunc {
                     id: func.id,
                     func_kind: FuncKindVariant::Other(func.kind.into()),
+                    is_overlay,
                 });
             }
         }

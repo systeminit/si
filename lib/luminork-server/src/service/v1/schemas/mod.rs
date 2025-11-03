@@ -289,6 +289,7 @@ pub struct SchemaVariantFunc {
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VZ")]
     pub id: FuncId,
     pub func_kind: SchemaVariantFuncKind,
+    pub is_overlay: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, ToSchema)]
@@ -333,6 +334,7 @@ impl From<LuminorkSchemaVariantFunc> for SchemaVariantFunc {
                     func_kind: k.into(),
                 },
             },
+            is_overlay: inner.is_overlay,
         }
     }
 }
@@ -711,7 +713,7 @@ pub struct BuildingResponseV1 {
     pub estimated_completion_seconds: u64,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum SchemaVariantResponseV1 {
     Success(Box<GetSchemaVariantV1Response>),
