@@ -3072,6 +3072,12 @@ export interface Workspace {
      * @type {string}
      * @memberof Workspace
      */
+    'externalId'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Workspace
+     */
     'id': string;
     /**
      * 

@@ -325,6 +325,8 @@ pub struct Workspace {
     pub role: Option<String>,
     #[schema(value_type = Option<CreatorUser>)]
     pub creator_user: Option<CreatorUser>,
+    #[schema(value_type = Option<String>)]
+    pub external_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -394,6 +396,7 @@ impl From<AuthApiWorkspace> for Workspace {
             approvals_enabled: auth.approvals_enabled,
             role: auth.role,
             creator_user: auth.creator_user,
+            external_id: auth.token,
         }
     }
 }

@@ -32,13 +32,14 @@ class Workspace(BaseModel):
     creator_user_id: StrictStr = Field(alias="creatorUserId")
     description: Optional[StrictStr] = None
     display_name: StrictStr = Field(alias="displayName")
+    external_id: Optional[StrictStr] = Field(default=None, alias="externalId")
     id: StrictStr
     instance_env_type: StrictStr = Field(alias="instanceEnvType")
     instance_url: Optional[StrictStr] = Field(default=None, alias="instanceUrl")
     is_default: StrictBool = Field(alias="isDefault")
     quarantined_at: Optional[StrictStr] = Field(default=None, alias="quarantinedAt")
     role: Optional[StrictStr] = None
-    __properties: ClassVar[List[str]] = ["approvalsEnabled", "creatorUser", "creatorUserId", "description", "displayName", "id", "instanceEnvType", "instanceUrl", "isDefault", "quarantinedAt", "role"]
+    __properties: ClassVar[List[str]] = ["approvalsEnabled", "creatorUser", "creatorUserId", "description", "displayName", "externalId", "id", "instanceEnvType", "instanceUrl", "isDefault", "quarantinedAt", "role"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -92,6 +93,11 @@ class Workspace(BaseModel):
         if self.description is None and "description" in self.model_fields_set:
             _dict['description'] = None
 
+        # set to None if external_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.external_id is None and "external_id" in self.model_fields_set:
+            _dict['externalId'] = None
+
         # set to None if instance_url (nullable) is None
         # and model_fields_set contains the field
         if self.instance_url is None and "instance_url" in self.model_fields_set:
@@ -124,6 +130,7 @@ class Workspace(BaseModel):
             "creatorUserId": obj.get("creatorUserId"),
             "description": obj.get("description"),
             "displayName": obj.get("displayName"),
+            "externalId": obj.get("externalId"),
             "id": obj.get("id"),
             "instanceEnvType": obj.get("instanceEnvType"),
             "instanceUrl": obj.get("instanceUrl"),

@@ -42,6 +42,7 @@ class TestWorkspace(unittest.TestCase):
                 creator_user_id = '',
                 description = '',
                 display_name = '',
+                external_id = '',
                 id = '',
                 instance_env_type = '',
                 instance_url = '',
