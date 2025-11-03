@@ -2,6 +2,51 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## October 27th to November 2nd, 2025
+
+### ✨ Added
+
+- Added ability to **install schemas** via the Public API.
+- Added a **feature flag** enabling **Azure assets** for the public beta.
+- Added ability to **filter possible subscriptions** by component and schema in
+  the web app.
+- Added ability to **import and discover Azure resources** in the MCP server.
+- Added support for **authentication functions** in Conduit.
+- Added display of **previous attribute values** in the Attributes Panel.
+
+### 🔄 Changed
+
+- Improved **workspace snapshot eviction** logic to avoid race conditions.
+- Updated **func run log viewer** to automatically display plain text for very
+  large logs.
+- Refined **UI consistency** across colors and borders for a cleaner experience.
+- Updated `set_ai_agent_executed` endpoint in the Public API to return a **204
+  status code**.
+- Updated **MCP attribute tools** to no longer be hardcoded for AWS.
+- Allowed **re-using function names** when attaching them to different schemas.
+- Improved **Public API search** to allow case-insensitive schema name lookups.
+- Updated **layer-cache** to skip NATS publishing when retrying writes.
+- Allowed **editing create-only properties** on imported components within a
+  change set.
+
+### 🐞 Fixed
+
+- Fixed an issue where the **Func Run Details page** made too many requests for
+  data.
+- Fixed an issue where **overlay functions** weren’t available to users in the
+  web app.
+- Fixed an issue where the **debug panel** in the component details page didn’t
+  refresh after component changes.
+- Fixed orphaned **update actions** in the web app.
+- Fixed navigation in the web app where **jumping to a component from a view**
+  redirected back to the default view.
+- Fixed an issue where the **refresh button** wasn’t consistently available in
+  all scenarios.
+- Fixed an issue where the **Apply Change Set button** wasn’t properly disabled
+  while loading.
+- Fixed **database connection eviction logic** to close idle and long-lived
+  connections correctly.
+
 ## October 20th to 26th 2025
 
 ### ✨ Added
