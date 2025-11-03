@@ -2396,6 +2396,18 @@ impl Component {
             Component::root_attribute_value_id(ctx, original_component_id).await?;
         let original_subscriber_apas = AttributeValue::subscribers(ctx, original_root_id).await?;
 
+        // Save which attribute values are marked as default subscription sources
+        let mut original_default_sub_source_paths = vec![];
+        let mut av_work_queue = VecDeque::from([original_root_id]);
+        while let Some(av_id) = av_work_queue.pop_front() {
+            if AttributeValue::is_default_subscription_source(ctx, av_id).await? {
+                if let Some(path) = AttributeValue::get_path_for_id(ctx, av_id).await? {
+                    original_default_sub_source_paths.push(path);
+                }
+            }
+            av_work_queue.extend(AttributeValue::child_av_ids(ctx, av_id).await?);
+        }
+
         let geometry_ids = Geometry::list_ids_by_component(ctx, original_component_id).await?;
 
         // ================================================================================
@@ -2525,6 +2537,19 @@ impl Component {
                 },
             )
             .await?;
+        }
+
+        // Restore default subscription source markings
+        for path in original_default_sub_source_paths {
+            // get_path_for_id returns paths like "root/domain/prop"
+            // but we're resolving from finalized_root_id which is already the root,
+            // so we need to strip the "root/" prefix and convert to JSON pointer format
+            let path_without_root = path.strip_prefix("root/").unwrap_or(&path);
+            let json_pointer_path = format!("/{path_without_root}");
+            let attribute_path = AttributePath::from_json_pointer(json_pointer_path);
+            if let Some(av_id) = attribute_path.resolve(ctx, finalized_root_id).await? {
+                AttributeValue::set_as_default_subscription_source(ctx, av_id).await?;
+            }
         }
 
         ctx.workspace_snapshot()?
