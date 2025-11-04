@@ -672,7 +672,9 @@ impl PersistEventTask {
                 metrics = true,
                 counter.layer_cache_persister_nats_error = 1,
                 cache_name = &cache_name,
-                operation = "evict_memory_only"
+                operation = "evict_memory_only",
+                backend = BackendType::Postgres.as_ref(),
+                event_kind = event.event_kind.as_ref()
             );
             LayerDbError::PersisterTaskFailed(PersisterTaskError {
                 kind: PersisterTaskErrorKind::Evict,
@@ -683,11 +685,14 @@ impl PersistEventTask {
 
         let duration = start.elapsed().as_secs_f64();
         let status = if result.is_ok() { "success" } else { "error" };
+        let event_kind = event.event_kind.as_ref();
         info!(
             metrics = true,
             histogram.layer_cache_persister_evict_memory_only_duration_seconds = duration,
             cache_name = &cache_name,
-            status = status
+            status = status,
+            backend = BackendType::Postgres.as_ref(),
+            event_kind = event_kind
         );
 
         result
