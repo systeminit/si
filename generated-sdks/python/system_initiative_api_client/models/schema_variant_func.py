@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List
 from system_initiative_api_client.models.schema_variant_func_kind import SchemaVariantFuncKind
 from typing import Optional, Set
@@ -29,7 +29,8 @@ class SchemaVariantFunc(BaseModel):
     """ # noqa: E501
     func_kind: SchemaVariantFuncKind = Field(alias="funcKind")
     id: StrictStr
-    __properties: ClassVar[List[str]] = ["funcKind", "id"]
+    is_overlay: StrictBool = Field(alias="isOverlay")
+    __properties: ClassVar[List[str]] = ["funcKind", "id", "isOverlay"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -86,7 +87,8 @@ class SchemaVariantFunc(BaseModel):
 
         _obj = cls.model_validate({
             "funcKind": SchemaVariantFuncKind.from_dict(obj["funcKind"]) if obj.get("funcKind") is not None else None,
-            "id": obj.get("id")
+            "id": obj.get("id"),
+            "isOverlay": obj.get("isOverlay")
         })
         return _obj
 

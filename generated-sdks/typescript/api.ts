@@ -2385,6 +2385,12 @@ export interface SchemaVariantFunc {
      * @memberof SchemaVariantFunc
      */
     'id': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SchemaVariantFunc
+     */
+    'isOverlay': boolean;
 }
 /**
  * @type SchemaVariantFuncKind

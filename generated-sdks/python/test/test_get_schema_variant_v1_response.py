@@ -68,7 +68,8 @@ class TestGetSchemaVariantV1Response(unittest.TestCase):
                 variant_funcs = [
                     system_initiative_api_client.models.schema_variant_func.SchemaVariantFunc(
                         func_kind = null, 
-                        id = '01H9ZQD35JPMBGHH69BT0Q79VZ', )
+                        id = '01H9ZQD35JPMBGHH69BT0Q79VZ', 
+                        is_overlay = True, )
                     ],
                 variant_id = '01H9ZQD35JPMBGHH69BT0Q79VZ'
             )
@@ -85,7 +86,8 @@ class TestGetSchemaVariantV1Response(unittest.TestCase):
                 variant_funcs = [
                     system_initiative_api_client.models.schema_variant_func.SchemaVariantFunc(
                         func_kind = null, 
-                        id = '01H9ZQD35JPMBGHH69BT0Q79VZ', )
+                        id = '01H9ZQD35JPMBGHH69BT0Q79VZ', 
+                        is_overlay = True, )
                     ],
                 variant_id = '01H9ZQD35JPMBGHH69BT0Q79VZ',
         )
