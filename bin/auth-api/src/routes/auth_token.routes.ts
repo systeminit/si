@@ -21,7 +21,7 @@ import { authorizeWorkspaceRoute } from "./workspace.routes";
 import { ApiError } from "../lib/api-error";
 import { tracker } from "../lib/tracker";
 import { getUserById } from "../services/users.service";
-import { router } from ".";
+import { automationApiRouter, router } from ".";
 
 // get all authTokens for the given workspace
 router.get("/workspaces/:workspaceId/authTokens", async (ctx) => {
@@ -33,7 +33,7 @@ router.get("/workspaces/:workspaceId/authTokens", async (ctx) => {
 });
 
 // create a new authToken for the given workspace
-router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
+automationApiRouter.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
   const {
     authUser,
     userId,
