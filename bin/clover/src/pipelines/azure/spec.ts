@@ -916,18 +916,18 @@ export function parseEndpointPath(path: string) {
   const segments = path.slice(1).split("/");
 
   // /subscriptions/{subscriptionId}
-  if (segments.shift() !== "subscriptions") return undefined;
+  if (segments.shift()?.toLowerCase() !== "subscriptions") return undefined;
   if (!segments.shift()) return undefined; // skip value
 
   // /resourceGroups/{resourceGroupName} (optional)
-  const hasResourceGroupParam = segments[0] === "resourceGroups";
-  if (segments[0] === "resourceGroups") {
+  const hasResourceGroupParam = segments[0]?.toLowerCase() === "resourcegroups";
+  if (segments[0]?.toLowerCase() === "resourcegroups") {
     segments.shift();
     if (!segments.shift()) return undefined; // skip value
   }
 
   // /providers/Microsoft.Compute
-  if (segments.shift() !== "providers") return undefined;
+  if (segments.shift()?.toLowerCase() !== "providers") return undefined;
   let resourceType = segments.shift();
   if (!resourceType) return undefined;
   // List operations (top level operations with no resource group param)
