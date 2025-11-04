@@ -2183,6 +2183,13 @@ const decodedAtomCache = new QuickLRU<string, AtomDocument>({
   maxSize: MAX_CACHE_SIZE,
 });
 
+const splitCacheKey = (key: string): [string, string, string] => {
+  const parts = key.split("-");
+  const [one, two, three] = parts;
+  if (!one || !two || !three) throw new Error(`Bad key: ${key}`);
+  return [one, two, three];
+};
+
 const atomCacheKey = (atom: Common) =>
   `${atom.id}-${atom.kind}-${atom.checksum}`;
 
@@ -2506,25 +2513,13 @@ const vanaheim = async (
     const existingAtoms = new Map<string, Common>();
     const uncachedAtoms = new Map<string, Common>();
 
-    const placeholders = [];
-    const bind: string[] = [];
-
-    for (const atom of atoms) {
-      placeholders.push("(?, ?, ?)");
-      bind.push(atom.kind, atom.id, atom.checksum);
-    }
-
     const sql = `
       select global_atoms.kind, global_atoms.args, global_atoms.checksum
       from global_atoms
-      where (global_atoms.kind, global_atoms.args, global_atoms.checksum) in (${placeholders.join(
-        ",",
-      )})
     `;
 
     const rows = db.exec({
       sql,
-      bind,
       returnValue: "resultRows",
     });
 
@@ -2544,6 +2539,32 @@ const vanaheim = async (
       if (!existingAtoms.has(key)) {
         uncachedAtoms.set(key, atom);
       }
+    }
+
+    const listedKeys = new Set(atoms.map((atom) => atomCacheKey(atom)));
+    const existingKeys = new Set(existingAtoms.keys());
+    const removeAtoms = [...existingKeys].filter((k) => !listedKeys.has(k));
+
+    const placeholders = [];
+    const bind: string[] = [];
+    for (const key of removeAtoms) {
+      placeholders.push("(?, ?)");
+      const [id, kind, _] = splitCacheKey(key);
+      bind.push(kind, id);
+    }
+
+    if (bind.length > 0) {
+      const sql = `
+        delete
+        from global_atoms
+        where (global_atoms.kind, global_atoms.args) in (${placeholders.join(
+          ",",
+        )});
+      `;
+      db.exec({
+        sql,
+        bind,
+      });
     }
 
     const hammerObjs = [...uncachedAtoms.values()];
@@ -4761,8 +4782,7 @@ const dbInterface: TabDBInterface = {
         sql: `select
                 kind, args, checksum,
                 CAST(data as text)
-              from
-                global_atoms;`,
+              from global_atoms;`,
         returnValue: "resultRows",
       });
       return { changesets, indexes, atoms, mtm, global };
