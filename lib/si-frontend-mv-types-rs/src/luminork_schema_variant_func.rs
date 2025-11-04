@@ -24,6 +24,7 @@ use crate::management::ManagementFuncKind;
 pub struct LuminorkSchemaVariantFunc {
     pub id: FuncId,
     pub func_kind: FuncKindVariant,
+    pub is_overlay: bool,
 }
 
 #[derive(
