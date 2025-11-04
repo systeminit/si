@@ -52,7 +52,7 @@ import ComponentUpgrading from "@/components/toasts/ComponentUpgrading.vue";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { ViewId } from "@/api/sdf/dal/views";
 import CreatingTemplate from "@/components/toasts/CreatingTemplate.vue";
-import { getAssetIcon } from "@/newhotness/util";
+import { pickBrandIconByString } from "@/newhotness/util";
 import handleStoreError from "./errors";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useAssetStore } from "./asset.store";
@@ -589,7 +589,7 @@ export const processRawComponent = (
   component: RawComponent,
   allComponents: Record<ComponentId, RawComponent>,
 ) => {
-  const typeIcon = getAssetIcon(component?.schemaCategory);
+  const typeIcon = pickBrandIconByString(component?.schemaCategory);
 
   const ancestorIds = getAncestorIds(allComponents, component.id);
 

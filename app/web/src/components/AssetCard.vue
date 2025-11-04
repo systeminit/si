@@ -11,7 +11,11 @@
       }"
     >
       <div class="flex gap-xs items-center">
-        <Icon :name="getAssetIcon(asset.category)" class="shrink-0" size="lg" />
+        <Icon
+          :name="pickBrandIconByString(asset.category)"
+          class="shrink-0"
+          size="lg"
+        />
         <Stack class="" spacing="xs">
           <div
             ref="componentNameRef"
@@ -151,7 +155,7 @@ import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
 import { useModuleStore } from "@/store/module.store";
 import { ModuleContributeRequest } from "@/api/sdf/dal/module";
-import { getAssetIcon } from "@/newhotness/util";
+import { pickBrandIconByString } from "@/newhotness/util";
 import EditingPill from "./EditingPill.vue";
 import AssetContributeModal from "./AssetContributeModal.vue";
 

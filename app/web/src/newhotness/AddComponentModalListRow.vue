@@ -35,7 +35,7 @@
       :name="category.icon"
       class="mr-xs"
     />
-    <div class="flex flex-row items-center gap-xs">
+    <div class="flex flex-row items-center gap-xs flex-1 min-w-0">
       <TruncateWithTooltip>
         {{ rowData.name }}
       </TruncateWithTooltip>

@@ -78,7 +78,7 @@
         :key="category"
         :color="categoryColor(category)"
         :label="category"
-        :primaryIcon="getAssetIcon(category)"
+        :primaryIcon="pickBrandIconByString(category)"
         alwaysShowArrow
         clickLabelToToggle
         enableDefaultHoverClasses
@@ -136,7 +136,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariant } from "@/api/sdf/dal/schema";
-import { getAssetIcon } from "@/newhotness/util";
+import { pickBrandIconByString } from "@/newhotness/util";
 import { useModuleStore } from "@/store/module.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AssetNameModal from "./AssetNameModal.vue";

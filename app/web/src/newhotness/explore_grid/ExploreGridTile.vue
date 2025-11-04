@@ -47,7 +47,7 @@
       "
     >
       <Icon
-        :name="getAssetIcon(component.schemaCategory)"
+        :name="pickBrandIconByString(component.schemaCategory)"
         size="sm"
         class="place-self-center my-auto mt-[7px]"
       />
@@ -240,7 +240,7 @@ import { computed, inject, ref, watch } from "vue";
 import { ComponentInList } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import { getAssetIcon } from "../util";
+import { pickBrandIconByString } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
 import ComponentTileQualificationStatus from "../ComponentTileQualificationStatus.vue";
 import ActionPills from "../ActionPills.vue";

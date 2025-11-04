@@ -25,27 +25,19 @@ export const getAssetColor = (name: string) => {
     : BRAND_COLOR_FILTER_HEX_CODES.Custom; // fallback to Custom
 };
 
-export const getAssetIcon = (name: string) => {
-  const icons = {
-    AWS: "logo-aws",
-    "AWS EC2": "logo-aws",
-    CoreOS: "logo-coreos",
-    Docker: "logo-docker",
-    Kubernetes: "logo-k8s",
-    Hetzner: "logo-hetzner",
-  } as Record<string, string>;
-
-  let icon = icons[name];
-
-  if (!icon) {
-    for (const k in icons) {
-      if (name.includes(k)) {
-        icon = icons[k];
-      }
-    }
-  }
-
-  return (icon || "logo-si") as IconNames; // fallback to SI logo
+export const pickBrandIconByString = (name: string): IconNames => {
+  if (name.toLowerCase().includes("aws")) return "logo-aws";
+  else if (name.toLowerCase().includes("coreos")) return "logo-coreos";
+  else if (name.toLowerCase().includes("docker")) return "logo-docker";
+  else if (name.toLowerCase().includes("fastly")) return "logo-fastly";
+  else if (name.toLowerCase().includes("kubernetes")) return "logo-k8s";
+  else if (name.toLowerCase().includes("hetzner")) return "logo-hetzner";
+  else if (
+    name.toLowerCase().includes("microsoft") ||
+    name.toLowerCase().includes("azure")
+  ) {
+    return "logo-azure";
+  } else return "logo-si";
 };
 
 /**

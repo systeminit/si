@@ -9,7 +9,7 @@
     "
   >
     <Icon
-      :name="getAssetIcon(component.schemaCategory)"
+      :name="pickBrandIconByString(component.schemaCategory)"
       size="lg"
       class="flex-none"
     />
@@ -44,7 +44,7 @@ import {
   ComponentInList,
 } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
-import { getAssetIcon, getAssetColor } from "./util";
+import { pickBrandIconByString, getAssetColor } from "./util";
 import ComponentTileQualificationStatus from "./ComponentTileQualificationStatus.vue";
 
 defineProps<{
