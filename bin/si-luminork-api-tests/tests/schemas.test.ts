@@ -233,12 +233,32 @@ Deno.test('Schemas API - List and Find Schemas', async () => {
       ) {
         const variantId = getSchemaResponse.data.variantIds[0];
 
-        const getVariantResponse = await api.schemas.getSchemaVariant(
-          config.workspaceId,
-          changeSetId,
-          firstSchema.schemaId,
-          variantId,
-        );
+        // Retry logic for handling 202 responses
+        let getVariantResponse;
+        let attempts = 0;
+        const maxAttempts = 5;
+        const retryDelayMs = 1000; // 1 second
+
+        do {
+          getVariantResponse = await api.schemas.getSchemaVariant(
+            config.workspaceId,
+            changeSetId,
+            firstSchema.schemaId,
+            variantId,
+          );
+
+          if (getVariantResponse.status === 200) {
+            break;
+          } else if (getVariantResponse.status === 202) {
+            attempts++;
+            if (attempts < maxAttempts) {
+              console.log(`Got 202 response, retrying in ${retryDelayMs}ms (attempt ${attempts}/${maxAttempts})`);
+              await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+            }
+          } else {
+            break; // Exit on unexpected status codes
+          }
+        } while (getVariantResponse.status === 202 && attempts < maxAttempts);
 
         assertEquals(getVariantResponse.status, 200);
         assertEquals(getVariantResponse.data.variantId, variantId);
