@@ -268,11 +268,10 @@ function buildRemoteSchemaCommand() {
 function buildWhoamiCommand() {
   return createSubCommand()
     .description("Displays authenticated user information")
-    .action(async (_options) => {
-      const ctx = Context.instance();
-      const { apiConfiguration } = await initializeCliContextWithAuth({ ctx });
+    .action(async ({ apiBaseUrl, apiToken }) => {
+      const apiCtx = await createApiContext(apiBaseUrl, apiToken);
 
-      await callWhoami(apiConfiguration);
+      await callWhoami(Context.instance(), apiCtx);
     });
 }
 
