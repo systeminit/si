@@ -820,7 +820,8 @@ impl PersistEventTask {
             metrics = true,
             counter.layer_cache_persister_event_by_kind = 1,
             cache_name = &cache_name,
-            event_kind = &event_kind
+            event_kind = &event_kind,
+            backend = BackendType::Postgres.as_ref()
         );
 
         let pg_layer = PgLayer::new(self.pg_pool.clone(), event.payload.db_name.as_ref());
