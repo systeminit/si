@@ -8,10 +8,12 @@ import { SCHEMA_FILE_FORMAT_VERSION } from "../../../config.ts";
 import { Context } from "../../../context.ts";
 import { FunctionMetadata, SchemaMetadata } from "../../../generators.ts";
 import * as materialize from "../../../materialize.ts";
+import { MaterializableEntity } from "../../../materialize.ts";
 import { getLogger } from "../../../logger.ts";
 import {
   AbsoluteDirectoryPath,
   AbsoluteFilePath,
+  FunctionKind,
   normalizeFsName,
   Project,
 } from "../../../project.ts";
@@ -139,7 +141,11 @@ async function pullSchemaByName(
     ...changeSetCoord,
   });
 
-  await materialize.materializeSchemaBase(project, schemaName);
+  await materialize.materializeEntityBase(
+    project,
+    MaterializableEntity.Schema,
+    schemaName,
+  );
   const { formatVersionPath } = await materialize
     .materializeSchemaFormatVersion(
       project,
@@ -147,9 +153,9 @@ async function pullSchemaByName(
       formatVersionBody,
       { overwrite: true },
     );
-  const { metadataPath, codePath } = await materialize.materializeSchema(
+  const { metadataPath, codePath } = await materialize.materializeEntity(
     project,
-    schemaName,
+    { entity: MaterializableEntity.Schema, name: schemaName },
     metadataBody,
     codeBody,
     { overwrite: true },
@@ -157,11 +163,18 @@ async function pullSchemaByName(
 
   // Render all action funcs
   // First, get list of existing local actions before pulling
-  const actionBasePath = project.actionBasePath(schemaName);
+  const actionBasePath = project.schemas.funcBasePath(
+    schemaName,
+    FunctionKind.Action,
+  );
   const existingActionNames = await listFunctionNamesInDir(actionBasePath);
 
   if (data.func.actionIds.length > 0) {
-    await materialize.materializeSchemaActionBase(project, schemaName);
+    await materialize.materializeEntityBase(
+      project,
+      MaterializableEntity.Action,
+      schemaName,
+    );
   }
   const actionPaths = [];
   const pulledActionNames = [];
@@ -172,10 +185,9 @@ async function pullSchemaByName(
     });
     const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeSchemaAction(
+    const paths = await materialize.materializeEntity(
       project,
-      schemaName,
-      metadata.name,
+      { entity: MaterializableEntity.Action, schemaName, name: metadata.name },
       metadataBody,
       codeBody,
       { overwrite: true },
@@ -188,11 +200,16 @@ async function pullSchemaByName(
   const deletedActionPaths = [];
   for (const localActionName of existingActionNames) {
     if (!pulledActionNames.includes(localActionName)) {
-      const metadataPath = project.actionFuncMetadataPath(
+      const metadataPath = project.schemas.funcMetadataPath(
         schemaName,
         localActionName,
+        FunctionKind.Action,
       );
-      const codePath = project.actionFuncCodePath(schemaName, localActionName);
+      const codePath = project.schemas.funcCodePath(
+        schemaName,
+        localActionName,
+        FunctionKind.Action,
+      );
 
       await deleteFunctionFiles(project, metadataPath, codePath);
       deletedActionPaths.push({ metadataPath, codePath });
@@ -206,11 +223,18 @@ async function pullSchemaByName(
 
   // Render all auth funcs
   // First, get list of existing local authentication functions before pulling
-  const authBasePath = project.authBasePath(schemaName);
+  const authBasePath = project.schemas.funcBasePath(
+    schemaName,
+    FunctionKind.Auth,
+  );
   const existingAuthNames = await listFunctionNamesInDir(authBasePath);
 
   if (data.func.authIds.length > 0) {
-    await materialize.materializeSchemaAuthBase(project, schemaName);
+    await materialize.materializeEntityBase(
+      project,
+      MaterializableEntity.Auth,
+      schemaName,
+    );
   }
   const authPaths = [];
   const pulledAuthNames = [];
@@ -221,10 +245,9 @@ async function pullSchemaByName(
     });
     const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeSchemaAuth(
+    const paths = await materialize.materializeEntity(
       project,
-      schemaName,
-      metadata.name,
+      { entity: MaterializableEntity.Auth, schemaName, name: metadata.name },
       metadataBody,
       codeBody,
       { overwrite: true },
@@ -238,11 +261,16 @@ async function pullSchemaByName(
   const deletedAuthPaths = [];
   for (const localAuthName of existingAuthNames) {
     if (!pulledAuthNames.includes(localAuthName)) {
-      const metadataPath = project.authFuncMetadataPath(
+      const metadataPath = project.schemas.funcMetadataPath(
         schemaName,
         localAuthName,
+        FunctionKind.Auth,
       );
-      const codePath = project.authFuncCodePath(schemaName, localAuthName);
+      const codePath = project.schemas.funcCodePath(
+        schemaName,
+        localAuthName,
+        FunctionKind.Auth,
+      );
 
       await deleteFunctionFiles(project, metadataPath, codePath);
       deletedAuthPaths.push({ metadataPath, codePath });
@@ -256,11 +284,18 @@ async function pullSchemaByName(
 
   // Render all codegen funcs
   // First, get list of existing local codegens before pulling
-  const codegenBasePath = project.codegenBasePath(schemaName);
+  const codegenBasePath = project.schemas.funcBasePath(
+    schemaName,
+    FunctionKind.Codegen,
+  );
   const existingCodegenNames = await listFunctionNamesInDir(codegenBasePath);
 
   if (data.func.codegenIds.length > 0) {
-    await materialize.materializeSchemaCodegenBase(project, schemaName);
+    await materialize.materializeEntityBase(
+      project,
+      MaterializableEntity.Codegen,
+      schemaName,
+    );
   }
   const codegenPaths = [];
   const pulledCodegenNames = [];
@@ -271,10 +306,9 @@ async function pullSchemaByName(
     });
     const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeSchemaCodegen(
+    const paths = await materialize.materializeEntity(
       project,
-      schemaName,
-      metadata.name,
+      { entity: MaterializableEntity.Codegen, schemaName, name: metadata.name },
       metadataBody,
       codeBody,
       { overwrite: true },
@@ -287,13 +321,15 @@ async function pullSchemaByName(
   const deletedCodegenPaths = [];
   for (const localCodegenName of existingCodegenNames) {
     if (!pulledCodegenNames.includes(localCodegenName)) {
-      const metadataPath = project.codegenFuncMetadataPath(
+      const metadataPath = project.schemas.funcMetadataPath(
         schemaName,
         localCodegenName,
+        FunctionKind.Codegen,
       );
-      const codePath = project.codegenFuncCodePath(
+      const codePath = project.schemas.funcCodePath(
         schemaName,
         localCodegenName,
+        FunctionKind.Codegen,
       );
 
       await deleteFunctionFiles(project, metadataPath, codePath);
@@ -308,13 +344,20 @@ async function pullSchemaByName(
 
   // Render all management funcs
   // First, get list of existing local management functions before pulling
-  const managementBasePath = project.managementBasePath(schemaName);
+  const managementBasePath = project.schemas.funcBasePath(
+    schemaName,
+    FunctionKind.Management,
+  );
   const existingManagementNames = await listFunctionNamesInDir(
     managementBasePath,
   );
 
   if (data.func.managementIds.length > 0) {
-    await materialize.materializeSchemaManagementBase(project, schemaName);
+    await materialize.materializeEntityBase(
+      project,
+      MaterializableEntity.Management,
+      schemaName,
+    );
   }
   const managementPaths = [];
   const pulledManagementNames = [];
@@ -325,10 +368,13 @@ async function pullSchemaByName(
     });
     const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeSchemaManagement(
+    const paths = await materialize.materializeEntity(
       project,
-      schemaName,
-      metadata.name,
+      {
+        entity: MaterializableEntity.Management,
+        schemaName,
+        name: metadata.name,
+      },
       metadataBody,
       codeBody,
       { overwrite: true },
@@ -341,13 +387,15 @@ async function pullSchemaByName(
   const deletedManagementPaths = [];
   for (const localManagementName of existingManagementNames) {
     if (!pulledManagementNames.includes(localManagementName)) {
-      const metadataPath = project.managementFuncMetadataPath(
+      const metadataPath = project.schemas.funcMetadataPath(
         schemaName,
         localManagementName,
+        FunctionKind.Management,
       );
-      const codePath = project.managementFuncCodePath(
+      const codePath = project.schemas.funcCodePath(
         schemaName,
         localManagementName,
+        FunctionKind.Management,
       );
 
       await deleteFunctionFiles(project, metadataPath, codePath);
@@ -365,13 +413,20 @@ async function pullSchemaByName(
 
   // Render all qualification funcs
   // First, get list of existing local qualifications before pulling
-  const qualificationBasePath = project.qualificationBasePath(schemaName);
+  const qualificationBasePath = project.schemas.funcBasePath(
+    schemaName,
+    FunctionKind.Qualification,
+  );
   const existingQualificationNames = await listFunctionNamesInDir(
     qualificationBasePath,
   );
 
   if (data.func.qualificationIds.length > 0) {
-    await materialize.materializeSchemaQualificationBase(project, schemaName);
+    await materialize.materializeEntityBase(
+      project,
+      MaterializableEntity.Qualification,
+      schemaName,
+    );
   }
   const qualificationPaths = [];
   const pulledQualificationNames = [];
@@ -382,10 +437,13 @@ async function pullSchemaByName(
     });
     const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeSchemaQualification(
+    const paths = await materialize.materializeEntity(
       project,
-      schemaName,
-      metadata.name,
+      {
+        entity: MaterializableEntity.Qualification,
+        schemaName,
+        name: metadata.name,
+      },
       metadataBody,
       codeBody,
       { overwrite: true },
@@ -398,13 +456,15 @@ async function pullSchemaByName(
   const deletedQualificationPaths = [];
   for (const localQualificationName of existingQualificationNames) {
     if (!pulledQualificationNames.includes(localQualificationName)) {
-      const metadataPath = project.qualificationFuncMetadataPath(
+      const metadataPath = project.schemas.funcMetadataPath(
         schemaName,
         localQualificationName,
+        FunctionKind.Qualification,
       );
-      const codePath = project.qualificationFuncCodePath(
+      const codePath = project.schemas.funcCodePath(
         schemaName,
         localQualificationName,
+        FunctionKind.Qualification,
       );
 
       await deleteFunctionFiles(project, metadataPath, codePath);
@@ -483,6 +543,7 @@ async function getSchemaAndVariantBySchemaName(
     ...changeSetCoord,
   };
 
+  // FIXME Here in variant, we'll get an `installedFromUpstream` field that tells us if this variant is a builtin
   const { data: variant } = await api.schemas.getDefaultVariant({
     ...schemaCoord,
   });

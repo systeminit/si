@@ -12,6 +12,7 @@ import { unknownValueToErrorMessage } from "../../../helpers.ts";
 import { SCHEMA_FILE_FORMAT_VERSION } from "../../../config.ts";
 import {
   AbsoluteDirectoryPath,
+  FunctionKind,
   normalizeFsName,
   Project,
 } from "../../../project.ts";
@@ -281,7 +282,7 @@ export async function callRemoteSchemaPush(
   logger.info("reading schemas from filesystem...");
   let readSchemas = 0; // This is the total number of read schema directories, including failures
   try {
-    const schemasBasePath = project.schemasBasePath().toString();
+    const schemasBasePath = project.schemas.moduleBasePath().toString();
 
     const entries = Deno.readDir(schemasBasePath);
 
@@ -304,7 +305,7 @@ export async function callRemoteSchemaPush(
 
       readSchemas += 1;
 
-      const versionFilePath = project.schemaFormatVersionPath(schemaDirName);
+      const versionFilePath = project.schemas.formatVersionPath(schemaDirName);
 
       let thisFormatVersion: number;
       try {
@@ -334,7 +335,7 @@ export async function callRemoteSchemaPush(
         `found valid version file in ${schemaDirName}. reading schema...`,
       );
 
-      const schemaCodePath = project.schemaFuncCodePath(schemaDirName);
+      const schemaCodePath = project.schemas.schemaFuncCodePath(schemaDirName);
       try {
         const code = await schemaCodePath.readTextFile();
 
@@ -343,7 +344,9 @@ export async function callRemoteSchemaPush(
         let description: string;
         let link: string;
 
-        const schemaMetadataPath = project.schemaMetadataPath(schemaDirName);
+        const schemaMetadataPath = project.schemas.schemaMetadataPath(
+          schemaDirName,
+        );
         try {
           const metadataContent = await schemaMetadataPath.readTextFile();
           const metadata = JSON.parse(metadataContent);
@@ -365,14 +368,15 @@ export async function callRemoteSchemaPush(
           continue;
         }
 
-        if (existingLocalSchemaNames[schemaName]) {
+        const lowerCaseSchemaName = schemaName.toLowerCase();
+        const existingLocalSchema =
+          existingLocalSchemaNames[lowerCaseSchemaName];
+        if (existingLocalSchema) {
           throw new Error(
-            `Duplicate schema name "${schemaName}" found in asset "${schemaDirName}" and "${
-              existingLocalSchemaNames[schemaName]
-            }".`,
+            `Duplicate schema name "${schemaName}" found in asset "${schemaDirName}" and "${existingLocalSchema}" (names are case insensitive).`,
           );
         }
-        existingLocalSchemaNames[schemaName] = schemaDirName;
+        existingLocalSchemaNames[lowerCaseSchemaName] = schemaDirName;
         logger.info(`reading schema ${schemaName}`);
 
         if (category === "") {
@@ -386,7 +390,10 @@ export async function callRemoteSchemaPush(
         const qualifications = await parseSimpleFuncDirectory(
           ctx,
           schemaName,
-          project.qualificationBasePath(schemaDirName),
+          project.schemas.funcBasePath(
+            schemaDirName,
+            FunctionKind.Qualification,
+          ),
         );
 
         logger.debug(
@@ -396,7 +403,7 @@ export async function callRemoteSchemaPush(
         const actions = await parseActions(
           ctx,
           schemaName,
-          project.actionBasePath(schemaDirName),
+          project.schemas.funcBasePath(schemaDirName, FunctionKind.Action),
         );
 
         logger.debug(`loaded ${actions.length} actions for ${schemaName}`);
@@ -404,7 +411,7 @@ export async function callRemoteSchemaPush(
         const codeGenerators = await parseSimpleFuncDirectory(
           ctx,
           schemaName,
-          project.codegenBasePath(schemaDirName),
+          project.schemas.funcBasePath(schemaDirName, FunctionKind.Codegen),
         );
 
         logger.debug(
@@ -414,7 +421,7 @@ export async function callRemoteSchemaPush(
         const managementFuncs = await parseSimpleFuncDirectory(
           ctx,
           schemaName,
-          project.managementBasePath(schemaDirName),
+          project.schemas.funcBasePath(schemaDirName, FunctionKind.Management),
         );
 
         logger.debug(
@@ -424,7 +431,7 @@ export async function callRemoteSchemaPush(
         const authFuncs = await parseSimpleFuncDirectory(
           ctx,
           schemaName,
-          project.authBasePath(schemaDirName),
+          project.schemas.funcBasePath(schemaDirName, FunctionKind.Auth),
         );
 
         logger.debug(
@@ -560,7 +567,7 @@ export async function callRemoteSchemaPush(
       name: string;
       kind: string;
     }>;
-    for (let { id: existingFuncId } of existingVariant.variantFuncs) {
+    for (const { id: existingFuncId } of existingVariant.variantFuncs) {
       const existingFunc = (await siFuncsApi.getFunc({
         workspaceId,
         changeSetId: headChangesetId,
@@ -721,7 +728,9 @@ export async function callRemoteSchemaPush(
 
       if (input === "l") {
         console.log("\nAssets to be pushed:");
-        schemasToPush.forEach((schema) => console.log(`  - ${schema.schemaPayload.name}`));
+        schemasToPush.forEach((schema) =>
+          console.log(`  - ${schema.schemaPayload.name}`)
+        );
         console.log();
       } else if (input === "y") {
         confirmed = true;

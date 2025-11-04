@@ -26,194 +26,90 @@
  */
 
 import { getLogger } from "./logger.ts";
-import { Project } from "./project.ts";
+import { AbsoluteDirectoryPath, FunctionKind, Project } from "./project.ts";
 import type { AbsoluteFilePath } from "./project.ts";
 
 const logger = getLogger();
 
-/**
- * Creates the base directory for a schema if it doesn't already exist.
- *
- * This is typically the first operation when materializing a schema, creating
- * the `schemas/<schema-name>/` directory.
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema to create a directory for
- *
- * @example
- * ```ts
- * await materializeSchemaBase(project, "MyAwsResource");
- * // Creates: schemas/MyAwsResource/
- * ```
- */
-export async function materializeSchemaBase(
-  project: Project,
-  schemaName: string,
-) {
-  const schemaBasePath = project.schemaBasePath(schemaName);
+export enum MaterializableEntity {
+  Action = "action",
+  Auth = "auth",
+  Codegen = "codegen",
+  Management = "management",
+  Qualification = "qualification",
+  Schema = "schema",
+}
 
-  // Create schema base directory
-  if (!(await schemaBasePath.exists())) {
-    await schemaBasePath.mkdir({ recursive: true });
-    logger.info("  - Created schema directory: {schemaBasePath}", {
-      schemaBasePath: schemaBasePath.relativeToStr(project),
-    });
+function materializableEntityToFunctionKind(entity: MaterializableEntity) {
+  switch (entity) {
+    case MaterializableEntity.Action:
+      return FunctionKind.Action;
+    case MaterializableEntity.Auth:
+      return FunctionKind.Auth;
+    case MaterializableEntity.Codegen:
+      return FunctionKind.Codegen;
+    case MaterializableEntity.Management:
+      return FunctionKind.Management;
+    case MaterializableEntity.Qualification:
+      return FunctionKind.Qualification;
+    default:
+      throw new Error(`Can't make entity ${entity} a function kind`);
+  }
+}
+
+export function functionKindToMaterializableEntity(kind: FunctionKind) {
+  switch (kind) {
+    case FunctionKind.Auth:
+      return MaterializableEntity.Auth;
+    case FunctionKind.Codegen:
+      return MaterializableEntity.Codegen;
+    case FunctionKind.Management:
+      return MaterializableEntity.Management;
+    case FunctionKind.Qualification:
+      return MaterializableEntity.Qualification;
+    case FunctionKind.Action:
+      return MaterializableEntity.Action;
+    default:
+      throw new Error(
+        `Can't make function kind ${kind} a materializable entity`,
+      );
   }
 }
 
 /**
- * Creates the actions directory for a schema if it doesn't already exist.
+ * Creates the base directory for an entity if it doesn't already exist.
  *
- * This creates the `schemas/<schema-name>/actions/` directory where action
- * function files (create, destroy, refresh, update) will be stored.
+ * This is a unified function for creating base directories for schemas and
+ * their various function types (actions, auth, codegens, management,
+ * qualifications).
  *
  * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- *
- * @example
- * ```ts
- * await materializeSchemaActionBase(project, "MyAwsResource");
- * // Creates: schemas/MyAwsResource/actions/
- * ```
+ * @param entity - The type of entity as defined in MaterializableEntity
+ * @param name - The name of the schema
+ * @param isOverlay - should entity be created in overlays directory or schemas directory
  */
-export async function materializeSchemaActionBase(
+export async function materializeEntityBase(
   project: Project,
-  schemaName: string,
+  entity: MaterializableEntity,
+  name: string,
+  isOverlay?: boolean,
 ) {
-  const actionBasePath = project.actionBasePath(schemaName);
+  const module = isOverlay ? project.overlays : project.schemas;
 
-  // Create the action base directory
-  if (!(await actionBasePath.exists())) {
-    await actionBasePath.mkdir({ recursive: true });
-    logger.info("  - Created actions directory: {actionBasePath}", {
-      actionBasePath: actionBasePath.relativeToStr(project),
-    });
+  let basePath: AbsoluteDirectoryPath;
+  if (entity === MaterializableEntity.Schema) {
+    basePath = module.schemaBasePath(name);
+  } else {
+    const funcKind = materializableEntityToFunctionKind(entity);
+    basePath = module.funcBasePath(name, funcKind);
   }
-}
 
-/**
- * Creates the authentication directory for a schema if it doesn't already
- * exist.
- *
- * This creates the `schemas/<schema-name>/auth/` directory where authentication
- * function files will be stored.
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- *
- * @example
- * ```ts
- * await materializeSchemaAuthBase(project, "MyAwsResource");
- * // Creates: schemas/MyAwsResource/auth/
- * ```
- */
-export async function materializeSchemaAuthBase(
-  project: Project,
-  schemaName: string,
-) {
-  const authBasePath = project.authBasePath(schemaName);
-
-  // Create the auth base directory
-  if (!(await authBasePath.exists())) {
-    await authBasePath.mkdir({ recursive: true });
-    logger.info("  - Created authentication directory: {authBasePath}", {
-      authBasePath: authBasePath.relativeToStr(project),
+  // Create base directory
+  if (!(await basePath.exists())) {
+    await basePath.mkdir({ recursive: true });
+    logger.info("  - Created directory: {basePath}", {
+      basePath: basePath.relativeToStr(project),
     });
-  }
-}
-
-/**
- * Creates the code generators directory for a schema if it doesn't already
- * exist.
- *
- * This creates the `schemas/<schema-name>/codeGenerators/` directory where
- * code generation function files will be stored.
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- *
- * @example
- * ```ts
- * await materializeSchemaCodegenBase(project, "MyAwsResource");
- * // Creates: schemas/MyAwsResource/codeGenerators/
- * ```
- */
-export async function materializeSchemaCodegenBase(
-  project: Project,
-  schemaName: string,
-) {
-  const codegenBasePath = project.codegenBasePath(schemaName);
-
-  // Create the codegen base directory
-  if (!(await codegenBasePath.exists())) {
-    await codegenBasePath.mkdir({ recursive: true });
-    logger.info("  - Created code generators directory: {codegenBasePath}", {
-      codegenBasePath: codegenBasePath.relativeToStr(project),
-    });
-  }
-}
-
-/**
- * Creates the management directory for a schema if it doesn't already exist.
- *
- * This creates the `schemas/<schema-name>/management/` directory where
- * management function files will be stored.
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- *
- * @example
- * ```ts
- * await materializeSchemaManagementBase(project, "MyAwsResource");
- * // Creates: schemas/MyAwsResource/management/
- * ```
- */
-export async function materializeSchemaManagementBase(
-  project: Project,
-  schemaName: string,
-) {
-  const managementBasePath = project.managementBasePath(schemaName);
-
-  // Create the management base directory
-  if (!(await managementBasePath.exists())) {
-    await managementBasePath.mkdir({ recursive: true });
-    logger.info("  - Created management directory: {managementBasePath}", {
-      managementBasePath: managementBasePath.relativeToStr(project),
-    });
-  }
-}
-
-/**
- * Creates the qualifications directory for a schema if it doesn't already
- * exist.
- *
- * This creates the `schemas/<schema-name>/qualifications/` directory where
- * qualification function files will be stored.
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- *
- * @example
- * ```ts
- * await materializeSchemaQualificationBase(project, "MyAwsResource");
- * // Creates: schemas/MyAwsResource/qualifications/
- * ```
- */
-export async function materializeSchemaQualificationBase(
-  project: Project,
-  schemaName: string,
-) {
-  const qualificationBasePath = project.qualificationBasePath(schemaName);
-
-  // Create the qualification base directory
-  if (!(await qualificationBasePath.exists())) {
-    await qualificationBasePath.mkdir({ recursive: true });
-    logger.info(
-      "  - Created qualifications directory: {qualificationBasePath}",
-      {
-        qualificationBasePath: qualificationBasePath.relativeToStr(project),
-      },
-    );
   }
 }
 
@@ -251,7 +147,7 @@ export async function materializeSchemaFormatVersion(
   options?: { overwrite?: boolean },
 ): Promise<{ formatVersionPath: AbsoluteFilePath }> {
   // Create the format version file
-  const formatVersionFilePath = project.schemaFormatVersionPath(schemaName);
+  const formatVersionFilePath = project.schemas.formatVersionPath(schemaName);
   if (!options?.overwrite) {
     await ensureFileDoesNotExist(formatVersionFilePath);
   }
@@ -266,440 +162,83 @@ export async function materializeSchemaFormatVersion(
   };
 }
 
+type EntityName = {
+  entity: MaterializableEntity.Schema;
+  name: string;
+} | {
+  entity: Exclude<MaterializableEntity, MaterializableEntity.Schema>;
+  schemaName: string;
+  name: string;
+};
+
 /**
- * Materializes the main schema files (metadata and code).
+ * Materializes entity files (metadata and code) for any entity type.
  *
- * Creates both the schema metadata JSON file and the schema TypeScript code
- * file. These files define the schema's properties, structure, and asset
- * function.
+ * This is a unified function that handles all entity types including schemas,
+ * actions, auth, codegens, management functions, and qualifications. It creates
+ * both the metadata JSON file and the TypeScript code file for the entity.
  *
  * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- * @param metadataBody - The JSON metadata content for the schema
- * @param codeBody - The TypeScript code for the schema's asset function
+ * @param entityName - The entity identifier containing the type and names
+ * @param metadataBody - The JSON metadata content for the entity
+ * @param codeBody - The TypeScript code for the entity
  * @param options - Optional configuration including overwrite flag
  * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists and overwrite is not
- * enabled
- *
- * @example
- * ```ts
- * const metadata = JSON.stringify({
- *   name: "MyAwsResource",
- *   category: "AWS",
- *   description: "An AWS resource"
- * });
- * const code = "export default function() { ... }";
- *
- * const result = await materializeSchema(
- *   project,
- *   "MyAwsResource",
- *   metadata,
- *   code,
- * );
- * // Creates:
- * //   schemas/MyAwsResource/schema.metadata.json
- * //   schemas/MyAwsResource/schema.ts
- * ```
+ * @throws {FileExistsError} If either file already exists and overwrite is not enabled
  */
-export async function materializeSchema(
+export async function materializeEntity(
   project: Project,
-  schemaName: string,
+  entityName: EntityName,
   metadataBody: string,
   codeBody: string,
-  options?: { overwrite?: boolean },
-): Promise<{ metadataPath: AbsoluteFilePath; codePath: AbsoluteFilePath }> {
-  // Create schema metadata file
-  const metadataFilePath = project.schemaMetadataPath(schemaName);
+  options?: {
+    overwrite?: boolean;
+    isOverlay?: boolean;
+  },
+): Promise<{
+  metadataPath: AbsoluteFilePath;
+  codePath: AbsoluteFilePath;
+}> {
+  const isOverlay = options?.isOverlay ?? false;
+
+  let metadataFilePath: AbsoluteFilePath;
+  let codeFilePath: AbsoluteFilePath;
+
+  if (entityName.entity === MaterializableEntity.Schema) {
+    if (options?.isOverlay) {
+      throw new Error("Can't materialize schema in overlays directory");
+    }
+
+    metadataFilePath = project.schemas.schemaMetadataPath(entityName.name);
+    codeFilePath = project.schemas.schemaFuncCodePath(entityName.name);
+  } else {
+    const module = isOverlay ? project.overlays : project.schemas;
+    const funcKind = materializableEntityToFunctionKind(entityName.entity);
+    metadataFilePath = module.funcMetadataPath(
+      entityName.schemaName,
+      entityName.name,
+      funcKind,
+    );
+    codeFilePath = module.funcCodePath(
+      entityName.schemaName,
+      entityName.name,
+      funcKind,
+    );
+  }
+
   if (!options?.overwrite) {
     await ensureFileDoesNotExist(metadataFilePath);
   }
   await createFileWithLogging(project, metadataFilePath, metadataBody);
 
-  // Create schema func code file
-  const schemaCodeFilePath = project.schemaFuncCodePath(schemaName);
   if (!options?.overwrite) {
-    await ensureFileDoesNotExist(schemaCodeFilePath);
+    await ensureFileDoesNotExist(codeFilePath);
   }
-  await createFileWithLogging(project, schemaCodeFilePath, codeBody);
+  await createFileWithLogging(project, codeFilePath, codeBody);
 
   return {
     metadataPath: metadataFilePath,
-    codePath: schemaCodeFilePath,
-  };
-}
-
-/**
- * Materializes an action function for a schema.
- *
- * Creates both the action metadata JSON file and the action TypeScript code
- * file. Actions are functions that perform operations on resources (e.g.,
- * create, destroy, refresh, update).
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- * @param actionName - The name of the action (e.g., "create", "destroy")
- * @param metadataBody - The JSON metadata content for the action
- * @param codeBody - The TypeScript code for the action function
- * @param options - Optional configuration including overwrite flag
- * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists and overwrite is not
- * enabled
- *
- * @example
- * ```ts
- * const metadata = JSON.stringify({
- *   name: "create",
- *   displayName: "Create Resource"
- * });
- * const code = "export default async function() { ... }";
- *
- * const result = await materializeSchemaAction(
- *   project,
- *   "MyAwsResource",
- *   "create",
- *   metadata,
- *   code
- * );
- * // Creates:
- * //   schemas/MyAwsResource/actions/create.metadata.json
- * //   schemas/MyAwsResource/actions/create.ts
- * ```
- */
-export async function materializeSchemaAction(
-  project: Project,
-  schemaName: string,
-  actionName: string,
-  metadataBody: string,
-  codeBody: string,
-  options?: { overwrite?: boolean },
-): Promise<{
-  metadataPath: AbsoluteFilePath;
-  codePath: AbsoluteFilePath;
-}> {
-  // Create action func metadata file
-  const actionMetadataFilePath = project.actionFuncMetadataPath(
-    schemaName,
-    actionName,
-  );
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(actionMetadataFilePath);
-  }
-  await createFileWithLogging(project, actionMetadataFilePath, metadataBody);
-
-  // Create action func code file
-  const actionCodeFilePath = project.actionFuncCodePath(schemaName, actionName);
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(actionCodeFilePath);
-  }
-  await createFileWithLogging(project, actionCodeFilePath, codeBody);
-
-  return {
-    metadataPath: actionMetadataFilePath,
-    codePath: actionCodeFilePath,
-  };
-}
-
-/**
- * Materializes an authentication function for a schema.
- *
- * Creates both the authentication metadata JSON file and the authentication
- * TypeScript code file. Authentication functions handle credential validation
- * and authentication flows for resources.
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- * @param authName - The name of the authentication function
- * @param metadataBody - The JSON metadata content for the authentication
- * function
- * @param codeBody - The TypeScript code for the authentication function
- * @param options - Optional configuration including overwrite flag
- * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists and overwrite is not
- * enabled
- *
- * @example
- * ```ts
- * const metadata = JSON.stringify({
- *   name: "oauth",
- *   displayName: "OAuth Authentication"
- * });
- * const code = "export default async function() { ... }";
- *
- * const result = await materializeSchemaAuth(
- *   project,
- *   "MyAwsResource",
- *   "oauth",
- *   metadata,
- *   code,
- *   { overwrite: true }
- * );
- * // Creates:
- * //   schemas/MyAwsResource/auth/oauth.metadata.json
- * //   schemas/MyAwsResource/auth/oauth.ts
- * ```
- */
-export async function materializeSchemaAuth(
-  project: Project,
-  schemaName: string,
-  authName: string,
-  metadataBody: string,
-  codeBody: string,
-  options?: { overwrite?: boolean },
-): Promise<{
-  metadataPath: AbsoluteFilePath;
-  codePath: AbsoluteFilePath;
-}> {
-  // Create auth func metadata file
-  const authMetadataFilePath = project.authFuncMetadataPath(
-    schemaName,
-    authName,
-  );
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(authMetadataFilePath);
-  }
-  await createFileWithLogging(project, authMetadataFilePath, metadataBody);
-
-  // Create auth func code file
-  const authCodeFilePath = project.authFuncCodePath(schemaName, authName);
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(authCodeFilePath);
-  }
-  await createFileWithLogging(project, authCodeFilePath, codeBody);
-
-  return {
-    metadataPath: authMetadataFilePath,
-    codePath: authCodeFilePath,
-  };
-}
-
-/**
- * Materializes a code generation function for a schema.
- *
- * Creates both the codegen metadata JSON file and the codegen TypeScript code
- * file. Code generators produce configuration files or infrastructure code
- * from schema component data.
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- * @param codegenName - The name of the code generator
- * @param metadataBody - The JSON metadata content for the code generator
- * @param codeBody - The TypeScript code for the code generator function
- * @param options - Optional configuration including overwrite flag
- * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists and overwrite is not
- * enabled
- *
- * @example
- * ```ts
- * const metadata = JSON.stringify({
- *   name: "terraform",
- *   displayName: "Terraform HCL Generator"
- * });
- * const code = "export default function() { return 'resource ...'; }";
- *
- * const result = await materializeSchemaCodegen(
- *   project,
- *   "MyAwsResource",
- *   "terraform",
- *   metadata,
- *   code
- * );
- * // Creates:
- * //   schemas/MyAwsResource/codeGenerators/terraform.metadata.json
- * //   schemas/MyAwsResource/codeGenerators/terraform.ts
- * ```
- */
-export async function materializeSchemaCodegen(
-  project: Project,
-  schemaName: string,
-  codegenName: string,
-  metadataBody: string,
-  codeBody: string,
-  options?: { overwrite?: boolean },
-): Promise<{
-  metadataPath: AbsoluteFilePath;
-  codePath: AbsoluteFilePath;
-}> {
-  // Create codegen func metadata file
-  const codegenMetadataFilePath = project.codegenFuncMetadataPath(
-    schemaName,
-    codegenName,
-  );
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(codegenMetadataFilePath);
-  }
-  await createFileWithLogging(project, codegenMetadataFilePath, metadataBody);
-
-  // Create codegen func code file
-  const codegenCodeFilePath = project.codegenFuncCodePath(
-    schemaName,
-    codegenName,
-  );
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(codegenCodeFilePath);
-  }
-  await createFileWithLogging(project, codegenCodeFilePath, codeBody);
-
-  return {
-    metadataPath: codegenMetadataFilePath,
-    codePath: codegenCodeFilePath,
-  };
-}
-
-/**
- * Materializes a management function for a schema.
- *
- * Creates both the management metadata JSON file and the management TypeScript
- * code file. Management functions handle reconciliation and lifecycle
- * operations for resources.
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- * @param managementName - The name of the management function
- * @param metadataBody - The JSON metadata content for the management function
- * @param codeBody - The TypeScript code for the management function
- * @param options - Optional configuration including overwrite flag
- * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists and overwrite is not
- * enabled
- *
- * @example
- * ```ts
- * const metadata = JSON.stringify({
- *   name: "reconcile",
- *   displayName: "Reconcile Resource"
- * });
- * const code = "export default async function() { ... }";
- *
- * const result = await materializeSchemaManagement(
- *   project,
- *   "MyAwsResource",
- *   "reconcile",
- *   metadata,
- *   code
- * );
- * // Creates:
- * //   schemas/MyAwsResource/management/reconcile.metadata.json
- * //   schemas/MyAwsResource/management/reconcile.ts
- * ```
- */
-export async function materializeSchemaManagement(
-  project: Project,
-  schemaName: string,
-  managementName: string,
-  metadataBody: string,
-  codeBody: string,
-  options?: { overwrite?: boolean },
-): Promise<{
-  metadataPath: AbsoluteFilePath;
-  codePath: AbsoluteFilePath;
-}> {
-  // Create management func metadata file
-  const managementMetadataFilePath = project.managementFuncMetadataPath(
-    schemaName,
-    managementName,
-  );
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(managementMetadataFilePath);
-  }
-  await createFileWithLogging(
-    project,
-    managementMetadataFilePath,
-    metadataBody,
-  );
-
-  // Create management func code file
-  const managementCodeFilePath = project.managementFuncCodePath(
-    schemaName,
-    managementName,
-  );
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(managementCodeFilePath);
-  }
-  await createFileWithLogging(project, managementCodeFilePath, codeBody);
-
-  return {
-    metadataPath: managementMetadataFilePath,
-    codePath: managementCodeFilePath,
-  };
-}
-
-/**
- * Materializes a qualification function for a schema.
- *
- * Creates both the qualification metadata JSON file and the qualification
- * TypeScript code file. Qualifications validate component state and properties
- * to ensure they meet required criteria.
- *
- * @param project - The project instance containing path configuration
- * @param schemaName - The name of the schema
- * @param qualificationName - The name of the qualification function
- * @param metadataBody - The JSON metadata content for the qualification
- * @param codeBody - The TypeScript code for the qualification function
- * @param options - Optional configuration including overwrite flag
- * @returns An object containing paths to the created metadata and code files
- * @throws {FileExistsError} If either file already exists and overwrite is not
- * enabled
- *
- * @example
- * ```ts
- * const metadata = JSON.stringify({
- *   name: "validate",
- *   displayName: "Validate Configuration"
- * });
- * const code = "export default function() { return { status: 'ok' }; }";
- *
- * const result = await materializeSchemaQualification(
- *   project,
- *   "MyAwsResource",
- *   "validate",
- *   metadata,
- *   code
- * );
- * // Creates:
- * //   schemas/MyAwsResource/qualifications/validate.metadata.json
- * //   schemas/MyAwsResource/qualifications/validate.ts
- * ```
- */
-export async function materializeSchemaQualification(
-  project: Project,
-  schemaName: string,
-  qualificationName: string,
-  metadataBody: string,
-  codeBody: string,
-  options?: { overwrite?: boolean },
-): Promise<{
-  metadataPath: AbsoluteFilePath;
-  codePath: AbsoluteFilePath;
-}> {
-  // Create qualification func metadata file
-  const qualificationMetadataFilePath = project.qualificationFuncMetadataPath(
-    schemaName,
-    qualificationName,
-  );
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(qualificationMetadataFilePath);
-  }
-  await createFileWithLogging(
-    project,
-    qualificationMetadataFilePath,
-    metadataBody,
-  );
-
-  // Create qualification func code file
-  const qualificationCodeFilePath = project.qualificationFuncCodePath(
-    schemaName,
-    qualificationName,
-  );
-  if (!options?.overwrite) {
-    await ensureFileDoesNotExist(qualificationCodeFilePath);
-  }
-  await createFileWithLogging(project, qualificationCodeFilePath, codeBody);
-
-  return {
-    metadataPath: qualificationMetadataFilePath,
-    codePath: qualificationCodeFilePath,
+    codePath: codeFilePath,
   };
 }
 

@@ -127,7 +127,7 @@ export async function schemaNameFromDirNames(
   return await promptForName(
     schemaName,
     "Schema Name",
-    () => project.currentSchemaDirNames(),
+    () => project.schemas.currentSchemaDirNames(),
   );
 }
 
