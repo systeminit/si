@@ -475,11 +475,17 @@ impl PersisterTask {
 
         metric!(
             counter.layer_cache_persister_retry_attempted = 1,
-            cache_name = &cache_name
+            cache_name = &cache_name,
+            backend = BackendType::Postgres.as_ref(),
+            event_kind = event.event_kind.as_ref()
         );
 
         self.tracker.spawn(async move {
             let start = std::time::Instant::now();
+
+            // Capture event_kind and timestamp before moving the event
+            let event_kind = event.event_kind.clone();
+            let event_timestamp = event.metadata.timestamp;
 
             // Attempt the retry
             let result = task.try_write_layers(event, true).await;
@@ -487,11 +493,26 @@ impl PersisterTask {
             let duration = start.elapsed().as_secs_f64();
             metric!(
                 histogram.layer_cache_persister_retry_duration_seconds = duration,
-                cache_name = &cache_name
+                cache_name = &cache_name,
+                backend = BackendType::Postgres.as_ref(),
+                event_kind = event_kind.as_ref()
             );
 
             match result {
                 Ok(_) => {
+                    // Emit end-to-end persistence latency including retry time
+                    let latency = Utc::now()
+                        .signed_duration_since(event_timestamp)
+                        .to_std()
+                        .unwrap_or_default();
+                    metric!(
+                        histogram.layer_cache_persistence_latency_seconds = latency.as_secs_f64(),
+                        cache_name = &cache_name,
+                        backend = BackendType::Postgres.as_ref(),
+                        operation = "retry",
+                        event_kind = event_kind.as_ref()
+                    );
+
                     // Success - tell manager to remove from queue
                     let _ = retry_queue_command_tx
                         .send(crate::retry_queue::RetryQueueMessage::MarkSuccess(handle));
