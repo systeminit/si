@@ -925,23 +925,31 @@ const funcCreateEditGetInputSchemaRaw = {
       "The change set to create, update, get information about a function in; functions cannot be manipulated on HEAD",
     ),
   schemaId: z.string().describe("The schema id the function is for."),
-  funcId: z.string().optional().describe(
-    "The id of the function to edit or get information about. If none is given, create a new function.",
-  ),
-  name: z.string().min(1).optional().describe(
-    "The name of the function. Required for creating a new function.",
-  ),
-  description: z.string().optional().describe("A description for the function"),
-  functionType: z.enum(["qualification", "codegen", "management", "action"])
-    .optional().describe(
-      "The type of the function. Required for creating a new function.",
-    ),
-  functionCode: z
+  funcId: z
     .string()
     .optional()
-    .describe(functionCodeDescribe.join(" ")),
-  actionKind: z.enum(["Create", "Destroy", "Refresh", "Update", "Manual"])
-    .optional().describe(
+    .describe(
+      "The id of the function to edit or get information about. If none is given, create a new function.",
+    ),
+  name: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "The name of the function. Required for creating a new function.",
+    ),
+  description: z.string().optional().describe("A description for the function"),
+  functionType: z
+    .enum(["qualification", "codegen", "management", "action"])
+    .optional()
+    .describe(
+      "The type of the function. Required for creating a new function.",
+    ),
+  functionCode: z.string().optional().describe(functionCodeDescribe.join(" ")),
+  actionKind: z
+    .enum(["Create", "Destroy", "Refresh", "Update", "Manual"])
+    .optional()
+    .describe(
       "The kind of action function. Only required for new functions of the action type.",
     ),
 };
@@ -980,18 +988,16 @@ export function funcCreateEditGetTool(server: McpServer) {
       inputSchema: funcCreateEditGetInputSchemaRaw,
       outputSchema: funcCreateEditGetOutputSchemaRaw,
     },
-    async (
-      {
-        changeSetId,
-        schemaId,
-        funcId,
-        functionCode,
-        functionType,
-        actionKind,
-        name,
-        description,
-      },
-    ) => {
+    async ({
+      changeSetId,
+      schemaId,
+      funcId,
+      functionCode,
+      functionType,
+      actionKind,
+      name,
+      description,
+    }) => {
       return await withAnalytics(toolName, async () => {
         if (functionType) {
           const validationIssues = validateFunctionCode(
@@ -1006,9 +1012,13 @@ export function funcCreateEditGetTool(server: McpServer) {
             });
           }
         } else if (!funcId) {
-          return errorResponse({
-            message: "Function type is required when creating a new function.",
-          }, "Provide a function type in the request body.");
+          return errorResponse(
+            {
+              message:
+                "Function type is required when creating a new function.",
+            },
+            "Provide a function type in the request body.",
+          );
         }
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
@@ -1017,176 +1027,217 @@ export function funcCreateEditGetTool(server: McpServer) {
 
         try {
           // Work with overlay functions
-          if (functionType === "action" || functionType === "management") {
-            // Overlay functions
 
-            // first ensure that the schema for this function is installed
-            await siSchemasApi.installSchema({
+          // first ensure that the schema for this function is installed
+          await siSchemasApi.installSchema({
+            workspaceId: WORKSPACE_ID,
+            changeSetId,
+            schemaId,
+          });
+
+          // then get the default variant
+          const responseGetDefaultVariant = await siSchemasApi
+            .getDefaultVariant({
               workspaceId: WORKSPACE_ID,
               changeSetId,
               schemaId,
             });
+          const isBuiltIn =
+            responseGetDefaultVariant.data.installedFromUpstream;
 
-            // then get the default variant
-            const responseGetDefaultVariant = await siSchemasApi
-              .getDefaultVariant({
+          if (isBuiltIn) {
+            if (funcId) {
+              // EDIT
+              // Fetch the existing function
+              const responseGetFunc = await siFuncsApi.getFunc({
                 workspaceId: WORKSPACE_ID,
                 changeSetId,
-                schemaId,
+                funcId,
               });
-            const isBuiltIn =
-              responseGetDefaultVariant.data.installedFromUpstream;
 
-            if (isBuiltIn) {
-              if (funcId) {
-                // EDIT
-                // Fetch the existing function
-                const responseGetFunc = await siFuncsApi.getFunc({
-                  workspaceId: WORKSPACE_ID,
-                  changeSetId,
-                  funcId,
+              // Check if it's locked = overlay functions are unlocked if not yet applied
+              if (responseGetFunc.data.isLocked) {
+                return errorResponse({
+                  message: "Cannot edit locked functions on builtin schemas.",
                 });
+              }
 
-                // Check if it's locked = overlay functions are unlocked if not yet applied
-                if (responseGetFunc.data.isLocked) {
+              // If no updates provuded, just return current information
+              if (
+                functionCode === undefined &&
+                description === undefined &&
+                name === undefined
+              ) {
+                return successResponse({
+                  funcId: funcId,
+                  name: responseGetFunc.data.displayName,
+                  functionCode: responseGetFunc.data.code,
+                });
+              }
+
+              // Edit the overlay function directly (no unlock required)
+              const updateFuncV1Request = {
+                code: functionCode ?? responseGetFunc.data.code,
+                description: description ?? responseGetFunc.data.description,
+                displayName: name ?? responseGetFunc.data.displayName,
+              };
+
+              await siFuncsApi.updateFunc({
+                workspaceId: WORKSPACE_ID,
+                changeSetId,
+                funcId,
+                updateFuncV1Request,
+              });
+
+              return successResponse(
+                {
+                  funcId: funcId,
+                  name: responseGetFunc.data.displayName ||
+                    responseGetFunc.data.name,
+                  functionCode: updateFuncV1Request.code,
+                },
+                "Updated overlay function. Changes will be preserved on schema upgrades.",
+              );
+            } else {
+              // CREATE
+
+              if (!name) {
+                return errorResponse({
+                  message: "Name is required for creating action functions.",
+                });
+              }
+
+              // Get the default schema variant ID
+              const schemaVariantId = responseGetDefaultVariant.data.variantId;
+
+              if (functionType === "action") {
+                if (!actionKind) {
                   return errorResponse({
-                    message: "Cannot edit locked functions on builtin schemas.",
+                    message:
+                      "Action kind is required for creating action functions.",
                   });
+                } else if (actionKind !== "Manual") {
+                  let canMakeAction = true;
+
+                  responseGetDefaultVariant.data.variantFuncs.forEach(
+                    (func) => {
+                      if (
+                        func.funcKind.kind === "action" &&
+                        func.funcKind.actionKind === actionKind
+                      ) {
+                        canMakeAction = false;
+                      }
+                    },
+                  );
+                  if (!canMakeAction) {
+                    return errorResponse(
+                      {
+                        message:
+                          "An action of the same kind already exists and only one of each kind is allowed, except for Manual action functions.",
+                      },
+                      "Tell the user that they can't make more of one of this kind of action and ask if they want to create a new Manual action.",
+                    );
+                  }
                 }
 
-                // If no updates provuded, just return current information
-                if (
-                  functionCode === undefined && description === undefined &&
-                  name === undefined
-                ) {
-                  return successResponse({
-                    funcId: funcId,
-                    name: responseGetFunc.data.displayName,
-                    functionCode: responseGetFunc.data.code,
-                  });
-                }
-
-                // Edit the overlay function directly (no unlock required)
-                const updateFuncV1Request = {
-                  code: functionCode ?? responseGetFunc.data.code,
-                  description: description ?? responseGetFunc.data.description,
-                  displayName: name ?? responseGetFunc.data.displayName,
-                };
-
-                await siFuncsApi.updateFunc({
+                // Create an action function
+                const code = functionCode ?? DEFAULT_ACTION_FUNCTION;
+                const responseCreate = await siSchemasApi.createVariantAction({
                   workspaceId: WORKSPACE_ID,
                   changeSetId,
-                  funcId,
-                  updateFuncV1Request,
+                  schemaId,
+                  schemaVariantId,
+                  createVariantActionFuncV1Request: {
+                    name,
+                    description,
+                    code,
+                    kind: actionKind!,
+                  },
                 });
 
                 return successResponse(
                   {
-                    funcId: funcId,
-                    name: responseGetFunc.data.displayName ||
-                      responseGetFunc.data.name,
-                    functionCode: updateFuncV1Request.code,
+                    funcId: responseCreate.data.funcId,
+                    name: name,
+                    functionCode: code,
                   },
-                  "Updated overlay function. Changes will be preserved on schema upgrades.",
+                  "Created overlay action function on a builtin schema. Changes will be preserved when the schema is upgraded.",
                 );
-              } else {
-                // CREATE
-
-                if (!name) {
-                  return errorResponse({
-                    message: "Name is required for creating action functions.",
+              } else if (functionType === "management") {
+                // Create a management function
+                const code = functionCode ?? DEFAULT_MANAGEMENT_FUNCTION;
+                const responseCreate = await siSchemasApi
+                  .createVariantManagement({
+                    workspaceId: WORKSPACE_ID,
+                    changeSetId,
+                    schemaId,
+                    schemaVariantId,
+                    createVariantManagementFuncV1Request: {
+                      name,
+                      description,
+                      code,
+                    },
                   });
-                }
 
-                // Get the default schema variant ID
-                const schemaVariantId =
-                  responseGetDefaultVariant.data.variantId;
+                return successResponse(
+                  {
+                    funcId: responseCreate.data.funcId,
+                    name: name,
+                    functionCode: code,
+                  },
+                  "Created overlay management function on a builtin schema. Changes will be preserved when the schema is upgraded.",
+                );
+              } else if (functionType === "codegen") {
+                // Create a codegen function
+                const code = functionCode ?? DEFAULT_CODEGEN_FUNCTION;
+                const responseCreate = await siSchemasApi.createVariantCodegen({
+                  workspaceId: WORKSPACE_ID,
+                  changeSetId,
+                  schemaId,
+                  schemaVariantId,
+                  createVariantCodegenFuncV1Request: {
+                    name,
+                    description,
+                    code,
+                  },
+                });
 
-                if (functionType === "action") {
-                  if (!actionKind) {
-                    return errorResponse({
-                      message:
-                        "Action kind is required for creating action functions.",
-                    });
-                  } else if (actionKind !== "Manual") {
-                    let canMakeAction = true;
-
-                    responseGetDefaultVariant.data.variantFuncs.forEach(
-                      (func) => {
-                        if (
-                          func.funcKind.kind === "action" &&
-                          func.funcKind.actionKind === actionKind
-                        ) {
-                          canMakeAction = false;
-                        }
-                      },
-                    );
-                    if (!canMakeAction) {
-                      return errorResponse(
-                        {
-                          message:
-                            "An action of the same kind already exists and only one of each kind is allowed, except for Manual action functions.",
-                        },
-                        "Tell the user that they can't make more of one of this kind of action and ask if they want to create a new Manual action.",
-                      );
-                    }
-                  }
-
-                  // Create an action function
-                  const code = functionCode ?? DEFAULT_ACTION_FUNCTION;
-                  const responseCreate = await siSchemasApi.createVariantAction(
-                    {
-                      workspaceId: WORKSPACE_ID,
-                      changeSetId,
-                      schemaId,
-                      schemaVariantId,
-                      createVariantActionFuncV1Request: {
-                        name,
-                        description,
-                        code,
-                        kind: actionKind!,
-                      },
+                return successResponse(
+                  {
+                    funcId: responseCreate.data.funcId,
+                    name: name,
+                    functionCode: code,
+                  },
+                  "Created overlay codegen function on a builtin schema. Changes will be preserved when the schema is upgraded.",
+                );
+              } else if (functionType === "qualification") {
+                // Create a qualification function
+                const code = functionCode ?? DEFAULT_QUALIFICATION_FUNCTION;
+                const responseCreate = await siSchemasApi
+                  .createVariantQualification({
+                    workspaceId: WORKSPACE_ID,
+                    changeSetId,
+                    schemaId,
+                    schemaVariantId,
+                    createVariantQualificationFuncV1Request: {
+                      name,
+                      description,
+                      code,
                     },
-                  );
+                  });
 
-                  return successResponse(
-                    {
-                      funcId: responseCreate.data.funcId,
-                      name: name,
-                      functionCode: code,
-                    },
-                    "Created overlay action function on a builtin schema. Changes will be preserved when the schema is upgraded.",
-                  );
-                } else if (functionType === "management") {
-                  // Create a management function
-                  const code = functionCode ?? DEFAULT_MANAGEMENT_FUNCTION;
-                  const responseCreate = await siSchemasApi
-                    .createVariantManagement({
-                      workspaceId: WORKSPACE_ID,
-                      changeSetId,
-                      schemaId,
-                      schemaVariantId,
-                      createVariantManagementFuncV1Request: {
-                        name,
-                        description,
-                        code,
-                      },
-                    });
-
-                  return successResponse(
-                    {
-                      funcId: responseCreate.data.funcId,
-                      name: name,
-                      functionCode: code,
-                    },
-                    "Created overlay management function on a builtin schema. Changes will be preserved when the schema is upgraded.",
-                  );
-                }
+                return successResponse(
+                  {
+                    funcId: responseCreate.data.funcId,
+                    name: name,
+                    functionCode: code,
+                  },
+                  "Created overlay qualification function on a builtin schema. Changes will be preserved when the schema is upgraded.",
+                );
               }
             }
-          }
+          } // None Overlay functions
 
-          // None Overlay functions
           if (funcId) {
             // update an existing function or get information about it
 
@@ -1228,7 +1279,8 @@ export function funcCreateEditGetTool(server: McpServer) {
 
             // information gathering complete, now only move onto updating if we have new data
             if (
-              functionCode !== undefined || description !== undefined ||
+              functionCode !== undefined ||
+              description !== undefined ||
               name !== undefined
             ) {
               // finally hit the luminork API endpoint with the update
