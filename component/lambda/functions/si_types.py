@@ -41,7 +41,11 @@ def iso_to_sql_datetime(iso_str: Optional[IsoTimestamp]) -> Optional[SqlDatetime
 def iso_to_sql_datetime(iso_str: Optional[IsoTimestamp]):
     if iso_str is None:
         return None
-    return datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d %H:%M:%S")
+    if '.' in iso_str:
+        iso_timestamp = datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+    else:
+        iso_timestamp = datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%SZ")
+    return iso_timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 @overload
 def iso_to_sql_days(iso_str: IsoTimestamp) -> str: ...
@@ -52,4 +56,8 @@ def iso_to_sql_days(iso_str: Optional[IsoTimestamp]) -> Optional[str]: ...
 def iso_to_sql_days(iso_str: Optional[IsoTimestamp]):
     if iso_str is None:
         return None
-    return datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%SZ").strftime('%Y-%m-%d')
+    if '.' in iso_str:
+        iso_timestamp = datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+    else:
+        iso_timestamp = datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%SZ")
+    return iso_timestamp.strftime('%Y-%m-%d')
