@@ -20,6 +20,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from system_initiative_api_client.models.creator_user import CreatorUser
+from system_initiative_api_client.models.initial_api_token import InitialApiToken
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -34,12 +35,13 @@ class Workspace(BaseModel):
     display_name: StrictStr = Field(alias="displayName")
     external_id: Optional[StrictStr] = Field(default=None, alias="externalId")
     id: StrictStr
+    initial_api_token: Optional[InitialApiToken] = Field(default=None, alias="initialApiToken")
     instance_env_type: StrictStr = Field(alias="instanceEnvType")
     instance_url: Optional[StrictStr] = Field(default=None, alias="instanceUrl")
     is_default: StrictBool = Field(alias="isDefault")
     quarantined_at: Optional[StrictStr] = Field(default=None, alias="quarantinedAt")
     role: Optional[StrictStr] = None
-    __properties: ClassVar[List[str]] = ["approvalsEnabled", "creatorUser", "creatorUserId", "description", "displayName", "externalId", "id", "instanceEnvType", "instanceUrl", "isDefault", "quarantinedAt", "role"]
+    __properties: ClassVar[List[str]] = ["approvalsEnabled", "creatorUser", "creatorUserId", "description", "displayName", "externalId", "id", "initialApiToken", "instanceEnvType", "instanceUrl", "isDefault", "quarantinedAt", "role"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -83,6 +85,9 @@ class Workspace(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of creator_user
         if self.creator_user:
             _dict['creatorUser'] = self.creator_user.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of initial_api_token
+        if self.initial_api_token:
+            _dict['initialApiToken'] = self.initial_api_token.to_dict()
         # set to None if creator_user (nullable) is None
         # and model_fields_set contains the field
         if self.creator_user is None and "creator_user" in self.model_fields_set:
@@ -97,6 +102,11 @@ class Workspace(BaseModel):
         # and model_fields_set contains the field
         if self.external_id is None and "external_id" in self.model_fields_set:
             _dict['externalId'] = None
+
+        # set to None if initial_api_token (nullable) is None
+        # and model_fields_set contains the field
+        if self.initial_api_token is None and "initial_api_token" in self.model_fields_set:
+            _dict['initialApiToken'] = None
 
         # set to None if instance_url (nullable) is None
         # and model_fields_set contains the field
@@ -132,6 +142,7 @@ class Workspace(BaseModel):
             "displayName": obj.get("displayName"),
             "externalId": obj.get("externalId"),
             "id": obj.get("id"),
+            "initialApiToken": InitialApiToken.from_dict(obj["initialApiToken"]) if obj.get("initialApiToken") is not None else None,
             "instanceEnvType": obj.get("instanceEnvType"),
             "instanceUrl": obj.get("instanceUrl"),
             "isDefault": obj.get("isDefault"),

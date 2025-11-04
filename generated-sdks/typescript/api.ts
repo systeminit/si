@@ -1858,6 +1858,25 @@ export interface HashMapValue {
 /**
  * 
  * @export
+ * @interface InitialApiToken
+ */
+export interface InitialApiToken {
+    /**
+     * 
+     * @type {string}
+     * @memberof InitialApiToken
+     */
+    'expiresAt'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof InitialApiToken
+     */
+    'token': string;
+}
+/**
+ * 
+ * @export
  * @interface InviteMemberRequest
  */
 export interface InviteMemberRequest {
@@ -3085,6 +3104,12 @@ export interface Workspace {
      * @memberof Workspace
      */
     'id': string;
+    /**
+     * 
+     * @type {InitialApiToken}
+     * @memberof Workspace
+     */
+    'initialApiToken'?: InitialApiToken | null;
     /**
      * 
      * @type {string}

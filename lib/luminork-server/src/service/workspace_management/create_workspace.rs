@@ -7,6 +7,10 @@ use axum::{
         State,
     },
 };
+use chrono::{
+    DateTime,
+    Utc,
+};
 use dal::{
     DalContextBuilder,
     KeyPair,
@@ -38,6 +42,7 @@ use utoipa::ToSchema;
 
 use super::{
     AuthApiCreateWorkspaceResponse,
+    InitialApiToken,
     Workspace,
     WorkspaceManagementError,
     WorkspaceManagementResult,
@@ -103,6 +108,30 @@ pub async fn create_workspace(
             message: "Created workspace not found in response".to_string(),
         })?;
 
+    let auth_token_request = CreateAuthTokenRequest {
+        name: "initial-workspace-token".to_string(),
+        expiration: "1y".to_string(),
+    };
+
+    let auth_token_response = client
+        .post(format!(
+            "{}/workspaces/{}/authTokens",
+            state.auth_api_url(),
+            new_workspace.id
+        ))
+        .bearer_auth(&token)
+        .json(&auth_token_request)
+        .send()
+        .await?;
+
+    if auth_token_response.status() != reqwest::StatusCode::OK {
+        return Err(handle_auth_api_error(auth_token_response).await);
+    }
+
+    let auth_token_data = auth_token_response
+        .json::<AuthApiCreateAuthTokenResponse>()
+        .await?;
+
     // Sync user and workspace to DAL
     sync_user_and_workspace(
         &builder,
@@ -117,7 +146,14 @@ pub async fn create_workspace(
     )
     .await?;
 
-    Ok(Json(new_workspace.into()))
+    // Build the workspace response with the initial API token
+    let mut workspace: Workspace = new_workspace.into();
+    workspace.initial_api_token = Some(InitialApiToken {
+        token: auth_token_data.token,
+        expires_at: auth_token_data.auth_token.expires_at,
+    });
+
+    Ok(Json(workspace))
 }
 
 /// Syncs user and workspace from auth-api to the DAL and SpiceDB
@@ -254,4 +290,36 @@ pub struct CreateWorkspaceRequest {
     #[serde(default)]
     #[schema(example = false, default = false)]
     pub is_default: bool,
+}
+
+// Auth API authTokens request type
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateAuthTokenRequest {
+    pub name: String,
+    pub expiration: String,
+}
+
+// Auth API authTokens response types
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AuthApiCreateAuthTokenResponse {
+    pub auth_token: AuthApiAuthToken,
+    pub token: String,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AuthApiAuthToken {
+    pub id: String,
+    pub name: Option<String>,
+    pub user_id: String,
+    pub workspace_id: String,
+    pub created_at: DateTime<Utc>,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub revoked_at: Option<DateTime<Utc>>,
+    pub claims: serde_json::Value,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub last_used_ip: Option<String>,
 }
