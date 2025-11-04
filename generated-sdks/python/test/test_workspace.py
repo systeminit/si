@@ -44,6 +44,9 @@ class TestWorkspace(unittest.TestCase):
                 display_name = '',
                 external_id = '',
                 id = '',
+                initial_api_token = system_initiative_api_client.models.initial_api_token.InitialApiToken(
+                    expires_at = '', 
+                    token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...', ),
                 instance_env_type = '',
                 instance_url = '',
                 is_default = True,

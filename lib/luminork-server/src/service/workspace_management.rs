@@ -243,6 +243,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         Workspace,
         WorkspaceManagementRequestPath,
         CreatorUser,
+        InitialApiToken,
         CreateWorkspaceRequest,
         UpdateWorkspaceRequest,
         Member,
@@ -327,6 +328,8 @@ pub struct Workspace {
     pub creator_user: Option<CreatorUser>,
     #[schema(value_type = Option<String>)]
     pub external_id: Option<String>,
+    #[schema(value_type = Option<InitialApiToken>)]
+    pub initial_api_token: Option<InitialApiToken>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -336,6 +339,15 @@ pub struct CreatorUser {
     pub first_name: Option<String>,
     #[schema(value_type = Option<String>)]
     pub last_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct InitialApiToken {
+    #[schema(value_type = String, example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")]
+    pub token: String,
+    #[schema(value_type = Option<String>)]
+    pub expires_at: Option<DateTime<Utc>>,
 }
 
 // Member types
@@ -397,6 +409,7 @@ impl From<AuthApiWorkspace> for Workspace {
             role: auth.role,
             creator_user: auth.creator_user,
             external_id: auth.token,
+            initial_api_token: None,
         }
     }
 }
