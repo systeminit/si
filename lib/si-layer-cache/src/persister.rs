@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use chrono::Utc;
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
@@ -23,6 +24,7 @@ use tokio_util::{
 use ulid::Ulid;
 
 use crate::{
+    BackendType,
     db::{
         cas,
         change_batch,
@@ -282,7 +284,9 @@ impl PersisterTask {
 
                 metric!(
                     counter.layer_cache_persister_write_attempted = 1,
-                    cache_name = &cache_name
+                    cache_name = &cache_name,
+                    backend = BackendType::Postgres.as_ref(),
+                    event_kind = event.event_kind.as_ref()
                 );
 
                 self.tracker.spawn(async move {
@@ -290,8 +294,24 @@ impl PersisterTask {
                         Ok(_) => {
                             metric!(
                                 counter.layer_cache_persister_write_success = 1,
-                                cache_name = &cache_name
+                                cache_name = &cache_name,
+                                backend = BackendType::Postgres.as_ref(),
+                                event_kind = event.event_kind.as_ref()
                             );
+
+                            // Emit end-to-end persistence latency
+                            let latency = Utc::now()
+                                .signed_duration_since(event.metadata.timestamp)
+                                .to_std()
+                                .unwrap_or_default();
+                            metric!(
+                                histogram.layer_cache_persistence_latency_seconds = latency.as_secs_f64(),
+                                cache_name = &cache_name,
+                                backend = BackendType::Postgres.as_ref(),
+                                operation = "write",
+                                event_kind = event.event_kind.as_ref()
+                            );
+
                             status_tx.send(PersistStatus::Finished)
                         }
                         Err(err) => {
@@ -299,14 +319,18 @@ impl PersisterTask {
                             if crate::retry_queue::is_retryable_error(&err) {
                                 metric!(
                                     counter.layer_cache_persister_write_failed_retryable = 1,
-                                    cache_name = &cache_name
+                                    cache_name = &cache_name,
+                                    backend = BackendType::Postgres.as_ref(),
+                                    event_kind = event.event_kind.as_ref()
                                 );
                                 let _ = retry_queue_command_tx
                                     .send(crate::retry_queue::RetryQueueMessage::Enqueue(event));
                             } else {
                                 metric!(
                                     counter.layer_cache_persister_write_failed_permanent = 1,
-                                    cache_name = &cache_name
+                                    cache_name = &cache_name,
+                                    backend = BackendType::Postgres.as_ref(),
+                                    event_kind = event.event_kind.as_ref()
                                 );
                                 error!(error = ?err, "persister write task failed with non-retryable error");
                             }
