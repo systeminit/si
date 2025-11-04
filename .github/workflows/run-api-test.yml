@@ -220,7 +220,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - api-test
-      # - luminork-api-test
+      - luminork-api-test
     environment: ${{ inputs.environment }}
     if: failure()
     steps:
