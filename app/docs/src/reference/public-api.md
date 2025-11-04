@@ -1763,7 +1763,8 @@ Schemas management endpoints
           "actionKind": "Create",
           "kind": "action"
         },
-        "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+        "id": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+        "isOverlay": true
       }
     ],
     "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
@@ -1823,7 +1824,8 @@ Schemas management endpoints
         "actionKind": "Create",
         "kind": "action"
       },
-      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+      "isOverlay": true
     }
   ],
   "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
@@ -1883,7 +1885,8 @@ Schemas management endpoints
         "actionKind": "Create",
         "kind": "action"
       },
-      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+      "isOverlay": true
     }
   ],
   "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
@@ -1958,7 +1961,8 @@ Schemas management endpoints
         "actionKind": "Create",
         "kind": "action"
       },
-      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+      "isOverlay": true
     }
   ],
   "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
@@ -3156,6 +3160,7 @@ Workspace management endpoints
     "creatorUserId": "string",
     "description": "string",
     "displayName": "string",
+    "externalId": "string",
     "id": "string",
     "instanceEnvType": "string",
     "instanceUrl": "string",
@@ -3205,6 +3210,7 @@ Status Code **200**
 |» creatorUserId|string|true|none|none|
 |» description|string,null|false|none|none|
 |» displayName|string|true|none|none|
+|» externalId|string,null|false|none|none|
 |» id|string|true|none|none|
 |» instanceEnvType|string|true|none|none|
 |» instanceUrl|string,null|false|none|none|
@@ -3248,6 +3254,7 @@ Status Code **200**
   "creatorUserId": "string",
   "description": "string",
   "displayName": "string",
+  "externalId": "string",
   "id": "string",
   "instanceEnvType": "string",
   "instanceUrl": "string",
@@ -3291,6 +3298,7 @@ Status Code **200**
   "creatorUserId": "string",
   "description": "string",
   "displayName": "string",
+  "externalId": "string",
   "id": "string",
   "instanceEnvType": "string",
   "instanceUrl": "string",
@@ -3382,6 +3390,7 @@ Status Code **200**
   "creatorUserId": "string",
   "description": "string",
   "displayName": "string",
+  "externalId": "string",
   "id": "string",
   "instanceEnvType": "string",
   "instanceUrl": "string",
@@ -5694,7 +5703,8 @@ continued
         "actionKind": "Create",
         "kind": "action"
       },
-      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+      "isOverlay": true
     }
   ],
   "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
@@ -6504,7 +6514,8 @@ Component details in action response
     "actionKind": "Create",
     "kind": "action"
   },
-  "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+  "id": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "isOverlay": true
 }
 
 ```
@@ -6515,6 +6526,7 @@ Component details in action response
 |---|---|---|---|---|
 |funcKind|[SchemaVariantFuncKind](#schemaschemavariantfunckind)|true|none|none|
 |id|string|true|none|none|
+|isOverlay|boolean|true|none|none|
 
 ## [SchemaVariantFuncKind](#tocS_SchemaVariantFuncKind)
 
@@ -6964,7 +6976,8 @@ xor
           "actionKind": "Create",
           "kind": "action"
         },
-        "id": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+        "id": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+        "isOverlay": true
       }
     ],
     "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
@@ -7405,6 +7418,7 @@ xor
   "creatorUserId": "string",
   "description": "string",
   "displayName": "string",
+  "externalId": "string",
   "id": "string",
   "instanceEnvType": "string",
   "instanceUrl": "string",
@@ -7441,6 +7455,7 @@ continued
 |creatorUserId|string|true|none|none|
 |description|string,null|false|none|none|
 |displayName|string|true|none|none|
+|externalId|string,null|false|none|none|
 |id|string|true|none|none|
 |instanceEnvType|string|true|none|none|
 |instanceUrl|string,null|false|none|none|

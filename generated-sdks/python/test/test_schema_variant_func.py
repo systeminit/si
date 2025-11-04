@@ -36,12 +36,14 @@ class TestSchemaVariantFunc(unittest.TestCase):
         if include_optional:
             return SchemaVariantFunc(
                 func_kind = None,
-                id = '01H9ZQD35JPMBGHH69BT0Q79VZ'
+                id = '01H9ZQD35JPMBGHH69BT0Q79VZ',
+                is_overlay = True
             )
         else:
             return SchemaVariantFunc(
                 func_kind = None,
                 id = '01H9ZQD35JPMBGHH69BT0Q79VZ',
+                is_overlay = True,
         )
         """
 
