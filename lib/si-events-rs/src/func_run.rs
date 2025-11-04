@@ -65,6 +65,7 @@ pub enum FuncKind {
     SchemaVariantDefinition,
     Unknown,
     Management,
+    Debug,
 }
 
 /// Describes the kind of [`FuncArgument`](crate::FuncArgument).
@@ -121,6 +122,7 @@ pub enum FuncBackendKind {
     ResourcePayloadToValue,
     NormalizeToArray,
     Float,
+    Debug,
 }
 
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
@@ -159,6 +161,7 @@ pub enum FuncBackendResponseType {
     Void,
     Management,
     Float,
+    Debug,
 }
 
 #[derive(Debug, Clone, Builder, Serialize, Deserialize)]

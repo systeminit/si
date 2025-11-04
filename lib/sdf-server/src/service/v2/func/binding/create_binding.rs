@@ -424,7 +424,9 @@ pub async fn create_binding(
                 }
             }
         }
-        dal::func::FuncKind::Unknown | dal::func::FuncKind::SchemaVariantDefinition => {
+        dal::func::FuncKind::Unknown
+        | dal::func::FuncKind::SchemaVariantDefinition
+        | dal::func::FuncKind::Debug => {
             return Err(FuncAPIError::WrongFunctionKindForBinding);
         }
     };

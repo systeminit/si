@@ -23,6 +23,8 @@ use cyclone_core::{
     ActionRunRequest,
     ActionRunResultSuccess,
     CycloneRequestable,
+    DebugRequest,
+    DebugResultSuccess,
     LivenessStatus,
     ManagementRequest,
     ManagementResultSuccess,
@@ -51,6 +53,7 @@ use crate::{
     },
     result::{
         LangServerActionRunResultSuccess,
+        LangServerDebugResultSuccess,
         LangServerResolverFunctionResultSuccess,
         LangServerValidationResultSuccess,
     },
@@ -230,6 +233,30 @@ pub async fn ws_execute_management(
         let request: PhantomData<ManagementRequest> = PhantomData;
         let lang_server_success: PhantomData<ManagementResultSuccess> = PhantomData;
         let success: PhantomData<ManagementResultSuccess> = PhantomData;
+        handle_socket(
+            socket,
+            lang_server_process_timeout.inner(),
+            limit_request_guard,
+            request,
+            lang_server_success,
+            success,
+            request_span.into_inner(),
+            child,
+        )
+    })
+}
+
+pub async fn ws_execute_debug(
+    wsu: WebSocketUpgrade,
+    State(lang_server_process_timeout): State<LangServerProcessTimeout>,
+    State(child): State<LangServerChild>,
+    limit_request_guard: LimitRequestGuard,
+    Extension(request_span): Extension<ParentSpan>,
+) -> impl IntoResponse {
+    wsu.on_upgrade(move |socket| {
+        let request: PhantomData<DebugRequest> = PhantomData;
+        let lang_server_success: PhantomData<LangServerDebugResultSuccess> = PhantomData;
+        let success: PhantomData<DebugResultSuccess> = PhantomData;
         handle_socket(
             socket,
             lang_server_process_timeout.inner(),

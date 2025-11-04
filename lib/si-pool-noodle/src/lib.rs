@@ -27,6 +27,8 @@ pub use cyclone_core::{
     ComponentView,
     CycloneRequest,
     CycloneRequestable,
+    DebugRequest,
+    DebugResultSuccess,
     FunctionResult,
     FunctionResultFailure,
     FunctionResultFailureError,

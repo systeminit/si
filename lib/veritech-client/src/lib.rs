@@ -6,6 +6,8 @@ pub use cyclone_core::{
     ComponentKind,
     ComponentView,
     ComponentViewWithGeometry,
+    DebugRequest,
+    DebugResultSuccess,
     FunctionResult,
     FunctionResultFailure,
     FunctionResultFailureErrorKind,
@@ -202,6 +204,26 @@ impl Client {
         workspace_id: &str,
         change_set_id: &str,
     ) -> ClientResult<FunctionResult<ManagementResultSuccess>> {
+        self.execute_jetstream_request(output_tx, request, workspace_id, change_set_id)
+            .await
+    }
+
+    #[instrument(
+        name = "veritech_client.execute_debug",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = change_set_id,
+            si.workspace.id = workspace_id,
+        ),
+    )]
+    pub async fn execute_debug(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &DebugRequest,
+        workspace_id: &str,
+        change_set_id: &str,
+    ) -> ClientResult<FunctionResult<DebugResultSuccess>> {
         self.execute_jetstream_request(output_tx, request, workspace_id, change_set_id)
             .await
     }

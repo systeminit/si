@@ -29,6 +29,7 @@ pub enum FuncKind {
     SchemaVariantDefinition,
     Unknown,
     Management,
+    Debug,
 }
 
 impl From<EventFuncKind> for FuncKind {
@@ -43,6 +44,7 @@ impl From<EventFuncKind> for FuncKind {
             EventFuncKind::SchemaVariantDefinition => FuncKind::SchemaVariantDefinition,
             EventFuncKind::Unknown => FuncKind::Unknown,
             EventFuncKind::Management => FuncKind::Management,
+            EventFuncKind::Debug => FuncKind::Debug,
         }
     }
 }
@@ -50,15 +52,16 @@ impl From<EventFuncKind> for FuncKind {
 impl From<FuncKind> for si_events::FuncKind {
     fn from(value: FuncKind) -> Self {
         match value {
-            FuncKind::Action => si_events::FuncKind::Action,
-            FuncKind::Attribute => si_events::FuncKind::Attribute,
-            FuncKind::Authentication => si_events::FuncKind::Authentication,
-            FuncKind::CodeGeneration => si_events::FuncKind::CodeGeneration,
-            FuncKind::Intrinsic => si_events::FuncKind::Intrinsic,
-            FuncKind::Qualification => si_events::FuncKind::Qualification,
-            FuncKind::SchemaVariantDefinition => si_events::FuncKind::SchemaVariantDefinition,
-            FuncKind::Unknown => si_events::FuncKind::Unknown,
-            FuncKind::Management => si_events::FuncKind::Management,
+            FuncKind::Action => EventFuncKind::Action,
+            FuncKind::Attribute => EventFuncKind::Attribute,
+            FuncKind::Authentication => EventFuncKind::Authentication,
+            FuncKind::CodeGeneration => EventFuncKind::CodeGeneration,
+            FuncKind::Intrinsic => EventFuncKind::Intrinsic,
+            FuncKind::Qualification => EventFuncKind::Qualification,
+            FuncKind::SchemaVariantDefinition => EventFuncKind::SchemaVariantDefinition,
+            FuncKind::Unknown => EventFuncKind::Unknown,
+            FuncKind::Management => EventFuncKind::Management,
+            FuncKind::Debug => EventFuncKind::Debug,
         }
     }
 }
@@ -78,6 +81,7 @@ impl FuncKind {
             FuncBackendKind::JsAuthentication => FuncKind::Authentication,
             FuncBackendKind::JsSchemaVariantDefinition => FuncKind::SchemaVariantDefinition,
             FuncBackendKind::Management => FuncKind::Management,
+            FuncBackendKind::Debug => FuncKind::Debug,
             FuncBackendKind::Array
             | FuncBackendKind::Json
             | FuncBackendKind::Boolean

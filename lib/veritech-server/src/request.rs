@@ -2,6 +2,7 @@ use si_crypto::VeritechDecryptionKey;
 use si_pool_noodle::{
     ActionRunRequest,
     BeforeFunction,
+    DebugRequest,
     ManagementRequest,
     ResolverFunctionRequest,
     SchemaVariantDefinitionRequest,
@@ -63,6 +64,16 @@ impl DecryptRequest for SchemaVariantDefinitionRequest {
 }
 
 impl DecryptRequest for ManagementRequest {
+    fn decrypt(
+        &mut self,
+        sensitive_strings: &mut SensitiveStrings,
+        decryption_key: &VeritechDecryptionKey,
+    ) -> Result<(), VeritechValueDecryptError> {
+        decrypt_before_func_args(&mut self.before, sensitive_strings, decryption_key)
+    }
+}
+
+impl DecryptRequest for DebugRequest {
     fn decrypt(
         &mut self,
         sensitive_strings: &mut SensitiveStrings,

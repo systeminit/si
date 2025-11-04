@@ -15,6 +15,7 @@ mod action_run;
 mod before;
 mod canonical_command;
 mod component_view;
+mod debug;
 mod kill_execution;
 mod liveness;
 mod management;
@@ -41,6 +42,10 @@ pub use component_view::{
     ComponentKind,
     ComponentView,
     ComponentViewWithGeometry,
+};
+pub use debug::{
+    DebugRequest,
+    DebugResultSuccess,
 };
 pub use kill_execution::KillExecutionRequest;
 pub use liveness::{

@@ -120,6 +120,10 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
         router =
             router.merge(Router::new().route("/management", get(handlers::ws_execute_management)));
     }
+    if config.enable_debug() {
+        debug!("enabling debug function endpoint");
+        router = router.merge(Router::new().route("/debug", get(handlers::ws_execute_debug)));
+    }
 
     let limit_requests = Arc::new(config.limit_requests().map(|i| i.into()));
 
