@@ -484,7 +484,7 @@ impl PersisterTask {
             let start = std::time::Instant::now();
 
             // Capture event_kind and timestamp before moving the event
-            let event_kind = event.event_kind.clone();
+            let event_kind = event.event_kind;
             let event_timestamp = event.metadata.timestamp;
 
             // Attempt the retry
