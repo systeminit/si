@@ -41,10 +41,10 @@ pub async fn get_change_set_index(
         .await?;
     let index = match frigg
         .get_change_set_index(workspace_pk, change_set_id)
-        .await?
+        .await
     {
-        Some((index, _kv_revision)) => index,
-        None => {
+        Ok((index, _kv_revision)) => index,
+        Err(err) if err.is_missing_or_invalid_change_set_index() => {
             info!(
                 "Index not found for change_set {}; attempting full build",
                 change_set_id,
@@ -55,15 +55,18 @@ pub async fn get_change_set_index(
                 // to let the caller know the create succeeded, we're just waiting on downstream work
                 return Ok((StatusCode::ACCEPTED, Json(None)));
             }
-            frigg
+            match frigg
                 .get_change_set_index(workspace_pk, change_set_id)
-                .await?
-                .map(|i| i.0)
-                .ok_or(IndexError::IndexNotFoundAfterFreshBuild(
-                    workspace_pk,
-                    change_set_id,
-                ))?
+                .await
+            {
+                Ok((index, _kv_revision)) => index,
+                Err(err) if err.is_missing_or_invalid_change_set_index() => Err(
+                    IndexError::IndexNotFoundAfterFreshBuild(workspace_pk, change_set_id),
+                )?,
+                Err(err) => Err(err)?,
+            }
         }
+        Err(err) => Err(err)?,
     };
 
     Ok((

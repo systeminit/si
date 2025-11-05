@@ -160,10 +160,11 @@ impl FriggStore {
         kind: &str,
         id: &str,
     ) -> Result<Option<FrontendObject>> {
-        let maybe_mv_index = self
-            .get_change_set_index(workspace_id, change_set_id)
-            .await?
-            .map(|r| r.0);
+        let maybe_mv_index = match self.get_change_set_index(workspace_id, change_set_id).await {
+            Ok((object, _revision)) => Some(object),
+            Err(err) if err.is_missing_or_invalid_change_set_index() => None,
+            Err(err) => Err(err)?,
+        };
 
         self.get_current_workspace_object_with_index(
             workspace_id,
@@ -395,13 +396,10 @@ impl FriggStore {
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-    ) -> Result<Option<(FrontendObject, KvRevision)>> {
-        let Some((index_pointer_value, revision)) = self
+    ) -> Result<(FrontendObject, KvRevision)> {
+        let (index_pointer_value, revision) = self
             .get_change_set_index_pointer_value(workspace_id, change_set_id)
-            .await?
-        else {
-            return Ok(None);
-        };
+            .await?;
 
         // If the definition checksum for the current set of MVs is not the same as the one the
         // MvIndex was built for, then the MvIndex is out of date and should not be used at all.
@@ -411,7 +409,7 @@ impl FriggStore {
                 index_pointer_value.definition_checksums,
                 materialized_view_definition_checksums()
             );
-            return Ok(None);
+            return Err(Error::ChangeSetIndexDefinitionChecksumMismatch);
         }
 
         let object_key = index_pointer_value.index_object_key;
@@ -423,7 +421,7 @@ impl FriggStore {
             .ok_or(Error::IndexObjectNotFound(object_key.into()))?;
         let object = serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
 
-        Ok(Some((object, revision)))
+        Ok((object, revision))
     }
 
     #[instrument(
@@ -439,23 +437,25 @@ impl FriggStore {
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-    ) -> Result<Option<(ChangeSetIndexPointerValueV2, KvRevision)>> {
+    ) -> Result<(ChangeSetIndexPointerValueV2, KvRevision)> {
         let index_pointer_key =
             Self::change_set_index_key(workspace_id, &change_set_id.to_string());
 
         let Some((bytes, revision)) = self.get_object_raw_bytes(&index_pointer_key).await? else {
-            return Ok(None);
+            return Err(Error::ChangeSetIndexPointerValueNotFound);
         };
 
         let index_pointer_value =
             match serde_json::from_slice::<ChangeSetIndexPointerVersion>(bytes.as_ref())
                 .map_err(Error::Deserialize)?
             {
-                ChangeSetIndexPointerVersion::V1(_) => return Ok(None),
+                ChangeSetIndexPointerVersion::V1(_) => {
+                    return Err(Error::ChangeSetIndexOldPointerVersion("V1"));
+                }
                 ChangeSetIndexPointerVersion::V2(index) => index,
             };
 
-        Ok(Some((index_pointer_value, revision)))
+        Ok((index_pointer_value, revision))
     }
 
     #[instrument(

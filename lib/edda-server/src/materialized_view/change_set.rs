@@ -74,13 +74,23 @@ pub async fn try_reuse_mv_index_for_new_change_set(
     for change_set in change_sets_using_snapshot {
         // found a match, so let's retrieve that MvIndex and put the same object as ours
         // If we're unable to parse the pointer for some reason, don't treat it as a hard error and just move on.
-        let Ok(Some((pointer, _revision))) = frigg
+        let pointer = match frigg
             .get_change_set_index_pointer_value(workspace_id, change_set.id)
             .await
-        else {
-            // try the next one
-            // no need error if this index was never built, it would get rebuilt when necessary
-            continue;
+        {
+            Ok((pointer, _revision)) => pointer,
+            Err(err) => {
+                // Try the next one. No need to error if this index was never built. It will get
+                // rebuilt when necessary. However, we will log errors that aren't related to
+                // missing or invalid change set indices.
+                if !err.is_missing_or_invalid_change_set_index() {
+                    error!(
+                        si.error.message = ?err,
+                        "unexpected error when fetching change set index pointer value"
+                    );
+                }
+                continue;
+            }
         };
 
         if pointer.snapshot_address == snapshot_address.to_string()
@@ -275,13 +285,22 @@ pub async fn build_mv_for_changes_in_change_set(
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", workspace_id.to_string());
 
-    let (index_frontend_object, index_kv_revision) = frigg
+    let (index_frontend_object, index_kv_revision) = match frigg
         .get_change_set_index(ctx.workspace_pk()?, change_set_id)
-        .await?
-        .ok_or_else(|| MaterializedViewError::NoIndexForIncrementalBuild {
-            workspace_pk: workspace_id,
-            change_set_id,
-        })?;
+        .await
+    {
+        Ok((object, revision)) => (object, revision),
+        Err(err) => {
+            if !err.is_missing_or_invalid_change_set_index() {
+                error!(si.error.message = ?err, "unexpected error when getting change set index for incremental build");
+            }
+            return Err(MaterializedViewError::NoIndexForIncrementalBuild {
+                workspace_pk: workspace_id,
+                change_set_id,
+            });
+        }
+    };
+
     let mv_index = match serde_json::from_value::<
         si_frontend_mv_types::index::change_set::ChangeSetMvIndexVersion,
     >(index_frontend_object.data.clone())

@@ -46,6 +46,7 @@ pub fn routes() -> Router<AppState> {
     responses(
         (status = 200, description = "Components retrieved successfully", body = SearchV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
+        (status = 412, description = "Precondition Failed - missing or invalid change set index"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]

@@ -262,6 +262,11 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             ComponentsError::InvalidSecretValue(_) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
             }
+            ComponentsError::Search(crate::search::Error::Frigg(err))
+                if err.is_missing_or_invalid_change_set_index() =>
+            {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }

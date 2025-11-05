@@ -305,15 +305,9 @@ async fn mv_index(
 ) -> Result<Vec<IndexReference>> {
     // Grab the index
     // TODO don't convert to JSON and immediately convert to struct--convert straight to struct
-    let Some((index, _)) = frigg
+    let (index, _revision) = frigg
         .get_change_set_index(workspace_id, change_set_id)
-        .await?
-    else {
-        return Err(Error::ChangeSetIndexNotFound {
-            workspace_id,
-            change_set_id,
-        });
-    };
+        .await?;
     let all_mvs = match serde_json::from_value(index.data)? {
         ChangeSetMvIndexVersion::V1(v1_index) => v1_index.mv_list,
         ChangeSetMvIndexVersion::V2(v2_index) => v2_index.mv_list,

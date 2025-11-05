@@ -39,6 +39,12 @@ const NATS_KV_BUCKET_NAME: &str = "FRIGG";
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("change set index definition checksum found does not match what's expected")]
+    ChangeSetIndexDefinitionChecksumMismatch,
+    #[error("old change set index pointer version found: {0}")]
+    ChangeSetIndexOldPointerVersion(&'static str),
+    #[error("change set index pointer value not found")]
+    ChangeSetIndexPointerValueNotFound,
     #[error("consumer error: {0}")]
     Consumer(#[from] ConsumerError),
     #[error("create error: {0}")]
@@ -89,6 +95,19 @@ pub enum Error {
 pub type FriggError = Error;
 
 type Result<T> = result::Result<T, Error>;
+
+impl Error {
+    /// An error corresponding to a `ChangeSetIndex` that is either missing from the store or is
+    /// invalid for any reason.
+    pub fn is_missing_or_invalid_change_set_index(&self) -> bool {
+        matches!(
+            self,
+            Error::ChangeSetIndexDefinitionChecksumMismatch
+                | Error::ChangeSetIndexOldPointerVersion(_)
+                | Error::ChangeSetIndexPointerValueNotFound
+        )
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct KvRevision(u64);

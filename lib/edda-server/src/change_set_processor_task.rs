@@ -565,13 +565,16 @@ mod handlers {
                 to_snapshot_address,
                 change_batch_addresses,
             } => {
-                // Index exists
-                if frigg
+                let index_exists = match frigg
                     .get_change_set_index(workspace_id, change_set_id)
                     .await
-                    .map_err(|err| span.record_err(err))?
-                    .is_some()
                 {
+                    Ok(_) => true,
+                    Err(err) if err.is_missing_or_invalid_change_set_index() => false,
+                    Err(err) => Err(span.record_err(err))?,
+                };
+
+                if index_exists {
                     // Always use unified approach that deduplicates work between explicit updates and changed definitions
                     let mut changes = Vec::new();
 
@@ -604,9 +607,7 @@ mod handlers {
                     )
                     .await
                     .map_err(Into::into)
-                }
-                // Index does not exist
-                else {
+                } else {
                     // todo: this is where we'd handle reusing an index from another change set if
                     // the snapshots match!
                     let build_reason = "initial build with changed definitions";

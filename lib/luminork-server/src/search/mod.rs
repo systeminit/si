@@ -1,7 +1,3 @@
-use si_id::{
-    ChangeSetId,
-    WorkspacePk,
-};
 use thiserror::Error;
 
 pub mod component;
@@ -16,13 +12,7 @@ pub use query::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
-    // TODO(jkeiser) this should be inside frigg, no?
-    #[error("change set index not found for workspace {workspace_id}, change set {change_set_id}")]
-    ChangeSetIndexNotFound {
-        workspace_id: WorkspacePk,
-        change_set_id: ChangeSetId,
-    },
-    #[error("frig error: {0}")]
+    #[error("frigg error: {0}")]
     Frigg(#[from] frigg::Error),
     #[error("join error: {0}")]
     Join(#[from] tokio::task::JoinError),

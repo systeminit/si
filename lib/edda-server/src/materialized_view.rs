@@ -204,10 +204,14 @@ pub async fn build_mv_inner(
     let mut queued_mv_builds = BinaryHeap::new();
 
     let maybe_mv_index = Arc::new(
-        frigg
+        match frigg
             .get_change_set_index(workspace_pk, change_set_id)
-            .await?
-            .map(|r| r.0),
+            .await
+        {
+            Ok((object, _revision)) => Some(object),
+            Err(err) if err.is_missing_or_invalid_change_set_index() => None,
+            Err(err) => Err(err)?,
+        },
     );
 
     // Queue everything so we can let the priority queue determine the order everything is built.

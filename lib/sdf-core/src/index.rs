@@ -86,11 +86,15 @@ pub async fn front_end_object_meta(
 ) -> IndexResult<FrontEndObjectMeta> {
     let (checksum, address) = match frigg
         .get_change_set_index_pointer_value(workspace_id, change_set_id)
-        .await?
+        .await
     {
-        Some((index, _kv_revision)) => (index.index_checksum, index.snapshot_address),
-        None => ("".to_string(), "".to_string()),
+        Ok((index, _kv_revision)) => (index.index_checksum, index.snapshot_address),
+        Err(err) if err.is_missing_or_invalid_change_set_index() => {
+            ("".to_string(), "".to_string())
+        }
+        Err(err) => Err(err)?,
     };
+
     let obj;
     if let Some(checksum) = &request.checksum {
         obj = frigg
