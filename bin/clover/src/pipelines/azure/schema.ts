@@ -46,12 +46,12 @@ interface AzureOpenApiOperationExt {
   responses?: Record<string, AzureOpenApiResponse>;
   "x-ms-pageable"?: {
     nextLinkName: string;
-  }
+  };
 }
 export type AzureOpenApiResponse = Extend<
   OpenAPIV3_1.ResponseObject,
   {
-    schema?: NormalizedAzureSchema
+    schema?: NormalizedAzureSchema;
   }
 >;
 export type AzureOpenApiParameter = Extend<
@@ -80,7 +80,7 @@ export interface AzureSchema extends SuperSchema {
   requiredProperties: Set<string>;
   apiVersion: string;
   discriminators?: Record<string, Record<string, string>>;
-  resourceId: string,
+  resourceId: string;
 }
 
 export type AzureProperty = CfProperty & AzurePropExtensions;

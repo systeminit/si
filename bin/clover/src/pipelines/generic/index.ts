@@ -163,17 +163,23 @@ export function generateDefaultFuncsFromConfig(
   specs: ExpandedPkgSpec[],
   config: ProviderConfig,
 ): ExpandedPkgSpec[] {
-  specs = generateDefaultActionFuncs(specs, () =>
-    createActionFuncs(config.funcSpecs.actions),
+  specs = generateDefaultActionFuncs(
+    specs,
+    () => createActionFuncs(config.funcSpecs.actions),
   );
-  specs = generateDefaultLeafFuncs(specs, (domainId: string) =>
-    createCodeGenFuncs(config.funcSpecs.codeGeneration, domainId),
+  specs = generateDefaultLeafFuncs(
+    specs,
+    (domainId: string) =>
+      createCodeGenFuncs(config.funcSpecs.codeGeneration, domainId),
   );
-  specs = generateDefaultManagementFuncs(specs, () =>
-    createManagementFuncs(config.funcSpecs.management),
+  specs = generateDefaultManagementFuncs(
+    specs,
+    () => createManagementFuncs(config.funcSpecs.management),
   );
-  specs = generateDefaultQualificationFuncs(specs, (domainId: string) =>
-    createQualificationFuncs(config.funcSpecs.qualification, domainId),
+  specs = generateDefaultQualificationFuncs(
+    specs,
+    (domainId: string) =>
+      createQualificationFuncs(config.funcSpecs.qualification, domainId),
   );
 
   return specs;

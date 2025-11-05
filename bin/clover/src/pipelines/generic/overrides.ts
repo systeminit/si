@@ -303,7 +303,7 @@ export function widget(
     prop.data.widgetKind = kind;
     if (options) {
       prop.data.widgetOptions = options.map((o) =>
-        typeof o === "string" ? { label: o, value: o } : o,
+        typeof o === "string" ? { label: o, value: o } : o
       );
     }
   };

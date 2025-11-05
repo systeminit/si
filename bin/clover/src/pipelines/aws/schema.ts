@@ -1,10 +1,10 @@
 import type { JSONSchema } from "../draft_07.ts";
 import type {
-  CfProperty,
   CfHandler,
   CfHandlerKind,
-  SuperSchema,
+  CfProperty,
   JSONPointer,
+  SuperSchema,
 } from "../types.ts";
 
 export interface CfSchema extends SuperSchema {

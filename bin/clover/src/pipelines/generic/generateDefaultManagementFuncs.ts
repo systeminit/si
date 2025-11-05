@@ -32,4 +32,7 @@ export function generateDefaultManagementFuncs(
   return specs;
 }
 
-export type ManagementFn = () => { func: FuncSpec; handlers: CfHandlerKind[] }[];
+export type ManagementFn = () => {
+  func: FuncSpec;
+  handlers: CfHandlerKind[];
+}[];

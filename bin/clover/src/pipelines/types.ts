@@ -32,12 +32,12 @@ export type CfProperty =
   | CfMultiTypeProperty
   // Then we have this mess of array typed properties
   | Extend<
-      JSONSchema.Interface,
-      {
-        properties?: Record<string, CfProperty>;
-        type: ["string", CfPropertyType] | [CfPropertyType, "string"];
-      }
-    >;
+    JSONSchema.Interface,
+    {
+      properties?: Record<string, CfProperty>;
+      type: ["string", CfPropertyType] | [CfPropertyType, "string"];
+    }
+  >;
 
 export type CfBooleanProperty = JSONSchema.Boolean;
 
@@ -77,15 +77,17 @@ export type CfObjectProperty = Extend<
   }
 >;
 
-type CfMultiTypeProperty = Pick<
-  JSONSchema.Interface,
-  "$ref" | "$comment" | "title" | "description"
-> & {
-  type?: undefined;
-  oneOf?: CfProperty[];
-  allOf?: CfProperty[];
-  anyOf?: CfProperty[];
-};
+type CfMultiTypeProperty =
+  & Pick<
+    JSONSchema.Interface,
+    "$ref" | "$comment" | "title" | "description"
+  >
+  & {
+    type?: undefined;
+    oneOf?: CfProperty[];
+    allOf?: CfProperty[];
+    anyOf?: CfProperty[];
+  };
 
 export type CfHandlerKind = "create" | "read" | "update" | "delete" | "list";
 export type CfHandler = {
@@ -347,7 +349,8 @@ export const PROVIDER_REGISTRY: Record<string, ProviderConfig> = {};
 export function selectedProviders(
   options: CommonCommandOptions,
 ): ProviderConfig[] {
-  if (options.provider === "all")
+  if (options.provider === "all") {
     return Object.values(PROVIDER_REGISTRY).filter((p) => p.isStable);
+  }
   return [PROVIDER_REGISTRY[options.provider]];
 }

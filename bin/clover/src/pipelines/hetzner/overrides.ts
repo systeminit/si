@@ -1,8 +1,8 @@
 import {
-  widget,
-  suggest,
-  addScalarProp,
   addQualificationFunction,
+  addScalarProp,
+  suggest,
+  widget,
 } from "../generic/overrides.ts";
 import { PropOverrideFn, SchemaOverrideFn } from "../types.ts";
 

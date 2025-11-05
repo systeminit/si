@@ -4,6 +4,21 @@
     "updateSchema": "../../lib/jsr-systeminit/cf-db/update-schema.sh",
     "run": "deno run --allow-all main.ts"
   },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 80,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false,
+    "proseWrap": "always",
+    "exclude": [
+      "**/funcs/**/*ts",
+      "**/bindings/**/*ts"
+    ]
+  },
+  "lint": {
+    "rules": {}
+  },
   "imports": {
     "@apidevtools/json-schema-ref-parser": "npm:@apidevtools/json-schema-ref-parser@^11.9.3",
     "@apidevtools/swagger-parser": "npm:@apidevtools/swagger-parser@^12.1.0",

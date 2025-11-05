@@ -725,12 +725,11 @@ export type JSONSchema<
 // -----------------------------------------------------------------------------
 
 export namespace JSONSchema {
-  export type TypeValue = (
+  export type TypeValue =
     | ValueOf<TypeName>
     | TypeName
     | Array<ValueOf<TypeName> | TypeName>
-    | ReadonlyArray<ValueOf<TypeName> | TypeName>
-  );
+    | ReadonlyArray<ValueOf<TypeName> | TypeName>;
 
   /**
    * JSON Schema interface

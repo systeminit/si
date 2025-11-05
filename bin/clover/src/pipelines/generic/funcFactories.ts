@@ -8,7 +8,10 @@ import { CfHandlerKind } from "../types.ts";
  * All providers use this same logic, just with different spec definitions.
  */
 export function createActionFuncs(
-  actionSpecs: Record<string, FuncSpecInfo & { actionKind: ActionFuncSpecKind }>,
+  actionSpecs: Record<
+    string,
+    FuncSpecInfo & { actionKind: ActionFuncSpecKind }
+  >,
 ): Array<{ spec: FuncSpec; kind: ActionFuncSpecKind }> {
   return Object.entries(actionSpecs).map(([func, spec]) => ({
     spec: createDefaultFuncSpec(func, spec, []),

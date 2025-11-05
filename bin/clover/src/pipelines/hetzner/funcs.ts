@@ -76,4 +76,3 @@ export const QUALIFICATION_FUNC_SPECS = {} as const as Record<
   string,
   FuncSpecInfo
 >;
-
