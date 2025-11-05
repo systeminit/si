@@ -334,6 +334,25 @@ impl ValidationOutput {
         attribute_value_id: AttributeValueId,
         parent_span: Span,
     ) -> ValidationResult<Option<ValidationOutput>> {
+        // Check if this attribute value has subscriptions to properties that exist but don't have values yet
+        // If so, skip validation until the subscribed values are populated
+        // If any subscription resolves to a valid property but that property has no value, skip validation
+        if let Some(subscriptions) = AttributeValue::subscriptions(ctx, attribute_value_id).await? {
+            for subscription in subscriptions {
+                if let Some(resolved_av_id) = subscription.resolve(ctx).await? {
+                    // Subscription is valid (path exists), check if the resolved AV has a value
+                    let resolved_value = AttributeValue::get_by_id(ctx, resolved_av_id)
+                        .await?
+                        .value(ctx)
+                        .await?;
+                    if resolved_value.is_none() {
+                        // Subscription exists but hasn't resolved to a value yet - don't validate
+                        return Ok(None);
+                    }
+                }
+            }
+        }
+
         let value = AttributeValue::get_by_id(ctx, attribute_value_id)
             .await?
             .value_or_default(ctx)

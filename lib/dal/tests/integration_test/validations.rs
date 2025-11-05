@@ -5,9 +5,14 @@ use dal::{
     ChangeSet,
     Component,
     DalContext,
+    attribute::{
+        path::AttributePath,
+        value::subscription::ValueSubscription,
+    },
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         edge_weight::EdgeWeightKindDiscriminants,
+        node_weight::reason_node_weight::Reason,
     },
 };
 use dal_test::{
@@ -16,6 +21,8 @@ use dal_test::{
     helpers::{
         ChangeSetTestHelpers,
         PropEditorTestView,
+        attribute::value,
+        component,
         component::find_management_prototype,
         create_component_for_default_schema_name_in_default_view,
         extract_value_and_validation,
@@ -564,5 +571,260 @@ async fn required_default_value(ctx: &mut DalContext) -> Result<()> {
         }),
         serde_json::to_value(&validation_qualification)?
     );
+    Ok(())
+}
+
+#[test]
+async fn subscription_with_unresolved_value_skips_validation_on_update(
+    ctx: &mut DalContext,
+) -> Result<()> {
+    // Create a variant with a required field that has validation
+    ExpectSchemaVariant::create_named(
+        ctx,
+        "validated_subscriber",
+        r#"
+            function main() {
+                return new AssetBuilder()
+                    .addProp(new PropBuilder()
+                        .setName("RequiredValue")
+                        .setKind("string")
+                        .setValidationFormat(Joi.string().required())
+                        .build()
+                    )
+                    .build();
+            }
+        "#,
+    )
+    .await;
+
+    // Create subscriber and source components
+    let subscriber_id = component::create(ctx, "validated_subscriber", "subscriber").await?;
+    let source_id = component::create(ctx, "validated_subscriber", "source").await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Get the attribute value IDs for the required field
+    let subscriber_av_id = Component::attribute_value_for_prop(
+        ctx,
+        subscriber_id,
+        &["root", "domain", "RequiredValue"],
+    )
+    .await?;
+
+    // Create a subscription to the source component's RequiredValue
+    let subscription = ValueSubscription::new(
+        ctx,
+        source_id,
+        AttributePath::from_json_pointer("/domain/RequiredValue".to_string()),
+    )
+    .await?;
+
+    // Set the subscription (source doesn't have a value yet, so it's unresolved)
+    AttributeValue::set_to_subscription(
+        ctx,
+        subscriber_av_id,
+        subscription,
+        None,
+        Reason::new_user_added(ctx),
+    )
+    .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Wait for DVU to complete (subscription was just set)
+    ChangeSet::wait_for_dvu(ctx, false).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Wait for validation job to process and clear the old failed validation
+    let seconds = 10;
+    let mut validation_cleared = false;
+    for _ in 0..(seconds * 10) {
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let prop_view = PropEditorTestView::for_component_id(ctx, subscriber_id)
+            .await?
+            .get_value(&["root", "domain", "RequiredValue"])?;
+
+        let result = extract_value_and_validation(prop_view)?;
+
+        // Check if validation is absent or not a failure
+        if result.get("validation").is_none()
+            || result["validation"]["status"].as_str().unwrap_or("") != "Failure"
+        {
+            validation_cleared = true;
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    if !validation_cleared {
+        panic!("Validation for unresolved subscription should not show as Failure");
+    }
+
+    // Now set a value on the source component
+    value::set(ctx, (source_id, "/domain/RequiredValue"), "valid_value").await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Wait for DVU to propagate the value
+    ChangeSet::wait_for_dvu(ctx, false).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Wait for validation job to run and show success
+    let mut validation_passed = false;
+    for _ in 0..(seconds * 10) {
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let prop_view = PropEditorTestView::for_component_id(ctx, subscriber_id)
+            .await?
+            .get_value(&["root", "domain", "RequiredValue"])?;
+
+        let result = extract_value_and_validation(prop_view)?;
+
+        if result["value"] == json!("valid_value")
+            && result.get("validation").is_some()
+            && result["validation"]["status"] == "Success"
+        {
+            validation_passed = true;
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    if !validation_passed {
+        panic!("Validation should pass after value is resolved");
+    }
+
+    Ok(())
+}
+
+#[test]
+async fn subscription_with_unresolved_value_skips_validation_on_component_creation(
+    ctx: &mut DalContext,
+) -> Result<()> {
+    // Create a variant with a required field that has validation and a source field
+    ExpectSchemaVariant::create_named(
+        ctx,
+        "validated_component",
+        r#"
+            function main() {
+                return new AssetBuilder()
+                    .addProp(new PropBuilder()
+                        .setName("MandatoryField")
+                        .setKind("string")
+                        .setValidationFormat(Joi.string().required())
+                        .build()
+                    )
+                    .addProp(new PropBuilder()
+                        .setName("SourceField")
+                        .setKind("string")
+                        .build()
+                    )
+                    .build();
+            }
+        "#,
+    )
+    .await;
+
+    // Create a source component (SourceField exists but has no value)
+    let source_id = component::create(ctx, "validated_component", "source").await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Create a new subscriber component
+    let subscriber_id = component::create(ctx, "validated_component", "subscriber").await?;
+
+    // Get the attribute value ID for the mandatory field
+    let subscriber_av_id = Component::attribute_value_for_prop(
+        ctx,
+        subscriber_id,
+        &["root", "domain", "MandatoryField"],
+    )
+    .await?;
+
+    // Create a subscription to the source's SourceField (which exists but has no value)
+    let subscription = ValueSubscription::new(
+        ctx,
+        source_id,
+        AttributePath::from_json_pointer("/domain/SourceField".to_string()),
+    )
+    .await?;
+
+    // Set the subscription (source field exists but has no value yet)
+    AttributeValue::set_to_subscription(
+        ctx,
+        subscriber_av_id,
+        subscription,
+        None,
+        Reason::new_user_added(ctx),
+    )
+    .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Wait for DVU to complete (subscription was just set)
+    ChangeSet::wait_for_dvu(ctx, false).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Wait for validation job to process
+    let seconds = 10;
+    let mut validation_cleared = false;
+    for _ in 0..(seconds * 10) {
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let prop_view = PropEditorTestView::for_component_id(ctx, subscriber_id)
+            .await?
+            .get_value(&["root", "domain", "MandatoryField"])?;
+
+        let result = extract_value_and_validation(prop_view)?;
+
+        // Check if validation is absent or not a failure
+        if result.get("validation").is_none()
+            || result["validation"]["status"].as_str().unwrap_or("") != "Failure"
+        {
+            validation_cleared = true;
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    if !validation_cleared {
+        panic!("Validation should not fail when subscribed property exists but has no value");
+    }
+
+    // Now set a value on the source field
+    value::set(ctx, (source_id, "/domain/SourceField"), "source_value").await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Wait for DVU to propagate the value
+    ChangeSet::wait_for_dvu(ctx, false).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Wait for validation job to run and show success
+    let mut validation_passed = false;
+    for _ in 0..(seconds * 10) {
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let prop_view = PropEditorTestView::for_component_id(ctx, subscriber_id)
+            .await?
+            .get_value(&["root", "domain", "MandatoryField"])?;
+
+        let result = extract_value_and_validation(prop_view)?;
+
+        if result["value"] == json!("source_value")
+            && result.get("validation").is_some()
+            && result["validation"]["status"] == "Success"
+        {
+            validation_passed = true;
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    if !validation_passed {
+        panic!("Validation should pass after subscribed value is resolved");
+    }
+
     Ok(())
 }
