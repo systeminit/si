@@ -4,7 +4,8 @@
     :data-list-item-component-id="component.id"
     :class="
       clsx(
-        'flex flex-row items-center gap-xs p-2xs text-sm',
+        'absolute top-0 left-0 w-full',
+        'flex flex-row items-center gap-xs p-2xs text-sm h-8',
         'border border-transparent rounded-sm cursor-pointer outline-none',
         '[&>span]:min-w-0',
         themeClasses('hover:border-action-500', 'hover:border-action-300'),
