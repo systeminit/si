@@ -31,6 +31,8 @@
 //!
 #![allow(clippy::doc_lazy_continuation)]
 
+use strum::AsRefStr;
+
 pub mod activities;
 mod activity_client;
 pub mod db;
@@ -42,6 +44,13 @@ mod nats;
 pub mod persister;
 pub mod pg;
 pub mod retry_queue;
+
+#[derive(AsRefStr, Debug, Clone, Copy, PartialEq, Eq)]
+#[strum(serialize_all = "snake_case")]
+pub enum BackendType {
+    Postgres,
+    S3,
+}
 
 pub use db::LayerDb;
 pub use error::LayerDbError;

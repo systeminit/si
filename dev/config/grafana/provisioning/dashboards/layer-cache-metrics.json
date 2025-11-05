@@ -32,12 +32,20 @@
   "templating": {
     "list": [
       {
+        "name": "datasource",
+        "type": "datasource",
+        "label": "Data Source",
+        "query": "prometheus",
+        "refresh": 1,
+        "hide": 0
+      },
+      {
         "name": "service",
         "type": "query",
         "label": "Service",
         "datasource": {
           "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
+          "uid": "${datasource}"
         },
         "query": "label_values(layer_cache_persister_write_attempted, exported_job)",
         "refresh": 2,
@@ -52,7 +60,7 @@
         "label": "Cache",
         "datasource": {
           "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
+          "uid": "${datasource}"
         },
         "query": "label_values(layer_cache_persister_write_attempted{exported_job=~\"$service\"}, cache_name)",
         "refresh": 2,
@@ -76,13 +84,13 @@
       "title": "Retry Queue - Enqueue Rate",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_retry_queue_enqueued{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - enqueued",
@@ -130,13 +138,13 @@
       "title": "Retry Queue - Success Rate",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_retry_queue_success{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
@@ -184,13 +192,13 @@
       "title": "Retry Queue - Failure Rate",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_retry_queue_failed{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - failed",
@@ -238,13 +246,13 @@
       "title": "Retry Queue - Permanent Failure Rate",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_retry_queue_permanent_failure{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent failure",
@@ -292,13 +300,13 @@
       "title": "Retry Queue - Current Depth",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "layer_cache_retry_queue_depth{exported_job=~\"$service\", cache_name=~\"$cache\"}",
           "legendFormat": "{{exported_job}}/{{cache_name}} - queue depth",
@@ -346,13 +354,13 @@
       "title": "Retry Queue - Success vs Failure Ratio",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_retry_queue_success{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
@@ -361,7 +369,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_retry_queue_failed{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - retryable failure",
@@ -370,7 +378,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_retry_queue_permanent_failure{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent failure",
@@ -468,13 +476,13 @@
       "title": "Total Items in Retry Queue",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "sum(layer_cache_retry_queue_depth{exported_job=~\"$service\", cache_name=~\"$cache\"})",
           "refId": "A"
@@ -530,13 +538,13 @@
       "title": "Retry Queue - Depth by Cache",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "layer_cache_retry_queue_depth{exported_job=~\"$service\", cache_name=~\"$cache\"}",
           "legendFormat": "{{exported_job}}/{{cache_name}}",
@@ -586,13 +594,13 @@
       "title": "Persister - Write Operations (Initial Attempts)",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_write_attempted{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - attempted",
@@ -601,7 +609,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_write_success{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
@@ -649,13 +657,13 @@
       "title": "Persister - Write Failures (Initial Attempts)",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - retryable",
@@ -664,7 +672,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_write_failed_permanent{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent",
@@ -712,13 +720,13 @@
       "title": "Persister - Write Duration (Average)",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "(rate(layer_cache_persister_write_duration_seconds_sum{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m]) / rate(layer_cache_persister_write_duration_seconds_count{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
@@ -767,13 +775,13 @@
       "title": "Persister - Evict Duration (Average)",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "(rate(layer_cache_persister_evict_duration_seconds_sum{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m]) / rate(layer_cache_persister_evict_duration_seconds_count{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
@@ -822,13 +830,13 @@
       "title": "Persister - Error Source (Write)",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_pg_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"write\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - PostgreSQL",
@@ -837,7 +845,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_nats_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"write\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - NATS",
@@ -846,7 +854,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_both_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"write\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - Both",
@@ -894,13 +902,13 @@
       "title": "Persister - Error Source (Evict)",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_pg_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"evict\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - PostgreSQL",
@@ -909,7 +917,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_nats_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"evict\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - NATS",
@@ -918,7 +926,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_both_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"evict\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - Both",
@@ -966,13 +974,13 @@
       "title": "Persister - Event Kind Distribution",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_event_by_kind{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - {{event_kind}}",
@@ -1020,13 +1028,13 @@
       "title": "Persister - Retry Operations (All Types)",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_retry_attempted{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - retry attempts",
@@ -1074,13 +1082,13 @@
       "title": "Persister - Retry Duration (Average)",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "(rate(layer_cache_persister_retry_duration_seconds_sum{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m]) / rate(layer_cache_persister_retry_duration_seconds_count{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
@@ -1118,10 +1126,83 @@
       }
     },
     {
-      "id": 19,
+      "id": 26,
       "gridPos": {
         "x": 0,
         "y": 88,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Persister - End-to-End Persistence Latency (p50, p95, p99)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
+          "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
+          "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
+          "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean",
+            "min"
+          ]
+        }
+      }
+    },
+    {
+      "id": 19,
+      "gridPos": {
+        "x": 0,
+        "y": 96,
         "w": 12,
         "h": 8
       },
@@ -1129,13 +1210,13 @@
       "title": "Persister - Evict Rate",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_evict_attempted{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - attempted",
@@ -1144,7 +1225,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_evict_success{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
@@ -1184,7 +1265,7 @@
       "id": 20,
       "gridPos": {
         "x": 12,
-        "y": 88,
+        "y": 96,
         "w": 12,
         "h": 8
       },
@@ -1192,13 +1273,13 @@
       "title": "Persister - Evict Failures",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_evict_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - retryable",
@@ -1207,7 +1288,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "rate(layer_cache_persister_evict_failed_permanent{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent",

@@ -31,12 +31,20 @@
   "templating": {
     "list": [
       {
+        "name": "datasource",
+        "type": "datasource",
+        "label": "Data Source",
+        "query": "prometheus",
+        "refresh": 1,
+        "hide": 0
+      },
+      {
         "name": "instance",
         "type": "query",
         "label": "Instance",
         "datasource": {
           "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
+          "uid": "${datasource}"
         },
         "query": "label_values(node_exporter_build_info, instance)",
         "refresh": 2,
@@ -73,13 +81,13 @@
       "title": "Success Rate",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "sum(rate(snapshot_eviction_successes_total{instance=~\"$instance\"}[5m])) / (sum(rate(snapshot_eviction_successes_total{instance=~\"$instance\"}[5m])) + (sum(rate(snapshot_eviction_failures_total{instance=~\"$instance\"}[5m])) or vector(0))) or vector(1)",
           "refId": "A"
@@ -150,13 +158,13 @@
       "title": "Candidates Found",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "increase(snapshot_eviction_candidates_found_sum{instance=~\"$instance\"}[1m])",
           "legendFormat": "{{instance}} - candidates",
@@ -204,13 +212,13 @@
       "title": "Candidate Queue Latency - P50, P95, P99",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.50, sum(rate(snapshot_candidate_queue_latency_seconds_bucket{instance=~\"$instance\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - P50",
@@ -219,7 +227,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.95, sum(rate(snapshot_candidate_queue_latency_seconds_bucket{instance=~\"$instance\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - P95",
@@ -228,7 +236,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.99, sum(rate(snapshot_candidate_queue_latency_seconds_bucket{instance=~\"$instance\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - P99",
@@ -277,13 +285,13 @@
       "title": "Cycle Duration - P50, P95, P99",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.50, sum(rate(snapshot_eviction_cycle_duration_seconds_bucket{instance=~\"$instance\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - P50",
@@ -292,7 +300,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.95, sum(rate(snapshot_eviction_cycle_duration_seconds_bucket{instance=~\"$instance\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - P95",
@@ -301,7 +309,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.99, sum(rate(snapshot_eviction_cycle_duration_seconds_bucket{instance=~\"$instance\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - P99",
@@ -363,13 +371,13 @@
       "title": "Eviction Results",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "increase(snapshot_eviction_failures_total{instance=~\"$instance\"}[1m])",
           "legendFormat": "{{instance}} - failures",
@@ -378,7 +386,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "increase(snapshot_eviction_successes_total{instance=~\"$instance\"}[1m])",
           "legendFormat": "{{instance}} - successes",
@@ -475,13 +483,13 @@
       "title": "Failures by Error Type",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "increase(snapshot_eviction_failures_total{instance=~\"$instance\"}[1m])",
           "legendFormat": "{{instance}} - {{error_type}}",
@@ -545,13 +553,13 @@
       "title": "Eviction Duration - P50, P95, P99 (Success)",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.50, sum(rate(snapshot_eviction_duration_seconds_bucket{instance=~\"$instance\", status=\"success\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - P50",
@@ -560,7 +568,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.95, sum(rate(snapshot_eviction_duration_seconds_bucket{instance=~\"$instance\", status=\"success\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - P95",
@@ -569,7 +577,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.99, sum(rate(snapshot_eviction_duration_seconds_bucket{instance=~\"$instance\", status=\"success\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - P99",
@@ -618,13 +626,13 @@
       "title": "Failure Duration by Error Type - P50, P95, P99",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "${datasource}"
       },
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.50, sum(rate(snapshot_eviction_duration_seconds_bucket{instance=~\"$instance\", status=\"failure\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - {{error_type}} - P50",
@@ -633,7 +641,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.95, sum(rate(snapshot_eviction_duration_seconds_bucket{instance=~\"$instance\", status=\"failure\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - {{error_type}} - P95",
@@ -642,7 +650,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "${datasource}"
           },
           "expr": "histogram_quantile(0.99, sum(rate(snapshot_eviction_duration_seconds_bucket{instance=~\"$instance\", status=\"failure\"}[1m])) by (le))",
           "legendFormat": "{{instance}} - {{error_type}} - P99",
