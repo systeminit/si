@@ -47,8 +47,12 @@ pub enum Error {
     CreateKeyValue(#[from] async_nats::jetstream::context::CreateKeyValueError),
     #[error("error deserializing kv value: {0}")]
     Deserialize(#[source] serde_json::Error),
-    #[error("entry error: {0}")]
-    Entry(#[from] kv::EntryError),
+    #[error("entry error when getting change set index")]
+    EntryGetChangeSetIndex(#[source] kv::EntryError),
+    #[error("entry error when getting deployment index")]
+    EntryGetDeploymentIndex(#[source] kv::EntryError),
+    #[error("entry error when performing get object raw bytes: {0}")]
+    EntryGetObjectRawBytes(#[source] kv::EntryError),
     #[error("error getting kv store: {0}")]
     GetKeyValue(#[from] async_nats::jetstream::context::KeyValueError),
     #[error("index object not found at key: {0}")]
@@ -124,7 +128,12 @@ impl FriggStore {
     }
 
     async fn get_object_raw_bytes(&self, key: &Subject) -> Result<Option<(Bytes, KvRevision)>> {
-        let Some(entry) = self.store.entry(key.to_string()).await? else {
+        let Some(entry) = self
+            .store
+            .entry(key.to_string())
+            .await
+            .map_err(Error::EntryGetObjectRawBytes)?
+        else {
             return Ok(None);
         };
 
