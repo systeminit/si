@@ -3162,6 +3162,7 @@ Workspace management endpoints
     "displayName": "string",
     "externalId": "string",
     "id": "string",
+    "initialApiToken": {},
     "instanceEnvType": "string",
     "instanceUrl": "string",
     "isDefault": true,
@@ -3212,6 +3213,26 @@ Status Code **200**
 |» displayName|string|true|none|none|
 |» externalId|string,null|false|none|none|
 |» id|string|true|none|none|
+|» initialApiToken|any|false|none|none|
+
+*oneOf*
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|»» *anonymous*|null|false|none|none|
+
+*xor*
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|»» *anonymous*|[InitialApiToken](#schemainitialapitoken)|false|none|none|
+|»»» expiresAt|string,null|false|none|none|
+|»»» token|string|true|none|none|
+
+*continued*
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
 |» instanceEnvType|string|true|none|none|
 |» instanceUrl|string,null|false|none|none|
 |» isDefault|boolean|true|none|none|
@@ -3256,6 +3277,7 @@ Status Code **200**
   "displayName": "string",
   "externalId": "string",
   "id": "string",
+  "initialApiToken": {},
   "instanceEnvType": "string",
   "instanceUrl": "string",
   "isDefault": true,
@@ -3300,6 +3322,7 @@ Status Code **200**
   "displayName": "string",
   "externalId": "string",
   "id": "string",
+  "initialApiToken": {},
   "instanceEnvType": "string",
   "instanceUrl": "string",
   "isDefault": true,
@@ -3392,6 +3415,7 @@ Status Code **200**
   "displayName": "string",
   "externalId": "string",
   "id": "string",
+  "initialApiToken": {},
   "instanceEnvType": "string",
   "instanceUrl": "string",
   "isDefault": true,
@@ -5826,6 +5850,28 @@ continued
 |» definition|[SecretDefinitionV1](#schemasecretdefinitionv1)|true|none|none|
 |» secrets|[[SecretV1](#schemasecretv1)]|true|none|none|
 
+## [InitialApiToken](#tocS_InitialApiToken)
+
+<a id="schemainitialapitoken"></a>
+<a id="schema_InitialApiToken"></a>
+<a id="tocSinitialapitoken"></a>
+<a id="tocsinitialapitoken"></a>
+
+```json
+{
+  "expiresAt": "string",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+```
+
+### [Properties](#initialapitoken-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|expiresAt|string,null|false|none|none|
+|token|string|true|none|none|
+
 ## [InviteMemberRequest](#tocS_InviteMemberRequest)
 
 <a id="schemainvitememberrequest"></a>
@@ -7420,6 +7466,7 @@ xor
   "displayName": "string",
   "externalId": "string",
   "id": "string",
+  "initialApiToken": {},
   "instanceEnvType": "string",
   "instanceUrl": "string",
   "isDefault": true,
@@ -7457,6 +7504,24 @@ continued
 |displayName|string|true|none|none|
 |externalId|string,null|false|none|none|
 |id|string|true|none|none|
+|initialApiToken|any|false|none|none|
+
+oneOf
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|null|false|none|none|
+
+xor
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|[InitialApiToken](#schemainitialapitoken)|false|none|none|
+
+continued
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
 |instanceEnvType|string|true|none|none|
 |instanceUrl|string,null|false|none|none|
 |isDefault|boolean|true|none|none|
