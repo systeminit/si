@@ -146,9 +146,7 @@ import CircleSlash from "~icons/octicon/circle-slash";
 import AwsLogo from "~icons/cib/amazon-aws";
 import CoreOsLogo from "~icons/ri/coreos-fill";
 import SiLogo from "../../brand-assets/si-logo-symbol-padded.svg?raw";
-// import DockerCircleLogo from "./images/3p-logos/docker/docker-icon.svg?raw";
 import DockerLogo from "~icons/mdi/docker";
-// import KubernetesCircleLogo from "~icons/carbon/logo-kubernetes";
 import KubernetesLogo from "~icons/carbon/kubernetes";
 import CarbonLightning from "~icons/carbon/lightning";
 import DiscordLogo from "~icons/carbon/logo-discord";
@@ -156,6 +154,7 @@ import GitHubLogo from "~icons/carbon/logo-github";
 import VimLogo from "~icons/raphael/vim";
 import FastlyLogo from "~icons/simple-icons/fastly";
 import HetznerLogo from "./custom-icons/hetzner.svg?raw";
+import AzureLogo from "./custom-icons/azure-icon.svg?raw";
 
 // carbon
 import Create from "~icons/carbon/intent-request-create";
@@ -449,6 +448,7 @@ export const SPINNABLE_ICONS = Object.freeze({
 // but for now we'll just keep them in here, but in a separate set
 export const LOGO_ICONS = Object.freeze({
   "logo-aws": AwsLogo,
+  "logo-azure": AzureLogo,
   "logo-coreos": CoreOsLogo,
   "logo-docker": DockerLogo,
   "logo-k8s": KubernetesLogo,
@@ -460,6 +460,33 @@ export const LOGO_ICONS = Object.freeze({
   "logo-github": GitHubLogo,
   "logo-vim": VimLogo,
 });
+
+export type IconSizeNumbers = {
+  viewBoxX: number;
+  viewBoxY: number;
+};
+
+const VIEWBOX24 = { viewBoxX: 24, viewBoxY: 24 };
+const VIEWBOX32 = { viewBoxX: 32, viewBoxY: 32 };
+export const LOGO_FORCED_SIZE_NUMBERS = {
+  "logo-aws": VIEWBOX32,
+  "logo-azure": VIEWBOX24,
+  "logo-coreos": VIEWBOX24,
+  "logo-docker": VIEWBOX24,
+  "logo-k8s": VIEWBOX32,
+  "logo-si": {
+    viewBoxX: 250,
+    viewBoxY: 250,
+  },
+  "logo-fastly": VIEWBOX24,
+  "logo-hetzner": {
+    viewBoxX: 30,
+    viewBoxY: 30,
+  },
+  "logo-discord": VIEWBOX32,
+  "logo-github": VIEWBOX32,
+  "logo-vim": VIEWBOX32,
+} as Record<IconNames, IconSizeNumbers>;
 
 export const COMPONENT_TYPE_ICONS = {
   component: "component" as IconNames,

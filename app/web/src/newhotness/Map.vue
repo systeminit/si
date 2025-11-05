@@ -134,6 +134,8 @@
           <IconNoWrapper
             :name="logo"
             :class="themeClasses('text-black', 'text-white')"
+            :fillColor="theme === 'light' ? 'black' : 'white'"
+            :forcedSizeNumbers="getLogoForcedSizeNumbers(logo)"
           />
         </pattern>
       </defs>
@@ -224,6 +226,8 @@ import {
   Tones,
   themeClasses,
   LOGO_ICONS,
+  useTheme,
+  LOGO_FORCED_SIZE_NUMBERS,
 } from "@si/vue-lib/design-system";
 import {
   computed,
@@ -258,7 +262,7 @@ import { KeyDetails } from "./logic_composables/emitters";
 import { assertIsDefined, Context, ExploreContext } from "./types";
 import ExploreGridTile from "./explore_grid/ExploreGridTile.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
-import { getAssetIcon } from "./util";
+import { pickBrandIconByString } from "./util";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import { truncateString } from "./logic_composables/string_funcs";
 import MiniMap from "./MiniMap.vue";
@@ -266,6 +270,7 @@ import MiniMap from "./MiniMap.vue";
 const MAX_STRING_LENGTH = 18;
 
 const router = useRouter();
+const { theme } = useTheme();
 
 const props = defineProps<{
   active: boolean;
@@ -560,7 +565,7 @@ const addNodeElements = (group: any, d: layoutNode) => {
     .attr("transform", "translate(23, 35)")
     .attr("pointer-events", "none")
     .style("fill", () => {
-      const icon = getAssetIcon(d.component.schemaCategory);
+      const icon = pickBrandIconByString(d.component.schemaCategory);
       return `url(#${icon})`;
     });
 
@@ -1060,6 +1065,10 @@ const args = useMakeArgs();
 const queryKey = key(EntityKind.IncomingConnectionsList);
 
 const logos = reactive<IconNames[]>(Object.keys(LOGO_ICONS) as IconNames[]);
+
+const getLogoForcedSizeNumbers = (logoName: IconNames) => {
+  return LOGO_FORCED_SIZE_NUMBERS[logoName] ?? undefined;
+};
 
 const icons = reactive<IconNames[]>([
   "check-hex-outline",

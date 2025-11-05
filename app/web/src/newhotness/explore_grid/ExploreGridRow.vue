@@ -50,7 +50,7 @@
       :open="!row.collapsed"
       @click="emit('clickCollapse', row.subKey, !row.collapsed)"
     />
-    <Icon :name="getAssetIcon(row.schemaCategory)" size="md" />
+    <Icon :name="pickBrandIconByString(row.schemaCategory)" size="md" />
     <!-- TODO(Wendy) - we need a hover state here -->
     <div
       class="cursor-pointer select-none flex flex-row items-center gap-xs"
@@ -347,7 +347,7 @@ import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import ComponentCard from "../ComponentCard.vue";
 import ExploreGridTile from "./ExploreGridTile.vue";
 import { assertIsDefined, ExploreContext } from "../types";
-import { getAssetIcon } from "../util";
+import { pickBrandIconByString } from "../util";
 import { useContext } from "../logic_composables/context";
 
 const props = defineProps<{

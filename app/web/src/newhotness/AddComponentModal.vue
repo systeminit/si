@@ -7,7 +7,6 @@
     size="max"
     class="w-[max(800px,66vw)]"
     @click="onClick"
-    @close="close"
   >
     <div class="h-[45svh]">
       <div
@@ -107,13 +106,13 @@
                   :selected="
                     compareKeys(
                       selectedAsset?.key,
-                      schemaFromIndex(row.index)?.key,
+                      schemaFromVirtualRowIndex(row.index)?.key,
                     )
                   "
                   :submitted="
                     compareKeys(
                       selectedAsset?.key,
-                      schemaFromIndex(row.index)?.key,
+                      schemaFromVirtualRowIndex(row.index)?.key,
                     ) && api.inFlight.value
                   "
                   @click="() => assetClick(row.index)"
@@ -215,6 +214,7 @@ import { assertIsDefined, Context, ExploreContext } from "./types";
 import { componentTypes, routes, useApi } from "./api_composables";
 import EmptyState from "./EmptyState.vue";
 import MarkdownRender from "./MarkdownRender.vue";
+import { pickBrandIconByString } from "./util";
 
 const ctx: Context | undefined = inject("CONTEXT");
 assertIsDefined(ctx);
@@ -224,10 +224,22 @@ const scrollRef = ref<HTMLDivElement | undefined>();
 
 const selectedAsset = ref<UIAsset | undefined>(undefined);
 
-const scrollToSelected = () => {
+const scrollToSelected = async () => {
+  // First, wait one tick for the dom classes to update
+  await nextTick();
+  // Then, see if the element exists in the DOM
   const el = document.getElementsByClassName("add-component-selected-item")[0];
-  if (el) {
+  if (el && scrollRef.value) {
+    // If it does, scroll it to the center
     el.scrollIntoView({ block: "center" });
+  } else {
+    // Otherwise, we need to scroll using the virtualizer
+    if (selectionIndex.value !== undefined && selectionIndex.value >= 0) {
+      virtualList.value.scrollToIndex(
+        controlIndexToVirtualizerIndex(selectionIndex.value),
+        { align: "center" },
+      );
+    }
   }
 };
 
@@ -239,13 +251,7 @@ const selectAsset = async (asset: UIAsset, noScroll?: boolean) => {
     compareKeys(a.key, asset.key),
   );
 
-  // this gets the virtual list to re-render we move beyond
-  // the currently virtualized rows
   if (!noScroll) {
-    if (selectionIndex.value >= 0) {
-      virtualList.value.scrollToIndex(selectionIndex.value);
-    }
-    // this ensures that we scroll the window properly
     scrollToSelected();
   }
 };
@@ -353,22 +359,15 @@ const onUp = (e: KeyboardEvent) => {
   if (selectionIndex.value === undefined) {
     selectionIndex.value = filteredAssetsFlat.value.length - 1;
     selectAssetByIndex();
-    setTimeout(() => scrollToSelected(), 200);
   } else {
-    // if we're going by category or flipping to
-    // the other end of the list delay a scroll
-    let noScroll = false;
     if (goByCategory) {
       selectFirstInNextCategory(selectionIndex.value, -1);
-      setTimeout(() => scrollToSelected(), 200);
     } else {
       selectionIndex.value--;
       if (selectionIndex.value < 0) {
-        noScroll = true;
         selectionIndex.value = filteredAssetsFlat.value.length - 1;
       }
-      selectAssetByIndex(noScroll);
-      if (noScroll) setTimeout(() => scrollToSelected(), 200);
+      selectAssetByIndex();
     }
   }
 };
@@ -380,23 +379,16 @@ const onDown = (e: KeyboardEvent) => {
 
   if (selectionIndex.value === undefined) {
     selectionIndex.value = 0;
-    setTimeout(() => scrollToSelected(), 200);
     selectAssetByIndex();
   } else {
-    // if we're going by category or flipping to
-    // the other end of the list delay a scroll
-    let noScroll = false;
     if (goByCategory) {
       selectFirstInNextCategory(selectionIndex.value, 1);
-      setTimeout(() => scrollToSelected(), 200);
     } else {
       selectionIndex.value++;
       if (selectionIndex.value > filteredAssetsFlat.value.length - 1) {
-        noScroll = true;
         selectionIndex.value = 0;
       }
-      selectAssetByIndex(noScroll);
-      if (noScroll) setTimeout(() => scrollToSelected(), 200);
+      selectAssetByIndex();
     }
   }
 };
@@ -445,11 +437,11 @@ const onTab = (e: KeyboardEvent) => {
   if (e.shiftKey) changeFilterLeft();
   else changeFilterRight();
 };
-const selectAssetByIndex = (noScroll?: boolean) => {
+const selectAssetByIndex = () => {
   if (selectionIndex.value !== undefined && selectionIndex.value >= 0) {
     const asset = filteredAssetsFlat.value[selectionIndex.value];
     if (asset) {
-      selectAsset(asset, noScroll);
+      selectAsset(asset);
     }
   }
 };
@@ -474,6 +466,7 @@ const selectFirstInNextCategory = (currentIndex: number, direction: 1 | -1) => {
     } else if (direction === -1 && lastCategoryAsset) {
       selectAsset(lastCategoryAsset, true);
     }
+    scrollToSelected();
   }
 };
 
@@ -550,7 +543,7 @@ const categories = computed(() => {
         category = {
           name: catName,
           color: variant.color,
-          icon: pickIcon(variant.category),
+          icon: pickBrandIconByString(variant.category),
           assets: [],
         };
       }
@@ -577,7 +570,7 @@ const categories = computed(() => {
         category = {
           name: catName,
           color: variant.color,
-          icon: pickIcon(variant.category),
+          icon: pickBrandIconByString(variant.category),
           assets: [],
         };
       }
@@ -684,6 +677,18 @@ const filteredAssetsFlat = computed(() => {
   return assets;
 });
 
+const controlIndexToVirtualizerIndex = (idx: number) => {
+  const asset = filteredAssetsFlat.value[idx];
+  if (asset) {
+    return categoryAndSchemaRows.value.findIndex(
+      (row) => row.type === "schema" && compareKeys(asset.key, row.key),
+    );
+  } else {
+    // default to the search bar if you don't find it!
+    return -1;
+  }
+};
+
 const showResults = computed(
   () => true, // !!(debouncedSearchString.value !== "" || selectedFilter.value),
 );
@@ -724,25 +729,38 @@ const isFilterSelected = (name: string) => {
   return false;
 };
 
-const open = () => {
-  modalRef.value?.open();
+const resetModal = () => {
   fuzzySearchString.value = "";
   debouncedSearchString.value = "";
   bannerClosed.value = false;
+  categoryIsOpen.value = new Set();
+  selectedAsset.value = undefined;
+  selectionIndex.value = undefined;
   toggleFilterTile();
+  virtualList.value.scrollToIndex(0);
+};
+
+const open = () => {
+  resetModal();
+  modalRef.value?.open();
   nextTick(() => {
     searchRef.value?.focusSearch();
+    virtualList.value.scrollToIndex(0);
   });
 };
 
+const close = () => {
+  modalRef.value?.close();
+};
+
 const assetClick = (idx: number) => {
-  const cat = categoryFromIndex(idx);
+  const cat = categoryFromVirtualRowIndex(idx);
   if (cat) {
     if (categoryIsOpen.value.has(cat.name))
       categoryIsOpen.value.delete(cat.name);
     else categoryIsOpen.value.add(cat.name);
   }
-  const schema = schemaFromIndex(idx);
+  const schema = schemaFromVirtualRowIndex(idx);
   if (schema) {
     const asset = filteredAssetsFlat.value.find((a) =>
       compareKeys(a.key, schema.key),
@@ -754,14 +772,14 @@ const assetClick = (idx: number) => {
   }
 };
 
-const schemaFromIndex = (idx: number) => {
-  const maybeSchema = categoryAndSchemaRows.value[idx];
+const schemaFromVirtualRowIndex = (rowIdx: number) => {
+  const maybeSchema = categoryAndSchemaRows.value[rowIdx];
   if (maybeSchema?.type === "schema") return maybeSchema;
   return undefined;
 };
 
-const categoryFromIndex = (idx: number) => {
-  const maybeCategory = categoryAndSchemaRows.value[idx];
+const categoryFromVirtualRowIndex = (rowIdx: number) => {
+  const maybeCategory = categoryAndSchemaRows.value[rowIdx];
   if (maybeCategory?.type === "category") return maybeCategory;
   return undefined;
 };
@@ -770,28 +788,9 @@ const openFromIndex = (idx: number) => {
   // if searching open everything
   if (selectedFilter.value || debouncedSearchString.value) return true;
 
-  const cat = categoryFromIndex(idx);
+  const cat = categoryFromVirtualRowIndex(idx);
   if (!cat) return false;
   return categoryIsOpen.value.has(cat.name);
-};
-
-const close = () => {
-  modalRef.value?.close();
-  fuzzySearchString.value = "";
-  categoryIsOpen.value.clear();
-  selectedAsset.value = undefined;
-  selectionIndex.value = undefined;
-  virtualList.value.scrollToIndex(0);
-};
-
-const pickIcon = (name: string): IconNames => {
-  if (name.toLowerCase().includes("aws")) return "logo-aws";
-  else if (name.toLowerCase().includes("coreos")) return "logo-coreos";
-  else if (name.toLowerCase().includes("docker")) return "logo-docker";
-  else if (name.toLowerCase().includes("fastly")) return "logo-fastly";
-  else if (name.toLowerCase().includes("hetzner")) return "logo-hetzner";
-  // TODO(Wendy) - we need to fill out the rest of these icon lookups for the various categories/filters!
-  else return "logo-si";
 };
 
 const foundCategoryMatch = (categoryName: string, category: UICategory) => {
@@ -836,19 +835,19 @@ const componentFilters = computed((): AssetFilter[] => {
     },
     {
       name: "AWS",
-      icon: pickIcon("aws"),
+      icon: pickBrandIconByString("aws"),
       count: getCategoriesAndCountForFilterString("aws").count,
       color: BRAND_COLOR_FILTER_HEX_CODES.AWS,
     },
     {
       name: "Hetzner",
-      icon: pickIcon("hetzner"),
+      icon: pickBrandIconByString("hetzner"),
       count: getCategoriesAndCountForFilterString("hetzner").count,
       color: BRAND_COLOR_FILTER_HEX_CODES.Hetzner,
     },
     {
       name: "Fastly",
-      icon: pickIcon("fastly"),
+      icon: pickBrandIconByString("fastly"),
       count: getCategoriesAndCountForFilterString("fastly").count,
       color: BRAND_COLOR_FILTER_HEX_CODES.Fastly,
     },
@@ -862,7 +861,7 @@ const componentFilters = computed((): AssetFilter[] => {
   if (ffStore.AZURE_SCHEMAS) {
     filters.splice(2, 0, {
       name: "Microsoft",
-      icon: "logo-si",
+      icon: "logo-azure",
       count: getCategoriesAndCountForFilterString("microsoft").count,
       color: BRAND_COLOR_FILTER_HEX_CODES.MS,
     });

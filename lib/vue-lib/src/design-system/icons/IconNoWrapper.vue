@@ -1,14 +1,10 @@
 <!-- eslint-disable vue/no-v-html -->
-<!--
-Note: the 40x30 is intentional for the aws logo et al
--->
-
 <template>
   <svg
-    :width="viewBoxX"
-    :height="viewBoxY"
-    :viewBox="`0 0 40 30`"
-    fill="none"
+    :width="forcedSizeNumbers ? 30 : widthFromSize"
+    :height="forcedSizeNumbers ? 30 : heightFromSize"
+    :viewBox="viewBox"
+    :fill="name === 'logo-si' ? fillColor : 'none'"
     xmlns="http://www.w3.org/2000/svg"
     v-html="iconSvgRaw"
   ></svg>
@@ -18,11 +14,11 @@ Note: the 40x30 is intentional for the aws logo et al
 import * as _ from "lodash-es";
 import { computed, PropType } from "vue";
 import { getToneColorHex, Tones } from "../utils/color_utils";
-import { getIconByName, IconNames } from "./icon_set";
+import { getIconByName, IconNames, IconSizeNumbers } from "./icon_set";
 
 export type IconSizes = "sm" | "md";
 
-const viewBoxX = computed(() => {
+const widthFromSize = computed(() => {
   switch (props.size) {
     case "sm":
       return 35;
@@ -31,7 +27,7 @@ const viewBoxX = computed(() => {
   }
 });
 
-const viewBoxY = computed(() => {
+const heightFromSize = computed(() => {
   switch (props.size) {
     case "sm":
       return 20;
@@ -50,6 +46,12 @@ const props = defineProps({
   tone: {
     type: String as PropType<Tones>,
   },
+  forcedSizeNumbers: {
+    type: Object as PropType<IconSizeNumbers>,
+  },
+  fillColor: {
+    type: String,
+  },
 });
 
 const iconSvgRaw = computed(() => {
@@ -67,5 +69,14 @@ const iconSvgRaw = computed(() => {
 
 const toneColor = computed(() => {
   return props.tone ? getToneColorHex(props.tone) : "currentColor";
+});
+
+const viewBox = computed(() => {
+  if (props.forcedSizeNumbers) {
+    return `0 0 ${props.forcedSizeNumbers.viewBoxX} ${props.forcedSizeNumbers.viewBoxY}`;
+  } else {
+    // TODO(Wendy) - this default viewbox may need to be adjusted
+    return `0 0 40 30`;
+  }
 });
 </script>
