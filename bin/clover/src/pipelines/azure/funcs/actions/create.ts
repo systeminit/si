@@ -93,8 +93,7 @@ function cleanPayload(domain) {
 
     if (filledSubtypes.length > 1) {
       throw new Error(
-        `Multiple discriminator subtypes filled for "${discriminatorProp}": ${
-          filledSubtypes.join(", ")
+        `Multiple discriminator subtypes filled for "${discriminatorProp}": ${filledSubtypes.join(", ")
         }. Only one should be filled.`,
       );
     }
@@ -137,13 +136,15 @@ function cleanPayload(domain) {
     }
 
     // Only check against propUsageMap for top-level domain properties
-    if (
-      key.length === 1 &&
-      !propUsageMap.createOnly.includes(keyOnParent) &&
-      !propUsageMap.updatable.includes(keyOnParent)
-    ) {
-      delete parent[keyOnParent];
-      continue;
+    if (key.length === 1) {
+      const propPath = `/domain/${keyOnParent}`;
+      if (
+        !propUsageMap.createOnly.includes(propPath) &&
+        !propUsageMap.updatable.includes(propPath)
+      ) {
+        delete parent[keyOnParent];
+        continue;
+      }
     }
 
     const prop = parent[keyOnParent];

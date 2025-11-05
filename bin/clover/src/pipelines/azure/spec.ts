@@ -632,6 +632,16 @@ function intersectAzureSchema(
       case "oneOf":
         break;
 
+      // Prefer false (writeable) over true (readonly)
+      case "readOnly": {
+        if (intersected[key] !== undefined) {
+          intersected[key] = intersected[key] && prop[key];
+        } else {
+          intersected[key] = prop[key];
+        }
+        break;
+      }
+
       default: {
         // Other fields must be identical if present in both
         if (
@@ -639,10 +649,9 @@ function intersectAzureSchema(
           !util.isDeepStrictEqual(intersected[key], prop[key])
         ) {
           throw new Error(
-            `Incompatible property ${key}: ${
-              util.inspect(
-                intersected[key],
-              )
+            `Incompatible property ${key}: ${util.inspect(
+              intersected[key],
+            )
             } vs ${util.inspect(prop[key])}`,
           );
         }
@@ -756,13 +765,11 @@ function buildDomainAndResourceValue(
     // If it's a writeable resource, the result must have ID so we can update/delete
     if (!(resourceValue.properties && "id" in resourceValue.properties)) {
       throw new Error(
-        `No id property in GET response: ${get.operation.operationId}\n\n${
-          util.inspect(get.operation, { depth: 12 })
-        }\n\n${
-          util.inspect(
-            get.operation.responses?.["200"]?.schema,
-            { depth: 4 },
-          )
+        `No id property in GET response: ${get.operation.operationId}\n\n${util.inspect(get.operation, { depth: 12 })
+        }\n\n${util.inspect(
+          get.operation.responses?.["200"]?.schema,
+          { depth: 4 },
+        )
         }`,
       );
     }
@@ -840,6 +847,9 @@ function requestSchema(
         if (param.description) {
           normalizer.intersect({ description: param.description }, paramSchema);
         }
+
+        // Path parameters are never readonly - they're required inputs
+        paramSchema.readOnly = false;
 
         // Add the parameter into the overall schema
         normalizer.intersect(

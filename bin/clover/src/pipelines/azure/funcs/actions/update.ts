@@ -166,9 +166,12 @@ function cleanPayload(domain) {
 
     // Only check against propUsageMap for top-level domain properties
     // For updates, only include updatable properties, not createOnly
-    if (key.length === 1 && !propUsageMap.updatable.includes(keyOnParent)) {
-      delete parent[keyOnParent];
-      continue;
+    if (key.length === 1) {
+      const propPath = `/domain/${keyOnParent}`;
+      if (!propUsageMap.updatable.includes(propPath)) {
+        delete parent[keyOnParent];
+        continue;
+      }
     }
 
     const prop = parent[keyOnParent];
