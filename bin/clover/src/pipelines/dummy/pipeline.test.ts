@@ -267,13 +267,13 @@ Deno.test("generateDummySpecs - override system works", async () => {
 
   const serverSpec = specs.find((s) => s.name === "Dummy::Server");
   assertExists(serverSpec, "Server spec should exist");
-  
+
   const databaseSpec = specs.find((s) => s.name === "Dummy::Database");
   assertExists(databaseSpec, "Database spec should exist");
 
   // Test that overrides were applied without errors
   assertEquals(specs.length, 2, "Should have 2 specs after overrides");
-  
+
   // Verify specs are still valid after overrides
   for (const spec of specs) {
     assertExists(spec.schemas, "Spec should have schemas");
@@ -296,19 +296,34 @@ Deno.test("generateDummySpecs - schema overrides applied to Server", async () =>
 
   const variant = serverSpec.schemas[0].variants[0];
 
-  function findPropByName(obj: ExpandedPropSpec, name: string): ExpandedPropSpec | undefined {
+  function findPropByName(
+    obj: ExpandedPropSpec,
+    name: string,
+  ): ExpandedPropSpec | undefined {
     if (obj.kind !== "object") return undefined;
-    return obj.entries?.find(p => p.name === name);
+    return obj.entries?.find((p) => p.name === name);
   }
 
   const nameProp = findPropByName(variant.domain, "name");
   assertExists(nameProp, "name property should exist");
-  assertEquals(nameProp.data.widgetKind, "Text", "name prop should have Text widget kind");
+  assertEquals(
+    nameProp.data.widgetKind,
+    "Text",
+    "name prop should have Text widget kind",
+  );
 
   const sizeProp = findPropByName(variant.domain, "size");
   assertExists(sizeProp, "size property should exist");
-  assertEquals(sizeProp.data.widgetKind, "ComboBox", "size prop should have ComboBox widget kind");
-  assertEquals(sizeProp.data.defaultValue, "medium", "size prop should have medium as default");
+  assertEquals(
+    sizeProp.data.widgetKind,
+    "ComboBox",
+    "size prop should have ComboBox widget kind",
+  );
+  assertEquals(
+    sizeProp.data.defaultValue,
+    "medium",
+    "size prop should have medium as default",
+  );
 });
 
 Deno.test("generateDummySpecs - schema overrides applied to Database", async () => {
@@ -324,15 +339,29 @@ Deno.test("generateDummySpecs - schema overrides applied to Database", async () 
 
   const variant = databaseSpec.schemas[0].variants[0];
 
-  function findPropByName(obj: ExpandedPropSpec, name: string): ExpandedPropSpec | undefined {
+  function findPropByName(
+    obj: ExpandedPropSpec,
+    name: string,
+  ): ExpandedPropSpec | undefined {
     if (obj.kind !== "object") return undefined;
-    return obj.entries?.find(p => p.name === name);
+    return obj.entries?.find((p) => p.name === name);
   }
 
   const engineProp = findPropByName(variant.domain, "engine");
   assertExists(engineProp, "engine property should exist");
-  assertEquals(engineProp.data.widgetKind, "ComboBox", "engine prop should have ComboBox widget");
-  assertEquals(engineProp.data.inputs?.length, 0, "engine prop inputs should be cleared");
-  assertEquals(engineProp.data.funcUniqueId, null, "engine prop funcUniqueId should be cleared");
+  assertEquals(
+    engineProp.data.widgetKind,
+    "ComboBox",
+    "engine prop should have ComboBox widget",
+  );
+  assertEquals(
+    engineProp.data.inputs?.length,
+    0,
+    "engine prop inputs should be cleared",
+  );
+  assertEquals(
+    engineProp.data.funcUniqueId,
+    null,
+    "engine prop funcUniqueId should be cleared",
+  );
 });
-

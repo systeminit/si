@@ -8,26 +8,43 @@ It may be used to generate schemas for other providers in the future.
 
 This guide is for using generated Clover schemas for a local dev SI instance.
 
-1. Run an instance of SI locally. See the [README](../../README.md) for more details.
-1. In your local workspace, find the bearer token. You can find it in the headers of any request made to the SI backend and it starts with "Bearer". Or you can make and use a Workspace token following [this guide](https://docs.systeminit.com/reference/workspaces#generate-api-token).
+1. Run an instance of SI locally. See the [README](../../README.md) for more
+   details.
+1. In your local workspace, find the bearer token. You can find it in the
+   headers of any request made to the SI backend and it starts with "Bearer". Or
+   you can make and use a Workspace token following
+   [this guide](https://docs.systeminit.com/reference/workspaces#generate-api-token).
 1. Copy the token to a safe location and remove the leading "Bearer" portion.
 1. Open your terminal for the next steps.
-1. Make your bearer token available for clover: `export SI_BEARER_TOKEN=<your-token>`.
+1. Make your bearer token available for clover:
+   `export SI_BEARER_TOKEN=<your-token>`.
 1. Change to the clover directory: `cd bin/clover`.
-1. Initialize the git submodule: `git submodule init src/provider-schemas/azure-rest-api-specs`.
+1. Initialize the git submodule:
+   `git submodule init src/provider-schemas/azure-rest-api-specs`.
 1. Change to the si-specs directory: `cd si-specs`.
-1. Generate clover schemas using `deno`. For this guide, we'll use Azure: `deno task run generate-specs --provider=azure`. The directory will contain all generated Azure schemas.
-1. In your local workspace in your browser, navigate to the customization screen.
-1. On the upper left, switch to the "MODULES (INTERNAL)" tab and click the upload to cloud button. You'll be prompted to choose which files to upload. The file names correspond with the modules that will be uploaded. You can find the generated JSON files in `bin/clover/si-specs`
-1. In either a newly created change set or your non-HEAD change set, you will now be able to create components with your Azure module(s)!
+1. Generate clover schemas using `deno`. For this guide, we'll use Azure:
+   `deno task run generate-specs --provider=azure`. The directory will contain
+   all generated Azure schemas.
+1. In your local workspace in your browser, navigate to the customization
+   screen.
+1. On the upper left, switch to the "MODULES (INTERNAL)" tab and click the
+   upload to cloud button. You'll be prompted to choose which files to upload.
+   The file names correspond with the modules that will be uploaded. You can
+   find the generated JSON files in `bin/clover/si-specs`
+1. In either a newly created change set or your non-HEAD change set, you will
+   now be able to create components with your Azure module(s)!
 
 > [!TIP]
-> If you have issues generating schemas, you may need to ensure you are using your local module index or that your submodule need to be re-configured.
+> If you have issues generating schemas, you may need to ensure you are using
+> your local module index or that your submodule need to be re-configured.
 >
-> For the former, run the following command: `unset SI_MODULE_INDEX_URL`.
-> This ensures that clover will use default settings for generation.
+> For the former, run the following command: `unset SI_MODULE_INDEX_URL`. This
+> ensures that clover will use default settings for generation.
 >
-> For the latter, you may need to update the submodule with `git submodule update` or to de-initialize the submodule and start over via `git submodule deinit -f src/provider-schemas/azure-rest-api-specs` (assuming you are using Azure).
+> For the latter, you may need to update the submodule with
+> `git submodule update` or to de-initialize the submodule and start over via
+> `git submodule deinit -f src/provider-schemas/azure-rest-api-specs` (assuming
+> you are using Azure).
 
 ## Initial Setup for Development
 
@@ -90,8 +107,8 @@ the anonymized specs to see what your heuristic affected.
 
 ### Note about Schema Code changes
 
-If you are changing a lot of schema functions themselves, every package will show
-`codeBase64` changed, which is a giant blob and can get overwhelming.
+If you are changing a lot of schema functions themselves, every package will
+show `codeBase64` changed, which is a giant blob and can get overwhelming.
 
 To exclude codeBase64, add this to anonymize-specs.sh:
 
@@ -99,8 +116,8 @@ To exclude codeBase64, add this to anonymize-specs.sh:
 ./anonymize-specs.sh --remove-props ".funcs[].data.codeBase64"
 ```
 
-Just note that if you do this, you won't know which modules had their schema code
-changed! Don't run it all the time.
+Just note that if you do this, you won't know which modules had their schema
+code changed! Don't run it all the time.
 
 ## Running tests
 

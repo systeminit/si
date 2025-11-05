@@ -16,7 +16,8 @@ export function createSuggestionsForIds(
   for (const spec of specs) {
     const resourceTypeName = spec.name.split("/").pop();
     if (!resourceTypeName) continue;
-    const schemas = schemasByResourceTypeName.get(resourceTypeName) ?? new Set();
+    const schemas = schemasByResourceTypeName.get(resourceTypeName) ??
+      new Set();
     schemas.add(spec.name);
     schemasByResourceTypeName.set(resourceTypeName, schemas);
   }
@@ -50,14 +51,16 @@ export function createSuggestionsForIds(
 
         for (const schema of schemas) {
           logger.debug(
-            `suggest {schema:${schema}, prop:/resource_value/id for prop ${idProp.metadata.propPath.join('/')} on ${spec.name}`,
+            `suggest {schema:${schema}, prop:/resource_value/id for prop ${
+              idProp.metadata.propPath.join("/")
+            } on ${spec.name}`,
           );
           addPropSuggestSource(idProp, {
             schema,
             prop: "/resource_value/id",
           });
         }
-      }
+      },
     );
   }
   return specs;

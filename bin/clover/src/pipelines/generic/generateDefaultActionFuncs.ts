@@ -43,4 +43,3 @@ export function generateDefaultActionFuncs(
 }
 
 export type Fn = () => { spec: FuncSpec; kind: ActionFuncSpecKind }[];
-

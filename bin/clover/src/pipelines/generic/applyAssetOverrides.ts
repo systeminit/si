@@ -39,9 +39,11 @@ export function applyAssetOverrides(
       const propPath = propPathStr(prop);
 
       // Check for overrides that match the schema
-      for (const [matchSchema, overrides] of Object.entries(
-        providerConfig.overrides.propOverrides,
-      )) {
+      for (
+        const [matchSchema, overrides] of Object.entries(
+          providerConfig.overrides.propOverrides,
+        )
+      ) {
         if (!spec.name.match(new RegExp(`^${matchSchema}$`))) continue;
 
         // Check for overrides that match the prop

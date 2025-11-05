@@ -17,7 +17,10 @@ export function generateAssetFuncs(
     const assetFuncUniqueKey = schemaVariant.data.funcUniqueId;
     const assetFuncName = spec.name;
 
-    const assetFuncCode = generateAssetCodeFromVariantSpec(schemaVariant, schema.name);
+    const assetFuncCode = generateAssetCodeFromVariantSpec(
+      schemaVariant,
+      schema.name,
+    );
 
     const assetFuncData: FuncSpecData = {
       name: assetFuncName,
@@ -114,7 +117,9 @@ function generateAssetCodeFromVariantSpec(
           indent(
             1,
           )
-        }const ${varName} = ${generateSecretDefinitionBuilderString(prop, schemaName, 2)};\n\n`;
+        }const ${varName} = ${
+          generateSecretDefinitionBuilderString(prop, schemaName, 2)
+        };\n\n`;
         propAdds += `${indent(2)}.defineSecret(${varName})\n`;
       }
       declarations += propDeclarations;
@@ -171,7 +176,9 @@ function generateSecretDefinitionBuilderString(
 ): string {
   // Each prop passed to this function should be added as a prop to the SecretDefinitionBuilder
   const addPropBlock = `${indent(indent_level)}.addProp(\n` +
-    `${indent(indent_level + 1)}${generateSecretDefinitionPropBuilderString(prop, indent_level + 1)}\n` +
+    `${indent(indent_level + 1)}${
+      generateSecretDefinitionPropBuilderString(prop, indent_level + 1)
+    }\n` +
     `${indent(indent_level)})\n`;
 
   return (

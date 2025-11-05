@@ -1,7 +1,5 @@
 import _ from "lodash";
-import {
-  createLeafFuncSpec,
-} from "../../spec/funcs.ts";
+import { createLeafFuncSpec } from "../../spec/funcs.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { FuncSpec } from "../../bindings/FuncSpec.ts";
 

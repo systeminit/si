@@ -210,8 +210,8 @@ export function mergeResourceOperations(
   ];
   const getObjShape = getContent?.schema?.properties
     ? (Object.values(getContent.schema.properties).pop() as
-        | JsonSchema
-        | undefined)
+      | JsonSchema
+      | undefined)
     : undefined;
   const getProperties: PropertySet = new Set(
     Object.keys((getObjShape?.properties as JsonSchema) || {}),

@@ -1,14 +1,19 @@
 # Provider Pipelines
 
-This directory contains the infrastructure for transforming provider-specific resource schemas into System Initiative's unified spec format.
+This directory contains the infrastructure for transforming provider-specific
+resource schemas into System Initiative's unified spec format.
 
 ## Architecture
 
-The provider system is built around a centralized `ProviderConfig` pattern that encapsulates all provider-specific behavior:
+The provider system is built around a centralized `ProviderConfig` pattern that
+encapsulates all provider-specific behavior:
 
-- **Provider Registry**: A single source of truth mapping provider names to configurations (`PROVIDER_REGISTRY` in `types.ts`)
-- **Generic Pipeline**: Shared logic for transforming schemas into specs (`generic/`)
-- **Provider-Specific Pipelines**: Custom implementations for each provider (`aws/`, `hetzner/`, `dummy/`)
+- **Provider Registry**: A single source of truth mapping provider names to
+  configurations (`PROVIDER_REGISTRY` in `types.ts`)
+- **Generic Pipeline**: Shared logic for transforming schemas into specs
+  (`generic/`)
+- **Provider-Specific Pipelines**: Custom implementations for each provider
+  (`aws/`, `hetzner/`, `dummy/`)
 
 ## Adding a New Provider
 
@@ -33,7 +38,7 @@ src/pipelines/your-provider/
 In `schema.ts`, define your provider's schema types:
 
 ```typescript
-import type { CfProperty, CfHandler, CfHandlerKind } from "../types.ts";
+import type { CfHandler, CfHandlerKind, CfProperty } from "../types.ts";
 
 type JSONPointer = string;
 
@@ -54,11 +59,11 @@ In `provider.ts`, implement the required provider functions:
 
 ```typescript
 import {
-  ProviderConfig,
-  ProviderFunctions,
-  ProviderFuncSpecs,
-  SuperSchema,
   PROVIDER_REGISTRY,
+  ProviderConfig,
+  ProviderFuncSpecs,
+  ProviderFunctions,
+  SuperSchema,
 } from "../types.ts";
 import { normalizeOnlyProperties } from "../generic/index.ts";
 
@@ -94,7 +99,8 @@ const yourProviderFunctions: ProviderFunctions = {
 
 ### 4. Define Function Specs
 
-In `funcs.ts`, define your provider's action, code generation, management, and qualification functions:
+In `funcs.ts`, define your provider's action, code generation, management, and
+qualification functions:
 
 ```typescript
 import { FuncSpecInfo } from "../../spec/funcs.ts";
@@ -279,7 +285,9 @@ export async function generateYourProviderSpecs(
 
 async function loadYourProviderSchemas(): Promise<YourProviderSchema[]> {
   // Load from file, API, or generate mock schemas
-  const data = await Deno.readTextFile("./src/provider-schemas/yourprovider.json");
+  const data = await Deno.readTextFile(
+    "./src/provider-schemas/yourprovider.json",
+  );
   return JSON.parse(data);
 }
 ```
@@ -329,8 +337,10 @@ Each provider follows a consistent structure:
 - **`schema.ts`** - Provider-specific schema type definitions
 - **`provider.ts`** - Provider configuration, hooks, and registration
 - **`spec.ts`** - Schema transformation logic (raw schema → ExpandedPkgSpec)
-- **`funcs.ts`** - Function spec definitions (actions, code gen, management, qualification)
-- **`pipeline.ts`** - Pipeline orchestration (loading, transforming, applying steps)
+- **`funcs.ts`** - Function spec definitions (actions, code gen, management,
+  qualification)
+- **`pipeline.ts`** - Pipeline orchestration (loading, transforming, applying
+  steps)
 - **`pipeline-steps/`** - Custom transformation steps (optional)
 
 ## Key Concepts
@@ -365,23 +375,30 @@ The core function that transforms a schema into an `ExpandedPkgSpec`. It:
 
 ### generateDefaultFuncsFromConfig
 
-A helper that generates all default functions (actions, leaf, management, qualification) from your `ProviderConfig`. This eliminates boilerplate and ensures consistency.
+A helper that generates all default functions (actions, leaf, management,
+qualification) from your `ProviderConfig`. This eliminates boilerplate and
+ensures consistency.
 
 ## Examples
 
 Study these providers to understand different implementation approaches:
 
-- **Dummy** (`dummy/`): Minimal test provider - simplest implementation, great starting point
-- **Hetzner** (`hetzner/`): OpenAPI-based provider with schema parsing and property inference
-- **AWS** (`aws/`): CloudFormation-based provider with complex pipeline steps and extensive customization
+- **Dummy** (`dummy/`): Minimal test provider - simplest implementation, great
+  starting point
+- **Hetzner** (`hetzner/`): OpenAPI-based provider with schema parsing and
+  property inference
+- **AWS** (`aws/`): CloudFormation-based provider with complex pipeline steps
+  and extensive customization
 
 ## Common Patterns
 
 ### Schema Normalization Hooks
 
-Every provider must implement `normalizeProperty` to transform provider-specific schemas into a format compatible with SI's property creation system:
+Every provider must implement `normalizeProperty` to transform provider-specific
+schemas into a format compatible with SI's property creation system:
 
 **Common normalization tasks:**
+
 - Infer missing types from structure
 - Handle OpenAPI oneOf/anyOf composition (see `hetzner/provider.ts`)
 - Apply CloudFormation normalization (see `aws/provider.ts`)
@@ -389,11 +406,15 @@ Every provider must implement `normalizeProperty` to transform provider-specific
 
 ### Custom Required Property Logic
 
-Every provider must implement `isChildRequired` to determine which properties are required.
+Every provider must implement `isChildRequired` to determine which properties
+are required.
 
 **Common approaches:**
-- Check schema-level Set: `schema.requiredProperties.has(childName)` (OpenAPI/Hetzner)
-- Check parent's array: `parentProp.cfProp.required?.includes(childName)` (CloudFormation/AWS)
+
+- Check schema-level Set: `schema.requiredProperties.has(childName)`
+  (OpenAPI/Hetzner)
+- Check parent's array: `parentProp.cfProp.required?.includes(childName)`
+  (CloudFormation/AWS)
 
 ### Pipeline Steps
 
@@ -407,9 +428,11 @@ specs = await pruneUnwantedResources(specs);
 
 ### Property Classification Strategy
 
-Classify properties as `createOnly`, `readOnly`, `writeOnly`, or `primaryIdentifier`:
+Classify properties as `createOnly`, `readOnly`, `writeOnly`, or
+`primaryIdentifier`:
 
 **CloudFormation** (AWS): Explicitly marked in schema
+
 ```typescript
 // See aws/provider.ts - awsClassifyProperties()
 const onlyProperties: OnlyProperties = {
@@ -421,12 +444,13 @@ const onlyProperties: OnlyProperties = {
 ```
 
 **OpenAPI** (Hetzner): Infer from HTTP methods
+
 ```typescript
 // See hetzner/spec.ts - mergeResourceOperations()
 const onlyProperties: OnlyProperties = {
   createOnly: [], // In POST but not PUT
-  readOnly: [],   // In GET but not in POST/PUT/DELETE
-  writeOnly: [],  // In POST/PUT/DELETE but not GET
+  readOnly: [], // In GET but not in POST/PUT/DELETE
+  writeOnly: [], // In POST/PUT/DELETE but not GET
   primaryIdentifier: ["id"],
 };
 ```
@@ -434,6 +458,7 @@ const onlyProperties: OnlyProperties = {
 ## Questions?
 
 Review existing providers for reference implementations:
+
 1. **Start here**: `dummy/` - Simplest possible implementation
 2. **OpenAPI providers**: `hetzner/` - Schema parsing and property inference
 3. **Advanced customization**: `aws/` - Complex pipeline steps and overrides

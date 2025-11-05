@@ -17,7 +17,7 @@ export const DUMMY_PROP_OVERRIDES: Record<
     region: suggest("Dummy::Region", "name"),
     serverArn: arnProp("Dummy::Server", "arn"),
   },
-  
+
   "Dummy::Database": {
     serverId: [
       suggest("Dummy::Server", "id"),
@@ -50,7 +50,7 @@ export const DUMMY_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
     },
   ],
   [
-    "Dummy::Database", 
+    "Dummy::Database",
     (spec: ExpandedPkgSpec) => {
       const variant = spec.schemas[0].variants[0];
 

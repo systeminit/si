@@ -62,8 +62,8 @@ const IGNORE_RESOURCE_TYPES = new Set<string>([
 
 interface ResourceSpec {
   resourceType: string;
-  get?: { path: string, operation: AzureOpenApiOperation };
-  put?: { path: string, operation: AzureOpenApiOperation };
+  get?: { path: string; operation: AzureOpenApiOperation };
+  put?: { path: string; operation: AzureOpenApiOperation };
   handlers: { [key in CfHandlerKind]?: CfHandler };
 }
 
@@ -86,7 +86,10 @@ export function parseAzureSpec(
 
     const pathInfo = parseEndpointPath(path);
     if (!pathInfo) continue;
-    resourceOperations[pathInfo.resourceType] ??= { resourceType: pathInfo.resourceType, handlers: {} };
+    resourceOperations[pathInfo.resourceType] ??= {
+      resourceType: pathInfo.resourceType,
+      handlers: {},
+    };
     const resource = resourceOperations[pathInfo.resourceType];
 
     // CRUD operation: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines/{vmName}[/extensions/{vmExtensionName}]...
@@ -104,7 +107,7 @@ export function parseAzureSpec(
         resource.handlers.delete = defaultHandler;
       }
 
-    // List operation: /subscriptions/{subscriptionId}/providers/Microsoft.Compute/virtualMachines
+      // List operation: /subscriptions/{subscriptionId}/providers/Microsoft.Compute/virtualMachines
     } else if (methods.get && isListOperation(methods.get)) {
       resource.handlers.list = defaultHandler;
     }
@@ -117,7 +120,9 @@ export function parseAzureSpec(
     // Ignore certain problematic resource types (temporarily until we fix them)
     if (IGNORE_RESOURCE_TYPES.has(resource.resourceType)) continue;
     // Skip resource types not in the filter (if filter is provided)
-    if (resourceTypesFilter && !resourceTypesFilter.has(resource.resourceType)) continue;
+    if (
+      resourceTypesFilter && !resourceTypesFilter.has(resource.resourceType)
+    ) continue;
     // Skip subresources > 2 levels deep for now
     // TODO pick which of these to support
     const resourceDepth = resource.resourceType.split("/").length - 1;
@@ -161,8 +166,12 @@ export class AzureNormalizer {
   /// Normalize a general JSONSchema from Azure into simpler format
   /// without nesting.
   normalize(prop: AzureSchemaDefinition): NormalizedAzureSchema;
-  normalize(prop: AzureSchemaDefinition | undefined): NormalizedAzureSchema | undefined;
-  normalize(prop: AzureSchemaDefinition | undefined): NormalizedAzureSchema | undefined {
+  normalize(
+    prop: AzureSchemaDefinition | undefined,
+  ): NormalizedAzureSchema | undefined;
+  normalize(
+    prop: AzureSchemaDefinition | undefined,
+  ): NormalizedAzureSchema | undefined {
     // This is only meant to be called at the top level, non-recursively
     if (prop === undefined) return undefined;
     assert(this.normalizing.length === 0);
@@ -174,7 +183,10 @@ export class AzureNormalizer {
 
   /// Normalize a JSONSchema and merge its properties into an existing normalized schema. If
   /// the schemas are incompatible, throws an exception.
-  intersect(prop: AzureSchemaDefinition | undefined, intersected: NormalizedAzureSchema) {
+  intersect(
+    prop: AzureSchemaDefinition | undefined,
+    intersected: NormalizedAzureSchema,
+  ) {
     return intersectAzureSchema(this.normalize(prop), intersected);
   }
 
@@ -190,7 +202,10 @@ export class AzureNormalizer {
   ///     === { foo: float }
   ///
   /// @throws if we cannot find a common normalized shape (for example, string union object).
-  union(prop: AzureSchemaDefinition | undefined, unioned: NormalizedAzureSchema) {
+  union(
+    prop: AzureSchemaDefinition | undefined,
+    unioned: NormalizedAzureSchema,
+  ) {
     return unionAzureSchema(this.normalize(prop), unioned);
   }
 
@@ -254,7 +269,8 @@ export class AzureNormalizer {
 
       // At the root level, attach collected discriminators
       if (
-        this.discriminatorCollector && Object.keys(this.discriminatorCollector).length > 0
+        this.discriminatorCollector &&
+        Object.keys(this.discriminatorCollector).length > 0
       ) {
         normalized.discriminators = this.discriminatorCollector;
       }
@@ -285,14 +301,16 @@ export class AzureNormalizer {
   /// Returns expanded properties and discriminator metadata, or undefined if no discriminators found.
   private expandDiscriminators(
     discriminator: AzureSchemaDefinition["discriminator"],
-    properties: AzureSchemaDefinition["properties"]
+    properties: AzureSchemaDefinition["properties"],
   ): {
     expandedProperties: Record<string, JSONSchema>;
     discriminators: Record<string, Record<string, string>>;
   } | undefined {
     if (!discriminator) return undefined;
     if (!this.definitions) {
-      throw new Error(`Schema has discriminator but no definitions: ${discriminator}`);
+      throw new Error(
+        `Schema has discriminator but no definitions: ${discriminator}`,
+      );
     }
     if (!properties) return undefined;
 
@@ -498,7 +516,9 @@ export class AzureNormalizer {
     if (expandedProperties) {
       prop.properties = {};
       if (Object.keys(expandedProperties).length > 0) {
-        for (const [propName, childProp] of Object.entries(expandedProperties)) {
+        for (
+          const [propName, childProp] of Object.entries(expandedProperties)
+        ) {
           const child = this.normalizeOrCycle(childProp);
           if (!child) continue; // If the prop is part of a cycle, don't include it
           // TODO find a better way! This fixes some Azure schemas with empty properties
@@ -530,7 +550,9 @@ export class AzureNormalizer {
       }
     }
     if (items) {
-      prop.items = this.normalizeOrCycle(Array.isArray(items) ? { anyOf: items } : items);
+      prop.items = this.normalizeOrCycle(
+        Array.isArray(items) ? { anyOf: items } : items,
+      );
       if (prop.items === undefined) return undefined;
       defaultAnyTypeTo(prop.items, "string");
     }
@@ -751,7 +773,10 @@ function buildDomainAndResourceValue(
     }
 
     // Remove readonly properties from the domain
-    domain.properties = removeReadOnlyProperties(domain.properties ?? {}, new Set());
+    domain.properties = removeReadOnlyProperties(
+      domain.properties ?? {},
+      new Set(),
+    );
     if (Object.keys(domain.properties).length === 0) {
       logger.debug(`No properties found in PUT request for ${resourceType}`);
       return null;
@@ -759,9 +784,10 @@ function buildDomainAndResourceValue(
   }
 
   // Get discriminators from the shared collector
-  const discriminators = Object.keys(normalizer.discriminatorCollector).length > 0
-    ? normalizer.discriminatorCollector
-    : undefined;
+  const discriminators =
+    Object.keys(normalizer.discriminatorCollector).length > 0
+      ? normalizer.discriminatorCollector
+      : undefined;
 
   const description = get.operation.description ||
     (get.operation.summary as string) ||
@@ -807,12 +833,19 @@ function requestSchema(
       case "path": {
         // Create the schema for the parameter itself
         const paramSchema = normalizer.normalize(param.schema ?? {});
-        if ("type" in param) normalizer.intersect({ type: param.type }, paramSchema);
+        if ("type" in param) {
+          normalizer.intersect({ type: param.type }, paramSchema);
+        }
         assert(!param.style, "Parameter style not supported");
-        if (param.description) normalizer.intersect({ description: param.description }, paramSchema);
+        if (param.description) {
+          normalizer.intersect({ description: param.description }, paramSchema);
+        }
 
         // Add the parameter into the overall schema
-        normalizer.intersect({ properties: { [param.name]: paramSchema, } }, schema);
+        normalizer.intersect(
+          { properties: { [param.name]: paramSchema } },
+          schema,
+        );
         // All parameters must be required since they're in the path
         normalizer.intersect({ required: [param.name] }, schema);
         break;
@@ -912,7 +945,9 @@ function removeReadOnlyProperty(
 }
 
 export function parseEndpointPath(path: string) {
-  if (!path.startsWith("/")) throw new Error(`Endpoint path not absolute: ${path}`);
+  if (!path.startsWith("/")) {
+    throw new Error(`Endpoint path not absolute: ${path}`);
+  }
   const segments = path.slice(1).split("/");
 
   // /subscriptions/{subscriptionId}
@@ -952,7 +987,9 @@ export function parseEndpointPath(path: string) {
 
   // /operation (the final segment)
   if (segments.shift()) return undefined;
-  if (segments.length !== 0) throw new Error(`Internal error: unexpected extra segments in ${path}`);
+  if (segments.length !== 0) {
+    throw new Error(`Internal error: unexpected extra segments in ${path}`);
+  }
 
   return {
     isCrudPath: true,

@@ -114,13 +114,13 @@ export function createQualificationFuncs(domain_id: string): FuncSpec[] {
         uniqueId: domain_id,
         deleted: false,
       },
-    ]),
+    ])
   );
 }
 
 export function createAuthenticationFuncs() {
   return Object.entries(AUTHENTICATION_FUNC_SPECS).map(([func, spec]) =>
-    createDefaultFuncSpec(func, spec, []),
+    createDefaultFuncSpec(func, spec, [])
   );
 }
 
@@ -138,7 +138,8 @@ export const QUALIFICATION_FUNC_SPECS = {
   "Hetzner Authentication Qualification": {
     id: "f594dc6ebe7597027203a39f2bef0307f2c09d97067c1a4e1a4fb9f7f3b9d379",
     displayName: "Qualify Credentials with Hetzner Cloud",
-    path: "./src/pipelines/hetzner/funcs/qualifications/credentialQualification.ts",
+    path:
+      "./src/pipelines/hetzner/funcs/qualifications/credentialQualification.ts",
     backendKind: "jsAttribute",
     responseType: "qualification",
   },

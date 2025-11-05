@@ -99,9 +99,9 @@ interface PropSpecOverrides {
   joiValidation?: string;
   cfProp:
     | (CfProperty & {
-        // The name of the definition this property lives under
-        defName?: string;
-      })
+      // The name of the definition this property lives under
+      defName?: string;
+    })
     | undefined;
 }
 
@@ -164,9 +164,11 @@ export function createDefaultPropFromJsonSchema(
   ): ExpandedPropSpec | undefined {
     if (propPath.length > MAX_PROP_DEPTH) {
       throw new Error(
-        `Prop tree loop detected: Tried creating prop more than ${MAX_PROP_DEPTH} levels deep in the prop tree: ${propPath.join(
-          "/",
-        )}`,
+        `Prop tree loop detected: Tried creating prop more than ${MAX_PROP_DEPTH} levels deep in the prop tree: ${
+          propPath.join(
+            "/",
+          )
+        }`,
       );
     }
 
@@ -196,10 +198,9 @@ export function createDefaultPropFromJsonSchema(
         widgetKind: null,
         widgetOptions: [],
         hidden: false,
-        docLink:
-          parentProp?.kind === "object"
-            ? docFn(schema, schemaProp.defName, name)
-            : null,
+        docLink: parentProp?.kind === "object"
+          ? docFn(schema, schemaProp.defName, name)
+          : null,
         documentation: cfProp.description ?? null,
         uiOptionals: null,
       };
@@ -337,9 +338,11 @@ export function createDefaultPropFromJsonSchema(
               break;
             // This is a special case (and seems likely wrong), but may as well support it
             case "(^arn:[a-z\\d-]+:rekognition:[a-z\\d-]+:\\d{12}:collection\\/([a-zA-Z0-9_.\\-]+){1,255})":
-              validation += `.pattern(new RegExp(${JSON.stringify(
-                cfProp.format,
-              )}))`;
+              validation += `.pattern(new RegExp(${
+                JSON.stringify(
+                  cfProp.format,
+                )
+              }))`;
               break;
             case "base64url":
               // TODO ADD VALIDATION FOR THIS
@@ -358,9 +361,11 @@ export function createDefaultPropFromJsonSchema(
           if (cfProp.pattern !== undefined) {
             const toRegexp = cfPcreToRegexp(cfProp.pattern);
             if (toRegexp) {
-              validation += `.pattern(new RegExp(${JSON.stringify(
-                toRegexp.pattern,
-              )}${
+              validation += `.pattern(new RegExp(${
+                JSON.stringify(
+                  toRegexp.pattern,
+                )
+              }${
                 toRegexp.flags ? `, ${JSON.stringify(toRegexp.flags)}` : ""
               }))`;
             }
@@ -473,18 +478,22 @@ export function createDefaultPropFromJsonSchema(
 
       if (!cfProp.type && cfProp.description == "") {
         logger.warn(
-          `No type + empty description for top level prop at ${propPath.join(
-            "/",
-          )}: ${util.inspect(cfProp)}`,
+          `No type + empty description for top level prop at ${
+            propPath.join(
+              "/",
+            )
+          }: ${util.inspect(cfProp)}`,
         );
         return undefined;
       }
 
       if (!cfProp.type && cfProp.title) {
         logger.warn(
-          `No type for top level prop at ${propPath.join("/")}: ${util.inspect(
-            cfProp,
-          )}`,
+          `No type for top level prop at ${propPath.join("/")}: ${
+            util.inspect(
+              cfProp,
+            )
+          }`,
         );
         return undefined;
       }
