@@ -418,7 +418,8 @@ impl FriggStore {
         let bytes = self
             .store
             .get(object_key.to_string())
-            .await?
+            .await
+            .map_err(Error::EntryGetChangeSetIndex)?
             .ok_or(Error::IndexObjectNotFound(object_key.into()))?;
         let object = serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
 
