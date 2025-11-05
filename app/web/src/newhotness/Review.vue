@@ -27,7 +27,7 @@
       <div class="flex-1 text-sm font-medium">Review Changes</div>
       <div v-if="!ctx.onHead.value" class="flex gap-xs items-center">
         <div
-          v-if="filteredComponentList?.length > 0"
+          v-if="filteredAndOrderedComponentList?.length > 0"
           :class="
             clsx(
               'text-sm px-xs py-2xs rounded',
@@ -40,8 +40,10 @@
         >
           {{
             selectedComponentId
-              ? `${currentComponentIndex + 1} / ${filteredComponentList.length}`
-              : filteredComponentList.length
+              ? `${currentComponentIndex + 1} / ${
+                  filteredAndOrderedComponentList.length
+                }`
+              : filteredAndOrderedComponentList.length
           }}
         </div>
         <NewButton
@@ -103,13 +105,10 @@
           :borderBottom="false"
           @focus="() => (selectedComponentId = undefined)"
           @keydown.tab="onSearchTab"
-          @keydown.up="() => searchControl(true)"
-          @keydown.down="() => searchControl(false)"
+          @keydown.up.prevent.stop="controlUp"
+          @keydown.down.prevent.stop="controlDown"
         />
-        <div
-          ref="componentListRef"
-          class="flex flex-col gap-xs flex-grow scrollable"
-        >
+        <div ref="componentListRef" class="flex-1 min-h-0 scrollable">
           <EmptyState
             v-if="componentList.length === 0"
             icon="diff"
@@ -117,38 +116,35 @@
             class="p-sm"
           />
           <EmptyState
-            v-else-if="filteredComponentList?.length === 0"
+            v-else-if="filteredAndOrderedComponentList?.length === 0"
             icon="diff"
             text="No changed components match your search"
             class="p-sm"
           />
-          <ComponentListItem
-            v-for="component in addedComponentList"
-            :key="component.id"
-            :component="component"
-            status="Added"
-            :selected="component.id === selectedComponentId"
-            :data-component-id="component.id"
-            @click="selectComponent(component.id)"
-          />
-          <ComponentListItem
-            v-for="component in modifiedComponentList"
-            :key="component.id"
-            :component="component"
-            status="Modified"
-            :selected="component.id === selectedComponentId"
-            :data-component-id="component.id"
-            @click="selectComponent(component.id)"
-          />
-          <ComponentListItem
-            v-for="component in removedComponentList"
-            :key="component.id"
-            :component="component"
-            status="Removed"
-            :selected="component.id === selectedComponentId"
-            :data-component-id="component.id"
-            @click="selectComponent(component.id)"
-          />
+          <div
+            v-else
+            class="w-full relative"
+            :style="{
+              ['overflow-anchor']: 'none',
+              height: `${virtualListHeight}px`,
+            }"
+          >
+            <ComponentListItem
+              v-for="item in virtualItems"
+              :key="item.index"
+              :component="filteredAndOrderedComponentList[item.index]!"
+              :status="filteredAndOrderedComponentList[item.index]!.diffStatus"
+              :selected="filteredAndOrderedComponentList[item.index]!.id === selectedComponentId"
+              :data-component-id="filteredAndOrderedComponentList[item.index]!.id"
+              :data-virtualizer-idx="item.index"
+              :style="{
+                transform: `translateY(${item.start}px)`,
+              }"
+              @click="
+                selectComponent(filteredAndOrderedComponentList[item.index]!.id)
+              "
+            />
+          </div>
         </div>
       </div>
       <div class="main flex flex-col gap-sm m-xs">
@@ -387,6 +383,7 @@
 </template>
 
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { useQueries, useQuery, useQueryClient } from "@tanstack/vue-query";
 import {
   computed,
@@ -407,6 +404,7 @@ import {
 import { useRouter, useRoute } from "vue-router";
 import * as _ from "lodash-es";
 import { sleep } from "@si/ts-lib/src/async-sleep";
+import { useVirtualizer } from "@tanstack/vue-virtual";
 import {
   bifrost,
   bifrostList,
@@ -456,8 +454,8 @@ const initializeFromUrl = () => {
   } else {
     // TODO(Wendy) - remove this part to not have the first component selected by default
     nextTick(() => {
-      if (componentList.value[0]?.id) {
-        selectedComponentId.value = componentList.value[0].id;
+      if (filteredAndOrderedComponentList.value[0]?.id) {
+        selectedComponentId.value = filteredAndOrderedComponentList.value[0].id;
       }
     });
   }
@@ -831,19 +829,29 @@ const deselectComponent = () => {
 const scrollSelectedComponentIntoView = async () => {
   if (!selectedComponentId.value || !componentListRef.value) return;
 
+  // First, wait one tick for the dom classes to update
   await nextTick();
-
-  // Find the selected component element
-  const selectedElement = componentListRef.value.querySelector(
+  // Then, see if the element exists in the DOM
+  const el = componentListRef.value.querySelector(
     `[data-component-id="${selectedComponentId.value}"]`,
   );
 
-  if (selectedElement) {
-    selectedElement.scrollIntoView({
-      behavior: "smooth",
+  if (el) {
+    // If it does, scroll it to the center
+    el.scrollIntoView({
       block: "center",
-      inline: "nearest",
     });
+  } else {
+    // Otherwise, we need to scroll using the virtualizer
+    const selectionIndex = filteredAndOrderedComponentList.value.findIndex(
+      (c) => c.id === selectedComponentId.value,
+    );
+    if (selectionIndex >= 0) {
+      virtualList.value.scrollToIndex(selectionIndex, { align: "center" });
+    } else {
+      // scroll to the top when search is selected
+      virtualList.value.scrollToIndex(0);
+    }
   }
 };
 
@@ -854,33 +862,26 @@ const searchString = ref("");
 /** Components, filtered by the search string */
 const filteredComponentList = useComponentSearch(searchString, componentList);
 
+const filteredAndOrderedComponentList = computed(() => {
+  if (filteredComponentList.value) {
+    return [
+      ...filteredComponentList.value.filter((c) => c.diffStatus === "Added"),
+      ...filteredComponentList.value.filter((c) => c.diffStatus === "Modified"),
+      ...filteredComponentList.value.filter((c) => c.diffStatus === "Removed"),
+    ];
+  }
+  return [];
+});
+
 // Watch for componentList changes and reinitialize from URL if needed
 watch(
-  filteredComponentList,
+  filteredAndOrderedComponentList,
   (newList) => {
     if (newList && newList.length > 0 && !selectedComponentId.value) {
       initializeFromUrl();
     }
   },
   { immediate: true },
-);
-
-/** Added components, filtered by the search string */
-const addedComponentList = computed(
-  () =>
-    filteredComponentList.value?.filter((c) => c.diffStatus === "Added") ?? [],
-);
-/** Modified components, filtered by the search string */
-const modifiedComponentList = computed(
-  () =>
-    filteredComponentList.value?.filter((c) => c.diffStatus === "Modified") ??
-    [],
-);
-/** Removed components, filtered by the search string */
-const removedComponentList = computed(
-  () =>
-    filteredComponentList.value?.filter((c) => c.diffStatus === "Removed") ??
-    [],
 );
 
 // Calculate action counts for the selected component, only including actions with count > 0
@@ -908,12 +909,10 @@ const actionCounts = computed(() => {
         results[actionName] = { count: 0, hasFailed: false };
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       results[actionName]!.count += 1;
 
       // Track if any action in this group has failed
       if (action.state === ActionState.Failed) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         results[actionName]!.hasFailed = true;
       }
     }
@@ -936,7 +935,7 @@ const exitReview = () => {
 const currentComponentIndex = computed(() => {
   if (!selectedComponentId.value) return -1;
   return (
-    filteredComponentList.value?.findIndex(
+    filteredAndOrderedComponentList.value?.findIndex(
       (component) => component.id === selectedComponentId.value,
     ) ?? -1
   );
@@ -944,12 +943,12 @@ const currentComponentIndex = computed(() => {
 
 const canGoBack = computed(() => {
   // Disabled if there are no changes or only 1 change
-  return (filteredComponentList.value?.length ?? 0) > 1;
+  return (filteredAndOrderedComponentList.value?.length ?? 0) > 1;
 });
 
 const canGoForward = computed(() => {
   // Disabled if there are no changes or only 1 change
-  return (filteredComponentList.value?.length ?? 0) > 1;
+  return (filteredAndOrderedComponentList.value?.length ?? 0) > 1;
 });
 
 const goToPreviousComponent = (e?: Event) => {
@@ -963,21 +962,23 @@ const goToPreviousComponent = (e?: Event) => {
 
   if (!selectedComponentId.value) {
     // No component selected - select the first one
-    const firstComponent = filteredComponentList.value?.[0];
+    const firstComponent = filteredAndOrderedComponentList.value?.[0];
     if (firstComponent) {
       selectComponent(firstComponent.id);
     }
   } else if (currentComponentIndex.value > 0) {
     // Go to previous component
     const prevComponent =
-      filteredComponentList.value?.[currentComponentIndex.value - 1];
+      filteredAndOrderedComponentList.value?.[currentComponentIndex.value - 1];
     if (prevComponent) {
       selectComponent(prevComponent.id);
     }
   } else {
     // At first component, wrap around to last component
     const lastComponent =
-      filteredComponentList.value?.[filteredComponentList.value.length - 1];
+      filteredAndOrderedComponentList.value?.[
+        filteredAndOrderedComponentList.value.length - 1
+      ];
     if (lastComponent) {
       selectComponent(lastComponent.id);
     }
@@ -995,75 +996,81 @@ const goToNextComponent = (e?: Event) => {
 
   if (!selectedComponentId.value) {
     // No component selected - select the first one
-    const firstComponent = filteredComponentList.value?.[0];
+    const firstComponent = filteredAndOrderedComponentList.value?.[0];
     if (firstComponent) {
       selectComponent(firstComponent.id);
     }
   } else if (
     currentComponentIndex.value <
-    (filteredComponentList.value?.length ?? 0) - 1
+    (filteredAndOrderedComponentList.value?.length ?? 0) - 1
   ) {
     // Go to next component
     const nextComponent =
-      filteredComponentList.value?.[currentComponentIndex.value + 1];
+      filteredAndOrderedComponentList.value?.[currentComponentIndex.value + 1];
     if (nextComponent) {
       selectComponent(nextComponent.id);
     }
   } else {
     // At last component, wrap around to first component
-    const firstComponent = filteredComponentList.value?.[0];
+    const firstComponent = filteredAndOrderedComponentList.value?.[0];
     if (firstComponent) {
       selectComponent(firstComponent.id);
     }
   }
 };
 
-const controlUp = () => {
-  const focusable = Array.from(
-    document.querySelectorAll('[tabindex="0"]'),
-  ) as HTMLElement[];
-  if (!selectedComponentId.value) {
+const focusSearchFirst = () => {
+  if (
+    !selectedComponentId.value &&
+    searchRef.value?.inputDOMEl !== document.activeElement
+  ) {
     searchRef.value?.focusSearch();
+    return true;
+  }
+  return false;
+};
+const controlUp = () => {
+  if (focusSearchFirst()) {
     return;
   }
 
-  const index = focusable.findIndex(
-    (element) =>
-      element.dataset.listItemComponentId === selectedComponentId.value,
-  );
-
-  if (index - 1 > -1) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const el = focusable[index - 1]!;
-    el.focus();
-    selectedComponentId.value = el.dataset.listItemComponentId;
-  } else {
+  if (currentComponentIndex.value - 1 > -1) {
+    selectedComponentId.value =
+      filteredAndOrderedComponentList.value[
+        currentComponentIndex.value - 1
+      ]!.id;
+    searchRef.value?.blurSearch();
+  } else if (searchRef.value?.inputDOMEl !== document.activeElement) {
     deselectComponent();
     searchRef.value?.focusSearch();
+  } else {
+    selectedComponentId.value =
+      filteredAndOrderedComponentList.value[
+        filteredAndOrderedComponentList.value.length - 1
+      ]!.id;
+    searchRef.value?.blurSearch();
   }
 };
 const controlDown = () => {
-  const focusable = Array.from(
-    document.querySelectorAll('[tabindex="0"]'),
-  ) as HTMLElement[];
-  if (!selectedComponentId.value) {
-    searchRef.value?.focusSearch();
+  if (focusSearchFirst()) {
     return;
   }
 
-  const index = focusable.findIndex(
-    (element) =>
-      element.dataset.listItemComponentId === selectedComponentId.value,
-  );
-
-  if (index + 1 < focusable.length) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const el = focusable[index + 1]!;
-    el.focus();
-    selectedComponentId.value = el.dataset.listItemComponentId;
-  } else {
+  if (
+    currentComponentIndex.value + 1 <
+    filteredAndOrderedComponentList.value.length
+  ) {
+    selectedComponentId.value =
+      filteredAndOrderedComponentList.value[
+        currentComponentIndex.value + 1
+      ]!.id;
+    searchRef.value?.blurSearch();
+  } else if (searchRef.value?.inputDOMEl !== document.activeElement) {
     deselectComponent();
     searchRef.value?.focusSearch();
+  } else {
+    selectedComponentId.value = filteredAndOrderedComponentList.value[0]!.id;
+    searchRef.value?.blurSearch();
   }
 };
 
@@ -1085,10 +1092,20 @@ const onTab = (e: KeyDetails["Tab"]) => {
 const onSearchTab = (e: KeyboardEvent) => {
   e.preventDefault();
   if (e.shiftKey) {
-    searchControl(true);
+    controlUp();
   } else {
-    searchControl(false);
+    controlDown();
   }
+};
+
+const onArrowUp = (e: KeyDetails["ArrowUp"]) => {
+  e.preventDefault();
+  controlUp();
+};
+
+const onArrowDown = (e: KeyDetails["ArrowDown"]) => {
+  e.preventDefault();
+  controlDown();
 };
 
 const onArrowLeft = (e: KeyDetails["ArrowLeft"]) => {
@@ -1099,22 +1116,6 @@ const onArrowLeft = (e: KeyDetails["ArrowLeft"]) => {
 const onArrowRight = (e: KeyDetails["ArrowRight"]) => {
   e.preventDefault();
   goToNextComponent();
-};
-const searchControl = (up: boolean) => {
-  const focusable = Array.from(
-    document.querySelectorAll('[tabindex="0"]'),
-  ) as HTMLElement[];
-  if (up) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const el = focusable[focusable.length - 1]!;
-    el.focus();
-    selectedComponentId.value = el.dataset.listItemComponentId;
-  } else {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const el = focusable[0]!;
-    el.focus();
-    selectedComponentId.value = el.dataset.listItemComponentId;
-  }
 };
 
 const { restoreComponents } = useComponentDeletion(undefined, true);
@@ -1148,8 +1149,8 @@ const restoreComponent = async () => {
 onMounted(() => {
   keyEmitter.on("Escape", onEscape);
   keyEmitter.on("Tab", onTab);
-  keyEmitter.on("ArrowUp", controlUp);
-  keyEmitter.on("ArrowDown", controlDown);
+  keyEmitter.on("ArrowUp", onArrowUp);
+  keyEmitter.on("ArrowDown", onArrowDown);
   keyEmitter.on("ArrowLeft", onArrowLeft);
   keyEmitter.on("ArrowRight", onArrowRight);
 
@@ -1223,6 +1224,23 @@ const fixActionsPanelState = () => {
 watch(selectedComponentId, () => {
   fixActionsPanelState();
 });
+
+// VIRTUALIZER for the component list
+
+const virtualizerOptions = computed(() => ({
+  count: filteredAndOrderedComponentList.value?.length ?? 0,
+  getScrollElement: () => componentListRef.value!,
+  estimateSize: () => 32,
+  getItemKey: (i: number) => {
+    return filteredAndOrderedComponentList.value[i]!.id;
+  },
+  overscan: 5,
+}));
+
+const virtualList = useVirtualizer(virtualizerOptions);
+
+const virtualListHeight = computed(() => virtualList.value.getTotalSize());
+const virtualItems = computed(() => virtualList.value.getVirtualItems());
 </script>
 
 <style lang="css" scoped>

@@ -229,7 +229,7 @@ const scrollToSelected = async () => {
   await nextTick();
   // Then, see if the element exists in the DOM
   const el = document.getElementsByClassName("add-component-selected-item")[0];
-  if (el && scrollRef.value) {
+  if (el) {
     // If it does, scroll it to the center
     el.scrollIntoView({ block: "center" });
   } else {

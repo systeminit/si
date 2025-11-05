@@ -268,6 +268,8 @@ const blurSearch = () => {
   }
 };
 
+const inputDOMEl = computed(() => searchInputRef.value);
+
 const onBlur = (e: FocusEvent) => {
   emit("blur", e);
 };
@@ -286,5 +288,6 @@ defineExpose({
   clearSearch,
   focusSearch,
   blurSearch,
+  inputDOMEl,
 });
 </script>
