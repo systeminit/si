@@ -114,13 +114,16 @@ export const makeSavePayload: MakePayload = (
   // TODO - Paul there's a better way to handle this for sure!
   let coercedVal: string | boolean | number | null = value;
 
+  const payload: componentTypes.UpdateComponentAttributesArgs = {};
+
   // We don't want to coerce a prop path when connecting via a subscription, so skip it (e.g. prop
   // kind is "integer", but the value is the prop path, which is a "string").
   if (!connectingComponentId) {
     if (value === "") {
-      // For now, we don't allow a user to enter an empty string becuase passing an empty string is
-      // effectively an unset operation.
-      coercedVal = null;
+      // When clearing an input field, send $source: null to properly unset the value
+      // and trigger attribute functions to re-run with the default/schema variant prototype
+      payload[path] = { $source: null };
+      return payload;
     } else if (propKind === PropKind.Boolean) {
       coercedVal = value.toLowerCase() === "true" || value === "1";
     } else if (propKind === PropKind.Integer) {
@@ -130,7 +133,6 @@ export const makeSavePayload: MakePayload = (
     }
   }
 
-  const payload: componentTypes.UpdateComponentAttributesArgs = {};
   payload[path] = coercedVal;
   if (connectingComponentId) {
     payload[path] = {

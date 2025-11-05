@@ -435,13 +435,10 @@ async fn update_attributes_inner(
                         // If the parent is a map or array, remove the value
                         AttributeValue::remove(ctx, target_av_id).await?;
                     } else {
-                        // Otherwise, just set it to its default value
-                        if AttributeValue::component_prototype_id(ctx, target_av_id)
-                            .await?
-                            .is_some()
-                        {
-                            AttributeValue::use_default_prototype(ctx, target_av_id).await?;
-                        }
+                        // Otherwise, use the default prototype (either by removing an existing
+                        // component prototype to revert to the schema variant prototype, or by
+                        // creating a si:Unset component prototype to explicitly unset the value)
+                        AttributeValue::use_default_prototype(ctx, target_av_id).await?;
                     }
 
                     ctx.write_audit_log(
