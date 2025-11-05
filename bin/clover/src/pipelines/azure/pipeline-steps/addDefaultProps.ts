@@ -7,6 +7,7 @@ import {
   createScalarProp,
   ExpandedPropSpec,
   findPropByName,
+  toPropPath,
 } from "../../../spec/props.ts";
 import { AzureSchema } from "../schema.ts";
 
@@ -183,10 +184,12 @@ export function addDefaultProps(
         const prop = queue.pop();
         if (!prop) break;
 
+        const fullPath = toPropPath(prop.metadata.propPath);
+
         if (prop.metadata.createOnly) {
-          propUsageMap.createOnly.push(prop.name);
+          propUsageMap.createOnly.push(fullPath);
         } else if (!prop.metadata.readOnly) {
-          propUsageMap.updatable.push(prop.name);
+          propUsageMap.updatable.push(fullPath);
         }
 
         if (prop.kind === "object") {

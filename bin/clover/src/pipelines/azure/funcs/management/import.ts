@@ -96,10 +96,20 @@ async function main({
     resourceGroup: _.get(component.properties, ["domain", "resourceGroup"], ""),
   };
 
-  // Copy updatable properties from the resource
-  for (const [key, value] of Object.entries(transformedResource)) {
-    if (updatableProperties.has(key) && value != null) {
-      resourceDomainProperties[key] = value;
+  // Copy updatable properties from the resource using full paths
+  for (const path of updatableProperties) {
+    // Strip "/domain/" prefix to get the path within domain
+    if (!path.startsWith("/domain/")) {
+      continue;
+    }
+    const domainPath = path.substring("/domain/".length);
+
+    // Get value from transformedResource using the path
+    const value = _.get(transformedResource, domainPath);
+
+    // Set in resourceDomainProperties if value exists
+    if (value != null) {
+      _.set(resourceDomainProperties, domainPath, value);
     }
   }
 
@@ -118,7 +128,7 @@ async function main({
         apiVersion: apiVersion,
       },
       ...component.properties?.domain,
-      ...resourceDomainProperties,
+      ...cleanedDomainProperties,
     },
   };
 
@@ -132,9 +142,7 @@ async function main({
   const newAttributes: Output["ops"]["create"][string]["attributes"] = {};
   for (const [skey, svalue] of Object.entries(component.sources || {})) {
     // Skip createOnly attributes - they can only be set on new components
-    // Extract the property name from the path (e.g., "/domain/location" -> "location")
-    const propName = skey.split("/").pop();
-    if (propName && createOnlyProperties.has(propName)) {
+    if (createOnlyProperties.has(skey)) {
       continue;
     }
     newAttributes[skey] = {
