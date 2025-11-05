@@ -75,6 +75,16 @@ export type MjolnirBulk = Array<{
   checksum: Checksum;
 }>;
 
+export interface BulkSuccess {
+  workspaceSnapshotAddress: string;
+  frontEndObject: AtomWithData;
+  indexChecksum: string;
+}
+
+export interface AtomWithDocument extends Common {
+  doc: AtomDocument;
+}
+
 export const SHARED_BROADCAST_CHANNEL_NAME = "SHAREDWORKER_BROADCAST";
 export const FORCE_LEADER_ELECTION = "FORCE_LEADER_ELECTION";
 export const DB_NOT_INIT_ERR = "DB_NOT_INIT";
@@ -392,6 +402,15 @@ export interface TabDBInterface {
   ): void;
   /* these are used for testing purposes, and should not be used outside the web worker in production code */
   oneInOne(rows: SqlValue[][]): SqlValue | typeof NOROW;
+  bulkCreateAtoms(
+    indexObjects: (BulkSuccess | AtomWithDocument)[],
+    chunkSize?: number,
+  ): void;
+  bulkInsertAtomMTMs(
+    indexObjects: (BulkSuccess | AtomWithDocument)[],
+    indexChecksum: Checksum,
+    chunkSize?: number,
+  ): void;
   encodeDocumentForDB(doc: object): Uint8Array;
   decodeDocumentFromDB(doc: ArrayBuffer): AtomDocument;
   handleDeploymentPatchMessage(data: DeploymentPatchBatch): Promise<void>;

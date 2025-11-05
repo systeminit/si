@@ -72,6 +72,8 @@ import {
   StoredMvIndex,
   AtomWithData,
   AtomOperation,
+  BulkSuccess,
+  AtomWithDocument,
 } from "./types/dbinterface";
 import {
   BifrostComponent,
@@ -170,6 +172,9 @@ const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
       poolUtil = await sqlite3.installOpfsSAHPoolVfs({});
     } else if (poolUtil.isPaused()) {
       await poolUtil.unpauseVfs();
+    }
+    if (testing) {
+      poolUtil.unlink(`/${dbname}`);
     }
     sqlite = new poolUtil.OpfsSAHPoolDb(`/${dbname}`);
     debug(
@@ -313,7 +318,12 @@ const exec = (
   if (!sqlite) {
     throw new Error(DB_NOT_INIT_ERR);
   }
-  return sqlite.exec(opts);
+  try {
+    return sqlite.exec(opts);
+  } catch (err) {
+    error(err);
+    return [[-1]];
+  }
 };
 
 /**
@@ -1734,11 +1744,6 @@ const patchAtom = async (
   return afterDoc;
 };
 
-interface BulkSuccess {
-  workspaceSnapshotAddress: string;
-  frontEndObject: AtomWithData;
-  indexChecksum: string;
-}
 type BulkResponse = { successful: BulkSuccess[]; failed: MjolnirBulk[] };
 const mjolnirBulk = async (
   db: Database,
@@ -2230,10 +2235,6 @@ const atomDocumentForChecksum = (
 
   return undefined;
 };
-
-interface AtomWithDocument extends Common {
-  doc: AtomDocument;
-}
 
 interface AtomWithRawData extends Common {
   data: ArrayBuffer;
@@ -4735,6 +4736,29 @@ const dbInterface: TabDBInterface = {
     });
     const cId = oneInOne(row);
     return cId === changeSetId;
+  },
+  bulkCreateAtoms: (
+    indexObjects: (BulkSuccess | AtomWithDocument)[],
+    chunkSize = 2000,
+  ) => {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) => {
+      bulkCreateAtoms(db, indexObjects, chunkSize);
+    });
+  },
+  bulkInsertAtomMTMs: (
+    indexObjects: (BulkSuccess | AtomWithDocument)[],
+    indexChecksum: Checksum,
+    chunkSize = 2000,
+  ) => {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) => {
+      bulkInsertAtomMTMs(db, indexObjects, indexChecksum, chunkSize);
+    });
   },
 
   odin(changeSetId: ChangeSetId): object {
