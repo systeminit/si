@@ -29,9 +29,21 @@ use si_id::KeyPairPk;
 
 use super::Result;
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum Provider {
+    #[serde(rename_all = "camelCase")]
+    Aws { region: String },
+    #[serde(rename_all = "camelCase")]
+    Azure {
+        location: String,
+        subscription_id: String,
+    },
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct AwsCredentialData {
+pub struct CredentialData {
     pub name: String,
     pub description: Option<String>,
     pub crypted: Vec<u8>,
@@ -43,8 +55,8 @@ pub struct AwsCredentialData {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Request {
-    pub aws_region: String,
-    pub credential: AwsCredentialData,
+    pub credential: CredentialData,
+    pub provider: Provider,
 }
 
 const INITIALIZATION_CHANGE_SET_NAME: &str = "Initialization";
@@ -87,7 +99,7 @@ pub async fn create_initialize_apply(
         ctx,
         "onboarded",
         serde_json::json!({
-                    "change_set_name": INITIALIZATION_CHANGE_SET_NAME,
+            "change_set_name": INITIALIZATION_CHANGE_SET_NAME,
         }),
     );
 
@@ -99,9 +111,41 @@ async fn initialize_and_apply(ctx: &mut DalContext, request: Request) -> Result<
     let view_id = View::get_id_for_default(ctx).await?;
     let credential_name = request.credential.name;
 
+    let (
+        credential_schema_name,
+        credential_prop_path,
+        region_or_location_schema,
+        region_or_location,
+        region_prop_path,
+        region_credential_path,
+        subscription_id,
+    ) = match &request.provider {
+        Provider::Aws { region } => (
+            "AWS Credential",
+            "/secrets/AWS Credential",
+            "Region",
+            region.clone(),
+            "/domain/region",
+            "/secrets/credential",
+            None,
+        ),
+        Provider::Azure {
+            location,
+            subscription_id,
+        } => (
+            "Microsoft Credential",
+            "/secrets/Microsoft Credential",
+            "Microsoft.Resources/locations",
+            location.clone(),
+            "/domain/name",
+            "/secrets/Microsoft Credential",
+            Some(subscription_id.clone()),
+        ),
+    };
+
     // Create the credential component
     let credential_component = {
-        let schema = Schema::get_or_install_by_name(ctx, "AWS Credential").await?;
+        let schema = Schema::get_or_install_by_name(ctx, credential_schema_name).await?;
         let sv_id = SchemaVariant::default_id_for_schema(ctx, schema.id()).await?;
         let component = Component::new(ctx, &credential_name, sv_id, view_id).await?;
 
@@ -109,7 +153,7 @@ async fn initialize_and_apply(ctx: &mut DalContext, request: Request) -> Result<
         let secret = Secret::new(
             ctx,
             &credential_name,
-            "AWS Credential".to_owned(),
+            credential_schema_name.to_owned(),
             request.credential.description,
             &request.credential.crypted,
             request.credential.key_pair_pk,
@@ -127,22 +171,22 @@ async fn initialize_and_apply(ctx: &mut DalContext, request: Request) -> Result<
         )
         .await?;
 
-        // Find the AWS Credential prop and attach the secret
+        // Find the credential prop and attach the secret
         {
-            let aws_credential_prop = Prop::find_prop_by_path(
+            let credential_prop = Prop::find_prop_by_path(
                 ctx,
                 sv_id,
-                &PropPath::new(["root", "secrets", "AWS Credential"]),
+                &PropPath::new(["root", "secrets", credential_schema_name]),
             )
             .await?;
 
             let property_values = PropertyEditorValues::assemble(ctx, component.id()).await?;
-            let aws_credential_attribute_value_id =
-                property_values.find_by_prop_id_or_err(aws_credential_prop.id())?;
+            let credential_attribute_value_id =
+                property_values.find_by_prop_id_or_err(credential_prop.id())?;
 
             Secret::attach_for_attribute_value(
                 ctx,
-                aws_credential_attribute_value_id,
+                credential_attribute_value_id,
                 Some(secret.id()),
             )
             .await?;
@@ -164,35 +208,63 @@ async fn initialize_and_apply(ctx: &mut DalContext, request: Request) -> Result<
         component
     };
 
-    // Create the region component
-    let region = request.aws_region;
-    let region_component = {
-        let schema = Schema::get_or_install_by_name(ctx, "Region").await?;
+    if let Some(sub_id) = subscription_id {
+        let comp_name = "SubscriptionIdComponent".to_string();
+        let schema_name = "Microsoft.Resources/subscription";
+        let schema = Schema::get_or_install_by_name(ctx, schema_name).await?;
         let sv_id = SchemaVariant::default_id_for_schema(ctx, schema.id()).await?;
-        let component = Component::new(ctx, &region, sv_id, view_id).await?;
+        let component = Component::new(ctx, comp_name.clone(), sv_id, view_id).await?;
 
         let variant = SchemaVariant::get_by_id(ctx, sv_id).await?;
 
         ctx.write_audit_log(
             AuditLogKind::CreateComponent {
-                name: region.clone(),
+                name: comp_name.clone(),
                 component_id: component.id(),
                 schema_variant_id: sv_id,
                 schema_variant_name: variant.display_name().to_owned(),
             },
-            region.clone(),
+            comp_name.clone(),
+        )
+        .await?;
+
+        {
+            let sources = serde_json::from_value(serde_json::json!({
+                "/domain/subscriptionId" : sub_id,
+            }))?;
+
+            dal::update_attributes(ctx, component.id(), sources).await?;
+        }
+    };
+
+    // Create the region/location component
+    let region_component = {
+        let schema = Schema::get_or_install_by_name(ctx, region_or_location_schema).await?;
+        let sv_id = SchemaVariant::default_id_for_schema(ctx, schema.id()).await?;
+        let component = Component::new(ctx, &region_or_location, sv_id, view_id).await?;
+
+        let variant = SchemaVariant::get_by_id(ctx, sv_id).await?;
+
+        ctx.write_audit_log(
+            AuditLogKind::CreateComponent {
+                name: region_or_location.clone(),
+                component_id: component.id(),
+                schema_variant_id: sv_id,
+                schema_variant_name: variant.display_name().to_owned(),
+            },
+            region_or_location.clone(),
         )
         .await?;
 
         component
     };
 
-    // Set the region value and subscribe the region's credential to the cred component
+    // Set the region/location value and subscribe the region's credential to the cred component
     {
         let sources = serde_json::from_value(serde_json::json!({
-            "/domain/region" : region,
-            "/secrets/credential": {
-              "$source": { "component": credential_component.id().to_string(), "path": "/secrets/AWS Credential" }
+            region_prop_path : region_or_location,
+            region_credential_path: {
+              "$source": { "component": credential_component.id().to_string(), "path": credential_prop_path }
             },
         }))?;
 
