@@ -1,0 +1,18 @@
+{
+  "name": "@systeminit/function-tester",
+  "version": "1.0.0",
+  "exports": "./index.ts",
+  "tasks": {
+    "build": "deno check index.ts server.ts client.ts && deno lint && deno compile --allow-all --output=bin/server server.ts && deno compile --allow-read --allow-net --output=bin/client client.ts",
+    "test": "deno test --allow-all",
+    "serve": "deno run --allow-all server.ts",
+    "lint": "deno lint"
+  },
+  "lint": {
+    "exclude": ["examples/"]
+  },
+  "workspace": [],
+  "imports": {
+    "std/": "https://deno.land/std@0.224.0/"
+  }
+}
