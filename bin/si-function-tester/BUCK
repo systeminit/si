@@ -63,16 +63,41 @@ alias(
     actual = ":si-function-tester-server",
 )
 
+# Export source files for Docker image
+export_file(
+    name = "types.ts",
+)
+
+export_file(
+    name = "mocks.ts",
+)
+
+export_file(
+    name = "runner.ts",
+)
+
+export_file(
+    name = "index.ts",
+)
+
+export_file(
+    name = "server.ts",
+)
+
+export_file(
+    name = "deno.json",
+)
+
 docker_image(
     name = "image",
     image_name = "si-function-tester",
     flake_lock = "//:flake.lock",
     srcs = {
-        "types.ts": "types.ts",
-        "mocks.ts": "mocks.ts",
-        "runner.ts": "runner.ts",
-        "index.ts": "index.ts",
-        "server.ts": "server.ts",
-        "deno.json": "deno.json",
+        ":types.ts": ".",
+        ":mocks.ts": ".",
+        ":runner.ts": ".",
+        ":index.ts": ".",
+        ":server.ts": ".",
+        ":deno.json": ".",
     },
 )
