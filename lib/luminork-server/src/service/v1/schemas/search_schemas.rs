@@ -29,7 +29,7 @@ use crate::extract::{
     ),
     tag = "schemas",
     request_body = SearchSchemasV1Request,
-    summary = "Complex search for shemas",
+    summary = "Complex search for schemas",
     responses(
         (status = 200, description = "Schemas retrieved successfully", body = SearchSchemasV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),

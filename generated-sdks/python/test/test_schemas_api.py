@@ -148,7 +148,7 @@ class TestSchemasApi(unittest.TestCase):
     def test_search_schemas(self) -> None:
         """Test case for search_schemas
 
-        Complex search for shemas
+        Complex search for schemas
         """
         pass
 
