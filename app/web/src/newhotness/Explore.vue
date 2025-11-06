@@ -349,10 +349,7 @@
             @scroll="onScroll"
             @scrollend="onScrollEnd"
           >
-            <WelcomeBanner
-              v-if="featureFlagsStore.INITIALIZER_ONBOARD && ctx.onHead.value"
-              class="mb-sm"
-            />
+            <WelcomeBanner v-if="ctx.onHead.value" class="mb-sm" />
             <ExploreGrid
               ref="exploreGridRef"
               :components="sortedAndGroupedComponents"
@@ -2297,11 +2294,12 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   },
   // b: undefined,
   c: (e) => {
-    e.preventDefault();
     if (e.metaKey || e.ctrlKey) return;
+    e.preventDefault();
     emit("openChangesetModal");
   },
   d: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
 
     if (showGrid.value) {
@@ -2314,6 +2312,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     }
   },
   e: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
     if (showGrid.value) {
       if (!selectionComponentsForAction.value) return;
@@ -2326,6 +2325,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     }
   },
   f: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
     if (showGrid.value) {
       if (!selectionComponentsForActionIds.value) return;
       if (allSelectedComponentsAreRestorable.value) {
@@ -2342,6 +2342,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   // i: undefined,
   // j: undefined,
   k: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
 
     // Deselect the current selection based on which screen you are on
@@ -2356,6 +2357,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   },
   // l: undefined,
   m: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
     if (showGrid.value) {
       // Do nothing in grid mode
@@ -2364,6 +2366,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     mapRef.value?.onM(e);
   },
   n: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
 
     // same behavior on the grid and map!
@@ -2373,6 +2376,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   p: (e) => {
     // You can only pin one component at a time!
     if (selectedComponentIndexes.size > 1) return;
+    else if (e.metaKey || e.ctrlKey) return;
 
     e.preventDefault();
     if (showGrid.value) {
@@ -2412,6 +2416,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   },
   // s: undefined,
   t: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
 
     if (showGrid.value && selectedComponents.value.length > 0) {
@@ -2419,6 +2424,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     }
   },
   u: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
 
     if (showGrid.value) {

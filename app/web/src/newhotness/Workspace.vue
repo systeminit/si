@@ -139,13 +139,10 @@
       />
     </main>
     <template v-else-if="!lobby">
-      <template v-if="showOnboarding">
-        <Onboarding2
-          v-if="featureFlagsStore.INITIALIZER_ONBOARD_FORCE_AGENT"
-          @completed="onboardingCompleted = true"
-        />
-        <Onboarding v-else @completed="onboardingCompleted = true" />
-      </template>
+      <Onboarding
+        v-if="showOnboarding"
+        @completed="onboardingCompleted = true"
+      />
       <main
         v-else-if="indexFailedToLoad"
         :class="
@@ -199,7 +196,6 @@ import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Span, trace } from "@opentelemetry/api";
 import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
@@ -212,9 +208,8 @@ import {
 import { SchemaId } from "@/api/sdf/dal/schema";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { muspelheimStatuses } from "@/store/realtime/heimdall";
-import Onboarding from "@/newhotness/Onboarding.vue";
 import { trackEvent } from "@/utils/tracking";
-import Onboarding2, { DEBUG_MODE } from "@/newhotness/Onboarding2.vue";
+import Onboarding, { DEBUG_MODE } from "@/newhotness/Onboarding2.vue";
 import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
@@ -259,7 +254,6 @@ const props = defineProps<{
 }>();
 
 const authStore = useAuthStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const realtimeStore = useRealtimeStore();
 
 const workspacePk = computed(() => props.workspacePk);
@@ -564,10 +558,8 @@ const lobby = computed(
 );
 
 const showOnboarding = computed(() => {
-  // Force Onboarding2 if this debug boolean is set to true
+  // Force Onboarding if this debug boolean is set to true
   if (DEBUG_MODE) return true;
-
-  if (!featureFlagsStore.INITIALIZER_ONBOARD) return false;
 
   // If null (endpoint failed), skip onboarding to avoid blocking the user
   if (componentsOnHead.value === null) return false;
