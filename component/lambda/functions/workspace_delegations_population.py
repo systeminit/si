@@ -7,57 +7,37 @@ from si_types import WorkspaceId, OwnerPk, SqlDatetime, iso_to_sql_days, iso_to_
 from si_lago_api import ExternalSubscriptionId, LagoSubscription, LagoSubscriptionsResponse, IsoTimestamp
 import logging
 from itertools import groupby
+from pprint import pprint
 
 class WorkspaceDelegationsPopulationEnv(SiLambdaEnv):
-    SI_OWNER_PKS: NotRequired[Optional[list[OwnerPk]]]
+    owner_pks: NotRequired[Optional[list[OwnerPk]]]
 
 class WorkspaceDelegationsPopulation(SiLambda):
     def __init__(self, event: WorkspaceDelegationsPopulationEnv):
         super().__init__(event)
-        self.owner_pks = event.get("SI_OWNER_PKS")
+        self.owner_pks = event.get("owner_pks")
         if self.owner_pks is not None:
-            assert len(self.owner_pks) > 0, "SI_OWNER_PKS must be non-empty. Did you mean to not set it?"
+            assert len(self.owner_pks) > 0, "owner_pks must be non-empty. Did you mean to not set it?"
 
-    def update_subscriptions(self, current_timestamp: SqlDatetime):
-        started_at = time.time()
-        last_report = started_at
+    def run(self):
+        inserted_workspaces = self.insert_missing_workspaces()
+        updated_subscriptions = self.update_subscriptions()
 
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'inserted_workspaces': inserted_workspaces,
+                'updated_subscriptions': updated_subscriptions,
+            })
+        }
+
+    def update_subscriptions(self):
         # Query all owner subscriptions and compare to what's in Lago
-        latest_owner_subscriptions = self.redshift.query("""
-            SELECT owner_pk, subscription_id, subscription_start_date, subscription_end_date, plan_code, external_id
-              FROM workspace_operations.owners
-              LEFT OUTER JOIN workspace_operations.latest_owner_subscriptions USING (owner_pk)
-             ORDER BY owner_pk, start_time
-        """)
-
-        # Removes the outer join "fake" row and returns 0 subscriptions instead
-        def remove_fake_row(si_subscriptions_iter: Iterable[Union[LatestOwnerSubscription, OwnerWithoutSubscriptions]]):
-            si_subscriptions = list(si_subscriptions_iter)
-            result = cast(list[LatestOwnerSubscription], si_subscriptions)
-            if len(si_subscriptions) == 1 and si_subscriptions[0]['subscription_id'] is None:
-                result = []
-            return result
-
-        total_subscriptions = latest_owner_subscriptions.wait_for_complete()['ResultRows']
-
-        # Start all the inserts at once (if any)
-        processed_subscriptions = 0
         subscription_updates = []
-        for owner_pk, si_subscriptions_iter in groupby(
-            cast(Iterable[Union[LatestOwnerSubscription, OwnerWithoutSubscriptions]], latest_owner_subscriptions),
-            lambda sub: sub['owner_pk']
-        ):
-            si_subscriptions = remove_fake_row(si_subscriptions_iter)
-
-            if self.owner_pks is None or owner_pk in self.owner_pks:
-                lago_subscriptions = self.get_owner_lago_subscriptions(owner_pk)
-                subscription_updates.append(
-                    self.update_owner_subscriptions(owner_pk, current_timestamp, si_subscriptions, lago_subscriptions))
-
-            processed_subscriptions += len(si_subscriptions)
-            if time.time() - last_report > 5:
-                logging.info(f"Updating subscriptions: {processed_subscriptions} / {total_subscriptions} subscriptions retrieved from Lago after {time.time() - started_at}s.")
-                last_report = time.time()
+        for owner_pk, si_subscriptions in self.current_owner_subscriptions():
+            lago_subscriptions = self.get_owner_lago_subscriptions(owner_pk)
+            subscription_updates.append(
+                self.update_owner_subscriptions(owner_pk, si_subscriptions, lago_subscriptions))
 
         # Return the completed inserts
         results = [
@@ -68,8 +48,48 @@ class WorkspaceDelegationsPopulation(SiLambda):
         logging.info(f"Subscription update complete: {sum([result['ResultRows'] for result in results])} subscriptions updated.")
         return [result['Status'] for result in results]
 
-    def update_owner_subscriptions(self, owner_pk: OwnerPk, current_timestamp: SqlDatetime, si_subscriptions: list['LatestOwnerSubscription'], lago_subscriptions: Iterable[LagoSubscription]):
-        lago_subscriptions = list(lago_subscriptions)
+    # Get the current list of owners and their subscriptions in Redshift.
+    def current_owner_subscriptions(self):
+        latest_owner_subscriptions = self.redshift.query(f"""
+            SELECT owner_pk, subscription_id, subscription_start_date, subscription_end_date, plan_code, external_id
+              FROM workspace_operations.owners
+              LEFT OUTER JOIN workspace_operations.latest_owner_subscriptions USING (owner_pk)
+             ORDER BY owner_pk, start_time
+        """)
+
+        total_subscriptions = latest_owner_subscriptions.wait_for_complete()['ResultRows']
+
+        # Start all the inserts at once (if any)
+        started_at = time.time()
+        last_report = started_at
+        processed_subscriptions = 0
+        for owner_pk, si_subscriptions_iter in groupby(
+            cast(Iterable[Union[LatestOwnerSubscription, OwnerWithoutSubscriptions]], latest_owner_subscriptions),
+            lambda sub: sub['owner_pk']
+        ):
+            si_subscriptions = list(si_subscriptions_iter)
+            # Skip owners not in the filter list, if a filter list is specified
+            if self.owner_pks is not None and owner_pk not in self.owner_pks:
+                total_subscriptions -= len(si_subscriptions)
+
+            # If the owner existed, but has no subscriptions, yield the owner with an empty list
+            elif len(si_subscriptions) >= 1 and si_subscriptions[0]['subscription_id'] is None:
+                total_subscriptions -= len(si_subscriptions)
+                yield owner_pk, []
+
+            # Yield the owner and their subscriptions
+            else:
+                processed_subscriptions += len(si_subscriptions)
+                yield owner_pk, cast(list[LatestOwnerSubscription], si_subscriptions)
+
+            if time.time() - last_report > 5:
+                logging.info(f"{processed_subscriptions} / {total_subscriptions} subscriptions retrieved from Lago after {time.time() - started_at}s.")
+                last_report = time.time()
+
+    def update_owner_subscriptions(self, owner_pk: OwnerPk, si_subscriptions: list['LatestOwnerSubscription'], lago_subscriptions: list[LagoSubscription]):
+        # If a subscription appears multiple times, the latest one is the valid one
+        lago_subscriptions.sort(key=lambda sub: sub['created_at'])
+
         # Get Lago subscriptions for the owner
         lago_subscriptions_by_id = {
             sub['external_id']: self.lago_to_si_subscription(owner_pk, sub)
@@ -105,13 +125,13 @@ class WorkspaceDelegationsPopulation(SiLambda):
                     logging.info(f"Owner {owner_pk} has a new subscription {external_id} in Lago! Adding to SI.")
 
         if should_update:
-            return self.start_inserting_owner_subscriptions(owner_pk, lago_subscriptions_by_id.values(), current_timestamp)
+            return self.start_inserting_owner_subscriptions(owner_pk, lago_subscriptions_by_id.values())
 
-    def start_inserting_owner_subscriptions(self, owner_pk: OwnerPk, subscriptions: Iterable['LatestOwnerSubscription'], timestamp):
+    def start_inserting_owner_subscriptions(self, owner_pk: OwnerPk, subscriptions: Iterable['LatestOwnerSubscription']):
         def value_row(sub: 'LatestOwnerSubscription'):
             subscription_start_date = 'NULL' if sub['subscription_start_date'] is None else f"'{sub['subscription_start_date']}'" 
             subscription_end_date = "NULL" if sub['subscription_end_date'] is None else f"'{sub['subscription_end_date']}'"
-            return f"('{owner_pk}', '{sub['subscription_id']}', {subscription_start_date}, {subscription_end_date}, '{sub['plan_code']}', '{timestamp}', '{sub['external_id']}')"
+            return f"('{owner_pk}', '{sub['subscription_id']}', {subscription_start_date}, {subscription_end_date}, '{sub['plan_code']}', '{self.start_timestamp_sql}', '{sub['external_id']}')"
 
         value_rows = ",\n  ".join([value_row(sub) for sub in subscriptions])
         sql = f'INSERT INTO workspace_operations.workspace_owner_subscriptions\n  (owner_pk, subscription_id, subscription_start_date, subscription_end_date, plan_code, record_timestamp, external_id) VALUES\n  {value_rows}'
@@ -149,14 +169,13 @@ class WorkspaceDelegationsPopulation(SiLambda):
         assert(subs['meta']['total_count'] == len(subs['subscriptions']))
         return subs['subscriptions']
 
-    def insert_missing_workspaces(self, current_timestamp: SqlDatetime):
+    def insert_missing_workspaces(self):
         missing_workspace_inserts = [
             [
                 workspace_id,
                 self.start_inserting_workspace(
                     workspace_id,
                     self.auth_api.owner_workspaces(workspace_id)["workspaceOwnerId"],
-                    current_timestamp
                 )
             ]
             for [workspace_id] in cast(Iterable[tuple[WorkspaceId]], self.redshift.query_raw("""
@@ -177,13 +196,13 @@ class WorkspaceDelegationsPopulation(SiLambda):
             for workspace_id, result in results.items()
         }
 
-    def start_inserting_workspace(self, workspace_id: WorkspaceId, workspace_owner_id: OwnerPk, timestamp):
+    def start_inserting_workspace(self, workspace_id: WorkspaceId, workspace_owner_id: OwnerPk):
         # Prepare the columns and values for the workspace_owners table
         columns = ["owner_pk", "workspace_id", "record_timestamp"]
         values = [
             f"'{workspace_owner_id}'", 
             f"'{workspace_id}'", 
-            f"'{timestamp}'"  # Use the provided timestamp
+            f"'{self.start_timestamp_sql}'"  # Use the provided timestamp
         ]
 
         # Construct the SQL query for inserting into workspace_owners
@@ -200,21 +219,6 @@ class WorkspaceDelegationsPopulation(SiLambda):
         else:
             logging.info(f"Inserting into workspace_owner_subscriptions: {sql}")
             return self.redshift.start_executing(sql)
-
-    def run(self):
-        # Get the current timestamp for record insertion
-        current_timestamp = cast(SqlDatetime, time.strftime('%Y-%m-%d %H:%M:%S'))
-
-        inserted_workspaces = self.insert_missing_workspaces(current_timestamp)
-        updated_subscriptions = self.update_subscriptions(current_timestamp)
-
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'inserted_workspaces': inserted_workspaces,
-                'updated_subscriptions': updated_subscriptions,
-            })
-        }
 
 # Result of the latest_owner_subscriptions query
 

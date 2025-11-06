@@ -4,6 +4,7 @@ from typing import (
     Unpack,
     NotRequired,
     TypedDict,
+    cast,
 )
 import boto3
 
@@ -105,9 +106,9 @@ class Redshift:
             raise Exception(e)
 
     def _connect(self):
-        return self._session.client(
+        return cast("RedshiftDataAPIServiceClient", self._session.client(
             "redshift-data", config=Config(connect_timeout=5, read_timeout=5)
-        )
+        ))
 
     class Statement:
         def __init__(self, redshift: 'Redshift', statement: 'ExecuteStatementOutputTypeDef'):
